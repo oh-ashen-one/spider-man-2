@@ -3,9 +3,8 @@
 import * as THREE from 'three';
 import { SUITS } from '../../game/systems/suits.js';
 
-// Card art: one painted portrait per suit (public/assets/ui/suits/<id>.webp). The AI-logo suits were generated with
-// Higgsfield (Nano Banana Pro); Advanced / Iron / Symbiote are Blender renders of the in-game hero model and its
-// suit recolours, because image models refuse the licensed character. Replaces the old procedural SVG silhouettes.
+// Card art: one painted portrait per suit (public/assets/ui/suits/<id>.webp), generated with Higgsfield: the AI-logo
+// suits with Nano Banana Pro, Advanced / Iron / Symbiote with Grok Image 2.0. Replaces the old procedural SVG silhouettes.
 function suitArt(s) {
   return `<img class="art" src="/assets/ui/suits/${s.id}.webp" alt="" draggable="false" decoding="async">`;
 }
