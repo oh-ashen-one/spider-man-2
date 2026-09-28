@@ -14,7 +14,8 @@ def split(path, out_dir):
     im = Image.open(path).convert("RGB")
     a = np.asarray(im).astype(np.int16)
     h, w, _ = a.shape
-    bg_row = np.median(a, axis=1, keepdims=True)      # per-row background (handles vertical gradients)
+    m = max(8, w // 50)                              # per-row background from the left and right borders, which
+    bg_row = np.median(np.concatenate([a[:, :m], a[:, -m:]], axis=1), axis=1, keepdims=True)  # are always empty
     fg = np.abs(a - bg_row).sum(axis=2) > 45         # pixels that differ from their row's background
     bg = np.median(a[:40].reshape(-1, 3), axis=0)     # canvas fill colour for the output
     col = fg.sum(axis=0) > h * 0.03                  # columns that contain figure (3% filters noise)
@@ -48,5 +49,10 @@ def split(path, out_dir):
 
 
 if __name__ == "__main__":
+    failed = []
     for p in sys.argv[1:]:
-        split(p, Path(p).parent / "views")
+        try:
+            split(p, Path(p).parent / "views")
+        except SystemExit as e:
+            print(e, file=sys.stderr); failed.append(p)
+    sys.exit(1 if failed else 0)
