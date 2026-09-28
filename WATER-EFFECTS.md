@@ -73,7 +73,11 @@ When porting MIT code, keep attribution: add a header comment `// Adapted from d
 
 Each step: add/extend a `?shot=` water preset first, capture a **before**, build, capture an **after**, check `?prof=1` cost on `high` and `low`.
 
-0. **Water shots harness.** Add `?shot=riverHigh` (swinging height over Hudson), `?shot=riverLow` (street-level at seawall), `?shot=riverSunset` (glint) to `src/shots.js`. Baseline screenshots before touching anything.
+0. ✅ **Water shots harness** (done 2026-09-28). `src/shots.js`: `riverHigh` (~75 m over the Hudson edge, looking down-river), `riverLow` (eye level behind Spidey at the Hudson seawall), `eastRiver` (~45 m over the East River toward the Manhattan/Brooklyn bridges). Add `&tod=sunset` for low-sun glint. Capture: `node tools/shot.mjs riverHigh 'riverHigh&tod=sunset' riverLow eastRiver` (starts its own Vite on a free port ≥5192, headless installed Chrome with Metal GPU → `shots/`, gitignored; `OUT=shots/after` to pick a folder). Baselines committed in `docs/water/before/`. What they show:
+   - Surface is dead flat — reads as a tiled normal-map noise, strongly streaky/grainy in the near field (`eastRiver`, `riverLow`).
+   - No foam or contact lines where water meets piers, pilings, bridge piers, hulls or seawalls — everything floats on the water "like a sticker".
+   - Boats show no visible wake from above.
+   - Sunset glint is decent already (keep it); day water is uniform blue-grey with little depth/colour variation.
 1. **Waves + shading.** Add Gerstner waves (4–6 summed, displaced in vertex shader, analytic normals) to the plane in `water.js`; needs a denser near-camera grid (start with a camera-following ring grid, CDLOD later). Port `WaterMaterial.js` Fresnel / GGX glint / roughness / absorption into our `onBeforeCompile`. Keep the planar mirror; sample it with wave-perturbed UVs.
 2. **Sea detail.** Port `SeaDetail.js` gusts/slicks/foam lines; merge with our existing calm-patch/streak noise instead of stacking both.
 3. **Splashes + ripples.** On `waterSplash`: crown-splash burst + spray using `combat/fx.js` Particles (spray shading from `Spray.js`), splash SFX, and a small ripple heightfield (ping-pong render target around the player) that perturbs water normals. Boats get the same ripple stamp.

@@ -10,6 +10,7 @@
 // Otherwise a composition is derived from world raycasts around world.spawn.
 import * as THREE from 'three';
 import { POSES, makePose } from './player/rig.js';
+import { G, shoreX } from './world/layout.js';
 
 const V3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const vec = v => (v == null ? null : v.isVector3 ? v.clone() : Array.isArray(v) ? V3(v[0], v[1], v[2]) : V3(v.x, v.y, v.z));
@@ -242,6 +243,44 @@ S.suit = {
     ctx.hud.setVisible(false);
   },
   tick(ctx, dt) { ctx.player.shotTick(dt); pipe(ctx).setMotionBlur?.(0); pipe(ctx).setFocus?.(1.4); pipe(ctx).setAperture?.(0); },
+};
+
+// (water-effects) water review shots — before/after comparisons for the water work (WATER-EFFECTS.md step 0).
+// Pair with ?tod= for lighting: sunset puts the sun low over the Hudson (glint / Fresnel); day = high sun.
+//   riverHigh  -> web-swinging height (~75 m) over the Hudson edge, looking down-river south-west toward NJ
+//   riverLow   -> eye level behind Spidey standing at the Hudson seawall (shore wash, wet bands, near reflections)
+//   eastRiver  -> ~45 m over the East River looking south to the Manhattan / Brooklyn bridges (piers, far water)
+function waterShot(name, { z, side, out, h, look, fov }) {
+  return {
+    frames: 90,
+    apply(ctx) {
+      const { world, camera } = ctx;
+      const [xw, xe] = shoreX(z);
+      const x = side < 0 ? xw - T(name, 'out', out) : xe + T(name, 'out', out);
+      const cam = V3(x, T(name, 'h', h), z);
+      placeCam(camera, cam, V3(look[0], G.WATER_Y + T(name, 'ty', look[1]), look[2]), T(name, 'fov', fov));
+      ctx.hud.setVisible(false);
+    },
+    tick(ctx, dt) { ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(200); p.setAperture?.(0); },
+  };
+}
+S.riverHigh = waterShot('riverHigh', { z: 400, side: -1, out: 15, h: 75, look: [-1250, 0, 1500], fov: 60 });
+S.eastRiver = waterShot('eastRiver', { z: 1900, side: 1, out: 70, h: 45, look: [880, 25, 2700], fov: 58 });
+S.riverLow = {
+  frames: 90,
+  apply(ctx) {
+    const { world, player, camera } = ctx;
+    const z = T('riverLow', 'z', -200), [xw] = shoreX(z);
+    const feet = V3(xw + T('riverLow', 'edge', 1.6), 0, z); feet.y = world.groundHeight(feet.x, feet.z);
+    const dir = V3(-1, 0, T('riverLow', 'yaw', 0.3)).normalize(); // out over the Hudson, slightly down-river
+    const right = V3().crossVectors(dir, UP).normalize();
+    player.setPose({ pos: feet, forward: dir, clip: 'idle', clipTime: 0.25, pose: POSES.idle(0), forceProcedural: !player.rig.hasClip('idle') });
+    const cam = feet.clone().addScaledVector(dir, -T('riverLow', 'back', 3.4)).addScaledVector(right, T('riverLow', 'side', 0.6)).add(V3(0, T('riverLow', 'ch', 1.7), 0));
+    const tgt = feet.clone().addScaledVector(dir, 30).setY(G.WATER_Y + T('riverLow', 'ty', 2));
+    placeCam(camera, cam, tgt, T('riverLow', 'fov', 55));
+    ctx.hud.setVisible(false);
+  },
+  tick(ctx, dt) { ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(3.4); p.setAperture?.(0); },
 };
 
 export const SHOTS = S;
