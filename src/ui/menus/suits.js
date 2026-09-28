@@ -116,7 +116,7 @@ export function createSuitsPage(sys) {
   let camSave = null;
   // (3d-assets) the preview must show Spider-Man STANDING: opening the menu mid-swing / mid-fall used to freeze him in
   // that air pose (flow.js stops player.update while a menu is up, so the bones keep their last pose). While the page is
-  // open the hero stands on the stage facing the preview camera with one frame of the idle clip; hide() restores the
+  // open the hero's bones take one idle frame with the hips upright on the stage facing the camera; hide() restores the
   // exact bones, so play resumes from where it paused.
   let poseSave = null;
   function standPose() {
@@ -125,16 +125,22 @@ export function createSuitsPage(sys) {
     poseSave = { bones: bones.map(b => [b, b.position.clone(), b.quaternion.clone(), b.scale.clone()]),
       pos: rig.object.position.clone(), quat: rig.object.quaternion.clone(), vis: rig.object.visible };
     const clip = rig.allClips.find(c => c.name === 'idle') || rig.allClips.find(c => /^idle/i.test(c.name));
-    // The animator carries the hero's world placement on the hips bone (and in some modes on rig.object); either way
-    // hips.getWorldPosition() is where he is. Move that placement onto rig.object, centre the hips, face the preview
-    // camera (it orbits at `yaw`, chosen in show() before this runs) and stand the feet on the stage (stageOn puts it at
-    // player.position.y - 0.95). The idle clip then only moves bones in character space.
     const hips = rig.bones?.hips;
-    const where = hips ? hips.getWorldPosition(new THREE.Vector3()) : ctx.player.position.clone();
-    rig.object.position.set(where.x, ctx.player.position.y - 0.95, where.z);
-    rig.object.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw); rig.object.visible = true;
-    if (clip) { const m = new THREE.AnimationMixer(rig.model); m.clipAction(clip).play(); m.setTime(clip.duration * 0.25); } // no stop(): stopping would restore the air pose
-    if (hips) hips.position.set(0, hips.position.y, 0);
+    if (!clip || !hips) return;
+    // Never move rig.object: depending on the traversal mode the animator puts the hero's world placement on
+    // rig.object or on the hips bone, so the only safe thing is to pose BONES and express the hips in world terms.
+    rig.object.updateMatrixWorld(true);
+    const where = hips.getWorldPosition(new THREE.Vector3());
+    const m = new THREE.AnimationMixer(rig.model); m.clipAction(clip).play(); m.setTime(clip.duration * 0.25); // no stop(): stopping would restore the air pose
+    // hips: upright, facing the preview camera (it orbits at `yaw`, chosen in show() before this runs), feet on the
+    // stage (stageOn puts it at player.position.y - 0.95). The clip's hips height/tilt are in character space.
+    const par = hips.parent; par.updateMatrixWorld(true);
+    const wantPos = new THREE.Vector3(where.x, ctx.player.position.y - 0.95 + hips.position.y, where.z);
+    const wantQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw).multiply(hips.quaternion);
+    const parQ = par.getWorldQuaternion(new THREE.Quaternion());
+    hips.position.copy(par.worldToLocal(wantPos));
+    hips.quaternion.copy(parQ.invert().multiply(wantQ));
+    rig.object.visible = true;
     rig.object.updateMatrixWorld(true);
   }
   function restorePose() {
