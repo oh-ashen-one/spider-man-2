@@ -1,3 +1,5 @@
+> **About this fork.** Spider-Man 2 is a fork of [xikhar/spiderbench](https://github.com/xikhar/spiderbench) by Shikhar. All credit for the original game goes to its author. We use it as the baseline for an enhanced version, made in this fork under the upstream [LICENSE](LICENSE). That means it stays non-commercial and is not redistributed outside GitHub's fork mechanism. The original README follows.
+
 # Spiderbench — a browser web-swinging game written by Claude
 
 A non-commercial fan project and benchmark. It shows the kind of code and assets that **Claude** (Anthropic's AI model, working through Claude Code) can produce for a real-time 3D game running in the browser.
