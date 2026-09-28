@@ -17,13 +17,13 @@ These are ten original New York pedestrians, plus a kit of eight accessories any
 | `09_marathon_runner` | Tall, muscular Pacific Islander man: running tank top, shorts, neon shoes |
 | `10_punk_artist` | Petite Southeast Asian woman: pink bob, studded leather jacket, tartan skirt, combat boots |
 
-Each folder contains `sheet.png` (the full turnaround) and `front.png`, `left.png`, `back.png` and `right.png`. The left image shows the character's left side, so they face right. `contact_sheet.jpg` shows all ten at once.
+Each folder contains exactly the four images to upload: `front.png`, `left.png`, `back.png` and `right.png`. The combined turnaround sheets live in `_sheets_reference_only/`. **Never upload a combined sheet to Tripo.** It builds four separate people. The left image shows the character's left side, so they face right. `contact_sheet.jpg` shows all ten at once.
 
 The first draft of the dapper elder looked like a real famous actor, so he was regenerated with an explicitly original face. Every character is original.
 
 ## Tripo: citizens
 
-1. Use **Multiview to 3D** with the four views from one folder. If there is no multiview option, use **Image to 3D** with `front.png`.
+1. In **Generate Model**, click the **third icon** in the input row (the stacked pictures) for multi-view. Upload the four views from one folder into the Front, Left, Back and Right slots, and leave **Generate Multi-Views** off. If there is no multiview option, use **Image to 3D** with `front.png`.
 2. Settings: newest model, **HD PBR texture**, full detail, keep the A-pose.
 3. **Skip auto-rig.** Claude moves each citizen onto the crowd's own 18-bone skeleton and bakes the 27 crowd animations for it.
 4. Export GLB as `citizen_01.glb` through `citizen_10.glb`, into `concepts/citizens/tripo/`.
@@ -32,7 +32,7 @@ Don't worry about polygon count in Tripo. Hundreds of citizens are on screen at 
 
 ## Tripo: accessories
 
-In `accessories/` there is one image per item, plus `kit_sheet.png` with all eight:
+In `accessories/` there is one image per item. The combined kit is in `_sheets_reference_only/accessory_kit.png`.
 
 | Hats | Bags | Other |
 |---|---|---|

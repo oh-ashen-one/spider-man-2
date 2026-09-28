@@ -12,13 +12,9 @@ There are five hero suits. Each is a fitted spandex-and-rubber superhero suit wi
 | `kimi/` | Crimson and navy with a carbon-weave texture, amber-gold lenses | Kimi "K" badge |
 | `qwen/` | Bright red and royal blue with violet piping, violet lenses | Qwen pinwheel hexagon |
 
-Each folder contains these files:
+Each suit folder contains exactly the four images to upload: `front.png`, `left.png`, `back.png` and `right.png`. The combined turnaround sheets live in `_sheets_reference_only/`.
 
-| File | What it is |
-|---|---|
-| `sheet.png` | The full turnaround sheet (6336×2688): front, left, back, right |
-| `front.png`, `left.png`, `back.png`, `right.png` | The four views as separate images, full height, cut straight from the sheet |
-| `front_reference.png` (Claude only) | The approved single front image the Claude sheet was matched to |
+> **Never upload a combined sheet to Tripo.** It reads all four views as one scene and builds four separate people.
 
 **Which side is which:** `left.png` shows the character's **left** side, so the character faces right in the image. `right.png` shows the character's **right** side, so the character faces left. If Tripo's result comes out mirrored, swap the left and right uploads. Kimi's left view is a mirror of its right view, because the generator drew the same side twice. The suit is symmetrical, so this is safe.
 
@@ -26,7 +22,7 @@ Each folder contains these files:
 
 ## What to do in Tripo (web app)
 
-1. Choose **Multiview to 3D** (it may be called "Multi-image"). Upload `front.png`, `left.png`, `back.png` and `right.png` from one folder into the matching slots.
+1. In **Generate Model**, click the **third icon** in the input row (the stacked pictures) to switch to multi-view. Upload `front.png`, `left.png`, `back.png` and `right.png` from one folder into the Front, Left, Back and Right slots. Leave **Generate Multi-Views** off, because the views already exist.
    - If there is no multiview option, use **Image to 3D** with `front.png` only.
 2. Use these settings. They are not checked against the current Tripo interface, so pick the closest match:
    - **Model:** the newest / highest-quality version.
