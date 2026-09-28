@@ -241,7 +241,7 @@ export function createChaseCamera(camera, world) {
     if (allowed < c.collDist) { c.collDist = damp(c.collDist, allowed, 30, dt); c.collDistV = 0; } else sd(c, 'collDist', allowed, 0.45, dt);
     camera.position.copy(pivot).addScaledVector(back, Math.min(c.collDist + 1.3 * Math.max(0, c.kickK || 0), Math.max(c.collDist, allowed)));
     const gy = world.groundHeight(camera.position.x, camera.position.z, camera.position.y + 0.3) + 0.3;
-    if (camera.position.y < gy) camera.position.y = gy;
+    if (camera.position.y < gy && !p.plunge) camera.position.y = gy; // (water-effects) the camera follows him under water
     // vehicles are camera colliders too (cars / buses never pass through the lens)
     if (world.collideDynamic) {
       try { const r = world.collideDynamic(_v3b.set(camera.position.x, camera.position.y - 0.35, camera.position.z), 0.4, 0.7);

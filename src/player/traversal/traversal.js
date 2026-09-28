@@ -509,10 +509,62 @@ export function createTraversal({ world, cam, web, rig, camera }) {
       else setSub(s.vel.y < -24 && !I.swing ? 'dive' : 'fall');
     }
   }
-  // Water (river beyond the seawall; floor below -1 m): Spidey never lands on / runs across water. On contact he
-  // splashes and immediately web-yanks himself back onto the nearest dry ground on a ballistic arc.
+  // Water (river beyond the seawall; floor below -1 m): Spidey never lands on / runs across water. (water-effects) On
+  // contact he now PLUNGES: a splash, he goes under (deeper the harder he hit, the camera follows him below the surface),
+  // drag + buoyancy bring him back up, and when he surfaces he web-yanks himself onto the nearest dry ground on a
+  // ballistic arc as before.
   const WATER_Y = -1.0;
+  const waterLevel = (x, z) => (world.water ? world.water.heightAt(x, z) : WATER_Y - 0.6);
   function waterBounce() {
+    if (s.plunge) return true;
+    if (world.water && startPlunge()) return true;
+    return waterYank();
+  }
+  function startPlunge() {
+    const impact = s.vel.clone();
+    const spd = impact.length();
+    if (s.mode === 'rope') leaveRope();
+    if (s.sling.active) slingEnd(false);
+    web.release(); s.kin = null; s.wall.zipWeb = false;
+    const surf = waterLevel(s.pos.x, s.pos.z);
+    s.plunge = { t: 0, surf, depth: clamp(1.6 + spd * 0.1, 1.8, 6), surfaced: false };
+    // entering: keep most of the downward speed (water brakes it within ~1 s), a little of the horizontal
+    s.vel.set(impact.x * 0.35, Math.min(impact.y, -3) * 0.7, impact.z * 0.35);
+    s.pos.y = Math.min(s.pos.y, surf + H * 0.5);
+    setMode('air', 'dive'); s.airT = 0; s.trick = null; s.dive = true; s.gliding = false; s.swingCooldown = 1e3; s.wallCooldown = 1e3;
+    events.push({ type: 'waterSplash', severity: clamp(Math.max(-impact.y, spd * 0.6) / 40, 0.2, 1), pos: s.pos.clone(), vel: impact });
+    return true;
+  }
+  function stepPlunge(h) {
+    const P = s.plunge;
+    P.t += h;
+    const surf = waterLevel(s.pos.x, s.pos.z);
+    const chest = s.pos.y - surf; // body centre relative to the surface (< 0: under)
+    // water: strong drag; buoyancy once the dive has run out of speed (a swimmer kicking back up)
+    const drag = chest < 0 ? 3.0 : 0.6;
+    s.vel.multiplyScalar(Math.exp(-drag * h));
+    if (chest < 0) {
+      const bottom = -P.depth;
+      const kick = P.t > 0.35 || chest < bottom ? 11 : 2;
+      s.vel.y += (kick - (chest < bottom ? -8 : 0)) * h;
+      if (chest < bottom - 0.5) { s.pos.y = surf + bottom - 0.5; s.vel.y = Math.max(s.vel.y, 0); }
+      s.vel.y = Math.min(s.vel.y, 4.5);
+    } else s.vel.y -= G * h;
+    s.pos.addScaledVector(s.vel, h);
+    s.facing = Math.atan2(s.vel.x || Math.sin(s.facing), s.vel.z || Math.cos(s.facing));
+    // stir the surface while he is near it (wake / bubbles churning the ripple sim)
+    if (Math.abs(chest) < 1.2 && world.water?.stir && Math.random() < h * 30) world.water.stir(s.pos.x, s.pos.z, 0.5, 0.5);
+    // surfaced (or taking too long): break out of the water and web-yank to shore
+    if ((P.t > 0.6 && chest > -0.2 && s.vel.y > 0) || P.t > 3.5) {
+      s.plunge = null;
+      events.push({ type: 'waterSurface', pos: s.pos.clone() });
+      s.pos.y = Math.max(s.pos.y, surf + 0.2);
+      if (!waterYank()) { s.pos.y = surf + H; s.vel.set(0, 8, 0); }
+      s.swingCooldown = Math.max(s.swingCooldown, 0.2); s.wallCooldown = 0.3;
+      world.water?.splash?.(s.pos.x, s.pos.z, 0.35, s.vel.x * 0.3, s.vel.z * 0.3);
+    }
+  }
+  function waterYank() {
     let best = null, bd = Infinity;
     for (let r = 4; r <= 120 && !best; r += 4) {
       for (let k = 0; k < 24; k++) {
@@ -525,18 +577,20 @@ export function createTraversal({ world, cam, web, rig, camera }) {
       }
     }
     if (!best) return false;
+    const impactVy = s.vel.y;
     best.y = world.groundHeight(best.x, best.z, 200);
     const from = _v.set(s.pos.x, feetY(), s.pos.z);
     const hd = Math.hypot(best.x - from.x, best.z - from.z), tf = clamp(0.55 + hd / 20, 0.9, 2.4);
     const g = G; // (apex hang only lengthens the flight: errs on the inland side)
     s.vel.set((best.x - from.x) / tf, (best.y + 0.4 - from.y) / tf + 0.5 * g * tf, (best.z - from.z) / tf);
-    s.pos.y = WATER_Y + H - 0.3;
+    s.pos.y = Math.max(s.pos.y, WATER_Y + H - 0.3);
     setMode('air', 'pointLaunch'); s.airT = 0; s.apexY = feetY(); s.swingCooldown = tf + 0.2; s.wallCooldown = 0.3;
     s.returnT = tf + 0.3; // the return arc is ballistic: no glide / air control / swing re-attach until it lands
     s.facing = Math.atan2(s.vel.x, s.vel.z); s.trick = null; s.dive = false; s.gliding = false; s.noAnchorT = 0;
     const tgt = best.clone(); tgt.y += 0.2;
     web.attach(rig.handWorld('R'), tgt, _v2.set(0, 1, 0)); s.dashWebT = 0.3;
-    events.push({ type: 'waterSplash', severity: clamp(-s.vel.y / 40, 0.2, 1) }, { type: 'pointLaunch' });
+    if (!world.water) events.push({ type: 'waterSplash', severity: clamp(-impactVy / 40, 0.2, 1), pos: s.pos.clone() });
+    events.push({ type: 'pointLaunch' });
     return true;
   }
   // (bridges r1) Halfway rule on the East River bridges (world.bridgeLimit, bridges.js bridgeLimits): past a bridge's
@@ -1945,7 +1999,10 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     H, R,
     floorAt,
     update(dt, I) {
-      events.length = 0; lastInput = I;
+      events.length = 0;
+      // (water-effects) under water (plunge): no web / jump / boost input until he has surfaced and been yanked out
+      if (s.plunge) I = Object.assign({}, I, { zipPressed: false, quickPressed: false, ropePressed: false, jumpPressed: false, swingPressed: false, dropPressed: false, slingL: false, slingR: false, swing: false });
+      lastInput = I;
       s.jumpBuf = I.jumpPressed ? 0.22 : Math.max(0, (s.jumpBuf || 0) - dt);
       s.subT += dt; s.modeT += dt;
       if (s.mode === 'swing') s.sinceSwing = 0;
@@ -1980,7 +2037,8 @@ export function createTraversal({ world, cam, web, rig, camera }) {
       const n = Math.max(1, Math.ceil(dt / (1 / 120))), h = dt / n;
       for (let i = 0; i < n; i++) {
         const pre = s.mode;
-        if (s.kin && s.kin.type === 'ledge') stepLedge(h);
+        if (s.plunge) stepPlunge(h);
+        else if (s.kin && s.kin.type === 'ledge') stepLedge(h);
         else if (s.kin && s.kin.type === 'wallHop') stepWallHop(h);
         else if (s.kin && s.mode !== 'zip') stepKin(h);
         else if (s.mode === 'ground') stepGround(h, I);
@@ -2007,7 +2065,7 @@ export function createTraversal({ world, cam, web, rig, camera }) {
         guardP.copy(s.pos); guardOk = true; }
       // safety net: never below the terrain / inside a building
       const g = world.groundHeight(s.pos.x, s.pos.z, s.pos.y - H + 0.3);
-      if (s.pos.y - H < g - 0.05 && s.mode !== 'wall' && s.mode !== 'rope') { s.pos.y = g + H; if (s.vel.y < 0) s.vel.y = 0; if (s.mode === 'air') land(g, I); }
+      if (!s.plunge && s.pos.y - H < g - 0.05 && s.mode !== 'wall' && s.mode !== 'rope') { s.pos.y = g + H; if (s.vel.y < 0) s.vel.y = 0; if (s.mode === 'air') land(g, I); }
       if (collider && s.mode !== 'zip' && s.mode !== 'wall' && s.mode !== 'rope' && collider.inside(_v.set(s.pos.x, s.pos.y + 0.3, s.pos.z))) { // resolved inside a solid: pop on top
         // pop UP only onto a surface within reach of the current height (never skip overhangs / snap onto a roof 30 m
         // up); otherwise leave it to the horizontal push-out next substep

@@ -264,8 +264,80 @@ function waterShot(name, { z, side, out, h, look, fov }) {
     tick(ctx, dt) { ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(200); p.setAperture?.(0); },
   };
 }
+S.gulls = waterShot('gulls', { z: -300, side: -1, out: 150, h: 20, look: [-960, 21, -230], fov: 38 });
+// Central Park lake (the pond water keeps the flat normal-map surface + the shared water shading)
+S.pond = {
+  frames: 90,
+  apply(ctx) {
+    placeCam(ctx.camera, V3(T('pond', 'x', 40), T('pond', 'h', 14), T('pond', 'z', -950)), V3(-90, -0.4, -1045), T('pond', 'fov', 55));
+    ctx.hud.setVisible(false);
+  },
+  tick(ctx, dt) { ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(100); p.setAperture?.(0); },
+};
 S.riverHigh = waterShot('riverHigh', { z: 400, side: -1, out: 15, h: 75, look: [-1250, 0, 1500], fov: 60 });
 S.eastRiver = waterShot('eastRiver', { z: 1900, side: 1, out: 70, h: 45, look: [880, 25, 2700], fov: 58 });
+// x of the Hudson seawall face at z (the promenade fill reaches past layout's shoreX in places)
+function seawallX(world, z) {
+  const [xw] = shoreX(z);
+  for (let x = xw - 90; x < xw + 30; x += 0.25) if (world.groundHeight(x, z, 5) > G.WATER_Y + 0.5) return x;
+  return xw;
+}
+// splash: frozen 0.5 s after a body hits the water 9 m out from the Hudson seawall (spray, crown, ripple rings, foam)
+S.splash = {
+  frames: 90,
+  apply(ctx) {
+    const { world, camera } = ctx;
+    const z = T('splash', 'z', -440), xw = seawallX(world, z) + 1.5;
+    const p = V3(xw - T('splash', 'out', 9), 0, z);
+    S.splash._p = p;
+    const cam = V3(xw + 2.5, T('splash', 'h', 4.5), z + T('splash', 'side', 9));
+    placeCam(camera, cam, V3(p.x, G.WATER_Y + T('splash', 'ty', 1.6), p.z), T('splash', 'fov', 50));
+    ctx.hud.setVisible(false);
+  },
+  tick(ctx, dt, i) {
+    ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(12); p.setAperture?.(0);
+    if (i === 60) ctx.world.water?.splash?.(S.splash._p.x, S.splash._p.z, T('splash', 's', 1), -4, 0);
+  },
+};
+// under water: 3 m down beside the Hudson seawall / pier piles, looking along the wall toward the sun side (medium,
+// caustics on the bed and wall, shafts, the surface from below)
+S.underwater = {
+  frames: 90,
+  apply(ctx) {
+    const { camera, world } = ctx;
+    const z = T('underwater', 'z', -440), xw = seawallX(world, z);
+    const cam = V3(xw - T('underwater', 'out', 6), G.WATER_Y - T('underwater', 'd', 3), z);
+    placeCam(camera, cam, V3(xw, G.WATER_Y - T('underwater', 'td', 3.4), z + T('underwater', 'along', 7)), T('underwater', 'fov', 62));
+    ctx.hud.setVisible(false);
+  },
+  tick(ctx, dt) { ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(6); p.setAperture?.(0); },
+};
+// the lens straddling the surface: half above (the river, the skyline), half below (the waterline split + meniscus)
+S.waterline = {
+  frames: 90,
+  apply(ctx) {
+    const z = T('waterline', 'z', -440), xw = seawallX(ctx.world, z);
+    S.waterline._c = V3(xw - 12, 0, z);
+  },
+  tick(ctx, dt) {
+    ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(8); p.setAperture?.(0);
+    const c = S.waterline._c, w = ctx.world.water;
+    const y = (w ? w.heightAt(c.x, c.z) : G.WATER_Y) + T('waterline', 'dy', 0.0);
+    placeCam(ctx.camera, V3(c.x, y, c.z), V3(c.x + 20, y - 0.8, c.z + 30), T('waterline', 'fov', 60));
+    ctx.hud.setVisible(false);
+  },
+};
+// surfacing: under water until frame 55, then 0.8 m above: the lens comes out wet (droplets clinging / sliding)
+S.surfacing = {
+  frames: 90,
+  apply(ctx) { const z = -440, xw = seawallX(ctx.world, z); S.surfacing._c = V3(xw - 10, 0, z); ctx.hud.setVisible(false); },
+  tick(ctx, dt, i) {
+    ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(8); p.setAperture?.(0);
+    const c = S.surfacing._c, w = ctx.world.water, h = w ? w.heightAt(c.x, c.z) : G.WATER_Y;
+    const y = i < 55 ? h - 1.2 : h + 0.8;
+    placeCam(ctx.camera, V3(c.x, y, c.z), V3(c.x + 25, h + 3, c.z + 30), 60);
+  },
+};
 S.riverLow = {
   frames: 90,
   apply(ctx) {

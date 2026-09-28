@@ -57,6 +57,7 @@ const player = await createPlayer({ scene, world, camera, input, renderer });
 await boot.stage('shaders');
 const hud = createHud({ player, world, camera });
 const pipeline = createPipeline({ renderer, scene, camera, lighting });
+pipeline.setWater?.(world.water); // (water-effects) under-water view + lens droplets
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();

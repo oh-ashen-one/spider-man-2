@@ -103,8 +103,11 @@ export async function buildCity({ scene, renderer }) {
   const hinter = buildHinterland({ scene: root });
   buildWetBands({ scene: root, T, segs: [...(ground.wetSegs ?? []), ...(far.wetSegs ?? [])] });
   await tick('hinterland ' + hinter.count, 'props');
-  const boats = buildBoats({ scene: root, solids: gen.solids, // foundation: river traffic + wakes (+ round 12: moored boats at the piers)
+  const boats = buildBoats({ scene: root, solids: gen.solids, water: ground.water, // foundation: river traffic + wakes (+ round 12: moored boats at the piers)
     docks: [...PIERS, ...(far.piers ?? []).map(([x0, z0, x1, z1]) => ({ x0, z0, x1, z1 }))] });
+  // (water-effects) contact foam along every wet edge / pile / bridge pier / docked hull, hull + wake foam per boat
+  ground.water?.setContacts({ segs: [...(ground.wetSegs ?? []), ...(far.wetSegs ?? [])], solids: gen.solids });
+  ground.water?.setBoats(boats);
   const vehModels = await loadVehicleModels(renderer); // (bridges r3) shared by the highways and the street traffic
   const highways = buildHighways({ scene: root, T, solids: gen.solids, models: vehModels }); // foundation: West Side Highway / FDR + traffic ((bridges r3) real vehicles + real trees)
   // (citylife bridges) bridge cars are ordinary street traffic now (collidable, junction rules, same models): no bridgeTraffic
@@ -202,6 +205,7 @@ export async function buildCity({ scene, renderer }) {
 
   const world = {
     raycast, groundHeight, surfaceAt, spawn, viewpoints, streetsAt,
+    water: ground.water, // (water-effects) waves / splashes / ripples / spray: water.js buildWater
     getZipPoints: (center, radius, kinds) => zips.query(center, radius, kinds),
     // (bridges r1) halfway rule on the East River bridges (traversal.js bridgeBounce) + deck height for the anchor band
     bridgeLimit: null, bridgeDeckY,

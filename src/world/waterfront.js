@@ -350,7 +350,7 @@ export function buildWaterfront({ scene, T, piers = [], pileFields = [], solids 
       M.poly([[a.x, yTop, a.z], [b.x, yTop, b.z], [ibx, yTop, ibz], [iax, yTop, iaz]], [0, 1, 0], [[0, 0], [0, 0], [0, 0], [0, 0]], COL.white, TL.PAVE);
       addFillQuad([[a.x, a.z], [b.x, b.z], [b.ox, b.oz], [a.ox, a.oz]], yTop);
       if (sg.L < 1e-3) continue;
-      const yC = yTop + 0.015, yBot = WY - 2.5;
+      const yC = yTop + 0.015, yBot = WY - 9.2; // (water-effects) down to the river bed
       // coping band (top) + its outer face; overhang per style
       const ov = st === ST.WALL ? 0.2 : st === ST.BULK ? 0.12 : st === ST.PLAT ? 0.05 : 0;
       const [oax, oaz] = P(a, ov), [obx, obz] = P(b, ov);

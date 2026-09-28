@@ -1028,7 +1028,7 @@ export function buildGround({ scene, T, blocks, facadeMat, solids = null, zips =
     solids?.cyl(C.x, C.z, y, y + 0.9, pr(C.r + 0.25), pr(C.r + 0.25), 'wall');
   }
   const seaP = { style: STYLE.BLANK, layer: LAYER.GRANITE, tint: [0.44, 0.43, 0.41], seed: 5 }; // (foundation r13: 0.62 -> 0.44, darker weathered waterline)
-  const yBot = G.WATER_Y - 2.5;
+  const yBot = G.WATER_Y - 9.2; // (water-effects) down to the river bed (the camera can dive now)
   out.shoreEdges = [];
   out.wetSegs = [];
   for (const f of fills) {
@@ -1055,7 +1055,7 @@ export function buildGround({ scene, T, blocks, facadeMat, solids = null, zips =
     const prnd = mulberry32(4242);
     const deckP = { style: STYLE.BLANK, layer: LAYER.CONCRETE, tint: [0.46, 0.45, 0.43], seed: 13 }; // (round 6: darker, weathered)
     const deckTop = { ...deckP, layer: LAYER.ROOF_GRAVEL, tint: [0.4, 0.39, 0.37] }; // weathered concrete / tar deck
-    const yTop = GY.WALK - 0.03, yB = G.WATER_Y - 1.5;
+    const yTop = GY.WALK - 0.03, yB = G.WATER_Y - 9.2;
     for (let z = -2150; z < 1750;) {
       const w = 24 + prnd() * 22, za = z, zb = z + w;
       z += w + 70 + prnd() * 110;
@@ -1065,8 +1065,8 @@ export function buildGround({ scene, T, blocks, facadeMat, solids = null, zips =
         for (let x = xr - L0; x < xr - 2; x += 4.5) for (let zz = za + 1; zz < zb - 1; zz += 4.2) {
           if (prnd() < 0.3) continue;
           const top = G.WATER_Y + 0.3 + prnd() * 1.6;
-          wall.box(x, G.WATER_Y - 1.5, zz, x + 0.45, top, zz + 0.45, pileR, {}, true);
-          solids?.box(x, G.WATER_Y - 1.5, zz, x + 0.45, top, zz + 0.45, 'pier');
+          wall.box(x, G.WATER_Y - 9.2, zz, x + 0.45, top, zz + 0.45, pileR, {}, true);
+          solids?.box(x, G.WATER_Y - 9.2, zz, x + 0.45, top, zz + 0.45, 'pier');
         }
         PILE_FIELDS.push({ side: 0, z0: za, z1: zb }); // (coast r1)
         continue;
@@ -1154,7 +1154,7 @@ export function buildGround({ scene, T, blocks, facadeMat, solids = null, zips =
     const deckTop = { ...deckP, layer: LAYER.ROOF_GRAVEL, tint: [0.6, 0.58, 0.55] };
     const woodTop = { ...deckP, layer: LAYER.BROWN, tint: [0.5, 0.43, 0.36] }; // seaport timber decking
     const pileP = { ...deckP, layer: LAYER.BROWN, tint: [0.36, 0.33, 0.3] };
-    const yTop = GY.WALK - 0.03, yB = G.WATER_Y - 1.5, yD = yTop - 0.75;
+    const yTop = GY.WALK - 0.03, yB = G.WATER_Y - 9.2, yD = yTop - 0.75;
     const avoid = [...BRIDGES.map(b => [b.z - b.width / 2 - 50, b.z + b.width / 2 + 50]), [-1830, -310]];
     const RUNS = [[-2300, -1880, 38, 30], [-260, 1380, 40, 34], [1560, 2190, 48, 40], [2340, 2540, 70, 40], [2670, 3010, 72, 44]];
     for (const [z0r, z1r, len0, lenR] of RUNS) for (let z = z0r + ernd() * 40; z < z1r;) {
@@ -1222,7 +1222,7 @@ export function buildGround({ scene, T, blocks, facadeMat, solids = null, zips =
     const hedgeP = { ...topP, layer: LAYER.ROOF_GREEN, tint: [0.16, 0.24, 0.1] };
     const railP = { ...topP, layer: LAYER.METAL, tint: [0.26, 0.28, 0.29] };
     const roofP = { ...topP, layer: LAYER.METAL, tint: [0.34, 0.4, 0.38] };
-    const yTop = GY.WALK - 0.03, yB = G.WATER_Y - 2.5;
+    const yTop = GY.WALK - 0.03, yB = G.WATER_Y - 9.2;
     const bx = (a0, y0, b0, a1, y1, b1, P, k, tp = P) => { wall.box(a0, y0, b0, a1, y1, b1, P, {}, true, false, tp); solids?.box(a0, y0, b0, a1, y1, b1, k); };
     const busy = [...BRIDGES.map(b => [b.z - b.width / 2 - 70, b.z + b.width / 2 + 70]), ...PIERS.map(p => [p.z0 - 25, p.z1 + 25])];
     let nOv = 0;

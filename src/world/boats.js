@@ -8,6 +8,7 @@ import { G, onLand, shoreX, mulberry32 } from './layout.js';
 import { farShoreHeight } from './farshore.js';
 import { REFL_LAYER } from './water.js';
 
+const _e = new THREE.Euler();
 const isWater = (x, z) => !onLand(x, z) && farShoreHeight(x, z) === null;
 
 // channel centre-line of a river at z: walk away from Manhattan's seawall until the far bank, take the middle
@@ -97,7 +98,7 @@ function wakeTexture() {
   return t;
 }
 
-export function buildBoats({ scene, docks = [], solids = null }) {
+export function buildBoats({ scene, docks = [], solids = null, water = null }) {
   const rnd = mulberry32(3131);
   const boats = [];
   // lanes: river channels (sampled every 40 m) + harbour crossings
@@ -184,14 +185,25 @@ export function buildBoats({ scene, docks = [], solids = null }) {
   const wakeMat = new THREE.MeshBasicMaterial({ map: wakeTexture(), transparent: true, depthWrite: false, opacity: 0.8, color: 0xc2c9ca, fog: true, side: THREE.DoubleSide }); // (round 12: opacity 0.5 -> 0.7)
   const wakes = new THREE.InstancedMesh(wakeGeo, wakeMat, boats.length);
   wakes.name = 'boatWakes'; wakes.frustumCulled = false; wakes.renderOrder = 2;
+  wakes.visible = !water; // (water-effects) the water shader draws hull contact foam, Kelvin arms and prop wash itself
   wakes.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   scene.add(wakes);
 
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(1, 1, 1), p = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
   const place = (b, t) => {
     const k = K[b.type];
-    const bob = b.docked ? 0 : Math.sin(t * 0.9 + b.idx * 1.7) * 0.12;
+    let bob = b.docked ? 0 : Math.sin(t * 0.9 + b.idx * 1.7) * 0.12;
     q.setFromAxisAngle(up, b.h);
+    if (water) {
+      // (water-effects) ride the waves: heave from the surface under the hull, pitch / roll from bow-stern / beam samples
+      const sx = Math.sin(b.h), cz = Math.cos(b.h), hl = k.len * 0.4, hb = k.beam * 0.45;
+      const hB = water.heightAt(b.x + sx * hl, b.z + cz * hl), hS = water.heightAt(b.x - sx * hl, b.z - cz * hl);
+      const hP = water.heightAt(b.x + cz * hb, b.z - sx * hb), hQ = water.heightAt(b.x - cz * hb, b.z + sx * hb);
+      const damp = b.docked ? 0.35 : 1;
+      bob = ((hB + hS + hP + hQ) / 4 - G.WATER_Y) * damp + (b.docked ? 0 : Math.sin(t * 0.9 + b.idx * 1.7) * 0.03);
+      _e.set(-Math.atan2(hB - hS, 2 * hl) * damp, b.h, Math.atan2(hP - hQ, 2 * hb) * damp, 'YXZ');
+      q.setFromEuler(_e);
+    }
     p.set(b.x, G.WATER_Y + bob, b.z);
     b.mesh.setMatrixAt(b.idx, m4.compose(p, q, s.set(1, 1, 1)));
     // wake: starts at the bow, length ~ 5 boat lengths (shorter for the slow tows), width grows with the V
@@ -225,5 +237,5 @@ export function buildBoats({ scene, docks = [], solids = null }) {
     wakes.instanceMatrix.needsUpdate = true;
   };
   step(0);
-  return { boats, count: boats.length, update: (dt) => step(Math.min(dt, 0.1)) };
+  return { boats, kit: K, count: boats.length, update: (dt) => step(Math.min(dt, 0.1)) };
 }

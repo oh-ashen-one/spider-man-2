@@ -167,7 +167,7 @@ export async function createPlayer({ scene, world, camera, input, renderer }) {
       else if (e.type === 'zipLaunch') cam.kick?.(Math.min(1, 0.45 + (e.dist || 0) / 60)); // slingshot: pull-back + FOV kick
       else if (e.type === 'zipYank') cam.shake(0.06);
       else if (e.type === 'quickBoost') { cam.kick?.(0.22 + 0.18 * e.k); cam.shake(0.04); } // small FOV kick (launch kick spring)
-      else if (e.type === 'waterSplash') cam.shake(0.25);
+      else if (e.type === 'waterSplash') { cam.shake(0.25); if (e.pos) world.water?.splash?.(e.pos.x, e.pos.z, 0.35 + 0.9 * (e.severity ?? 0.5), (e.vel?.x ?? 0) * 0.2, (e.vel?.z ?? 0) * 0.2); }
       else if (e.type === 'wall' && e.run) cam.shake(0.08);
       else if (e.type === 'ropeSnap') cam.shake(0.12 + 0.25 * e.severity); // slack web catching taut again
       else if (e.type === 'swingWallKick') cam.shake(0.1 + 0.3 * e.severity);
@@ -179,7 +179,7 @@ export async function createPlayer({ scene, world, camera, input, renderer }) {
       else if (e.type === 'ropeArrive') cam.impact(0.05);
     }
     cam.update(dt, { pos: s.pos, vel: camVel, noAuto: !!combat?.combatCam, mode: s.mode, sub: s.sub, modeT: s.modeT, anchor: s.mode === 'swing' ? s.swing.anchor : null,
-      swingDir: s.mode === 'swing' ? s.swing.dir : null,
+      swingDir: s.mode === 'swing' ? s.swing.dir : null, plunge: !!s.plunge,
       wallNormal: s.wall.normal, facing: s.facing, dive: s.dive || s.gliding, tension: s.swing.tension, bank: s.swing.bank,
       sling: s.sling.active ? 0.25 + 0.75 * s.sling.tension : 0, walkK: s.mode === 'ground' ? s.walkK || 0 : 0,
       ropeDir: s.mode === 'rope' && s.rope ? s.rope.dir : null });

@@ -8,6 +8,7 @@ const PRESETS = {
     taa: true, bloomLevels: 5, dofTaps: 16, mbSamples: 6, sharpen: 0.25,
     charShadow: 0, ssr: false, shafts: false, shaftSteps: 0,
     ssgi: false, wet: false, // (lighting2 r1)
+    waterGrid: 16, waterSpray: 900, waterCaustics: false, waterShafts: 0, gulls: 0.5, // (water-effects)
   },
   med: {
     name: 'med',
@@ -17,6 +18,7 @@ const PRESETS = {
     taa: true, bloomLevels: 6, dofTaps: 22, mbSamples: 8, sharpen: 0.3,
     charShadow: 1024, ssr: true, ssrSteps: 20, shafts: true, shaftSteps: 12,
     ssgi: true, ssgiDirs: 4, ssgiSteps: 4, wet: true, // (lighting2 r1)
+    waterGrid: 24, waterSpray: 1600, waterCaustics: true, waterShafts: 8, gulls: 1, // (water-effects)
   },
   high: {
     name: 'high',
@@ -27,6 +29,7 @@ const PRESETS = {
     taa: true, bloomLevels: 6, dofTaps: 43, mbSamples: 10, sharpen: 0.35,
     charShadow: 2048, ssr: true, ssrSteps: 28, shafts: true, shaftSteps: 16,
     ssgi: true, ssgiDirs: 6, ssgiSteps: 4, wet: true, // (lighting2 r1) SSGI + wet-patch roughness
+    waterGrid: 32, waterSpray: 2400, waterCaustics: true, waterShafts: 12, gulls: 1, // (water-effects) CDLOD grid, spray budget, under-water caustics / shaft steps, gull count scale
   },
 };
 

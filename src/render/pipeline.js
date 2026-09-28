@@ -20,7 +20,8 @@ import { N8AOPostPass } from 'n8ao';
 import { FSPass, makeRT, GLSL_DEPTH, GLSL_COLOR, halton } from './common.js';
 import { GLSL_SKY_COMMON } from './sky.js';
 import { GpuProfiler } from './profiler.js';
-import { createGlassMirror } from './glassmirror.js'; // (render r-refl) player / cars / peds mirrored in facade glass
+import { createGlassMirror } from './glassmirror.js';
+import { createUnderwater } from './underwater.js'; // (water-effects) under-water medium / caustics / shafts / waterline // (render r-refl) player / cars / peds mirrored in facade glass
 
 export function createPipeline({ renderer, scene, camera, lighting }) {
   const Q = lighting.quality;
@@ -426,6 +427,9 @@ void main() {
   });
 
   // ---------------------------------------------------------------- composite (sky + aerial perspective)
+  const uw = createUnderwater(renderer); // (water-effects)
+  let waterRef = null, uwOnNow = false;
+  const lensW = { wet: 0, age: 100, seed: 0, was: false }; // (water-effects) water left on the lens after surfacing
   const composite = new FSPass({
     name: 'composite',
     uniforms: {
@@ -440,6 +444,7 @@ void main() {
       uCloudShadow: { value: 0.4 }, // (foundation agent) strength of the projected cloud shadows (0 = off)
       uGI: { value: ssgiRT.texture }, uGIOn: { value: 0 }, // (lighting2 r1) SSGI bounce ratio (half res, a = distance)
       uMoonDir: { value: new THREE.Vector3(0, 1, 0) }, uMoonK: { value: 0 }, // (daynight) moon disc
+      ...uw.uniforms, // (water-effects)
     },
     fragmentShader: /* glsl */`
 precision highp float;
@@ -510,10 +515,36 @@ vec3 upsampleGI(vec2 uv, float dist) {
   }
   return acc / ws;
 }
+${uw.glsl}
+float uwLineK = 1.0;
+// (water-effects) dark meniscus line where the waterline crosses the lens (the lens straddles the surface)
+float uwLine(vec2 uv, float here) {
+  if (abs(uUwCam.x) > 0.45) return 1.0;
+  float k = 1.0;
+  for (int i = 1; i <= 4; i++) {
+    float o = float(i) * 2.0 * uPx.y;
+    float a = uwMedium(normalize((uCamWorld * vec4(viewDirFromUv(uv + vec2(0.0, o)), 0.0)).xyz));
+    float b = uwMedium(normalize((uCamWorld * vec4(viewDirFromUv(uv - vec2(0.0, o)), 0.0)).xyz));
+    if (abs(a - here) + abs(b - here) > 0.5) { k = min(k, mix(0.25, 1.0, float(i - 1) / 4.0)); }
+  }
+  return k;
+}
 void main() {
   float d = texture(uDepth, vUv).r;
   vec3 vd = viewDirFromUv(vUv);
   vec3 dir = normalize((uCamWorld * vec4(vd, 0.0)).xyz);
+  if (uUwOn > 0.5) {
+    float uwM = uwMedium(dir);
+    float line = uwLine(vUv, uwM);
+    if (uwM > 0.5) {
+      bool skyU = isSky(d);
+      vec3 cu = skyU ? vec3(0.0) : texture(uColor, vUv).rgb;
+      float du = skyU ? 1e5 : length(viewPosFromDepth(vUv, d));
+      fragColor = vec4(uwComposite(dir, cu, du, skyU) * line, 1.0);
+      return;
+    }
+    uwLineK = line;
+  }
   if (isSky(d)) {
     vec4 s = texture(uSky, vUv);
     vec3 c = s.rgb;
@@ -539,7 +570,7 @@ void main() {
       }
     }
     if (uShaftOn > 0.5) c += upsampleShafts(vUv, 1e5);
-    fragColor = vec4(c, 1.0);
+    fragColor = vec4(c * uwLineK, 1.0);
     return;
   }
   vec3 col = texture(uColor, vUv).rgb;
@@ -589,7 +620,8 @@ void main() {
   fogC = mix(fogC, skyLUT(normalize(vec3(dir.x, 0.012, dir.z))), smoothstep(9000.0, 45000.0, dist));
   col = col * T + fogC * (1.0 - T);
   if (uShaftOn > 0.5) col += upsampleShafts(vUv, dist);
-  fragColor = vec4(col, 1.0);
+  // (water-effects) alpha 0 = fast-moving object (gulls: scene alpha < 0.5): the TAA trusts the current frame there
+  fragColor = vec4(col * uwLineK, texture(uSceneA, vUv).a < 0.5 ? 0.0 : 1.0);
 }`,
   });
 
@@ -638,9 +670,11 @@ void main() {
   vec3 m1 = vec3(0.0), m2 = vec3(0.0);
   float closest = uReversed > 0.5 ? 0.0 : 1.0; vec2 cuv = vUv;
   vec3 cmin = vec3(1e9), cmax = vec3(-1e9);
+  float dynF = 0.0;
   for (int y = -1; y <= 1; y++) for (int x = -1; x <= 1; x++) {
     vec2 o = vec2(x, y) * px;
-    vec3 c = toYC(tm(texture(uCurrent, vUv + o).rgb));
+    vec4 c4 = texture(uCurrent, vUv + o); if (c4.a < 0.5) dynF = 1.0; // (water-effects) fast-moving object flag
+    vec3 c = toYC(tm(c4.rgb));
     m1 += c; m2 += c * c; cmin = min(cmin, c); cmax = max(cmax, c);
     float d = texture(uDepth, vUv + o).r;
     bool nearer = uReversed > 0.5 ? d > closest : d < closest;
@@ -670,6 +704,7 @@ void main() {
   // static / slow: wide box (no edge flicker from the neighbourhood itself moving with the jitter); fast: tight
   float g = vel < 0.5 ? 1.9 : mix(1.4, 0.9, clamp((vel - 0.5) / 8.0, 0.0, 1.0));
   if (isChar) g = min(g, 1.0);
+  if (dynF > 0.5) g = min(g, 0.75);
   vec3 bmin = max(cmin, mu - g * sig), bmax = min(cmax, mu + g * sig);
   // clip toward the mean
   vec3 pc0 = 0.5 * (bmax + bmin), e = 0.5 * (bmax - bmin) + 1e-5;
@@ -680,6 +715,7 @@ void main() {
   // where the history had to be clipped hard (edge flips between frames) trust the stable history a bit more
   if (vel < 0.5) blend *= mix(1.0, 0.6, clamp(ma - 1.0, 0.0, 1.0));
   if (isChar) blend = max(blend, 0.14);
+  if (dynF > 0.5) blend = max(blend, 0.55);
   vec3 res = mix(hist, curT, blend);
   fragColor = vec4(itm(fromYC(res)), 1.0);
 }`,
@@ -943,6 +979,7 @@ void main() {
       uAE: { value: null }, uAEOn: { value: 0 }, uAEKey: { value: 0 }, uAEStr: { value: 0.6 }, uAERange: { value: 1.25 },
       uSplitSh: { value: grade.splitShadow }, uSplitHi: { value: grade.splitHigh }, uSplitBal: { value: 0.3 },
       uToe: { value: 0.45 }, uRain: { value: 0 },
+      uLens: { value: new THREE.Vector4(0, 100, 0, 0) }, // (water-effects) lens droplets: wet, age, seed
     },
     fragmentShader: /* glsl */`
 precision highp float; in vec2 vUv; out vec4 fragColor;
@@ -953,6 +990,44 @@ uniform sampler2D uSunVis; uniform vec2 uSunUv; uniform float uFlare; uniform ve
 uniform sampler2D uAE; uniform float uAEOn, uAEKey, uAEStr, uAERange;
 uniform vec3 uSplitSh, uSplitHi; uniform float uSplitBal;
 uniform sampler2D uDepthS; uniform mat4 uProjInvS; uniform float uRevS;
+// (water-effects) water left on the lens after surfacing (dgreenheck/tidewater src/post/LensDroplets.js, MIT): drops of
+// many sizes; small ones cling and evaporate, large ones slide down after a random delay leaving a thin wet trail. Each
+// drop is a tiny lens: a blurred, inverted view of the scene with a bright sky highlight and a dark edge.
+uniform vec4 uLens;
+vec2 lensHash2(vec2 p) { vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); q += dot(q, q.yzx + 33.33); return fract((q.xx + q.yz) * q.zy); }
+void lensLayer(vec2 p, float cell, float rMin, float rMax, float density, bool slide, inout vec2 n2, inout float cover, inout float trail) {
+  float wet = uLens.x, age = uLens.y, seed = uLens.z;
+  vec2 c0 = floor(p / cell);
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+    vec2 c = c0 + vec2(float(i), float(j));
+    vec2 h = lensHash2(c + seed);
+    if (h.x >= density) continue;
+    vec2 h2 = lensHash2(c + seed + 17.3);
+    vec2 center = (c + (vec2(0.2) + h2 * 0.6)) * cell;
+    float life = clamp(wet * 1.6 - h2.y * 0.6, 0.0, 1.0);
+    float r = mix(rMin, rMax, h.y * h.y) * sqrt(life);
+    if (slide) {
+      float t0 = h2.x * 3.0 + 0.4, s = max(age - t0, 0.0), dy = s * s * (r * 3.5);
+      center.y -= dy; // (uv y grows upward here: drops slide down the screen)
+      float dxT = abs(p.x - center.x), above = p.y - center.y;
+      float tr = smoothstep(r * 0.45, 0.0, dxT) * smoothstep(0.0, 0.01, above) * smoothstep(dy + 0.01, 0.0, above);
+      trail = max(trail, tr * life);
+    }
+    vec2 d = (p - center) * vec2(1.0, slide ? 0.8 : 1.0);
+    float rB = max(r * 1.18, 1e-4);
+    if (dot(d, d) >= rB * rB) continue;
+    float ang = atan(d.y, d.x);
+    float wob = 1.0 + sin(ang * 3.0 + h.x * 40.0) * 0.12 + sin(ang * 5.0 + h2.y * 30.0) * 0.06;
+    vec2 q = d / max(r * wob, 1e-4);
+    float a = smoothstep(1.0, 0.7, dot(q, q));
+    if (a > cover) { n2 = q; cover = a; }
+  }
+}
+vec3 lensBlurred(vec2 uv) {
+  vec3 acc = vec3(0.0);
+  for (int i = 0; i < 8; i++) { float a = float(i) * 0.785398; acc += texture(uColor, uv + vec2(cos(a), sin(a)) * vec2(0.006 / uAspect, 0.006)).rgb; }
+  return acc / 8.0;
+}
 bool isSkyD(float d) { return uRevS > 0.5 ? d <= 0.0 : d >= 1.0; }
 vec3 viewPosFromDepthS(vec2 uv, float d) { float z = uRevS > 0.5 ? d : d * 2.0 - 1.0; vec4 p = uProjInvS * vec4(uv * 2.0 - 1.0, z, 1.0); return p.xyz / p.w; }
 // subtle camera-lens response to the sun: soft glare, a few chromatic ghosts mirrored through the centre, halo ring
@@ -1018,6 +1093,21 @@ void main() {
   vec2 cao = d * dot(d, d) * uCA * 4.0 * smoothstep(0.3, 0.7, length(d * vec2(uAspect, 1.0))); // edges only
   c.r = mix(c.r, texture(uColor, vUv - cao).r, 0.85);
   c.b = mix(c.b, texture(uColor, vUv + cao).b, 0.85);
+  if (uLens.x > 0.001) {
+    vec2 p = vec2(vUv.x * uAspect, vUv.y);
+    vec2 n2 = vec2(0.0); float cover = 0.0, trail = 0.0;
+    lensLayer(p, 0.05, 0.003, 0.011, uLens.x * 0.5, false, n2, cover, trail);
+    lensLayer(p, 0.13, 0.01, 0.026, uLens.x * 0.22, true, n2, cover, trail);
+    if (cover > 0.001) {
+      float r2 = min(dot(n2, n2), 1.0), nz = sqrt(max(1.0 - r2, 0.0));
+      vec2 off = n2 * -0.05 * (1.0 - nz * 0.5);
+      vec3 inside = lensBlurred(vUv + vec2(off.x / uAspect, -off.y));
+      float edge = smoothstep(0.45, 1.0, r2);
+      float hl = smoothstep(0.3, 0.0, length(n2 - vec2(-0.3, 0.4))) * 0.35;
+      c = mix(c, inside * mix(1.04, 0.7, edge) + inside * hl, cover);
+    }
+    c = mix(c, lensBlurred(vUv) * 0.9, trail * 0.6);
+  }
   // bloom (energy-conserving mix)
   vec3 b = texture(uBloom, vUv).rgb;
   c += b * uBloomStr; // (lighting2 r1) additive thresholded bloom
@@ -1322,6 +1412,7 @@ void main() { vec4 t = texture(uSrc, vUv); vec3 c = uMode > 0.5 ? vec3(t.a - 1.0
       u.uGIOn.value = doGI ? 1 : 0;
       u.uShaftOn.value = doShafts && shafts.uniforms.uSM0.value ? 1 : 0;
       u.uHalfPx.value.set(1 / shaftRT.width, 1 / shaftRT.height);
+      uwOnNow = uw.update(cam, waterRef, sky.skyUniforms.uSunDir.value); // (water-effects)
       composite.render(renderer, litRT);
     }
 
@@ -1458,6 +1549,16 @@ void main() { vec4 t = texture(uSrc, vUv); vec3 c = uMode > 0.5 ? vec3(t.a - 1.0
       u.uProjInvS.value.copy(cam.projectionMatrixInverse);
       u.uAE.value = aeRT[aeIdx].texture; u.uAEOn.value = grade.autoExposure ? 1 : 0;
       u.uAEKey.value = grade.aeKey; u.uAEStr.value = grade.aeStrength; u.uAERange.value = grade.aeRange;
+      { // (water-effects) lens droplets: the lens comes out of the water wet, drops cling / slide and dry off in ~9 s
+        const under = !!waterRef && uw.uniforms.uUwCam.value.x < -0.05;
+        if (under) lensW.wet = 0;
+        else {
+          if (lensW.was) { lensW.wet = 1; lensW.age = 0; lensW.seed = Math.random() * 97; }
+          lensW.age += dt; lensW.wet = Math.max(0, lensW.wet - dt / 9);
+        }
+        lensW.was = under;
+        u.uLens.value.set(lensW.wet, lensW.age, lensW.seed, 0);
+      }
       u.uToe.value = grade.toe; u.uSplitSh.value = grade.splitShadow; u.uSplitHi.value = grade.splitHigh; u.uSplitBal.value = grade.splitBalance;
       final.render(renderer, null);
     }
@@ -1497,6 +1598,8 @@ void main() { vec4 t = texture(uSrc, vUv); vec3 c = uMode > 0.5 ? vec3(t.a - 1.0
       mbState.maskDistance = opts.maskDistance ?? null;
     },
     resetHistory() { resetHistory = true; },
+    /** (water-effects) world.water: waves / camera medium for the under-water stage and the lens droplets */
+    setWater(w) { waterRef = w; },
     resetExposure() { aeReset = true; },
     /** metered log2 luminance {adapted, current} (debug; GPU readback) */
     readExposure() { const b = new Float32Array(4); renderer.readRenderTargetPixels(aeRT[aeIdx], 0, 0, 1, 1, b); return { adapted: b[0], current: b[1] }; },
