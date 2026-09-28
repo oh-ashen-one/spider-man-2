@@ -73,7 +73,14 @@ export function createDebris(ctx, { max = 300 } = {}) {
         if (nv + vTop > MAXV || ni + iTop > MAXI) { if (deadV > 0) compact(); if (nv + vTop > MAXV || ni + iTop > MAXI) break; }
         while (live.length >= max) { let k = live.findIndex(f => f.sleep); if (k < 0) k = 0; kill(k); }
         const c = _v.set(pc.c[0], pc.c[1], pc.c[2]).applyMatrix4(M);
-        let r2 = 0; for (let k = 0; k < nv; k++) r2 = Math.max(r2, pc.pos[k * 3] ** 2 + pc.pos[k * 3 + 1] ** 2 + pc.pos[k * 3 + 2] ** 2);
+        let r2 = 0; const lo = [1e9, 1e9, 1e9], hi = [-1e9, -1e9, -1e9];
+        for (let k = 0; k < nv; k++) {
+          r2 = Math.max(r2, pc.pos[k * 3] ** 2 + pc.pos[k * 3 + 1] ** 2 + pc.pos[k * 3 + 2] ** 2);
+          for (let a = 0; a < 3; a++) { const v = pc.pos[k * 3 + a]; if (v < lo[a]) lo[a] = v; if (v > hi[a]) hi[a] = v; }
+        }
+        // flat pieces (shards, boards, panels) topple onto their broad face when they come to rest
+        const ext = [hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2]], ord = [0, 1, 2].sort((a, b) => ext[a] - ext[b]);
+        const flat = ext[ord[0]] < 0.35 * ext[ord[1]] ? new THREE.Vector3(ord[0] === 0 ? 1 : 0, ord[0] === 1 ? 1 : 0, ord[0] === 2 ? 1 : 0) : null;
         const r = Math.sqrt(r2) * Math.max(baseS.x, baseS.y, baseS.z);
         const f = {
           lp: pc.pos, ln: pc.nrm, li: pc.idx, n0: pc.n0 ?? ni, nv, ni,
@@ -81,7 +88,7 @@ export function createDebris(ctx, { max = 300 } = {}) {
           colIn: pc.colorIn ?? o.colorIn ?? pc.color ?? o.color ?? [0.4, 0.4, 0.4], partIn: pc.partIn ?? o.partIn ?? pc.part ?? o.part ?? PART.BASE,
           p: c.clone(), q: baseQ.clone(), sc: baseS.clone(), v: new THREE.Vector3(), w: new THREE.Vector3(),
           r, low: r, age: 0, life: (o.life ?? 7) * rnd(0.8, 1.2), sleep: false, rest: 0, shrink: 1, dirty: true,
-          drag: pc.drag ?? o.drag ?? 0.12, bounce: o.bounce ?? 0.3, sfx: o.sfx ?? null, sfxT: 0,
+          flat, drag: pc.drag ?? o.drag ?? 0.12, bounce: o.bounce ?? 0.3, sfx: o.sfx ?? null, sfxT: 0,
         };
         // launch: away from the impact point + a directed push + upward kick, heavier (bigger) pieces slower
         const heavy = Math.min(1, 0.25 / Math.max(0.05, r));
@@ -132,8 +139,12 @@ export function createDebris(ctx, { max = 300 } = {}) {
             f.w.multiplyScalar(0.55).add(_v2.set(rnd(-2, 2), rnd(-2, 2), rnd(-2, 2)));
           } else {
             v.y = Math.max(0, v.y);
+            if (f.flat) { // tip over onto the broad face
+              _n.copy(f.flat).applyQuaternion(f.q); const up = _v2.set(0, _n.y >= 0 ? 1 : -1, 0);
+              if (Math.abs(_n.y) < 0.97) { _dq.setFromUnitVectors(_n, up); _q.identity().slerp(_dq, Math.min(1, 7 * dt)); f.q.premultiply(_q).normalize(); f.rest = 0; }
+            }
             const k = Math.exp(-7 * dt); v.x *= k; v.z *= k; f.w.multiplyScalar(Math.exp(-5 * dt));
-            if (v.x * v.x + v.z * v.z < 0.05 && f.w.lengthSq() < 0.3) { f.rest += dt; if (f.rest > 0.25) { f.sleep = true; v.set(0, 0, 0); f.w.set(0, 0, 0); } }
+            if (v.x * v.x + v.z * v.z < 0.05 && f.w.lengthSq() < 0.3 && (!f.flat || Math.abs(_n.copy(f.flat).applyQuaternion(f.q).y) >= 0.97)) { f.rest += dt; if (f.rest > 0.25) { f.sleep = true; v.set(0, 0, 0); f.w.set(0, 0, 0); } }
           }
         } else f.rest = 0;
         f.sfxT -= dt;

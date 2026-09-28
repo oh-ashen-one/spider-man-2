@@ -80,3 +80,70 @@ Add your own shots (e.g. `parkHigh`, `parkLow`, `glassBreak`) and commit before/
 
 ## Deliverables
 - Pushed branch with both features behind quality gates (`src/render/quality.js`, `?qset=`), before/after captures, perf notes, THIRD_PARTY attribution, and this README updated with what was done + known issues.
+
+---
+
+## Status — what was done (2026-09-28)
+
+Both parts are in, behind quality gates (`src/render/quality.js`): `debris` (live fragment cap: high 300 / med 200 /
+low 120, `0` = destruction off), `eztree` (high/med on, low off = the old card trees everywhere), `grass` (blade
+density: high 1 / med 0.6 / low 0). A/B any of them with `?qset=eztree:false,grass:0,debris:0`.
+
+### Part 1 — Destruction (`src/game/destruction/`)
+- `fracture.worker.js` / `fracture.js`: three-pinata 2.0.1 Voronoi fracture runs in a **Web Worker** (main-thread
+  fallback), results cached by key; every breakable kind is **pre-fractured at idle time** ~1.5 s after load.
+- `debris.js`: all live fragments share **one dynamic world-space buffer = 1 draw call** (+ shadows); gravity, drag,
+  tumbling, bounce/friction on `world.groundHeight`, wall deflection via `world.raycast`, sleep at rest, flat pieces
+  topple onto their broad face, shrink-out and recycle. Hard cap, no per-frame allocation.
+- `pieces.js`: splits any prop geometry (MB vertex colour + part ids) into its parts; watertight solids get 3D Voronoi
+  (wood gets stretched cells = splinters), glass gets a 2.5D shatter, thin/open parts fly as rigid chunks (paper
+  flutters). Paint parts take the instance tint.
+- `breakables.js`: street props **hydrant (+ 14 s water geyser), trash can, bench, mailbox, newsbox rack, bus-stop
+  sign, planter, cone, hot-dog cart**; **glass**: bus-shelter panes + newsstand window (the structure stays: swapped to
+  a glass-less companion pool); **cars**: side window bursts, a door/hood panel is torn off, the car stops on hazards
+  (moving cars stay put: `c.dmg` in `npc/traffic.js`); **combat**: crates splinter into boards, litter bins burst into
+  curved shards + trash. Broken props' collision solids are switched off (`CollisionGrid.disable/enable`) and
+  everything respawns once you're 170 m away (after 45 s). Crowds react (`world.alarm`).
+- Triggers (`index.js`): hard landings (severity > 0.4), Spidey barrelling through low and fast, knocked-back enemies,
+  thrown props in flight and on impact, combat ground pounds. Synth sounds added to `audio.js` (`glass`, `crunch`, `water`).
+- Dev menu (`~`): **Smash everything nearby**. Shots: `glassBreak`, `glassBreakLate`, `hydrantBreak`, `benchBreak`,
+  `newsBreak`, `crateBreak`, `carBreak` -> `docs/pinata/`.
+
+### Part 2 — Trees + grass
+- ez-tree **v2.0.0 vendored** in `src/world/eztree/` with the fixes (all marked `(pat)`): leaf wind no longer drops
+  `instanceMatrix`; wind noise in world space + per-instance phase; `createDepthMaterial()` puts the wind in the shadow
+  pass; bark sways (per-vertex wind weight); metric bark UVs; Uint32 indices. Tests: `test/eztree.test.mjs`.
+- `src/world/eztrees.js`: 14 seeded archetypes (street = ash, park = oak, elm = vase-tuned ash, small = oak, conifer =
+  pine, shrub border = bush) grown in ~0.25 s at load, normalised to each kind's size, meshed at 2 LODs (~11k / ~4k
+  tris). They draw **< 44 m** through the existing `Pool`s (instancing, dithered cross-fades, shadow prefix, same items
+  / tints / bark species / trunk colliders); the old card -> crown -> blob chain takes over beyond, **with its crown
+  lobes k-means-fitted to the ez canopies** so silhouettes match across the hand-over. Leaves are recoloured with the
+  existing autumn palettes, TAA-dithered alpha, sun translucency; bark uses the city bark array.
+- `src/world/grass.js` (port of the demo's `grass.js`): procedural 7-blade clumps, **GPU camera-anchored instancing**
+  (toroidal wrap in the vertex shader: world-fixed, no CPU repack), baked park mask (mowed meadows short and dense,
+  rough meadow edges taller, sparse woodland tufts, nothing on paths / water / rocks / the museum lot), world-space
+  simplex wind + gusts, lit like the lawn, fades out into the shader lawn by 32 m, only drawn near the ground.
+- Before/after: `docs/trees/*_before.jpg` / `*_after.jpg` (`parkHigh`, `parkLow`, `parkClose`, `streetTrees`).
+
+### Performance (Mac Studio M3 Ultra, headed Chrome, 2560x1440, `node tools/perf_pat.mjs`)
+Average / p95 frame ms, old (`eztree/grass/debris` off) -> new, same build, same frozen cameras:
+
+| spot | `?q=high` old | `?q=high` new | `?q=low` new |
+| --- | --- | --- | --- |
+| park lawn (eye level) | 11.8 / 19.2 | 10.9 / 13.8 | — |
+| park woods (eye level) | 11.0 / 18.6 | 13.2 / 19.0 | 7.0 / 8.5 |
+| park, 24 m up | 17.1 / 24.0 | 16.8 / 19.9 | 8.5 / 13.6 |
+| street | 14.9 / 37.7 | 12.0 / 14.4 | — |
+| street, 16 m up | 12.6 / 29.2 | 12.4 / 17.3 | — |
+| after 3 smashes (~100 fragments) | — | 12.0 / 15.9 | 10.0 / 14.1 |
+
+GPU time (`?prof=1` total) rises ~2–5 ms at high in the park (ez trees + grass). The park-at-swing-height view was
+already over the 16.7 ms budget before this branch and still is (~17 ms average); everything else averages under it.
+
+### Known issues / next steps
+- Cars: the car body itself shows no damage (it's an instanced model with no damage state), only the flying glass and panel.
+- Storefront glass on the building facades is shader-drawn and does not break (per the plan); only shelters and newsstands do.
+- The water geyser and glitter need the combat fx (always loaded in the game; missing from shot captures).
+- Fragments are untextured (per-piece colour variation only; the crate loses its board texture when it breaks).
+- Other throwables (drums) still just settle; no fire hydrant for thrown enemies to "use" beyond breaking it.
+- Park at swing height remains ~17 ms average on high — worth a pass on the far canopy LODs.

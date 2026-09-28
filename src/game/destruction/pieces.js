@@ -90,7 +90,9 @@ export function planPieces(key, geo, o = {}) {
     const ex = a.box.clone().expandByScalar(0.03);
     for (let j = i + 1; j < comps.length; j++) {
       const b = comps[j]; if (b.part !== PART.GLASS || b.merged || !ex.intersectsBox(b.box)) continue;
-      a.box.union(b.box); ex.copy(a.box).expandByScalar(0.03); b.merged = true;
+      const u = a.box.clone().union(b.box), us = u.getSize(new THREE.Vector3());
+      if (Math.min(us.x, us.y, us.z) > 0.05) continue; // a neighbouring pane at an angle, not the other face of this one
+      a.box.copy(u); ex.copy(a.box).expandByScalar(0.03); b.merged = true;
     }
     a.size = a.box.getSize(new THREE.Vector3());
   }
