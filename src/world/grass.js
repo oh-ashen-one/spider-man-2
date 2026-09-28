@@ -177,7 +177,7 @@ export function buildGrass({ scene, parkPaths, density = 1 }) {
       const c = camera.position;
       // only near the park and close to the ground (blades are invisible from swing height beyond ~45 m anyway)
       const dx = Math.max(P.x0 - c.x, 0, c.x - P.x1), dz = Math.max(P.z0 - c.z, 0, c.z - P.z1);
-      mesh.visible = Math.hypot(dx, dz) < R && c.y < GY.GRASS + R * 0.9;
+      mesh.visible = Math.hypot(dx, dz) < R && c.y < GY.GRASS + 12; // blades read only from near the ground
       uni.uCam.value.copy(c);
     },
   };

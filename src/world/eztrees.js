@@ -16,7 +16,7 @@ import { Pool } from './pool.js';
 import { csmShared } from '../render/csm.js';
 import { mulberry32 } from './layout.js';
 
-export const EZ = { near: 24, far: 52 }; // L0 < near < L1 < far < trees.js LOD chain (dithered bands of 10 m)
+export const EZ = { near: 20, far: 44 }; // L0 < near < L1 < far < trees.js LOD chain (dithered bands of 10 m)
 const BARK_TILE = 0.85; // metres per bark repeat (treetrunk.js TILE)
 
 // kind -> ez preset, target height (m, the kind's crown top at s = 1 in trees.js) and crown width, seeds, tuning
@@ -30,7 +30,7 @@ const KINDS = {
 };
 const LODS = [
   { sectionStride: 2, segmentFactor: 0.75, leafStride: 1 },
-  { sectionStride: 4, segmentFactor: 0.5, leafStride: 2, leafScale: 1.3 },
+  { sectionStride: 6, segmentFactor: 0.4, leafStride: 2, leafScale: 1.3 },
 ];
 
 // crown lobes (trees.js format {x, y, z, r, sy}) fitted to the leaf cloud: k-means on the leaf-quad centres

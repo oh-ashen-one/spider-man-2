@@ -13,9 +13,10 @@ const Q = process.env.Q || 'high', W = +(process.env.W || 1600), H = +(process.e
 const CONFIGS = (process.env.CONFIGS || 'old,new').split(',');
 const QSET = { old: 'eztree:false,grass:0,debris:0', new: '' };
 // spot: [name, x, z, height above ground (m), yaw]
+const ONLY = process.env.SPOTS ? process.env.SPOTS.split(',') : null;
 const SPOTS = [
   ['park-lawn', -70, -730, 1.2, 0.6], ['park-woods', -20, -660, 1.2, 2.4], ['park-swing', 60, -700, 24, 0.3],
-  ['street', 250, 150, 1.2, Math.PI], ['street-swing', 247, 180, 16, Math.PI], ['smash', 250, 150, 1.2, Math.PI],
+  ['street', 250, 150, 1.2, Math.PI], ['street-swing', 247, 180, 16, Math.PI], ['smash', 238.5, 422, 1.2, Math.PI],
 ];
 
 const server = await createServer({ server: { port: 5196, strictPort: false, host: '127.0.0.1' }, logLevel: 'error' });
@@ -31,7 +32,7 @@ try {
     await page.goto(new URL(`?dev&prof=1&q=${Q}${QSET[cfg] ? '&qset=' + QSET[cfg] : ''}`, base).href);
     await page.waitForFunction(() => window.__destruct && window.__ctx?.combat, null, { timeout: 300000 });
     if (cfg !== 'old') await page.waitForFunction(() => window.__destruct.breakables.ready(), null, { timeout: 120000 });
-    for (const [name, x, z, hh, yaw] of SPOTS) {
+    for (const [name, x, z, hh, yaw] of SPOTS.filter(s => !ONLY || ONLY.includes(s[0]))) {
       if (name === 'smash' && cfg === 'old') continue;
       await page.evaluate(([x, z, hh, yaw]) => {
         const C = window.__ctx; C.player.teleport(new C.THREE.Vector3(x, C.world.groundHeight(x, z) + hh, z), yaw);
@@ -52,6 +53,7 @@ try {
       rows.push({ cfg, spot: name, avg: avg.toFixed(2), p95: pct(0.95).toFixed(1), p99: pct(0.99).toFixed(1), max: r[r.length - 1].toFixed(1),
         gpu: g.t.total, scene: g.t.scene ?? g.t['scene+shadows'], shadows: g.t.shadows, calls: g.s.calls, mtris: (g.s.triangles / 1e6).toFixed(1), frags: g.frags });
       console.log(JSON.stringify(rows[rows.length - 1]));
+      if (process.env.PASSES) console.log('  passes', JSON.stringify(g.t));
       await page.evaluate(() => { window.__ctx.player.frozen = false; });
     }
     if (errs.length) console.log(cfg, 'errors:', errs.slice(0, 4).join(' | '));
