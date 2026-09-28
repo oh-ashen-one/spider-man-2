@@ -17,7 +17,7 @@
 ## 3D assets pipeline
 See `concepts/CREATURES.md` for the full plan and polygon budgets.
 - [x] Hero suits: 5 AI-logo skins, wearable in game
-- [ ] Citizens: 10 bodies plus an 8-item accessory kit. Concepts are done; waiting on Tripo models
+- [ ] Citizens: 01 (retired gent) concept done; 02-10 to be made from photos of real people who gave permission (photos stay out of the repo); accessory kit done
 - [ ] Animals: 8 animals. Concepts are done; waiting on Tripo models
 - [ ] Props: 16 items (throwables and street dressing). Concepts are done; waiting on Tripo models
 - [ ] Thugs and brute: concepts not made yet

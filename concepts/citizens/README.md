@@ -7,19 +7,10 @@ These are ten original New York pedestrians, plus a kit of eight accessories any
 | Folder | Who |
 |---|---|
 | `01_retired_gent` | Tall, slim East Asian man in his 70s: trench coat, flat cap, round glasses |
-| `02_sundress_mom` | Plus-size Black woman in her 30s: afro puff, yellow floral sundress, denim jacket |
-| `03_construction_worker` | Short, stocky Latino man in his 40s: hard hat, hi-vis vest, flannel shirt, work boots |
-| `04_teen_skater` | Lanky South Asian teen: purple hoodie, cargo shorts, backpack, headphones |
-| `05_executive` | Athletic white woman in her 40s: platinum bob, navy pantsuit, heels, laptop bag |
-| `06_lumberjack_hipster` | Heavyset ginger-bearded man in his 30s: beanie, flannel shirt, puffer vest |
-| `07_hijabi_student` | Young Middle Eastern woman: pink hijab, sunglasses, olive trench coat, wide jeans |
-| `08_dapper_elder` | Elderly Black man with a round face and pencil moustache: tweed three-piece suit, fedora, bow tie |
-| `09_marathon_runner` | Tall, muscular Pacific Islander man: running tank top, shorts, neon shoes |
-| `10_punk_artist` | Petite Southeast Asian woman: pink bob, studded leather jacket, tartan skirt, combat boots |
+| `02`–`10` | **Coming next:** nine citizens based on real people in the owner's life, who have given permission to use their likeness. Their source photos are kept out of this public repo; only the generated character sheets are committed. |
 
 Each folder contains exactly the four images to upload: `front.png`, `left.png`, `back.png` and `right.png`. The combined turnaround sheets live in `_sheets_reference_only/`. **Never upload a combined sheet to Tripo.** It builds four separate people. In `left.png` the character faces left in the image, and in `right.png` they face right. That is Tripo's slot convention; the opposite naming gave the Qwen suit a face on the back of its head. `contact_sheet.jpg` shows all ten at once.
 
-The first draft of the dapper elder looked like a real famous actor, so he was regenerated with an explicitly original face. Every character is original.
 
 ## Tripo: citizens
 
