@@ -150,7 +150,7 @@ vec3 uwLit(float m, vec3 sigT, float zc, float dirY, float dist) {
 // medium's absorption and in-scattering along the view ray, caustic shafts near the camera
 vec3 uwComposite(vec3 dir, vec3 col, float dist, bool sky) {
   vec3 sigA = uUwSigA, sigS = uUwSigS, sigT = sigA + sigS;
-  float camSurf = UW_WY + waveHeightAt(uCamPos.xz);
+  float camSurf = uCamPos.y - uUwCam.x; // (uUwCam.x: camera height above the surface, from the CPU wave model)
   float zc = max(camSurf - uCamPos.y, 0.0);
   float maxD = sky ? 400.0 : dist;
   vec3 Ls = -refract(-uSunDir, vec3(0.0, 1.0, 0.0), ${f6(1 / 1.333)});
@@ -158,7 +158,7 @@ vec3 uwComposite(vec3 dir, vec3 col, float dist, bool sky) {
   vec3 sunE = uSunColor * 0.96 * smoothstep(-0.02, 0.1, uSunDir.y);
   if (!sky) {
     vec3 P = uCamPos + dir * dist;
-    float surfP = UW_WY + waveHeightAt(P.xz);
+    float surfP = UW_WY + waveDisp(P.xz, 0.0).y; // (Lagrangian height: close enough for the light path)
     float z = surfP - P.y;
     if (z > 0.02) {
       // the scene lit it with the full sun: the water on the way down absorbs it (sun share ~60 % of the light in daylight),

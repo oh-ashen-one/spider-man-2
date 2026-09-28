@@ -641,7 +641,7 @@ export function buildWater({ scene, T, renderer = null }) {
         if (boats) {
           // the nearest MAX_BOATS boats (hull contact + wake foam)
           const list = boats.boats, kit = boats.kit;
-          const near = list.map(b => ({ b, d: (b.x - _c.x) ** 2 + (b.z - _c.z) ** 2 })).sort((p, q) => p.d - q.d).slice(0, MAX_BOATS);
+          const near = list.map(b => ({ b, d: (b.x - _c.x) ** 2 + (b.z - _c.z) ** 2 })).filter(o => o.d < 700 * 700 + _c.y * _c.y * 4).sort((p, q) => p.d - q.d).slice(0, MAX_BOATS); // far foam is sub-pixel
           near.forEach(({ b }, i) => {
             const k = kit[b.type];
             U.uBoatA.value[i].set(b.x, b.z, b.h, k.len);
