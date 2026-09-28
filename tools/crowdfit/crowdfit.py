@@ -88,7 +88,7 @@ PARAMS = [  # name, start, half-range. Angles about WORLD axes (+X character's l
     ('arm_swing', 0.0, 0.5),
     ('elbow', 0.0, 0.6),
     ('ua_s', 1.0, 0.25), ('fa_s', 1.0, 0.25), ('hand_s', 1.0, 0.3),
-    ('thigh_abduct', 0.0, 0.3), ('thigh_s', 1.0, 0.2), ('shin_s', 1.0, 0.2),
+    ('thigh_abduct', 0.05, 0.3), ('thigh_s', 1.0, 0.2), ('shin_s', 1.0, 0.2),
     ('spine_s', 1.0, 0.2), ('chest_s', 1.0, 0.25), ('neck_s', 1.0, 0.3), ('head_s', 1.0, 0.3),
 ]
 
@@ -115,6 +115,9 @@ def fit_pose(crowd, T, log):
     Ts = T[ti]; tt = cKDTree(Ts)
     Pg, Jg, Wg = crowd.P[gi], crowd.J[gi], crowd.W[gi]
     x0 = np.array([p[1] for p in PARAMS]); lo = x0 - np.array([p[2] for p in PARAMS]); hi = x0 + np.array([p[2] for p in PARAMS])
+    # legs may only open outward (or stay straight): a negative spread crosses the source legs, a false match that
+    # un-poses into bowed, gapped legs. Tripo citizens stand with the feet slightly apart.
+    ta = [k for k, _, _ in PARAMS].index('thigh_abduct'); lo[ta] = -0.02; hi[ta] = 0.35
 
     def cost(x):
         x = np.clip(x, lo, hi)
@@ -148,7 +151,15 @@ def transfer(crowd, S, T, TN, F, k=12, smooth=3):
         for _ in range(smooth):
             acc = np.zeros_like(dense); np.add.at(acc, e[:, 0], dense[e[:, 1]])
             dense = 0.5 * dense + 0.5 * acc / np.maximum(deg, 1)
-    dense[:, crowd.names.index('prop')] = 0.0              # the prop bone is for held items only
+    # limbs never borrow weight from the other side of the body: a Tripo A-pose stance is wider than the crowd body's,
+    # so a nearest-vertex search can reach across (inner thigh -> other leg), which crosses the legs once un-posed
+    side = np.array([1 if n.endswith('L') else -1 if n.endswith('R') else 0 for n in crowd.names])
+    cx = T[:, 0]
+    dense[np.ix_(cx > 0.03, side < 0)] = 0.0              # +x is the character's left
+    dense[np.ix_(cx < -0.03, side > 0)] = 0.0
+    pi = crowd.names.index('prop')                         # the prop bone is for held items only: hand it to its parent
+    dense[:, crowd.parent[pi]] += dense[:, pi]; dense[:, pi] = 0.0
+    dead = dense.sum(1) < 1e-6; dense[dead, 0] = 1.0           # guard: a vertex never ends up weightless (hips)
     top = np.argsort(-dense, axis=1)[:, :4]
     tw = np.take_along_axis(dense, top, 1); tw /= np.maximum(tw.sum(1, keepdims=True), 1e-9)
     return top, tw
@@ -162,14 +173,17 @@ def unpose(S, T, TN, J, W):
 
 
 # ------------------------------------------------------------------------------------------------------ decimation
-def decimate(glb, workdir):
+def decimate(glb, workdir, targets=None, orient='auto'):
     """Blender headless: 3 LODs as GLB (glTF axes: +Y up, facing +Z; UV origin top-left) + the base colour texture."""
+    targets = targets or LOD_TRIS
     out = os.path.join(workdir, 'lod')
+    for f in os.listdir(workdir):
+        if f.startswith('lod'): os.remove(os.path.join(workdir, f))
     r = subprocess.run([BLENDER, '-b', '--factory-startup', '--python', os.path.join(HERE, 'decimate_lods.py'), '--',
-                        glb, out, ','.join(map(str, LOD_TRIS))], capture_output=True, text=True)
+                        glb, out, ','.join(map(str, targets)), str(orient)], capture_output=True, text=True)
     if r.returncode != 0 or not os.path.exists(f'{out}0.glb'):
         raise RuntimeError('blender decimation failed: ' + (r.stderr or r.stdout)[-800:])
-    lods = [read_lod(f'{out}{i}.glb') for i in range(len(LOD_TRIS))]
+    lods = [read_lod(f'{out}{i}.glb') for i in range(len(targets))]
     j, b = read_glb(glb)
     mat = j['materials'][0]; ti = mat['pbrMetallicRoughness']['baseColorTexture']['index']
     tex = image_bytes(j, b, j['images'][j['textures'][ti]['source']])
@@ -189,6 +203,44 @@ def read_lod(path):
     return np.concatenate(P), np.concatenate(N), np.concatenate(UV), np.concatenate(F)
 
 
+
+# ------------------------------------------------------------------------------------------------------ accessories
+# Accessories are rigid meshes skinned 100% to one crowd bone, placed on the crowd REST body (citizens are un-posed into
+# that same rest body, so one placement fits everyone). Each rule: slot (for per-citizen exclusions), bone, how the
+# accessory is scaled (to a fraction of head width or to a height in metres) and where its box goes.
+ACC_TRIS = [900, 300]
+ACC_RULES = {
+    'cap':        dict(slot='hat', bone='head', w=1.18, top=0.035, dz=0.035),
+    'bucket':     dict(slot='hat', bone='head', w=1.55, top=0.05, dz=0.0),
+    'fedora':     dict(slot='hat', bone='head', w=1.95, top=0.075, dz=0.0),
+    'beanie':     dict(slot='hat', bone='head', w=1.12, top=0.07, dz=0.0),
+    'headphones': dict(slot='headphones', bone='head', w=1.32, top=0.015, dz=0.0),
+    'sunglasses': dict(slot='glasses', bone='head', w=1.05, eye=True),
+    'backpack':   dict(slot='back', bone='chest', h=0.46, back=True),
+    'bag':        dict(slot='bag', bone='hips', h=0.34, hip=True),
+}
+
+
+def body_metrics(crowd):
+    dom = crowd.J[np.arange(len(crowd.J)), crowd.W.argmax(1)]
+    head = crowd.P[dom == crowd.names.index('head')]
+    chest = crowd.P[dom == crowd.names.index('chest')]
+    hipband = crowd.P[np.abs(crowd.P[:, 1] - 0.95) < 0.06]
+    return dict(headTop=head[:, 1].max(), headW=head[:, 0].max() - head[:, 0].min(),
+                headCz=(head[:, 2].max() + head[:, 2].min()) / 2, headFront=head[:, 2].max(),
+                eyeY=head[:, 1].max() - 0.085, back=chest[:, 2].min(), hipX=hipband[:, 0].max())
+
+
+def place_accessory(P, kind, M):
+    R = ACC_RULES[kind]; lo, hi = P.min(0), P.max(0); size = hi - lo
+    s = (R['w'] * M['headW'] / size[0]) if 'w' in R else (R['h'] / size[1])
+    Q = (P - (lo + hi) / 2) * s; lo, hi = Q.min(0), Q.max(0)
+    if R.get('eye'):  off = np.array([0, M['eyeY'], M['headFront'] + 0.012 - hi[2]])
+    elif R.get('back'): off = np.array([0, 1.20, M['back'] - 0.005 - hi[2]])
+    elif R.get('hip'):  off = np.array([M['hipX'] + 0.005 - lo[0], 0.93, 0.02])
+    else:               off = np.array([0, M['headTop'] + R['top'] - hi[1], M['headCz'] + R['dz']])
+    return Q + off, s
+
 # ------------------------------------------------------------------------------------------------------------ main
 def main():
     ap = argparse.ArgumentParser()
@@ -196,11 +248,13 @@ def main():
     ap.add_argument('--npc', default='public/assets/city/npc')
     ap.add_argument('--male-src', default='m_tee'); ap.add_argument('--female-src', default='f_casual')
     a = ap.parse_args()
-    items = json.load(open(a.manifest))
+    man = json.load(open(a.manifest))
+    items = man if isinstance(man, list) else man.get('citizens', [])
+    accs = [] if isinstance(man, list) else man.get('accessories', [])
     src = {False: Crowd(a.npc, a.male_src), True: Crowd(a.npc, a.female_src)}
     log = print
-    buf = bytearray(); variants = []; tiles = []
-    cols = 5; rows = math.ceil(len(items) / cols)
+    buf = bytearray(); variants = []; accessories = []; tiles = []
+    cols = 6 if len(items) + len(accs) > 25 else 5; rows = math.ceil((len(items) + len(accs)) / cols)
     def put(arr):
         nonlocal buf
         while len(buf) % 4: buf += b'\0'
@@ -210,15 +264,25 @@ def main():
             glb = os.path.expanduser(it['glb']); female = bool(it.get('female'))
             crowd = src[female]
             log(f"[{n + 1}/{len(items)}] {it['name']} ({'f' if female else 'm'}) <- {glb}")
-            lods, tex = decimate(glb, wd)
+            lods, tex = decimate(glb, wd, LOD_TRIS, it.get('yaw', -90))   # Tripo multi-view models face +X
             # fit on LOD0 (normalised into the crowd frame), reuse the pose for every LOD
             P0 = normalise_like(lods[0][0], lods[0][0], crowd)
-            x, rms = fit_pose(crowd, P0, log)
+            # front vs back: the orientation step can only be sure of the facing AXIS; fit both ways, keep the better
+            flip = np.array([-1.0, 1.0, -1.0])
+            cb = np.abs(crowd.P[:, 1] - 0.72 * crowd.height) < 0.05
+            zc = (crowd.P[cb, 2].max() + crowd.P[cb, 2].min()) / 2      # torso depth centre the citizen was aligned to
+            turn = lambda Q: (Q - [0, 0, zc]) * flip + [0, 0, zc]       # 180 deg about the vertical axis through it
+            x, rms = fit_pose(crowd, P0, log); back = False
+            if it.get('test_flip'):                          # optional: fit turned around too, keep the better
+                xb, rmsb = fit_pose(crowd, turn(P0), log)
+                if rmsb < rms: x, rms, back = xb, rmsb, True
+                log(f'  facing: {"turned 180" if back else "as oriented"}')
             S = crowd.skin_mats(pose_from(x))
             tile = (n % cols, n // cols)
             L_out = []
             for li, (P, N, UV, F) in enumerate(lods):
                 P = normalise_like(P, lods[0][0], crowd)
+                if back: P, N = turn(P), N * flip
                 J, W = transfer(crowd, S, P, N, F)
                 R, RN = unpose(S, P, N, J, W)
                 # atlas uv, glTF convention (origin top-left; the runtime loads the atlas with flipY = false)
@@ -229,16 +293,37 @@ def main():
                               'sw': put(np.round(W * 255).astype(np.uint8)),
                               'idx': put(F.astype(np.uint16 if len(R) < 65536 else np.uint32)), 'idx32': bool(len(R) >= 65536)})
                 log(f'    LOD{li}: {len(R)} verts, {len(F)} tris')
-            variants.append({'name': it['name'], 'female': female, 'textured': True, 'tile': list(tile), 'fit_rms_cm': round(rms * 100, 2), 'lods': L_out})
+            variants.append({'name': it['name'], 'female': female, 'textured': True, 'tile': list(tile), 'no': it.get('no', []), 'fit_rms_cm': round(rms * 100, 2), 'lods': L_out})
             im = Image.open(io.BytesIO(tex)).convert('RGB').resize((TILE, TILE), Image.LANCZOS); tiles.append(im)
+        M = body_metrics(src[False])
+        for k, ac in enumerate(accs):
+            n = len(items) + k; glb = os.path.expanduser(ac['glb']); kind = ac['kind']; R = ACC_RULES[kind]
+            log(f"[acc {k + 1}/{len(accs)}] {ac['name']} ({kind}) <- {glb}")
+            lods, tex = decimate(glb, wd, ACC_TRIS, ac.get('yaw', -90))
+            tile = (n % cols, n // cols); bone = src[False].names.index(R['bone'])
+            # one transform for every LOD, taken from LOD0's box: R = (P - c0) * s0 + off
+            P0 = lods[0][0]; c0 = (P0.min(0) + P0.max(0)) / 2
+            Q0, s0 = place_accessory(P0, kind, M); off = Q0[0] - (P0[0] - c0) * s0
+            L_out = []
+            for li, (P, N, UV, F) in enumerate(lods):
+                R_ = (P - c0) * s0 + off
+                J = np.zeros((len(P), 4), np.uint8); J[:, 0] = bone
+                W = np.zeros((len(P), 4), np.uint8); W[:, 0] = 255
+                uv = np.stack([(tile[0] + np.clip(UV[:, 0], 0, 1)) / cols, (tile[1] + np.clip(UV[:, 1], 0, 1)) / rows], 1)
+                L_out.append({'nv': int(len(P)), 'nt': int(len(F)), 'pos': put(R_.astype(np.float32)), 'nrm': put(N.astype(np.float32)),
+                              'uv': put(uv.astype(np.float32)), 'si': put(J), 'sw': put(W),
+                              'idx': put(F.astype(np.uint16 if len(P) < 65536 else np.uint32)), 'idx32': bool(len(P) >= 65536)})
+                log(f'    LOD{li}: {len(P)} verts, {len(F)} tris')
+            accessories.append({'name': ac['name'], 'kind': kind, 'slot': R['slot'], 'bone': R['bone'], 'tile': list(tile), 'lods': L_out})
+            tiles.append(Image.open(io.BytesIO(tex)).convert('RGB').resize((TILE, TILE), Image.LANCZOS))
     atlas = Image.new('RGB', (cols * TILE, rows * TILE), (90, 90, 90))
     for n, im in enumerate(tiles): atlas.paste(im, ((n % cols) * TILE, (n // cols) * TILE))
     os.makedirs(a.out, exist_ok=True)
     atlas.save(os.path.join(a.out, 'citizens_atlas.webp'), 'WEBP', quality=88, method=6)
     open(os.path.join(a.out, 'citizens.bin'), 'wb').write(bytes(buf))
-    json.dump({'version': 1, 'atlas': 'citizens_atlas', 'grid': [cols, rows], 'variants': variants},
+    json.dump({'version': 2, 'atlas': 'citizens_atlas', 'grid': [cols, rows], 'variants': variants, 'accessories': accessories},
               open(os.path.join(a.out, 'citizens.json'), 'w'), indent=1)
-    log(f'wrote {len(variants)} citizens -> {a.out}/citizens.json/.bin + citizens_atlas.webp ({len(buf) / 1e6:.1f} MB)')
+    log(f'wrote {len(variants)} citizens + {len(accessories)} accessories -> {a.out}/citizens.json/.bin + citizens_atlas.webp ({len(buf) / 1e6:.1f} MB)')
 
 
 def normalise_like(P, P0_raw, crowd):

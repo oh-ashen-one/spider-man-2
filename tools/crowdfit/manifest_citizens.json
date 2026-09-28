@@ -1,0 +1,202 @@
+{
+ "citizens": [
+  {
+   "glb": "~/sm2-assets/raw/aging+man+3d+model.glb",
+   "name": "01_retired_gent",
+   "female": false,
+   "no": [
+    "hat",
+    "glasses"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/leather+jacket+man+3d+model.glb",
+   "name": "02_leather_jacket",
+   "female": false
+  },
+  {
+   "glb": "~/sm2-assets/raw/male+character+3d+model.glb",
+   "name": "03_white_tee",
+   "female": false
+  },
+  {
+   "glb": "~/sm2-assets/raw/human+character+3d+model (1).glb",
+   "name": "04_blue_sweatshirt",
+   "female": true
+  },
+  {
+   "glb": "~/sm2-assets/raw/adult+male+3d+model.glb",
+   "name": "05_black_tee",
+   "female": false
+  },
+  {
+   "glb": "~/sm2-assets/raw/human+figure+3d+model.glb",
+   "name": "06_chrome_shades",
+   "female": false,
+   "no": [
+    "hat",
+    "glasses",
+    "headphones"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/human+character+3d+model (3).glb",
+   "name": "07_black_graphic_tee",
+   "female": false
+  },
+  {
+   "glb": "~/sm2-assets/raw/businessman+3d+model (1).glb",
+   "name": "08_black_suit",
+   "female": false,
+   "no": [
+    "glasses"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/traditional+man+outfit+3d+model.glb",
+   "name": "09_kurta_waistcoat",
+   "female": false
+  },
+  {
+   "glb": "~/sm2-assets/raw/businessman+3d+model.glb",
+   "name": "10_silver_tie",
+   "female": false,
+   "no": [
+    "glasses"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/human+3d+model.glb",
+   "name": "11_graphic_tee_bonnet",
+   "female": false,
+   "no": [
+    "hat",
+    "headphones"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/woman+fashion+3d+model.glb",
+   "name": "12_sundress_mom",
+   "female": true,
+   "no": [
+    "hat",
+    "headphones",
+    "bag"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/construction+worker+3d+model.glb",
+   "name": "13_construction_worker",
+   "female": false,
+   "no": [
+    "hat",
+    "headphones"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/human+character+3d+model (2).glb",
+   "name": "14_teen_skater",
+   "female": false,
+   "no": [
+    "back",
+    "headphones"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/businesswoman+3d+model.glb",
+   "name": "15_executive",
+   "female": true,
+   "no": [
+    "bag"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/human+character+3d+model.glb",
+   "name": "16_lumberjack_hipster",
+   "female": false,
+   "no": [
+    "hat",
+    "headphones"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/fashion+model+3d+asset.glb",
+   "name": "17_hijabi_student",
+   "female": true,
+   "no": [
+    "hat",
+    "glasses",
+    "headphones"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/brown+suit+man+3d+model.glb",
+   "name": "18_dapper_elder",
+   "female": false,
+   "no": [
+    "hat",
+    "glasses"
+   ]
+  },
+  {
+   "glb": "~/sm2-assets/raw/hijab+fashion+model+3d.glb",
+   "name": "19_marathon_runner",
+   "female": false
+  },
+  {
+   "glb": "~/sm2-assets/raw/fashion+character+3d+model.glb",
+   "name": "20_punk_artist",
+   "female": true
+  }
+ ],
+ "accessories": [
+  {
+   "glb": "~/sm2-assets/raw/baseball+cap+3d+model.glb",
+   "name": "baseball_cap",
+   "kind": "cap",
+   "yaw": 90
+  },
+  {
+   "glb": "~/sm2-assets/raw/bucket+hat+3d+model.glb",
+   "name": "bucket_hat",
+   "kind": "bucket",
+   "yaw": -90
+  },
+  {
+   "glb": "~/sm2-assets/raw/fedora+hat+3d+model.glb",
+   "name": "fedora",
+   "kind": "fedora",
+   "yaw": -90
+  },
+  {
+   "glb": "~/sm2-assets/raw/knitted+beanie+3d+model.glb",
+   "name": "beanie",
+   "kind": "beanie",
+   "yaw": -90
+  },
+  {
+   "glb": "~/sm2-assets/raw/headphones+3d+model.glb",
+   "name": "headphones",
+   "kind": "headphones",
+   "yaw": -90
+  },
+  {
+   "glb": "~/sm2-assets/raw/aviator+sunglasses+3d+model.glb",
+   "name": "sunglasses",
+   "kind": "sunglasses",
+   "yaw": -90
+  },
+  {
+   "glb": "~/sm2-assets/raw/backpack 3d model.glb",
+   "name": "backpack",
+   "kind": "backpack",
+   "yaw": 180
+  },
+  {
+   "glb": "~/sm2-assets/raw/leather+bag+3d+model.glb",
+   "name": "messenger_bag",
+   "kind": "bag",
+   "yaw": 0
+  }
+ ]
+}

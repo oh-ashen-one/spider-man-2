@@ -749,7 +749,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
   const cit = await loadCitizens();   // (3d-assets) custom citizens: extra, textured variants of the same crowd
   const citMat = cit ? makeCitizenMaterial(uni, meta, cit.atlas) : null;
   if (cit) for (const cv of cit.meta.variants) variants.push({ name: 'cit_' + cv.name, female: !!cv.female, walk: 'walk',
-    hair: cv.female ? 'long' : 'short', hairs: [cv.female ? 'long' : 'short'], textured: true, lods: cv.lods });
+    hair: cv.female ? 'long' : 'short', hairs: [cv.female ? 'long' : 'short'], textured: true, no: cv.no || [], lods: cv.lods });
   const pools = variants.map((v, vi) => v.lods.map((L, li) => {
     const p = v.textured
       ? new PeoplePool(buildCitizenGeometry(cit.bin, L), citMat, depth, LOD_MAX[li], li < 2, `citizen-${v.name}-L${li}`)
@@ -760,7 +760,28 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
     scene.add(p.mesh);
     return p;
   }));
-  const allPools = pools.flat();
+  // (3d-assets) accessories: rigid meshes skinned to one crowd bone (head / chest / hips), drawn with the wearer's own
+  // instance data (same clip, blend, look-at, girth) at LOD0-1. Citizens replace the painted crowd outright when present:
+  // the anti-clone pass below (variant + hairstyle within DECLONE_R) then keeps any one person from repeating nearby.
+  const citIdx = []; variants.forEach((v, i) => { if (v.textured) citIdx.push(i); });
+  const accMeta = cit?.meta.accessories || [];
+  const accPools = accMeta.map(ac => ac.lods.map((L, li) => {
+    const p = new PeoplePool(buildCitizenGeometry(cit.bin, L), citMat, depth, LOD_MAX[li], li < 1, `citizen-acc-${ac.name}-L${li}`);
+    scene.add(p.mesh); return p;
+  }));
+  const accBy = {}; accMeta.forEach((ac, i) => (accBy[ac.slot] ||= []).push(i));
+  const ACC_P = { hat: 0.36, headphones: 0.14, glasses: 0.22, back: 0.2, bag: 0.14 };
+  const pickAcc = (v, seed) => {
+    if (!v.textured || !accMeta.length) return null;
+    const r = mulberry32(Math.imul(seed ^ 0x3c6ef372, 1103515245) >>> 0), out = [], no = v.no || [];
+    let head = false;
+    for (const slot of ['hat', 'headphones', 'glasses', 'back', 'bag']) {
+      const L = accBy[slot]; if (!L || no.includes(slot) || ((slot === 'hat' || slot === 'headphones') && head)) continue;
+      if (r() < ACC_P[slot]) { out.push(L[Math.floor(r() * L.length)]); if (slot === 'hat' || slot === 'headphones') head = true; }
+    }
+    return out.length ? out : null;
+  };
+  const allPools = pools.flat().concat(accPools.flat());
   const dogs = meta.dog ? createDogs(scene, bin, meta.dog) : null;   // (citylife r1) dog walkers
   const blobs = /[?&]noblob/.test(typeof location !== 'undefined' ? location.search : '') ? null : createBlobs(scene, animTex, meta); // (peds r2) contact shadows
   const femaleV = [], maleV = [];
@@ -779,7 +800,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
   // ---- agent factory
   const newAgent = (seed, extra) => {
     const r = mulberry32(seed);
-    const vi = r() < 0.5 ? pickV(femaleV, wF, r) : pickV(maleV, wM, r);
+    const vi = citIdx.length ? citIdx[Math.floor(r() * citIdx.length)] : (r() < 0.5 ? pickV(femaleV, wF, r) : pickV(maleV, wM, r));
     const v = variants[vi];
     const fit = outfitFor(v, r);
     const skin = Math.min(0.999, SKIN[Math.floor(r() * SKIN.length)] * 0 + Math.pow(r(), 1.3)); // (kept: preserves the RNG stream)
@@ -820,6 +841,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
       ...extra,
     };
     a.A = new Float32Array(a.A); a.B = new Float32Array(a.B); a.seed = seed; a.hi = hi;
+    a.acc = pickAcc(v, seed);   // (3d-assets) random accessories for custom citizens
     { // (citylife r2) per-person standing idle (hands in pockets / arms crossed / hand on hip) and phone-reading walkers;
       // own RNG stream so the outfit / speed draws above stay as they were
       const r2 = mulberry32(Math.imul(seed, 2654435761) >>> 0), carry = a.wc === 'walkCarry', x = r2();
@@ -846,7 +868,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
   };
   // (peds r2) anti-clone: nobody shares variant + hairstyle with anyone within DECLONE_R m (critic: 'the same camel
   // trench-coat woman 4-5 times'); clashing newcomers are re-dressed from a derived seed (up to 5 tries)
-  const DECLONE_R = 20, LOOK = ['vi', 'wid', 'girth', 'old', 'cols', 'code', 'mask', 'skin', 'hair', 'shoe', 'wc', 'ic', 'hi'];
+  const DECLONE_R = 20, LOOK = ['vi', 'wid', 'girth', 'old', 'cols', 'code', 'mask', 'skin', 'hair', 'shoe', 'wc', 'ic', 'hi', 'acc'];
   const redress = (a, salt) => {
     const b = newAgent((Math.imul(a.seed, 31) + salt * 7919 + 13) >>> 0, {});
     for (const k of LOOK) a[k] = b[k];
@@ -1831,6 +1853,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
         if (a._hy === undefined) { a._hy = heightAt(a); a._or = a._hy === 0 && onRoad(a.x, a.z); } // (perf r2) only after a step
         const hy = a._hy;
         pools[a.vi][lod].push(a, a.x, hy, a.z);
+        if (a.acc && lod < 2) for (const ai of a.acc) accPools[ai][lod].push(a, a.x, hy, a.z);
         if (blobs && dc2 < BLOB_D * BLOB_D && a.mode !== 'sit') blobs.push(a, hy, Math.sqrt(dc2)); // (peds r2) contact shadow
         if (a.dog && lod < 2) dogs.push(a, hy, lod, time);
       };
