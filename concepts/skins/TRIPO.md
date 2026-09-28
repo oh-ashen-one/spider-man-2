@@ -1,48 +1,66 @@
-# AI-logo suits: Tripo guide
+# AI-logo hero suits: Tripo guide
 
 > A homage game. This is not an official Marvel game. The AI logos are a tribute, with no affiliation or endorsement. See [DISCLAIMER.md](../../DISCLAIMER.md).
 
-Five hero suit concepts, generated with Higgsfield (GPT Image 2, 1744×2336). Each has a different colour scheme and helmet, and an AI model's logo as the chest emblem.
+There are five hero suits. Each is a fitted spandex-and-rubber superhero suit with a full fabric mask and an AI model's logo as the chest emblem. Every suit has a four-view character sheet plus the four views as separate images, ready for Tripo's multiview input.
 
-| File | Colours | Helmet | Chest emblem |
-|---|---|---|---|
-| `suit_claude.png` | Matte black, terracotta-orange armour accents | Wide glowing orange visor band | Claude spark |
-| `suit_codex.png` | Pure black and white | White helmet, black glass faceplate | OpenAI Codex knot |
-| `suit_gemini.png` | Bright red and deep blue, silver trim | Silver mirrored wraparound visor | Gemini sparkle star |
-| `suit_kimi.png` | Dark crimson and navy, armoured knees and shoulders | Amber-gold mirrored visor | Kimi "K" badge |
-| `suit_qwen.png` | Bright red and royal blue, black trim | Black faceplate, white glowing slit | Qwen hex star |
+| Folder | Look | Chest emblem |
+|---|---|---|
+| `claude/` | Matte black spandex, glossy terracotta-orange rubber side panels, orange lenses | Claude spark |
+| `codex/` | White spandex with glossy black rubber panels and boots, silver lenses | OpenAI Codex knot |
+| `gemini/` | Glossy red and deep blue with raised silver seams, silver lenses | Gemini sparkle star |
+| `kimi/` | Crimson and navy with a carbon-weave texture, amber-gold lenses | Kimi "K" badge |
+| `qwen/` | Bright red and royal blue with violet piping, violet lenses | Qwen pinwheel hexagon |
 
-Every image uses the same framing on purpose: front view, the game rig's A-pose, flat grey background, even light. That keeps all five Tripo models at the same proportions, so they swap onto one skeleton. The exact prompts are in `prompts.json`.
+Each folder contains these files:
+
+| File | What it is |
+|---|---|
+| `sheet.png` | The full turnaround sheet (6336×2688): front, left, back, right |
+| `front.png`, `left.png`, `back.png`, `right.png` | The four views as separate images, full height, cut straight from the sheet |
+| `front_reference.png` (Claude only) | The approved single front image the Claude sheet was matched to |
+
+**Which side is which:** `left.png` shows the character's **left** side, so the character faces right in the image. `right.png` shows the character's **right** side, so the character faces left. If Tripo's result comes out mirrored, swap the left and right uploads. Kimi's left view is a mirror of its right view, because the generator drew the same side twice. The suit is symmetrical, so this is safe.
+
+`contact_sheet.jpg` shows all five suits and all four views at once.
 
 ## What to do in Tripo (web app)
 
-For each image:
-
-1. Choose **Image to 3D** and upload one `suit_*.png`.
+1. Choose **Multiview to 3D** (it may be called "Multi-image"). Upload `front.png`, `left.png`, `back.png` and `right.png` from one folder into the matching slots.
+   - If there is no multiview option, use **Image to 3D** with `front.png` only.
 2. Use these settings. They are not checked against the current Tripo interface, so pick the closest match:
    - **Model:** the newest / highest-quality version.
-   - **Texture:** on, **HD** texture, **PBR** on.
-   - **Mesh:** keep full detail. A target of about **50,000 triangles** matches the current hero, which has 56,000. Leave "smart low poly" off; we decimate later if needed.
-   - **Pose:** A-pose / keep the input pose. Don't let Tripo re-pose the character.
-3. **Skip auto-rig.** The game already has a 58-bone skeleton and 79 animations. We will transfer the existing skin weights onto the new mesh in Blender, so every animation works straight away. A Tripo rig would be thrown away.
-4. **Export GLB** with embedded textures.
-5. Name the files `skin_claude.glb`, `skin_codex.glb`, `skin_gemini.glb`, `skin_kimi.glb` and `skin_qwen.glb`. Drop them in `concepts/skins/tripo/` in this repo, or send them to Claude.
+   - **Texture:** on, **HD**, **PBR** on.
+   - **Mesh:** full detail, about **50,000 triangles**, which matches the current hero's 56,000. Leave "smart low poly" off.
+   - **Pose:** keep the input A-pose.
+3. **Skip auto-rig.** Claude transfers the game's existing 58-bone skeleton and weights onto each mesh in Blender, so all 79 current animations work straight away.
+4. **Export GLB** with embedded textures, named `skin_claude.glb`, `skin_codex.glb`, `skin_gemini.glb`, `skin_kimi.glb` and `skin_qwen.glb`. Drop them in `concepts/skins/tripo/` or send them to Claude.
 
-**If Tripo shows a text prompt box** (image + prompt mode, or retexture), paste the matching line:
+**If Tripo asks for a text prompt**, paste the matching line:
 
 ```
-claude:  full-body superhero in a matte black suit with terracotta-orange armor panels, glowing orange visor helmet, orange starburst chest emblem, A-pose, game-ready character
-codex:   full-body superhero in a black and white suit, white helmet with black glass faceplate, black interlocking knot chest emblem, A-pose, game-ready character
-gemini:  full-body superhero in a glossy red and deep blue suit with silver trim, silver mirrored visor helmet, blue-purple four-point star chest emblem, A-pose, game-ready character
-kimi:    full-body superhero in a crimson and navy armored suit, amber-gold visor helmet, white K badge chest emblem, A-pose, game-ready character
-qwen:    full-body superhero in a red and royal blue suit with black trim, black faceplate helmet with white glowing slit, violet hexagon star chest emblem, A-pose, game-ready character
+claude:  superhero in a fitted matte black spandex suit with glossy terracotta-orange rubber side panels, full fabric mask with orange eye lenses, orange starburst chest emblem, A-pose, game-ready character
+codex:   superhero in a fitted white spandex suit with glossy black rubber panels and black boots, full fabric mask with silver eye lenses, black knot chest emblem, A-pose, game-ready character
+gemini:  superhero in a fitted glossy red and deep blue spandex suit with raised silver seams, full fabric mask with silver eye lenses, blue-purple four-point star chest emblem, A-pose, game-ready character
+kimi:    superhero in a fitted crimson and navy spandex suit with carbon-weave texture, full fabric mask with amber-gold eye lenses, white K badge chest emblem, A-pose, game-ready character
+qwen:    superhero in a fitted red and royal blue spandex suit with violet piping, full fabric mask with violet eye lenses, violet pinwheel hexagon chest emblem, A-pose, game-ready character
 ```
 
-**If the back comes out bad:** Tripo guesses the back from a single front image. A multiview option (front, side, back) would give a better back. Ask Claude to generate matching back and side views of any suit from the same prompt.
+## How these were made
+
+- **Model:** Higgsfield **Nano Banana Pro**, 21:9 at 4K. GPT Image 2 blocked every fitted-suit prompt.
+- **Prompts:** in `prompts/`. `sheet_template.txt` is shared by all five, and `costumes.json` holds each suit's description.
+- **What gets blocked:** image models refuse anything that reads as the licensed character. Three combinations trigger it:
+  - red and blue with big white eye lenses in black frames
+  - thick black trim or web lines
+  - the words "Spider-Man" or "spider"
+
+  Each suit gets its own lens colour and seam style instead.
+- **Splitting:** `tools/split_sheet.py` cuts a sheet into the four views.
 
 ## What happens after (Claude, in Blender on the Studio)
 
 1. Import each GLB, scale it to the game rig's 1.79 m height, and line it up with the rig's A-pose.
-2. Transfer the skin weights from the existing hero mesh onto the new mesh, then fix the shoulders, hips and fingers by hand where needed.
+2. Transfer skin weights from the current hero mesh, then fix the shoulders, hips and fingers.
 3. Re-export with the same 58-bone armature and all 79 clips, one GLB per skin.
 4. Add the skins to the in-game suit menu (`src/game/systems/suits.js`). Check them in the fixed screenshot shots under each time-of-day preset.

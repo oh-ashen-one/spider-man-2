@@ -13,7 +13,7 @@
 
 | Creature | Now | How it animates | Budget for the new model | Concepts needed |
 |---|---|---|---|---|
-| **Hero** | `spiderman.glb`: 27k verts, 50k tris, 4096² textures | 58-bone skeleton, 79 baked clips, about 15 procedural layers | About 50k tris, 4096² PBR textures | **5 done** (`skins/`) |
+| **Hero** | `spiderman.glb`: 27k verts, 50k tris, 4096² textures | 58-bone skeleton, 79 baked clips, about 15 procedural layers | About 50k tris, 4096² PBR textures | **5 done**, four-view sheets in `skins/<name>/` |
 | **Thugs** (melee, gunman) | `thug.glb`: 30k verts, 56k tris, same 58-bone skeleton, 3 recoloured textures | 13 thug clips plus the hero's walk, jog and run | About 30–40k tris, 2048² textures | 3 to 4 street-thug looks |
 | **Brute** | Same thug mesh scaled ×1.24, with its own texture | Same as thugs | Its own heavier body, about 40k tris | 1 |
 | **Pedestrians** | `people.json/.bin`: 24 outfits × 3 LODs, faces from a 32-face atlas | 18-bone skeleton, 27 clips baked into a texture and skinned on the GPU, hundreds on screen | **Near LOD about 4–6k tris**, mid about 1.5k, far about 400; one shared texture atlas | 8 to 12 body and outfit types |
