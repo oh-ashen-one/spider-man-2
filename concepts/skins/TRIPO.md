@@ -16,7 +16,7 @@ Each suit folder contains exactly the four images to upload: `front.png`, `left.
 
 > **Never upload a combined sheet to Tripo.** It reads all four views as one scene and builds four separate people.
 
-**Which side is which:** `left.png` shows the character's **left** side, so the character faces right in the image. `right.png` shows the character's **right** side, so the character faces left. If Tripo's result comes out mirrored, swap the left and right uploads. Kimi's left view is a mirror of its right view, because the generator drew the same side twice. The suit is symmetrical, so this is safe.
+**Which side is which (Tripo's convention):** in `left.png` the character faces **left** in the image, and in `right.png` they face **right**. The first Qwen upload used the opposite naming and came out with a face on the back of its head, so every folder was swapped to match Tripo's slots. If a model still grows a second face or looks twisted, generate again with only the Front and Back slots filled. Kimi's side views are mirrors of each other, which is safe because the suit is symmetrical.
 
 `contact_sheet.jpg` shows all five suits and all four views at once.
 

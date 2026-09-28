@@ -15,7 +15,7 @@ This folder holds eight city animals as four-view sheets, made with Higgsfield N
 | `golden_retriever` | Golden retriever with a red collar | Walked by pedestrians (replaces the current rigid dog) |
 | `french_bulldog` | Fawn French bulldog | Walked by pedestrians |
 
-**Uploading:** each folder holds exactly the four images to upload. In Tripo's **Generate Model**, click the **second icon** (the cube) for multi-view. Put `front.png`, `left.png`, `right.png` and `back.png` into the matching slots, and leave **Generate Multi-Views** off. The left image shows the animal's left side, so it faces right in the image. The combined sheets in `_sheets_reference_only/` are for reference only. **Never upload a combined sheet.** Tripo turns it into four animals.
+**Uploading:** each folder holds exactly the four images to upload. In Tripo's **Generate Model**, click the **second icon** (the cube) for multi-view. Put `front.png`, `left.png`, `right.png` and `back.png` into the matching slots, and leave **Generate Multi-Views** off. In `left.png` the animal faces left in the image, and in `right.png` it faces right. That is Tripo's slot convention. The combined sheets in `_sheets_reference_only/` are for reference only. **Never upload a combined sheet.** Tripo turns it into four animals.
 
 **Settings:** HD texture, full detail, **no auto-rig**. Export as `animal_<folder>.glb`, for example `animal_sewer_rat.glb`, into `concepts/creatures/tripo/`.
 

@@ -17,7 +17,7 @@ These are ten original New York pedestrians, plus a kit of eight accessories any
 | `09_marathon_runner` | Tall, muscular Pacific Islander man: running tank top, shorts, neon shoes |
 | `10_punk_artist` | Petite Southeast Asian woman: pink bob, studded leather jacket, tartan skirt, combat boots |
 
-Each folder contains exactly the four images to upload: `front.png`, `left.png`, `back.png` and `right.png`. The combined turnaround sheets live in `_sheets_reference_only/`. **Never upload a combined sheet to Tripo.** It builds four separate people. The left image shows the character's left side, so they face right. `contact_sheet.jpg` shows all ten at once.
+Each folder contains exactly the four images to upload: `front.png`, `left.png`, `back.png` and `right.png`. The combined turnaround sheets live in `_sheets_reference_only/`. **Never upload a combined sheet to Tripo.** It builds four separate people. In `left.png` the character faces left in the image, and in `right.png` they face right. That is Tripo's slot convention; the opposite naming gave the Qwen suit a face on the back of its head. `contact_sheet.jpg` shows all ten at once.
 
 The first draft of the dapper elder looked like a real famous actor, so he was regenerated with an explicitly original face. Every character is original.
 
