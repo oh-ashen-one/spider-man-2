@@ -3,15 +3,11 @@
 import * as THREE from 'three';
 import { SUITS } from '../../game/systems/suits.js';
 
+// Card art: one painted portrait per suit (public/assets/ui/suits/<id>.webp). The AI-logo suits were generated with
+// Higgsfield (Nano Banana Pro); Advanced / Iron / Symbiote are Blender renders of the in-game hero model and its
+// suit recolours, because image models refuse the licensed character. Replaces the old procedural SVG silhouettes.
 function suitArt(s) {
-  const [a, b, c] = s.swatch;
-  return `<svg viewBox="0 0 100 120"><defs><linearGradient id="g${s.id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.18)"/><stop offset="1" stop-color="rgba(0,0,0,.2)"/></linearGradient></defs>
-    <path d="M50 6 C33 6 28 20 29 34 C30 46 36 54 42 58 L40 66 C24 68 12 76 8 96 L6 120 L94 120 L92 96 C88 76 76 68 60 66 L58 58 C64 54 70 46 71 34 C72 20 67 6 50 6 Z" fill="${a}"/>
-    <path d="M8 96 C12 76 24 68 40 66 L44 80 L30 120 L6 120 Z M92 96 C88 76 76 68 60 66 L56 80 L70 120 L94 120 Z" fill="${b}"/>
-    <g fill="${c}"><ellipse cx="50" cy="86" rx="4" ry="6"/><ellipse cx="50" cy="96" rx="5" ry="8"/></g>
-    <path d="M46 84 L34 74 M54 84 L66 74 M45 88 L30 88 M55 88 L70 88 M46 94 L34 104 M54 94 L66 104" stroke="${c}" stroke-width="2.4"/>
-    <path d="M36 30 C38 38 44 40 47 36 C45 30 40 27 36 30 Z M64 30 C62 38 56 40 53 36 C55 30 60 27 64 30 Z" fill="#fff" stroke="#000" stroke-width="2"/>
-    <path d="M50 6 C33 6 28 20 29 34 C30 46 36 54 42 58 L40 66 C24 68 12 76 8 96 L6 120 L94 120 L92 96 C88 76 76 68 60 66 L58 58 C64 54 70 46 71 34 C72 20 67 6 50 6 Z" fill="url(#g${s.id})"/></svg>`;
+  return `<img class="art" src="/assets/ui/suits/${s.id}.webp" alt="" draggable="false" decoding="async">`;
 }
 
 export function createSuitsPage(sys) {

@@ -54,9 +54,12 @@ qwen:    superhero in a fitted red and royal blue spandex suit with violet pipin
   Each suit gets its own lens colour and seam style instead.
 - **Splitting:** `tools/split_sheet.py` cuts a sheet into the four views.
 
-## What happens after (Claude, in Blender on the Studio)
+## Status: in the game
 
-1. Import each GLB, scale it to the game rig's 1.79 m height, and line it up with the rig's A-pose.
-2. Transfer skin weights from the current hero mesh, then fix the shoulders, hips and fingers.
-3. Re-export with the same 58-bone armature and all 79 clips, one GLB per skin.
-4. Add the skins to the in-game suit menu (`src/game/systems/suits.js`). Check them in the fixed screenshot shots under each time-of-day preset.
+All five suits are fitted and wearable from the in-game suit menu:
+- **Skin files:** `public/assets/skins/<id>.glb`
+- **Runtime code:** `src/game/systems/skinswap.js`
+- **Fitting tool:** `tools/skinfit/` (see its README)
+- **Suit menu cards:** `public/assets/ui/suits/<id>.webp`
+
+**Known issue:** the Gemini and Qwen models have their chest logo copied onto the back, sculpted into the mesh by Tripo. To fix it, regenerate those two in Tripo with only the **Front** and **Back** slots filled, then run `skinfit.py` on the new GLB.
