@@ -14,11 +14,15 @@ def split(path, out_dir):
     im = Image.open(path).convert("RGB")
     a = np.asarray(im).astype(np.int16)
     h, w, _ = a.shape
-    m = max(8, w // 50)                              # per-row background from the left and right borders, which
-    bg_row = np.median(np.concatenate([a[:, :m], a[:, -m:]], axis=1), axis=1, keepdims=True)  # are always empty
-    fg = np.abs(a - bg_row).sum(axis=2) > 45         # pixels that differ from their row's background
-    bg = np.median(a[:40].reshape(-1, 3), axis=0)     # canvas fill colour for the output
-    col = fg.sum(axis=0) > h * 0.03                  # columns that contain figure (3% filters noise)
+    # figures are found by texture, not colour: studio backdrops often carry a smooth gradient or vignette that a
+    # colour test mistakes for figure, but they have almost no edges, while fur, cloth and feathers are full of them
+    g = a.mean(axis=2)
+    g = (g[:-2:2, :-2:2] + g[1:-1:2, :-2:2] + g[:-2:2, 1:-1:2] + g[1:-1:2, 1:-1:2]) / 4   # half-res, light blur
+    edge = (np.abs(np.diff(g, axis=1))[:-1] + np.abs(np.diff(g, axis=0))[:, :-1]) > 6
+    ecol = np.repeat(edge.sum(axis=0), 2)[:w]
+    ecol = np.pad(ecol, (0, w - len(ecol)))
+    fg_cols = ecol > edge.shape[0] * 0.006
+    col = fg_cols                                    # columns that contain figure
     runs, start = [], None
     for x, on in enumerate(col):
         if on and start is None: start = x
