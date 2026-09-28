@@ -2,35 +2,87 @@
 
 > Homage fan project — not an official Marvel game and not affiliated with Marvel, Disney, Sony or Insomniac. We are not trying to make anything copyrighted.
 
-Branch: `water-effects` (cut from `main` @ `4361e15`, 2026-09-28). All water work happens here. **Never merge to `main` without the owner's OK.** Other sessions are active in this repo on other branches (`flight-dynamics`, `3d-assets`) — don't touch them.
+Branch: `water-effects` (cut from `main` @ `4361e15`, 2026-09-28). **Never merge to `main` without the owner's OK.** Other sessions are active in this repo on other branches (`flight-dynamics`, `3d-assets`, `pinata-and-trees`) — don't touch their worktrees, branches or dev-server ports.
 
-Goal: take the river / harbour water from "pretty flat mirror" to interactive, living water — waves, splashes, swimming/diving, underwater — by porting techniques from Dan Greenheck's open-source repos (github.com/dgreenheck).
+**Status (2026-09-28): water items 1–8 are in.** Techniques ported from Dan Greenheck's MIT repo [tidewater](https://github.com/dgreenheck/tidewater) (a raw WebGPU/WGSL engine) to our Three.js r186 WebGL2 pipeline. Credits: [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
----
+## What's done
 
-## 1. Where our water is today
+| # | Item (from tidewater) | What it does in our game | Where |
+|---|---|---|---|
+| 1 | Water shading (`WaterMaterial.js`) | Exact dielectric Fresnel, GGX sun glint with footprint-filtered roughness (Cox-Munk: waves too small for a pixel become roughness, no more grainy shimmer), sky reflection tilted to the darker upper sky on rough water, the river body as a turbid medium (absorption + scattering of the refracted sun / sky) instead of a painted colour, crest translucency, the surface seen **from below** (Snell's window + total internal reflection). Planar mirror of the skyline kept. | `src/world/water.js` |
+| 2 | Sea detail (`SeaDetail.js`) | Wind-aligned gust patches, calm slicks, windrows modulating the short waves. **Plus foam**: contact foam where water touches seawalls / pier edges / piles / bridge piers (fine distance map baked at load from the wet edges + every solid crossing the water line), hull contact foam + Kelvin wake arms + prop wash for every boat (analytic in the shader — the old flat wake sheets are hidden), whitecaps on gusty crests, meniscus darkening at walls. | `src/world/water.js` |
+| 3 | Underwater (`post/Underwater.js`) | Per-pixel medium at the lens (the view **splits at the waterline** when the camera straddles the surface, with a dark meniscus line), Beer-Lambert absorption + single scattering along the view ray, depth-attenuated sunlight on everything submerged. New **river bed**; seawalls / fender piles now reach down to it. | `src/render/underwater.js`, composite stage in `src/render/pipeline.js`, bed in `water.js`, walls in `ground.js` / `waterfront.js` |
+| 4 | Lens droplets (`post/LensDroplets.js`) | After surfacing the lens is wet: clinging drops, heavy drops sliding down with wet trails, each a tiny inverted lens; dries in ~9 s. | final pass in `src/render/pipeline.js` |
+| 5 | Caustics (`Caustics.js`) | Real photon-splat caustics (a periodic wave tile, every vertex refracts the sun to two focal depths, additive area ratio) on the bed, walls, piles and the player under water, plus **light shafts** ray-marched through the caustic field. | `src/render/underwater.js` |
+| 6 | Spray (`fx/Spray.js` shading) | CPU-simulated drops (motion-blurred streaks), torn dense spray (column + skirt) and mist, lit by the real sun / sky / shadows with a forward-scattering glow when back-lit. Splash = crater + rings in a **ripple simulation** (wave equation in a 96 m window around the camera: displaces the near surface, bends normals, carries churned foam) + crown + column + mist. Boats throw bow spray. | `src/world/waterfx/spray.js`, `ripples.js` |
+| 7 | Water LOD mesh (`core/CDLOD.js`) | Continuous-LOD quadtree grid out to ~300 km, geomorphed, world-lattice vertices (waves never swim). Carries 12 shared **Gerstner waves** (0.7–31 m, ~0.3 m crests) — the same waves on the CPU, so boats pitch / roll / heave on them and the player / camera / splashes know the real surface height. | `src/world/cdlod.js`, `src/world/waves.js` |
+| 8 | Gulls (`world/Gulls.js`) | 88 gulls in 8 flocks over the Hudson, East River and harbour: soaring circles, banking, flapping bursts, all in the vertex shader (1 draw call). | `src/world/waterfx/gulls.js` |
 
-Renderer: Three.js r186 **`WebGLRenderer`** (not WebGPU) with a custom multi-pass pipeline (`src/render/pipeline.js`). Anything WebGPU/TSL/WGSL must be ported to GLSL.
+**Gameplay change — the plunge.** Hitting the water no longer instantly web-yanks Spidey out. He splashes, **dives under** (deeper the harder he hit, up to ~5–6 m; the chase camera follows him below the surface), drag + buoyancy bring him up, and when he surfaces he web-yanks to the nearest dry ground exactly as before (input is locked while under). `src/player/traversal/traversal.js` (`startPlunge` / `stepPlunge` / `waterYank`), camera ground-clamp lifted during the plunge (`camera.js`), splash from the event (`player.js`). Verified headless on the Studio: fall from 30 m → plunge → camera under water ~1.0 s → surfaces → yanked → lands on the promenade, no errors.
 
-| Area | Current state | Files |
+**Other plumbing:** quality tiers (`src/render/quality.js`: `waterGrid`, `waterSpray`, `waterCaustics`, `waterShafts`, `gulls`; `?q=low` drops caustics / shafts and halves the gulls), a TAA "fast-moving object" flag (scene alpha < 0.5 → the TAA trusts the current frame there; used by the gulls, which were otherwise smeared away), `world.water` API (`heightAt`, `splash`, `stir`, `cameraBelow`, `ripples`, `spray`), `pipeline.setWater()`.
+
+## Before / after (rendered on the Mac Studio, `main` vs this branch, identical compositions)
+
+| Shot | Before (`main`) | After |
 |---|---|---|
-| Surface | One flat 300 km plane at `WATER_Y = -1.6`, 16×16 segs, **no vertex waves** | `src/world/water.js` |
-| Shading | `MeshStandardMaterial` + `onBeforeCompile`: scrolling normal map (4 near + 2 far scales), calm patches/gusts/current streaks, distance roughness, sun glitter, grazing-angle sky refetch | `water.js:19-178` |
-| Reflections | Planar mirror @ 1/3 res, only layers 27/28, 8-tap ripple blur + haze; skipped at street level >260 m from shore; river opts out of SSR (`NO_SSR`) | `water.js:181-226` |
-| Shoreline | Baked distance-to-shore texture → silty tint, pale wash line, calmer edges. No real foam. Wet/algae bands on seawalls | `water.js:231-360` |
-| Park ponds | Same material, SSR enabled | `src/world/ground.js:1382`, `layout.js:177` |
-| Boats | 5 box-hull `InstancedMesh`es, sine bob, flat textured Kelvin-V wake quads | `src/world/boats.js` |
-| Player + water | **Can't swim/dive.** Below y=-1.0 `waterBounce()` web-yanks him to dry land; `waterSplash` event only shakes the camera. No splash VFX, no sound, no underwater | `src/player/traversal/traversal.js:512-541`, `src/player/player.js:170` |
-| Particles | Only system is combat billboards (900 additive + 300 alpha pools, canvas atlas) — **reusable for splashes** | `src/game/combat/fx.js:78` |
-| Birds | Pigeon flocks only, no gulls | `src/world/npc/pigeons.js` |
-| Shots harness | `?shot=<name>` = 90 fixed frames then `window.__shotReady`. **No water shot exists yet** | `src/main.js:86-99`, `src/shots.js` |
-| Quality | `?q=low|med|high`, `?qset=k:v`, `?prof=1` per-pass GPU ms | `src/render/quality.js` |
+| `riverHigh` — swing height over the Hudson | ![](docs/water/before/riverHigh.jpg) | ![](docs/water/after/riverHigh.jpg) |
+| `riverHigh&tod=sunset` | ![](docs/water/before/riverHigh_tod_sunset.jpg) | ![](docs/water/after/riverHigh_tod_sunset.jpg) |
+| `eastRiver` — bridges, ferry wake, seawall foam | ![](docs/water/before/eastRiver.jpg) | ![](docs/water/after/eastRiver.jpg) |
+| `eastRiver&tod=night` | ![](docs/water/before/eastRiver_tod_night.jpg) | ![](docs/water/after/eastRiver_tod_night.jpg) |
+| `riverLow` — eye level at the seawall | ![](docs/water/before/riverLow.jpg) | ![](docs/water/after/riverLow.jpg) |
+| `splash` — 0.5 s after a body hits the water | ![](docs/water/before/splash.jpg) | ![](docs/water/after/splash.jpg) |
+| `underwater` — 3 m down at the seawall | ![](docs/water/before/underwater.jpg) (main: you see through the world) | ![](docs/water/after/underwater.jpg) |
+| `waterline` — lens straddling the surface | ![](docs/water/before/waterline.jpg) | ![](docs/water/after/waterline.jpg) |
+| `surfacing` — lens droplets | — | ![](docs/water/after/surfacing.jpg) |
+| `gulls` | ![](docs/water/before/gulls.jpg) | ![](docs/water/after/gulls.jpg) |
 
-Geography: Manhattan ~6.8 × 1.45 km; Hudson west, East River east, harbour south; rivers ~0.5–1 km wide.
+## Performance (Mac Studio M3 Ultra, 1920×1080, `?q=high`)
+
+`tools/perf.mjs` — headless Chrome over SSH, each frame followed by a 1-px GPU readback (CPU submit + GPU, serialised; not vsynced). A/B against a `main` checkout serving the same shots, several runs (±3 ms run-to-run noise from other Studio jobs):
+
+| View | `main` median | `water-effects` median |
+|---|---|---|
+| `riverHigh` (1 run) | 18.1 ms | 13.8 ms |
+| `eastRiver` | 12.9–13.6 ms | 14.2–16.1 ms |
+| `riverLow` | 13.0–13.5 ms | 13.5–15.3 ms |
+| `underwater` | 17.4–17.7 ms | 18.0–18.3 ms (main draws a broken view here) |
+| `splash` (1 run) | 16.5 ms | 12.9 ms |
+
+Net: the water costs **≲1–2 ms** per frame over `main`; nothing obviously blows the 16.7 ms budget. ⚠️ **Still owed: the real 60 fps check in the Studio's desktop session** (the owner's rule: SSH / headless timing is A/B only — play it on the Studio with `?prof=1` and watch frame times while swinging over the rivers, diving, and at night).
+
+## Known issues / not done
+- **Not playtested by a human yet** — the plunge / splash / underwater were verified by scripted headless runs only. Owner: jump into the Hudson and East River from different heights, dive near piers, check the camera under water and on surfacing.
+- No **splash / underwater sound** (the audio system uses pre-rendered sprites from `tools/audio/build.py`, which isn't on this branch).
+- No surface **swimming** — he always plunges and yanks out (by design for now).
+- Park ponds keep the flat normal-map surface (new shading only).
+- Night: city-light reflections on the water are still the old mirror streaks (fine, but the bridge-cable lights read as wiggly bands in the East River).
+- Caustic pattern can look a little stripy (few tile waves along similar directions); tile waves in `render/underwater.js` `CWAVES`.
+- Gulls are small at swing distances (realistic scale); the TAA flag keeps them visible.
+
+## Next steps (suggested)
+1. Owner playtest on the Studio (desktop session) + real 60 fps check with `?prof=1`; tune from notes.
+2. Splash / plunge / underwater ambience SFX (the audio pipeline's sprite builder).
+3. Surface swimming state (tread water, swim to the wall, wall-climb out) instead of the automatic yank.
+4. Boat wake → ripple coupling near the player (ferry wakes that rock the surface you're diving into), and hull bow-wave displacement.
+5. Rain on the water (rings in the ripple sim when `tod=overcast`).
+
+## Running it (on the Studio — heavy work never on the laptop)
+```bash
+ssh studio
+cd ~/spider-man-2-water-effects && git pull
+npx vite --port 5192 --host 127.0.0.1                 # 5173 / 5191 belong to other sessions
+# screenshots (headless, own Vite on a free port >= 5192): -> shots/<name>.png (gitignored)
+node tools/shot.mjs riverHigh 'riverHigh&tod=sunset' riverLow eastRiver splash underwater waterline surfacing gulls pond
+# A/B frame times (URL= another checkout's dev server for a baseline)
+W=1920 H=1080 node tools/perf.mjs riverHigh eastRiver underwater
+```
+Shots: `riverHigh`, `riverLow`, `eastRiver`, `splash`, `underwater`, `waterline`, `surfacing`, `gulls`, `pond` (+ `&tod=sunset|night|overcast`, `&q=low`, `&nouw` = raw scene under water for debugging).
 
 ---
 
-## 2. Research: what we can use from dgreenheck's repos
+## Research notes: what we can use from dgreenheck's repos
 
 Licenses verified by reading the LICENSE files (2026-09-28).
 
@@ -69,32 +121,3 @@ When porting MIT code, keep attribution: add a header comment `// Adapted from d
 
 ---
 
-## 3. Next steps (in order)
-
-Each step: add/extend a `?shot=` water preset first, capture a **before**, build, capture an **after**, check `?prof=1` cost on `high` and `low`.
-
-0. ✅ **Water shots harness** (done 2026-09-28). `src/shots.js`: `riverHigh` (~75 m over the Hudson edge, looking down-river), `riverLow` (eye level behind Spidey at the Hudson seawall), `eastRiver` (~45 m over the East River toward the Manhattan/Brooklyn bridges). Add `&tod=sunset` for low-sun glint. Capture: `node tools/shot.mjs riverHigh 'riverHigh&tod=sunset' riverLow eastRiver` (starts its own Vite on a free port ≥5192, headless installed Chrome with Metal GPU → `shots/`, gitignored; `OUT=shots/after` to pick a folder). Baselines committed in `docs/water/before/`. What they show:
-   - Surface is dead flat — reads as a tiled normal-map noise, strongly streaky/grainy in the near field (`eastRiver`, `riverLow`).
-   - No foam or contact lines where water meets piers, pilings, bridge piers, hulls or seawalls — everything floats on the water "like a sticker".
-   - Boats show no visible wake from above.
-   - Sunset glint is decent already (keep it); day water is uniform blue-grey with little depth/colour variation.
-1. **Waves + shading.** Add Gerstner waves (4–6 summed, displaced in vertex shader, analytic normals) to the plane in `water.js`; needs a denser near-camera grid (start with a camera-following ring grid, CDLOD later). Port `WaterMaterial.js` Fresnel / GGX glint / roughness / absorption into our `onBeforeCompile`. Keep the planar mirror; sample it with wave-perturbed UVs.
-2. **Sea detail.** Port `SeaDetail.js` gusts/slicks/foam lines; merge with our existing calm-patch/streak noise instead of stacking both.
-3. **Splashes + ripples.** On `waterSplash`: crown-splash burst + spray using `combat/fx.js` Particles (spray shading from `Spray.js`), splash SFX, and a small ripple heightfield (ping-pong render target around the player) that perturbs water normals. Boats get the same ripple stamp.
-4. **Swim / dive / underwater.** Replace `waterBounce()` yank with a swim state (surface swim + dive). Port `Underwater.js` as a pass in `pipeline.js`, `Caustics.js` on riverbed/pilings, `LensDroplets.js` on surfacing. Needs a riverbed mesh (currently none) — simple dark-silt plane + a few props.
-5. **Shore foam + wakes.** Real foam at seawalls using the distance-to-shore texture + wave crests; upgrade boat wakes from flat quads to analytic Kelvin wake displacement.
-6. **Gulls.** Port `Gulls.js`, spawn over rivers/harbour.
-7. **Quality tiers.** Gate waves density, SSR, caustics, underwater shafts per `quality.js` tier; verify `low` still hits 60 fps.
-
-Out of scope for this branch (own branches later): three-pinata destruction, ez-tree trees + grass, flocking birds rewrite, traffic.
-
----
-
-## 4. Running it
-
-```bash
-git fetch origin && git switch water-effects   # or: git clone https://github.com/oh-ashen-one/spider-man-2.git && git switch water-effects
-npm install
-npx vite --port 5192 --host 127.0.0.1   # 5173/5191 may be taken by other sessions on the Studio
-# open http://127.0.0.1:5192/?shot=street   (add &prof=1 for GPU timings, &q=low to test low tier)
-```
