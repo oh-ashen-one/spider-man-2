@@ -147,7 +147,32 @@ export function createAudio() {
     oldTone({ f: 1900 + Math.random() * 300, f2: 420, dur: 0.07, g: 0.07 * strength, pan: p });
   }
 
+  // (pinata-and-trees) live-synth destruction sounds (same band-passed noise / chirp voices as the old thwip): a glass
+  // burst (bright crack + a scatter of falling tinkles), a crunch (wood / metal / plastic giving way) and a water hiss
+  function tinkle(at, f, g, pan) {
+    const t = now() + at, o = ac.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.93, t + 0.12);
+    const gg = G(0); oldEnv(gg, t, 0.002, g, 0.09 + Math.random() * 0.1); oldOut(o.connect(gg), pan); o.start(t); o.stop(t + 0.3);
+  }
+  function glassBurst(strength = 1, pan = 0) {
+    if (!ready) return;
+    const k = clamp(strength, 0.2, 1.5);
+    oldNoise({ f: 7200, f2: 2600, q: 1.4, dur: 0.12, g: 0.4 * k, pan });
+    oldNoise({ f: 3800, f2: 1500, q: 3, dur: 0.22, g: 0.16 * k, at: 0.01, pan });
+    oldNoise({ f: 9000, f2: 6000, q: 0.8, dur: 0.5, g: 0.06 * k, at: 0.05, pan });
+    for (let i = 0, n = 5 + Math.round(6 * k); i < n; i++) tinkle(0.05 + Math.random() * 0.55 * (i / n + 0.3), 2600 + Math.random() * 4200, 0.03 * k * (1 - i / n * 0.6), pan + (Math.random() - 0.5) * 0.6);
+  }
+  function crunch(strength = 1, pan = 0, kind = 'wood') {
+    if (!ready) return;
+    const k = clamp(strength, 0.2, 1.5), metal = kind === 'metal';
+    oldNoise({ f: metal ? 2600 : 1400, f2: metal ? 900 : 260, q: metal ? 4 : 1.2, dur: metal ? 0.3 : 0.18, g: 0.34 * k, pan });
+    oldNoise({ f: 520, f2: 140, q: 1, dur: 0.14, g: 0.3 * k, at: 0.008, pan });
+    oldTone({ f: metal ? 380 : 150, f2: metal ? 210 : 55, dur: 0.14, g: 0.2 * k, pan });
+    if (metal) for (let i = 0; i < 3; i++) tinkle(0.02 + i * 0.05, 900 + Math.random() * 700, 0.05 * k, pan);
+  }
   const sfx = {
+    glass(strength = 1, pan = 0) { glassBurst(strength, pan); },
+    crunch(strength = 1, pan = 0, kind = 'wood') { crunch(strength, pan, kind); },
+    water(strength = 1) { if (ready) oldNoise({ f: 1800, f2: 900, q: 0.6, dur: 0.9, g: 0.12 * strength, a: 0.05 }); },
     // --- web / traversal
     thwip(strength = 1, pan = 0) { oldThwip(strength, pan); }, // (user r-oldzip) old synth thwip
     zip() { oldThwip(1.2); }, // (user r-oldzip) as before: zips play the thwip only

@@ -382,7 +382,7 @@ export class CollisionGrid {
         const i = this.items[k];
         if (st[i] === fr) continue;
         st[i] = fr;
-        if (this.flags[i] & BLOCKONLY) continue; // (veg r1)
+        if (this.flags[i] & (BLOCKONLY | DEAD)) continue; // (veg r1) (pinata-and-trees: + broken props)
         const ty = T[i];
         const t = ty === BOX ? this._rayBox(i, ox, oy, oz, dx, dy, dz, best)
           : ty === CYL ? this._rayCyl(i, ox, oy, oz, dx, dy, dz, best) : ty === HF ? this._rayHF(i, ox, oy, oz, dx, dy, dz, best) : this._rayRamp(i, ox, oy, oz, dx, dy, dz, best);
@@ -430,7 +430,7 @@ export class CollisionGrid {
     for (let k = this.start[cell], e = this.start[cell + 1]; k < e; k++) {
       const i = this.items[k];
       if (skipOverhang && (this.flags[i] & OVERHANG)) continue;
-      if (this.flags[i] & BLOCKONLY) continue; // (veg r1) trunks: never a floor
+      if (this.flags[i] & (BLOCKONLY | DEAD)) continue; // (veg r1) trunks: never a floor (pinata-and-trees: + broken props)
       const y = this._top(i, x, z);
       if (y > out.y && y <= yMax) { out.y = y; out.id = i; }
     }
@@ -459,12 +459,16 @@ export class CollisionGrid {
       const cell = cz * this.nx + cx;
       for (let k = this.start[cell], kk = this.start[cell + 1]; k < kk; k++) {
         const i = this.items[k]; if (this.stamp[i] === fr) continue; this.stamp[i] = fr;
+        if (this.flags[i] & DEAD) continue; // (pinata-and-trees) broken props
         const j = i * 6;
         if (this.bb[j + 3] < x0 || this.bb[j] > x1 || this.bb[j + 5] < z0 || this.bb[j + 2] > z1) continue;
         fn(i);
       }
     }
   }
+  // (pinata-and-trees) runtime removal / restore of one primitive (a smashed street prop; respawned later)
+  disable(i) { this.flags[i] |= DEAD; }
+  enable(i) { this.flags[i] &= ~DEAD; }
   // true if the point is inside any solid
   inside(x, y, z) {
     let hit = false;

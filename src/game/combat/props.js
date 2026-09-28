@@ -110,7 +110,14 @@ export function createProps(c) {
             if (L < 0.9) {
               c.playerHit(T, { kind: 'throw', dmg: 45, heavy: 1, from: pr.pos.clone() });
               for (const e of c.enemies) if (e !== T && e.alive && e.pos.distanceTo(T.pos) < 2) c.playerHit(e, { kind: 'throw', dmg: 20, heavy: 0.5, silent: true });
-              if (pr.breaks) { c.fx.dust(pr.pos, { amount: 0.8 }); for (let j = 0; j < 14; j++) c.fx.alpha.emit({ pos: pr.pos, vel: _v.set(rnd(-5, 5), rnd(1, 6), rnd(-5, 5)), life: 0.9, size: 0.09, size1: 0.07, color: [0.45, 0.32, 0.2], alpha: 1, tile: 0, grav: 14 }); scene.remove(pr.g); list.splice(i, 1); continue; }
+              // (pinata-and-trees) crates splinter / bins burst into real fragments (game/destruction); dust + chips as before
+              const DS = ctx.destruction?.enabled ? ctx.destruction.breakables : null;
+              if (pr.breaks || (DS && pr.kind === 'bin')) {
+                c.fx.dust(pr.pos, { amount: 0.8 });
+                if (DS) { pr.g.updateMatrixWorld(true); if (pr.kind === 'bin') DS.burstBin(pr.g, pr.pos.clone(), pr.vel); else DS.shatterCrate(pr.g, pr.pos.clone(), pr.vel); }
+                for (let j = 0; j < (DS ? 6 : 14); j++) c.fx.alpha.emit({ pos: pr.pos, vel: _v.set(rnd(-5, 5), rnd(1, 6), rnd(-5, 5)), life: 0.9, size: 0.09, size1: 0.07, color: [0.45, 0.32, 0.2], alpha: 1, tile: 0, grav: 14 });
+                scene.remove(pr.g); list.splice(i, 1); continue;
+              }
               pr.state = 'settle'; pr.vel.multiplyScalar(-0.15).setY(4);
             }
           } else pr.vel.y -= 9 * dt;

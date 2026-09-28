@@ -6,6 +6,8 @@ import { PARK_SITES, PARK_ROCKS } from './park.js';
 import { Pool } from './pool.js';
 import { csmShared } from '../render/csm.js';
 import { trunkSkeleton, trunkMesh, TRUNK_LOD, barkMaterial, BARK } from './treetrunk.js'; // (veg r1) natural trunks + bark
+import { buildEzArchetypes, EZ } from './eztrees.js'; // (pinata-and-trees) ez-tree near LODs
+import { getQuality } from '../render/quality.js';
 
 // Canopy = leaf-spray cards grouped in clumps (a few per lobe), like real crowns: every clump is a small dome of cards
 // whose vertex normals blend the clump radial, the lobe radial and the card's own normal, so light wraps around each
@@ -552,6 +554,11 @@ export function buildTrees({ scene, T, spots, parkPaths }) {
     },
   };
   const CARDS = { street: [180, 2.45, 16, 2.4], park: [220, 2.9, 22, 2.8], elm: [240, 3.0, 24, 3.0], small: [120, 2.1, 12, 2.1], conifer: [200, 2.0, 18, 2.0] };
+  // (pinata-and-trees) ez-tree archetypes draw every tree nearer than EZ.far; the card / crown / trunk LODs below take
+  // over from there, their crown lobes fitted to the ez-tree canopies (same silhouette across the dithered hand-over)
+  const EZA = getQuality().eztree !== false ? buildEzArchetypes() : null;
+  if (EZA) for (const name of Object.keys(kinds)) { const L = EZA.lobes(name); if (L?.length) kinds[name].lobes = L; }
+  const ezNear = EZA ? EZ.far : 0;
   const pools = [];
   const out = { pools };
   const crownMat = crownMaterial();
@@ -571,10 +578,10 @@ export function buildTrees({ scene, T, spots, parkPaths }) {
       // (park r2) mid: 4 lumpy lobes (irregular clustered crowns, not one ball); far: every lobe as a cheap 20-tri blob
       const mid = crownGeometry(K.lobes, { detail: 1, maxLobes: name === 'conifer' ? 5 : 4, seed: 31 + name.length });
       const fr = crownGeometry(K.lobes, { detail: 0, maxLobes: 5, scale: 1.18, seed: 41 + name.length });
-      const pN = new Pool(near, leafMat, { max: 3000, far: PARK_NEAR, shadowFar: PARK_NEAR, extra, name: 'trees-' + name + '-near' });
+      const pN = new Pool(near, leafMat, { max: 3000, near: ezNear, far: PARK_NEAR, shadowFar: PARK_NEAR, extra, name: 'trees-' + name + '-near' });
       const pM = new Pool(mid, crownMat, { max: 12000, near: PARK_NEAR, far: 520, extra, name: 'trees-' + name + '-crown', castShadow: false });
       const pF = new Pool(fr, crownMat, { max: 16000, near: 520, far: 3200, extra, name: 'trees-' + name + '-crownfar', castShadow: false });
-      const pT = new Pool(trunk, barkMat, { max: 1500, far: TNEAR, shadowFar: TNEAR, extra: bextra, name: 'trunks-' + name });
+      const pT = new Pool(trunk, barkMat, { max: 1500, near: ezNear, far: TNEAR, shadowFar: TNEAR, extra: bextra, name: 'trunks-' + name });
       const pTm = new Pool(trunkMid, barkMat, { max: 3000, near: TNEAR, far: PARK_NEAR + 20, shadowFar: PARK_NEAR, extra: bextra, name: 'trunks-' + name + '-mid' });
       const pT2 = new Pool(trunkMesh(skel, TRUNK_LOD.far), barkMat, { max: 8000, near: PARK_NEAR + 20, far: 420, castShadow: false, extra: bextra, name: 'trunks-' + name + '-far' });
       for (const p of [pN, pM, pF, pT, pTm, pT2]) { p.items = items; scene.add(p.mesh); pools.push(p); }
@@ -584,10 +591,10 @@ export function buildTrees({ scene, T, spots, parkPaths }) {
     const far = canopyGeometry({ lobes: K.lobes, cards: CARDS[name][2], size: CARDS[name][3], seed: 17 + name.length, core: 0.85, coreLobes: 4, coreDetail: 0 });
     // LOD0 leaf-spray canopy (shadows to 170 m) -> LOD1 16-24 cards + solid core -> LOD2 one lumpy core blob (20 tris)
     const xfar = canopyGeometry({ lobes: [{ ...K.lobes[0], r: K.lobes[0].r * 1.3, y: K.lobes[0].y + K.lobes[0].r * 0.15 }], cards: 0, size: 1, seed: 27 + name.length, core: 0.95, coreLobes: 1, coreDetail: 0 });
-    const pN = new Pool(near, leafMat, { max: 3000, far: 170, shadowFar: 170, extra, name: 'trees-' + name + '-near' });
+    const pN = new Pool(near, leafMat, { max: 3000, near: ezNear, far: 170, shadowFar: 170, extra, name: 'trees-' + name + '-near' });
     const pF = new Pool(far, leafMat, { max: 9000, near: 170, far: 650, extra, name: 'trees-' + name + '-far', castShadow: false });
     const pX = new Pool(xfar, leafMat, { max: 9000, near: 650, far: 2000, extra, name: 'trees-' + name + '-xfar', castShadow: false });
-    const pT = new Pool(trunk, barkMat, { max: 1500, far: TNEAR, shadowFar: TNEAR, extra: bextra, name: 'trunks-' + name });
+    const pT = new Pool(trunk, barkMat, { max: 1500, near: ezNear, far: TNEAR, shadowFar: TNEAR, extra: bextra, name: 'trunks-' + name });
     const pTm = new Pool(trunkMid, barkMat, { max: 3000, near: TNEAR, far: 240, shadowFar: 170, extra: bextra, name: 'trunks-' + name + '-mid' });
     for (const p of [pN, pF, pX, pT, pTm]) { p.items = items; scene.add(p.mesh); pools.push(p); }
     out[name] = items;
@@ -774,6 +781,9 @@ export function buildTrees({ scene, T, spots, parkPaths }) {
       it.extra = { ...(it.extra ?? {}), aBark: [L, t[0] * v, t[1] * v, t[2] * v] };
     }
   }
+  // (pinata-and-trees) ez-tree near pools over the final item lists (tints + bark species are assigned by now)
+  const ez = EZA ? EZA.attach({ scene, out, pools }) : null;
+  out.ez = ez;
   // (veg r1) trunk collision: one vertical frustum (CYL) per tree, about the trunk radius, from just under the base to
   // <= 4 m (static, in the collision grid: no per-frame cost). The shrub border is walk-through. city.js calls this
   // after the props refit (fitInstancedSolids may cull solids inside a prop footprint).
@@ -806,7 +816,7 @@ export function buildTrees({ scene, T, spots, parkPaths }) {
   let rr = 0;
   let sunL = null;
   out.update = (dt, cam) => {
-    t += dt; leafMat.userData.uTime.value = t;
+    t += dt; leafMat.userData.uTime.value = t; ez?.update(t);
     // sun direction for the canopy shadow decals (the CSM's light 0; found once in the top-level scene)
     if (!sunL) { let top = scene; while (top.parent) top = top.parent; top.traverse(o => { if (!sunL && o.isDirectionalLight && o.castShadow) sunL = o; }); }
     if (sunL) shade.setSun(sunL);

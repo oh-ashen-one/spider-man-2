@@ -8,6 +8,8 @@ const PRESETS = {
     taa: true, bloomLevels: 5, dofTaps: 16, mbSamples: 6, sharpen: 0.25,
     charShadow: 0, ssr: false, shafts: false, shaftSteps: 0,
     ssgi: false, wet: false, // (lighting2 r1)
+    debris: 120, // (pinata-and-trees) live destruction fragments (0 = off)
+    eztree: false, grass: 0, // (pinata-and-trees) ez-tree near trees (false = the card trees everywhere), grass blades (0 = shader lawn only)
   },
   med: {
     name: 'med',
@@ -17,6 +19,7 @@ const PRESETS = {
     taa: true, bloomLevels: 6, dofTaps: 22, mbSamples: 8, sharpen: 0.3,
     charShadow: 1024, ssr: true, ssrSteps: 20, shafts: true, shaftSteps: 12,
     ssgi: true, ssgiDirs: 4, ssgiSteps: 4, wet: true, // (lighting2 r1)
+    debris: 200, eztree: true, grass: 0.6, // (pinata-and-trees)
   },
   high: {
     name: 'high',
@@ -27,6 +30,7 @@ const PRESETS = {
     taa: true, bloomLevels: 6, dofTaps: 43, mbSamples: 10, sharpen: 0.35,
     charShadow: 2048, ssr: true, ssrSteps: 28, shafts: true, shaftSteps: 16,
     ssgi: true, ssgiDirs: 6, ssgiSteps: 4, wet: true, // (lighting2 r1) SSGI + wet-patch roughness
+    debris: 300, eztree: true, grass: 1, // (pinata-and-trees)
   },
 };
 

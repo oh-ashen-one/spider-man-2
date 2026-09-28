@@ -244,5 +244,89 @@ S.suit = {
   tick(ctx, dt) { ctx.player.shotTick(dt); pipe(ctx).setMotionBlur?.(0); pipe(ctx).setFocus?.(1.4); pipe(ctx).setAperture?.(0); },
 };
 
+// (pinata-and-trees) vegetation before / after compositions: fixed world cameras over / inside the park and down a
+// tree-lined avenue at swing height; Spidey stands just in front of the lens (scale reference) or off-screen.
+function vegShot({ cam, tgt, fov = 55, subject = null, face = null, hud = false }) {
+  return {
+    frames: 110,
+    apply(ctx) {
+      const { world, player, camera } = ctx;
+      const c = V3(...cam), t = V3(...tgt);
+      if (c.y < 0) c.y = world.groundHeight(c.x, c.z) - c.y;
+      if (t.y < 0) t.y = world.groundHeight(t.x, t.z) - t.y;
+      const feet = subject ? V3(...subject) : c.clone().add(V3(0, -60, 0));
+      if (subject) feet.y = world.groundHeight(feet.x, feet.z);
+      const fwd = (face ? V3(...face) : t.clone().sub(c)).setY(0).normalize();
+      player.setPose({ pos: feet, forward: fwd, clip: 'idle', clipTime: 0.25, pose: POSES.idle(0), forceProcedural: !player.rig.hasClip('idle') });
+      placeCam(camera, c, t, fov);
+      ctx.hud.setVisible(hud);
+    },
+    tick(ctx, dt) { ctx.player.shotTick(dt); const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(40); p.setAperture?.(0); },
+  };
+}
+S.parkHigh = vegShot({ cam: [212, 42, -592], tgt: [30, 2, -800], fov: 58 });          // over the south-east corner, swing height
+S.parkLow = vegShot({ cam: [-80, -1.65, -742], tgt: [-40, -4.5, -690], fov: 60 });     // Sheep-Meadow edge, eye level, into the woods
+S.parkClose = vegShot({ cam: [-66, -1.7, -703], tgt: [-60, -5.5, -680], fov: 55 });    // one crown near the lens (leaf detail / wind)
+S.streetTrees = vegShot({ cam: [245, 13, 150], tgt: [245, 5, 60], fov: 58 });           // avenue sidewalk trees from swing height
+
+// (pinata-and-trees) destruction compositions: the nearest street prop of a kind to the spawn, camera in its local
+// frame (+x along the curb, +z toward the road), the break fired once the idle pre-fracture is done; captured `after`
+// frames (1/60 s each) later with the shards in the air. Destruction is initialised here (shot mode skips the systems).
+function destructShot({ kind, cam, tgt, fov = 50, fire, after = 14, near = null }) {
+  const st = { D: null, it: null, fired: -1, frame: 0 };
+  const loc = (it, l) => { const c = Math.cos(it.ry), s = Math.sin(it.ry); return V3(it.x + l[0] * c + l[2] * s, it.y + l[1], it.z - l[0] * s + l[2] * c); };
+  return {
+    frames: 60,
+    apply(ctx) {
+      const { world, player, camera } = ctx;
+      import('./game/destruction/index.js').then(m => { st.D = m.initDestruction(ctx); st.D.breakables.warm(); });
+      const P = world.propPool(kind), o = near ? V3(...near) : world.spawn;
+      let best = null, bd = Infinity;
+      for (const it of P.items) { if (it.y > 1.5) continue; const d = Math.hypot(it.x - o.x, it.z - o.z); if (d < bd) { bd = d; best = it; } }
+      st.it = best; st.loc = (l) => loc(best, l);
+      player.setPose({ pos: loc(best, [0, -60, 0]), forward: V3(0, 0, 1), clip: 'idle', clipTime: 0.25, pose: POSES.idle(0), forceProcedural: !player.rig.hasClip('idle') });
+      placeCam(camera, loc(best, cam), loc(best, tgt), fov);
+      ctx.hud.setVisible(false);
+    },
+    tick(ctx, dt, i) {
+      st.frame = i;
+      for (const s of ctx.systems) s.update?.(dt);
+      if (st.D && st.fired < 0 && i > 40 && st.D.breakables.ready()) { fire(st.D, st, ctx); st.fired = i; }
+      const p = pipe(ctx); p.setMotionBlur?.(0); p.setFocus?.(6); p.setAperture?.(0);
+    },
+    until: () => st.fired >= 0 && st.frame >= st.fired + after,
+  };
+}
+const brk = (D, st, l, r, o = {}) => D.breakAt(st.loc(l), r, { power: 5, ...o });
+S.glassBreak = destructShot({ kind: 'shelter', cam: [-1.2, 1.55, 5.2], tgt: [0.1, 1.25, -0.6], fov: 50, after: 9,
+  fire: (D, st) => brk(D, st, [0.4, 1.3, -0.7], 0.3, { dir: st.loc([0, 0, -5]).sub(st.loc([0, 0, 0])), power: 3 }) });
+S.glassBreakLate = destructShot({ kind: 'shelter', cam: [-1.2, 1.55, 5.2], tgt: [0.1, 0.6, -0.6], fov: 50, after: 150,
+  fire: (D, st) => brk(D, st, [0.4, 1.3, -0.7], 0.3, { dir: st.loc([0, 0, -5]).sub(st.loc([0, 0, 0])), power: 3 }) });
+S.hydrantBreak = destructShot({ kind: 'hydrant', cam: [2.6, 1.3, 3.2], tgt: [0, 0.6, 0], fov: 48, after: 12,
+  fire: (D, st) => brk(D, st, [0.5, 0.5, 0.4], 0.6, { power: 6, up: 5 }) });
+S.benchBreak = destructShot({ kind: 'bench', cam: [2.2, 1.6, 3.4], tgt: [0, 0.5, 0], fov: 50, after: 10,
+  fire: (D, st) => brk(D, st, [0, 0.9, 0.6], 0.3, { power: 6, up: 4 }) });
+S.newsBreak = destructShot({ kind: 'news', cam: [1.4, 1.7, 5.0], tgt: [0, 1.4, 0.8], fov: 50, after: 9,
+  fire: (D, st) => brk(D, st, [0, 1.5, 1.4], 0.3, { dir: st.loc([0, 0, -4]).sub(st.loc([0, 0, 0])), power: 3 }) });
+S.crateBreak = destructShot({ kind: 'bench', cam: [3.2, 1.5, 3.0], tgt: [0, 0.6, 1.2], fov: 50, after: 8,
+  fire: (D, st, ctx) => {
+    const g = new THREE.Group(); const b = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.6, 0.7), new THREE.MeshStandardMaterial()); b.position.y = 0.3; g.add(b);
+    g.position.copy(st.loc([0, 0.6, 1.4])); g.rotation.set(0.3, 0.6, 0.2); ctx.scene.add(g);
+    D.breakables.shatterCrate(g, st.loc([0.2, 0.8, 1.6]), st.loc([0, 0, -8]).sub(st.loc([0, 0, 0]))); ctx.scene.remove(g);
+  } });
+
+// a parked car near the spawn: side window + door panel; the camera is placed at fire time (cars stream in first)
+S.carBreak = destructShot({ kind: 'hydrant', cam: [3, 2, 3], tgt: [0, 0.5, 0], after: 10,
+  fire: (D, st, ctx) => {
+    ctx.world.shotClear = false;
+    const o = st.loc([0, 0, 0]);
+    const cars = (ctx.world.carsNear?.(o, 40) ?? []).filter(c => c.parked).sort((a, b) => Math.hypot(a.x - o.x, a.z - o.z) - Math.hypot(b.x - o.x, b.z - o.z));
+    const c = cars[0]; if (!c) return;
+    const fx = Math.cos(c.ry), fz = -Math.sin(c.ry), sx = -fz, sz = fx; // nose / left side
+    const hit = V3(c.x + sx * (c.wid / 2 + 0.1), 1.1, c.z + sz * (c.wid / 2 + 0.1));
+    placeCam(ctx.camera, V3(c.x + sx * 5.5 + fx * 2.5, 1.8, c.z + sz * 5.5 + fz * 2.5), V3(c.x, 0.9, c.z), 50);
+    D.hitCar(hit, 0.4, { dir: V3(-sx * 6, 0, -sz * 6) });
+  } });
+
 export const SHOTS = S;
 if (typeof window !== 'undefined') window.__SHOTS = S;
