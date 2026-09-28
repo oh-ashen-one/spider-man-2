@@ -22,7 +22,7 @@ Each suit folder contains exactly the four images to upload: `front.png`, `left.
 
 ## What to do in Tripo (web app)
 
-1. In **Generate Model**, click the **third icon** in the input row (the stacked pictures) to switch to multi-view. Upload `front.png`, `left.png`, `back.png` and `right.png` from one folder into the Front, Left, Back and Right slots. Leave **Generate Multi-Views** off, because the views already exist.
+1. In **Generate Model**, click the **second icon** in the input row (the cube) to switch to multi-view. Upload `front.png`, `left.png`, `back.png` and `right.png` from one folder into the matching slots. Tripo shows them as Front on top, then Left, Right and Back along the bottom. Leave **Generate Multi-Views** off, because the views already exist.
    - If there is no multiview option, use **Image to 3D** with `front.png` only.
 2. Use these settings. They are not checked against the current Tripo interface, so pick the closest match:
    - **Model:** the newest / highest-quality version.

@@ -23,7 +23,7 @@ The first draft of the dapper elder looked like a real famous actor, so he was r
 
 ## Tripo: citizens
 
-1. In **Generate Model**, click the **third icon** in the input row (the stacked pictures) for multi-view. Upload the four views from one folder into the Front, Left, Back and Right slots, and leave **Generate Multi-Views** off. If there is no multiview option, use **Image to 3D** with `front.png`.
+1. In **Generate Model**, click the **second icon** in the input row (the cube) for multi-view. Upload the four views from one folder into the matching slots. Tripo shows them as Front on top, then Left, Right and Back along the bottom, and leave **Generate Multi-Views** off. If there is no multiview option, use **Image to 3D** with `front.png`.
 2. Settings: newest model, **HD PBR texture**, full detail, keep the A-pose.
 3. **Skip auto-rig.** Claude moves each citizen onto the crowd's own 18-bone skeleton and bakes the 27 crowd animations for it.
 4. Export GLB as `citizen_01.glb` through `citizen_10.glb`, into `concepts/citizens/tripo/`.
