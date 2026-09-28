@@ -96,6 +96,9 @@ export function createSuitsPage(sys) {
   }
   function camera(dt) {
     const cam = ctx.camera, P = ctx.player;
+    // while the standing preview pose is held, tell rig.js' 'anim-fallback' system the animation already ran this frame:
+    // otherwise it re-runs the animator every menu frame (player.update is paused) and rewrites the frozen air pose
+    if (poseSave && P.rig) P.rig._ranThisFrame = true;
     targetYaw += dt * (dragX == null ? 0.12 : 0);
     yaw += (targetYaw - yaw) * (1 - Math.exp(-8 * dt));
     const center = _c.copy(P.position); center.y += 0.05;
@@ -111,6 +114,36 @@ export function createSuitsPage(sys) {
     ctx.pipeline.setMotionBlur?.(0);
   }
   let camSave = null;
+  // (3d-assets) the preview must show Spider-Man STANDING: opening the menu mid-swing / mid-fall used to freeze him in
+  // that air pose (flow.js stops player.update while a menu is up, so the bones keep their last pose). While the page is
+  // open the hero stands on the stage facing the preview camera with one frame of the idle clip; hide() restores the
+  // exact bones, so play resumes from where it paused.
+  let poseSave = null;
+  function standPose() {
+    const rig = ctx.player?.rig; if (!rig?.model || !rig.allClips?.length) return;
+    const bones = []; rig.model.traverse(o => { if (o.isBone) bones.push(o); });
+    poseSave = { bones: bones.map(b => [b, b.position.clone(), b.quaternion.clone(), b.scale.clone()]),
+      pos: rig.object.position.clone(), quat: rig.object.quaternion.clone(), vis: rig.object.visible };
+    const clip = rig.allClips.find(c => c.name === 'idle') || rig.allClips.find(c => /^idle/i.test(c.name));
+    // The animator carries the hero's world placement on the hips bone (and in some modes on rig.object); either way
+    // hips.getWorldPosition() is where he is. Move that placement onto rig.object, centre the hips, face the preview
+    // camera (it orbits at `yaw`, chosen in show() before this runs) and stand the feet on the stage (stageOn puts it at
+    // player.position.y - 0.95). The idle clip then only moves bones in character space.
+    const hips = rig.bones?.hips;
+    const where = hips ? hips.getWorldPosition(new THREE.Vector3()) : ctx.player.position.clone();
+    rig.object.position.set(where.x, ctx.player.position.y - 0.95, where.z);
+    rig.object.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw); rig.object.visible = true;
+    if (clip) { const m = new THREE.AnimationMixer(rig.model); m.clipAction(clip).play(); m.setTime(clip.duration * 0.25); } // no stop(): stopping would restore the air pose
+    if (hips) hips.position.set(0, hips.position.y, 0);
+    rig.object.updateMatrixWorld(true);
+  }
+  function restorePose() {
+    if (!poseSave) return;
+    const rig = ctx.player.rig;
+    for (const [b, p, q, s] of poseSave.bones) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(s); }
+    rig.object.position.copy(poseSave.pos); rig.object.quaternion.copy(poseSave.quat); rig.object.visible = poseSave.vis;
+    rig.object.updateMatrixWorld(true); poseSave = null;
+  }
 
   return {
     id: 'suits', title: 'Suits', el, seeThrough: true, camera,
@@ -128,11 +161,11 @@ export function createSuitsPage(sys) {
       }
       targetYaw = yaw; camDist = THREE.MathUtils.clamp(bestD, 1.3, 3.1);
       camSave = { p: ctx.camera.position.clone(), q: ctx.camera.quaternion.clone(), fov: ctx.camera.fov };
-      stageOn(); camDist = 3.1;
+      standPose(); stageOn(); camDist = 3.1;
       ctx.pipeline.resetHistory?.();
     },
     hide() {
-      stageOff();
+      stageOff(); restorePose();
       sys.suits.apply(save.state.suit);
       ctx.pipeline.setDof?.({ aperture: 0 });
       if (camSave) { ctx.camera.position.copy(camSave.p); ctx.camera.quaternion.copy(camSave.q); ctx.camera.fov = camSave.fov; ctx.camera.updateProjectionMatrix(); camSave = null; }
