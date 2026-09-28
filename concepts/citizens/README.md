@@ -6,8 +6,19 @@ These are ten original New York pedestrians, plus a kit of eight accessories any
 
 | Folder | Who |
 |---|---|
-| `01_retired_gent` | Tall, slim East Asian man in his 70s: trench coat, flat cap, round glasses |
-| `02`–`10` | **Coming next:** nine citizens based on real people in the owner's life, who have given permission to use their likeness. Their source photos are kept out of this public repo; only the generated character sheets are committed. |
+| `01_retired_gent` | Original character: tall, slim man in his 70s, trench coat, flat cap, round glasses |
+| `02_leather_jacket` | Leather bomber over a black hoodie, dark jeans, belt chain, boots |
+| `03_white_tee` | Styled hair and beard, white tee, striped linen trousers, silver chain |
+| `04_blue_sweatshirt` | Long dark hair, oversized blue sweatshirt, light jeans |
+| `05_black_tee` | Dark wavy hair, black tee, black trousers and sneakers |
+| `06_chrome_shades` | Curly bleached-tip hair, spiky chrome shades, black hoodie, cargo pants. Hair colour is split between views; re-roll with plain dark curls if Tripo struggles |
+| `07_black_graphic_tee` | Full beard, black tee with a small chest print, layered chains |
+| `08_black_suit` | Glasses, black suit and tie |
+| `09_kurta_waistcoat` | Full beard, navy waistcoat over a blue kurta, tan trousers, brown boots |
+| `10_silver_tie` | Glasses and beard, black suit, pale blue shirt, silver tie |
+| `11_graphic_tee_bonnet` | Satin bonnet, beard, oversized graphic tee, joggers |
+
+Citizens 02 to 11 are based on real people in the owner's life, who have given full permission to use their likeness in this game. Their source photos stay out of this public repo (`_photos/` is git-ignored). Prompts are in `prompts/real_people/`.
 
 Each folder contains exactly the four images to upload: `front.png`, `left.png`, `back.png` and `right.png`. The combined turnaround sheets live in `_sheets_reference_only/`. **Never upload a combined sheet to Tripo.** It builds four separate people. In `left.png` the character faces left in the image, and in `right.png` they face right. That is Tripo's slot convention; the opposite naming gave the Qwen suit a face on the back of its head. `contact_sheet.jpg` shows all ten at once.
 
@@ -17,7 +28,7 @@ Each folder contains exactly the four images to upload: `front.png`, `left.png`,
 1. In **Generate Model**, click the **second icon** in the input row (the cube) for multi-view. Upload the four views from one folder into the matching slots. Tripo shows them as Front on top, then Left, Right and Back along the bottom, and leave **Generate Multi-Views** off. If there is no multiview option, use **Image to 3D** with `front.png`.
 2. Settings: newest model, **HD PBR texture**, full detail, keep the A-pose.
 3. **Skip auto-rig.** Claude moves each citizen onto the crowd's own 18-bone skeleton and bakes the 27 crowd animations for it.
-4. Export GLB as `citizen_01.glb` through `citizen_10.glb`, into `concepts/citizens/tripo/`.
+4. Export GLB as `citizen_01.glb` through `citizen_11.glb`, into `concepts/citizens/tripo/`.
 
 Don't worry about polygon count in Tripo. Hundreds of citizens are on screen at once, so Claude cuts every model down to three levels of detail in Blender: about 5,000 triangles up close, about 1,500 in the middle distance and about 400 far away.
 
