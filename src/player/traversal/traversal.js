@@ -46,6 +46,7 @@ const SWING_DIP = 6;
 const SWING_GAIN = 5;       // climb assist target: exit this far above the attach height (m) — user r10f        // max arc dip below the attach height (m) — user r10f
 const RELEASE_BOOST = 1.5; // m/s added along the release velocity when the web is let go (x skill 'swingReleaseBoost')
 const SWING_DRAG = 0.0022;  // aerodynamic drag while swinging (1/m): a held swing with no input decays like a real pendulum
+const SOFT_DEFLECT = true;  // swing: glance off facades ahead instead of wall-kicking into them (false = previous behaviour)
 const PUMP_MAX_ANG = 1.15;  // pumping (W along the swing) never adds energy beyond what reaches ~75 deg of arc (chains stay in the canyon)
 const JUMP = 11.2, JUMP_MAX = 19.5;  // tap jump (~2.6 m, user r9: higher) / full charge (~7.9 m)
 const UP = new THREE.Vector3(0, 1, 0);
@@ -827,6 +828,24 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     if (clearance < 2.2 && s.vel.y < 0) S.ropeTarget = Math.min(S.ropeTarget, Math.max(3, S.pivot.y - (fl + 2.4 + H)));
     { const want = damp(S.rope, S.ropeTarget, clearance < 1.5 ? 10 : (S.kind === 'low' || clearance < 4) ? 6 : 3.2, h);
       S.rope = Math.max(want, S.rope - (clearance < 3 ? 22 : 14) * h); } // reel-in speed limit: the body is never yanked along the rope
+    // soft facade deflect: a pendulum around a wall anchor carries him toward facades; a facade within ~0.35 s of
+    // travel gradually turns the velocity INTO it along the wall (speed kept), so he glances off instead of slamming
+    // into the wall-kick
+    if (SOFT_DEFLECT) {
+      const sp = s.vel.length();
+      if (sp > 4) {
+        const look = Math.min(12, sp * 0.35 + 1);
+        const hit = world.raycast(s.pos, _v3.copy(s.vel).divideScalar(sp), look);
+        if (hit && Math.abs(hit.normal.y) < 0.5) {
+          const vn = s.vel.dot(hit.normal);
+          if (vn < 0) {
+            const k = clamp(1 - hit.distance / look, 0, 1) * (1 - Math.exp(-10 * h));
+            s.vel.addScaledVector(hit.normal, -vn * k);
+            const l = s.vel.length(); if (l > 1e-3) s.vel.multiplyScalar(sp / l);
+          }
+        }
+      }
+    }
     capSpeed();
     s.pos.addScaledVector(s.vel, h);
     // rigid web constraint: back on |R| = rope, velocity perpendicular to the new R (never slack: the web both pulls and
