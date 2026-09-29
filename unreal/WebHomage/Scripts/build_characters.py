@@ -43,6 +43,7 @@ def load(p): return unreal.load_asset(p)
 if 'prep' in STEPS:
     subprocess.run(['python3', WT + '/tools/ue_char/prep_glbs.py'], check=True, capture_output=True)
     subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_hand_fix.py'], check=True, capture_output=True)
     # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
     subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True)
     # street thug + brute: raw Tripo people (~/sm2-assets/raw) dressed, fitted to the hero skeleton (cached), textures + stripped GLBs
@@ -87,7 +88,8 @@ def suit_maps(s):
 
 if 'tex' in STEPS:
     H = ART + '/hero/tex'; TH = ART + '/thug/tex'
-    import_tex(H + '/suit_basecolor.png', ROOT + '/Hero/Textures', 'T_Hero_BaseColor', 'srgb')
+    # round 04: hand white paint inpainted (tools/ue_char/hero_hand_fix.py, run in 'prep'); falls back to the extracted texture
+    import_tex(H + ('/suit_basecolor_r4.png' if os.path.exists(H + '/suit_basecolor_r4.png') else '/suit_basecolor.png'), ROOT + '/Hero/Textures', 'T_Hero_BaseColor', 'srgb')
     import_tex(H + '/suit_normal.png', ROOT + '/Hero/Textures', 'T_Hero_Normal', 'normal_gl')   # glTF = OpenGL (curl test)
     import_tex(H + '/suit_orm.png', ROOT + '/Hero/Textures', 'T_Hero_ORM', 'linear')
     # fabric micro-normal (browser detail maps; curl test says DirectX convention -> no flip)
@@ -446,9 +448,9 @@ def make_abp(name, path, skel, idle, loco, jump=None, fall=None, land=None, take
 if 'abp' in STEPS:
     HA = ROOT + '/Hero/Anims/A_Hero_'
     # natural speeds (cm/s) of the hero clips = planted-foot (stance) speed of each clip (round 04; tools/ue_char/heroanim/foot_speed.py):
-    # walk 1.14, jog 3.10, run 5.95 (the 17/30 s round-04 run), sprint 8.99 m/s. The browser's LOCO anchors (walk 1.6, jog 4.5,
+    # walk 1.14, jog 3.10, run 5.70 (the 17/30 s round-04 run; median stance speed 5.95, 5.70 minimises the worst plant's slide: 2.8 cm), sprint 8.99 m/s. The browser's LOCO anchors (walk 1.6, jog 4.5,
     # run 8.5, sprint 14 m/s, src/player/anim/animator.js) make the feet slide; the lineup plays every clip at its own foot speed.
-    hero_loco = [(HA + 'walk', 114.0), (HA + 'jog', 310.0), (HA + 'run', 595.0), (HA + 'sprint', 899.0)]
+    hero_loco = [(HA + 'walk', 114.0), (HA + 'jog', 310.0), (HA + 'run', 570.0), (HA + 'sprint', 899.0)]
     # round 04: jumps start with the grounded runTakeoff crouch (the walker holds the actor on the ground for TakeoffTime), the air
     # pose after the jump clip is fallCalm (the old `fall` is a horizontal skydive pose: the round-03 critic's 'belly dive')
     make_abp('ABP_Hero_Lineup', ROOT + '/Hero', HERO_SKEL, HA + 'idle', hero_loco, HA + 'jump', HA + 'fallCalm', HA + 'landLight', HA + 'runTakeoff')
@@ -541,7 +543,7 @@ if 'map' in STEPS:
             a.set_editor_property('line_length', float(length)); a.set_editor_property('line_start', float(start))
             return a
         # hero side run (no hop) and run -> jump (grounded anticipation crouch, then the jump), both at the run clip's foot speed
-        RUN_V = 595.0
+        RUN_V = 570.0
         hero_run = line('Hero_RunLane', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (0, -400, 0), RUN_V, 9000, 4500 - 2600)
         hero_jump = line('Hero_JumpLane', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (0, 400, 0), RUN_V, 9000, 4500 - 1200, yaw=180.0)
         for k, v in (('hop_interval', 2.6), ('first_hop_delay', 1.3), ('takeoff_time', 0.25), ('hop_velocity', 470.0)):
