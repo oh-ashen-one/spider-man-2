@@ -1,29 +1,115 @@
 {
-  "updated": "2026-09-29 00:40",
-  "phase": "Wave 0 — foundations",
-  "headline": "Foundations are being built: the Unreal C++ project, the reference library from the real game, and an honest baseline of the browser build. City export and character evaluation started in parallel.",
-  "target": "Marvel's Spider-Man 2 quality at 3840×2160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
-  "pieces": [
-    {"id": "F1", "name": "Unreal C++ foundation", "branch": "night1/ue-foundation", "state": "building", "round": 1, "verdict": "", "gap": "Compile route with Xcode 27 unverified"},
-    {"id": "F2", "name": "Reference library", "branch": "spiderman-learnings · night1/refs", "state": "building", "round": 1, "verdict": "", "gap": ""},
-    {"id": "F3", "name": "Browser baseline + playtest", "branch": "night1/browser-baseline", "state": "building", "round": 1, "verdict": "", "gap": ""},
-    {"id": "P1", "name": "City: export, facades, streets", "branch": "night1/city", "state": "building", "round": 1, "verdict": "", "gap": ""},
-    {"id": "P2", "name": "Characters: hero, suits, crowd", "branch": "night1/characters", "state": "building", "round": 1, "verdict": "", "gap": ""},
-    {"id": "P3", "name": "Traversal + camera", "branch": "night1/traversal", "state": "queued", "round": 0, "verdict": "", "gap": "Waits for the C++ foundation"},
-    {"id": "P4", "name": "Look: lighting, post, 4K perf", "branch": "night1/look", "state": "queued", "round": 0, "verdict": "", "gap": "Waits for the first city tiles"},
-    {"id": "P5", "name": "Combat", "branch": "night1/combat", "state": "queued", "round": 0, "verdict": "", "gap": "Wave 2"},
-    {"id": "P6", "name": "City life: crowd, traffic, water", "branch": "night1/life", "state": "queued", "round": 0, "verdict": "", "gap": "Wave 2"}
-  ],
-  "comparisons": [],
-  "clips": [],
-  "critic": [],
-  "perf": [],
-  "gaps": [
-    "Unreal port does not exist yet beyond an empty project with a working MCP server.",
-    "No measured 4K/60 numbers yet for either build."
-  ],
-  "log": [
-    {"t": "00:06", "text": "UE 5.8.3 installed; WebHomage project up with the official MCP on port 8765; spawn/remove round-trip verified."},
-    {"t": "00:30", "text": "Ownership contract NIGHT1.md committed; five agents launched (F1, F2, F3, P1, P2)."}
-  ]
+ "updated": "2026-09-29 06:05",
+ "phase": "Wave 0 \u2014 foundations",
+ "headline": "All agents stopped around 01:00 when the weekly usage limit ran out; it reset at 06:00. Foundation, reference library and city are resumed; baseline playtest and characters resume when a slot frees up (max three agents at once to protect the week's budget).",
+ "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
+ "pieces": [
+  {
+   "id": "F1",
+   "name": "Unreal C++ foundation",
+   "branch": "night1/ue-foundation",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": "Compile route with Xcode 27 unverified"
+  },
+  {
+   "id": "F2",
+   "name": "Reference library",
+   "branch": "spiderman-learnings \u00b7 night1/refs",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": ""
+  },
+  {
+   "id": "F3",
+   "name": "Browser baseline + playtest",
+   "branch": "night1/browser-baseline",
+   "state": "queued",
+   "round": 1,
+   "verdict": "",
+   "gap": "Paused by usage limit; work-in-progress kept in its worktree"
+  },
+  {
+   "id": "P1",
+   "name": "City: export, facades, streets",
+   "branch": "night1/city",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": ""
+  },
+  {
+   "id": "P2",
+   "name": "Characters: hero, suits, crowd",
+   "branch": "night1/characters",
+   "state": "queued",
+   "round": 1,
+   "verdict": "",
+   "gap": "Paused by usage limit; work-in-progress kept in its worktree"
+  },
+  {
+   "id": "P3",
+   "name": "Traversal + camera",
+   "branch": "night1/traversal",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "Waits for the C++ foundation"
+  },
+  {
+   "id": "P4",
+   "name": "Look: lighting, post, 4K perf",
+   "branch": "night1/look",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "Waits for the first city tiles"
+  },
+  {
+   "id": "P5",
+   "name": "Combat",
+   "branch": "night1/combat",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "Wave 2"
+  },
+  {
+   "id": "P6",
+   "name": "City life: crowd, traffic, water",
+   "branch": "night1/life",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "Wave 2"
+  }
+ ],
+ "comparisons": [],
+ "clips": [],
+ "critic": [],
+ "perf": [],
+ "gaps": [
+  "Unreal port does not exist yet beyond an empty project with a working MCP server.",
+  "No measured 4K/60 numbers yet for either build."
+ ],
+ "log": [
+  {
+   "t": "00:06",
+   "text": "UE 5.8.3 installed; WebHomage project up with the official MCP on port 8765; spawn/remove round-trip verified."
+  },
+  {
+   "t": "00:30",
+   "text": "Ownership contract NIGHT1.md committed; five agents launched (F1, F2, F3, P1, P2)."
+  },
+  {
+   "t": "~01:00",
+   "text": "All six agents hit the weekly usage limit and stopped mid-round; nothing lost (uncommitted work kept in each worktree)."
+  },
+  {
+   "t": "06:00",
+   "text": "Limit reset. Resumed F1, F2, P1. Concurrency capped at three agents."
+  }
+ ]
 }
