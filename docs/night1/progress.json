@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 06:25",
+ "updated": "2026-09-29 08:05",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "The Unreal C++ foundation is merged: it compiles with Xcode 27 and runs the game offscreen at true 3840\u00d72160 with scripted screenshots, perf stats and 60 fps video. Traversal has started; the reference library and the city are in progress.",
+ "headline": "Traversal round 1 is in Unreal (C++ port of the browser swing system and camera) and the first harsh critic has judged it: FAILS TARGET. Biggest gap: swings are flat, so the builder is making each swing a real vertical pendulum with a camera that follows height.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -53,10 +53,10 @@
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": ""
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (arc 3, camera 3, web 3, moves 2, body 2)",
+   "gap": "Swings are flat: no drop to street level and rise; camera rides a rail"
   },
   {
    "id": "P4",
@@ -88,6 +88,24 @@
  ],
  "comparisons": [
   {
+   "title": "Traversal round 1 \u2014 swing chain (critic contact sheet)",
+   "note": "Frames 0\u20133 s of the scripted swing chain. The critic's point is visible here: same height and framing in every frame.",
+   "images": [
+    {
+     "label": "Round 1 swing chain, 10 fps contact sheet",
+     "src": "docs/night1/traversal/critic/round-01-a_contact.jpg"
+    },
+    {
+     "label": "Round 1 4K still",
+     "src": "docs/night1/traversal/round-01/stills/a_swing_chain_00_t002.6.jpg"
+    },
+    {
+     "label": "Round 1 4K still",
+     "src": "docs/night1/traversal/round-01/stills/a_swing_chain_01_t005.0.jpg"
+    }
+   ]
+  },
+  {
    "title": "Unreal foundation \u2014 first 4K frame",
    "note": "True 3840\u00d72160 output, 1920\u00d71080 internal. Gray-box only; the city and hero come from P1/P2.",
    "images": [
@@ -100,12 +118,34 @@
  ],
  "clips": [
   {
+   "title": "Traversal R1 \u2014 swing chain",
+   "src": "docs/night1/traversal/round-01/a_swing_chain.mp4",
+   "caption": "gray-box canyon, placeholder body; 60 fps offline capture"
+  },
+  {
+   "title": "Traversal R1 \u2014 release, trick, dive, zip",
+   "src": "docs/night1/traversal/round-01/b_release_trick_dive_zip.mp4"
+  },
+  {
+   "title": "Traversal R1 \u2014 wall-run to perch",
+   "src": "docs/night1/traversal/round-01/c_wallrun_perch.mp4"
+  },
+  {
    "title": "UE foundation gray-box",
    "src": "docs/night1/ue-foundation/round-01/foundation_test_1080p60_dumpmovie.mp4",
    "caption": "placeholder capsule running in the test map; 60 fps fixed-step capture"
   }
  ],
- "critic": [],
+ "critic": [
+  {
+   "t": "08:00",
+   "piece": "P3 Traversal",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Swings are flat: the hero holds one height down a rail-like corridor. Each swing must drop 2\u20134 storeys above the street and rise past the anchor, with the camera following height (vanishing point moving \u226515% of frame).",
+   "notes": "Reference won all four A/B pairs. Secondary: released web sweeps across the lens; camera clips into the hero during wall-run; wall-run has a frozen pose then a T-pose; tricks fire on every release. Scores: arc 3, camera 3, web 3, moves 2, body 2."
+  }
+ ],
  "perf": [
   {
    "what": "UE foundation gray-box, hero auto-run (HW ray tracing on)",
@@ -157,6 +197,10 @@
   {
    "t": "06:22",
    "text": "P3 traversal + camera started (C++ port of traversal.js/camera.js with scripted input replays)."
+  },
+  {
+   "t": "08:00",
+   "text": "P3 round 1 merged; critic verdict FAILS TARGET; builder sent back on the flat-swing gap."
   }
  ]
 }
