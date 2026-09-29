@@ -1,4 +1,4 @@
-# P3 Traversal + camera — handoff (after round 07)
+# P3 Traversal + camera — handoff (after round 08)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
@@ -70,6 +70,17 @@ Round 06 sub names: air `topOut` (wall-run reached the top), land `landTopOut` (
 - **Camera round 07**: `ChaseHeight` 1.8 (held `CamZMin..Max` 1.2-2.6), `PitchDownMin` 10 deg (critic: 10-25 deg down in canyons);
   attach look-up x clamp(1 - (fall - 8) / 14) and 12 deg bottom margin (the new swoops dropped the hero off the frame);
   attach yaw turn capped 25 deg, 0.12 s spring (a 45 deg / 0.1 s whip in d).
+- **Canyon keeping** (round 08, critic r07: arcs carried him into facades, a 14.3 s / d 6.9 s): `Corridor()` rewritten. 8
+  horizontal rays (every 0.05 s) find facade planes beside the travel direction (|N . heading| <= 0.5); along each normal the
+  approach speed is capped at 2.5 m/s per m above `WallClearance` 3.5 m; between two opposite walls a damped spring
+  (`WallKeepRate` 2.5 /s) steers to 1.2 /s x (metres off the centre line), <= 8 m/s. Runs while swinging and in the air from the
+  release on (was: only >= 0.9 s after a release). The old version pushed away from the nearer wall with no damping and
+  measured drift in the velocity's own frame, so chains zig-zagged into facades and out through intersections. A stick pushed
+  into a near wall (<8 m) disables it (wall-run intent). Result: a / d stay within ~2 m of the centre line, >= 13 m from facades.
+- **Camera facade clearance** (round 08): sideways rays from the camera; spring toward `CamWallSoft` 3 m, hard `CamWallHard`
+  1.5 m, never moved past the hero's line of sight.
+- **Blur / web** (round 08): motion blur 0 below 28 m/s, 0.35 x smoothstep(28, 50) (dive x 1.3), max 1-3 % (was 0.15 base, up
+  to 0.65, max 7 %); web strands 1.2 cm / >= ~1.2 px, grey, no emissive (was 2.2 cm, emissive 0.35 -> bloom).
 - **Pop fixes** (round 06): body roll / pitch leans are springs (`RollA/PitchA`, rate 14); the character's air-sway weight
   `SwayW` ramps 0.2 s (was full amplitude the frame a trick ended); chase pitch may pass 22 deg down when collision lifts the
   camera (hero centre kept <= 0.62 of the frame).
@@ -88,6 +99,7 @@ python3 docs/night1/traversal/anim_check.py <telemetry.csv> <label>   # T-pose f
 python3 docs/night1/traversal/cam_check.py  <telemetry.csv> <label>   # model bbox, in frame, cam-hero distance, cam in geometry, pitch
 python3 docs/night1/traversal/drop_test.py  <telemetry.csv> [--skip-first]   # release->low point drop ≥15 m, arcs differ
 python3 docs/night1/traversal/cadence_check.py <telemetry.csv> <label> [12]   # attaches, swing s, web-less gaps, drop, rope on screen, body vs rope
+python3 docs/night1/traversal/facade_check.py <telemetry.csv> <label> t0:t1 ...   # rendered: wall_frac <= 0.30, hero never occluded, facade distances
 python3 docs/night1/traversal/wall_check.py <telemetry.csv> <label>   # wall-run: limb phases @6 fps, head>hips, steps/s, px in frame through top-out
 python3 docs/night1/traversal/scripts/bake_keys.py <auto.json> <telemetry.csv> <out.json> <name>  # rule → plain timed keys
 python3 docs/night1/traversal/make_shotlist.py <round dir> "round NN" <commit>   # neutral SHOTLIST.md
@@ -95,7 +107,7 @@ python3 docs/night1/traversal/make_shotlist.py <round dir> "round NN" <commit>  
 capture_round.sh renders an unrecorded 960x540 warm-up pass first (shader compile after a DDC wipe) and runs every sequence with a 0.8 s pre-roll that is trimmed.
 Tuning without a rebuild: `-WHTravTune=MaxArcRope=30,PendingVz=5` (any float UPROPERTY of the traversal component).
 RULES: never a 4th Unreal instance (capture_round.sh waits; probe loops should `pgrep -f 'MacOS/UnrealEditor( |$)'` first).
-Telemetry (round 06 adds `head_hip_dz`, `limb_z`; round 07 `body_rope_deg`, `web_on`) quirk: `anim_*`, `pose_sig`, `head_hip_dz`, `limb_z`, `pcm_*`, `px_*` are sampled at the start of the next frame (mesh evaluates / camera
+Telemetry (round 06 adds `head_hip_dz`, `limb_z`; round 07 `body_rope_deg`, `web_on`; round 08 `wall_frac`, `hero_occl` from a full-scene depth capture) quirk: `anim_*`, `pose_sig`, `head_hip_dz`, `limb_z`, `pcm_*`, `px_*` are sampled at the start of the next frame (mesh evaluates / camera
 manager caches / capture renders after the actor tick); the checkers shift them one row. Stop only your own processes:
 `pkill -9 -f "/Users/midir/sm2-n1/traversal/unreal/WebHomage/WebHomage.uproject"`.
 
@@ -172,6 +184,20 @@ Open: model-bbox check (CAM_CHECK) flags c 1.52-2.50 s (padded bone boxes touch 
 Notes: d starts on the street (first web at 2.7 s), so its 12 s window has 5 attaches and 69 % rope; the targets are for a.
 Camera snaps (per-frame camera move > hero move + 0.5 m, or yaw > 6 deg) in the headless runs: none in a / b / c / d.
 
+## 6d. Round-08 checks (captures in `round-08/`, from the rendered videos' telemetry)
+| Check | Result |
+|---|---|
+| a 13.5-15.5 s / d 6.5-7.5 s: near-wall share (non-hero, non-street pixels within 6 m), need <= 30 % | 0 % / 0 % (whole a, d, b-to-zip: 0 %) |
+| Hero occluded (> 2 % of his pixels behind geometry) | 0 frames in a, b, d |
+| Hero / camera to nearest facade while swinging | a >= 13.1 / 13.2 m, d >= 13.6 / 13.4 m (r07: 1.1 / 1.2 m, 0.6 / 1.6 m) |
+| Pixel framing >= 160 px | a 91.9 %, b 95.2 %, c 95.0 %, d 95.5 % |
+| Cadence (a, 12 s) | 7 attaches, swings 1.15-1.75 s, rope on screen 81.1 %, body vs rope <= 4.4 deg |
+| Drop test a / d, T-pose, air variety, camera in geometry | PASS / PASS, 0, 0, 0 |
+| Wall-run (c) | 14 limb phases, 17/17 head up, 272/272 in frame |
+Notes: the attach FOV widening is capped at 10 deg (`AttachFovMax`, was 26; its 92-95 deg frames shrank the hero). The swing
+chain now runs close to the canyon centre line (|y| < 2 m on a) — the weave is gone; a later round may want a gentle, bounded
+weave. b perches on the B03 podium roof (198.6, 15.4, 49.6).
+
 ## 7. Critic history (blind critic vs Marvel's Spider-Man 2 refs; arc / camera / web / moves / body)
 | Round | Scores | Biggest gap | What changed next |
 |---|---|---|---|
@@ -181,6 +207,7 @@ Camera snaps (per-frame camera move > hero move + 0.5 m, or yaw > 6 deg) in the 
 | r04 | 4/3/4/3/4 | Framing: hero 4-6 % of frame, camera far/steep, no sky; metric distrusted | r05 close camera, attach look-up, pixel-true measurement |
 | r05 | 5/3/5/4/3 | Wall-run: camera behind/below pitched 20-35° up the facade with the roof edge; head-up body, alternating hands/feet 2-3 steps/s; test ≥4 limb phases at 6 fps, head above hips, hero in frame through the top-out (ref wallrun-glass-midday 2-6 s) | r06 head-up sprint-stride wall-run, up-the-facade wall camera, flip top-out + crouch landing, release pop springs, suit warm-up |
 | r06 | 4/4/5/4/4 | Swing cadence: ~4 s cycles, 3 attaches in 12 s, 1.5-2 s web-less falls; target attach->release 1.2-1.8 s, next web <= 0.5 s, no web-less fall > 0.6 s without a trick, body within 15 deg of the rope at the bottom; test >= 7 attaches in 12 s, rope on screen >= 75 % | r07 short virtual-pivot arcs, release climb cap, immediate re-search + pending attach on the rise, body-along-web, canyon camera pitch |
-| r07 | (critic pending) | | |
+| r07 | 4/3/4/4/4 | Facade clearance + occlusion during swings (a 14.3-14.8 s, d 6.8-7.3 s): path >= 3 m from walls, camera >= 1.5 m, no facade > 30 % of frame, hero never occluded; also blur on everything, thick blooming rope (orchestrator: the critic's "hero 6-8 % of frame" was wrong, ~17 %) | r08 wall-frame canyon keeping, camera wall clearance, wall_frac / hero_occl capture, blur only at speed, thin matte web |
+| r08 | (critic pending) | | |
 
 Round folders `docs/night1/traversal/round-0N/` hold videos, stills, telemetry, SHOTLIST, CRITIC and the check outputs.
