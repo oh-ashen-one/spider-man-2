@@ -4,7 +4,8 @@
 the sanitised atlas PNGs (as imported into Unreal) are OCR'd cell by cell.  usage: ip_ocr_check.py <round_dir> [atlas_png_dir]"""
 import glob, os, subprocess, sys, tempfile
 from PIL import Image, ImageOps
-DENY = ['OSCORP', 'OSBORN', 'ROXX', 'BUGLE', 'FROSTED', 'HALOS', 'BOTANICA', 'MIRA', 'HYDRA', 'EMPIRE STATE', 'COLTEX', 'COLEX', 'HAUTE', 'ASTOR', 'MADISON', 'BOREAL', 'OUTDOOR', 'KNIGHTS', 'HELL\'S KITCHEN', 'STARK', 'WAYNE']
+import json
+DENY = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'docs', 'night1', 'city', 'spec_regions.json')))['ip_denylist']  # single source, shared with city_spec_check.py
 tmp = tempfile.mkdtemp()
 def ocr(img):
     txt = ''
