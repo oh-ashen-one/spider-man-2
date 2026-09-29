@@ -34,17 +34,16 @@ for name in names:
         os.makedirs(EXP, exist_ok=True)
         shutil.copy(png, os.path.join(EXP, name + '_basecolor.png'))
         png = os.path.join(EXP, name + '_basecolor.png')
-    clips = (walk, 'run', 'idle') if mode == 'fbx' else (walk, 'run')
+    # round 04: every walk style goes into the FBX under its own take name (UE imports the takes of the first citizen only; all
+    # citizens share the 18-bone skeleton), so the crowd can mix walk / walkF / walkBrisk / walkStroll / walkOld
+    clips = ('walk', 'walkF', 'walkBrisk', 'walkStroll', 'walkOld', 'run', 'idle') if mode == 'fbx' else (walk, 'run')
     R = citizen_rig.build(name, clips=clips, tex=png)
-    err = citizen_rig.recon_error(R, clip=walk)
+    err = citizen_rig.recon_error(R, clip='idle' if mode == 'fbx' else 'run')   # idle / run keep its frame times (walks are time-warped since round 04)
     g = R['g']
     info = {'name': name, 'female': var['female'], 'verts': len(g['pos']), 'tris': len(g['idx']),
             'recon_err_m': err, 'fit_rms_cm': var.get('fit_rms_cm')}
     if mode == 'fbx':
         arm, ob = R['arm'], R['ob']
-        if walk != 'walk':                      # female gait exported under the common take name
-            R['acts'][walk].name = 'walk'
-            R['acts']['walk'] = R['acts'].pop(walk)
         # the mesh uses the exported PNG next to the FBX
         for o in bpy.context.scene.objects:
             o.select_set(o in (arm, ob))

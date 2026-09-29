@@ -308,7 +308,7 @@ def clear_graphic(img, pos, cov):
     """chest print on a dark tee -> plain tee (no copied / pseudo graphics). Front torso band, bright texels on the dark shirt."""
     x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
     a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
-    band = cov & (y > 0.98) & (y < 1.31) & (np.abs(x) < 0.24) & (z > -0.03)
+    band = cov & (((y > 0.98) & (y < 1.31) & (np.abs(x) < 0.24)) | ((y > 1.29) & (y < 1.43) & (x > 0.035) & (x < 0.19))) & (z > -0.03)   # chest print + left-chest logo; the neck chains (|x| < 0.035) stay
     shirt = band & (lum < 45)
     tee = np.median(a[shirt], 0) if shirt.any() else np.array([28, 28, 32], np.float32)
     sel = band & (lum >= 45)
@@ -336,6 +336,22 @@ def tint_region(img, pos, cov, region, color):
     soft = ndi.gaussian_filter(sel.astype(np.float32), 0.8)
     out = a * (1 - soft[..., None]) + out * soft[..., None]
     return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
+
+
+# ------------------------------------------------------------------------------------------------------ weapon tiles
+WEAPON_X0 = 3584            # strip columns [3584, 4096): solid material tiles for tools/ue_char/weapons/add_weapon.py
+WEAPON_TILES = [('wood', (150, 108, 66)), ('steel', (104, 108, 114)), ('polymer', (30, 30, 33)), ('grip', (44, 40, 38)), ('tape', (24, 24, 26))]
+
+
+def weapon_tiles():
+    h = ATLAS - CONTENT_H
+    out = np.zeros((h, ATLAS - WEAPON_X0, 3), np.float32)
+    rng = np.random.RandomState(5)
+    for k, (nm, col) in enumerate(WEAPON_TILES):
+        y0, y1 = int(h * k / len(WEAPON_TILES)), int(h * (k + 1) / len(WEAPON_TILES))
+        g = ndi.gaussian_filter(rng.randn(y1 - y0, ATLAS - WEAPON_X0), 2.0); g /= g.std() + 1e-6
+        out[y0:y1] = np.asarray(col, np.float32)[None, None, :] * (1 + 0.03 * g[..., None])
+    return np.clip(out, 0, 255).astype(np.uint8)
 
 
 # ------------------------------------------------------------------------------------------------------ cap (accessory)
@@ -472,9 +488,12 @@ def main():
         P2, cv, cn, cuv, cf, strip, cinfo = fit_cap(P, F, cfg, cfg['seed'])
         info.update(cinfo)
         m = 6.0 / ATLAS
-        cuv2 = np.stack([np.clip(cuv[:, 0], m, 1 - m), (CONTENT_H + m * ATLAS + np.clip(cuv[:, 1], 0, 1) * (ATLAS - CONTENT_H - 2 * m * ATLAS)) / ATLAS], -1)
+        cuv2 = np.stack([np.clip(cuv[:, 0], m, 1 - m) * (WEAPON_X0 / ATLAS), (CONTENT_H + m * ATLAS + np.clip(cuv[:, 1], 0, 1) * (ATLAS - CONTENT_H - 2 * m * ATLAS)) / ATLAS], -1)
         Pf = np.concatenate([P2, cv]); Nf = np.concatenate([N, cn]); UVf = np.concatenate([UV2, cuv2]); Ff = np.concatenate([F, cf + len(P2)])
         info['cap_tris'] = len(cf)
+
+    strip = np.asarray(Image.fromarray(strip).resize((WEAPON_X0, ATLAS - CONTENT_H), Image.LANCZOS)) if cfg.get('cap') else strip[:, :WEAPON_X0]
+    strip = np.concatenate([strip, weapon_tiles()], 1)
 
     def atlas_of(img):
         at = np.zeros((ATLAS, ATLAS, 3), np.uint8)

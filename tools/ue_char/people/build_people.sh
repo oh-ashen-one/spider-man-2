@@ -36,6 +36,16 @@ for c in $PEOPLE; do
     cp "$v" "$ART/${c}_${t}_basecolor.png"
   done
 done
+# hand weapons (Blender headless, generic shapes) rigidly skinned into the right hand: SK_Street_<Person>_<Weapon>.glb
+W="$SCR/weapons"; mkdir -p "$W"
+if [ ! -f "$W/pistol.glb" ] || [ "$WT/tools/ue_char/weapons/make_weapons.py" -nt "$W/pistol.glb" ]; then
+  /Applications/Blender.app/Contents/MacOS/Blender -b -P "$WT/tools/ue_char/weapons/make_weapons.py" -- "$W" > "$W/make.log" 2>&1
+fi
+for pw in Thug:bat Thug:pistol Brute:pipe Hood:pistol Tee:bat Beard:pipe; do
+  N=${pw%%:*}; K=${pw##*:}; KC="$(python3 -c "print('$K'.capitalize())")"
+  python3 "$WT/tools/ue_char/weapons/add_weapon.py" "$SCR/fit/Street$N.glb" "$W/$K.glb" "$SCR/fit/Street${N}_$KC.glb" > /dev/null
+  python3 "$WT/tools/ue_char/strip_glb.py" "$SCR/fit/Street${N}_$KC.glb" "$GLB/SK_Street_${N}_$KC.glb" > /dev/null
+done
 # upright / heavy walk clips (numpy IK on the hero walk), appended to a copy of the thug fit; UE imports only the animations from it
 python3 "$WT/tools/ue_char/people/make_walk.py" "$SCR/fit/StreetThug.glb" "$SCR/fit/walks.glb" > "$SCR/fit/walks.log"
 python3 "$WT/tools/ue_char/strip_glb.py" "$SCR/fit/walks.glb" "$GLB/SK_Street_Walks.glb" > /dev/null
