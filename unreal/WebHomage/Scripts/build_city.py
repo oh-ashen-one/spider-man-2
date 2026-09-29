@@ -46,14 +46,14 @@ if 'clean' in STEPS:
 
 # ------------------------------------------------------------------------------------------------ textures
 PLAIN_SRGB = {'interiors': True, 'signs': True, 'noise': False, 'detail_nrm': False, 'asphalt_col': True, 'asphalt_nrm': False, 'asphalt_macro': False,
-              'asphalt_decals': False, 'sidewalk_col': True, 'sidewalk_nrm': False, 'curb_col': True, 'markings': True, 'leaves': True, 'water_nrm': False, 'street_signs': True}
+              'asphalt_decals': False, 'sidewalk_col': True, 'sidewalk_nrm': False, 'curb_col': True, 'markings': True, 'leaves': True, 'water_nrm': False, 'street_signs': True, 'coast_atlas': True, 'farland_map': True}
 ARRAYS = {'walls_col': (16, True), 'walls_nrm': (16, False), 'walls_hao': (17, False), 'roof_col': (19, True), 'roof_nrm': (19, False)}
 if 'tex' in STEPS:
     import_files([os.path.join(TEX, k + '.png') for k in PLAIN_SRGB], ROOT + '/Textures')
     for k, s in PLAIN_SRGB.items():
         t = load(f'{ROOT}/Textures/{k}')
         tex_settings(t, s, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP if k == 'noise' else unreal.TextureCompressionSettings.TC_BC7,
-                     wrap=k not in ('interiors', 'signs', 'markings', 'leaves', 'street_signs'))
+                     wrap=k not in ('interiors', 'signs', 'markings', 'leaves', 'street_signs', 'coast_atlas', 'farland_map'))
 
     maps = sorted(f for f in os.listdir(os.path.join(TEX, 'maps')) if f.endswith('.png'))
     import_files([os.path.join(TEX, 'maps', f) for f in maps], ROOT + '/Textures/Maps')
@@ -192,8 +192,9 @@ if (dbgmode > 6.5 && dbgmode < 7.5) { col = float3(0, 0, 0); em = 0.3 * Texture2
 if (dbgmode > 7.5 && dbgmode < 8.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI > 2.0, gLodI > 4.0, gLodI > 6.0); }
 if (dbgmode > 8.5 && dbgmode < 9.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI > 7.0, gLodI > 8.0, gLodI > 8.9); }
 if (dbgmode > 9.5 && dbgmode < 10.5) { col = float3(0, 0, 0); em = 0.3 * Texture2DSampleLevel(tSigns, tSignsSampler, frac(uv0 * 0.02), 0.0).rgb; }
+if (dbgmode > 10.5 && dbgmode < 11.5) { col = float3(0, 0, 0); em = float3(0.05, 0, 0); }   // facade-only mask (CITY-SPEC C1 check)
 if (dbgmode > 3.5 && dbgmode < 4.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI / 9.0, saturate(length(gDx) * 100.0), saturate(vF.y / 16.0)); }
-Rough = (dbgmode > 2.5 && dbgmode < 3.5) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = (dbgmode > 2.5 && dbgmode < 3.5) ? 0.0 : lerp(0.5, glassspec, g * gSash);
+Rough = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 0.0 : lerp(0.5, glassspec, g * gSash);
 return col;''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
          ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise'))]
@@ -265,6 +266,107 @@ return c;''',
         [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1))],
         [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
         blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    # (r06) far field. M_CityFarMass = farshore.js createMassMaterial port (far-shore blocks: window grid, spandrels, glass towers, night lights);
+    # vertex alpha = window flag from the exporter (0 none / 0.5 windows / 1 glass), colour = block tone.
+    make_material('M_CityFarMass', None, r"""
+#define HASH(q) frac(sin(dot((q), float2(127.1, 311.7))) * 43758.5453)
+float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01; float3 base = vc.rgb * float3(1.12, 1.02, 0.86); float fl = vc.a;   // (r06) warm-neutral push, as the far facade LOD
+float3 c = base; float3 dnE = float3(0, 0, 0);
+if (fl > 0.25) {
+  float along = p.x + p.z;
+  float2 fw = fwidth(float2(p.y / 3.3, along / 2.4));
+  float sub = saturate(max(fw.x, fw.y) * 0.85);   // (r06) UE renders 50-73 % internal resolution + TSR: keep the grid readable one step further out
+  float2 gid = floor(float2(along / 1.6, p.y / 3.9));
+  if (fl > 0.75) {
+    float mul = frac(along / 1.6), fl2 = frac(p.y / 3.9);
+    float frame = max(1.0 - step(0.1, mul), 1.0 - step(0.12, fl2));
+    float3 gl = lerp(float3(0.1, 0.13, 0.16), float3(0.34, 0.4, 0.46), smoothstep(0.0, 180.0, p.y) * 0.6 + 0.25 * HASH(gid));
+    float3 cc = lerp(gl, base * 0.9, frame * 0.8);
+    c = lerp(cc, lerp(float3(0.14, 0.17, 0.2), float3(0.28, 0.33, 0.37), smoothstep(0.0, 200.0, p.y)), sub);
+    dnE = lerp(float3(0.8, 0.88, 1.0) * (1.0 - frame) * step(0.62, HASH(gid + 5.3)), float3(0.02, 0.022, 0.026), sub);
+  } else {
+    float fl2 = frac((p.y - 1.2) / 3.3), u = frac(along / 2.4);
+    float w = step(0.3, fl2) * step(fl2, 0.82) * step(0.28, u) * step(u, 0.74);
+    float2 wid = floor(float2(along / 2.4, (p.y - 1.2) / 3.3));
+    float3 wc = float3(0.07, 0.08, 0.095) * (0.7 + 0.9 * HASH(wid)) + float3(0.1, 0.09, 0.07) * step(0.93, HASH(wid + 3.1));
+    float3 cc = lerp(base, wc, w);
+    c = lerp(cc, lerp(base, wc, 0.33), sub);
+    dnE = lerp(float3(1.0, 0.72, 0.42) * w * step(0.55, HASH(wid + 7.7)), float3(0.026, 0.018, 0.01), sub);
+  }
+  c *= 0.62 + 0.38 * smoothstep(0.0, 14.0, p.y - 1.2);
+}
+Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * 1.4 * escale;
+if (dbgmode > 8.5 && dbgmode < 9.5) { Emis = float3(vc.a, 0, 1.0 - vc.a) * 0.05; c = float3(0, 0, 0); }
+if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0.05, 0); c = float3(0, 0, 0); Spec = 0.0; }   // window-test mask: far-shore blocks = green
+return c;""",
+        [('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
+    # (r06) coast (waterfront.js createCoastMaterial port): granite / riprap / planks / bulkhead atlas tiles, lawn, pavers, ribbed metal, picket cards;
+    # UV0 = uv, UV1.x = aTile, vertex colour = tint (paint / solid tiles). Masked: picket cards discard between the bars.
+    make_material('M_CityCoast', None, r"""
+float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01; float3 camB = float3(cam.x, cam.z, cam.y) * 0.01;
+float t = floor(uv1.x + 0.5); float2 q = uv0; float cR = 0.9; float op = 1.0;
+float3 nz = Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 47.0 + p.y * 0.01).rgb;
+float3 c = float3(1, 1, 1);
+float cny = wn.z;
+if (t < 3.5) {
+  float2 off = float2(fmod(t, 2.0) * 0.5, 0.5 - floor(t / 2.0) * 0.5);
+  float2 fq = frac(q); float2 uv = off + 0.002 + fq * 0.496;
+  float2 dx = ddx(q) * 0.496, dy = ddy(q) * 0.496;
+  c = Texture2DSampleGrad(tAtlas, tAtlasSampler, float2(uv.x, 1.0 - uv.y), float2(dx.x, -dx.y), float2(dy.x, -dy.y)).rgb;
+  c = pow(c, 0.92) * 1.05;
+  float sk = Texture2DSample(tNoise, tNoiseSampler, float2(q.x * 0.37 + p.x * 0.003, 0.2 + p.y * 0.006)).r;
+  c *= 1.0 - 0.28 * smoothstep(0.55, 0.85, sk) * (1.0 - abs(cny));
+  c *= 0.86 + 0.28 * nz.g;
+} else if (t < 4.5) { c = float3(1, 1, 1); cR = 0.55; }
+else if (t < 5.5) {
+  float n2 = Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 9.0).g;
+  c = lerp(float3(0.085, 0.115, 0.045), float3(0.14, 0.15, 0.065), n2) * (0.85 + 0.3 * nz.r);
+  c *= 0.94 + 0.06 * step(0.5, frac(p.x / 3.0 + p.z / 7.0)); cR = 0.95;
+} else if (t < 6.5) {
+  c = Texture2DSample(tPave, tPaveSampler, float2(p.x, p.z) / 6.0).rgb;
+  float2 hp = float2(p.x, p.z) / float2(0.9, 0.78);
+  float row = floor(hp.y), cu = frac(hp.x + 0.5 * fmod(row, 2.0)), cv = frac(hp.y);
+  float jn = 1.0 - smoothstep(0.0, 0.07, min(min(cu, 1.0 - cu), min(cv, 1.0 - cv)));
+  float fwp = saturate(fwidth(hp.x) * 2.0);
+  c *= float3(0.8, 0.77, 0.73) * (1.0 - 0.2 * jn * (1.0 - fwp)) * (0.9 + 0.2 * nz.r); cR = 0.86;
+} else if (t > 7.5) {
+  float qq = t < 8.5 ? q.x / 0.3 : q.y / 0.12; float f = frac(qq); float aa = saturate(fwidth(qq));
+  float rib = lerp(0.82 + 0.3 * smoothstep(0.35, 0.5, f) * (1.0 - smoothstep(0.5, 0.65, f)), 1.0, aa);
+  c = float3(rib, rib, rib) * (0.85 + 0.25 * nz.r) * (1.0 - 0.25 * smoothstep(0.6, 0.9, Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 9.0 + p.y * 0.05).g)); cR = 0.6;
+} else {
+  float f = frac(q.x / 0.115); float aa = fwidth(q.x / 0.115);
+  if (aa < 0.35 && abs(f - 0.5) > 0.09 + aa) op = 0.0;
+  c = float3(1, 1, 1); cR = 0.55;
+}
+float yw = p.y - (-1.6);
+float wetTop = 0.75 + 0.45 * nz.b;
+float wet = 1.0 - smoothstep(wetTop - 0.35, wetTop, yw);
+c = lerp(c, c * float3(0.42, 0.47, 0.36), wet * 0.85);
+c *= lerp(1.0, 0.45, 1.0 - smoothstep(-0.6, 0.05, yw));
+cR = lerp(cR, 0.35, wet * 0.8);
+c *= lerp(1.0, 0.82, smoothstep(250.0, 1100.0, length(p - camB)));
+Rough = cR; Op = op; Emis = float3(0, 0, 0); Spec = 0.5;
+if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0.05, 0, 0); Spec = 0.0; return float3(0, 0, 0); }   // shore-strip mask
+return c * vc.rgb;""",
+        [('tAtlas', 'tex', TEXA('coast_atlas')), ('tNoise', 'tex', TEXA('noise')), ('tPave', 'tex', TEXA('sidewalk_col')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None), ('dbgmode', 'mpc', 'DebugMode')] + WORLD,
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], blend='masked', two_sided=True, world_normal=False)
+    # (r06) far-shore land (baked ground map of farshore.js: lots, streets, lawns, waterfront aprons) and Palisades-like cliff rock
+    make_material('M_CityFarLand', None, r"""
+float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01;
+float3 c = Texture2DSample(tMap, tMapSampler, float2(uv0.x, 1.0 - uv0.y)).rgb;
+float n = Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 61.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 9.0).r * 0.4;
+c *= 0.85 + 0.3 * n;
+Rough = 0.95; Emis = float3(0, 0, 0); Spec = 0.5;
+if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0.05, 0, 0); Spec = 0.0; return float3(0, 0, 0); }
+return c;""",
+        [('tMap', 'tex', TEXA('farland_map')), ('tNoise', 'tex', TEXA('noise')), ('uv0', 'uv', 0), ('wpos', 'wpos', None), ('dbgmode', 'mpc', 'DebugMode')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
+    make_material('M_CityCliff', None, r"""
+float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01;
+float n = Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.z, p.y) / 23.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.z, p.y) / 3.1).r * 0.4;
+Rough = 0.9; return float3(0.13, 0.115, 0.095) * (0.6 + 0.8 * n) * (0.7 + 0.3 * smoothstep(-2.0, 60.0, p.y));""",
+        [('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None)], [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
     # (r05) street-level kit (tools/export/street_kit.py): piers, cornices, storefront frames, awnings, sign boards, fire escapes.
     # UV0 = atlas uv (image space, v down) or metres (gratings), UV1 = (kind, param), UV2 = metres along the element, vertex colour = linear base.
     # kinds: 0 masonry (param 0 ashlar / 1 brick / 2 smooth), 1 metal, 2 fabric (param stripes / m), 3 sign atlas (0 fascia, 1 / 2 valance letters
@@ -443,10 +545,11 @@ float2 q = wpos.xy * 0.01;
 float3 n1 = Texture2DSample(tN, tNSampler, q / 37.0 + float2(0.013, 0.007) * t).xyz * 2.0 - 1.0;
 float3 n2 = Texture2DSample(tN, tNSampler, q / 11.0 - float2(0.021, 0.011) * t).xyz * 2.0 - 1.0;
 float2 xy = (n1.xy + n2.xy) * 0.18;
-NormalW = normalize(float3(xy, 1.0)); Rough = 0.06;
+NormalW = normalize(float3(xy, 1.0)); Rough = 0.06; Spec = 0.06; Emis = float3(0, 0, 0);   // (r06) Specular 0.06 = F0 0.005, F90 = saturate(50 F0) = 0.24: grazing reflectance capped (CITY-SPEC C14: river darker than the far shore; 0.5 = F90 1.0 read as milky glass)
+if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0, 0.05); Spec = 0.0; Rough = 1.0; return float3(0, 0, 0); }   // water mask
 return float3(0.018, 0.028, 0.03);''',
-        [('tN', 'tex', TEXA('water_nrm')), ('wpos', 'wpos', None), ('t', 'time', None)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
+        [('tN', 'tex', TEXA('water_nrm')), ('wpos', 'wpos', None), ('t', 'time', None), ('dbgmode', 'mpc', 'DebugMode')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL), ('Spec', 1, MP.MP_SPECULAR), ('Emis', 3, MP.MP_EMISSIVE_COLOR)])
     # (r02) hinterland boxes (horizon.js): wall / roof colour per instance (custom data 0-2 wall, 3-5 roof), floor bands
     make_material('M_CityHinter', None, '''
 float3 wall = float3(w0, w1, w2), roof = float3(r0, r1, r2);
@@ -507,6 +610,15 @@ def mi_for(rec):
     EAL.save_asset(path)
     return mi
 
+def far_material(rec):
+    """(r06) material asset name for the far-field meshes (coast / far-shore blocks / far land / cliff), else None"""
+    n = rec['name']
+    if n.startswith('coast_'): return 'M_CityCoast'
+    if n.startswith('farLand_'): return 'M_CityFarLand'
+    if n == 'palisadesCliff': return 'M_CityCliff'
+    if n == 'farCityMass': return 'M_CityFarMass'
+    return None
+
 def keep_mesh(rec):
     m = rec.get('mat') or {}
     if rec['kind'] in KIND_MAT or rec['name'] == 'markings': return True
@@ -539,7 +651,7 @@ if 'mesh' in STEPS:
         if not EAL.does_asset_exist(src): log('MISSING import', src); continue
         EAL.rename_asset(src, dst)
         sm = load(dst)
-        mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else mi_for(r))
+        mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
         finish_mesh(sm, mat, r['kind'] in ('facade', 'roofs', 'asphalt', 'sidewalk', 'detail') and not r.get('lod'), nanite=r['kind'] == 'detail')
         EAL.save_asset(dst); n += 1
     EAL.delete_directory(ROOT + '/Meshes/_in')
@@ -568,6 +680,39 @@ if 'frames' in STEPS:
             a.static_mesh_component.set_static_mesh(load(swaps[a.get_actor_label()])); log('swapped', a.get_actor_label())
     les.save_current_level()
     log('frames done', list(swaps))
+
+# (r06) 'far' step: far-field materials on an already built project. farCityMass is re-imported (the exporter now keeps the window flag in vertex
+# alpha) under the suffix _r06 and the level actors are re-pointed (no deletion of referenced assets); coast / far land / cliff meshes get their
+# materials assigned in place.
+if 'far' in STEPS:
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem); les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    recs = [r for r in man['meshes'] if r['name'] == 'farCityMass']
+    if ARGS.get('reimport', '1') == '1':
+        import_files([os.path.join(EXPORT, r['file']) for r in recs], ROOT + '/Meshes/_in', mesh_pipeline(False))
+    swaps = {}
+    for r in recs:
+        base = os.path.basename(r['file'])[:-4]
+        src = f'{ROOT}/Meshes/_in/{base}/StaticMeshes/{base}'; dst = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}_r06'
+        if ARGS.get('reimport', '1') == '1':
+            if not EAL.does_asset_exist(src): log('MISSING', src); continue
+            if EAL.does_asset_exist(dst): EAL.rename_asset(dst, dst + '_old' + str(int(time.time())))
+            EAL.rename_asset(src, dst)
+        if not EAL.does_asset_exist(dst): continue
+        sm = load(dst); finish_mesh(sm, load(MAT + '/M_CityFarMass'), False); EAL.save_asset(dst); swaps[base] = dst
+    if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')
+    n = 0
+    for r in man['meshes']:
+        fm = far_material(r)
+        if not fm or r['name'] == 'farCityMass': continue
+        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        if not EAL.does_asset_exist(sp): continue
+        sm = load(sp); sm.set_material(0, load(MAT + '/' + fm)); EAL.save_asset(sp); n += 1
+    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
+    for a in eas.get_all_level_actors():
+        if a.get_actor_label() in swaps and isinstance(a, unreal.StaticMeshActor):
+            a.static_mesh_component.set_static_mesh(load(swaps[a.get_actor_label()]))
+    les.save_current_level()
+    log('far step: farCityMass swapped', len(swaps), 'other meshes retargeted', n)
 
 # ------------------------------------------------------------------------------------------------ prototypes (instanced props / trees)
 SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'trunks_', 'roofplants', 'hvac_', 'vents_', 'dish_', 'antenna_', 'flags')
@@ -671,6 +816,8 @@ def build_geo_level(path):
     recs = [r for r in man['meshes'] if keep_mesh(r)]
     for r in recs:
         base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        for suf in ('_r06', '_r04'):  # re-imported variants (frames / far steps) win over the original import
+            if EAL.does_asset_exist(sp + suf): sp += suf; break
         if not EAL.does_asset_exist(sp): continue
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
         smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
@@ -725,19 +872,25 @@ def build_geo_level(path):
     les.save_current_level()
     log('geo level', path, len(recs), 'meshes', ni, 'instances')
 
+# (r06) view-map atmosphere, tuned against CITY-SPEC C11-C15 (far shore takes the sky's tint, sits 25-35 luma below the sky band, river darker than the far shore).
+# The sky is blown out (Y ~ 229) because the test maps use manual exposure +2 EV: P4 owns exposure; the far-shore / sky RATIO is what these values fix.
+FOG_DENSITY = float(ARGS.get('fog', 0.0065)); FOG_COLOR = [float(v) for v in ARGS.get('fogc', '0.6,0.62,0.64').split(',')]; AERIAL_SCALE = float(ARGS.get('aerial', 1.0))
 def add_lighting(sun_pitch, sun_yaw, sunset=False):
     sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), unreal.Rotator(roll=0, pitch=sun_pitch, yaw=sun_yaw), 'Sun', 'Lighting')
     lc = sun.light_component
     lc.set_editor_property('intensity', 6.0 if not sunset else 4.0)
     lc.set_editor_property('atmosphere_sun_light', True); lc.set_mobility(unreal.ComponentMobility.MOVABLE)
-    spawn(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), label='SkyAtmosphere', folder='Lighting')
+    sa = spawn(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), label='SkyAtmosphere', folder='Lighting')
+    try:  # (r06) far field: less blue aerial perspective (critic: far shore |R-B| within 10 of the mid-ground)
+        sa.get_component_by_class(unreal.SkyAtmosphereComponent).set_editor_property('aerial_pespective_view_distance_scale', AERIAL_SCALE)  # (sic: UE spells it 'pespective')
+    except Exception as ex: log('WARN aerial perspective', ex)
     sl = spawn(unreal.SkyLight, unreal.Vector(0, 0, 2000), label='SkyLight', folder='Lighting')
     sl.light_component.set_editor_property('real_time_capture', True); sl.light_component.set_mobility(unreal.ComponentMobility.MOVABLE)
     sl.light_component.set_editor_property('intensity', 1.7)  # (r05) canyon shade: more sky fill (ground floors read as dark slabs at 1.0)
     fog = spawn(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0), label='HeightFog', folder='Lighting')
-    fc = fog.component; fc.set_editor_property('fog_density', 0.006 if not sunset else 0.009); fc.set_editor_property('fog_height_falloff', 0.12)
+    fc = fog.component; fc.set_editor_property('fog_density', FOG_DENSITY if not sunset else 0.009); fc.set_editor_property('fog_height_falloff', 0.12)
     fc.set_editor_property('start_distance', 40000.0)  # (r02) clear near field, aerial haze band toward the horizon
-    fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(0.32, 0.4, 0.52, 1) if not sunset else unreal.LinearColor(0.9, 0.55, 0.35, 1))
+    fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(*FOG_COLOR, 1) if not sunset else unreal.LinearColor(0.9, 0.55, 0.35, 1))
     spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
     ppv = spawn(unreal.PostProcessVolume, unreal.Vector(0, 0, 0), label='PPV', folder='Lighting')
     ppv.set_editor_property('unbound', True)

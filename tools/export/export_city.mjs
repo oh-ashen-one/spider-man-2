@@ -41,7 +41,7 @@ function packAttrs(kind, A, n) {
   const uv = [], z2 = () => new Float32Array(n * 2);
   const pair = (a, i0, k) => { const o = new Float32Array(n * 2); for (let v = 0; v < n; v++) { o[v * 2] = a[v * k + i0]; o[v * 2 + 1] = i0 + 1 < k ? a[v * k + i0 + 1] : 0; } return o; };
   const one = (a, i, k) => { const o = new Float32Array(n * 2); for (let v = 0; v < n; v++) o[v * 2] = a[v * k + i]; return o; };
-  let color = null; const chan = [];
+  let color = null, colorNote = null; const chan = [];
   const put = (arr, what) => { uv.push(arr); chan.push(what); };
   if (kind === 'facade') {
     put(A.uv?.data ?? z2(), 'uv');
@@ -65,9 +65,17 @@ function packAttrs(kind, A, n) {
   }
   if (A.color) {
     const c = A.color.data, k = A.color.k; color = new Float32Array(n * 4);
-    for (let v = 0; v < n; v++) { for (let j = 0; j < 3; j++) color[v * 4 + j] = Math.min(1, Math.max(0, c[v * k + j])); color[v * 4 + 3] = k > 3 ? c[v * k + 3] : 1; }
+    // (r06) farshore.js mass meshes encode a per-vertex window flag in colour.b (+10 window walls, +20 glass towers): the clamp below destroyed it
+    // (all far-shore masses came out saturated blue). Decode: flag 0 / 1 / 2 -> vertex alpha 0 / 0.5 / 1, blue restored.
+    let flagged = false; for (let v = 0; v < n && !flagged; v++) if (c[v * k + 2] > 5) flagged = true;
+    for (let v = 0; v < n; v++) {
+      let b = c[v * k + 2], flag = 0; if (flagged) { flag = b > 15 ? 2 : b > 5 ? 1 : 0; b -= flag === 2 ? 20 : flag === 1 ? 10 : 0; }
+      color[v * 4] = Math.min(1, Math.max(0, c[v * k])); color[v * 4 + 1] = Math.min(1, Math.max(0, c[v * k + 1])); color[v * 4 + 2] = Math.min(1, Math.max(0, b));
+      color[v * 4 + 3] = flagged ? flag / 2 : (k > 3 ? c[v * k + 3] : 1);
+    }
+    if (flagged) colorNote = 'alpha = window flag (0 none, 0.5 windows, 1 glass)';
   }
-  return { uv, chan, color };
+  return { uv, chan, color, colorNote };
 }
 
 function writeGLB(file, name, kind, A, index) {
@@ -149,6 +157,10 @@ try {
   const res = await page.evaluate(o => window.__cityExport(o), { region, lodRegion, farRegion: { x0: -30000, z0: -30000, x1: 30000, z1: 30000 }, url: recvURL });
   console.log(JSON.stringify(res.log), 'pools with instances in region:', res.nInstances);
   manifest.stats = res.stats;
+  // (r06) the baked far-land ground map (farshore.js CanvasTexture: land / lot colours, waterfront aprons, parks): far-shore land meshes carry only UV0 into it
+  const png = await page.evaluate(() => { let out = null; window.__ctx.scene.traverse(o => { if (!out && o.isMesh && /^farLand-/.test(o.name) && o.material?.map?.image?.toDataURL) out = o.material.map.image.toDataURL('image/png'); }); return out; });
+  if (png) { fs.writeFileSync(path.join(OUT, 'farland_map.png'), Buffer.from(png.split(',')[1], 'base64')); console.log('wrote farland_map.png'); }
+  else console.log('WARN: far-land map canvas not found');
 } finally {
   await ctx.close();
   fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1));

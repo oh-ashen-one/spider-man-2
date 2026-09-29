@@ -24,11 +24,17 @@ bottom half 64 portrait cells 256 x 512 (16 x 4, index = row * 16 + col). `ts_si
 | L 33 | BOTANICA, "Now Playing, Majestic Theatre" | L 46 (Dinosaurs Alive) |
 | L 34 | FROSTED HALOS, "Start Bright" | L 20 (Big Apple Burger) |
 | L 39 | HELL'S KITCHEN BLUES, "New Season Streaming" | L 41 (Neon Racers) |
-| L 60 | THE DAILY BUGLE, "New York's News" | L 59 (New York Knights) |
 | L 27 | COLTEX SPORT (sneaker brand; round-04 critic: too close to the real game's COLEXCO) | L 4 (Lumen X5) |
 | P 27 | COLTEX - "Own the Court" (same brand, portrait cell) | P 8 (Kinetix, "Rise Above") |
 | P 38 | COLEXCO - "Run the City" (near-copy of the real game's brand) | P 15 (Skyward Air) |
 | L 35 | COLEXCO SPORT (red-on-white sneaker ad; the "COLEX SPOR..." banner in S6, found after the round-04 critic note) | L 47 (Big Apple Tours) |
+| L 32 | HAUTE UNLIMITED, "New York - Paris - Milan" (fictional brand copied from the real game; round-05 critic) | L 7 (Vantor) |
+| L 59 | NEW YORK KNIGHTS, "Tickets on sale" (blue / orange basketball ad; conservative, evokes a real NBA club) | L 29 (Nova Fold) |
+| L 60 | (donor changed: it used L 59) THE DAILY BUGLE, "New York's News" | L 16 (Harbor Mutual) |
+| P 24 | HAUTE UNLIMITED (portrait, blue gown) | P 10 (Iva Deni) |
+| P 32 | HAUTE UNLIMITED (portrait, dark gown; OCR "TAUTE UNLIMITED") | P 44 (Hudson Pier 26) |
+| P 23 | LIVE AT MADISON ARENA, "One night only" (evokes Madison Square Garden) | P 3 (Patrol) |
+| P 63 | NOVA LEE - MADISON ARENA - LIVE (evokes Madison Square Garden) | P 5 (Zero Sugar) |
 | P 6 | OSCORP, "A Healthier Tomorrow" | P 20 (Spark) |
 | P 7 | DAILY BUGLE, "Read All About It" | P 22 (Ashby & Cole) |
 | P 13 | ROXXON, "Fueling Tomorrow" | P 31 (Sol Airways) |
@@ -42,12 +48,14 @@ brands from the real game (named by the critic, round 03); "Hell's Kitchen Blues
 
 | cell | excluded | replaced by |
 |---|---|---|
-| S 48 | HOTEL MIRA (brand from the real game) | S 15 (HOTEL ASTORIA) |
+| S 48 | HOTEL MIRA (brand from the real game) | S 51 (BAKERY) |
+| S 15 | HOTEL ASTORIA (evokes the real Hotel Astor / Waldorf Astoria; round-05 critic) | S 53 (COMEDY CLUB) |
+| S 41 | BOREAL OUTDOOR (critic read "...REAL OUTDOOR": evokes L'Oreal / an outdoor brand) | S 55 (SNEAKERS) |
 
 ## Reviewed, kept
 
 All other cells were read (OCR of every cell plus a visual pass): fictional brands only (Kinetix, Coltex, Colexco, Nova, Zest, Fizzo,
-Vantor, Sonara, Harborline, Meridian Trust, Skyward Air ...). Not excluded on purpose, owner may still veto: the "Majestic Theatre" show
+Vantor, Sonara, Harborline, Meridian Trust, Skyward Air ...). Not excluded on purpose, owner may still veto (round 06: the Times Square place name in five ts_signs cells, e.g. "PIZZA / COFFEE / CAMERAS / RAMEN / RECORDS ... TIMES SQUARE", is a real place name, not a brand, and stays): the "Majestic Theatre" show
 ads (Gilded Fox, Queen of Hearts), "Iron Borough", "Nova" products (NOVA is also a Marvel name but a generic brand word here),
 `city_signart.webp` (period ghost signs: Knickerbocker, Fulton Warehouse ...; no IP found) and `signs.png` (facade storefront signs:
 generic trades plus a "CHASE BANK" cell, a real-world brand, not Marvel / game IP). The Times Square news ticker text
@@ -66,7 +74,12 @@ Orchard Street Bakery, First Harbor Credit Union, Lotus Nail & Spa, Anchor & Oak
 Cornerstone Medical, Neon Dragon Noodles, Sage Health Food; 48 generic valance lines such as "FRESH BAKED DAILY"). No logos, no marks of any
 real or fictional franchise. If any of these turns out to collide with a real brand, edit the `FASCIA` list in `gen_street_signs.py`.
 
-## Verification
+## Verification (re-run each round)
+
+`python3 tools/export/ip_ocr_check.py docs/night1/city/round-NN [_scratch/city/tex]` OCRs the eight 4K frames of the round and every cell of the sanitised atlases against the denylist
+(Oscorp, Osborn, Roxxon, Bugle, Frosted Halos, Botanica, Mira, Hydra, Empire State, Coltex, Colexco, Haute, Astor, Madison, Boreal, Outdoor, Knights ...). Round 06: 0 hits.
+
+### How the exclusions were built
 
 `python3 tools/export/ip_sanitize.py` writes previews of both sanitised atlases to
 `_scratch/city/r04/atlas/`. Rebuild in Unreal: `SKIP_EXPORT=1 STEPS=tex tools/export/build_city.sh` (re-imports the sanitised PNGs).

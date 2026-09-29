@@ -171,6 +171,12 @@ float3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, flo
   uePatch('col = shop > 0.5f ? float3(0.55f,0.52f,0.48f) :', 'col = shop > 0.5f ? shopFloor(h) :');
   uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));',
           '    if (shop > 0.5f) col = shopWall(h, dir.x);\n    else { col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f)); }');
+  // (r06) far LOD window grid (critic r05: 'most blocks behind the front row have no window grid'): the box filter that fades the windows to their
+  // mean is widened 1.8x for the browser's native-resolution frame; UE renders at 50-73 % internal resolution and TSR resolves the rest -> 1.15x.
+  uePatch('float wf = 1.8f;', 'float wf = 1.15f;');
+  // (r06) far-field palette: the far-LOD facades (window cells sub-pixel, lod -> 1) take a warm-neutral push so the far shore matches the mid-ground
+  // (critic r05: mean RGB (188, 202, 225) lavender; target |R - B| <= 10). Neutral at street range (lod = 0).
+  uePatch('r.alb = lerp(r.alb, a.alb, lod);', 'r.alb = lerp(r.alb, a.alb, lod); r.alb *= lerp(float3(1.0f, 1.0f, 1.0f), float3(1.12f, 1.02f, 0.86f), smoothstep(0.4f, 1.0f, lod));');
   // blinds / curtains sit behind the glass and the window reveal shades them: they must not out-shine the sunlit masonry
   uePatch('gl.alb = lerp(gl.alb, bc * slats * 0.8f, bl);', 'gl.alb = lerp(gl.alb, bc * slats * 0.5f, bl);');
   // ceilings / floors seen from the street are the brightest surfaces in a room but never sunlit: darker (critic: <= 10 % of window pixels above 80 %)
