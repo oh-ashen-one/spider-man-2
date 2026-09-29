@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 10:00",
+ "updated": "2026-09-29 11:10",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "Traversal round 2 fixed the flat swings (every swing now drops 16\u201357 m), but the blind critic still says FAILS TARGET: it rates round 2 only about one point better than round 1. The camera is now the biggest gap: it stays locked behind the hero and crashes into him on zips and wall-runs. Round 3 rebuilds it as a lagged chase camera with collision.",
+ "headline": "Traversal has stalled at FAILS for three rounds (scores 2\u20134) even though each targeted fix passed its numeric test. The limit is the placeholder body, so round 4 moves traversal onto the real hero rig with the browser's animation system ported to C++. City round 2 now reaches the horizon with rivers and haze and is with the critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -35,7 +35,7 @@
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
-   "state": "fixing",
+   "state": "critic",
    "round": 2,
    "verdict": "R1: FAILS (facades 4, street 3, skyline 2, Manhattan 2, IQ 3)",
    "gap": "City ends ~1 km out on a grey ground plane; no rivers, far shore or haze"
@@ -44,19 +44,19 @@
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "queued",
+   "state": "building",
    "round": 1,
    "verdict": "",
-   "gap": "Paused by usage limit; work-in-progress kept in its worktree"
+   "gap": "Resumed after the outage"
   },
   {
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (arc 3, camera 2, web 4, moves 3, body 3)",
-   "gap": "Camera: locked fixed offset, hero dead centre, clips into hero/walls"
+   "round": 4,
+   "verdict": "R3: FAILS (arc 3, camera 3, web 4, moves 2, body 2)",
+   "gap": "STALLED on the placeholder body: dead air phase (T-pose between swings). Approach changed: real hero + ported animator"
   },
   {
    "id": "P4",
@@ -87,6 +87,20 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "City round 2 \u2014 the city now reaches the horizon",
+   "note": "Far-LOD Manhattan, Hudson River, NJ shore, Central Park, haze. Before: grey ground plane at 1 km.",
+   "images": [
+    {
+     "label": "Round 1 perch view",
+     "src": "docs/night1/city/round-01/S4_perch_skyline_1920x1080.jpg"
+    },
+    {
+     "label": "Round 2 perch view",
+     "src": "docs/night1/city/round-02/S4_perch_skyline_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "City round 1 \u2014 first Unreal Midtown (3\u00d73 tiles exported from the browser city)",
    "note": "Facade shader ported from the browser (interior mapping, glass, masonry). Placeholder lighting. Critic: reads as a city but not yet as Manhattan; the world ends at 1 km.",
@@ -187,6 +201,14 @@
    "verdict": "fails",
    "gap": "Replace the grey ground plane at the city edge with city to the horizon, the Hudson and East rivers, a far shore and a haze band.",
    "notes": "Reference won all 8 A/B pairs. Secondary: Times Square billboards black, jagged white artifact on the S3 roof, blank storefronts and an untextured cylinder in S1, long flat walls without cornices or fire escapes."
+  },
+  {
+   "t": "11:00",
+   "piece": "P3 Traversal",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "The air phase is dead: a rigid T-pose between release and the next attach, repeating every cycle. Needs a varied tuck/flip/extend/reach sequence and camera pitch that puts the hero against the sky at the top of the arc.",
+   "notes": "Camera passed its numeric checks (\u22656 m from the hero, never in geometry) but still reads as locked behind. Rounds 1\u20133 scores barely moved: the placeholder body is the ceiling. Also found the A/B packs were identifiable by file hash; packs are now re-encoded."
   }
  ],
  "perf": [
@@ -252,6 +274,10 @@
   {
    "t": "09:55",
    "text": "P1 city round 1 merged (234 GLBs, 172 tile actors, 11k prop instances, facade shader ported to HLSL); critic FAILS; round 2 on horizon/rivers/haze."
+  },
+  {
+   "t": "11:00",
+   "text": "Traversal R3 critic FAILS again; diagnosed a stall on the placeholder body; P3 now ports the browser animator onto the real hero. P2 characters resumed."
   }
  ]
 }
