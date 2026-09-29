@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 14:21",
+ "updated": "2026-09-29 14:47",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -89,19 +89,19 @@
    "id": "A",
    "name": "GPU lock + perf protocol",
    "branch": "night1/gpulock",
-   "state": "building",
+   "state": "done",
    "round": 1,
-   "verdict": "",
-   "gap": "Sonnet 5.5"
+   "verdict": "Capture slots + exclusive perf lock, 32 tests pass",
+   "gap": "Mandatory for all builders from their next round"
   },
   {
    "id": "B",
    "name": "Per-piece numeric SPECs from measured refs",
    "branch": "(scratch \u2192 integration)",
-   "state": "building",
+   "state": "done",
    "round": 1,
-   "verdict": "",
-   "gap": "Opus 5.5 high"
+   "verdict": "4 SPECs measured from refs + measuring scripts",
+   "gap": "Voided three earlier critic demands the reference itself contradicts"
   },
   {
    "id": "C",
@@ -647,6 +647,10 @@
   {
    "t": "14:21",
    "text": "Fable 5.1 director pass: wave-2 plan (docs/night1/director/PLAN-wave2.md). Started A (GPU lock, Sonnet) and B (numeric SPECs, Opus high)."
+  },
+  {
+   "t": "14:47",
+   "text": "GPU lock merged (A). Numeric SPECs merged (B): measuring the reference showed the traversal r8 critic's '30\u201370% width weave' and two earlier demands were wrong; traversal round 9 corrected mid-round. Skill repo claude-code-game-builder published (public, credits Matt Shumer's Gauntlet Loop)."
   }
  ]
 }
