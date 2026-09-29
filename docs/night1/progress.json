@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 12:43",
+ "updated": "2026-09-29 12:51",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 7,
-   "verdict": "R6: FAILS (arc 4, camera 4, web 5, moves 4, body 4)",
-   "gap": "Swing cadence: ~4 s per swing vs ~1.3 s in the reference; long web-less falls"
+   "round": 8,
+   "verdict": "R7: FAILS (arc 4, camera 3, web 4, moves 4, body 4)",
+   "gap": "Swings carry the hero into facades; camera hugs walls; whole-frame blur smears the hero"
   },
   {
    "id": "P4",
@@ -386,6 +386,14 @@
    "verdict": "fails",
    "gap": "Night street lighting and exposure: lamp pools every 25\u201330 m, storefront spill, car lights, lifted ambient; night_S1 mean \u226535/255 with \u22643% of pixels <10/255; hero \u226540/255 in every night-swing frame.",
    "notes": "Golden-hour haze from above works. Secondary: no warmth at street level at golden hour, a green lens ghost, 4.7% blown pixels at sunset, glass going black mid-swing, midday horizon darker than the sky."
+  },
+  {
+   "t": "12:51",
+   "piece": "P3 Traversal",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "Facade clearance and occlusion: keep \u22653 m wall clearance at the arc bottom, camera \u22651.5 m from facades; no facade >30% of frame in the problem spans.",
+   "notes": "Cadence targets met (7 attaches in 12 s, 1.1\u20131.75 s swings, rope on screen 81%); round 7 beat round 6 in both version pairs. Orchestrator check: the critic's '6\u20138% hero height' was wrong (frames show ~17%, matching telemetry); the wall-hugging at 14.5 s and the whole-frame blur are real and are the next gap."
   }
  ],
  "perf": [
@@ -548,6 +556,10 @@
   {
    "t": "12:43",
    "text": "Look R1 critic FAILS (night 2/10); round 2 on a fresh Sonnet builder with measurable night targets."
+  },
+  {
+   "t": "12:51",
+   "text": "Traversal R7 merged: swing-rhythm targets met; critic FAILS (flat scores). Verified frames myself: critic's size claim wrong, facade clearance + blur real \u2192 round 8."
   }
  ]
 }
