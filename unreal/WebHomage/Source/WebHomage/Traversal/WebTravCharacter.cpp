@@ -358,6 +358,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.WallNormal = Traversal->WallNormal(); CI.Facing = Traversal->Facing(); CI.bDive = Traversal->IsDiving();
 	CI.Tension = Traversal->SwingTension(); CI.Bank = Traversal->SwingBank();
 	CI.HAbove = Traversal->PosM().Z - UWebTraversalComponent::H - Traversal->FloorBelow();
+	CI.SwingAngle = Traversal->Anim.Swing.Angle;
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
 	// ---- move the actor (capsule) with the simulated body
@@ -572,20 +573,54 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	UWebTravScript* Script = GetGameInstance()->GetSubsystem<UWebTravScript>();
 	Script->SetTelemetryHeader(TEXT("frame,t,mode,sub,x_m,y_m,z_m,vx,vy,vz,speed_mps,hspeed_mps,height_above_floor_m,anchor_x,anchor_y,anchor_z,")
 		TEXT("rope_m,tension,chain,trick,zip_target,zt_x,zt_y,zt_z,cam_x,cam_y,cam_z,cam_yaw_deg,cam_pitch_deg,cam_vfov_deg,cam_dist_m,motion_blur,")
-		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold"));
+		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
+		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
 	const FWebTravAnim& A = Traversal->Anim;
+	// hero screen-space box: corners of every placeholder part's bounds projected through the final camera
+	double MinX = 1e9, MaxX = -1e9, MinY = 1e9, MaxY = -1e9;
+	bool bBehind = false;
+	{
+		const FRotationMatrix RM(Cam.CamRot);
+		const FVector CF = RM.GetUnitAxis(EAxis::X), CR = RM.GetUnitAxis(EAxis::Y), CU = RM.GetUnitAxis(EAxis::Z);
+		const double TV = FMath::Tan(FMath::DegreesToRadians(Cam.OutVFov * 0.5));
+		double Aspect = 16.0 / 9.0;
+		if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+		{
+			const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
+			if (Sz.X > 0 && Sz.Y > 0) Aspect = double(Sz.X) / double(Sz.Y);
+		}
+		const FVector CP = Cam.CamPos;
+		for (const UStaticMeshComponent* C : FigureParts)
+		{
+			if (!C) continue;
+			const FBox B = C->Bounds.GetBox();
+			for (int32 K = 0; K < 8; ++K)
+			{
+				const FVector Corner((K & 1) ? B.Max.X : B.Min.X, (K & 2) ? B.Max.Y : B.Min.Y, (K & 4) ? B.Max.Z : B.Min.Z);
+				const FVector Rel = Corner / 100.0 - CP;
+				const double Z = FVector::DotProduct(Rel, CF);
+				if (Z < 0.05) { bBehind = true; continue; }
+				const double SX = 0.5 + 0.5 * FVector::DotProduct(Rel, CR) / (Z * TV * Aspect);
+				const double SY = 0.5 - 0.5 * FVector::DotProduct(Rel, CU) / (Z * TV);
+				MinX = FMath::Min(MinX, SX); MaxX = FMath::Max(MaxX, SX); MinY = FMath::Min(MinY, SY); MaxY = FMath::Max(MaxY, SY);
+			}
+		}
+	}
+	const bool bInFrame = !bBehind && MinX >= 0 && MaxX <= 1 && MinY >= 0 && MaxY <= 1;
 	const FString Row = FString::Printf(
-		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f"),
+		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f"),
 		FrameIndex, T, ModeName(A.Mode), *A.Sub.ToString(), P.X, P.Y, P.Z, V.X, V.Y, V.Z, V.Size(), FVector2D(V.X, V.Y).Size(),
 		P.Z - UWebTraversalComponent::H - Traversal->FloorBelow(), An.X, An.Y, An.Z, bSw ? Traversal->SwingRope() : 0.0, bSw ? Traversal->SwingTension() : 0.0,
 		Traversal->Chain(), A.Trick.IsNone() ? TEXT("") : *A.Trick.ToString(), Traversal->HasZipTarget() ? 1 : 0,
 		Traversal->ZipTargetPos().X, Traversal->ZipTargetPos().Y, Traversal->ZipTargetPos().Z,
 		Cam.CamPos.X, Cam.CamPos.Y, Cam.CamPos.Z, Cam.CamRot.Yaw, Cam.CamRot.Pitch, Cam.OutVFov, FVector::Dist(Cam.CamPos, P), Cam.MotionBlur,
 		I.Move.X, I.Move.Y, I.bSwing ? 1 : 0, I.bJump ? 1 : 0, I.bSprint ? 1 : 0, I.bZip ? 1 : 0, I.bDrop ? 1 : 0, I.bQuick ? 1 : 0,
-		-FMath::RadiansToDegrees(Cam.Pitch), -FMath::RadiansToDegrees(Cam.DebugAutoPitch()), Cam.DebugOccHold());
+		-FMath::RadiansToDegrees(Cam.Pitch), -FMath::RadiansToDegrees(Cam.DebugAutoPitch()), Cam.DebugOccHold(),
+		bBehind ? 1.0 : MaxY - MinY, bBehind ? 1.0 : MaxX - MinX, bBehind ? -1.0 : 0.5 * (MinY + MaxY), bInFrame ? 1 : 0, Cam.HeroDist,
+		Cam.bCamInGeometry ? 1 : 0, Cam.FrameS);
 	Script->AddTelemetryRow(Row);
 }
 

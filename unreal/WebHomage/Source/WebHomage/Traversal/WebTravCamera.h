@@ -29,6 +29,7 @@ struct FTravCamInput
 	double Tension = 0.0;
 	double Bank = 0.0;
 	double HAbove = 0.0;   // feet height above the floor below (m)
+	double SwingAngle = 0.0; // rope angle from straight down (rad), swinging only
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -43,13 +44,24 @@ public:
 	double Punch = 0.0, PunchV = 0.0, Dip = 0.0, DipV = 0.0, AnchorLean = 0.0, AnchorLeanV = 0.0, LastLook = 10.0;
 	double KickV = 0.0, KickK = 0.0, MbK = 0.0, MbKV = 0.0;
 
+	// ---- round 03 chase-camera tuning
+	double ChaseDist = 6.0;        // horizontal distance behind the hero (m)
+	double ChaseHeight = 2.4;      // camera height over the hero centre (m)
+	double MinHeroDist = 2.2;      // never closer to the hero (m)
+	double FrameLowS = 0.67, FrameHighS = 0.36; // hero screen centre (0 top .. 1 bottom): arc bottom .. top
+
 	// ---- outputs
+	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame
+	double HeroDist = 0.0;                  // camera -> hero centre (m)
+	double FrameS = 0.55;                   // current framing target (hero screen centre Y, 0 top .. 1 bottom)
 	FVector CamPos = FVector::ZeroVector;   // m
 	FRotator CamRot = FRotator::ZeroRotator;
 	double OutVFov = 58.0;                  // deg (vertical)
 	double MotionBlur = 0.0;                // 0..~1.8 (browser mbK)
 
 	void Reset(const FVector& Pos, double InYaw);
+	/** Round 03 chase composition: position, collision, framing, orientation (called by Update). */
+	void ComposeChase(double Dt, const FTravCamInput& P, const FWebTravWorld& World, const FVector& Fwd);
 	double DebugOccHold() const { return OccHold; }
 	double DebugAutoPitch() const { return AutoPitch; }
 	void Shake(double Amt) { Trauma = FMath::Min(1.0, Trauma + Amt); }
@@ -79,6 +91,10 @@ private:
 	double YawRate = 0.0, YawRateV = 0.0, BankS = 0.0, BankSV = 0.0, LastVelYaw = 0.0;
 	bool bHasLastVelYaw = false;
 	double PivCap = -1.0, OccHold = 0.0, OccT = 0.0;
+	bool bChaseInit = false;
+	FVector CamXY = FVector::ZeroVector, CamXYV = FVector::ZeroVector;
+	double CamZ = 0.0, CamZV = 0.0, FrameSV = 0.0, OccYawOff = 0.0, OccYawOffV = 0.0, OccUp = 0.0, OccUpV = 0.0;
+	double OccYawGoal = 0.0, OccUpGoal = 0.0, UserPitch = 0.0;
 	bool bOccGoal = false;
 	double OccGoalYaw = 0.0, OccGoalPitch = 0.0;
 };

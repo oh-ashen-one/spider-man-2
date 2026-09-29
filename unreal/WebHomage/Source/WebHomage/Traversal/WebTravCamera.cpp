@@ -33,6 +33,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 	bAutoInit = false;
 	LagOff = LagOffV = JumpOff = JumpOffV = FVector::ZeroVector;
 	bHasLastGoal = false; AnchorLean = 0.0; AnchorLeanV = 0.0;
+	bChaseInit = false; UserPitch = 0.0; OccYawGoal = OccUpGoal = 0.0;
 }
 
 void FWebTravCamera::ApplyLook(const FVector2D& Look)
@@ -40,6 +41,7 @@ void FWebTravCamera::ApplyLook(const FVector2D& Look)
 	if (FMath::Abs(Look.X) + FMath::Abs(Look.Y) > 0.001) LastLook = 0.0;
 	Yaw += Look.X * Sens;
 	Pitch = FMath::Clamp(Pitch + Look.Y * Sens, -0.9, 1.25);
+	UserPitch = FMath::Clamp(UserPitch + Look.Y * Sens, -0.6, 0.6);
 }
 
 void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWorld& World)
@@ -148,106 +150,153 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	SD(BankS, BankSV, bSwinging ? P.Bank : 0.0, 0.35, Dt);
 	const double WantRoll = FMath::Clamp(-YawRate * 0.04, -0.09, 0.09) - BankS * 0.05;
 	Roll = Damp(Roll, WantRoll, 3, Dt);
-	// ---- compose
+	// ---- compose (round 03): lagged chase camera with explicit framing and collision
 	const FVector Fwd = Forward();
-	FVector Pivot = Target + FVector(0, 0, HeightOff + Dip);
-	const FVector Right = RightFlat();
-	Pivot += Right * SideOff;
-	{ // the pivot itself must never sit behind a wall relative to the character
-		const FVector Eye = P.Pos + FVector(0, 0, 0.55);
-		FVector D = Pivot - Eye;
-		const double L = D.Size();
-		if (L > 1e-3)
-		{
-			D /= L;
-			FTravHit H;
-			const double Cap = World.Raycast(Eye, D, L + 0.25, H) ? FMath::Max(0.0, H.Distance - 0.3) : L + 0.25;
-			PivCap = PivCap < 0 ? Cap : Cap < PivCap ? Cap : Damp(PivCap, Cap, 4, Dt);
-			if (PivCap < L) Pivot = Eye + D * PivCap;
-		}
-	}
-	FVector Back = -Fwd;
-	double Allowed = Dist;
-	auto ProbeAt = [&](double OX, double OZ)
-	{
-		const FVector O = Pivot + Right * OX + FVector(0, 0, OZ);
-		FTravHit H;
-		if (World.Raycast(O, Back, Dist + 0.4, H)) Allowed = FMath::Min(Allowed, FMath::Max(0.5, H.Distance - 0.35));
-	};
-	ProbeAt(0, 0); ProbeAt(0.3, 0); ProbeAt(-0.3, 0); ProbeAt(0, 0.25); ProbeAt(0, -0.25);
-	// occluded: search nearby orbit directions for one with >= ~3 m of clearance, move there smoothly
-	const double MinD = FMath::Min(3.0, Dist * 0.75);
-	OccT -= Dt;
-	if ((P.Sub == N_vault || bLedgeSub) && OccT > 0.03) OccT = 0.03;
-	if (Allowed < MinD && OccT <= 0)
-	{
-		OccT = 0.12;
-		auto Clear = [&](double Y, double Pt)
-		{
-			const double CP = FMath::Cos(Pt);
-			const FVector D(-FMath::Cos(Y) * CP, -FMath::Sin(Y) * CP, FMath::Sin(Pt));
-			double A = Dist;
-			for (double OX : { 0.0, 0.3, -0.3 })
-			{
-				FTravHit H;
-				if (World.Raycast(Pivot + Right * OX, D, Dist + 0.4, H)) A = FMath::Min(A, H.Distance - 0.35);
-			}
-			return A;
-		};
-		bool bBest = false;
-		double BS = -1e9, BY = 0, BP = 0;
-		const double Base = M == EWebTravMode::Perch ? P.Facing : Yaw;
-		for (double DP : { 0.0, 0.35, 0.7, 1.0 })
-		{
-			for (double DYW : { 0.0, 0.5, -0.5, 1.0, -1.0, 1.5, -1.5 })
-			{
-				const double Y = Base + DYW, Pt = FMath::Clamp(Pitch + DP, -0.3, 1.15);
-				const double A = Clear(Y, Pt);
-				const double SC = FMath::Min(A, Dist) - 0.9 * FMath::Abs(DYW) - 0.6 * DP;
-				if (A >= MinD && SC > BS) { BS = SC; BY = Y; BP = Pt; bBest = true; }
-			}
-		}
-		bOccGoal = bBest;
-		if (bBest) { OccGoalYaw = BY; OccGoalPitch = BP; OccHold = 2.0; }
-	}
-	if (Allowed >= MinD + 0.5 && OccT <= -1) bOccGoal = false;
-	if (bOccGoal)
-	{
-		const bool bFast = P.Sub == N_vault || bLedgeSub || (P.ModeT < 0.8 && !bSwinging && !bAir);
-		const double R = LastLook < 0.4 ? 1.5 : bFast ? 11 : (bSwinging || bAir) ? 3 : 5;
-		Yaw = AngDamp(Yaw, OccGoalYaw, R, Dt); Pitch = Damp(Pitch, OccGoalPitch, R, Dt);
-		const double CP = FMath::Cos(Pitch);
-		Back = FVector(-FMath::Cos(Yaw) * CP, -FMath::Sin(Yaw) * CP, FMath::Sin(Pitch));
-		if (FMath::Abs(WrapA(Yaw - OccGoalYaw)) < 0.05 && FMath::Abs(Pitch - OccGoalPitch) < 0.05) bOccGoal = false;
-	}
-	// collision distance: fast pull-in, critically damped ease back out
-	if (Allowed < CollDist) { CollDist = Damp(CollDist, Allowed, 30, Dt); CollDistV = 0; }
-	else SD(CollDist, CollDistV, Allowed, 0.45, Dt);
-	CamPos = Pivot + Back * FMath::Min(CollDist + 1.3 * FMath::Max(0.0, KickK), FMath::Max(CollDist, Allowed));
-	const double GY = World.GroundHeight(CamPos.X, CamPos.Y, CamPos.Z + 0.3) + 0.3;
-	if (CamPos.Z < GY) CamPos.Z = GY;
-	// look target: ahead of the pivot; while swinging lean slightly toward the anchor (held after release, weight eases)
-	if (bSwinging && P.bHasAnchor)
-	{
-		FVector Want = P.Anchor - Pivot;
-		Want.Z *= 0.15; // round 02: lean toward the anchor sideways, not up (a 25 m-high anchor cancelled the height pitch)
-		if (AnchorLean < 0.005) LeanOff = Want;
-		SDV(LeanOff, LeanOffV, Want, 0.4, Dt);
-	}
-	SD(AnchorLean, AnchorLeanV, bSwinging && P.bHasAnchor ? 0.1 : 0.0, bSwinging ? 0.5 : 0.7, Dt);
-	FVector LookAt = Pivot + Fwd * 10.0 + Lead;
-	if (AnchorLean > 0.0005) LookAt = FMath::Lerp(LookAt, Pivot + LeanOff, AnchorLean);
+	ComposeChase(Dt, P, World, Fwd);
+	const FVector LookAt = CamPos + CamRot.Vector() * 10.0;
 	// shake
 	Trauma = FMath::Max(0.0, Trauma - Dt * 1.5);
 	const double Sh = Trauma * Trauma;
-	FRotator R = (LookAt - CamPos).Rotation();
+	FRotator R = CamRot;
 	R.Roll = FMath::RadiansToDegrees(Roll + Sh * 0.045 * Noise(Time * 22.0, 3.0));
 	R.Pitch += FMath::RadiansToDegrees(Sh * 0.035 * Noise(Time * 25.0, 1.0));
 	R.Yaw += FMath::RadiansToDegrees(Sh * 0.035 * Noise(Time * 24.0, 7.0));
 	CamRot = R;
 	OutVFov = Fov + Punch + 9.0 * FMath::Max(0.0, KickK);
+	(void)LookAt;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
 	const bool bGroundish = M == EWebTravMode::Ground || M == EWebTravMode::Land || M == EWebTravMode::Wall;
 	const double MbTarget = (bGroundish ? 0.45 : bDive ? 1.6 : 1.0) * Smooth(Speed, 6, 36) * 1.1;
 	MotionBlur = FMath::Max(0.0, SD(MbK, MbKV, MbTarget, MbTarget > MbK ? 0.35 : 0.2, Dt));
+}
+
+void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebTravWorld& World, const FVector& /*Fwd*/)
+{
+	const FVector Hero = P.Pos;                         // body centre (m)
+	const FVector Chest = Hero + FVector(0, 0, 0.4);
+	const bool bSwinging = P.Mode == EWebTravMode::Swing, bAir = P.Mode == EWebTravMode::Air || P.Mode == EWebTravMode::Zip;
+	const double VFov = FMath::DegreesToRadians(Fov + Punch + 9.0 * FMath::Max(0.0, KickK));
+	const double TanHalfV = FMath::Tan(VFov * 0.5);
+	// ---- framing target: hero low in frame at the bottom of an arc / near the street, upper centre up high; falling
+	// fast pushes him lower (the camera trails above), rising pushes him higher
+	double SWant = 0.58;
+	if (bSwinging)
+	{ // by arc angle: lower third at the bottom of the arc, upper centre at both ends (every swing travels the frame)
+		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp(FMath::Abs(P.SwingAngle) / 0.85, 0.0, 1.0));
+	}
+	else if (bAir)
+	{
+		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp((P.HAbove - 8.0) / 32.0, 0.0, 1.0)) - P.Vel.Z * 0.0025;
+	}
+	else if (P.Mode == EWebTravMode::Wall) SWant = 0.5;
+	SWant = FMath::Clamp(SWant, 0.32, 0.72);
+	SD(FrameS, FrameSV, SWant, 0.22, Dt);
+	// ---- desired position: behind the (lagged) heading yaw, above the hero
+	const FVector Back = -ForwardFlat(), Right = RightFlat();
+	const double BackDist = ChaseDist + 1.3 * FMath::Max(0.0, KickK);
+	const double OY = OccYawOff, OU = OccUp;
+	const FVector BackR(Back.X * FMath::Cos(OY) - Back.Y * FMath::Sin(OY), Back.X * FMath::Sin(OY) + Back.Y * FMath::Cos(OY), 0);
+	FVector Desired = Hero + BackR * BackDist + Right * 0.3;
+	const double ZWant = Hero.Z + ChaseHeight + OU;
+	if (!bChaseInit)
+	{
+		bChaseInit = true;
+		CamXY = FVector(Desired.X, Desired.Y, 0); CamXYV = FVector::ZeroVector; CamZ = ZWant; CamZV = 0;
+	}
+	// horizontal lag, then hold 4..6.5 m (plus kick) behind; vertical lag, then hold 0.8..4 m (+ occlusion lift) above
+	SDV(CamXY, CamXYV, FVector(Desired.X, Desired.Y, 0), 0.07, Dt);
+	FVector HD = FVector(CamXY.X - Hero.X, CamXY.Y - Hero.Y, 0);
+	const double HL = HD.Size();
+	const double MaxH = 6.5 + 1.3 * FMath::Max(0.0, KickK);
+	if (HL < 1e-3) HD = BackR * 4.0; else if (HL < 4.0) HD *= 4.0 / HL; else if (HL > MaxH) HD *= MaxH / HL;
+	CamXY = FVector(Hero.X + HD.X, Hero.Y + HD.Y, 0);
+	SD(CamZ, CamZV, ZWant, 0.05, Dt);
+	CamZ = FMath::Clamp(CamZ, Hero.Z + 1.6 + OU, Hero.Z + 3.2 + OU);
+	FVector Cam(CamXY.X, CamXY.Y, CamZ);
+	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /
+	// rotated positions and move there smoothly (held ~1 s so the camera does not flicker)
+	auto ClearFrom = [&](const FVector& From, const FVector& To, FVector& Out) -> double
+	{
+		const FVector D = To - From;
+		const double L = D.Size();
+		double HitD = 0;
+		if (L > 1e-3 && World.SphereSweep(From, To, 0.22, HitD)) { Out = From + D / L * FMath::Max(0.0, HitD - 0.12); return FMath::Max(0.0, HitD - 0.12); }
+		Out = To;
+		return L;
+	};
+	// sweep origin: the chest, or (hero against / clipping a surface) the first clear point 1-2.5 m above it
+	FVector From = Chest;
+	bool bFromOk = false;
+	for (double Lift : { 0.0, 1.0, 1.8, 2.6 })
+	{
+		From = Chest + FVector(0, 0, Lift);
+		if (!World.SphereOverlaps(From, 0.22)) { bFromOk = true; break; }
+	}
+	if (!bFromOk && bChaseInit && !CamPos.IsZero())
+	{ // the hero himself is inside geometry this frame (e.g. clipping a facade at a zip arrival): hold the last view
+		HeroDist = FVector::Dist(CamPos, Hero);
+		bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
+		return;
+	}
+	auto ClearTo = [&](const FVector& To, FVector& Out) -> double
+	{
+		ClearFrom(From, To, Out);
+		return FVector::Dist(Out, Hero);
+	};
+	// orbit candidates relative to the current heading: yaw offset DYw (rad) and extra height Up (m)
+	auto Candidate = [&](double DYw, double Up)
+	{
+		const FVector B2(Back.X * FMath::Cos(DYw) - Back.Y * FMath::Sin(DYw), Back.X * FMath::Sin(DYw) + Back.Y * FMath::Cos(DYw), 0);
+		return Hero + B2 * ChaseDist + FVector(0, 0, ChaseHeight + Up);
+	};
+	FVector Tmp;
+	const double DefClear = ClearTo(Candidate(0, 0), Tmp);
+	if (DefClear >= MinHeroDist + 2.0) { OccYawGoal = 0; OccUpGoal = 0; }
+	else if ((OccYawGoal == 0 && OccUpGoal == 0) || ClearTo(Candidate(OccYawGoal, OccUpGoal), Tmp) < 4.0)
+	{ // default spot blocked and no clear orbit held: search raised / rotated spots
+		double BestC = -1e9, BY = 0, BU = 0;
+		for (double Up : { 0.0, 2.0, 4.0, 6.0, 9.0 })
+		{
+			for (double DYw : { 0.0, 0.6, -0.6, 1.1, -1.1, 1.6, -1.6, 2.2, -2.2 })
+			{
+				const double C2 = ClearTo(Candidate(DYw, Up), Tmp);
+				const double Score = FMath::Min(C2, 6.0) - 0.8 * FMath::Abs(DYw) - 0.25 * Up - (FMath::Abs(DYw - OccYawGoal) + FMath::Abs(Up - OccUpGoal) * 0.2) * 0.3;
+				if (C2 >= 4.0 && Score > BestC) { BestC = Score; BY = DYw; BU = Up; }
+			}
+		}
+		if (BestC > -1e8) { OccYawGoal = BY; OccUpGoal = BU; }
+	}
+	SD(OccYawOff, OccYawOffV, OccYawGoal, 0.3, Dt);
+	SD(OccUp, OccUpV, OccUpGoal, 0.3, Dt);
+	FVector Got;
+	ClearTo(Cam, Got);
+	if (FVector::Dist(Got, Hero) < 4.0)
+	{ // too close even after easing: cut to the chosen clear orbit instead of passing through the hero
+		OccYawOff = OccYawGoal; OccUp = OccUpGoal; OccYawOffV = OccUpV = 0;
+		ClearTo(Candidate(OccYawGoal, OccUpGoal), Got);
+		CamXY = FVector(Got.X, Got.Y, 0); CamXYV = FVector::ZeroVector; CamZ = Got.Z; CamZV = 0;
+	}
+	Cam = Got;
+	// never closer than MinHeroDist: if the geometry forces it, rise straight up over the hero instead
+	if (FVector::Dist(Cam, Hero) < MinHeroDist)
+	{
+		FVector Up2 = Hero + FVector(0, 0, MinHeroDist + 0.5) + BackR * 1.0;
+		FVector G3;
+		ClearTo(Up2, G3);
+		if (FVector::Dist(G3, Hero) > FVector::Dist(Cam, Hero)) Cam = G3;
+	}
+	const double GY = World.GroundHeight(Cam.X, Cam.Y, Cam.Z + 0.3) + 0.4;
+	if (Cam.Z < GY) Cam.Z = GY;
+	CamPos = Cam;
+	HeroDist = FVector::Dist(CamPos, Hero);
+	bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
+	// ---- orientation: yaw toward the hero; pitch puts the hero's centre at FrameS on screen (user look adds an offset)
+	const FVector ToHero = Hero - CamPos;
+	const double HLen = FMath::Max(0.1, FVector2D(ToHero.X, ToHero.Y).Size());
+	const double DownToHero = FMath::Atan2(-ToHero.Z, HLen);
+	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
+	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
+	const double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(8.0), FMath::DegreesToRadians(32.0));
+	Pitch = PitchDown; // keep the orbit state coherent for Forward()
+	CamRot = FRotator(FMath::RadiansToDegrees(-PitchDown), FMath::RadiansToDegrees(FMath::Atan2(ToHero.Y, ToHero.X)), 0);
 }
