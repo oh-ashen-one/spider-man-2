@@ -146,6 +146,8 @@ TEXA = lambda n: f'{ROOT}/Textures/{n}'
 WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 
 if 'mat' in STEPS:
+    # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
+    unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
     if not EAL.does_asset_exist(MAT + '/MPC_City'):
         mpc = at.create_asset('MPC_City', MAT, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
         sp = []
@@ -157,13 +159,16 @@ if 'mat' in STEPS:
 float r, m, g; float3 n, e, f;
 float3 a = CityFacade(tWallC, tWallCSampler, tWallN, tWallNSampler, tWallH, tWallHSampler, tDetail, tDetailSampler, tInterior, tInteriorSampler, tSigns, tSignsSampler, tNoise, tNoiseSampler,
   uv0, float4(uv1, uv2), float4(uv3, uv4), float4(uv5, uv6), uv7, vc.rgb * 2.0, wpos, wn, cam, float4(igain, sgain, nightk, dntime), float2(0.0, 0.0), r, m, n, e, g, f);
-Rough = r; Metal = lerp(m, 1.0, g); NormalW = n; Emis = e * escale;
-return lerp(a, f, g);''',
+// coated curtain glass (F0 0.2-0.6): metallic mirror = F0 x tint. Old sash glass (gSash): dielectric with F0 = 0.011 so
+// that UE's F90 = saturate(50 F0) = 0.55 matches the browser's specularF90 0.55 (no bright grazing mirrors on masonry)
+float gm = g * (1.0 - gSash);
+Rough = r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = e * escale; Spec = lerp(0.5, 0.1375, g * gSash);
+return lerp(a, f, gm);''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
          ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise'))]
         + [(f'uv{i}', 'uv', i) for i in range(8)] + [('vc', 'vc', None)] + WORLD
         + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale')],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR)])
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)])
     make_material('M_CityDetail', '/Project/City/Detail.ush', '''
 float r, m, o; float3 n;
 float3 a = CityDetail(tNoise, tNoiseSampler, tDetail, tDetailSampler, vc.rgb, uv1.x, uv0, wpos, wn, cam, Parameters.SvPosition.xy, r, m, n, o);
