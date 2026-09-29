@@ -1039,7 +1039,7 @@ Surf facade(TEXDECL) {
   // far LOD (skyline): exactly box-filtered window pattern (pbox) instead of a flat average: floor bands, deco pier
   // lines, spandrel stripes and mullion grids stay readable on distant towers and fade to the true mean (no moire)
   if (lod > 0.0f) {
-    float wf = 1.8f; // (skyline r4) wider box filter: kills the micro-grid moire seen from altitude
+    float wf = 1.15f; // (skyline r4) wider box filter: kills the micro-grid moire seen from altitude
     float cxw = pbox(TEXPASS, ux, bw, wx0, wx0 + ww, aw * wf);
     float cyw = pbox(TEXPASS, yy, fh, wy0, wy0 + wh, ah * wf);
     float cov = cxw * cyw * valid;
@@ -1086,7 +1086,7 @@ Surf facade(TEXDECL) {
       gGlass = lerp(gGlass, cov, lod);
       a.emis = (roomAvg * 0.25f * (0.4f + 1.2f * lit) + float3(0.03f,0.036f,0.045f)) * uInteriorGain * cov * (pOK ? 0.7f : (deco ? 0.5f : 1.0f)); // (textures r4) pOK 0.45f -> 0.7f // (street r10) darker masonry windows; (skyline r11) deco too
     }
-    r.alb = lerp(r.alb, a.alb, lod); r.rough = lerp(r.rough, a.rough, lod); r.metal = lerp(r.metal, a.metal, lod);
+    r.alb = lerp(r.alb, a.alb, lod); r.alb *= lerp(float3(1.0f, 1.0f, 1.0f), float3(1.12f, 1.02f, 0.86f), smoothstep(0.4f, 1.0f, lod)); r.rough = lerp(r.rough, a.rough, lod); r.metal = lerp(r.metal, a.metal, lod);
     r.n = normalize(lerp(r.n, a.n, lod)); r.emis = lerp(r.emis, a.emis, lod);
   }
   // (daynight) at night only a random fraction of the rooms is lit (warm tungsten / some cool LED), the rest go dim

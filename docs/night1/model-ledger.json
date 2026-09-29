@@ -1,32 +1,324 @@
 {
  "note": "Self-evolving model ledger (owner 2026-09-29). One row per judged round: builder model/effort, critic scores (blind, vs Marvel's Spider-Man 2), average. Token counts are per builder agent across the rounds it ran (approximate, from agent usage reports). The Fable director reviews this at wave boundaries and reassigns models by evidence; occasional same-gap Sonnet-vs-Opus A/B builds add direct comparisons.",
  "rounds": [
-  {"piece":"P3 Traversal","round":1,"model":"Opus 5.5","effort":"default","scores":[3,3,3,2,2]},
-  {"piece":"P3 Traversal","round":2,"model":"Opus 5.5","effort":"default","scores":[3,2,4,3,3]},
-  {"piece":"P3 Traversal","round":3,"model":"Opus 5.5","effort":"default","scores":[3,3,4,2,2]},
-  {"piece":"P3 Traversal","round":4,"model":"Opus 5.5","effort":"default","scores":[4,3,4,3,4]},
-  {"piece":"P3 Traversal","round":5,"model":"Opus 5.5","effort":"default","scores":[5,3,5,4,3]},
-  {"piece":"P3 Traversal","round":6,"model":"Opus 5.5","effort":"default","scores":[4,4,5,4,4]},
-  {"piece":"P3 Traversal","round":7,"model":"Opus 5.5","effort":"default","scores":[4,3,4,4,4]},
-  {"piece":"P3 Traversal","round":8,"model":"Opus 5.5","effort":"default","scores":[4,4,4,3,3]},
-  {"piece":"P1 City","round":1,"model":"Opus 5.5","effort":"default","scores":[4,3,2,2,3]},
-  {"piece":"P1 City","round":2,"model":"Opus 5.5","effort":"default","scores":[5,2,4,4,3]},
-  {"piece":"P1 City","round":3,"model":"Opus 5.5","effort":"default","scores":[4,3,4,4,4]},
-  {"piece":"P1 City","round":4,"model":"Sonnet 5.5","effort":"xhigh","scores":[5,3,4,4,5]},
-  {"piece":"P1 City","round":5,"model":"Sonnet 5.5","effort":"xhigh","scores":[5,4,3,4,5]},
-  {"piece":"P2 Characters","round":1,"model":"Opus 5.5","effort":"default","scores":[4,4,2,2,3]},
-  {"piece":"P2 Characters","round":2,"model":"Sonnet 5.5","effort":"xhigh","scores":[5,4,2,3,4]},
-  {"piece":"P4 Look","round":1,"model":"Sonnet 5.5","effort":"xhigh","scores":[5,3,4,3,3,2]}
+  {
+   "piece": "P3 Traversal",
+   "round": 1,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    3,
+    3,
+    3,
+    2,
+    2
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 2,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    3,
+    2,
+    4,
+    3,
+    3
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 3,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    3,
+    3,
+    4,
+    2,
+    2
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 4,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    3,
+    4,
+    3,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 5,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    5,
+    3,
+    5,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 6,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    4,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 7,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    3,
+    4,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 8,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    4,
+    4,
+    3,
+    3
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 1,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    3,
+    2,
+    2,
+    3
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 2,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    5,
+    2,
+    4,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 3,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    3,
+    4,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 4,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    3,
+    4,
+    4,
+    5
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 5,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    4,
+    3,
+    4,
+    5
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 1,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    4,
+    4,
+    2,
+    2,
+    3
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 2,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    4,
+    2,
+    3,
+    4
+   ]
+  },
+  {
+   "piece": "P4 Look",
+   "round": 1,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    3,
+    4,
+    3,
+    3,
+    2
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 3,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    3,
+    3,
+    2,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 9,
+   "model": "Opus 5.5",
+   "effort": "default",
+   "scores": [
+    5,
+    6,
+    4,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 6,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    4,
+    4,
+    5,
+    5
+   ]
+  }
  ],
  "agents": [
-  {"piece":"P3 Traversal","rounds":"1–5","model":"Opus 5.5","tokens":953000},
-  {"piece":"P3 Traversal","rounds":"6–8","model":"Opus 5.5","tokens":654000},
-  {"piece":"P1 City","rounds":"1–3","model":"Opus 5.5","tokens":671000},
-  {"piece":"P1 City","rounds":"4–5","model":"Sonnet 5.5","tokens":625000},
-  {"piece":"P2 Characters","rounds":"1","model":"Opus 5.5","tokens":440000},
-  {"piece":"P2 Characters","rounds":"2","model":"Sonnet 5.5","tokens":521000},
-  {"piece":"P4 Look + F3 baseline","rounds":"1","model":"Sonnet 5.5","tokens":938000},
-  {"piece":"F2 Refs finish","rounds":"1","model":"Sonnet 5.5","tokens":384000}
+  {
+   "piece": "P3 Traversal",
+   "rounds": "1\u20135",
+   "model": "Opus 5.5",
+   "tokens": 953000
+  },
+  {
+   "piece": "P3 Traversal",
+   "rounds": "6\u20138",
+   "model": "Opus 5.5",
+   "tokens": 654000
+  },
+  {
+   "piece": "P1 City",
+   "rounds": "1\u20133",
+   "model": "Opus 5.5",
+   "tokens": 671000
+  },
+  {
+   "piece": "P1 City",
+   "rounds": "4\u20135",
+   "model": "Sonnet 5.5",
+   "tokens": 625000
+  },
+  {
+   "piece": "P2 Characters",
+   "rounds": "1",
+   "model": "Opus 5.5",
+   "tokens": 440000
+  },
+  {
+   "piece": "P2 Characters",
+   "rounds": "2",
+   "model": "Sonnet 5.5",
+   "tokens": 521000
+  },
+  {
+   "piece": "P4 Look + F3 baseline",
+   "rounds": "1",
+   "model": "Sonnet 5.5",
+   "tokens": 938000
+  },
+  {
+   "piece": "F2 Refs finish",
+   "rounds": "1",
+   "model": "Sonnet 5.5",
+   "tokens": 384000
+  },
+  {
+   "piece": "P2 Characters",
+   "rounds": "2\u20133",
+   "model": "Sonnet 5.5",
+   "tokens": 945000
+  },
+  {
+   "piece": "P3 Traversal",
+   "rounds": "6\u20139",
+   "model": "Opus 5.5",
+   "tokens": 747000
+  },
+  {
+   "piece": "P1 City",
+   "rounds": "4\u20136",
+   "model": "Sonnet 5.5",
+   "tokens": 769000
+  }
  ],
- "caveats": ["Round difficulty differs (each round targets a different gap), so per-round averages compare pieces' trajectories, not models directly. Direct comparisons need same-gap A/B builds."]
+ "caveats": [
+  "Round difficulty differs (each round targets a different gap), so per-round averages compare pieces' trajectories, not models directly. Direct comparisons need same-gap A/B builds."
+ ]
 }

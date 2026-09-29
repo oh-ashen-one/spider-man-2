@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 14:47",
+ "updated": "2026-09-29 18:14",
  "phase": "Wave 2 \u2014 director plan",
- "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
+ "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -36,27 +36,27 @@
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "fixing",
-   "round": 6,
-   "verdict": "R5: FAILS (facades 5, street 4, skyline 3, Manhattan 4, IQ 5)",
-   "gap": "Far skyline: lavender untextured boxes, white shoreline strip, windowless mid-ground"
+   "round": 7,
+   "verdict": "R6: FAILS (facades 5, street 4, skyline 4, Manhattan 5, IQ 5)",
+   "gap": "Far field still plain boxes; facade base colours clip; shared spec-check script (builder and critic measured differently)"
   },
   {
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (hero 5, hero anim 4, enemies 2, civilians 3, IQ 4)",
-   "gap": "Thug and brute are prototype-grade; rebuild from the owner's Tripo people"
+   "round": 4,
+   "verdict": "R3: FAILS (hero 4, anim 3, enemies 3, civilians 2, IQ 4)",
+   "gap": "Hero run (step rate, lean, takeoff), enemy masks + lineup, sliding civilians \u2014 Opus builder"
   },
   {
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 9,
-   "verdict": "R8: FAILS (arc 4, camera 4, web 4, moves 3, body 3)",
-   "gap": "Locked symmetric camera + identical swings; needs weave inside a safe corridor"
+   "round": 10,
+   "verdict": "R9: FAILS (arc 5, camera 6, web 4, moves 5, body 5) \u2014 best yet",
+   "gap": "Rhythm/altitude: rope 52\u201367% on screen (spec 25\u201345%), no long trick phase, never reaches rooflines; moving into the real lit city"
   },
   {
    "id": "P4",
@@ -107,19 +107,19 @@
    "id": "C",
    "name": "Integrated Manhattan map",
    "branch": "night1/manhattan",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "After current rounds merge (Opus high)"
+   "state": "done",
+   "round": 1,
+   "verdict": "Map builds headless in ~10 min; route clean (0 fall-through/T-pose/stuck)",
+   "gap": "Integration bugs routed to owners; hero swap to /Game/Characters pending P3"
   },
   {
    "id": "F",
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "After A + C (Opus high)"
+   "gap": "Opus 5.5 high: profile + overrides + owner change list"
   },
   {
    "id": "G",
@@ -132,6 +132,24 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "Characters round 3 \u2014 enemies rebuilt from the owner's Tripo people",
+   "note": "Real faces, five-finger hands, folded cloth; brute 1.36\u00d7 the thug's shoulders.",
+   "images": [
+    {
+     "label": "Round 2 thug",
+     "src": "docs/night1/characters/round-02/captures/thug_walk_1080.jpg"
+    },
+    {
+     "label": "Round 3 thug + brute",
+     "src": "docs/night1/characters/round-03/captures/thug_brute_pair_side_4k.jpg"
+    },
+    {
+     "label": "Round 3 thug face",
+     "src": "docs/night1/characters/round-03/captures/thug_face_4k.jpg"
+    }
+   ]
+  },
   {
    "title": "City round 5 \u2014 street level built",
    "note": "Storefronts with original signs and awnings, fire escapes, street furniture. Before: blank ground floors.",
@@ -284,6 +302,16 @@
   }
  ],
  "clips": [
+  {
+   "title": "Integrated Manhattan \u2014 30 s route",
+   "src": "docs/night1/manhattan/round-01/route_30s.mp4",
+   "caption": "city + golden-hour look + hero + street people"
+  },
+  {
+   "title": "Traversal R9 \u2014 spec-driven camera",
+   "src": "docs/night1/traversal/round-09/a_swing_chain.mp4",
+   "caption": "best critic score so far (avg 5.0/10)"
+  },
   {
    "title": "Look R1 \u2014 golden-hour swing",
    "src": "docs/night1/look/round-01/swing_golden.mp4"
@@ -469,9 +497,43 @@
    "verdict": "fails",
    "gap": "Camera yaws toward the anchor and rolls with the arc; hero alternates 30\u201370% of frame width; arc low point varies \u22651 storey; keep facade clearance.",
    "notes": "Wall-hugging fixed (nearest facade ~1 m \u2192 \u226513 m); round 8 beat round 7 in both version pairs; camera 3\u21924. Now too centred and repetitive."
+  },
+  {
+   "t": "15:31",
+   "piece": "P2 Characters",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Hero run: 3.2\u20133.8 steps/s, \u226515\u00b0 lean, \u22659-frame takeoff crouch (CH6/7/10).",
+   "notes": "Rebuilt thug/brute from the owner's Tripo people beat round 2 by ~2.5 on enemy models; seam cracks (skin-weight bug) fixed. Secondary: paper-card masks, 2 enemies / 0 weapons in frame, sliding civilians, hero lens/weave. Critic again flags the classic hero suit as close to a studio-owned design (owner decision)."
+  },
+  {
+   "t": "15:34",
+   "piece": "P3 Traversal",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "Every 8 s: rope on screen 25\u201345%, \u22651.5 s web-less trick phase, peak at roofline then drop 1\u20134 storeys (T3/T4/T7).",
+   "notes": "Best round yet (avg 5.0, from 3.6): camera passes most spec lines (hero height .217, yaw 7.5\u00b0, hFOV 103\u00b0); round 9 beat round 8 by ~1 pt on camera. Critic used the spec's own measuring tools."
+  },
+  {
+   "t": "15:48",
+   "piece": "P1 City",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Far field C11/C13\u2013C15, facade base colours C1, plus IP (transit slogan, game key art, product mural).",
+   "notes": "Far-shore bugs fixed (window flag clamped, white generic material, blue haze); round 6 beat round 5 by ~0.5 on skyline. Builder and critic measured the same spec lines differently \u2192 round 7 commits shared crop regions + one check script. Lighting-owned issues (crushed S1/S7, blown S4 sky) routed to P4."
   }
  ],
  "perf": [
+  {
+   "what": "Manhattan map \u2014 30 s swing route (FIRST CLEAN RUN)",
+   "output": "3840\u00d72160",
+   "internal": "2573\u00d71447 (TSR 67%)",
+   "median": "51.9",
+   "p95": "59.0",
+   "p99": "62.8",
+   "hitches": "0",
+   "notes": "exclusive GPU lock, GPU 0% before/after; 19.2 fps; GPU 42.2 ms, render thread 50.6 ms. Earlier rows below are contaminated."
+  },
   {
    "what": "Unreal look R1 \u2014 hero swing route through Midtown, TSR 50%",
    "output": "3840\u00d72160",
@@ -651,6 +713,30 @@
   {
    "t": "14:47",
    "text": "GPU lock merged (A). Numeric SPECs merged (B): measuring the reference showed the traversal r8 critic's '30\u201370% width weave' and two earlier demands were wrong; traversal round 9 corrected mid-round. Skill repo claude-code-game-builder published (public, credits Matt Shumer's Gauntlet Loop)."
+  },
+  {
+   "t": "15:31",
+   "text": "Characters R3 merged (enemies rebuilt); critic FAILS; round 4 = 3 gaps on an Opus 5.5 high builder (ledger comparison vs Sonnet rounds 2\u20133)."
+  },
+  {
+   "t": "15:34",
+   "text": "Traversal R9: best yet (avg 5.0) after the spec correction; round 10 on a fresh Opus-high builder, captures move into the real lit city."
+  },
+  {
+   "t": "15:48",
+   "text": "City R6 merged; critic FAILS (avg 4.6, up from 4.2); round 7 on a fresh Sonnet builder with a shared spec-check script."
+  },
+  {
+   "t": "16:18",
+   "text": "C Manhattan map merged; first clean perf: 19 fps at 4K/TSR 67%. F perf piece started (Opus high). Integration bugs routed to owners (docs/night1/manhattan/INTEGRATION_BUGS.md)."
+  },
+  {
+   "t": "16:43",
+   "text": "INCIDENT: GPU saturation (11 Unreal instances in 13 min + Blender + perf run) made macOS's WindowServer miss its watchdog for 40 s; the system killed it, logging the owner out and killing every agent and the orchestrator. The Studio itself stayed up (uptime unaffected)."
+  },
+  {
+   "t": "18:14",
+   "text": "Recovered: all worktree WIP committed and pushed, orphaned crash reporters (100% CPU for 6 h) killed. New hard rule: max 2 Unreal processes of any kind at once through the GPU lock; builds via null-RHI commandlets; no crash-relaunch loops. Resuming at 2 concurrent GPU builders."
   }
  ]
 }
