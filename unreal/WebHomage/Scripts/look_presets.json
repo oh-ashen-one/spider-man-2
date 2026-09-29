@@ -268,7 +268,7 @@
    }
   },
   "night": {
-   "desc": "deep blue night: low moon, twilight glow on the horizon, windows and shop fronts lit through MPC_City (NightK = 1)",
+   "desc": "deep blue night, lifted ambient: sodium / LED street lamps with light pools every 24 m, storefront spill on the sidewalks, stand-in traffic lights (head / tail), damp streets, hero rim + fill; windows and shop fronts lit through MPC_City (NightK = 1)",
    "sun": {
     "elev": -9.0,
     "az": 285.0,
@@ -281,15 +281,15 @@
    "moon": {
     "elev": 38.0,
     "az": 118.0,
-    "lux": 8.0,
+    "lux": 12.0,
     "temp": 7800.0,
     "angle": 0.52
    },
    "sky": {
-    "intensity": 1.2,
+    "intensity": 4.0,
     "tint": [
-     1.0,
-     1.0,
+     0.85,
+     0.9,
      1.0
     ]
    },
@@ -359,19 +359,19 @@
    "mpc": {
     "NightK": 1.0,
     "DnTime": 2400.0,
-    "InteriorGain": 1.0,
-    "ShopGain": 1.3,
-    "EmissiveScale": 3.0
+    "InteriorGain": 1.3,
+    "ShopGain": 1.6,
+    "EmissiveScale": 12.0
    },
    "exposure": {
-    "min_ev": 1.8,
-    "max_ev": 6.6,
-    "bias": 0.7
+    "min_ev": 3.5,
+    "max_ev": 3.5,
+    "bias": 0.0
    },
    "post": {
     "bloom_intensity": 1.1,
     "bloom_threshold": 0.6,
-    "lens_flare_intensity": 1.4,
+    "lens_flare_intensity": 0.25,
     "vignette_intensity": 0.45,
     "scene_fringe_intensity": 0.15,
     "film_slope": 0.9,
@@ -387,9 +387,9 @@
      1.0
     ],
     "color_contrast": [
-     1.1,
-     1.1,
-     1.1,
+     1.35,
+     1.35,
+     1.35,
      1.0
     ],
     "motion_blur_amount": 0.5,
@@ -400,8 +400,135 @@
     "indirect_lighting_intensity": 1.6,
     "lumen_scene_lighting_quality": 1.0,
     "lumen_final_gather_quality": 1.0,
-    "lumen_reflection_quality": 1.0
-   }
+    "lumen_reflection_quality": 1.0,
+    "color_offset": [
+     0.004,
+     0.005,
+     0.009,
+     0.0
+    ]
+   },
+   "lights": {
+    "_comment": "street lighting of the night rig (Scripts/build_look.py step 'night' -> /Game/Look/Look_NightLights). cd = candela, radius / distances in cm, angles in degrees. Lamp positions come from layout.json instances.lamp (the browser's own lamps).",
+    "lamps": {
+     "head_h": 9.15,
+     "arm": 2.9,
+     "spot_cd": 7000,
+     "spot_outer": 36,
+     "spot_inner": 6,
+     "spot_radius": 3000,
+     "halo_cd": 110,
+     "halo_radius": 1400,
+     "temps": [
+      2200,
+      2700,
+      4100
+     ],
+     "weights": [
+      0.45,
+      0.35,
+      0.2
+     ],
+     "volumetric": 0.8,
+     "max_draw": 26000,
+     "glow_gain": 40.0,
+     "glow_size_cm": 42,
+     "indirect": 2.5
+    },
+    "storefront": {
+     "enabled": true,
+     "spacing": 12.0,
+     "height": 3.3,
+     "pitch": -38,
+     "spot_cd": 700,
+     "outer": 62,
+     "inner": 22,
+     "radius": 1500,
+     "setback": 0.35,
+     "face_tol": 7.0,
+     "min_face": 7.0,
+     "temps": [
+      2700,
+      3200,
+      4300,
+      6500
+     ],
+     "weights": [
+      0.4,
+      0.3,
+      0.2,
+      0.1
+     ],
+     "tint_chance": 0.22,
+     "max_draw": 15000
+    },
+    "cars": {
+     "enabled": true,
+     "fill": 0.85,
+     "gap_min": 9.0,
+     "gap_max": 20.0,
+     "clear_radius": 9.0,
+     "lane_edge_park": 2.4,
+     "head_cd": 2000,
+     "head_outer": 22,
+     "head_inner": 5,
+     "head_radius": 1900,
+     "head_pitch": -7,
+     "tail_cd": 140,
+     "tail_radius": 420,
+     "head_gain": 60.0,
+     "tail_gain": 18.0,
+     "max_draw": 11000,
+     "seed": 7
+    },
+    "wet": {
+     "enabled": true,
+     "z_center_cm": 20,
+     "half_depth_cm": 70,
+     "half_size_cm": 42000,
+     "base": 0.72,
+     "puddle": 0.8,
+     "rough_dry": 0.42,
+     "rough_wet": 0.13
+    },
+    "hero": {
+     "enabled": true,
+     "rim_cd": 2500,
+     "fill_cd": 1250,
+     "top_cd": 560
+    }
+   },
+   "fills": [
+    {
+     "name": "West",
+     "elev": 8.0,
+     "az": 262.0,
+     "lux": 7.0,
+     "temp": 3400.0
+    },
+    {
+     "name": "North",
+     "elev": 8.0,
+     "az": 355.0,
+     "lux": 1.5,
+     "temp": 3800.0
+    },
+    {
+     "name": "South",
+     "elev": 8.0,
+     "az": 175.0,
+     "lux": 1.5,
+     "temp": 3800.0
+    },
+    {
+     "name": "East",
+     "elev": 8.0,
+     "az": 95.0,
+     "lux": 1.0,
+     "temp": 4200.0
+    }
+   ],
+   "fills_desc": "unshadowed low horizon 'city glow' directional fills (light pollution glow at the horizon from every side): they light the facades (cos of the incidence) but the streets only by sin(8 deg), so road pools stay distinct"
   }
  }
 }

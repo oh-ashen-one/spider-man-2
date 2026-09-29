@@ -52,34 +52,56 @@ def main():
                     notes.append({'kind': 'still', 'file': os.path.relpath(out, rnd), 'preset': preset, 'view': s['id'], 'desc': s['desc'], 'output': res,
                                   'internal': ('%s%% of output' % a.sp), 'camera_pos_m': s['pos'], 'camera_target_m': s['target'], 'fov_deg': s.get('fov', 70),
                                   'game_time_s': times[-1], 'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0)})
+                    if preset == 'night' and sid in ('S1', 'S6'):
+                        sys.path.insert(0, HERE)
+                        import night_tests
+                        tst = {'still': night_tests.still_stats(last), 'pools_bottom_third': night_tests.pool_stats(last)}
+                        json.dump(tst, open('%s/stills/%s_tests.json' % (rnd, name), 'w'), indent=1)
+                        notes[-1]['tests'] = {'mean_luma': tst['still']['mean_luma'], 'pct_below_10': tst['still']['pct_below_10'], 'distinct_pools_bottom_third': tst['pools_bottom_third']['distinct_pools']}
                     print('still', name, os.path.getsize(out) // 1024, 'KB', round(time.time() - t0), 's', flush=True)
     if a.clips:
+        PRE = 0.8   # pre-roll (s): start pose rendered, traversal not stepped (exposure / Lumen / TSR settle); those frames are trimmed from the clip
         for preset in a.presets.split(','):
             name = 'swing_%s' % preset
+            mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
+            wd = os.path.join(SCR, name + '_warmup'); shutil.rmtree(wd, ignore_errors=True)   # shader / texture warm-up render, not kept
+            subprocess.run([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', '2400', '--', '-benchmark', '-fps=60',
+                            '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')], capture_output=True, text=True)
+            shutil.rmtree(wd, ignore_errors=True)
             d = os.path.join(SCR, name); shutil.rmtree(d, ignore_errors=True)
             u = util(); t0 = time.time()
-            cmd = [RUN_GAME, d, '-map', '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset), '-res', '1920x1080', '-quit', str(a.clip_seconds),
+            cmd = [RUN_GAME, d, '-map', mp, '-res', '1920x1080', '-quit', str(a.clip_seconds + PRE),
                    '-name', name, '-movie', '-timeout', '3000', '-exec', 'r.ScreenPercentage %s' % a.sp,
-                   '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv')]
+                   '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE]
             r = subprocess.run(cmd, capture_output=True, text=True)
             mp4 = os.path.join(d, name + '.mp4')
-            if not os.path.exists(mp4): print('FAILED clip', name, r.stdout[-400:]); continue
-            dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4], capture_output=True, text=True).stdout)
+            fr = os.path.join(d, name + '_frames'); csvp = os.path.join(d, name + '_telemetry.csv')
+            if not os.path.isdir(fr): print('FAILED clip', name, r.stdout[-400:]); continue
+            nfr_all = len(glob.glob(fr + '/*.png')); nrows = (sum(1 for _ in open(csvp)) - 1) if os.path.exists(csvp) else nfr_all
+            skip = max(0, nfr_all - nrows)           # rendered frames before the sequence's first telemetry row (engine start + pre-roll)
             out = os.path.join(rnd, name + '.mp4')
-            if os.path.getsize(mp4) > 15_000_000:
+            def enc(extra):
+                subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', '60', '-start_number', str(skip), '-i', fr + '/MovieFrame%05d.png', '-c:v', 'libx264',
+                                '-pix_fmt', 'yuv420p', '-movflags', '+faststart'] + extra + [out])
+            enc(['-crf', '18'])
+            dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', out], capture_output=True, text=True).stdout)
+            if os.path.getsize(out) > 15_000_000:
                 kbps = int(14.5e6 * 8 / 1000 / dur)
-                subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', '60', '-i', d + '/%s_frames/MovieFrame%%05d.png' % name, '-c:v', 'libx264', '-preset', 'slow',
-                                '-b:v', '%dk' % kbps, '-maxrate', '%dk' % kbps, '-bufsize', '%dk' % (kbps * 2), '-pix_fmt', 'yuv420p', '-movflags', '+faststart', out])
-            else:
-                shutil.copy(mp4, out)
-            if os.path.exists(os.path.join(d, name + '_telemetry.csv')): shutil.copy(os.path.join(d, name + '_telemetry.csv'), os.path.join(rnd, name + '_telemetry.csv'))
-            nfr = len(glob.glob(d + '/%s_frames/*.png' % name))
-            notes.append({'kind': 'clip', 'file': os.path.basename(out), 'preset': preset, 'map': cmd[cmd.index('-map') + 1], 'output': '1920x1080 60 fps H.264',
-                          'internal': '%s%% of output (1920x1080)' % a.sp, 'frames': nfr, 'seconds': round(dur, 2), 'bytes': os.path.getsize(out),
-                          'script': 'tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript)', 'time_step': 'fixed 1/60 s (-benchmark -fps=60 -dumpmovie)',
-                          'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0)})
-            shutil.rmtree(d + '/%s_frames' % name, ignore_errors=True)  # heavy PNG frames are disposable once encoded
-            print('clip', name, os.path.getsize(out) // 1024, 'KB', nfr, 'frames', flush=True)
+                enc(['-preset', 'slow', '-b:v', '%dk' % kbps, '-maxrate', '%dk' % kbps, '-bufsize', '%dk' % (kbps * 2)])
+            if os.path.exists(csvp): shutil.copy(csvp, os.path.join(rnd, name + '_telemetry.csv'))
+            tests = None
+            if os.path.exists(csvp):   # hero-only pixel box (P3 depth capture) -> mean luma per frame
+                sys.path.insert(0, HERE)
+                import night_tests
+                tests = night_tests.hero_stats(fr, csvp, skip=skip)
+                json.dump(tests, open(os.path.join(rnd, name + '_hero_luma.json'), 'w'), indent=1)
+                print('hero luma', name, tests, flush=True)
+            notes.append({'kind': 'clip', 'file': os.path.basename(out), 'preset': preset, 'map': mp, 'output': '1920x1080 60 fps H.264',
+                          'internal': '%s%% of output (1920x1080)' % a.sp, 'frames': nrows, 'seconds': round(dur, 2), 'bytes': os.path.getsize(out),
+                          'script': 'tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript, 0.8 s pre-roll trimmed)', 'time_step': 'fixed 1/60 s (-benchmark -fps=60 -dumpmovie)',
+                          'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0), 'hero_bbox_mean_luma': tests})
+            shutil.rmtree(fr, ignore_errors=True)  # heavy PNG frames are disposable once encoded
+            print('clip', name, os.path.getsize(out) // 1024, 'KB', nrows, 'frames', flush=True)
     prev = []
     if os.path.exists(rnd + '/notes.json'):
         try: prev = json.load(open(rnd + '/notes.json'))
@@ -100,6 +122,14 @@ def write_notes(rnd, notes):
     L += ['', '## Clips', '', '| file | preset | map | output | internal resolution | frames | seconds | bytes | time step | script |', '|---|---|---|---|---|---|---|---|---|---|']
     for n in sorted([n for n in notes if n['kind'] == 'clip'], key=lambda n: n['preset']):
         L.append('| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (n['file'], n['preset'], n['map'], n['output'], n['internal'], n['frames'], n['seconds'], n['bytes'], n['time_step'], n['script']))
+    tt = [n for n in notes if n.get('tests') or n.get('hero_bbox_mean_luma')]
+    if tt:
+        L += ['', '## Night test numbers (tools/perf_ue/night_tests.py; luma Y = 0.2126 R + 0.7152 G + 0.0722 B of the 8-bit sRGB values)', '']
+        for n in sorted(tt, key=lambda n: n['file']):
+            if n.get('tests'): L.append('- %s: mean luma %s /255, %s %% of pixels < 10/255, distinct light pools in the bottom third (peak >= 120, valley <= 40) %s' % (n['file'], n['tests']['mean_luma'], n['tests']['pct_below_10'], n['tests']['distinct_pools_bottom_third']))
+            if n.get('hero_bbox_mean_luma'):
+                h = n['hero_bbox_mean_luma']
+                L.append('- %s: hero pixel bounding box mean luma per frame: min %s, p5 %s, mean %s, max %s /255 over %s frames (%s frames below 40; %s frames without hero pixels)' % (n['file'], h['bbox_mean_luma_min'], h['bbox_mean_luma_p5'], h['bbox_mean_luma_mean'], h['bbox_mean_luma_max'], h['frames_measured'], h['frames_below_threshold'], h['frames_without_hero_pixels']))
     L += ['', 'Clip frames are rendered offline at a fixed 1/60 s step (`-benchmark -fps=60 -dumpmovie`), so a clip says nothing about real-time frame rate; see `PERF.md` for measured frame times.', '']
     open(rnd + '/NOTES.md', 'w').write('\n'.join(L))
 
