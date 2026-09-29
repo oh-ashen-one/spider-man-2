@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 16:18",
+ "updated": "2026-09-29 18:14",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -729,6 +729,14 @@
   {
    "t": "16:18",
    "text": "C Manhattan map merged; first clean perf: 19 fps at 4K/TSR 67%. F perf piece started (Opus high). Integration bugs routed to owners (docs/night1/manhattan/INTEGRATION_BUGS.md)."
+  },
+  {
+   "t": "16:43",
+   "text": "INCIDENT: GPU saturation (11 Unreal instances in 13 min + Blender + perf run) made macOS's WindowServer miss its watchdog for 40 s; the system killed it, logging the owner out and killing every agent and the orchestrator. The Studio itself stayed up (uptime unaffected)."
+  },
+  {
+   "t": "18:14",
+   "text": "Recovered: all worktree WIP committed and pushed, orphaned crash reporters (100% CPU for 6 h) killed. New hard rule: max 2 Unreal processes of any kind at once through the GPU lock; builds via null-RHI commandlets; no crash-relaunch loops. Resuming at 2 concurrent GPU builders."
   }
  ]
 }
