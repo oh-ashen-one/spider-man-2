@@ -8,7 +8,7 @@ cd "$(dirname "$0")/../../unreal/WebHomage"
 mkdir -p "$OUT"
 while read -r shot dur name; do
   [ -z "$name" ] && continue
-  Scripts/run_game.sh "$OUT" -map /Game/Tests/Characters/Char_Lineup -res 1920x1080 -quit "$dur" -name "$name" -movie -timeout 1200 -- -WHCharShot="$shot" | tail -1
+  Scripts/run_game.sh "$OUT" -map /Game/Tests/Characters/Char_Lineup -res 1920x1080 -quit "$dur" -name "$name" -movie -timeout 1200 -- -WHCharShot="$shot" < /dev/null | tail -1
   rm -rf "$OUT/${name}_frames"
 done <<'LIST'
 0 6 hero_turntable_walk

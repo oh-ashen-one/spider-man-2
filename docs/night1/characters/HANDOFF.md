@@ -80,7 +80,8 @@ Nothing below is committed. Everything is regenerable.
 1. **UE rejects `EXT_texture_webp`.** `prep_glbs.py` strips textures and merges the hero Lenses primitives into the body, so the hero is one SK with slots SpiderSuit / LensFrame / Lens.
 2. **Interchange scripting (UE 5.8.3).** `InterchangeManager.import_asset(+override_pipelines)` completes only the first import of a session. Later imports log "start" and never finish. Use `AssetImportTask` with `options = InterchangePipelineStackOverride(add_pipeline(p))`. A bare pipeline object as `options` is silently ignored, and the default glTF stack then runs: subfolders, per-mesh skeletons, imported materials.
 3. **Asset names come from the source file.** `SK_Hero.glb` gives `SK_Hero`, `SK_Hero_Skeleton`, `SK_Hero_PhysicsAsset`, `SK_Hero<clip>`. Only the clips are renamed, to `Anims/A_Hero_<clip>`.
-   - Bone names are exactly the names UE's glTF importer produces from `spiderman.glb` (same importer).
+   - Bone names are exactly the names UE's glTF importer produces from `spiderman.glb` (same importer): 58 bones, root `hips`, lower-cased with `.` → `_` (`upperArm.R` → `upperarm_r`, `forearmTwist.L` → `forearmtwist_l`).
+   - Clip check: `A_Hero_run` is 0.633 s = 19 frames / 20 keys at 30 fps.
    - Clip names are kept as suffixes, so P3 can swap its `/Game/Traversal/HeroDev` proxy for these by path.
 4. **Skeletal mesh material arrays come back as copies.** Rebuild the list and set it again, or slots silently stay WorldGrid.
 5. **Materials for skinned meshes need `used_with_skeletal_mesh=True` at build time.** Otherwise `-game` draws the default material, with only a log warning.
