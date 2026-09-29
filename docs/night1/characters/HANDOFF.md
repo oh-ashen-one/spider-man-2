@@ -87,7 +87,7 @@ python3 tools/ue_char/suitmaps/run.py --all [--from geom]  # suit PBR bake (Blen
 Nothing below is committed. Everything is regenerable.
 - `unreal/WebHomage/Content/{Characters,Tests/Characters}`: UE assets (no LFS budget), rebuilt by the headless build. `DerivedDataCache/`, `Intermediate/` and `dist/` were deleted at the end of round 02.
 - `art/night1/characters/**/*.png, *.fbx` (about 60 MB).
-- `/Users/midir/sm2-n1/_scratch/characters/`: `ueimport/` (webp-free GLBs), `uebox/` (mailbox), `eval/`, `suits/`, `r2/` (round 02: `uvgeom.npz`, previews, 4K measurement frames, capture frames).
+- `/Users/midir/sm2-n1/_scratch/characters/`: `ueimport/` (webp-free GLBs), `uebox/` (mailbox), `eval/`, `suits/`, `r2/` (round 02 scratch: `uvgeom.npz`, previews, 4K measurement frames, capture frames) was deleted after the push; `build_brute.sh` recreates `r2/uvgeom.npz` on demand.
 - No `.blend` kept.
 
 ## Gotchas
