@@ -134,7 +134,15 @@
     const stats = {};
     for (const m of meshes) {
       const name = m.name || '';
-      if (!name || SKIP.test(name)) continue;
+      if (!name || (SKIP.test(name) && !/^facadeLod \d+$/.test(name))) continue;
+      const lm = /^facadeLod (\d+)$/.exec(name);
+      if (lm && opts.lodRegion) { // far ring: bare-mass facade LOD tiles outside the full-detail region (same facade material)
+        const g = m.geometry, bb = g.boundingBox ?? (g.computeBoundingBox(), g.boundingBox), cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, L = opts.lodRegion;
+        if (cx < L.x0 || cx >= L.x1 || cz < L.z0 || cz >= L.z1) continue;
+        if (cx >= region.x0 && cx < region.x1 && cz >= region.z0 && cz < region.z1) continue;
+        for (const p of splitMesh(m, region, tileOf(cx, cz).join(','))) await postPart(url, 'facadeLod', 'facade', p, { src: name, lod: true });
+        continue;
+      }
       const tm = TILE_RE.exec(name);
       let parts;
       if (tm) {
@@ -143,7 +151,7 @@
         if (cx < region.x0 || cx >= region.x1 || cz < region.z0 || cz >= region.z1) continue;
         parts = splitMesh(m, region, tileOf(cx, cz).join(','));
       } else parts = splitMesh(m, region, null);
-      const base = tm ? tm[1] : name.replace(/[^A-Za-z0-9_]+/g, '_');
+      const base = tm ? (tm[1] === 'signage' ? 'signage' + tm[2] : tm[1]) : name.replace(/[^A-Za-z0-9_]+/g, '_'); // several signage meshes per tile
       const kind = kindOf(name, m.geometry);
       for (const p of parts) {
         await postPart(url, base, kind, p, { src: name, mat: { type: m.material?.type, color: m.material?.color?.toArray?.(), roughness: m.material?.roughness, metalness: m.material?.metalness,

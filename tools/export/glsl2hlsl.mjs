@@ -9,7 +9,7 @@ export function translate(src, opt = {}) {
   const textures = opt.textures ?? [];
   let s = src;
   // drop declarations provided by the wrapper
-  s = s.replace(/^\s*(flat\s+)?(uniform|varying|attribute|precision)\b[^;]*;/gm, '');
+  for (let k = 0; k < 8; k++) s = s.replace(/(^|;|\n)([ \t]*)(flat\s+)?(uniform|varying|attribute|precision)\b[^;]*;/g, '$1$2');
   s = s.replace(/uniform\s+(highp\s+)?sampler2D(Array)?\s+\w+\s*;/g, '');
   // types
   const T = [['vec2', 'float2'], ['vec3', 'float3'], ['vec4', 'float4'], ['ivec2', 'int2'], ['ivec3', 'int3'], ['bvec2', 'bool2'], ['bvec3', 'bool3'], ['mat2', 'float2x2'], ['mat3', 'float3x3'], ['mat4', 'float4x4']];
@@ -23,9 +23,9 @@ export function translate(src, opt = {}) {
   s = rewriteCalls(s, 'atan', (args) => args.length === 2 ? `atan2(${args[0]}, ${args[1]})` : `atan(${args[0]})`);
   s = rewriteCalls(s, 'greaterThan', (a) => `((${a[0]}) > (${a[1]}))`);
   s = rewriteCalls(s, 'lessThan', (a) => `((${a[0]}) < (${a[1]}))`);
-  s = rewriteCalls(s, 'textureGrad', (a) => { const t = a[0].trim(), arr = arrays.has(t); return `${t}.SampleGrad(${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}), fd2(${a[2]}), fd2(${a[3]}))`; });
-  s = rewriteCalls(s, 'textureLod', (a) => { const t = a[0].trim(), arr = arrays.has(t); return `${t}.SampleLevel(${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}), ${a[2]})`; });
-  s = rewriteCalls(s, 'texture', (a) => { const t = a[0].trim(), arr = arrays.has(t); return a.length > 2 ? `${t}.SampleBias(${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}), ${a[2]})` : `${t}.Sample(${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}))`; });
+  s = rewriteCalls(s, 'textureGrad', (a) => { const t = a[0].trim(), arr = arrays.has(t); return `${arr ? 'Texture2DArraySampleGrad' : 'Texture2DSampleGrad'}(${t}, ${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}), fd2(${a[2]}), fd2(${a[3]}))`; });
+  s = rewriteCalls(s, 'textureLod', (a) => { const t = a[0].trim(), arr = arrays.has(t); return `${arr ? 'Texture2DArraySampleLevel' : 'Texture2DSampleLevel'}(${t}, ${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}), ${a[2]})`; });
+  s = rewriteCalls(s, 'texture', (a) => { const t = a[0].trim(), arr = arrays.has(t); return a.length > 2 ? `${arr ? 'Texture2DArraySampleBias' : 'Texture2DSampleBias'}(${t}, ${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}), ${a[2]})` : `${arr ? 'Texture2DArraySample' : 'Texture2DSample'}(${t}, ${t}Sampler, ${arr ? 'fl3' : 'fl2'}(${a[1]}))`; });
   // scalar-broadcast constructors: floatN(x) -> ((floatN)(x))
   for (const ty of ['float2', 'float3', 'float4', 'int2', 'int3']) s = rewriteCalls(s, ty, (a) => a.length === 1 ? `((${ty})(${a[0]}))` : `${ty}(${a.join(',')})`);
   // uninitialised struct locals
@@ -33,6 +33,8 @@ export function translate(src, opt = {}) {
   s = s.replace(/\b(Surf)\s+(\w+)\s*,\s*(\w+)\s*;/g, '$1 $2 = ($1)0; $1 $3 = ($1)0;');
   // file-scope mutable globals -> static; thread textures through user functions
   s = scopeFix(s, textures);
+  // float literals -> explicit 'f' (DXC types bare literals in ternaries as 'literal float' -> FP64 on Metal)
+  s = s.replace(/(^|[^\w.])(\d+\.\d*(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?|\d+[eE][+-]?\d+)(?![\w.])/g, '$1$2f');
   return s;
 }
 

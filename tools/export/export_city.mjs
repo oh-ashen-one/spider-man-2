@@ -32,6 +32,8 @@ const URL0 = arg('url', 'http://127.0.0.1:5202/');
 const PROFILE = arg('profile', '/Users/midir/sm2-n1/_scratch/city/chrome-profile');
 const T = 256;
 const region = { x0: tx0 * T, z0: tz0 * T, x1: (tx1 + 1) * T, z1: (tz1 + 1) * T };
+const [lx0, lz0, lx1, lz1] = arg('lodtiles', '-4,-8,3,4').split(',').map(Number); // far ring (facade LOD masses)
+const lodRegion = { x0: lx0 * T, z0: lz0 * T, x1: (lx1 + 1) * T, z1: (lz1 + 1) * T };
 fs.mkdirSync(OUT, { recursive: true });
 
 // ------------------------------------------------------------------ GLB writer
@@ -99,14 +101,17 @@ function writeGLB(file, name, kind, A, index) {
 
 // ------------------------------------------------------------------ receiver
 const manifest = { region, tiles: [tx0, tz0, tx1, tz1], created: new Date().toISOString(), transform: 'UE = (x, z, y) * 100', meshes: [], protos: [] };
+const USED = new Set();
 function handle(buf) {
   const hl = buf.readUInt32LE(0), header = JSON.parse(buf.subarray(4, 4 + hl).toString());
   if (header.type === 'json') { fs.writeFileSync(path.join(OUT, header.file), JSON.stringify(header.data)); console.log('wrote', header.file); return; }
   let o = 4 + hl; const A = {};
   for (const [k, a] of Object.entries(header.attrs)) { const len = a.n * a.k * 4; const ab = new ArrayBuffer(len); new Uint8Array(ab).set(buf.subarray(o, o + len)); A[k] = { k: a.k, data: new Float32Array(ab) }; o += len; }
   const il = header.nIndex * 4, ib = new ArrayBuffer(il); new Uint8Array(ib).set(buf.subarray(o, o + il)); const index = new Uint32Array(ib);
-  const rel = header.proto ? path.join('proto', header.name + '.glb') : path.join('mesh', header.kind, `${header.name}__t${header.tile[0]}_${header.tile[1]}.glb`);
-  const info = writeGLB(path.join(OUT, rel), header.proto ? header.name : `${header.name}__t${header.tile[0]}_${header.tile[1]}`, header.kind, A, index);
+  let rel = header.proto ? path.join('proto', header.name + '.glb') : path.join('mesh', header.kind, `${header.name}__t${header.tile[0]}_${header.tile[1]}.glb`);
+  const rel0 = rel.slice(0, -4); for (let k = 2; USED.has(rel); k++) rel = rel0 + '_n' + k + '.glb'; // same-named meshes in one tile
+  USED.add(rel);
+  const info = writeGLB(path.join(OUT, rel), path.basename(rel, '.glb'), header.kind, A, index);
   const rec = { file: rel, name: header.name, src: header.src, kind: header.kind, tile: header.tile, center: header.center, mat: header.mat, attrs: Object.keys(header.attrs), ...info };
   (header.proto ? manifest.protos : manifest.meshes).push(rec);
 }
@@ -141,7 +146,7 @@ try {
     return window.__pools.size;
   }).then(n => console.log('pools registered:', n));
   await page.addScriptTag({ content: fs.readFileSync(path.join(HERE, 'collect_page.js'), 'utf8') });
-  const res = await page.evaluate(o => window.__cityExport(o), { region, url: recvURL });
+  const res = await page.evaluate(o => window.__cityExport(o), { region, lodRegion, url: recvURL });
   console.log(JSON.stringify(res.log), 'pools with instances in region:', res.nInstances);
   manifest.stats = res.stats;
 } finally {

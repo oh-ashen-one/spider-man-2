@@ -22,3 +22,17 @@ for f in PLAIN:
     p = os.path.join(SRC, f)
     if not os.path.exists(p): print('missing', f); continue
     im = Image.open(p); im.save(os.path.join(OUT, f.split('.')[0] + '.png')); print(f, im.size, im.mode)
+
+# textures referenced by exported meshes / prototypes (manifest 'map' URLs), converted to PNG as tex/maps/<path_with_underscores>.png
+import json
+MAN = sys.argv[2] if len(sys.argv) > 2 else '/Users/midir/sm2-n1/_scratch/city/export/midtown3x3/manifest.json'
+PUB = os.path.join(os.path.dirname(__file__), '../../public')
+if os.path.exists(MAN):
+    m = json.load(open(MAN)); os.makedirs(os.path.join(OUT, 'maps'), exist_ok=True)
+    for r in m['meshes'] + m['protos']:
+        u = (r.get('mat') or {}).get('map')
+        if not u: continue
+        rel = u.split('5202/', 1)[-1].split('?')[0]
+        dst = os.path.join(OUT, 'maps', rel.replace('/', '_').rsplit('.', 1)[0] + '.png')
+        if os.path.exists(dst): continue
+        Image.open(os.path.join(PUB, rel)).save(dst); print('map', rel)
