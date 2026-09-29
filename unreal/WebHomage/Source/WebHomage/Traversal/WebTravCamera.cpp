@@ -23,7 +23,7 @@ namespace
 		for (int32 A = 0; A < 3; ++A) { SD(V[A], Vel[A], Target[A], St, Dt); }
 	}
 	double Noise(double T, double S) { return FMath::Sin(T * 1.7 + S) * 0.5 + FMath::Sin(T * 3.1 + S * 2.3) * 0.3 + FMath::Sin(T * 5.3 + S * 4.1) * 0.2; }
-	FName N_vault(TEXT("vault")), N_wallRun(TEXT("wallRun"));
+	FName N_vault(TEXT("vault")), N_wallRun(TEXT("wallRun")), N_topOut(TEXT("topOut"));
 }
 
 void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
@@ -132,7 +132,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	else if (M == EWebTravMode::Perch) { WantDist = 4.3; WantH = 0.25; WantSide = 0.4; }
 	if (M == EWebTravMode::Land || bLandSub) WantDist = 4.2;
 	if (bLedgeSub) { WantH = 1.4; Pitch = Damp(Pitch, 0.42, 4, Dt); }
-	const double WantFov = 58.0 + 13.0 * Smooth(Speed, 12, 44) + (bDive ? 5.0 : 0.0);
+	const double WantFov = 58.0 + 13.0 * Smooth(Speed, 12, 44) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
 	SD(Dist, DistV, WantDist, 0.55, Dt);
 	SD(HeightOff, HeightOffV, WantH, 0.5, Dt);
 	SD(SideOff, SideOffV, WantSide, 0.6, Dt);
@@ -188,7 +188,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	{
 		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp((P.HAbove - 8.0) / 32.0, 0.0, 1.0)) - P.Vel.Z * 0.0025;
 	}
-	else if (P.Mode == EWebTravMode::Wall) SWant = 0.5;
+	if (P.Mode == EWebTravMode::Wall || P.Sub == N_topOut) SWant = WallFrameS;
 	SWant = FMath::Clamp(SWant, 0.32, 0.72);
 	SD(FrameS, FrameSV, SWant, 0.22, Dt);
 	// ---- desired position: behind the (lagged) heading yaw, above the hero
@@ -288,6 +288,28 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	const double GY = World.GroundHeight(Cam.X, Cam.Y, Cam.Z + 0.3) + 0.4;
 	if (Cam.Z < GY) Cam.Z = GY;
+	// ---- round 06: wall-run camera, blended in / out with a spring (held through the rising half of the top-out, so the
+	// hero clears the roof edge in frame, then handed back to the chase camera which comes up over the edge)
+	{
+		const bool bOnWall = P.Mode == EWebTravMode::Wall;
+		const bool bWant = bOnWall || (P.Sub == N_topOut && P.Vel.Z > 0.0);
+		SD(WallK, WallKV, bWant ? 1.0 : 0.0, bWant ? 0.16 : 0.22, Dt);
+		WallK = FMath::Clamp(WallK, 0.0, 1.0);
+		if (bOnWall) { WallHeroXY = FVector(Hero.X, Hero.Y, 0); bWallXY = true; }
+		if (WallK > 0.001)
+		{
+			FVector N(P.WallNormal.X, P.WallNormal.Y, 0.0);
+			N = N.SizeSquared() > 0.01 ? N.GetSafeNormal() : -ForwardFlat();
+			const FVector Base = (bOnWall || !bWallXY) ? Hero : FVector(WallHeroXY.X, WallHeroXY.Y, Hero.Z);
+			const double Floor = World.GroundHeight(Base.X + N.X * WallCamOut, Base.Y + N.Y * WallCamOut, Hero.Z + 0.5);
+			const double WZ = FMath::Max(Hero.Z - WallCamBelow, Floor + 0.6);
+			const double Dz = Hero.Z - WZ;
+			const double Out = FMath::Max(WallCamOut, FMath::Sqrt(FMath::Max(0.0, WallCamDist * WallCamDist - Dz * Dz)));
+			FVector WallCam(Base.X + N.X * Out, Base.Y + N.Y * Out, WZ), WallClear;
+			ClearFrom(From, WallCam, WallClear);
+			Cam = FMath::Lerp(Cam, WallClear, Smooth(WallK, 0.0, 1.0));
+		}
+	}
 	CamPos = Cam;
 	HeroDist = FVector::Dist(CamPos, Hero);
 	bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
@@ -297,7 +319,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	const double DownToHero = FMath::Atan2(-ToHero.Z, HLen);
 	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
 	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
-	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(5.0), FMath::DegreesToRadians(22.0));
+	// (round 06: on the wall the lower clamp opens up to an 80 deg look UP the facade)
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(5.0, -80.0, Smooth(WallK, 0.0, 1.0))),
+		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
+		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
+		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
 	// round 05: at each web attach, look up enough that the anchor on the facade (and a band of sky) is on screen for
 	// ~0.7 s, then settle back (spring); the hero stays in frame below
 	double LookWant = 0.0, FovWant = 0.0;

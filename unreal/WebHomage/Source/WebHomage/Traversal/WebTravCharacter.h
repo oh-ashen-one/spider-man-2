@@ -66,6 +66,7 @@ private:
 	void BuildFigure();
 	bool SetupHeroMesh();
 	void PoseFigure(float Dt);
+	float SwayW = 0.f; // round 06: air-sway weight (spring)
 	void UpdateWebs(float Dt, const FVector& CamPosCm);
 	FVector HandWorldCm(bool bRight) const;
 	void PushTelemetry(double T, const FWebTravInput& I);
@@ -91,6 +92,9 @@ private:
 	FWebTravCamera Cam;
 	double TravTime = 0.0;
 	bool bTravStarted = false;
+	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
+	bool bHadPreroll = false;
+	int32 PrerollFrames = 0;
 	// autoChain rhythm rule state
 	bool bAutoHeld = true, bAutoWasSwinging = false;
 	double AutoGapT = 0.0;

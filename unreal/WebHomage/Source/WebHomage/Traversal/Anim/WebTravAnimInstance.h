@@ -60,6 +60,13 @@ public:
 	bool InAirCycle() const { return bInAirCycle; }
 	float AirCycleTime() const { return AirCycleT; }
 	int32 AirCycleCount() const { return CycleCount; }
+	/** Round 06: capture pre-roll end — back to the freshly initialised state (no blend from the pre-roll pose). */
+	void ResetForSequenceStart()
+	{
+		CurNode = NAME_None; Dominant = NAME_None; NodeT = 0.f; FadeT = 1.f; FadeDur = 0.2f; PrevLayers.Reset(); Frame.Layers.Reset();
+		Frame.ArmAimWeight = 0.f; LocoPhase = 0.f; WallRunPhase = 0.f; bInAirCycle = false; AirCycleT = 0.f; FlavorIdx = -1; CycleCount = 0;
+		bReachRight = true; LastMode = EWebTravMode::Ground;
+	}
 
 	/** Content folder with the hero clips (dev proxy; P2's hero replaces this path). */
 	static FString ClipRoot;
@@ -87,7 +94,7 @@ private:
 	FName CurNode, Dominant;
 	float NodeT = 0.f, FadeT = 1.f, FadeDur = 0.2f, TotalWeight = 0.f;
 	TArray<FWebTravAnimLayer> PrevLayers;
-	float LocoPhase = 0.f;
+	float LocoPhase = 0.f, WallRunPhase = 0.f;
 	// air cycle
 	bool bInAirCycle = false;
 	float AirCycleT = 0.f;

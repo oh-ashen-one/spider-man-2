@@ -117,6 +117,8 @@ public:
 	bool HasZipTarget() const { return Anchors && Anchors->HasTarget(); }
 	FVector ZipTargetPos() const { return Anchors && Anchors->HasTarget() ? Anchors->Best().Pos : FVector::ZeroVector; }
 	FQuat BodyQuat() const { return FinalQ; }
+	/** Round 06 capture pre-roll: write Anim / root from the current state without stepping the simulation. */
+	void PosePreview() { FinalQ = Orient(1e-4); WriteAnim(FinalQ); }
 	int32 BuildingCount() const { return TravWorld.Boxes.Num(); }
 	int32 ZipKindCode() const;
 
@@ -198,7 +200,8 @@ private:
 		FKin Kin;
 		double LandSeverity = 0, LandLock = 0;
 		FQuat BodyQ = FQuat::Identity;
-		double Roll = 0, Pitch = 0, Bank = 0;
+		double Roll = 0, Pitch = 0, Bank = 0, RollA = 0, PitchA = 0;
+		bool bTopOut = false;   // round 06: airborne from a wall-run top-out (crouch landing on touchdown)
 		FQuick Q;
 		double Clock = 0;
 	};
@@ -306,5 +309,7 @@ public:
 	static constexpr double SWING_JUMP = 4.0, SWING_JUMP_UP = 16, SWING_JUMP_VY = 22, REL_NOTRICK = 4.0, REL_UP = 9, REL_UP_VY = 16;
 	static constexpr double SWING_DIP = 6, SWING_GAIN = 5, RELEASE_BOOST = 1.5, SWING_DRAG = 0.0022, PUMP_MAX_ANG = 1.15;
 	static constexpr double JUMP = 11.2, JUMP_MAX = 19.5;
+	// round 06 wall-run body: lean back off the wall (rad) and feet offset from the wall plane (m) while running
+	static constexpr double WallRunLean = 0.16, WallRunFootOff = 0.42;
 	static constexpr double WEB_MASS = 80;
 };
