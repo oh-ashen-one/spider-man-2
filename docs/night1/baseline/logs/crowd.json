@@ -1,0 +1,934 @@
+{
+ "name": "crowd",
+ "mode": "film",
+ "W": 1920,
+ "H": 1080,
+ "render": {
+  "pixelRatio": 1,
+  "drawingBuffer": [
+   1920,
+   1080
+  ],
+  "css": [
+   1920,
+   1080
+  ],
+  "gpu": "ANGLE (Apple, ANGLE Metal Renderer: Apple M3 Ultra, Unspecified Version)",
+  "quality": "high",
+  "maxTexUnits": 16
+ },
+ "gameSeconds": 14,
+ "wallSeconds": 54.6,
+ "marks": [
+  {
+   "t": 1,
+   "label": "slow sidewalk run past citizens / dog walkers, camera swinging side to side"
+  },
+  {
+   "t": 10,
+   "label": "stand + orbit"
+  }
+ ],
+ "console": {},
+ "log": [
+  {
+   "t": 0,
+   "pos": [
+    262.5,
+    1.1,
+    172
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 0.25,
+   "pos": [
+    262.5,
+    1.1,
+    172
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 0.5,
+   "pos": [
+    262.5,
+    1.1,
+    172
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 0.75,
+   "pos": [
+    262.5,
+    1.1,
+    172
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 1,
+   "pos": [
+    262.5,
+    1.1,
+    172
+   ],
+   "spd": 0.8,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.76 k0.79",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 1.25,
+   "pos": [
+    262.5,
+    1.1,
+    170.6
+   ],
+   "spd": 9.2,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.04 r1.93 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 1.5,
+   "pos": [
+    262.8,
+    1.1,
+    168.2
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 1.75,
+   "pos": [
+    263.3,
+    1.1,
+    165.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 2,
+   "pos": [
+    264.3,
+    0.9,
+    163.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 2.25,
+   "pos": [
+    265.8,
+    0.9,
+    161.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 2.5,
+   "pos": [
+    267.6,
+    0.9,
+    159.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 2.75,
+   "pos": [
+    269.6,
+    0.9,
+    158.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 3,
+   "pos": [
+    271.8,
+    0.9,
+    157.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 3.25,
+   "pos": [
+    273.9,
+    0.9,
+    156.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 3.5,
+   "pos": [
+    274.4,
+    1.1,
+    154.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 3.75,
+   "pos": [
+    276.4,
+    1.1,
+    153.5
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 4,
+   "pos": [
+    278.1,
+    1.1,
+    151.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 4.25,
+   "pos": [
+    278.3,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.01 r1.03 k1.27",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 4.5,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.69 k0.59",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 4.75,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.48",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 5,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 5.25,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 5.5,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 5.75,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 6,
+   "pos": [
+    278.4,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 6.25,
+   "pos": [
+    278.5,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 6.5,
+   "pos": [
+    278.7,
+    1.1,
+    151.4
+   ],
+   "spd": 2.4,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.17 r1.24 k1.24",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 6.75,
+   "pos": [
+    279.2,
+    1.1,
+    151.4
+   ],
+   "spd": 2.9,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.42 r1.43 k1.15",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 7,
+   "pos": [
+    279.9,
+    1.1,
+    151.4
+   ],
+   "spd": 3.4,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.67 r1.54 k1.11",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 7.25,
+   "pos": [
+    280.6,
+    1.1,
+    151.4
+   ],
+   "spd": 3.3,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.65 r1.53 k1.12",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 7.5,
+   "pos": [
+    281.4,
+    1.1,
+    151.4
+   ],
+   "spd": 3.3,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.66 r1.54 k1.11",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 7.75,
+   "pos": [
+    282.1,
+    1.1,
+    151.4
+   ],
+   "spd": 3.3,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.64 r1.53 k1.12",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 8,
+   "pos": [
+    282.6,
+    1.1,
+    151.4
+   ],
+   "spd": 2.7,
+   "mode": "ground",
+   "sub": "walk",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.42 r1.43 k1.15",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 8.25,
+   "pos": [
+    283,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.01 r1.03 k1.26",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 8.5,
+   "pos": [
+    283,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.69 k0.59",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 8.75,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.48",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 9,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 9.25,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 9.5,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 9.75,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0.4,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.65 k0.47",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 10,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "walk>jog@0.00 r0.63 k0.41",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 10.25,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 10.5,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 10.75,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 11,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 11.25,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 11.5,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 11.75,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 12,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 12.25,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 12.5,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 12.75,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 13,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 13.25,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 13.5,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  },
+  {
+   "t": 13.75,
+   "pos": [
+    283.1,
+    1.1,
+    151.4
+   ],
+   "spd": 0,
+   "mode": "ground",
+   "sub": "idle",
+   "trick": null,
+   "node": "ground",
+   "clip": "idle",
+   "cmb": "free hp19 c0 ",
+   "suit": "qwen"
+  }
+ ],
+ "clip": "docs/night1/baseline/clips/crowd.mp4",
+ "clipMB": 13.03,
+ "captureFps": "60 (frame-stepped game time, 1/60 s per frame)"
+}
