@@ -78,7 +78,7 @@ def sampler_for(t):
     if isinstance(t, unreal.Texture2DArray) or True:
         return unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if t.get_editor_property('srgb') else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
 
-def make_material(name, include, code, inputs, outputs, blend='opaque', two_sided=False, world_normal=True, domain_hint=None, scalar_defaults=None):
+def make_material(name, include, code, inputs, outputs, blend='opaque', two_sided=False, world_normal=True, domain_hint=None, scalar_defaults=None, shading=None):
     """inputs: list of (name, kind, arg): kind in tex|uv|vc|wpos|wn|cam|scalar|mpc|pcd.  outputs: list of (name, n, property)."""
     path = f'{MAT}/{name}'
     if EAL.does_asset_exist(path):  # reuse (deleting a referenced material pops a dialog): clear its graph
@@ -88,6 +88,7 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     m.set_editor_property('tangent_space_normal', not world_normal)
     if blend == 'masked': m.set_editor_property('blend_mode', unreal.BlendMode.BLEND_MASKED)
     m.set_editor_property('two_sided', two_sided)
+    if shading: m.set_editor_property('shading_model', shading)
     c = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -400, 0)
     c.set_editor_property('code', code)
     c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
@@ -140,6 +141,9 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     for i, (n, k, prop) in enumerate(outputs):
         if prop is None: continue
         mel.connect_material_property(c, '' if i == 0 else n, prop)
+    # usage flags must be saved: in -game an instanced / Nanite mesh whose material lacks the flag renders the default material
+    for u in (unreal.MaterialUsage.MATUSAGE_NANITE, unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES):
+        mel.set_material_usage(m, u)
     mel.recompile_material(m)
     EAL.save_asset(path)
     return m
@@ -225,12 +229,17 @@ return c;''',
          ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
     # tree leaves: alpha-tested cards, two-sided, per-vertex / per-instance tint
+    # (r03) ez-tree leaf cards (eztrees.js): leaf-shaped alpha, green albedo from the leaf texture, per-leaf crown exposure
+    # (aLeafE.x in UV1: 0 deep inside .. 1 outer sun-side shell), two-sided foliage shading: light passes through the leaves
     make_material('M_CityLeaves', None, '''
 float4 t = Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y));
-Op = t.a > 0.5 ? 1.0 : 0.0; Sub = t.rgb * float3(0.6, 0.8, 0.3);
-return t.rgb * Tint.rgb;''',
-        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('Tint', 'vector', (0.85, 0.95, 0.7, 1))],
-        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, None)], blend='masked', two_sided=True, world_normal=False)
+float e = saturate(uv1.x);
+float3 c = t.rgb * Tint.rgb * lerp(1.5, 2.3, e);
+Op = t.a > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2); Rough = 0.7;
+return c;''',
+        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1))],
+        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
+        blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
     EAL.save_directory(MAT, only_if_is_dirty=False, recursive=True)
     # (r02) Manhattan land surface: block interiors dark grey gravel / paving, Central-Park-like rectangle grass
     make_material('M_CityLand', None, '''
@@ -255,9 +264,21 @@ return float3(0.018, 0.028, 0.03);''',
 float3 wall = float3(w0, w1, w2), roof = float3(r0, r1, r2);
 float band = 0.8 + 0.2 * step(0.5, frac(wpos.z * 0.01 / 3.4));
 Rough = 0.9;
-return wn.z > 0.5 ? roof : wall * band;''',
+float3 hp = wpos * 0.01; float fl = frac(hp.z / 3.4), u = frac((hp.x + hp.y) / 2.6);
+float w = step(0.35, fl) * step(fl, 0.85) * step(0.3, u) * step(u, 0.75);
+float2 fw = fwidth(float2(hp.z / 3.4, (hp.x + hp.y) / 2.6)); w = lerp(w, 0.3, saturate(max(fw.x, fw.y) * 1.5));
+float3 wc = lerp(wall, float3(0.08, 0.09, 0.1), w * 0.85) * (0.65 + 0.35 * smoothstep(0.0, 12.0, hp.z));  // horizon.js windows + grime
+return wn.z > 0.5 ? roof : wc;''',
         [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None)],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
+    make_material('M_CityCrown', None, '''
+float3 p = wpos * 0.01;
+float n = Texture2DSample(tNoise, tNoiseSampler, p.xy / 7.0 + p.z / 5.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, p.xy / 1.3).r * 0.4;
+float up = saturate(wn.z * 0.5 + 0.5);
+Rough = 0.8; Sub = float3(0.12, 0.2, 0.04);
+return float3(0.07, 0.11, 0.035) * (0.6 + 0.8 * n) * (0.55 + 0.6 * up);''',
+        [('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None)],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Sub', 3, MP.MP_SUBSURFACE_COLOR)], world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
     log('materials done')
 
 # ------------------------------------------------------------------------------------------------ meshes
@@ -281,6 +302,8 @@ def mi_for(rec):
     mi = at.create_asset('MI_' + key, MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
     mel.set_material_instance_parent(mi, load(MAT + ('/M_CityProp' if rec.get('proto') and 'aPart.x' in rec.get('uv', []) else '/M_CityVC')))
     col = mat.get('color') or [1, 1, 1]
+    if key.endswith('_bark'): col = [0.33, 0.29, 0.25]  # ez-tree bark (browser: bark texture + vertex AO)
+    if key.endswith('_bark'): mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(*col, 1))
     if not rec.get('proto'):
         mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(col[0], col[1], col[2], 1))
         mel.set_material_instance_scalar_parameter_value(mi, 'RoughP', float(mat.get('roughness') or 0.7))
@@ -335,9 +358,10 @@ if 'mesh' in STEPS:
     log('meshes', n)
 
 # ------------------------------------------------------------------------------------------------ prototypes (instanced props / trees)
-SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_street_near', 'trees_small_near', 'trees_small_crown_', 'trunks_', '_l1_', 'trees_elm_crown_', 'trees_park_crown_', 'roofplants', 'hvac_', 'vents_', 'dish_', 'antenna_', 'flags')
-protos = [p for p in man['protos'] if not any(s in p['name'] for s in SKIP_POOL) and (not p['name'].endswith('_far') or p['name'] == 'trees_street_far')]
-LEAFY = lambda n: 'leaves' in n or 'crown' in n or n == 'trees_street_far'
+SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'trunks_', 'roofplants', 'hvac_', 'vents_', 'dish_', 'antenna_', 'flags')
+CROWN = ('trees_park_crownfar', 'trees_elm_crownfar', 'trees_conifer_crownfar')  # (r03) opaque canopy mass inside the park LOD1 trees
+protos = [p for p in man['protos'] if p['name'] in CROWN or (not any(s in p['name'] for s in SKIP_POOL) and not p['name'].endswith('_far'))]
+LEAFY = lambda n: 'leaves' in n
 if 'proto' in STEPS:
     import_files([os.path.join(EXPORT, p['file']) for p in protos], ROOT + '/Props/_in', mesh_pipeline(True))
     for p in protos:
@@ -348,13 +372,12 @@ if 'proto' in STEPS:
             mi = at.create_asset('MI_' + p['name'], MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
             mel.set_material_instance_parent(mi, load(MAT + '/M_CityLeaves'))
             u = (p.get('mat') or {}).get('map')
-            if 'leaves' not in p['name']: mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(0.55, 0.68, 0.4, 1))
             if u:
                 rel = u.split('5202/', 1)[-1].replace('/', '_').rsplit('.', 1)[0]
                 if EAL.does_asset_exist(f'{ROOT}/Textures/Maps/{rel}'): mel.set_material_instance_texture_parameter_value(mi, 'Map', load(f'{ROOT}/Textures/Maps/{rel}'))
             EAL.save_asset(mi.get_path_name())
         else:
-            mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else mi_for({**p, 'proto': True})
+            mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else (load(MAT + '/M_CityCrown') if p['name'] in CROWN else mi_for({**p, 'proto': True}))
         finish_mesh(sm, mi, False, nanite=True)
         EAL.save_asset(dst)
     EAL.delete_directory(ROOT + '/Props/_in')
@@ -416,6 +439,7 @@ def build_geo_level(path):
             s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
             # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
             rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+            if p['name'] in CROWN: s *= 0.9
             xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
         ids = c.add_instances(xs, True, True)
         for k, it in enumerate(items):
