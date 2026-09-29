@@ -150,6 +150,7 @@ float pbox(TEXDECL, float x, float p, float a, float b, float w) { w = max(w, 1e
 static float3 gSpecTint = ((float3)(1.0f)); // coated-glass reflection tint (curtain walls)
 static float gSash = 0.0f; // (street r9) old masonry sash glass: lower grazing (F90) reflectance
 static float gSashV = 1.0f; // (street r11) per-window reflection strength of old sash glass (wavy / dusty / cleaned panes)
+static float gRoomWrap = 0.0f; // (UE r04) >0: back-wall photo repeats every gRoomWrap m
 static float2 gWob = ((float2)(0.0f)); // (skyline r5) low-frequency curtain-wall panel deflection (wavy, broken reflections at any range)
 
 // Interior mapping into a room box [0,rw]x[0,rh]x[-rd,0], entering at p (z=0) along dir (dir.z<0)
@@ -164,7 +165,7 @@ float3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, flo
   float2 tileUV = float2(gmod(tile, 4.0f),floor(tile / 4.0f));
   float3 col;
   if (t == tz) {
-    float2 q = float2(h.x / rw,h.y / rh);
+    float2 q = float2(gRoomWrap > 0.0f ? frac(h.x / gRoomWrap) : h.x / rw,h.y / rh);
     q = clamp(q, 0.01f, 0.99f);
     col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + q.x) / 4.0f,1.0f - (tileUV.y + 1.0f - q.y) / 4.0f)), gLodI).rgb;
   } else if (t == ty) {
@@ -173,16 +174,16 @@ float3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, flo
       float panel = step(abs(c.x - 0.5f), 0.22f) * step(abs(frac(c.y * 2.0f) - 0.5f), 0.18f);
       // ceiling tiles + recessed troffers (dim in daylight, soft-edged, fading with room depth so they sit on the ceiling)
       float pe = smoothstep(0.26f, 0.2f, abs(c.x - 0.5f)) * smoothstep(0.22f, 0.15f, abs(frac(c.y * 2.0f) - 0.5f));
-      col = float3(0.72f,0.72f,0.7f) * (0.75f + 0.25f * lit) + pe * lit * float3(0.55f,0.53f,0.48f) * (1.0f + shop) * (1.0f - 0.6f * c.y);
+      col = float3(0.42f,0.42f,0.41f) * (0.6f + 0.4f * lit) + pe * lit * float3(0.45f,0.43f,0.38f) * (1.0f + shop) * (1.0f - 0.6f * c.y);
     } else { // floor
-      col = shop > 0.5f ? float3(0.55f,0.52f,0.48f) : (tile < 5.5f ? float3(0.23f,0.24f,0.26f) : float3(0.36f,0.25f,0.17f));
+      col = shop > 0.5f ? float3(0.3f,0.28f,0.25f) : (tile < 5.5f ? float3(0.23f,0.24f,0.26f) : float3(0.36f,0.25f,0.17f));
     }
   } else {
     col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);
     col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));
   }
   col *= lerp(1.0f, 0.55f, depth);
-  return col * lerp(0.55f, 1.0f, lit);
+  return col * lerp(0.2f, 1.0f, lit);
 }
 
 Surf facade(TEXDECL) {
@@ -304,7 +305,7 @@ Surf facade(TEXDECL) {
   float topY = vW.y - vW.z;
   float aw = max(fwidth(u), 1e-4f);
   float ah = max(fwidth(vFac.y), 1e-4f);
-  gLodI = clamp(log2(max(aw, ah) * 512.0f / max(vF.y, 2.0f)) + 0.5f, 0.0f, 9.0f);
+  gLodI = clamp(log2(max(aw, ah) * 512.0f / max(vF.y, 2.0f)) - 2.5f, 0.0f, 9.0f);
   float gHs = vS.z;
   float gH = abs(gHs);
   // base wall
@@ -478,7 +479,7 @@ Surf facade(TEXDECL) {
     } else if (y > signY0) { // sign band
       float row = floor(fh1(TEXPASS, float2(rnd * 91.0f,seed)) * 16.0f);
       float2 suv = float2((fx2 - pier) / (bw2 - 2.0f * pier),(y - signY0) / (signY1 - signY0));
-      float3 sc = Texture2DSampleLevel(tSigns, tSignsSampler, fl2(float2(suv.x,1.0f - (row + 1.0f - suv.y) / 16.0f)), clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)), 0.0f, 9.0f)).rgb;
+      float3 sc = Texture2DSampleLevel(tSigns, tSignsSampler, fl2(float2(suv.x,1.0f - (row + 1.0f - suv.y) / 16.0f)), clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)) - 2.0f, 0.0f, 9.0f)).rgb;
       s.alb = sc; s.rough = 0.45f; s.metal = 0.0f; s.n = float3(0.0f,0.0f,1.0f); s.emis = sc * 0.25f * uShopGain;
       if (rnd > 0.8f) { s = base; s.alb *= 0.8f; } // no sign
     } else if (y < glassY0) { // bulkhead
@@ -513,7 +514,7 @@ Surf facade(TEXDECL) {
         float mull = max(1.0f - boxAA(TEXPASS, mx, 0.05f, mw - 0.05f, aw), 1.0f - boxAA(TEXPASS, gp.y, glassY0 + 0.06f, signY0 - 0.06f, ah));
         mull = max(mull, 1.0f - boxAA(TEXPASS, abs(gp.y - (signY0 - 0.9f)), 0.04f, 9.0f, ah));
         float door = step(rnd, 0.5f) * boxAA(TEXPASS, gp.x, 0.4f, 1.5f, aw) * step(gp.y, 2.6f);
-        float3 room = interior(TEXPASS, float2(gmod(gp.x, mw),gp.y - glassY0), dirIn, mw, signY0 - glassY0 + 0.6f, 5.0f,
+        gRoomWrap = gw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * mw,gp.y - glassY0), dirIn, gw + 24.0f * mw, signY0 - glassY0 + 0.6f, 5.0f,
                              12.0f + floor(rnd * 4.0f), 1.0f, 1.0f);
         float F = 0.04f + 0.96f * pow(1.0f - Vt.z, 5.0f);
         Surf gl = (Surf)0; gl.alb = ((float3)(0.02f)); gl.rough = 0.04f; gl.metal = 0.0f; gl.n = float3(0.0f,0.0f,1.0f);
@@ -667,8 +668,8 @@ Surf facade(TEXDECL) {
   // glass & interior
   bool resid = vX.x > 0.5f;
   float tile = resid ? 6.0f + floor(cellR2 * 6.0f) : floor(cellR2 * 6.0f);
-  float lit = step(0.55f, frac(cellR * 7.13f));
-  float3 room = interior(TEXPASS, float2(gp.x,gp.y), dirIn, bw, fh, curtain ? 6.0f : 4.0f, tile, lit, 0.0f);
+  float litR = frac(cellR * 7.13f); float lit = step(0.9f, litR) + 0.4f * step(0.6f, litR) * (1.0f - step(0.9f, litR));
+  gRoomWrap = bw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * bw,gp.y), dirIn, 25.0f * bw, fh, curtain ? 6.0f : 4.0f, tile, lit, 0.0f); gRoomWrap = 0.0f;
   float F = 0.04f + 0.96f * pow(1.0f - Vt.z, 5.0f);
   Surf gl = (Surf)0;
   float gsel = vX.z;
@@ -748,7 +749,7 @@ Surf facade(TEXDECL) {
       gl.emis += cur * cc * 0.1f * lit * uInteriorGain;
       gSashV = 0.45f + 1.15f * frac(cR4 * 3.3f + cellR2);
     }
-    gl.alb = lerp(gl.alb, bc * slats * 0.8f, bl); gl.rough = lerp(gl.rough, 0.8f, bl); gl.emis *= (1.0f - bl);
+    gl.alb = lerp(gl.alb, bc * slats * 0.5f, bl); gl.rough = lerp(gl.rough, 0.8f, bl); gl.emis *= (1.0f - bl);
     gl.emis += bl * bc * 0.12f * lit * uInteriorGain;
     // reflection floor: real sash glass always mirrors some sky / opposite facade(TEXPASS, brighter toward the head, where it
     // sees more sky); keeps unlit windows from reading as black holes at mid range
