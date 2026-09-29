@@ -13,6 +13,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..'))
 UE = os.path.join(WT, 'unreal', 'WebHomage')
 RUN_GAME = os.path.join(UE, 'Scripts', 'run_game.sh')
+GPU_SLOT = os.environ.get('GPU_SLOT', '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh')   # docs/night1/gpu/PROTOCOL.md: every game capture runs inside a shared slot (2 at once)
+def slot(cmd): return [GPU_SLOT, 'capture', '--label', 'look', '--'] + cmd if os.path.exists(GPU_SLOT) else cmd
 SCR = '/Users/midir/sm2-n1/_scratch/look/capture'
 
 def util():
@@ -43,7 +45,7 @@ def main():
                     u = util(); t0 = time.time()
                     cmd = [RUN_GAME, d, '-map', '/Game/Tests/Look/Look_View_%s_%s' % (preset, sid), '-res', res, '-shots', a.shot_times, '-name', name,
                            '-timeout', '900', '-exec', 'r.ScreenPercentage %s' % a.sp]
-                    r = subprocess.run(cmd, capture_output=True, text=True)
+                    r = subprocess.run(slot(cmd), capture_output=True, text=True)
                     pngs = sorted(glob.glob(d + '/*.png'))
                     if not pngs: print('FAILED', name, r.stdout[-400:], r.stderr[-400:]); continue
                     last = pngs[-1]
@@ -65,15 +67,15 @@ def main():
             name = 'swing_%s' % preset
             mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
             wd = os.path.join(SCR, name + '_warmup'); shutil.rmtree(wd, ignore_errors=True)   # shader / texture warm-up render, not kept
-            subprocess.run([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', '2400', '--', '-benchmark', '-fps=60',
-                            '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')], capture_output=True, text=True)
+            subprocess.run(slot([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', '2400', '--', '-benchmark', '-fps=60',
+                            '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')]), capture_output=True, text=True)
             shutil.rmtree(wd, ignore_errors=True)
             d = os.path.join(SCR, name); shutil.rmtree(d, ignore_errors=True)
             u = util(); t0 = time.time()
             cmd = [RUN_GAME, d, '-map', mp, '-res', '1920x1080', '-quit', str(a.clip_seconds + PRE),
                    '-name', name, '-movie', '-timeout', '3000', '-exec', 'r.ScreenPercentage %s' % a.sp,
                    '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE]
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            r = subprocess.run(slot(cmd), capture_output=True, text=True)
             mp4 = os.path.join(d, name + '.mp4')
             fr = os.path.join(d, name + '_frames'); csvp = os.path.join(d, name + '_telemetry.csv')
             if not os.path.isdir(fr): print('FAILED clip', name, r.stdout[-400:]); continue

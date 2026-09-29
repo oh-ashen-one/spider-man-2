@@ -20,6 +20,7 @@ UE = os.path.join(WT, 'unreal', 'WebHomage')
 RUN_GAME = os.path.join(UE, 'Scripts', 'run_game.sh')
 CSV_DIR = os.path.join(UE, 'Saved', 'Profiling', 'CSV')
 MINE = WT + '/unreal/WebHomage/WebHomage.uproject'
+GPU_SLOT = os.environ.get('GPU_SLOT', '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh')   # docs/night1/gpu/PROTOCOL.md: perf runs are EXCLUSIVE (waits for GPU < 15 % for 10 s); anything else is contaminated
 
 def gpu_util():
     try:
@@ -122,9 +123,13 @@ def main():
         name, sp, cvars = parse_cfg(cfg)
         d = os.path.join(out, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
         t0 = time.time()
+        quiet = 0                                  # wait for a quiet window: 6 consecutive samples (2 s apart) below --dirty-pct and no busy foreign process
         while a.wait_idle and time.time() - t0 < a.wait_idle:
-            if (gpu_util() or 0) < a.dirty_pct: break
-            time.sleep(5)
+            if (gpu_util() or 0) < a.dirty_pct and not foreign_procs(): quiet += 1
+            else: quiet = 0
+            if quiet >= 6: break
+            time.sleep(2)
+        waited = round(time.time() - t0)
         pre = [gpu_util()]; time.sleep(1.5); pre.append(gpu_util()); time.sleep(1.5); pre.append(gpu_util())
         pre = [x for x in pre if x is not None]
         foreign = foreign_procs()
@@ -135,12 +140,14 @@ def main():
                '--'] + (['-WHTravScript=' + a.script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if a.script not in ('', 'none') else ['-WHNoMouseCapture'])
         if a.gpu_stats: cmd += ['-csvGpuStats']
         if a.fixed_step: cmd += ['-benchmark', '-fps=60']
+        if os.path.exists(GPU_SLOT):
+            cmd = [GPU_SLOT, 'perf', '--label', 'look', '--json', os.path.join(d, 'perf_gpu.json'), '--'] + cmd
         r = subprocess.run(cmd, capture_output=True, text=True)
         smp.stop = True; smp.join(timeout=4)
         open(os.path.join(d, 'run.txt'), 'w').write(' '.join(cmd) + '\n\n' + r.stdout + '\n' + r.stderr)
         rec = {'config': name, 'screen_percentage': sp, 'extra_cvars': cvars, 'map': a.map, 'script': (os.path.relpath(a.script, WT) if a.script not in ('', 'none') else None), 'res': a.res, 'window_s': a.window,
                'command': ' '.join(x.replace(WT, '<wt>') for x in cmd), 'gpu_util_before_pct': pre, 'gpu_util_during_pct': {'mean': (statistics.mean(smp.v) if smp.v else None), 'max': (max(smp.v) if smp.v else None), 'n': len(smp.v)},
-               'foreign_gpu_procs': foreign}
+               'foreign_gpu_procs': foreign, 'waited_for_idle_s': waited}
         pj = os.path.join(d, name + '_perf.json')
         if os.path.exists(pj):
             rec['wh_perf'] = json.load(open(pj))
@@ -153,6 +160,14 @@ def main():
             shutil.copy(csvs[-1], os.path.join(d, 'csv.csv')); rec['csv'] = analyse_csv(csvs[-1])
         rec['contaminated'] = bool((pre and max(pre) >= a.dirty_pct) or foreign)
         rec['contamination_reason'] = ('GPU utilisation before the run %s %% (>= %d)' % (pre, a.dirty_pct) if pre and max(pre) >= a.dirty_pct else '') + ('; foreign processes: %d' % len(foreign) if foreign else '')
+        gj = os.path.join(d, 'perf_gpu.json')
+        if os.path.exists(gj):   # the GPU lock's verdict replaces the local guess
+            try:
+                g = json.load(open(gj)); rec['gpu_slot'] = g
+                rec['contaminated'] = not g.get('perf_valid', False)
+                rec['contamination_reason'] = '; '.join(g.get('contaminated_reasons') or []) if rec['contaminated'] else ''
+            except Exception as e:
+                rec['gpu_slot_error'] = str(e)
         tv = os.path.join(d, 'trav_telemetry.csv')
         if os.path.exists(tv):
             try:

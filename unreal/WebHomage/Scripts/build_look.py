@@ -424,13 +424,14 @@ def kelvin_rgb(t):
     b = 1.0 if t >= 66 else (0.0 if t <= 19 else max(0.0, min(1.0, 0.54321 * math.log(t - 10) - 1.19625)))
     return (r ** 2.2, g ** 2.2, b ** 2.2, 1.0)
 
-def spawn_spot(loc, rot, label, folder, cd, outer, inner, radius, temp, vol=0.0, maxd=0.0, indirect=1.0):
+def spawn_spot(loc, rot, label, folder, cd, outer, inner, radius, temp, vol=0.0, maxd=0.0, indirect=1.0, color=None):
     a = spawn(unreal.SpotLight, loc, rot, label, folder)
     lc = a.get_component_by_class(unreal.SpotLightComponent)
     lc.set_mobility(unreal.ComponentMobility.MOVABLE)
     cfg(lc, {'intensity_units': unreal.LightUnits.CANDELAS, 'intensity': float(cd), 'use_temperature': True, 'temperature': float(temp), 'attenuation_radius': float(radius),
              'outer_cone_angle': float(outer), 'inner_cone_angle': float(inner), 'source_radius': 8.0, 'cast_shadows': False, 'volumetric_scattering_intensity': float(vol),
              'indirect_lighting_intensity': float(indirect)}, 'SpotLight')
+    if color: cfg(lc, {'use_temperature': False, 'light_color': unreal.Color(r=int(255 * color[0]), g=int(255 * color[1]), b=int(255 * color[2]), a=255)}, 'SpotLight')
     if maxd: cfg(lc, {'max_draw_distance': float(maxd), 'max_distance_fade_range': float(maxd) * 0.2}, 'SpotLight')
     return a
 
@@ -478,7 +479,7 @@ def build_night():
         loc = U(hx, hy, hz)
         spawn_spot(loc, unreal.Rotator(pitch=-90.0, yaw=0.0, roll=0.0), 'LampSpot_%d' % i, 'NightLights/Lamps', lc_['spot_cd'] * rng.uniform(0.85, 1.15), lc_['spot_outer'], lc_['spot_inner'],
                    lc_['spot_radius'], t, vol=lc_['volumetric'], maxd=lc_['max_draw'], indirect=lc_.get('indirect', 1.0))
-        spawn_point(loc - unreal.Vector(0, 0, 30), 'LampHalo_%d' % i, 'NightLights/Lamps', lc_['halo_cd'], lc_['halo_radius'], temp=t, maxd=lc_['max_draw'] * 0.7)
+        spawn_point(loc - unreal.Vector(0, 0, 30), 'LampHalo_%d' % i, 'NightLights/Lamps', lc_['halo_cd'], lc_['halo_radius'], temp=t, maxd=lc_.get('halo_max_draw', lc_['max_draw'] * 0.7))
         s = lc_['glow_size_cm'] / 100.0
         glow_x[t].append(unreal.Transform(loc - unreal.Vector(0, 0, 12), unreal.Rotator(0, 0, 0), unreal.Vector(s, s, s * 0.55)))
         n_l += 1
@@ -513,6 +514,19 @@ def build_night():
                                S['outer'], S['inner'], S['radius'], t, vol=0.2, maxd=S['max_draw'])
                     n_s += 1
     log('night: %d storefront lights' % n_s)
+    # ---- Times-Square-like screen glow (screen quads: look_ts_screens.json)
+    T = L.get('screens', {}); n_t = 0
+    if T.get('enabled'):
+        rng = random.Random(29)
+        for k, sc in enumerate(json.load(open(os.path.join(HERE, 'look_ts_screens.json')))['screens']):
+            nrm, c = sc['n'], sc['c']
+            if abs(nrm[1]) > 0.5: continue   # vertical screens only
+            col = pick(rng, T['palette']['colors'], T['palette']['weights'])
+            pos = (c[0] + nrm[0] * T['offset'], c[1], c[2] + nrm[2] * T['offset'])
+            spawn_spot(U(*pos), unreal.Rotator(pitch=T['pitch'], yaw=math.degrees(math.atan2(nrm[2], nrm[0])), roll=0.0), 'TSScreen_%d' % k, 'NightLights/Screens', T['cd_per_sqrt_area'] * math.sqrt(sc['a']),
+                       T['outer'], T['inner'], T['radius'], 6500, vol=T['volumetric'], maxd=T['max_draw'], color=col)
+            n_t += 1
+    log('night: %d screen lights' % n_t)
     # ---- stand-in traffic
     C = L['cars']; n_c = 0
     if C.get('enabled'):
@@ -541,7 +555,7 @@ def build_night():
                 tx_.append(unreal.Transform(at(-L_ / 2, wr, 0.70), rr, unreal.Vector(0.08, 0.42, 0.12)))
             spawn_spot(at(L_ / 2 + 0.1, 0, 0.66), unreal.Rotator(pitch=C['head_pitch'], yaw=yaw_deg, roll=0.0), 'CarHead_%d' % idx, 'NightLights/Cars', C['head_cd'] * rng.uniform(0.8, 1.2), C['head_outer'], C['head_inner'],
                        C['head_radius'], 4300, vol=0.3, maxd=C['max_draw'])
-            spawn_point(at(-L_ / 2 - 0.4, 0, 0.72), 'CarTail_%d' % idx, 'NightLights/Cars', C['tail_cd'], C['tail_radius'], color=(1.0, 0.05, 0.02), maxd=C['max_draw'] * 0.7)
+            spawn_point(at(-L_ / 2 - 0.4, 0, 0.72), 'CarTail_%d' % idx, 'NightLights/Cars', C['tail_cd'], C['tail_radius'], color=(1.0, 0.05, 0.02), maxd=C.get('tail_max_draw', C['max_draw'] * 0.7))
         idx = 0
         for st in layout['streets']:
             if 'x1' not in st: continue   # the diagonal Broadway polygon: no stand-in traffic
