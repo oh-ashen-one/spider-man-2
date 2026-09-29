@@ -361,7 +361,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		const double TopM = FMath::DegreesToRadians(4.0), BotM = FMath::DegreesToRadians(12.0); // round 07: 8 -> 12
 		// if anchor (top) and hero (bottom) cannot both fit, widen the view for the attach beat (<= 20 deg)
 		const double Span = UpToAnchor + DownToHero + TopM + BotM;
-		FovWant = FMath::Clamp(Span - VFov, 0.0, FMath::DegreesToRadians(26.0));
+		FovWant = FMath::Clamp(Span - VFov, 0.0, FMath::DegreesToRadians(AttachFovMax)); // round 08: 26 -> 10 deg (92-95 deg fish-eye shrank the hero)
 		const double Half = (VFov + FovWant) * 0.5;
 		const double Need = UpToAnchor - (Half - TopM);             // pitch-up that puts it TopM inside the top
 		const double HeroLimit = (Half - BotM) - DownToHero;        // keep the hero BotM inside the bottom

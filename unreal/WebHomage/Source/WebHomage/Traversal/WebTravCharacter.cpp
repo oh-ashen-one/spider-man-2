@@ -785,11 +785,20 @@ void AWebTravCharacter::ReadHeroMask()
 			if (SR->ReadLinearColorPixels(Sc) && Sc.Num() == Px.Num())
 			{
 				int32 Near = 0, NonHero = 0, Hero = 0, Occ = 0;
+				// view rays of the capture camera: a near pixel whose world point lies on the street (z < 0.4 m) is floor, not
+				// a facade, and is not counted
+				const FRotationMatrix RM(Cam.CamRot);
+				const FVector CF = RM.GetUnitAxis(EAxis::X), CR = RM.GetUnitAxis(EAxis::Y), CU = RM.GetUnitAxis(EAxis::Z);
+				const double TV = FMath::Tan(FMath::DegreesToRadians(Cam.OutVFov * 0.5)), TH = TV * 480.0 / 270.0;
 				for (int32 K = 0; K < Px.Num(); ++K)
 				{
 					const float HD = Px[K].R, SD = Sc[K].R;
-					if (HD < 20000.f) { ++Hero; if (SD < HD - 30.f) ++Occ; }
-					else { ++NonHero; if (SD < 600.f) ++Near; }
+					if (HD < 20000.f) { ++Hero; if (SD < HD - 30.f) ++Occ; continue; }
+					++NonHero;
+					if (SD >= 600.f) continue;
+					const double U = ((K % 480) + 0.5) / 480.0 * 2.0 - 1.0, V = 1.0 - ((K / 480) + 0.5) / 270.0 * 2.0;
+					const double WZ = Cam.CamPos.Z + (CF.Z + CR.Z * U * TH + CU.Z * V * TV) * SD / 100.0;
+					if (WZ > 0.4) ++Near;
 				}
 				WallFrac = float(Near) / float(FMath::Max(1, Px.Num()));
 				HeroOccl = Hero > 0 ? float(Occ) / float(Hero) : 1.f;
