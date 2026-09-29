@@ -8,7 +8,7 @@
   const TILE_RE = /^(facade|detail|roofs|signage) (\d+)$/;
 
   const T = 256;
-  const FAR_RE = /^(farCity|farCityRoofs|farCityMass|farBulkheads|farLand-|coast-|horizonSkirt|palisadesCliff|bridge(Stone|Steel|Cables|Deck|Truss)$|seawall|mapLawns)/;
+  const FAR_RE = /^(parkPaths$|farCity|farCityRoofs|farCityMass|farBulkheads|farLand-|coast-|horizonSkirt|palisadesCliff|bridge(Stone|Steel|Cables|Deck|Truss)$|seawall|mapLawns)/;
   const tileOf = (x, z) => [Math.floor(x / T), Math.floor(z / T)];
 
   function kindOf(name, g) {
@@ -138,7 +138,7 @@
       if (!name || (SKIP.test(name) && !/^facadeLod \d+$/.test(name) && !(opts.farRegion && FAR_RE.test(name)))) continue;
       if (opts.farRegion && FAR_RE.test(name)) { // (r02) far shores, waterfront, bridges: whole meshes in 1024 m tiles
         for (const p of splitMesh(m, opts.farRegion, null, /^(farLand-|horizonSkirt|palisadesCliff)/.test(name) ? 60000 : 2048)) await postPart(url, name.replace(/[^A-Za-z0-9_]+/g, '_'), kindOf(name, m.geometry) === 'facade' ? 'facade' : 'far', p,
-          { src: name, lod: true, mat: { type: m.material?.type, color: m.material?.color?.toArray?.(), roughness: m.material?.roughness, metalness: m.material?.metalness, vertexColors: !!m.material?.vertexColors } });
+          { src: name, lod: true, mat: { type: m.material?.type, color: m.material?.color?.toArray?.(), roughness: m.material?.roughness, metalness: m.material?.metalness, vertexColors: !!m.material?.vertexColors, map: m.material?.map?.image?.src ?? null } });
         continue;
       }
       const lm = /^facadeLod (\d+)$/.exec(name);
@@ -197,10 +197,10 @@
     const instances = {};
     for (const P of pools) {
       const name = P.mesh?.name || ''; if (!name) continue;
-      const R0 = opts.farRegion && /crownfar$|^trees-street-far$/.test(name) ? opts.farRegion : region;
+      const R0 = opts.farRegion && /^ez-.*-l1-(leaves|bark)$|^trees-(park|elm|conifer)-crownfar$/.test(name) ? opts.farRegion : region; // (r03) real ez-tree LOD1 for every tree outside the detailed block
       const inReg = (it) => it.x >= R0.x0 && it.x < R0.x1 && it.z >= R0.z0 && it.z < R0.z1;
       const inNear = (it) => it.x >= region.x0 && it.x < region.x1 && it.z >= region.z0 && it.z < region.z1;
-      const items = P.items.filter(it => !it.hidden && inReg(it) && (R0 === region || !inNear(it))); // far crowns only outside the detailed block
+      const items = P.items.filter(it => !it.hidden && inReg(it) && (R0 === region || !inNear(it) || /crownfar$/.test(name))); // far crowns only outside the detailed block
       if (!items.length) continue;
       instances[name] = { near: P.near, far: P.far, n: items.length, items: items.map(it => {
         const o = { x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), ry: +(it.ry || 0).toFixed(4), s: +(it.s ?? 1).toFixed(4) };
