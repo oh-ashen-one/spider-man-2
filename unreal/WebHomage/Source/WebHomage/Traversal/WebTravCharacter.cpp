@@ -233,7 +233,7 @@ void AWebTravCharacter::BuildFigure()
 	UMaterialInstanceDynamic* Red = Mat(FLinearColor(0.55f, 0.02f, 0.03f), 0.f);
 	UMaterialInstanceDynamic* Blue = Mat(FLinearColor(0.02f, 0.05f, 0.30f), 0.f);
 	UMaterialInstanceDynamic* White = Mat(FLinearColor(0.9f, 0.9f, 0.95f), 0.6f);
-	WebMat = Mat(FLinearColor(0.72f, 0.73f, 0.76f), 0.0f); // round 08: no emissive (it bloomed into a glowing beam)
+	WebMat = Mat(FLinearColor(0.09f, 0.09f, 0.11f), 0.0f); // round 09: dark line (r08 pale grey vanished on the pale facades; r07 emissive bloomed)
 
 	// placeholder hero, 1.8 m: X forward, Y right, Z up, origin at the feet
 	AddPart(FigureRoot, TEXT("Fig_Pelvis"), Cube, FVector(0, 0, 95), FVector(0.22, 0.32, 0.18), Blue);
@@ -293,6 +293,7 @@ bool AWebTravCharacter::SetupHeroMesh()
 	// round 06: the suit rendered white / unshaded for the first frames of a capture (textures streaming in late):
 	// keep the hero's textures resident at full mip from the first frame
 	M->SetTextureForceResidentFlag(true);
+	M->bPerBoneMotionBlur = false; // round 09: limbs never smear (the city blurs, the hero stays crisp)
 	M->PrestreamTextures(30.f, true);
 	M->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 	M->PrimaryComponentTick.AddPrerequisite(this, PrimaryActorTick);
@@ -599,7 +600,7 @@ void AWebTravCharacter::PoseFigure(float Dt)
 	}
 	// round 04: air cycles keep the whole body moving — a slow barrel roll and pitch sway, phased per cycle
 	// round 06: its weight is a spring (was switched on at full amplitude when a trick ended: one-frame body pop)
-	const bool bSwayOn = bHeroMesh && A.Mode == EWebTravMode::Air && A.Sub != N_trick && A.Sub != N_topOut && !A.bDive;
+	const bool bSwayOn = bHeroMesh && A.Mode == EWebTravMode::Air && A.Sub != N_trick && A.Sub != N_topOut; // round 09: dives sway too
 	SwayW = FMath::Clamp(SwayW + (bSwayOn ? Dt / 0.2f : -Dt / 0.2f), 0.f, 1.f);
 	if (bHeroMesh && A.Mode == EWebTravMode::Air && SwayW > 0.001f)
 	{
@@ -608,7 +609,7 @@ void AWebTravCharacter::PoseFigure(float Dt)
 			if (AI->InAirCycle())
 			{
 				const double Tc = AI->AirCycleTime(), Ph = AI->AirCycleCount() * 1.7;
-				const double Ramp = FMath::Clamp(Tc / 0.3, 0.0, 1.0) * Smooth01(SwayW);
+				const double Ramp = FMath::Clamp(Tc / 0.3, 0.0, 1.0) * Smooth01(SwayW); // round 09: dives sway too
 				const double RollA = 0.6 * Ramp * FMath::Sin(2 * PI * 1.05 * Tc + Ph) * (AI->AirCycleCount() % 2 ? 1.0 : -1.0);
 				const double PitchA = 0.35 * Ramp * FMath::Sin(2 * PI * 0.8 * Tc + Ph * 0.5);
 				const FQuat Q2 = Q * FQuat(FVector(1, 0, 0), RollA) * FQuat(FVector(0, 1, 0), PitchA);
@@ -759,7 +760,7 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			// round 08 (critic r07: thick blooming beam): world width 1.2 cm, never thinner than ~1.2 px at 1080p
 			const double CamD = FVector::Dist(Mid, CamPosCm);
 			if (CamD < 300.0) { C->SetVisibility(false); continue; } // never draw a strand segment on the lens
-			const double W = FMath::Max(1.2, 0.0014 * CamD) * Fade;
+			const double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());
 			C->SetWorldScale3D(FVector(W / 100.0, W / 100.0, Len / 100.0));
 			C->SetVisibility(true);
@@ -823,7 +824,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("rope_m,tension,chain,trick,zip_target,zt_x,zt_y,zt_z,cam_x,cam_y,cam_z,cam_yaw_deg,cam_pitch_deg,cam_vfov_deg,cam_dist_m,motion_blur,")
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
-		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl"));
+		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -907,7 +908,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		if (PC->PlayerCameraManager) { PcmLoc = PC->PlayerCameraManager->GetCameraLocation(); PcmRot = PC->PlayerCameraManager->GetCameraRotation(); PcmFov = PC->PlayerCameraManager->GetFOVAngle(); }
 	}
 	const FString Row = FString::Printf(
-		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f,%d,%s,%s,%.3f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.0f,%.0f,%.0f,%.0f,%.3f,%s,%.1f,%d,%.3f,%.3f"),
+		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f,%d,%s,%s,%.3f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.0f,%.0f,%.0f,%.0f,%.3f,%s,%.1f,%d,%.3f,%.3f,%.4f,%.2f"),
 		FrameIndex, T, ModeName(A.Mode), *A.Sub.ToString(), P.X, P.Y, P.Z, V.X, V.Y, V.Z, V.Size(), FVector2D(V.X, V.Y).Size(),
 		P.Z - UWebTraversalComponent::H - Traversal->FloorBelow(), An.X, An.Y, An.Z, bSw ? Traversal->SwingRope() : 0.0, bSw ? Traversal->SwingTension() : 0.0,
 		Traversal->Chain(), A.Trick.IsNone() ? TEXT("") : *A.Trick.ToString(), Traversal->HasZipTarget() ? 1 : 0,
@@ -919,7 +920,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		Cam.bCamInGeometry ? 1 : 0, Cam.FrameS, I.bTrick ? 1 : 0, *Node, *ClipN, AW, Flav, *Sig,
 		PcmLoc.X / 100.0, PcmLoc.Y / 100.0, PcmLoc.Z / 100.0, PcmRot.Pitch, PcmRot.Yaw, PcmFov, PxTop, PxBottom, PxLeft, PxRight,
 		HeadHipDz, LimbZ.IsEmpty() ? TEXT("-") : *LimbZ, BodyRope,
-		(Traversal->Strands[0].bActive && Traversal->Strands[0].ReleaseT < 0.f) || (Traversal->Strands[1].bActive && Traversal->Strands[1].ReleaseT < 0.f) ? 1 : 0, WallFrac, HeroOccl);
+		(Traversal->Strands[0].bActive && Traversal->Strands[0].ReleaseT < 0.f) || (Traversal->Strands[1].bActive && Traversal->Strands[1].ReleaseT < 0.f) ? 1 : 0, WallFrac, HeroOccl, bBehind ? -1.0 : 0.5 * (MinX + MaxX), PcmRot.Roll);
 	Script->AddTelemetryRow(Row);
 }
 

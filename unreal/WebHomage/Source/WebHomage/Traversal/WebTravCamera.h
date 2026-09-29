@@ -47,14 +47,16 @@ public:
 
 	// ---- round 03 chase-camera tuning
 	double ChaseDist = 3.8;        // horizontal distance behind the hero (m) — round 05
-	double ChaseHeight = 1.8;      // camera height over the hero centre (m) — round 05 1.1, round 07 1.8 (critic r06: pitch 10-25 deg down)
-	double CamZMin = 1.2, CamZMax = 2.6;   // held band over the hero centre (m) — round 07 (was 0.7..1.8)
+	double ChaseHeight = 0.6;      // camera height over the hero centre (m) — r05 1.1, r07 1.8, r09 0.6 (TRAVERSAL-SPEC T11: pitch median 4-12 deg down)
+	double CamZMin = 0.2, CamZMax = 1.8;   // held band over the hero centre (m) — r07 1.2..2.6, r09 0.2..1.8
+	// round 09: anchor-side composition — yaw (deg) and sideways shift (m) toward the active anchor, roll (deg) with the arc
+	double AnchorShift = 1.3, AnchorRollMax = 6.0; // round 09: sideways slide (m) toward the active anchor, roll at the arc ends (deg)
 	double AttachFovMax = 10.0;   // deg of extra vertical FOV at a web attach — round 08 (was 26)
 	double CamWallSoft = 3.0, CamWallHard = 1.5;   // m sideways clearance from facades — round 08
 	double SwingCloser = 0.4;      // m closer while swinging / airborne — round 07
-	double PitchDownMin = 10.0;    // deg, lowest look-down of the chase camera — round 07 (was 5)
+	double PitchDownMin = -8.0;    // deg, lowest look-down of the chase camera — r07 10, r09 -8 (T11 p5: 10 deg up .. 3 deg down)
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
-	double FrameLowS = 0.48, FrameHighS = 0.40; // hero screen centre (0 top .. 1 bottom): arc bottom .. top
+	double FrameLowS = 0.44, FrameHighS = 0.37; // hero screen centre (0 top .. 1 bottom): arc bottom .. top — r09 (was 0.48 / 0.40; T10 range <= 0.70)
 	// ---- round 06 wall-run camera (critic r05 / ref wall-run): below and out from the hero, looking UP the facade at a
 	// grazing angle (view 20-35 deg off the wall plane) so the wall converges to the roof edge; hero in the lower third
 	double WallCamBelow = 2.2;     // m under the hero centre
@@ -112,6 +114,9 @@ private:
 	bool bOccGoal = false;
 	double WallKV = 0.0;
 	double WallPush = 0.0, WallPushV = 0.0;
+	double SideGoal = 1.0, SideK = 0.0, SideKV = 0.0;
+	bool bInChain = false;
+	double ChainAirT = 0.0;
 	FVector WallHeroXY = FVector::ZeroVector;
 	bool bWallXY = false;
 	double OccGoalYaw = 0.0, OccGoalPitch = 0.0;

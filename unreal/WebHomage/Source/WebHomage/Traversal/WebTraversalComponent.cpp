@@ -587,8 +587,22 @@ void UWebTraversalComponent::Corridor(double Hs, const FVector& InD)
 	{
 		if (W == W1 || FVector::DotProduct(CorrWallN[W], N1) > -0.9 || bSteerSide) continue;
 		const double Off = 0.5 * (CorrWallD[W] - CorrWallD[W1]);           // + = the centre is further out along N1
-		const double Want = FMath::Clamp(Off * 1.2, -8.0, 8.0), V = FVector::DotProduct(S.Vel, N1);
-		S.Vel += N1 * ((Want - V) * (1 - FMath::Exp(-WallKeepRate * Hs)));
+		// round 09 (critic r08: rail-straight centred chain): a bounded weave inside the corridor. While swinging, the target
+		// line sits toward the ACTIVE anchor's side (WeaveK x the anchor's offset from the centre, <= WeaveAmp m); in the air the
+		// release carries him across freely until he leaves the WeaveAmp + 2 m band. The hard clearance below still holds.
+		double Target = 0.0; // offset from the centre line along N1
+		bool bFree = false;
+		if (S.Mode == EWebTravMode::Swing)
+		{
+			const double AOff = CorrWallD[W1] + FVector::DotProduct(S.Sw.Anchor - S.Pos, N1) - 0.5 * (CorrWallD[W] + CorrWallD[W1]);
+			Target = FMath::Clamp(AOff * double(WeaveK), -double(WeaveAmp), double(WeaveAmp));
+		}
+		else bFree = FMath::Abs(Off) < double(WeaveAmp) + 2.0;
+		if (!bFree)
+		{
+			const double Want = FMath::Clamp((Off + Target) * 1.2, -8.0, 8.0), V = FVector::DotProduct(S.Vel, N1);
+			S.Vel += N1 * ((Want - V) * (1 - FMath::Exp(-WallKeepRate * Hs)));
+		}
 		break;
 	}
 	// hard clearance per wall: approach speed <= 2.5 m/s per metre above WallClearance (a stick INTO the wall = wall-run wanted)
@@ -659,6 +673,11 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 		FVector Want;
 		if (SteerHeading(InputDir(I), Want) && FVector::DotProduct(Want, Fwd) > -0.5) Fwd = FMath::Lerp(Fwd, Want, 0.6).GetSafeNormal();
 	}
+	// round 09 (critic r08: rail-straight chain): anchors alternate sides — the search heading leans AnchorAltDeg toward the
+	// side opposite the previous web (the weave then carries him across the corridor and the camera framing swaps)
+	// (the search only — the swing plane keeps the travel heading Fwd)
+	FVector FwdSearch = Fwd;
+	if (S.LastAnchorSide != 0 && S.Mode == EWebTravMode::Air) FwdSearch = RotZ(Fwd, -S.LastAnchorSide * FMath::DegreesToRadians(double(AnchorAltDeg)));
 	FVector InD = InputDir(I);
 	FVector TurnV;
 	const FVector* Turn = nullptr;
@@ -670,12 +689,18 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	const double HS = HLen(S.Vel);
 	const double Fl = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 	FTravAnchor A;
-	if (!Anchors->Find(S.Pos, Fwd, Turn, S.Vel.Size(), Fl, A))
+	if (!Anchors->Find(S.Pos, FwdSearch, Turn, S.Vel.Size(), Fl, A))
 	{
 		Emit(N_noAnchor); S.NoAnchorT += 0.06;
 		return false;
 	}
 	S.NoAnchorT = 0;
+	{
+		FVector HVx;
+		if (!HDir(S.Vel, HVx)) HVx = Fwd;
+		const double LatA = FVector::DotProduct(A.Point - S.Pos, FVector(-HVx.Y, HVx.X, 0));
+		S.LastAnchorSide = FMath::Abs(LatA) > 2.0 ? (LatA > 0 ? 1 : -1) : S.LastAnchorSide;
+	}
 	// round 07 (critic r06 cadence): fired on the rise after a release, the web shoots and sticks at once, but the pendulum
 	// starts at the top of the hop (vz <= PendingVz or PendingMax s later) so every swing still swoops down from its entry;
 	// a taut rope at once flung him up the back of the new arc and stalled him ~1.3 s at its top
@@ -719,10 +744,20 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		double BottomFeet = FMath::Lerp(double(ArcBottomMin), double(ArcBottomMax), double(Rng.FRand()));
 		// round 07: + 0..ArcDropJitter m per swing so consecutive short arcs never repeat
 		BottomFeet = FMath::Max(3.0, FMath::Min(BottomFeet, HEntry - MinArcDrop - double(ArcDropJitter) * Rng.FRand()));
-		const double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
+		// round 09 (critic r08: identical swings): alternate a shallow and a deep arc — the low point moves >= 1 storey
+		// between consecutive swings (ArcDropShallow / ArcDropDeep below the entry, 0-1.5 m jitter)
+		++S.SwingIdx;
+		{
+			const double Drop = (S.SwingIdx % 2 ? double(ArcDropShallow) : double(ArcDropDeep)) + 1.5 * Rng.FRand();
+			BottomFeet = FMath::Max(3.0, HEntry - Drop);
+		}
+		double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
 		const double BottomZ = FMaxD + BottomFeet + H;
 		// round 07: the rope cap varies per swing (up to RopeCapJitter shorter) so a long chain never repeats one arc / tempo
 		const double RopeCap = double(MaxArcRope) * (1.0 - double(RopeCapJitter) * Rng.FRand());
+		// round 09: a high anchor would need a rope over the cap for the designed low point — lower the (virtual) pivot
+		// instead, so the deep / shallow alternation survives (the web still draws to the real anchor)
+		if (S.Pos.Z - BottomZ + DZ > RopeCap) DZ = FMath::Max(double(MinPivotRise), RopeCap - (S.Pos.Z - BottomZ));
 		double L = FMath::Clamp(S.Pos.Z + DZ - BottomZ, DZ + 3.0, FMath::Max(RopeCap, DZ + 3.0));
 		double DH = FMath::Sqrt(FMath::Max(L * L - DZ * DZ, 16.0));
 		DH = FMath::Min(DH, double(MaxPivotAhead));

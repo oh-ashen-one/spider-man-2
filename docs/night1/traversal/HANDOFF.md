@@ -1,4 +1,4 @@
-# P3 Traversal + camera — handoff (after round 08)
+# P3 Traversal + camera — handoff (after round 09)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
@@ -81,6 +81,19 @@ Round 06 sub names: air `topOut` (wall-run reached the top), land `landTopOut` (
   1.5 m, never moved past the hero's line of sight.
 - **Blur / web** (round 08): motion blur 0 below 28 m/s, 0.35 x smoothstep(28, 50) (dive x 1.3), max 1-3 % (was 0.15 base, up
   to 0.65, max 7 %); web strands 1.2 cm / >= ~1.2 px, grey, no emissive (was 2.2 cm, emissive 0.35 -> bloom).
+- **TRAVERSAL-SPEC** (director, 2026-09-29, `~/sm2-n1/_scratch/director/specs/TRAVERSAL-SPEC.md`) is the target from round
+  09 on: it voids the r08 critic's 30-70 % screen weave (T9: hero centred), the r06 ">= 75 % rope on screen" (T3: 25-45 %)
+  and anchor-in-frame demands (T5). From round 10 captures run in the lit `Look_Midtown_golden` map (P4), not Trav_Canyon.
+- **Weave + alternating arcs** (round 09): `ArcDropShallow` 10.2 / `ArcDropDeep` 17.5 m alternate by swing index (+0-1.5 m); a
+  high anchor lowers the virtual pivot to keep the low point. `AnchorAltDeg` 30: the anchor SEARCH heading leans toward the
+  side opposite the previous web (`LastAnchorSide`; the swing plane keeps the travel heading — passing the rotated heading to
+  StartSwing threw him down a cross street). Corridor: while swinging the target line is `WeaveK` 0.45 x the active anchor's
+  offset from the centre (<= `WeaveAmp` 6 m); in the air no centring inside +/-8 m; clearance limits unchanged.
+  `PivotLateralKeep` 0.25 (was 0.1).
+- **Camera round 09**: `ChaseHeight` 0.6 (band 0.2-1.8), `PitchDownMin` -8, framing 0.44 / 0.37 (T11 pitch median 4-12 down,
+  T10); side slide `AnchorShift` 1.3 m toward the active anchor while in a swing chain (`SideK`, 0.3 s; `bInChain` ends after
+  0.8 s without a web, in a dive, on ground / wall / perch / zip — the side view spoiled b's zip aim), roll <= 6 deg at the
+  arc ends only (T13). A screen-space side offset of the hero (built first) was reverted per the spec.
 - **Pop fixes** (round 06): body roll / pitch leans are springs (`RollA/PitchA`, rate 14); the character's air-sway weight
   `SwayW` ramps 0.2 s (was full amplitude the frame a trick ended); chase pitch may pass 22 deg down when collision lifts the
   camera (hero centre kept <= 0.62 of the frame).
@@ -100,6 +113,9 @@ python3 docs/night1/traversal/cam_check.py  <telemetry.csv> <label>   # model bb
 python3 docs/night1/traversal/drop_test.py  <telemetry.csv> [--skip-first]   # release->low point drop ≥15 m, arcs differ
 python3 docs/night1/traversal/cadence_check.py <telemetry.csv> <label> [12]   # attaches, swing s, web-less gaps, drop, rope on screen, body vs rope
 python3 docs/night1/traversal/facade_check.py <telemetry.csv> <label> t0:t1 ...   # rendered: wall_frac <= 0.30, hero never occluded, facade distances
+python3 docs/night1/traversal/spec_cam_check.py <telemetry.csv> <label> [t0 t1]   # TRAVERSAL-SPEC T8-T14, T16, T19 (rendered)
+# spec video instruments (venv: uv venv specv --python 3.12; uv pip install opencv-python-headless numpy scipy):
+#   python ~/sm2-n1/_scratch/director/specs/tools/vp_cam.py <mp4> <out prefix> 6 ; .../nearflow.py 8 <mp4>
 python3 docs/night1/traversal/wall_check.py <telemetry.csv> <label>   # wall-run: limb phases @6 fps, head>hips, steps/s, px in frame through top-out
 python3 docs/night1/traversal/scripts/bake_keys.py <auto.json> <telemetry.csv> <out.json> <name>  # rule → plain timed keys
 python3 docs/night1/traversal/make_shotlist.py <round dir> "round NN" <commit>   # neutral SHOTLIST.md
@@ -198,6 +214,28 @@ Notes: the attach FOV widening is capped at 10 deg (`AttachFovMax`, was 26; its 
 chain now runs close to the canyon centre line (|y| < 2 m on a) — the weave is gone; a later round may want a gentle, bounded
 weave. b perches on the B03 podium roof (198.6, 15.4, 49.6).
 
+## 6e. Round-09 checks (captures in `round-09/`; SPEC_CHECK.txt = TRAVERSAL-SPEC lines)
+| Spec line (a_swing_chain, chain window 0.4-15.6 s) | engine side | video instrument |
+|---|---|---|
+| T8 hero height / frame (med 0.15-0.23, p10 >= .09, p90 <= .38) | p10 .177 p50 .219 p90 .270 PASS | — |
+| T9 hero centre x p5-p95 in .44-.56 | .463-.545 PASS | — |
+| T10 hero centre y spread >= .20, range .20-.70 | .354-.726 (spread .372) FAIL: dips to .73 in fast swoops | — |
+| T11 pitch down med 4-12, p95 15-30, p5 -10..3 | -8.2 / 11.5 / 22.0 PASS | vp_cam 3.0 / 11.8 / 22.1 |
+| T12 yaw off axis med 2-10, p90 10-25 | 7.6 / 14.2 PASS | vp_cam 7.5 / 14.1 |
+| T13 roll med <= 1.5, p90 <= 10 | 1.5 / 3.1, max 3.4 PASS | vp_cam 1.6 / 3.2, max 53 (13.8-14.0 s: VP misreads; engine max 3.4) |
+| T14 hFOV 100-110 | med 104.1 PASS | vp_cam 102.7 |
+| T16 hero in frame >= 94 %, T19 never occluded / camera never in geometry | 100 %, 0 / 0 PASS | — |
+| T17 near-field coverage p50 .20-.45, p90 <= .55 | — | nearflow .29 / .46 PASS |
+| T18 side third p50 .45-.65, > 50 % in 40-80 % of frames | — | .48, 47 % PASS |
+| Arc low points vary (brief: >= 3 m) | 9.2/2.9/7.7/4.1/7.1/3.5/8.7/4.4, min diff 3.1 m | — |
+| Facade clearance (hero >= 3 m, camera >= 1.5 m) | hero >= 5.7 m, camera >= 5.0 m | — |
+Not addressed this round (spec lines untouched): T1-T3 cadence — a has 7 attaches / 12 s (~4.7 per 8 s, spec 2-4) and web
+on ~80 % of the chain (spec 25-45 %): round 10 should lengthen the web-less flips/dives (T4 allows <= 3.1 s with a changing
+pose) and hold webs 0.5-1.6 s. T6 rope angle/width not measured yet (width set to >= ~2 px). T20/T21 blur not measured.
+d (street start in its window) passes 4/9: pitch p5 -11, yaw p50 10.0, hero x p95 .62 and y .82 during the sprint-jump
+start; its swing part looks like a. Other checks: pixel framing >= 160 px 96-98 %, drop test PASS/PASS, air variety 0 held
+pairs, T-pose 0, camera in geometry 0, wall-run 14 phases / 17-17 / 272-272.
+
 ## 7. Critic history (blind critic vs Marvel's Spider-Man 2 refs; arc / camera / web / moves / body)
 | Round | Scores | Biggest gap | What changed next |
 |---|---|---|---|
@@ -208,6 +246,7 @@ weave. b perches on the B03 podium roof (198.6, 15.4, 49.6).
 | r05 | 5/3/5/4/3 | Wall-run: camera behind/below pitched 20-35° up the facade with the roof edge; head-up body, alternating hands/feet 2-3 steps/s; test ≥4 limb phases at 6 fps, head above hips, hero in frame through the top-out (ref wallrun-glass-midday 2-6 s) | r06 head-up sprint-stride wall-run, up-the-facade wall camera, flip top-out + crouch landing, release pop springs, suit warm-up |
 | r06 | 4/4/5/4/4 | Swing cadence: ~4 s cycles, 3 attaches in 12 s, 1.5-2 s web-less falls; target attach->release 1.2-1.8 s, next web <= 0.5 s, no web-less fall > 0.6 s without a trick, body within 15 deg of the rope at the bottom; test >= 7 attaches in 12 s, rope on screen >= 75 % | r07 short virtual-pivot arcs, release climb cap, immediate re-search + pending attach on the rise, body-along-web, canyon camera pitch |
 | r07 | 4/3/4/4/4 | Facade clearance + occlusion during swings (a 14.3-14.8 s, d 6.8-7.3 s): path >= 3 m from walls, camera >= 1.5 m, no facade > 30 % of frame, hero never occluded; also blur on everything, thick blooming rope (orchestrator: the critic's "hero 6-8 % of frame" was wrong, ~17 %) | r08 wall-frame canyon keeping, camera wall clearance, wall_frac / hero_occl capture, blur only at speed, thin matte web |
-| r08 | (critic pending) | | |
+| r08 | 4/4/4/3/3 | Locked symmetric camera + identical swings (critic asked 30-70 % screen weave — voided by TRAVERSAL-SPEC T9); orchestrator/spec: lively weave inside the safe corridor, camera 2-25 deg off axis, near facade in a side third 40-80 % of frames, pitch median 4-12 down, hFOV 100-110, arc low points vary | r09 alternating arc depth, alternating anchor sides + bounded weave, camera side slide + arc-end roll, lower camera, dark 2 px rope, crouch-first landings |
+| r09 | (critic pending) | | |
 
 Round folders `docs/night1/traversal/round-0N/` hold videos, stills, telemetry, SHOTLIST, CRITIC and the check outputs.

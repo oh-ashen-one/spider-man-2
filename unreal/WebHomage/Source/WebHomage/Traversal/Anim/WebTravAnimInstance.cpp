@@ -192,7 +192,7 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 	if (N.StartsWith(TEXT("land_")))
 	{
 		const FString S = N.Mid(5);
-		if (S == TEXT("landTopOut")) { Add(TEXT("perchLand"), T + 0.12f, 1.f, false); return; } // planted crouch, then the settle blend
+		if (S == TEXT("landTopOut")) { Add(TEXT("perchLand"), T + 0.22f, 1.f, false); return; } // planted crouch, then the settle blend
 		Add(S == TEXT("landRoll") ? TEXT("landRoll") : S == TEXT("landHard") ? TEXT("landHard") : S == TEXT("landMedium") ? TEXT("landMedium") : TEXT("landLight"), T, 1.f, false);
 		return;
 	}
@@ -227,7 +227,12 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 		else if (S == TEXT("rise")) Add(TEXT("airRise"), T, 1.f, false);
 		else if (S == TEXT("apex")) Add(TEXT("airApex"), T, 1.f, false);
 		else if (S == TEXT("fallCalm")) Add(TEXT("fallCalm"), T, 1.f, true);
-		else if (S == TEXT("dive")) Add(TEXT("fallFast"), T, 1.f, true);
+		else if (S == TEXT("dive"))
+		{ // round 09 (TRAVERSAL-SPEC T4: no held pose in a web-less phase): the dive flutters between the tucked fast fall and
+		  // the spread calm fall (0.8 s period)
+			const float F = 0.35f + 0.35f * FMath::Sin(2.f * PI * T / 0.8f);
+			Add(TEXT("fallFast"), T, 1.f - F, true); Add(TEXT("fallCalm"), T, F, true);
+		}
 		else if (S == TEXT("reachR")) { Add(TEXT("webShootR"), T, 0.8f, false); Add(TEXT("airApex"), T, 0.2f, false); }
 		else if (S == TEXT("reachL")) { Add(TEXT("webShootL"), T, 0.8f, false); Add(TEXT("airApex"), T, 0.2f, false); }
 		else if (S == TEXT("zipPull")) Add(TEXT("webZipPull"), T, 1.f, false);
@@ -248,7 +253,7 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 		}
 		return;
 	}
-	if (N.StartsWith(TEXT("perch_"))) { if (N == TEXT("perch_land")) Add(TEXT("perchLand"), T, 1.f, false); else Add(TEXT("perchIdle"), T, 1.f, true); return; }
+	if (N.StartsWith(TEXT("perch_"))) { if (N == TEXT("perch_land")) Add(TEXT("perchLand"), T + 0.22f, 1.f, false); /* round 09: straight into the impact crouch (its first 0.2 s is an upright arms-out pose) */ else Add(TEXT("perchIdle"), T, 1.f, true); return; }
 	if (Node == NA_wallRun)
 	{ // round 06: head-up climb-run = the sprint stride on the wall (body frame from the traversal), steps driven by wall
 	  // speed: 1.8 steps/s at 6 m/s .. 2.6 steps/s at 14 m/s (the clip's own stride is 3.75 steps/s)
