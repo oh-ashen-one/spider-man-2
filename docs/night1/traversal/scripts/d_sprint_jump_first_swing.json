@@ -52,40 +52,44 @@
    "swing": true
   },
   {
-   "t": 6.395,
+   "t": 6.345,
    "swing": false
   },
   {
-   "t": 6.545,
+   "t": 6.495,
    "swing": true
   },
   {
-   "t": 8.4617,
+   "t": 8.2117,
    "trick": true
   },
   {
-   "t": 8.4617,
+   "t": 8.2117,
    "swing": false
   },
   {
-   "t": 8.4783,
+   "t": 8.2283,
    "trick": false
   },
   {
-   "t": 8.6117,
+   "t": 8.3617,
    "swing": true
   },
   {
-   "t": 10.5283,
+   "t": 10.2617,
    "swing": false
   },
   {
-   "t": 10.6783,
+   "t": 10.4117,
    "swing": true
   },
   {
-   "t": 11.9617,
+   "t": 11.695,
    "swing": false
+  },
+  {
+   "t": 11.845,
+   "swing": true
   }
  ],
  "baked_from": "d_auto.json"

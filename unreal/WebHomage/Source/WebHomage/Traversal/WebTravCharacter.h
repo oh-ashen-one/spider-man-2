@@ -114,6 +114,10 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> MaskRT;
 	float PxTop = -1.f, PxBottom = -1.f, PxLeft = -1.f, PxRight = -1.f;
+	// round 08: full-scene depth from the view camera (same 480x270 grid) -> near-wall share and hero occlusion
+	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> SceneCapture;
+	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> SceneRT;
+	float WallFrac = -1.f, HeroOccl = -1.f;
 	void ReadHeroMask();
 	double RunPhase = 0.0;
 	FVector ReleaseHandCm[2];

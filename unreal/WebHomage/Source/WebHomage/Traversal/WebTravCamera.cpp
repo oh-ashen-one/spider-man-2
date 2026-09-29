@@ -166,7 +166,8 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	(void)LookAt;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
 	const bool bGroundish = M == EWebTravMode::Ground || M == EWebTravMode::Land || M == EWebTravMode::Wall;
-	const double MbTarget = (bGroundish ? 0.45 : bDive ? 1.6 : 1.0) * Smooth(Speed, 6, 36) * 1.1;
+	// round 08: blur only at genuinely high speed (0 below 28 m/s, full at 50), none on foot / walls
+	const double MbTarget = (bGroundish ? 0.0 : bDive ? 1.3 : 1.0) * Smooth(Speed, 28, 50);
 	MotionBlur = FMath::Max(0.0, SD(MbK, MbKV, MbTarget, MbTarget > MbK ? 0.35 : 0.2, Dt));
 }
 
@@ -287,6 +288,30 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		FVector G3;
 		ClearTo(Up2, G3);
 		if (FVector::Dist(G3, Hero) > FVector::Dist(Cam, Hero)) Cam = G3;
+	}
+	// ---- round 08 (critic r07: camera hugging / entering facades): keep the camera off the walls sideways — a spring toward
+	// CamWallSoft m of clearance (toward the canyon centre, not along the wall) and a hard CamWallHard m minimum
+	{
+		const FVector RtC = RightFlat();
+		double DR = 1e9, DL = 1e9;
+		FTravHit WH;
+		if (World.Raycast(Cam, RtC, CamWallSoft + 1.0, WH) && FMath::Abs(WH.Normal.Z) < 0.5) DR = WH.Distance;
+		if (World.Raycast(Cam, -RtC, CamWallSoft + 1.0, WH) && FMath::Abs(WH.Normal.Z) < 0.5) DL = WH.Distance;
+		double Want = 0.0;
+		if (DR < CamWallSoft) Want -= CamWallSoft - DR;
+		if (DL < CamWallSoft) Want += CamWallSoft - DL;
+		SD(WallPush, WallPushV, Want, 0.15, Dt);
+		double Push = WallPush;
+		if (DR < CamWallHard) Push = FMath::Min(Push, -(CamWallHard - DR));
+		if (DL < CamWallHard) Push = FMath::Max(Push, CamWallHard - DL);
+		if (FMath::Abs(Push) > 1e-3)
+		{
+			FVector Moved;
+			ClearFrom(Cam, Cam + RtC * Push, Moved);
+			Cam = Moved;
+			FVector Seen;
+			if (ClearTo(Cam, Seen) < FVector::Dist(Cam, Hero) - 0.3) Cam = Seen; // keep the hero in sight
+		}
 	}
 	const double GY = World.GroundHeight(Cam.X, Cam.Y, Cam.Z + 0.3) + 0.4;
 	if (Cam.Z < GY) Cam.Z = GY;

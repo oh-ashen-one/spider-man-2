@@ -446,7 +446,8 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		if (N > 2) { const double K = FMath::Min(N + 3 * Hs, 30.0) / N; S.Vel.X *= K; S.Vel.Y *= K; }
 	}
 	if (HS > 32 + 3 * S.Chain) { S.Vel.X *= 1 - 0.12 * Hs; S.Vel.Y *= 1 - 0.12 * Hs; }
-	if (HS > 12 && RelK >= 1 && (S.Sub == N_release || S.Sub == N_trick || I.bSwing)) Corridor(Hs, InD);
+	// round 08: canyon keeping from the moment of release (was only 0.9 s after it: releases carried 20+ m/s sideways into facades)
+	if (HS > 8 && (S.Sub == N_release || S.Sub == N_trick || S.Sub == N_rise || S.Sub == N_apex || S.Sub == N_fall || I.bSwing)) Corridor(Hs, InD);
 	const double PrevFeet = FeetZ();
 	S.Pos += S.Vel * Hs;
 	FTravContact C;
@@ -546,31 +547,58 @@ void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 // ------------------------------------------------------------------ corridor keeping (swing / air chains stay in the street canyon)
 void UWebTraversalComponent::Corridor(double Hs, const FVector& InD)
 {
+	// round 08 (critic r07: swings carried him into the facades): canyon keeping in the WALLS' frame. 8 horizontal rays find
+	// the facades around the body; along each wall's normal the approach speed is limited (>= WallClearance at the arc bottom)
+	// and, between two opposite walls, a damped spring steers toward the canyon centre line. The r02-r07 version measured
+	// "sideways" in the velocity's own frame (a drift that had already turned the heading read as zero) and pushed with no
+	// damping, so chains zig-zagged into the facades and out through intersections.
 	CorrT -= Hs;
 	if (CorrT <= 0)
 	{
-		CorrT = 0.05; CorrPush = FVector::ZeroVector;
-		FVector HV;
-		if (!HDir(S.Vel, HV)) return;
-		const FVector Right(-HV.Y, HV.X, 0);
-		const double Sp = HLen(S.Vel);
-		for (double SG : { 1.0, -1.0 })
+		CorrT = 0.05; CorrN = 0;
+		for (int32 K = 0; K < 8; ++K)
 		{
-			for (double FwdK : { 0.0, 0.5 })
+			const double A = K * PI / 4.0;
+			const FVector D(FMath::Cos(A), FMath::Sin(A), 0.0);
+			FTravHit Hit;
+			if (!TravWorld.Raycast(S.Pos, D, 40, Hit) || FMath::Abs(Hit.Normal.Z) > 0.5) continue;
+			const FVector N = Flat(Hit.Normal).GetSafeNormal();
+			// only facades BESIDE the travel direction (a block face ahead is FacadeAvoid's job; braking into it is not)
+			FVector HV0;
+			if (HDir(S.Vel, HV0) && FMath::Abs(FVector::DotProduct(N, HV0)) > 0.5) continue;
+			const double Dist = FVector::DotProduct(S.Pos - Hit.Point, N);
+			if (Dist < 0 || Dist > 40) continue;
+			bool bMerged = false; // one entry per wall plane (nearest)
+			for (int32 W = 0; W < CorrN; ++W)
 			{
-				const FVector D = (Right * SG + HV * FwdK).GetSafeNormal();
-				FTravHit Hit;
-				if (!TravWorld.Raycast(S.Pos, D, 16, Hit) || FMath::Abs(Hit.Normal.Z) > 0.5) continue;
-				const double K = FMath::Clamp((16 - Hit.Distance) / 11, 0.0, 1.0); // 0 at 16 m .. 1 at 5 m
-				CorrPush += Right * (-SG * K * K * (FwdK > 0 ? 0.6 : 1.0) * FMath::Min(1.0, Sp / 15));
+				if (FVector::DotProduct(CorrWallN[W], N) > 0.95) { if (Dist < CorrWallD[W]) CorrWallD[W] = Dist; bMerged = true; break; }
 			}
+			if (!bMerged && CorrN < 8) { CorrWallN[CorrN] = N; CorrWallD[CorrN] = Dist; ++CorrN; }
 		}
 	}
-	if (CorrPush.SizeSquared() < 1e-4) return;
-	// don't fight a player deliberately steering into the wall (they want a wall-run)
-	const double Want = InD.SizeSquared() > 0.1 ? -FVector::DotProduct(InD, CorrPush) / FMath::Max(CorrPush.Size(), 1e-3) / FMath::Max(InD.Size(), 1e-3) : -1;
-	if (Want > 0.5) return;
-	S.Vel += CorrPush * 24 * Hs;
+	if (CorrN == 0) return;
+	const FVector InN = InD.SizeSquared() > 0.1 ? InD.GetSafeNormal() : FVector::ZeroVector;
+	// centring between the nearest wall and an opposite one (the player steering sideways turns it off)
+	int32 W1 = 0;
+	for (int32 W = 1; W < CorrN; ++W) { if (CorrWallD[W] < CorrWallD[W1]) W1 = W; }
+	const FVector N1 = CorrWallN[W1];
+	const bool bSteerSide = FMath::Abs(FVector::DotProduct(InN, N1)) > 0.5;
+	for (int32 W = 0; W < CorrN; ++W)
+	{
+		if (W == W1 || FVector::DotProduct(CorrWallN[W], N1) > -0.9 || bSteerSide) continue;
+		const double Off = 0.5 * (CorrWallD[W] - CorrWallD[W1]);           // + = the centre is further out along N1
+		const double Want = FMath::Clamp(Off * 1.2, -8.0, 8.0), V = FVector::DotProduct(S.Vel, N1);
+		S.Vel += N1 * ((Want - V) * (1 - FMath::Exp(-WallKeepRate * Hs)));
+		break;
+	}
+	// hard clearance per wall: approach speed <= 2.5 m/s per metre above WallClearance (a stick INTO the wall = wall-run wanted)
+	for (int32 W = 0; W < CorrN; ++W)
+	{
+		const FVector& N = CorrWallN[W];
+		if (CorrWallD[W] > 14 || FVector::DotProduct(InN, -N) > 0.6) continue;
+		const double MaxIn = FMath::Max(0.0, (CorrWallD[W] - WallClearance) * 2.5), VIn = -FVector::DotProduct(S.Vel, N);
+		if (VIn > MaxIn) S.Vel += N * (VIn - MaxIn);
+	}
 }
 
 // ------------------------------------------------------------------ swing

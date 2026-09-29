@@ -26,8 +26,7 @@ for r in rows:
         last_rel = max(last_rel, z(r)) if r["mode"] == "air" else z(r)
     if sw:
         last_rel = z(r)
-if cur is not None:
-    swings.append(cur)
+# round 08: a swing still running when the recording ends is incomplete (its low point is unknown): not judged
 ok = True
 tv = [(float(r["t"]), vp(r)) for r in rows]
 print(f"{'#':>2} {'t0':>6} {'relH':>6} {'entryH':>6} {'lowH':>6} {'drop':>6} {'exitH':>6} {'rope':>6} {'dur':>5} {'VPlow>rel':>9} {'VPcycle':>7}  result")

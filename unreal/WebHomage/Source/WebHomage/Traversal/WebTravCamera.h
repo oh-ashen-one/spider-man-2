@@ -49,6 +49,7 @@ public:
 	double ChaseDist = 3.8;        // horizontal distance behind the hero (m) — round 05
 	double ChaseHeight = 1.8;      // camera height over the hero centre (m) — round 05 1.1, round 07 1.8 (critic r06: pitch 10-25 deg down)
 	double CamZMin = 1.2, CamZMax = 2.6;   // held band over the hero centre (m) — round 07 (was 0.7..1.8)
+	double CamWallSoft = 3.0, CamWallHard = 1.5;   // m sideways clearance from facades — round 08
 	double SwingCloser = 0.4;      // m closer while swinging / airborne — round 07
 	double PitchDownMin = 10.0;    // deg, lowest look-down of the chase camera — round 07 (was 5)
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
@@ -109,6 +110,7 @@ private:
 	double OccYawGoal = 0.0, OccUpGoal = 0.0, UserPitch = 0.0, AttachLook = 0.0, AttachLookV = 0.0, AttachFov = 0.0, AttachFovV = 0.0, AttachYaw = 0.0, AttachYawV = 0.0;
 	bool bOccGoal = false;
 	double WallKV = 0.0;
+	double WallPush = 0.0, WallPushV = 0.0;
 	FVector WallHeroXY = FVector::ZeroVector;
 	bool bWallXY = false;
 	double OccGoalYaw = 0.0, OccGoalPitch = 0.0;

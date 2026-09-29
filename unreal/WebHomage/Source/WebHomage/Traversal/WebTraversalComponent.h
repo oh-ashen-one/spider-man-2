@@ -56,6 +56,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
 	/** Round 07: upward speed kept by a plain web release (m/s); the rest turns into forward speed. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReleaseVzMax = 8.f;
+	/** Round 08: facade clearance kept by the canyon spring (m) and the spring rate (1/s). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallClearance = 3.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallKeepRate = 2.5f;
 
 	/**
 	 * Fraction of the anchor's lateral offset (relative to the swing direction) kept in the physics pivot.
@@ -312,6 +315,7 @@ private:
 	FQuat FinalQ = FQuat::Identity;
 	double LastVelYaw = 0;
 	double CorrT = 0; FVector CorrPush = FVector::ZeroVector;
+	FVector CorrWallN[8]; double CorrWallD[8] = { 0 }; int32 CorrN = 0; // round 08: facade planes around the body (normal, distance m)
 	double AvoidT = 0, AvoidRate = 0;
 
 public:
