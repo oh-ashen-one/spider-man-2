@@ -1,0 +1,58 @@
+{
+ "S4_golden_1080.jpg": {
+  "mean_Y": 91.7,
+  "B_minus_R": -22.4,
+  "near_black_pct": 0.43,
+  "clipped_pct": 0.66,
+  "p99_Y": 222.0
+ },
+ "river_low_1080.jpg": {
+  "mean_Y": 102.0,
+  "B_minus_R": -18.0,
+  "near_black_pct": 0.08,
+  "clipped_pct": 0.09,
+  "p99_Y": 203.0
+ },
+ "river_low_midday_1080.jpg": {
+  "mean_Y": 84.0,
+  "B_minus_R": 20.1,
+  "near_black_pct": 0.33,
+  "clipped_pct": 0.0,
+  "p99_Y": 208.0
+ },
+ "river_low_polygon_1080.jpg": {
+  "mean_Y": 107.1,
+  "B_minus_R": -38.6,
+  "near_black_pct": 0.08,
+  "clipped_pct": 0.23,
+  "p99_Y": 213.0
+ },
+ "river_low_west_1080.jpg": {
+  "mean_Y": 117.4,
+  "B_minus_R": -38.7,
+  "near_black_pct": 0.02,
+  "clipped_pct": 7.49,
+  "p99_Y": 250.0
+ },
+ "river_low_west_midday_1080.jpg": {
+  "mean_Y": 78.1,
+  "B_minus_R": 29.9,
+  "near_black_pct": 0.25,
+  "clipped_pct": 0.0,
+  "p99_Y": 188.0
+ },
+ "S4_golden_4k.jpg": {
+  "mean_Y": 92.0,
+  "B_minus_R": -22.6,
+  "near_black_pct": 0.5,
+  "clipped_pct": 0.64,
+  "p99_Y": 222.0
+ },
+ "river_low_4k.jpg": {
+  "mean_Y": 102.3,
+  "B_minus_R": -18.1,
+  "near_black_pct": 0.07,
+  "clipped_pct": 0.26,
+  "p99_Y": 206.0
+ }
+}

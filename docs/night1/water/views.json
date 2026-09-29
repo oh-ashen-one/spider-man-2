@@ -1,0 +1,114 @@
+{
+ "_comment": "Homage fan game, not an official Marvel/Sony/Insomniac game. Capture views of the water A/B. Browser frame: x east, y up, z south (north = -z), metres; UE cm = (x, z, y) * 100; UE yaw = compass yaw - 90 (compass: 0 = north, 90 = east, 270 = west).",
+ "frame": "browser metres (x east, y up, z south)",
+ "water_y_m": -1.6,
+ "midtown_block_centre_xz": [
+  128.0,
+  -128.0
+ ],
+ "waterline_probe": {
+  "zc": -128.0,
+  "land_poly_x": -744.1600000000001,
+  "edge_x_west_most": -768.0,
+  "edge_x_median": -761.0,
+  "rows": 100
+ },
+ "views": {
+  "S4_golden": {
+   "source": "unreal/WebHomage/Scripts/city_shots.json S4_perch_skyline",
+   "pos": [
+    182,
+    306,
+    -92
+   ],
+   "target": [
+    -120,
+    150,
+    -470
+   ],
+   "fov_h_deg": 75,
+   "map": "/Game/Maps/Manhattan_View_S4",
+   "look": "golden",
+   "files": [
+    "S4_golden_4k.jpg (3840x2160)",
+    "S4_golden_1080.jpg (1920x1080)"
+   ]
+  },
+  "river_low": {
+   "desc": "Hudson waterfront at the latitude of the centre of the detailed Midtown block (region z -512..256 -> z = -128), 6 m above the mean water level, looking north ALONG the river (Jersey shore at the left edge, the esplanade edge on the right), pitch -3 deg, horizontal FOV 90 deg. Position: the built waterfront, NOT layout.js LAND_POLY: waterfront.js builds the esplanade fill / bump-outs outward of LAND_POLY (by up to ~25 m here), so x = west-most esplanade edge in z -128 +- 25 m (-768.0) minus 4 m = -772.0. The literal LAND_POLY x (-744.2) hangs over the promenade: see river_low_polygon.",
+   "pos": [
+    -772.0,
+    4.4,
+    -128.0
+   ],
+   "yaw_compass_deg": 0.0,
+   "pitch_deg": -3.0,
+   "fov_h_deg": 90.0,
+   "map": "/Game/Water/Maps/Water_View_Low",
+   "look": "golden",
+   "files": [
+    "river_low_4k.jpg (3840x2160)",
+    "river_low_1080.jpg (1920x1080)"
+   ]
+  },
+  "river_low_dolly": {
+   "desc": "the river_low view moving slowly forward (north, along the look direction), 10 s, 1920x1080, 60 fps; the camera holds still for hold_before_s first (Lumen / exposure settle, trimmed from the clip)",
+   "from": [
+    -772.0,
+    4.4,
+    -128.0
+   ],
+   "to": [
+    -772.0,
+    4.4,
+    -138.0
+   ],
+   "duration_s": 10.0,
+   "speed_m_s": 1.0,
+   "hold_before_s": 3.0,
+   "hold_after_s": 0.5,
+   "yaw_compass_deg": 0.0,
+   "pitch_deg": -3.0,
+   "fov_h_deg": 90.0,
+   "map": "/Game/Water/Maps/Water_View_Dolly",
+   "look": "golden",
+   "files": [
+    "river_low_dolly.mp4"
+   ]
+  },
+  "river_low_west": {
+   "desc": "SUPPLEMENT: the river_low position looking west, across the river toward the Jersey shore and the low sun (sun glitter, sheen, pier reflections)",
+   "pos": [
+    -772.0,
+    4.4,
+    -128.0
+   ],
+   "yaw_compass_deg": 270.0,
+   "pitch_deg": -3.0,
+   "fov_h_deg": 90.0,
+   "map": "/Game/Water/Maps/Water_View_LowWest",
+   "look": "golden",
+   "files": [
+    "river_low_west_4k.jpg",
+    "river_low_west_1080.jpg"
+   ]
+  },
+  "river_low_polygon": {
+   "desc": "SUPPLEMENT: the literal reading of the brief, x = layout.js shoreX(z).west (the LAND_POLY west shoreline) at the block-centre latitude, 6 m above the water, looking north. Camera hangs over the esplanade: little water in frame.",
+   "pos": [
+    -744.16,
+    4.4,
+    -128.0
+   ],
+   "yaw_compass_deg": 0.0,
+   "pitch_deg": -3.0,
+   "fov_h_deg": 90.0,
+   "map": "/Game/Water/Maps/Water_View_LowPoly",
+   "look": "golden",
+   "files": [
+    "river_low_polygon_4k.jpg",
+    "river_low_polygon_1080.jpg"
+   ]
+  }
+ }
+}
