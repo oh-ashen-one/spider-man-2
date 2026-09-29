@@ -12,6 +12,8 @@ UE_DIR="$(cd "$HERE/../../../unreal/WebHomage" && pwd)"
 SCR="$HERE/scripts"
 TMP=/Users/midir/sm2-n1/_scratch/traversal/capture
 MAP=/Game/Tests/Traversal/Trav_Canyon
+# round 06: pre-roll (s) rendered from the start pose before the sequence starts (exposure / Lumen settle), trimmed from the movie
+PRE=0.8
 mkdir -p "$TMP" "$ROUND/stills"
 # name  script                          quit(s)  still times (game s)
 SEQS=(
@@ -33,27 +35,36 @@ for entry in "${SEQS[@]}"; do
   echo "== $NAME  (GPU $(ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1))"
   # --- 1080p60 movie + telemetry
   rm -rf "$TMP/$NAME"
-  "$UE_DIR/Scripts/run_game.sh" "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUIT" -name "$NAME" -movie -timeout 3000 \
-    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" | tail -3
-  MP4="$TMP/$NAME/$NAME.mp4"
-  if [ -f "$MP4" ]; then
-    DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$MP4")
-    SIZE=$(stat -f %z "$MP4")
-    if [ "$SIZE" -gt 15000000 ]; then # re-encode from the frames at a bitrate that fits 14.5 MB
+  QUITP=$(python3 -c "print(round($QUIT + $PRE, 3))")
+  "$UE_DIR/Scripts/run_game.sh" "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
+    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE | tail -3
+  FR="$TMP/$NAME/${NAME}_frames"
+  if [ -d "$FR" ] && [ -f "$TMP/$NAME/${NAME}_telemetry.csv" ]; then
+    NF=$(ls "$FR" | wc -l | tr -d ' '); NT=$(( $(wc -l < "$TMP/$NAME/${NAME}_telemetry.csv") - 1 ))
+    SKIP=$(( NF - NT ))   # rendered frames before the sequence's first telemetry row (engine start + pre-roll)
+    echo "frames $NF, telemetry rows $NT -> trimming the first $SKIP frames"
+    ffmpeg -loglevel error -y -framerate 60 -start_number $SKIP -i "$FR/MovieFrame%05d.png" -c:v libx264 -pix_fmt yuv420p -crf 18 \
+      -movflags +faststart "$ROUND/$NAME.mp4"
+    DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$ROUND/$NAME.mp4")
+    if [ "$(stat -f %z "$ROUND/$NAME.mp4")" -gt 15000000 ]; then # re-encode at a bitrate that fits 14.5 MB
       KBPS=$(python3 -c "print(int(14.5e6*8/1000/float('$DUR')))")
-      ffmpeg -loglevel error -y -framerate 60 -i "$TMP/$NAME/${NAME}_frames/MovieFrame%05d.png" -c:v libx264 -preset slow \
+      ffmpeg -loglevel error -y -framerate 60 -start_number $SKIP -i "$FR/MovieFrame%05d.png" -c:v libx264 -preset slow \
         -b:v ${KBPS}k -maxrate ${KBPS}k -bufsize $((KBPS*2))k -pix_fmt yuv420p -movflags +faststart "$ROUND/$NAME.mp4"
-    else
-      cp "$MP4" "$ROUND/$NAME.mp4"
     fi
     cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/"
     echo "movie: $ROUND/$NAME.mp4 $(stat -f %z "$ROUND/$NAME.mp4") bytes, ${DUR}s"
   fi
   # --- 3840x2160 stills (same deterministic replay)
   rm -rf "$TMP/${NAME}_4k"
-  "$UE_DIR/Scripts/run_game.sh" "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTS" -name "$NAME" -timeout 1500 \
-    -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHTravScript="$SCR/$JSON" -WHTravCsv="$TMP/${NAME}_4k/stills_telemetry.csv" | tail -2
-  for p in "$TMP/${NAME}_4k"/*.png; do
-    [ -f "$p" ] && sips -s format jpeg -s formatOptions 92 "$p" --out "$ROUND/stills/$(basename "${p%.png}").jpg" > /dev/null
+  # shot times are world seconds: shift by the pre-roll; files are named by sequence time
+  SHOTSP=$(python3 -c "print(','.join(str(round(float(t) + $PRE, 3)) for t in '$SHOTS'.split(',')))")
+  "$UE_DIR/Scripts/run_game.sh" "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTSP" -name "$NAME" -timeout 1500 \
+    -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE \
+    -WHTravCsv="$TMP/${NAME}_4k/stills_telemetry.csv" | tail -2
+  I=0
+  for T in ${SHOTS//,/ }; do
+    p=$(ls "$TMP/${NAME}_4k/${NAME}_$(printf %02d $I)_"*.png 2>/dev/null | head -1)
+    [ -n "$p" ] && sips -s format jpeg -s formatOptions 92 "$p" --out "$ROUND/stills/${NAME}_$(printf %02d $I)_t$(printf %05.1f $T).jpg" > /dev/null
+    I=$((I + 1))
   done
 done

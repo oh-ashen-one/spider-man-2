@@ -11,6 +11,8 @@
 #include "TextureResource.h"
 #include "Core/WebHomagePlayerController.h"
 #include "WebHomage.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
@@ -334,6 +336,8 @@ bool AWebTravCharacter::SetupHeroMesh()
 void AWebTravCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	float Pre = 0.f;
+	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
 	if (ProxyBody) ProxyBody->SetVisibility(false);
 	GetCharacterMovement()->SetMovementMode(MOVE_None);
 	GetCharacterMovement()->SetComponentTickEnabled(false);
@@ -385,14 +389,29 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	const double Dt = FMath::Clamp(double(DeltaSeconds), 1e-4, 0.1);
-	if (!bTravStarted) { bTravStarted = true; TravTime = 0.0; }
+	// round 06: capture pre-roll (-WHTravPreroll=<s>): the start pose is rendered for a while (camera, exposure, Lumen settle)
+	// with the traversal frozen and no input / telemetry; capture_round.sh trims these frames. Auto-exposure lag at the start
+	// is what rendered the suit white / blown out in the first ~0.6 s of earlier captures.
+	const bool bPre = PrerollLeft > 0.0;
+	if (bPre) PrerollLeft -= Dt;
+	else if (!bTravStarted)
+	{
+		bTravStarted = true; TravTime = 0.0;
+		if (bHadPreroll)
+		{
+			if (UWebTravAnimInstance* AI = Cast<UWebTravAnimInstance>(GetMesh()->GetAnimInstance())) AI->ResetForSequenceStart();
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV preroll done: %d frames"), PrerollFrames);
+		}
+	}
 	else TravTime += Dt;
+	if (bPre) ++PrerollFrames;
 
 	ReadHeroMask(); // previous frame's hero pixel mask (telemetry)
 	// ---- input: live (keyboard / mouse / pad) or scripted playback
 	FWebTravInput I;
 	UWebTravScript* Script = GetGameInstance() ? GetGameInstance()->GetSubsystem<UWebTravScript>() : nullptr;
-	if (Script && Script->IsActive())
+	if (bPre) {} // pre-roll: no input
+	else if (Script && Script->IsActive())
 	{
 		FVector2D LookRate;
 		I = Script->Sample(TravTime, LookRate);
@@ -439,7 +458,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 
 	// ---- camera look, traversal, camera
 	Cam.ApplyLook(I.Look);
-	Traversal->UpdateTraversal(Dt, I);
+	// pre-roll: the camera state is restored after the frame is set up and the traversal is only posed (not stepped), so the
+	// sequence that follows is bit-identical to a run without pre-roll
+	const FWebTravCamera PreCam = Cam;
+	if (bPre) Traversal->PosePreview(); else Traversal->UpdateTraversal(Dt, I);
 	for (const FWebTravEvent& E : Traversal->Events)
 	{ // player.js event -> camera mapping
 		const FString T = E.Type.ToString();
@@ -499,6 +521,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	UpdateWebs(float(Dt), CamCm);
 
 	// ---- telemetry
+	if (bPre) { Cam = PreCam; return; }
 	if (Script && Script->WantsTelemetry()) PushTelemetry(TravTime, I);
 	++FrameIndex;
 }

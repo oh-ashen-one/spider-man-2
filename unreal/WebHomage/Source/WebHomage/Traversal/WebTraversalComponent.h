@@ -117,6 +117,8 @@ public:
 	bool HasZipTarget() const { return Anchors && Anchors->HasTarget(); }
 	FVector ZipTargetPos() const { return Anchors && Anchors->HasTarget() ? Anchors->Best().Pos : FVector::ZeroVector; }
 	FQuat BodyQuat() const { return FinalQ; }
+	/** Round 06 capture pre-roll: write Anim / root from the current state without stepping the simulation. */
+	void PosePreview() { FinalQ = Orient(1e-4); WriteAnim(FinalQ); }
 	int32 BuildingCount() const { return TravWorld.Boxes.Num(); }
 	int32 ZipKindCode() const;
 
