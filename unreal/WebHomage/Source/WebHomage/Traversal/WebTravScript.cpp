@@ -130,6 +130,8 @@ void UWebTravScript::Initialize(FSubsystemCollectionBase& Collection)
 						Bool(TEXT("swing"), K.Swing); Bool(TEXT("jump"), K.Jump); Bool(TEXT("sprint"), K.Sprint);
 						Bool(TEXT("zip"), K.Zip); Bool(TEXT("drop"), K.Drop); Bool(TEXT("quick"), K.Quick);
 						Bool(TEXT("autoChain"), K.AutoChain);
+						Bool(TEXT("trick"), K.Trick);
+						if (const FVal* TE = O->Get(TEXT("trickEvery"))) K.TrickEvery = int32(TE->N);
 						if (const FVal* HD = O->Get(TEXT("heading"))) { if (HD->Type == FVal::Num) K.Heading = HD->N; else K.Heading = 1e9; }
 						if (const FVal* RP = O->Get(TEXT("releasePhase"))) K.ReleasePhase = RP->N;
 						if (const FVal* GP = O->Get(TEXT("gap"))) K.Gap = GP->N;
@@ -182,10 +184,22 @@ FWebTravInput UWebTravScript::Sample(double T, FVector2D& OutLookRate) const
 		if (K.Zip) I.bZip = *K.Zip;
 		if (K.Drop) I.bDrop = *K.Drop;
 		if (K.Quick) I.bQuick = *K.Quick;
+		if (K.Trick) I.bTrick = *K.Trick;
 	}
 	if (I.Move.Size() > 1.0) I.Move = I.Move.GetSafeNormal();
 	OutLookRate = FVector2D(FMath::DegreesToRadians(Look.X), FMath::DegreesToRadians(Look.Y));
 	return I;
+}
+
+int32 UWebTravScript::TrickEveryAt(double T) const
+{
+	int32 N = 0;
+	for (const FKey& K : Keys)
+	{
+		if (K.T > T + 1e-6) break;
+		if (K.AutoChain) N = K.TrickEvery;
+	}
+	return N;
 }
 
 bool UWebTravScript::HeadingAt(double T, double& OutYawDeg) const

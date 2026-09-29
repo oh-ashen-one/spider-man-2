@@ -46,6 +46,8 @@ public:
 	FVector SpawnVelM() const { return SpawnVel; }
 	/** "autoChain" rule active at time T (release phase, re-press gap); false when off. */
 	bool AutoChainAt(double T, double& OutReleasePhase, double& OutGap, double& OutRepressVz) const;
+	/** autoChain "trickEvery": N > 0 = press trick on every Nth release (counting from the first). */
+	int32 TrickEveryAt(double T) const;
 	int32 Seed() const { return SeedValue; }
 
 	/** Held input at script time T (seconds since the first traversal tick). Look is returned as a rate (rad/s). */
@@ -63,7 +65,8 @@ private:
 		double T = 0;
 		TOptional<FVector2D> Move, Look;
 		TOptional<double> Heading; // world yaw (deg) the stick steers toward; NaN-free: set "heading": null to clear
-		TOptional<bool> Swing, Jump, Sprint, Zip, Drop, Quick, AutoChain;
+		TOptional<bool> Swing, Jump, Sprint, Zip, Drop, Quick, AutoChain, Trick;
+		int32 TrickEvery = 0;
 		double ReleasePhase = 0.45, Gap = 0.3, RepressVz = 1e9;
 	};
 	void Flush();

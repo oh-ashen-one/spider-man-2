@@ -39,9 +39,10 @@ struct WEBHOMAGE_API FWebTravInput
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bZip = false;     // E / MMB / Y / L2+R2
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bDrop = false;    // C / Ctrl / B: drop + dive
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bQuick = false;   // Q / L1: quick web boost
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bTrick = false;   // F / X: air trick (round 04: tricks only on input)
 
 	// edge flags (set by the sampler: held now, not held last frame). Cleared by traversal after the first substep.
-	bool bSwingPressed = false, bJumpPressed = false, bZipPressed = false, bDropPressed = false, bQuickPressed = false, bSprintPressed = false;
+	bool bSwingPressed = false, bJumpPressed = false, bZipPressed = false, bDropPressed = false, bQuickPressed = false, bSprintPressed = false, bTrickPressed = false;
 
 	/** Fill the Pressed flags from the previous frame's held state (input.js poll()). */
 	void ComputeEdges(const FWebTravInput& Prev)
@@ -52,6 +53,7 @@ struct WEBHOMAGE_API FWebTravInput
 		bDropPressed = bDrop && !Prev.bDrop;
 		bQuickPressed = bQuick && !Prev.bQuick;
 		bSprintPressed = bSprint && !Prev.bSprint;
+		bTrickPressed = bTrick && !Prev.bTrick;
 	}
 };
 

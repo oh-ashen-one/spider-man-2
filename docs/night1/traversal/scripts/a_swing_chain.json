@@ -25,6 +25,10 @@
   },
   {
    "t": 0.0,
+   "trick": false
+  },
+  {
+   "t": 0.0,
    "swing": true
   },
   {
@@ -32,23 +36,31 @@
    "swing": false
   },
   {
-   "t": 3.6283,
+   "t": 3.5117,
    "swing": true
   },
   {
-   "t": 6.9783,
+   "t": 6.8617,
+   "trick": true
+  },
+  {
+   "t": 6.8617,
    "swing": false
   },
   {
-   "t": 8.5117,
+   "t": 6.8783,
+   "trick": false
+  },
+  {
+   "t": 8.495,
    "swing": true
   },
   {
-   "t": 11.9283,
+   "t": 12.4117,
    "swing": false
   },
   {
-   "t": 13.745,
+   "t": 13.7117,
    "swing": true
   }
  ],
