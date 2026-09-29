@@ -24,10 +24,10 @@ def merge_lenses(g):
     g['meshes'][body['mesh']]['primitives'] += g['meshes'][lens['mesh']]['primitives']
     lens.pop('mesh'); lens.pop('skin')
 
-jobs = [('public/assets/spiderman.glb', 'Hero.glb', merge_lenses),
-        ('public/assets/thug.glb', 'Thug.glb', None)]
+jobs = [('public/assets/spiderman.glb', 'SK_Hero.glb', merge_lenses),
+        ('public/assets/thug.glb', 'SK_Thug.glb', None)]
 for s in ('claude', 'codex', 'gemini', 'kimi', 'qwen'):
-    jobs.append(('public/assets/skins/%s.glb' % s, 'Suit_%s.glb' % s.capitalize(), None))
+    jobs.append(('public/assets/skins/%s.glb' % s, 'SK_Suit_%s.glb' % s.capitalize(), None))
 for src, dst, fn in jobs:
     d = os.path.join(OUT, dst)
     strip(os.path.join(WT, src), d)

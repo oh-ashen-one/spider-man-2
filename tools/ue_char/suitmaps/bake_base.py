@@ -15,7 +15,7 @@ import os, sys
 import numpy as np
 import bpy
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import mesh_arrays, skin_path, SCRATCH  # noqa: E402
+from common import mesh_arrays, orig_skin, SCRATCH  # noqa: E402
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 SUIT = argv[0]
@@ -38,7 +38,7 @@ def setup_cycles(samples):
 
 
 def build_mesh(suit):
-    j, b, P, N, UV, F = mesh_arrays(skin_path(suit))
+    j, b, P, N, UV, F = mesh_arrays(orig_skin(suit))
     me = bpy.data.meshes.new(suit)
     me.from_pydata(P.tolist(), [], F.tolist())
     uvl = me.uv_layers.new(name='UVMap')

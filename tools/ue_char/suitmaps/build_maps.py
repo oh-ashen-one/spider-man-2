@@ -47,8 +47,10 @@ PAL = {
         ('violet_3', (0.51, 0.20, 0.62), 0.35, 0.0, 0.5), ('magenta', (0.68, 0.07, 0.34), 0.50, 0.0, 0.2)]},
 }
 # back emblem paint-out: band (x0, x1, y0, y1 in bind-pose metres) and roles to replace with the fill role
-BACK = {'gemini': ((-0.22, 0.22, 0.98, 1.56), ('purple', 'purple_dk', 'magenta'), 'red'),
+BACK = {'gemini': ((-0.28, 0.28, 0.98, 1.56), ('purple', 'purple_dk', 'magenta'), 'red'),
         'qwen': ((-0.16, 0.16, 1.16, 1.50), ('violet', 'violet_2', 'violet_3', 'magenta'), 'red')}
+# optional disc (x, y, radius m) limiting the paint-out, so piping around the back panels survives
+BACK_DISC = {'qwen': (0.0, 1.334, 0.11)}
 
 
 def lab_of(rgb01):
@@ -88,6 +90,9 @@ def main():
         (x0, x1, y0, y1), bad, fill = BACK[suit]
         band = mask & (pos[..., 0] > x0) & (pos[..., 0] < x1) & (pos[..., 1] > y0) & (pos[..., 1] < y1) \
             & (onrm[..., 2] < -0.25) & (pos[..., 2] < -0.02)
+        if suit in BACK_DISC:
+            cx, cy, cr = BACK_DISC[suit]
+            band &= np.hypot(pos[..., 0] - cx, pos[..., 1] - cy) < cr
         badm = band & np.isin(hard, [names.index(b) for b in bad])
         badm = cv2.dilate(badm.astype(np.uint8), np.ones((3, 3), np.uint8), iterations=2).astype(bool) & band
         fi = names.index(fill)

@@ -5,4 +5,4 @@ open -n "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app" -
   -NoCrashReports -ModelContextProtocolStartServer -ModelContextProtocolPort=8772 \
   -EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities,MovieRenderPipeline,SequencerScripting,IKRig,ControlRig \
   -ExecCmds="py $WT/tools/ue_char/ue_mailbox.py" \
-  "-ini:Input:[/Script/Engine.InputSettings]:bCaptureMouseOnLaunch=False" "-ini:Input:[/Script/Engine.InputSettings]:DefaultViewportMouseCaptureMode=NoCapture" -log=CharEditor.log
+  "-ini:Input:[/Script/Engine.InputSettings]:bCaptureMouseOnLaunch=False" "-ini:Input:[/Script/Engine.InputSettings]:DefaultViewportMouseCaptureMode=NoCapture" -abslog=$WT/unreal/WebHomage/Saved/Logs/characters.log

@@ -15,8 +15,9 @@ Homage fan project, not an official Marvel/Sony/Insomniac product.
 import os, sys
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from common import mesh_arrays, skin_path, accessor, SCRATCH  # noqa: E402
+from common import mesh_arrays, orig_skin, accessor, SCRATCH  # noqa: E402
 
+FLAT = {'qwen': ('disc', 0.105), 'gemini': ('grow', 4)}
 BAND = {'gemini': (-0.2, 0.2, 1.05, 1.55), 'qwen': (-0.2, 0.2, 1.1, 1.58)}
 
 
@@ -98,8 +99,13 @@ def flatten_back(suit, P, N, UV, F, inv, band, log):
     emb = emblem_vertices(suit, UV) & sel
     ctr = np.median(P[emb], 0)
     emb &= np.linalg.norm(P[:, :2] - ctr[:2], axis=1) < 0.12
-    level = grow(emb, F, inv, 2)
-    region = (level >= 0) & (P[:, 2] < -0.02)
+    mode, val = FLAT[suit]
+    if mode == 'disc':      # whole emblem disc (the rim of the hexagon is not reliably emblem-coloured per vertex)
+        # back-facing verts only. Including the sideways groove walls of Qwen's deep (up to ~3 cm) carved relief was
+        # tried: the uniform-Laplacian fill then tears the mesh, so the carved outline stays as a faint emboss.
+        region = sel & (np.linalg.norm(P[:, :2] - ctr[:2], axis=1) < val)
+    else:                   # emblem-coloured verts grown `val` rings
+        region = (grow(emb, F, inv, val) >= 0) & (P[:, 2] < -0.02)
     # welded graph
     nu = inv.max() + 1
     Pu = np.zeros((nu, 3)); cnt = np.bincount(inv, minlength=nu); np.add.at(Pu, inv, P); Pu /= cnt[:, None]
@@ -112,18 +118,42 @@ def flatten_back(suit, P, N, UV, F, inv, band, log):
     ru = np.zeros(nu, bool); np.logical_or.at(ru, inv, region)
     free = np.nonzero(ru)[0]; fixed = np.nonzero(~ru)[0]
     M = Lu[free][:, free]; rhs = -Lu[free][:, fixed] @ Pu[fixed, 2]
-    z = spl.spsolve(M.tocsc(), rhs)
+    # components of the free set that touch no fixed vertex have no boundary condition: leave them alone
+    from scipy.sparse.csgraph import connected_components
+    ncomp, lab = connected_components(A[free][:, free], directed=False)
+    touches = np.asarray((A[free][:, fixed]).sum(1)).ravel() > 0
+    ok_comp = np.zeros(ncomp, bool); np.logical_or.at(ok_comp, lab, touches)
+    keep = ok_comp[lab]
+    Mk = Lu[free[keep]][:, free[keep]]; fx = np.concatenate([fixed, free[~keep]])
+    z = Pu[free, 2].copy()
+    z[keep] = spl.spsolve(Mk.tocsc(), -Lu[free[keep]][:, fx] @ Pu[fx, 2])
     dz = z - Pu[free, 2]
+    # floating relief shells (Tripo modelled some emblems as separate pieces over the back): tuck them 3 mm under the
+    # back surface, interpolated (inverse distance, 8 nearest) from the surrounding back-band vertices
+    if (~keep).any():
+        from scipy.spatial import cKDTree
+        fu = np.zeros(nu, bool); np.logical_or.at(fu, inv, sel & ~region)
+        body = np.nonzero(fu & ~ru)[0]
+        tree = cKDTree(Pu[body, :2]); dd, ii = tree.query(Pu[free[~keep], :2], k=8)
+        wi = 1 / np.maximum(dd, 1e-4) ** 2
+        zb = (Pu[body, 2][ii] * wi).sum(1) / wi.sum(1)
+        z[~keep] = np.maximum(Pu[free[~keep], 2], zb + 0.003)
+        log(f'  tucked {(~keep).sum()} floating-shell verts under the back surface')
+    dz = z - Pu[free, 2]
+    bad = np.abs(dz) > 0.03                      # a fill never needs to move a vertex 3 cm: treat as failure there
+    z[bad] = Pu[free, 2][bad]; dz[bad] = 0
+    log(f'  free components {ncomp} ({(~ok_comp).sum()} without boundary), rejected {bad.sum()} moves > 3 cm')
     zu = Pu[:, 2].copy()
-    # only pull proud (further back, more negative z) material in; never push the surface out
-    zu[free] = np.where(dz > 0, z, Pu[free, 2])
+    # grow mode: only pull proud (further back, more negative z) material in; never push the surface out
+    # disc mode (Qwen: relief is carved grooves as well as a proud rim) replaces the depth both ways
+    zu[free] = z if mode == 'disc' else np.where(dz > 0, z, Pu[free, 2])
     Pn = P.copy(); Pn[:, 2] = np.where(region | ru[inv], zu[inv], P[:, 2])
     moved = np.abs(Pn - P).max(1) > 1e-7
     log(f'  emblem verts {emb.sum()} centre {ctr.round(3)}, free (welded) {len(free)}, '
         f'moved {moved.sum()} verts, max {np.abs(Pn - P).max() * 1000:.1f} mm, mean {np.abs(Pn - P)[moved].max(1).mean() * 1000:.1f} mm')
     Nn_all = vertex_normals(Pn, F)
     g = np.zeros((nu, 3)); np.add.at(g, inv, Nn_all); g /= np.maximum(np.linalg.norm(g, axis=1, keepdims=True), 1e-12)
-    touch = moved | (grow(moved, F, inv, 1) >= 0)
+    touch = (grow(moved | region, F, inv, 1) >= 0)   # Tripo's normals still carry the relief: recompute all of it
     Nn = N.copy(); Nn[touch] = g[inv][touch]
     flat = np.zeros(len(P)); flat[region] = 1.0
     return Pn, Nn, flat
@@ -132,7 +162,7 @@ def flatten_back(suit, P, N, UV, F, inv, band, log):
 def main():
     suit = sys.argv[1]
     out = os.path.join(SCRATCH, suit); os.makedirs(out, exist_ok=True)
-    j, b, P, N, UV, F = mesh_arrays(skin_path(suit))
+    j, b, P, N, UV, F = mesh_arrays(orig_skin(suit))
     A = j['meshes'][0]['primitives'][0]['attributes']
     J = accessor(j, b, A['JOINTS_0']).astype(np.int64); W = accessor(j, b, A['WEIGHTS_0'])
     inv, cnt = seam_groups(suit)

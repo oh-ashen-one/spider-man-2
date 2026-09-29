@@ -71,3 +71,18 @@ def basecolor_bytes(j, b):
     t = j['textures'][j['materials'][0]['pbrMetallicRoughness']['baseColorTexture']['index']]
     src = t.get('extensions', {}).get('EXT_texture_webp', {}).get('source', t.get('source'))
     return image_bytes(j, b, j['images'][src])
+
+
+ORIG_COMMIT = 'c97c50c'   # commit that shipped the original skinfit GLBs (inputs of this pipeline)
+
+
+def orig_skin(suit):
+    """The original skinfit GLB, extracted from git history into _scratch (idempotent reruns)."""
+    import subprocess
+    p = os.path.join(SCRATCH, 'orig', suit + '.glb')
+    if not os.path.exists(p):
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        data = subprocess.run(['git', '-C', ROOT, 'show', f'{ORIG_COMMIT}:public/assets/skins/{suit}.glb'],
+                              check=True, capture_output=True).stdout
+        open(p, 'wb').write(data)
+    return p
