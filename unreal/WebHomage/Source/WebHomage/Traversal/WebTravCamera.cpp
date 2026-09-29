@@ -193,7 +193,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(FrameS, FrameSV, SWant, 0.22, Dt);
 	// ---- desired position: behind the (lagged) heading yaw, above the hero
 	const FVector Back = -ForwardFlat(), Right = RightFlat();
-	const double BackDist = ChaseDist + 1.3 * FMath::Max(0.0, KickK);
+	// round 07: 0.4 m closer while swinging / airborne (the higher round-07 camera left the hero < 160 px at the arc ends)
+	const double AirClose = (bSwinging || bAir) ? SwingCloser : 0.0;
+	const double BackDist = ChaseDist - AirClose + 1.3 * FMath::Max(0.0, KickK);
 	const double OY = OccYawOff, OU = OccUp;
 	const FVector BackR(Back.X * FMath::Cos(OY) - Back.Y * FMath::Sin(OY), Back.X * FMath::Sin(OY) + Back.Y * FMath::Cos(OY), 0);
 	FVector Desired = Hero + BackR * BackDist + Right * 0.3;
@@ -207,8 +209,8 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SDV(CamXY, CamXYV, FVector(Desired.X, Desired.Y, 0), 0.07, Dt);
 	FVector HD = FVector(CamXY.X - Hero.X, CamXY.Y - Hero.Y, 0);
 	const double HL = HD.Size();
-	const double MaxH = 5.0 + 1.3 * FMath::Max(0.0, KickK);
-	if (HL < 1e-3) HD = BackR * 3.5; else if (HL < 3.5) HD *= 3.5 / HL; else if (HL > MaxH) HD *= MaxH / HL;
+	const double MaxH = 5.0 - AirClose + 1.3 * FMath::Max(0.0, KickK), MinH = 3.5 - AirClose;
+	if (HL < 1e-3) HD = BackR * MinH; else if (HL < MinH) HD *= MinH / HL; else if (HL > MaxH) HD *= MaxH / HL;
 	CamXY = FVector(Hero.X + HD.X, Hero.Y + HD.Y, 0);
 	SD(CamZ, CamZV, ZWant, 0.05, Dt);
 	CamZ = FMath::Clamp(CamZ, Hero.Z + CamZMin + OU, Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6

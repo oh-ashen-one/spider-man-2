@@ -49,6 +49,7 @@ public:
 	double ChaseDist = 3.8;        // horizontal distance behind the hero (m) — round 05
 	double ChaseHeight = 1.8;      // camera height over the hero centre (m) — round 05 1.1, round 07 1.8 (critic r06: pitch 10-25 deg down)
 	double CamZMin = 1.2, CamZMax = 2.6;   // held band over the hero centre (m) — round 07 (was 0.7..1.8)
+	double SwingCloser = 0.4;      // m closer while swinging / airborne — round 07
 	double PitchDownMin = 10.0;    // deg, lowest look-down of the chase camera — round 07 (was 5)
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
 	double FrameLowS = 0.48, FrameHighS = 0.40; // hero screen centre (0 top .. 1 bottom): arc bottom .. top
