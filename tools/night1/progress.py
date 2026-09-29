@@ -76,6 +76,15 @@ perf = "".join(
     for p in data.get("perf", [])) or '<tr><td colspan="8" class="empty">No gameplay measurements yet.</td></tr>'
 
 gaps = "".join(f"<li>{e(g)}</li>" for g in data.get("gaps", []))
+try:
+    L = json.load(open(os.path.join(REPO, "docs/night1/model-ledger.json")))
+    ledger = "".join(
+        f'<tr><td>{e(r["piece"])}</td><td class="num">{r["round"]}</td><td>{e(r["model"])} <span class="dim">{e(r["effort"])}</span></td>'
+        f'<td class="num">{" · ".join(str(x) for x in r["scores"])}</td><td class="num"><b>{sum(r["scores"])/len(r["scores"]):.1f}</b></td></tr>'
+        for r in L["rounds"])
+    ledger_note = e(L["note"])
+except Exception:
+    ledger, ledger_note = "", ""
 log = "".join(f'<li><span class="mono">{e(l["t"])}</span> {e(l["text"])}</li>' for l in reversed(data.get("log", [])))
 
 page = f"""<title>Night 1 Loop Board</title>
@@ -147,6 +156,8 @@ a {{ color: var(--accent); }} a:focus-visible, video:focus-visible {{ outline: 2
 <section><h2>Critic findings</h2><ol class="critic">{critic}</ol></section>
 <section><h2>Performance in real gameplay</h2>
 <div class="tablewrap"><table><thead><tr><th>Build / sequence</th><th>Output</th><th>Internal res</th><th>Median ms</th><th>p95 ms</th><th>p99 ms</th><th>Hitches &gt;33 ms</th><th>Notes</th></tr></thead><tbody>{perf}</tbody></table></div></section>
+<section><h2>Model ledger</h2><p class="dim" style="margin:0;max-width:90ch">{ledger_note}</p>
+<div class="tablewrap"><table><thead><tr><th>Piece</th><th>Round</th><th>Builder model</th><th>Critic axis scores</th><th>Avg</th></tr></thead><tbody>{ledger}</tbody></table></div></section>
 <div class="two">
 <section><h2>Remaining gaps</h2><ul class="gaps">{gaps}</ul></section>
 <section><h2>Log</h2><ul class="log">{log}</ul></section>
