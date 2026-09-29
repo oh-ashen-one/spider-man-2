@@ -1,17 +1,17 @@
 {
- "updated": "2026-09-29 06:05",
- "phase": "Wave 0 \u2014 foundations",
- "headline": "All agents stopped around 01:00 when the weekly usage limit ran out; it reset at 06:00. Foundation, reference library and city are resumed; baseline playtest and characters resume when a slot frees up (max three agents at once to protect the week's budget).",
+ "updated": "2026-09-29 06:25",
+ "phase": "Wave 1 \u2014 first builds",
+ "headline": "The Unreal C++ foundation is merged: it compiles with Xcode 27 and runs the game offscreen at true 3840\u00d72160 with scripted screenshots, perf stats and 60 fps video. Traversal has started; the reference library and the city are in progress.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
    "id": "F1",
    "name": "Unreal C++ foundation",
    "branch": "night1/ue-foundation",
-   "state": "building",
+   "state": "done",
    "round": 1,
-   "verdict": "",
-   "gap": "Compile route with Xcode 27 unverified"
+   "verdict": "Compiles; 4K offscreen capture works",
+   "gap": "Perf numbers so far are contaminated by other sessions' GPU load (42\u201399 %)"
   },
   {
    "id": "F2",
@@ -53,10 +53,10 @@
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "Waits for the C++ foundation"
+   "gap": ""
   },
   {
    "id": "P4",
@@ -86,13 +86,48 @@
    "gap": "Wave 2"
   }
  ],
- "comparisons": [],
- "clips": [],
+ "comparisons": [
+  {
+   "title": "Unreal foundation \u2014 first 4K frame",
+   "note": "True 3840\u00d72160 output, 1920\u00d71080 internal. Gray-box only; the city and hero come from P1/P2.",
+   "images": [
+    {
+     "label": "Foundation_Test, t=30 s",
+     "src": "docs/night1/ue-foundation/round-01/foundation_test_3840x2160_t30.jpg"
+    }
+   ]
+  }
+ ],
+ "clips": [
+  {
+   "title": "UE foundation gray-box",
+   "src": "docs/night1/ue-foundation/round-01/foundation_test_1080p60_dumpmovie.mp4",
+   "caption": "placeholder capsule running in the test map; 60 fps fixed-step capture"
+  }
+ ],
  "critic": [],
- "perf": [],
+ "perf": [
+  {
+   "what": "UE foundation gray-box, hero auto-run (HW ray tracing on)",
+   "output": "3840\u00d72160",
+   "internal": "1920\u00d71080 (TSR)",
+   "median": "88 avg",
+   "p95": "\u2013",
+   "notes": "INVALID: GPU 95\u201399 % busy before launch"
+  },
+  {
+   "what": "same, HW ray tracing off",
+   "output": "3840\u00d72160",
+   "internal": "1920\u00d71080 (TSR)",
+   "median": "55 avg",
+   "p95": "\u2013",
+   "notes": "INVALID: contaminated"
+  }
+ ],
  "gaps": [
-  "Unreal port does not exist yet beyond an empty project with a working MCP server.",
-  "No measured 4K/60 numbers yet for either build."
+  "Unreal port has only a gray-box test map and a capsule character so far.",
+  "No trustworthy 4K/60 numbers yet: the shared GPU is 42\u201399 % busy with other sessions' Chrome/Blender work.",
+  "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100."
  ],
  "log": [
   {
@@ -110,6 +145,18 @@
   {
    "t": "06:00",
    "text": "Limit reset. Resumed F1, F2, P1. Concurrency capped at three agents."
+  },
+  {
+   "t": "06:15",
+   "text": "F1 merged: C++ module, mouse-safe controller (Escape always releases), Lumen + HW ray tracing on Metal SM6, offscreen 4K capture + 60 fps video."
+  },
+  {
+   "t": "06:20",
+   "text": "Public fork refuses Git LFS uploads, so Unreal content is now rebuilt from committed scripts; binary snapshots go to the private repo webhomage-unreal-content."
+  },
+  {
+   "t": "06:22",
+   "text": "P3 traversal + camera started (C++ port of traversal.js/camera.js with scripted input replays)."
   }
  ]
 }
