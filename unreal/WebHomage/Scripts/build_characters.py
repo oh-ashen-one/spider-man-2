@@ -519,8 +519,8 @@ if 'map' in STEPS:
             a = walker(label, mesh, abp, (LANE[0], LANE[1], 0), W.LINE, speed, scale=scale, girth=girth, mat=mat)
             a.set_editor_property('line_length', 3000.0); a.set_editor_property('line_start', start)
             return a
-        thug_l = lane('Thug_Lane', PP + 'SK_Street_Thug', PP + 'ABP_Street_Thug', PP + 'Materials/MI_Street_Thug', 1500.0 + 110.0, 160.0)
-        brute_l = lane('Brute_Lane', PP + 'SK_Street_Brute', PP + 'ABP_Street_Brute', PP + 'Materials/MI_Street_Brute', 1500.0 - 120.0, 143.0, scale=BRUTE_SCALE, girth=BRUTE_GIRTH)
+        thug_l = lane('Thug_Lane', PP + 'SK_Street_Thug', PP + 'ABP_Street_Thug', PP + 'Materials/MI_Street_Thug', 1500.0 + 40.0, 160.0)
+        brute_l = lane('Brute_Lane', PP + 'SK_Street_Brute', PP + 'ABP_Street_Brute', PP + 'Materials/MI_Street_Brute', 1500.0 - 40.0, 143.0, scale=BRUTE_SCALE, girth=BRUTE_GIRTH)
         track = spawn(unreal.WHCharLoopWalker, (LANE[0], LANE[1], 0), (0, 0, 0), 'Lane_Track')
         track.set_editor_property('mode', W.LINE); track.set_editor_property('speed', 151.0)
         track.set_editor_property('line_length', 3000.0); track.set_editor_property('line_start', 1500.0)
@@ -566,7 +566,7 @@ if 'map' in STEPS:
                  shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-1200, 820, 170), label='AI suits walking in place'),
                  shot(brute, K.ORBIT, 6, 700, 105, 15, 40, 60, 0, label='brute walk orbit (360 deg)'),
                  # side-tracking at 60 fps (round 03 test): both together, then each at 3 m, then face close-ups
-                 shot(track, K.SIDE, 6, 420, 95, 10, 58, restart=[thug_l, brute_l, track], label='thug + brute side tracking (4.2 m)'),
+                 shot(track, K.SIDE, 6, 420, 95, 10, 64, restart=[thug_l, brute_l, track], label='thug + brute side tracking (4.2 m)'),
                  shot(thug_l, K.SIDE, 5, 300, 92, 5, 62, restart=[thug_l], label='thug side tracking 3 m'),
                  shot(brute_l, K.SIDE, 5, 300, 100, 5, 66, restart=[brute_l], label='brute side tracking 3 m'),
                  shot(thug_l, K.CLOSEUP, 4, 105, 160, 0, 28, restart=[thug_l], label='thug face close-up'),

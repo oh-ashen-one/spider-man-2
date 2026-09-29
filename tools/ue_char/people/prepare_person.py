@@ -7,7 +7,7 @@ Fan homage project; not official Marvel/Sony/Insomniac; no affiliation. Sources 
   2. rasterises the UV layout into a per-texel 3D position map, so every texture edit is placed by body position, not by guesswork;
   3. fixes the seam artefacts: the raw atlas is thousands of islands with blurry inpainted gaps; the gaps are replaced by
      nearest-island colour (no dark dashes / sparkles at seams under mip filtering);
-  4. recolours / removes items (brute: orange beanie -> charcoal knit, red-green plaid -> muted, pom-pom removed and capped;
+  4. recolours / removes items (brute: orange beanie -> charcoal knit, red-green plaid -> one flannel tone, pom-pom pulled onto the dome;
      thug: ornamental belt buckle and key-chain metal -> plain dark steel);
   5. builds a MODELLED bandana: a shell around the lower face and neck, ray-cast from the head axis onto the real head surface
      (so it follows nose, cheeks, jaw and collar), 7 mm off the skin, with cloth folds, a rolled top edge and its own texture
@@ -98,46 +98,6 @@ def weave(shape, seed, period=5.0):
 
 
 # ------------------------------------------------------------------------------------------------------ mesh edits
-def remove_region_and_cap(P, N, UV, F, mask_v, cap_uv):
-    """Delete faces touching masked vertices; cap the resulting hole(s) with a fan whose UVs all point to cap_uv (flat colour)."""
-    drop = mask_v[F].any(1)
-    Fk = F[~drop]
-    used = np.unique(Fk)
-    # boundary edges of the kept mesh that touch dropped faces
-    E = np.concatenate([Fk[:, [0, 1]], Fk[:, [1, 2]], Fk[:, [2, 0]]])
-    key = np.sort(E, 1)
-    _, inv, cnt = np.unique(key, axis=0, return_inverse=True, return_counts=True)
-    bd = E[cnt[inv] == 1]
-    dropped_verts = set(np.nonzero(mask_v)[0].tolist())
-    # only boundary edges adjacent to the removed region (both verts within 1 ring): use edges whose vertices were on dropped faces
-    ring = np.unique(F[drop])
-    ring = ring[~mask_v[ring]]
-    ringset = set(ring.tolist())
-    bd = np.array([e for e in bd if e[0] in ringset and e[1] in ringset])
-    newF = [Fk]
-    P2, N2, UV2 = [P], [N], [UV]
-    if len(bd):
-        loop_v = np.unique(bd)
-        c = P[loop_v].mean(0)
-        cn = N[loop_v].mean(0); cn /= np.linalg.norm(cn) + 1e-9
-        ci = len(P)
-        # centroid + duplicated loop vertices: all with the flat cap UV, so the cap never smears neighbouring islands' texels
-        loopP = P[loop_v]
-        dup = {int(v): ci + 1 + k for k, v in enumerate(loop_v)}
-        P2 += [c[None], loopP]; N2 += [cn[None], N[loop_v]]; UV2 += [np.array([cap_uv]), np.repeat(np.array([cap_uv]), len(loop_v), 0)]
-        capf = np.array([[ci, dup[int(a)], dup[int(b)]] for a, b in bd])
-        pos_of = {ci: c}
-        pos_of.update({dup[int(v)]: P[v] for v in loop_v})
-        for k, f in enumerate(capf):
-            g = np.cross(pos_of[int(f[1])] - c, pos_of[int(f[2])] - c)
-            if np.dot(g, cn) < 0:
-                capf[k] = f[[0, 2, 1]]
-        newF.append(capf)
-    Pn_all = np.concatenate(P2); Nn_all = np.concatenate(N2); Un_all = np.concatenate(UV2)
-    Fn = np.concatenate(newF)
-    return Pn_all, Nn_all, Un_all, Fn
-
-
 def ray_hits(P, F, origins, dirs, ymin, ymax):
     """First triangle hit (distance) for each ray (Moller-Trumbore, vectorised over rays, restricted to triangles in the y band)."""
     tri = P[F]
@@ -267,15 +227,18 @@ def recolor_brute(img, pos, cov):
     tone = np.array([46, 47, 52], np.float32)
     out[beanie] = tone[None, :] * np.clip(lum[beanie] / 120.0, 0.35, 1.7)[:, None]
     # red/green flannel plaid on torso and arms -> one worn brown-grey flannel tone; the check survives only as a soft luminance pattern
-    plaid = cov & (y > 0.70) & (y < 1.55) & (((s > 0.32) & ((h < 14) | (h > 335))) | ((s > 0.14) & (h > 70) & (h < 190)))
     x = pos[..., 0]
-    keep_skin = ((np.abs(x) > 0.50) & (y < 1.12)) | ((y > 1.40) & (np.abs(x) < 0.14))       # hands (A-pose, wrists out at |x| > 0.5) and neck / lower face are never recoloured
-    plaid &= ~keep_skin | (s > 0.58)                                                          # in those zones only the saturated plaid red/green is recoloured
-    plaid = ndi.binary_dilation(plaid, iterations=2) & cov & (y > 0.70) & (y < 1.55) & (s > 0.12) & (~keep_skin | (s > 0.58))      # take the anti-aliased edges too
+    keep_skin = ((np.abs(x) > 0.50) & (y < 1.12)) | ((y > 1.40) & (np.abs(x) < 0.14))       # hands (A-pose, wrists out at |x| > 0.5) and neck / lower face
+    core = cov & (y > 0.70) & (y < 1.55) & (((s > 0.32) & ((h < 14) | (h > 335))) | ((s > 0.14) & (h > 70) & (h < 190)))
+    # sleeves: by position (the check has red, green and dark-green squares); dark vest texels (navy/black) are left alone
+    sleeves = cov & (np.abs(x) > 0.19) & (np.abs(x) < 0.53) & (y > 0.93) & (y < 1.50) & ((lum > 52) | (s > 0.45))
+    plaid = (core | sleeves) & (~keep_skin | (s > 0.58))
+    grow = ndi.binary_dilation(plaid, iterations=1) & cov & (lum > 55) & (s > 0.10) & (y > 0.70) & (y < 1.55) & (~keep_skin | (s > 0.58))
+    plaid |= grow
     Lm = ndi.gaussian_filter(np.where(plaid, lum, 0.0), 12) / np.maximum(ndi.gaussian_filter(plaid.astype(np.float32), 12), 1e-3)
     rel = np.clip(lum / np.maximum(Lm, 1.0), 0.55, 1.35)
     rel = 0.6 + 0.4 * ndi.gaussian_filter(rel, 0.8)                                                        # damp the pattern
-    tone = np.array([70, 60, 55], np.float32)
+    tone = np.array([50, 44, 41], np.float32)                                                             # worn dark brown-grey flannel (the lineup stage renders albedo ~3x brighter)
     out[plaid] = tone[None, :] * rel[plaid][:, None]
     npl = int(plaid.sum())
     return np.clip(out, 0, 255).astype(np.uint8), int(beanie.sum()), npl

@@ -148,6 +148,27 @@ def build(game, an, mode):
     return times, out_rot, out_tra, name2i, P
 
 
+def gait_stats(game, name2i, rot, tra):
+    """Knee flexion (deg, 0 = straight), hips height, ankle world positions per key (from FK of the given local tracks)."""
+    n = len(rot[name2i['hips']])
+    par = game.parent
+    kn, hh, ank = [], [], []
+    for k in range(n):
+        G = {}
+        for i in game.order:
+            G[i] = (G[par[i]] if par.get(i) in G else game.base[i]) @ mat(tra[i][k], rot[i][k])
+        fl = []
+        for side in ('L', 'R'):
+            H, K, A = (G[name2i[b + side]][:3, 3] for b in ('thigh.', 'shin.', 'foot.'))
+            v1, v2 = (H - K) / np.linalg.norm(H - K), (A - K) / np.linalg.norm(A - K)
+            fl.append(180.0 - math.degrees(math.acos(np.clip(np.dot(v1, v2), -1, 1))))
+        kn.append(fl); hh.append(G[name2i['hips']][1, 3]); ank.append([G[name2i['foot.L']][:3, 3], G[name2i['foot.R']][:3, 3]])
+    kn = np.array(kn); ank = np.array(ank)
+    return dict(knee_flexion_mean=float(kn.mean()), knee_flexion_min=float(kn.min()), knee_flexion_max=float(kn.max()),
+                stance_knee_flexion_mean=float(np.minimum(kn[:, 0], kn[:, 1]).mean()), hips_height_mean=float(np.mean(hh)),
+                hips_height_min=float(np.min(hh)), hips_height_max=float(np.max(hh))), ank
+
+
 def append_animations(glb_in, glb_out, clips):
     """clips: [(name, times, {node_name: (rot (n,4), tra (n,3))})] -> appended to a copy of the skinfit GLB (nodes matched by name)."""
     j, b = skinfit.read_glb(glb_in)
@@ -190,12 +211,30 @@ def main():
     game = skinfit.Game(HERO)
     an = next(a for a in game.j['animations'] if a['name'] == 'walk')
     clips = []
+    report = {}
+    # the original clip, for comparison
+    name2i0 = {game.j['nodes'][i]['name']: i for i in game.joints}
+    chn = {}
+    for c in an['channels']:
+        i = c['target']['node']
+        if i in game.joints:
+            chn[(i, c['target']['path'])] = skinfit.accessor(game.j, game.b, an['samplers'][c['sampler']]['output'])
+    n0 = len(chn[(name2i0['hips'], 'rotation')])
+    rot0 = {i: np.array([chn[(i, 'rotation')][min(k, len(chn[(i, 'rotation')]) - 1)] for k in range(n0)]) for i in game.joints}
+    tra0 = {i: np.array([chn[(i, 'translation')][min(k, len(chn[(i, 'translation')]) - 1)] for k in range(n0)]) for i in game.joints}
+    report['hero_walk'], ank0 = gait_stats(game, name2i0, rot0, tra0)
     for mode, name in (('street', 'walkStreet'), ('brute', 'walkBrute')):
         times, rot, tra, name2i, P = build(game, an, mode)
         ch = {game.j['nodes'][i]['name']: (rot[i], tra[i]) for i in game.joints}
         clips.append((name, times, ch))
+        report[name], ankN = gait_stats(game, name2i, rot, tra)
+        if len(ankN) == len(ank0):
+            report[name]['max_ankle_error_vs_hero_walk_m'] = float(np.linalg.norm(ankN - ank0, axis=-1).max())
+        report[name]['keys'] = len(times); report[name]['duration_s'] = float(times[-1])
         print(name, 'keys', len(times), 'duration %.3f s' % times[-1], P)
     append_animations(fit, out, clips)
+    json.dump(report, open(os.path.splitext(out)[0] + '_report.json', 'w'), indent=1)
+    print(json.dumps(report, indent=1))
     print('wrote', out)
 
 
