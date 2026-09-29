@@ -33,6 +33,8 @@ def load(p): return unreal.load_asset(p)
 if 'prep' in STEPS:
     subprocess.run(['python3', WT + '/tools/ue_char/prep_glbs.py'], check=True, capture_output=True)
     subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True)
+    # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
+    subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True)
     if not all(os.path.exists('%s/%s.fbx' % (CIT, c)) for c in CITIZENS):
         subprocess.run(['bash', WT + '/tools/ue_char/eval/export_citizens.sh'] + CITIZENS, check=True, capture_output=True)
     log('prep ok')
@@ -83,6 +85,8 @@ if 'tex' in STEPS:
     for v in ('', '_b', '_c'):
         import_tex(TH + '/thug_basecolor%s.png' % v, ROOT + '/Thug/Textures', 'T_Thug_BaseColor' + v.upper(), 'srgb')
     import_tex(TH + '/brute_basecolor.png', ROOT + '/Thug/Textures', 'T_Brute_BaseColor', 'srgb')
+    if os.path.exists(TH + '/brute_regions.png'):   # R face skin, G hands, B everything else: for the skin/white capture test
+        import_tex(TH + '/brute_regions.png', ROOT + '/Thug/Textures', 'T_Brute_Regions', 'linear')
     import_tex(TH + '/thug_normal.png', ROOT + '/Thug/Textures', 'T_Thug_Normal', 'normal_gl')
     import_tex(TH + '/thug_orm.png', ROOT + '/Thug/Textures', 'T_Thug_ORM', 'linear')
     for s in SUITS:
@@ -200,6 +204,25 @@ def build_simple(name, shading=None, emissive=False):
     MEL.recompile_material(m)
     return m
 
+def build_idmask():
+    """M_Char_IDMask: unlit emissive of a region texture (test captures only: brute face/hands/cloth masks)."""
+    m = new_material(ROOT + '/Shared/Materials', 'M_Char_IDMask', skeletal=True)
+    m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    t = tex_param(m, 'Regions', ROOT + '/Thug/Textures/T_Brute_Regions', unreal.MaterialSamplerType.SAMPLERTYPE_MASKS, -600, 0)
+    MEL.connect_material_property(t, 'RGB', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(m)
+    return m
+
+def build_maskother():
+    """M_Char_MaskOther: unlit yellow. In the mask map every OTHER character uses it: it occludes the brute exactly as in the beauty run and marks
+    where another character (and its motion blur) may contaminate pixels."""
+    m = new_material(ROOT + '/Shared/Materials', 'M_Char_MaskOther', skeletal=True)
+    m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    z = E(m, unreal.MaterialExpressionConstant3Vector, -400, 0); z.set_editor_property('constant', unreal.LinearColor(1, 1, 0, 1))
+    MEL.connect_material_property(z, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(m)
+    return m
+
 def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None):
     full = path + '/' + name
     if EAL.does_asset_exist(full): EAL.delete_asset(full)
@@ -223,6 +246,7 @@ def build_ground_materials():
         MEL.recompile_material(m); out[n] = m
     return out
 
+BRUTE_TINT = float(ARGS.get('brute_tint', 0.85))
 if 'mat' in STEPS:
     suit = build_suit_master()
     lens = build_simple('M_Char_Lens', emissive=True)
@@ -237,7 +261,14 @@ if 'mat' in STEPS:
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
-        mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal={'Cloth': 0.3, 'DetailStrength': 0.0}, switches={'HasORM': True})
+        sc_ = {'Cloth': 0.3, 'DetailStrength': 0.0}
+        if v == 'Brute': sc_.update({'Cloth': 0.12, 'Specular': 0.15})   # dark cloth in bright daylight: keep spec/sheen from veiling the albedo
+        vc_ = {}
+        if v == 'Brute': vc_['Tint'] = (BRUTE_TINT, BRUTE_TINT, BRUTE_TINT, 1.0)   # test stage renders albedo ~3x brighter (sRGB); UE-only, the browser texture is untouched
+        mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal=sc_, vec=vc_, switches={'HasORM': True})
+    if EAL.does_asset_exist(ROOT + '/Thug/Textures/T_Brute_Regions'):
+        mi('MI_BruteMask', ROOT + '/Thug/Materials', build_idmask(), tex={'Regions': ROOT + '/Thug/Textures/T_Brute_Regions'})
+        mi('MI_MaskOther', ROOT + '/Shared/Materials', build_maskother())
     for s in SUITS:
         P = ROOT + '/Suits/%s/Textures/T_Suit_%s_' % (s, s)
         tex = {'BaseColor': P + 'BaseColor', 'DetailNormal': ROOT + '/Shared/Textures/T_Fabric_Knit_N'}
@@ -403,7 +434,7 @@ def box(loc, scale, mat, label):
     a.static_mesh_component.set_material(0, load(TESTS + '/Materials/' + mat))
     return a
 
-def walker(label, mesh, abp, loc, mode, speed, rx=0, ry=0, start=0, hop=0, scale=1.0, mat=None, yaw=0):
+def walker(label, mesh, abp, loc, mode, speed, rx=0, ry=0, start=0, hop=0, scale=1.0, mat=None, yaw=0, girth=1.0):
     a = spawn(unreal.WHCharLoopWalker, loc, (yaw, 0, 0), label)
     m = a.get_editor_property('mesh')
     m.set_skeletal_mesh_asset(load(mesh))
@@ -411,78 +442,113 @@ def walker(label, mesh, abp, loc, mode, speed, rx=0, ry=0, start=0, hop=0, scale
     m.set_anim_instance_class(load(abp).generated_class())
     m.set_relative_rotation(unreal.Rotator(roll=0.0, pitch=0.0, yaw=MESH_YAW), False, False)
     if mat: m.set_material(0, load(mat))
-    a.set_actor_scale3d(unreal.Vector(scale, scale, scale))
+    a.set_actor_scale3d(unreal.Vector(scale * girth, scale * girth, scale))   # girth: extra X/Y build without extra height
     for k, v in (('mode', mode), ('speed', speed), ('radius_x', rx), ('radius_y', ry), ('start_angle', start), ('hop_interval', hop)):
         a.set_editor_property(k, v)
     return a
 
+BRUTE_GIRTH = float(ARGS.get('brute_girth', 1.2))   # heavy-set build: X/Y scale on top of the 1.24 uniform scale
 MESH_YAW = float(ARGS.get('mesh_yaw', -90.0))   # glTF +Z forward -> UE: mesh faces +Y after import; walker moves along +X
 if 'map' in STEPS:
-    MAP = TESTS + '/Char_Lineup'
-    les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
-    les.new_level('/Temp/Char_Lineup_Build_%d' % int(time.time()))   # built in a temp level, then saved over MAP (idempotent)
-    W = unreal.WHWalkerMode
-    # light: neutral daylight
-    sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-35, -40, 0), 'Sun')
-    sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
-    sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True)
-    spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
-    sky = spawn(unreal.SkyLight, (0, 0, 300), label='SkyLight')
-    skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
-    spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
-    ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
-    spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
-    # street backdrop: asphalt road along X, sidewalk + curb, a row of facades behind (+Y), crosswalk stripes
-    box((0, 0, -10), (80, 30, 0.2), 'M_Env_Asphalt', 'Road')
-    box((0, 1900, 0), (80, 8, 0.3), 'M_Env_Sidewalk', 'Sidewalk_N')
-    box((0, -1900, 0), (80, 8, 0.3), 'M_Env_Sidewalk', 'Sidewalk_S')
-    for i in range(10):
-        x = -3600 + i * 800
-        mat = ('M_Env_Brick', 'M_Env_Stone')[i % 2]
-        h = 1800 + (i * 530) % 1500
-        box((x, 2700, h / 2), (7.6, 8, h / 100), mat, 'Facade_%d' % i)
-        for f in range(1, int(h / 350)):
-            box((x, 2295, f * 350), (5.5, 0.1, 1.6), 'M_Env_Glass', 'Win_%d_%d' % (i, f))
-        box((x, -2700, h / 2), (7.6, 8, h / 100), ('M_Env_Stone', 'M_Env_Brick')[i % 2], 'FacadeS_%d' % i)
-    for k in range(8):
-        box((1900, -600 + k * 170, -8), (4, 0.7, 0.05), 'M_Env_Paint', 'Crosswalk_%d' % k)
-    # characters
-    H = ROOT + '/Hero/'; T = ROOT + '/Thug/'
-    hero = walker('Hero_Loop', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (0, 0, 0), W.LOOP, 560.0, 900, 420, 0, hop=5.0)
-    hero_tt = walker('Hero_Turntable', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (-2400, -900, 0), W.TURNTABLE, 160.0)
-    thug = walker('Thug_Walk', T + 'SK_Thug', T + 'ABP_Thug_Lineup', (0, 1100, 0), W.LOOP, 150.0, 500, 250, 90)
-    brute = walker('Brute_Walk', T + 'SK_Thug', T + 'ABP_Thug_Lineup', (0, 1100, 0), W.LOOP, 130.0, 500, 250, 270, scale=1.24, mat=T + 'Materials/MI_Brute')
-    cits = []
-    for i, c in enumerate(CITIZENS):
-        cits.append(walker('Citizen_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_Lineup', (600, -1250, 0), W.LOOP,
-                           105.0 + 10 * i, 1300, 380, i * 90.0))
-    cit_center = spawn(unreal.TargetPoint, (600, -1250, 0), label='CitizensCenter')
-    suits = []
-    for i, s in enumerate(SUITS):
-        suits.append(walker('Suit_' + s, ROOT + '/Suits/%s/SK_Suit_%s' % (s, s), H + 'ABP_Hero_Lineup', (-2400, 300 + i * 260, 0), W.TURNTABLE, 160.0, start=0))
-    suit_center = spawn(unreal.TargetPoint, (-2400, 820, 0), label='SuitsCenter')
-    # capture director (shot list; times are cumulative in CAPTURE notes)
-    d = spawn(unreal.WHCharShowDirector, (0, 0, 0), label='CaptureDirector')
-    K = unreal.WHShotKind
-    def shot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, wl=(0, 0, 0), label=''):
-        s = unreal.WHShot()
-        for k, v in (('target', t), ('kind', kind), ('duration', dur), ('distance', dist), ('aim_height', aim), ('cam_height', camh),
-                     ('fov', fov), ('orbit_deg_per_sec', orbit), ('azimuth', az), ('world_location', unreal.Vector(*wl)), ('label', label)):
-            s.set_editor_property(k, v)
-        return s
-    shots = [shot(hero_tt, K.ORBIT, 6, 340, 100, 20, 40, 45, 0, label='hero moving turntable'),
-             shot(hero, K.SIDE, 5, 520, 95, 0, 40, label='hero run side'),
-             shot(hero, K.THREE_QUARTER, 5, 460, 95, 25, 40, label='hero run 3/4'),
-             shot(hero_tt, K.CLOSEUP, 4, 95, 135, 5, 30, label='suit fabric close-up (chest)'),
-             shot(thug, K.THREE_QUARTER, 4, 380, 95, 15, 40, label='thug walk 3/4'),
-             shot(brute, K.SIDE, 3, 480, 110, 10, 40, label='brute walk side'),
-             shot(cit_center, K.WIDE, 5, 0, 90, 0, 45, wl=(1900, -2150, 230), label='citizens walking wide'),
-             shot(cits[0], K.SIDE, 4, 380, 95, 5, 40, label='citizen side'),
-             shot(cits[2], K.THREE_QUARTER, 4, 380, 95, 10, 40, label='citizen 3/4'),
-             shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-1200, 820, 170), label='AI suits walking in place')]
-    d.set_editor_property('shots', shots)
-    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
-    log('map saved', ok, world.get_path_name(), len(unreal.EditorLevelLibrary.get_all_level_actors()), 'actors')
+    variants = [(TESTS + '/Char_Lineup', False)]
+    if ARGS.get('mask_map', True) and EAL.does_asset_exist(ROOT + '/Thug/Materials/MI_BruteMask'):
+        variants.append((TESTS + '/Char_Lineup_BruteMask', True))   # test-only twin: brute drawn with the unlit region mask (R face skin, G hands, B cloth)
+    for MAP, MASK in variants:
+        les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        les.new_level('/Temp/Char_Lineup_Build_%d_%d' % (int(time.time()), int(MASK)))   # built in a temp level, then saved over MAP (idempotent)
+        W = unreal.WHWalkerMode
+        # light: neutral daylight
+        sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-35, -40, 0), 'Sun')
+        sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
+        sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True)
+        spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
+        sky = spawn(unreal.SkyLight, (0, 0, 300), label='SkyLight')
+        skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
+        spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
+        ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
+        spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
+        # street backdrop: asphalt road along X, sidewalk + curb, a row of facades behind (+Y), crosswalk stripes
+        box((0, 0, -10), (80, 30, 0.2), 'M_Env_Asphalt', 'Road')
+        box((0, 1900, 0), (80, 8, 0.3), 'M_Env_Sidewalk', 'Sidewalk_N')
+        box((0, -1900, 0), (80, 8, 0.3), 'M_Env_Sidewalk', 'Sidewalk_S')
+        for i in range(10):
+            x = -3600 + i * 800
+            mat = ('M_Env_Brick', 'M_Env_Stone')[i % 2]
+            h = 1800 + (i * 530) % 1500
+            box((x, 2700, h / 2), (7.6, 8, h / 100), mat, 'Facade_%d' % i)
+            for f in range(1, int(h / 350)):
+                box((x, 2295, f * 350), (5.5, 0.1, 1.6), 'M_Env_Glass', 'Win_%d_%d' % (i, f))
+            box((x, -2700, h / 2), (7.6, 8, h / 100), ('M_Env_Stone', 'M_Env_Brick')[i % 2], 'FacadeS_%d' % i)
+        for k in range(8):
+            box((1900, -600 + k * 170, -8), (4, 0.7, 0.05), 'M_Env_Paint', 'Crosswalk_%d' % k)
+        # characters
+        H = ROOT + '/Hero/'; T = ROOT + '/Thug/'
+        hero = walker('Hero_Loop', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (0, 0, 0), W.LOOP, 560.0, 900, 420, 0, hop=5.0)
+        hero_tt = walker('Hero_Turntable', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (-2400, -900, 0), W.TURNTABLE, 160.0)
+        thug = walker('Thug_Walk', T + 'SK_Thug', T + 'ABP_Thug_Lineup', (0, 1100, 0), W.LOOP, 150.0, 500, 250, 90)
+        brute = walker('Brute_Walk', T + 'SK_Thug', T + 'ABP_Thug_Lineup', (0, 1100, 0), W.LOOP, 130.0, 500, 250, 270, scale=1.24, girth=BRUTE_GIRTH, mat=T + 'Materials/MI_Brute')
+        # enemy fill: 4 shadowless directional lights on lighting channel 1 only, used by the thug and the brute so the shaded flank stays readable
+        # (the sun alone leaves the camera-facing side of a walking enemy near black). Nothing else uses channel 1.
+        chan = unreal.LightingChannels(); chan.set_editor_property('channel0', True); chan.set_editor_property('channel1', True)
+        for enemy in (thug, brute):
+            enemy.get_editor_property('mesh').set_editor_property('lighting_channels', chan)
+        only1 = unreal.LightingChannels(); only1.set_editor_property('channel0', False); only1.set_editor_property('channel1', True)
+        for fi, fyaw in enumerate((0, 90, 180, 270)):
+            fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'EnemyFill_%d' % fi)   # rot = (yaw, pitch, roll)
+            fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
+            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 0.8))); fc.set_editor_property('cast_shadows', False)
+            fc.set_editor_property('lighting_channels', only1)
+        cits = []
+        for i, c in enumerate(CITIZENS):
+            cits.append(walker('Citizen_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_Lineup', (600, -1250, 0), W.LOOP,
+                               105.0 + 10 * i, 1300, 380, i * 90.0))
+        cit_center = spawn(unreal.TargetPoint, (600, -1250, 0), label='CitizensCenter')
+        suits = []
+        for i, s in enumerate(SUITS):
+            suits.append(walker('Suit_' + s, ROOT + '/Suits/%s/SK_Suit_%s' % (s, s), H + 'ABP_Hero_Lineup', (-2400, 300 + i * 260, 0), W.TURNTABLE, 160.0, start=0))
+        suit_center = spawn(unreal.TargetPoint, (-2400, 820, 0), label='SuitsCenter')
+        # capture director (shot list; times are cumulative in CAPTURE notes)
+        d = spawn(unreal.WHCharShowDirector, (0, 0, 0), label='CaptureDirector')
+        K = unreal.WHShotKind
+        def shot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, wl=(0, 0, 0), label=''):
+            s = unreal.WHShot()
+            for k, v in (('target', t), ('kind', kind), ('duration', dur), ('distance', dist), ('aim_height', aim), ('cam_height', camh),
+                         ('fov', fov), ('orbit_deg_per_sec', orbit), ('azimuth', az), ('world_location', unreal.Vector(*wl)), ('label', label)):
+                s.set_editor_property(k, v)
+            return s
+        shots = [shot(hero_tt, K.ORBIT, 6, 340, 100, 20, 40, 45, 0, label='hero moving turntable'),
+                 shot(hero, K.SIDE, 5, 520, 95, 0, 40, label='hero run side'),
+                 shot(hero, K.THREE_QUARTER, 5, 460, 95, 25, 40, label='hero run 3/4'),
+                 shot(hero_tt, K.CLOSEUP, 4, 95, 135, 5, 30, label='suit fabric close-up (chest)'),
+                 shot(thug, K.THREE_QUARTER, 4, 380, 95, 15, 40, label='thug walk 3/4'),
+                 shot(brute, K.SIDE, 3, 700, 105, 15, 40, az=float(ARGS.get('brute_az', 180.0)), label='brute walk side'),
+                 shot(cit_center, K.WIDE, 5, 0, 90, 0, 45, wl=(1900, -2150, 230), label='citizens walking wide'),
+                 shot(cits[0], K.SIDE, 4, 380, 95, 5, 40, label='citizen side'),
+                 shot(cits[2], K.THREE_QUARTER, 4, 380, 95, 10, 40, label='citizen 3/4'),
+                 shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-1200, 820, 170), label='AI suits walking in place'),
+                 shot(brute, K.ORBIT, 6, 700, 105, 15, 40, 60, 0, label='brute walk orbit (360 deg)')]
+        d.set_editor_property('shots', shots)
+        if MASK:
+            eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+            for act in list(eas.get_all_level_actors()):
+                cls = act.get_class().get_name()
+                if act.get_actor_label() == 'Brute_Walk':
+                    act.get_editor_property('mesh').set_material(0, load(T + 'Materials/MI_BruteMask'))
+                elif not ARGS.get('mask_keep_scene') and cls in ('DirectionalLight', 'SkyAtmosphere', 'SkyLight', 'ExponentialHeightFog'):
+                    eas.destroy_actor(act)                       # black background: only the unlit mask is visible
+                elif not ARGS.get('mask_keep_scene') and isinstance(act, unreal.StaticMeshActor):
+                    act.set_actor_hidden_in_game(True)           # backdrop
+                elif not ARGS.get('mask_keep_scene') and isinstance(act, unreal.WHCharLoopWalker):
+                    m_ = act.get_editor_property('mesh')         # other characters: unlit yellow, so they occlude the brute like in the beauty run
+                    for slot in range(m_.get_num_materials()):
+                        m_.set_material(slot, load(ROOT + '/Shared/Materials/MI_MaskOther'))
+                elif isinstance(act, unreal.PostProcessVolume) and ARGS.get('mask_ev', 'auto') != 'auto':
+                    ps = act.get_editor_property('settings')     # fixed exposure so the mask colours do not drift
+                    ps.set_editor_property('override_auto_exposure_method', True); ps.set_editor_property('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL)
+                    ps.set_editor_property('override_auto_exposure_bias', True); ps.set_editor_property('auto_exposure_bias', float(ARGS.get('mask_ev', 0.0)))
+                    act.set_editor_property('settings', ps)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        ok = unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
+        log('map saved', ok, world.get_path_name(), len(unreal.EditorLevelLibrary.get_all_level_actors()), 'actors')
     log('map ok', MAP, 'shots', [(s.get_editor_property('label'), s.get_editor_property('duration')) for s in shots])
 log('done')
