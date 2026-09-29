@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 15:48",
+ "updated": "2026-09-29 16:18",
  "phase": "Wave 2 \u2014 director plan",
- "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
+ "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -107,19 +107,19 @@
    "id": "C",
    "name": "Integrated Manhattan map",
    "branch": "night1/manhattan",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "After current rounds merge (Opus high)"
+   "state": "done",
+   "round": 1,
+   "verdict": "Map builds headless in ~10 min; route clean (0 fall-through/T-pose/stuck)",
+   "gap": "Integration bugs routed to owners; hero swap to /Game/Characters pending P3"
   },
   {
    "id": "F",
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "After A + C (Opus high)"
+   "gap": "Opus 5.5 high: profile + overrides + owner change list"
   },
   {
    "id": "G",
@@ -302,6 +302,11 @@
   }
  ],
  "clips": [
+  {
+   "title": "Integrated Manhattan \u2014 30 s route",
+   "src": "docs/night1/manhattan/round-01/route_30s.mp4",
+   "caption": "city + golden-hour look + hero + street people"
+  },
   {
    "title": "Traversal R9 \u2014 spec-driven camera",
    "src": "docs/night1/traversal/round-09/a_swing_chain.mp4",
@@ -520,6 +525,16 @@
  ],
  "perf": [
   {
+   "what": "Manhattan map \u2014 30 s swing route (FIRST CLEAN RUN)",
+   "output": "3840\u00d72160",
+   "internal": "2573\u00d71447 (TSR 67%)",
+   "median": "51.9",
+   "p95": "59.0",
+   "p99": "62.8",
+   "hitches": "0",
+   "notes": "exclusive GPU lock, GPU 0% before/after; 19.2 fps; GPU 42.2 ms, render thread 50.6 ms. Earlier rows below are contaminated."
+  },
+  {
    "what": "Unreal look R1 \u2014 hero swing route through Midtown, TSR 50%",
    "output": "3840\u00d72160",
    "internal": "1920\u00d71080",
@@ -710,6 +725,10 @@
   {
    "t": "15:48",
    "text": "City R6 merged; critic FAILS (avg 4.6, up from 4.2); round 7 on a fresh Sonnet builder with a shared spec-check script."
+  },
+  {
+   "t": "16:18",
+   "text": "C Manhattan map merged; first clean perf: 19 fps at 4K/TSR 67%. F perf piece started (Opus high). Integration bugs routed to owners (docs/night1/manhattan/INTEGRATION_BUGS.md)."
   }
  ]
 }
