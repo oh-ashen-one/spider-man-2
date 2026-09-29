@@ -336,6 +336,25 @@ bool AWebTravCharacter::SetupHeroMesh()
 void AWebTravCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	{ // round 07: -WHTravTune=Name=Value,... sets float tuning properties of the traversal component (tuning scans)
+		FString Tune;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravTune="), Tune, false))
+		{
+			TArray<FString> Parts;
+			Tune.ParseIntoArray(Parts, TEXT(","));
+			for (const FString& Pr : Parts)
+			{
+				FString K, V;
+				if (!Pr.Split(TEXT("="), &K, &V)) continue;
+				if (FFloatProperty* FP = FindFProperty<FFloatProperty>(Traversal->GetClass(), FName(*K)))
+				{
+					FP->SetPropertyValue_InContainer(Traversal, FCString::Atof(*V));
+					UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV tune %s = %s"), *K, *V);
+				}
+				else UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV tune: no float property %s"), *K);
+			}
+		}
+	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
 	if (ProxyBody) ProxyBody->SetVisibility(false);
@@ -430,7 +449,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			const FWebTravAnim& A = Traversal->Anim;
 			// release on the rising front of the arc, or at the forward apex if the arc never gets that far
 			const bool bFrontApex = A.Swing.Phase > 0.15f && Traversal->VelM().Z <= 0 && A.T > 0.6f;
-			if (bAutoHeld && bSwinging && ((A.Swing.Phase > RelPhase && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex))
+			// round 07: a player lets go after the swoop — only once this swing has come down (vz < -3 m/s)
+			if (!bSwinging) bAutoSawDescent = false;
+			else if (Traversal->VelM().Z < -3.0) bAutoSawDescent = true;
+			if (bAutoHeld && bSwinging && bAutoSawDescent && ((A.Swing.Phase > RelPhase && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;
 				const int32 Every = Script->TrickEveryAt(TravTime);
@@ -752,7 +774,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("rope_m,tension,chain,trick,zip_target,zt_x,zt_y,zt_z,cam_x,cam_y,cam_z,cam_yaw_deg,cam_pitch_deg,cam_vfov_deg,cam_dist_m,motion_blur,")
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
-		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z"));
+		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -799,7 +821,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	const bool bInFrame = !bBehind && MinX >= 0 && MaxX <= 1 && MinY >= 0 && MaxY <= 1;
 	// pose signature: head / hands / feet relative to the hips, in camera right / up (m) — screen silhouette proxy
 	FString Node = TEXT("none"), ClipN = TEXT("none"), Sig, LimbZ;
-	double HeadHipDz = 0.0;
+	double HeadHipDz = 0.0, BodyRope = -1.0;
 	float AW = 0.f; int32 Flav = -1;
 	if (bHeroMesh)
 	{
@@ -818,6 +840,12 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		}
 		// round 06: world-up offsets from the hips (m): head, and hands / feet (limb phase on a wall = their order up the wall)
 		HeadHipDz = (M->GetBoneLocation(TEXT("head")).Z - Hip.Z) / 100.0;
+		// round 07: body axis (hips -> head) vs the web (hips -> anchor), degrees, while swinging
+		if (bSw)
+		{
+			const FVector BodyAx = (M->GetBoneLocation(TEXT("head")) - Hip).GetSafeNormal(), RopeAx = (An * 100.0 - Hip).GetSafeNormal();
+			BodyRope = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(BodyAx, RopeAx), -1.0, 1.0)));
+		}
 		for (const TCHAR* Bn : { TEXT("hand_L"), TEXT("hand_R"), TEXT("foot_L"), TEXT("foot_R") })
 		{
 			LimbZ += FString::Printf(TEXT("%s%.3f"), LimbZ.IsEmpty() ? TEXT("") : TEXT(" "), (M->GetBoneLocation(FName(Bn)).Z - Hip.Z) / 100.0);
@@ -830,7 +858,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		if (PC->PlayerCameraManager) { PcmLoc = PC->PlayerCameraManager->GetCameraLocation(); PcmRot = PC->PlayerCameraManager->GetCameraRotation(); PcmFov = PC->PlayerCameraManager->GetFOVAngle(); }
 	}
 	const FString Row = FString::Printf(
-		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f,%d,%s,%s,%.3f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.0f,%.0f,%.0f,%.0f,%.3f,%s"),
+		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f,%d,%s,%s,%.3f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.0f,%.0f,%.0f,%.0f,%.3f,%s,%.1f,%d"),
 		FrameIndex, T, ModeName(A.Mode), *A.Sub.ToString(), P.X, P.Y, P.Z, V.X, V.Y, V.Z, V.Size(), FVector2D(V.X, V.Y).Size(),
 		P.Z - UWebTraversalComponent::H - Traversal->FloorBelow(), An.X, An.Y, An.Z, bSw ? Traversal->SwingRope() : 0.0, bSw ? Traversal->SwingTension() : 0.0,
 		Traversal->Chain(), A.Trick.IsNone() ? TEXT("") : *A.Trick.ToString(), Traversal->HasZipTarget() ? 1 : 0,
@@ -841,7 +869,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		bBehind ? 1.0 : MaxY - MinY, bBehind ? 1.0 : MaxX - MinX, bBehind ? -1.0 : 0.5 * (MinY + MaxY), bInFrame ? 1 : 0, Cam.HeroDist,
 		Cam.bCamInGeometry ? 1 : 0, Cam.FrameS, I.bTrick ? 1 : 0, *Node, *ClipN, AW, Flav, *Sig,
 		PcmLoc.X / 100.0, PcmLoc.Y / 100.0, PcmLoc.Z / 100.0, PcmRot.Pitch, PcmRot.Yaw, PcmFov, PxTop, PxBottom, PxLeft, PxRight,
-		HeadHipDz, LimbZ.IsEmpty() ? TEXT("-") : *LimbZ);
+		HeadHipDz, LimbZ.IsEmpty() ? TEXT("-") : *LimbZ, BodyRope,
+		(Traversal->Strands[0].bActive && Traversal->Strands[0].ReleaseT < 0.f) || (Traversal->Strands[1].bActive && Traversal->Strands[1].ReleaseT < 0.f) ? 1 : 0);
 	Script->AddTelemetryRow(Row);
 }
 

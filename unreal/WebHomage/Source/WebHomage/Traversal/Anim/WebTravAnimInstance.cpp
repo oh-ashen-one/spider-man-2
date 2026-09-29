@@ -339,12 +339,20 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	}
 	// procedural: web-hand arm aimed at the anchor while a web is held (swing / zip), spine bank with the swing
 	const USkeletalMeshComponent* Mesh = GetSkelMeshComponent();
-	const bool bAim = bWebActive && (A.Mode == EWebTravMode::Swing || A.Mode == EWebTravMode::Zip) && Mesh;
+	// (round 07: also in the air — a web stuck on the rise before its swing starts, dash / boost webs)
+	const bool bAim = bWebActive && (A.Mode == EWebTravMode::Swing || A.Mode == EWebTravMode::Zip || A.Mode == EWebTravMode::Air) && Mesh;
 	Frame.bArmAim = bAim;
 	Frame.bArmRight = bWebRight;
 	Frame.ArmAimWeight = bAim ? FMath::Clamp(Frame.ArmAimWeight + Dt / 0.15f, 0.f, 1.f) : FMath::Clamp(Frame.ArmAimWeight - Dt / 0.2f, 0.f, 1.f);
 	if (Mesh) Frame.ArmTargetCS = Mesh->GetComponentTransform().InverseTransformPosition(WebAnchorWorld);
 	Frame.SpineBank = A.Mode == EWebTravMode::Swing ? -0.35f * A.Swing.Bank : 0.f;
+	// round 07 (critic r06: "a plank about 45 deg off the rope at the arc bottom"): while the web is held the body hangs along
+	// it — full at the bottom of the arc, 60 % at the ends (the swing clips' reach / tuck still read there); 0.2 s ramps
+	{
+		const float Want = bAim && A.Mode == EWebTravMode::Swing ? 1.f - 0.4f * FMath::Clamp(FMath::Abs(A.Swing.Phase), 0.f, 1.f) : 0.f;
+		const float Step = Dt / 0.2f;
+		Frame.BodyAlignW = Want > Frame.BodyAlignW ? FMath::Min(Want, Frame.BodyAlignW + Step) : FMath::Max(Want, Frame.BodyAlignW - Step);
+	}
 	LastMode = A.Mode;
 }
 
@@ -391,6 +399,26 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 		while (P.IsValid()) { T = T * Pose[P]; P = BC.GetParentBoneIndex(P); }
 		return T;
 	};
+	// round 07: body along the web — rotate the hips (component space) so hips -> head points at the anchor (weighted)
+	if (Frame.BodyAlignW > 0.01f)
+	{
+		const FCompactPoseBoneIndex BH = Idx(TEXT("hips")), BHead = Idx(TEXT("head"));
+		if (BH.IsValid() && BHead.IsValid())
+		{
+			const FCompactPoseBoneIndex P = BC.GetParentBoneIndex(BH);
+			const FTransform ParentCS = P.IsValid() ? CS(P) : FTransform::Identity;
+			FTransform HipCS = Pose[BH] * ParentCS;
+			const FVector HipP = HipCS.GetLocation();
+			const FVector Cur = (CS(BHead).GetLocation() - HipP).GetSafeNormal();
+			const FVector Want = (Frame.ArmTargetCS - HipP).GetSafeNormal();
+			if (!Cur.IsNearlyZero() && !Want.IsNearlyZero())
+			{
+				const FQuat D = FQuat::Slerp(FQuat::Identity, FQuat::FindBetweenNormals(Cur, Want), Frame.BodyAlignW);
+				HipCS.SetRotation((D * HipCS.GetRotation()).GetNormalized());
+				Pose[BH].SetRotation((ParentCS.GetRotation().Inverse() * HipCS.GetRotation()).GetNormalized());
+			}
+		}
+	}
 	// spine bank (roll about the spine's own forward in component space, split over two spine bones)
 	if (FMath::Abs(Frame.SpineBank) > 0.01f)
 	{

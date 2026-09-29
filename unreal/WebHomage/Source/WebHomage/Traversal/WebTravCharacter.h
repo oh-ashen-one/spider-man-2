@@ -92,6 +92,7 @@ private:
 	FWebTravCamera Cam;
 	double TravTime = 0.0;
 	bool bTravStarted = false;
+	bool bAutoSawDescent = false; // round 07: auto-chain rule, this swing has descended
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
 	int32 PrerollFrames = 0;

@@ -37,35 +37,99 @@
    "swing": true
   },
   {
-   "t": 2.5117,
+   "t": 2.1617,
    "swing": false
   },
   {
-   "t": 3.945,
+   "t": 2.3117,
    "swing": true
   },
   {
-   "t": 7.2283,
+   "t": 4.0783,
+   "swing": false
+  },
+  {
+   "t": 4.2283,
+   "swing": true
+  },
+  {
+   "t": 5.7617,
    "trick": true
   },
   {
-   "t": 7.2283,
+   "t": 5.7617,
    "swing": false
   },
   {
-   "t": 7.245,
+   "t": 5.7783,
    "trick": false
   },
   {
-   "t": 8.8783,
+   "t": 5.9117,
    "swing": true
   },
   {
-   "t": 12.795,
+   "t": 7.8283,
    "swing": false
   },
   {
-   "t": 14.1117,
+   "t": 7.9783,
+   "swing": true
+  },
+  {
+   "t": 9.2617,
+   "swing": false
+  },
+  {
+   "t": 9.4117,
+   "swing": true
+  },
+  {
+   "t": 10.6783,
+   "trick": true
+  },
+  {
+   "t": 10.6783,
+   "swing": false
+  },
+  {
+   "t": 10.695,
+   "trick": false
+  },
+  {
+   "t": 10.8283,
+   "swing": true
+  },
+  {
+   "t": 12.4117,
+   "swing": false
+  },
+  {
+   "t": 12.5617,
+   "swing": true
+  },
+  {
+   "t": 13.8617,
+   "swing": false
+  },
+  {
+   "t": 14.0117,
+   "swing": true
+  },
+  {
+   "t": 15.3283,
+   "trick": true
+  },
+  {
+   "t": 15.3283,
+   "swing": false
+  },
+  {
+   "t": 15.345,
+   "trick": false
+  },
+  {
+   "t": 15.4783,
    "swing": true
   }
  ],

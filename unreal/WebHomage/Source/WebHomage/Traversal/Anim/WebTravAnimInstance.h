@@ -32,6 +32,7 @@ struct FWebTravAnimFrame
 	float ArmAimWeight = 0.f;
 	FVector ArmTargetCS = FVector::ZeroVector;   // component space (cm)
 	float SpineBank = 0.f;                        // rad
+	float BodyAlignW = 0.f;                       // round 07: hips->head turned onto the web (hips->anchor), 0..1
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy

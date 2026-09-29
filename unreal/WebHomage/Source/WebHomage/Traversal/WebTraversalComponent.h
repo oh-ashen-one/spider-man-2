@@ -49,6 +49,13 @@ public:
 	/** Progression hook 'swingReleaseBoost' multiplier. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
 	float ReleaseBoostMul = 1.f;
+	/** Round 07: a held swing button re-searches for the next anchor this long (s) after a web release, even while rising. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReattachAfter = 0.22f;
+	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingVz = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
+	/** Round 07: upward speed kept by a plain web release (m/s); the rest turns into forward speed. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReleaseVzMax = 8.f;
 
 	/**
 	 * Fraction of the anchor's lateral offset (relative to the swing direction) kept in the physics pivot.
@@ -77,11 +84,13 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcBottomMin = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcBottomMax = 12.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MinArcDrop = 16.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropJitter = 5.f;   // round 07: extra drop 0..N m per swing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MinArcDrop = 14.f;   // round 07: 16 -> 14 (critic r06: depth AND rhythm; drop test >= 10 m)
 	/** Max horizontal distance of the virtual pivot ahead of the body (m). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MaxPivotAhead = 55.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MaxPivotAhead = 30.f;   // round 07: 55 -> 30
 	/** Longest virtual rope (m): high entries keep a brisk ~2 s arc and bottom out higher instead of a slow 50 m pendulum. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MaxArcRope = 50.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCapJitter = 0.12f;   // round 07: rope cap 30-34 m per swing
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MaxArcRope = 34.f;   // round 07: 50 -> 34 (1.2-1.8 s swings)
 
 	/** Deterministic trick RNG seed (replays). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
@@ -202,6 +211,11 @@ private:
 		FQuat BodyQ = FQuat::Identity;
 		double Roll = 0, Pitch = 0, Bank = 0, RollA = 0, PitchA = 0;
 		bool bTopOut = false;   // round 06: airborne from a wall-run top-out (crouch landing on touchdown)
+		// round 07: web stuck on the rise, swing pending until the top of the hop
+		bool bWebPending = false, bPendingTurn = false, bPendingRight = true;
+		double PendingT = 0;
+		FTravAnchor PendingA;
+		FVector PendingFwd = FVector::ForwardVector, PendingTurn = FVector::ForwardVector;
 		FQuick Q;
 		double Clock = 0;
 	};
