@@ -32,7 +32,7 @@ No new paid generation, mocap packs, or hero redesign is authorized.
 8. [x] Check original hero and all five custom meshes, including fast menu changes and opening while airborne.
 9. [x] Inspect side and three-quarter motion sequences in Blender and comparable in-game sequences. Fix visible defects, record residual issues.
 10. [x] Run regression/build checks and representative real desktop performance at 1080p; report average frame time, 1% lows, hitches and before/after.
-11. [ ] Push sources, scripts, clips, captures and evidence to the branch; verify remote SHA. Owner acceptance remains distinct.
+11. [x] Push sources, scripts, clips, captures and evidence to the branch; verify remote SHA. Owner acceptance remains distinct.
 
 ## Initial source audit
 
@@ -44,3 +44,5 @@ The suit menu manually applies one idle frame and restores saved bone transforms
 Eight Actions implemented and visually sampled in Blender and Three.js. Manual/automatic runtime checks, all five skins, and menu state restoration pass. Export comparison passes at nonuniform times between new 120 Hz baked keys (maximum joint-position difference 3.8 mm). See README.md for evidence and honest limits. Original legacy clips are untouched; their import-only between-key discrepancy remains documented. Performance and remote publication are tracked separately.
 
 Final desktop performance was measured at 1080p/High on the 50 Hz main display. Street and traversal averaged about 49.95 FPS; park about 49.34 FPS with three hitches. The 60 FPS target remains unverified; see PERFORMANCE.md. Implementation checks pass; owner feel/quality acceptance remains separate.
+
+Implementation and review artifacts published in commit 1336487af7b98473656a5557f7e39eaadfcc2332. Remote SHA verified directly. The 60 FPS/park-hitch limitations above remain open; publication does not imply those gates passed.
