@@ -100,7 +100,7 @@ The two people come from the owner's own Tripo generations; nothing on them is t
 - **Brute palette:** muted; a charcoal beanie, brown-grey flannel sleeves, black vest, maroon bandana. The plaid check is intentionally flattened. Face is hidden behind the bandana below the eyes.
 - **Hero:** unchanged; the round-02 critic's open items stand (coarse weave, flat lenses, thin web lines, upright jog, dive-to-run snap). **Brand flag from the round-02 critic:** the hero's white emblem, wrist cuffs and red leg stripes read as a near-copy of a studio suit design and should be redesigned.
 - **Civilians:** unchanged; they still stand or glide in the lineup and carry the white seam cracks (same skinning cause as gotcha 1: re-weld their weights; their rig is the 18-bone crowd rig, `crowdfit`).
-- **Perf:** no valid number; the GPU is shared. The native 4K stills run is reported in `round-03/CAPTURES.md` with the utilisation measured just before it.
+- **Perf:** one native-4K run under `gpu_slot.sh perf` (`round-03/perf_gpu.json`, `perf_native4k.json`, `perf_summary.txt`): shots 11-13 (lane: thug and brute walking, 4 enemy fill lights, no other characters near), 458 frames over 15 s at 3840x2160 internal (`r.ScreenPercentage 100`): avg 32.8 ms (30.5 fps), p50 32.1, p95 44.7, p99 49.9, max 57.4 ms, GPU avg 30.9 ms. It is **contaminated**: the lock was exclusive and the GPU was at 1 % before the run (after a 671 s wait), but another session's unwrapped traversal capture started during it (util during avg 67.6 %, max 100 %). Treat the numbers as an upper bound; re-baseline when the GPU is idle.
 
 ## Round 04 should look at
 
