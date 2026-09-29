@@ -140,6 +140,28 @@ bool FWebTravWorld::Raycast(const FVector& O, const FVector& D, double MaxDist, 
 	return true;
 }
 
+bool FWebTravWorld::SphereSweep(const FVector& A, const FVector& B, double Radius, double& OutDist) const
+{
+	UWorld* W = World.Get();
+	if (!W) return false;
+	++TraceCount;
+	FHitResult H;
+	if (!W->SweepSingleByObjectType(H, A * 100.0, B * 100.0, FQuat::Identity, ObjParams, FCollisionShape::MakeSphere(float(Radius * 100.0)), Params))
+	{
+		return false;
+	}
+	OutDist = H.bStartPenetrating ? 0.0 : H.Distance / 100.0;
+	return true;
+}
+
+bool FWebTravWorld::SphereOverlaps(const FVector& P, double Radius) const
+{
+	UWorld* W = World.Get();
+	if (!W) return false;
+	++TraceCount;
+	return W->OverlapAnyTestByObjectType(P * 100.0, FQuat::Identity, ObjParams, FCollisionShape::MakeSphere(float(Radius * 100.0)), Params);
+}
+
 double FWebTravWorld::GroundHeight(double X, double Y, double FromZ) const
 {
 	double Best = -1000.0;

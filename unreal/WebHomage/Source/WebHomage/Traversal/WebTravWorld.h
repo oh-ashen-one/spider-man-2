@@ -42,6 +42,10 @@ public:
 
 	/** Ray from O along unit D up to MaxDist (m). */
 	bool Raycast(const FVector& O, const FVector& D, double MaxDist, FTravHit& Out) const;
+	/** Sphere sweep from A to B (m); returns true on a blocking hit (OutDist = distance travelled before the hit). */
+	bool SphereSweep(const FVector& A, const FVector& B, double Radius, double& OutDist) const;
+	/** Does a sphere at P (m) overlap solid geometry (ground included)? */
+	bool SphereOverlaps(const FVector& P, double Radius) const;
 	/** Highest surface at (X,Y) at or below FromZ (m). -1000 if nothing. */
 	double GroundHeight(double X, double Y, double FromZ) const;
 	/** Pushes a vertical capsule (feet, radius R, height H) horizontally out of solids; only the part above StepH collides. */
