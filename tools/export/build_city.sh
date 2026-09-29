@@ -5,6 +5,7 @@
 set -e
 cd "$(dirname "$0")/../.."
 [ -n "$SKIP_EXPORT" ] || node tools/export/export_city.mjs
+python3 tools/export/patch_export.py
 python3 tools/export/prep_textures.py
 node tools/export/gen_shaders.mjs
 UEJOB_TIMEOUT=7200 python3 tools/export/ue/uejob.py unreal/WebHomage/Scripts/build_city.py steps=${STEPS:-clean,tex,mat,mesh,proto,map}

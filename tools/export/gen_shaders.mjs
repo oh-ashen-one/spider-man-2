@@ -34,7 +34,34 @@ float3 CityU2B(float3 v) { return float3(v.x, v.z, v.y); }            // UE fram
   const TEX = [['tWallC', 1], ['tWallN', 1], ['tWallH', 1], ['tDetail', 0], ['tInterior', 0], ['tSigns', 0], ['tNoise', 0]];
   const { decl, pass } = texMacros(TEX);
   const body = translate(glsl, { arrays: new Set(TEX.filter(t => t[1]).map(t => t[0])), textures: TEX.map(t => t[0]) })
-    .replace(/\bR \* (vFac|gDx|gDy)\b/g, 'mul($1, R)'); // GLSL mat2 * vec (column-major) == HLSL mul(vec, float2x2(same list))
+    .replace(/\bR \* (vFac|gDx|gDy)\b/g, 'mul($1, R)'); // GLSL mat2 * vec (column-major) == HLSL mul(vec, float2x2(same list)
+  // ---- UE-only patches (the browser source stays untouched). Each patch must match exactly once or the generator fails.
+  const uePatch = (from, to) => { const n = body2.split(from).length - 1; if (n !== 1) throw new Error(`UE patch matched ${n}x: ${from}`); body2 = body2.replace(from, () => to); };
+  let body2 = body;
+  // (r04) interior-mapping mip: the browser measures texel density on a native-resolution frame; UE renders at 50-73 % internal
+  // resolution + TSR, so the derivative-based level came out 1-2 mips too high (rooms = flat beige average). Bias -3 mips: TSR resolves it.
+  uePatch('gLodI = clamp(log2(max(aw, ah) * 512.0f / max(vF.y, 2.0f)) + 0.5f, 0.0f, 9.0f);', 'gLodI = clamp(log2(max(aw, ah) * 512.0f / max(vF.y, 2.0f)) - 2.5f, 0.0f, 9.0f);');
+
+  // (r04) rooms behind glass. Interior mapping at street angles (60-80 deg off the facade normal) exits every 2-3 m wide room
+  // through its side wall in the first metre of depth, so every window / shop rendered as ONE flat side-wall colour. The rooms are
+  // made 3-7 bays wide (open floor plan / open shop) and the back-wall photograph wraps once per bay (gRoomWrap): at any angle the
+  // window shows the room photo (shelves, desks, curtains) instead of a flat tint.
+  uePatch('static float2 gWob =', 'static float gRoomWrap = 0.0f; // (UE r04) >0: back-wall photo repeats every gRoomWrap m\nstatic float2 gWob =');
+  uePatch('float2 q = float2(h.x / rw,h.y / rh);', 'float2 q = float2(gRoomWrap > 0.0f ? frac(h.x / gRoomWrap) : h.x / rw,h.y / rh);');
+  uePatch('float3 room = interior(TEXPASS, float2(gmod(gp.x, mw),gp.y - glassY0), dirIn, mw, signY0 - glassY0 + 0.6f, 5.0f,',
+          'gRoomWrap = gw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * mw,gp.y - glassY0), dirIn, gw + 24.0f * mw, signY0 - glassY0 + 0.6f, 5.0f,');
+  uePatch('float3 room = interior(TEXPASS, float2(gp.x,gp.y), dirIn, bw, fh, curtain ? 6.0f : 4.0f, tile, lit, 0.0f);',
+          'gRoomWrap = bw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * bw,gp.y), dirIn, 25.0f * bw, fh, curtain ? 6.0f : 4.0f, tile, lit, 0.0f); gRoomWrap = 0.0f;');
+  // rooms lit / dim / dark in ~ 10 / 30 / 60 % (browser: 45 % lit, unlit rooms only 0.55x): most windows read as dark glass
+  uePatch('float lit = step(0.55f, frac(cellR * 7.13f));', 'float litR = frac(cellR * 7.13f); float lit = step(0.9f, litR) + 0.4f * step(0.6f, litR) * (1.0f - step(0.9f, litR));');
+  uePatch('return col * lerp(0.55f, 1.0f, lit);', 'return col * lerp(0.2f, 1.0f, lit);');
+  // blinds / curtains sit behind the glass and the window reveal shades them: they must not out-shine the sunlit masonry
+  uePatch('gl.alb = lerp(gl.alb, bc * slats * 0.8f, bl);', 'gl.alb = lerp(gl.alb, bc * slats * 0.5f, bl);');
+  // ceilings / floors seen from the street are the brightest surfaces in a room but never sunlit: darker (critic: <= 10 % of window pixels above 80 %)
+  uePatch('col = float3(0.72f,0.72f,0.7f) * (0.75f + 0.25f * lit) + pe * lit * float3(0.55f,0.53f,0.48f) * (1.0f + shop) * (1.0f - 0.6f * c.y);',
+          'col = float3(0.42f,0.42f,0.41f) * (0.6f + 0.4f * lit) + pe * lit * float3(0.45f,0.43f,0.38f) * (1.0f + shop) * (1.0f - 0.6f * c.y);');
+  uePatch('col = shop > 0.5f ? float3(0.55f,0.52f,0.48f) :', 'col = shop > 0.5f ? float3(0.3f,0.28f,0.25f) :');
+
   const ush = `${HDR('facade.js (FRAG_DECL)')}
 #define TEXDECL ${decl}
 #define TEXPASS ${pass}
@@ -43,7 +70,7 @@ ${PRELUDE}${B2U}
 static float2 vFac; static float4 vF; static float4 vS; static float4 vW; static float4 vX; static float3 vTint;
 static float3 vWPos; static float3 vWN; static float3 gCamPos; static float2 gFragCoord;
 static float uInteriorGain = 0.5; static float uShopGain = 0.7; static float uNightK = 0.0; static float uDnTime = 0.0;
-${body}
+${body2}
 // ---- UE entry. fac = UV0; F = (UV1, UV2); S = (UV3, UV4); W = (UV5, UV6); X7 = UV7 (resid + 2 lintel + 16 glass, depth);
 // tint = vertex colour * 2. wpos / cam in UE cm, wn = UE world vertex normal. P = (InteriorGain, ShopGain, NightK, DnTime).
 // Returns the albedo; outputs roughness, metallic, UE world-space normal, emissive, glass weight + F0 colour.
