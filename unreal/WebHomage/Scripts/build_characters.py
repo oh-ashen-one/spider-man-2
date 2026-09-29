@@ -243,11 +243,10 @@ def build_simple(name, shading=None, emissive=False):
     return m
 
 def build_hero_lens():
-    """M_Char_HeroLens (round 04, critic: 'flat white lenses, no specular'): clear-coat lacquer over a white lens. The lens triangles are
-    flat, so the dome is suggested in shading: the base colour falls off toward grazing angles (Fresnel), the clear coat adds a sharp
-    specular on top of a slightly rougher base."""
+    """M_Char_HeroLens (round 04, critic: 'flat white lenses, no specular'): glossy lacquered lens. The lens triangles are flat, so the
+    dome is suggested in shading: the base colour falls off toward grazing angles (Fresnel) and the roughness is low for a sharp highlight.
+    (Clear coat is not reachable from Python in UE 5.8: MP_CustomData0/1 are hidden enum values.)"""
     m = new_material(ROOT + '/Shared/Materials', 'M_Char_HeroLens', skeletal=True)
-    m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_CLEAR_COAT)
     c = vector(m, 'Color', (0.82, 0.84, 0.86, 1), -700, -250)
     fr = E(m, unreal.MaterialExpressionFresnel, -700, -80)
     fr.set_editor_property('exponent', 2.2); fr.set_editor_property('base_reflect_fraction', 0.0)
@@ -256,10 +255,8 @@ def build_hero_lens():
     lp = E(m, unreal.MaterialExpressionLinearInterpolate, -250, -200)
     MEL.connect_material_expressions(c, 'RGB', lp, 'A'); MEL.connect_material_expressions(edge, '', lp, 'B'); MEL.connect_material_expressions(fr, '', lp, 'Alpha')
     MEL.connect_material_property(lp, '', unreal.MaterialProperty.MP_BASE_COLOR)
-    MEL.connect_material_property(scalar(m, 'Roughness', 0.22, -500, 120), '', unreal.MaterialProperty.MP_ROUGHNESS)
-    MEL.connect_material_property(scalar(m, 'Specular', 0.8, -500, 200), '', unreal.MaterialProperty.MP_SPECULAR)
-    MEL.connect_material_property(scalar(m, 'ClearCoat', 1.0, -500, 280), '', unreal.MaterialProperty.MP_CUSTOM_DATA0)
-    MEL.connect_material_property(scalar(m, 'ClearCoatRoughness', 0.03, -500, 360), '', unreal.MaterialProperty.MP_CUSTOM_DATA1)
+    MEL.connect_material_property(scalar(m, 'Roughness', 0.07, -500, 120), '', unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(scalar(m, 'Specular', 1.0, -500, 200), '', unreal.MaterialProperty.MP_SPECULAR)
     em = E(m, unreal.MaterialExpressionMultiply, -250, 440)
     MEL.connect_material_expressions(lp, '', em, 'A'); MEL.connect_material_expressions(scalar(m, 'Emissive', 0.03, -500, 460), '', em, 'B')
     MEL.connect_material_property(em, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
@@ -318,12 +315,12 @@ if 'mat' in STEPS:
        tex={'BaseColor': ROOT + '/Hero/Textures/T_Hero_BaseColor', 'ORM': ROOT + '/Hero/Textures/T_Hero_ORM',
             'Normal': ROOT + '/Hero/Textures/T_Hero_Normal', 'DetailNormal': ROOT + '/Shared/Textures/T_Fabric_Knit_N'},
        scal={'DetailTiling': 48.0, 'DetailStrength': 0.6, 'Cloth': 0.55}, switches={'HasORM': True})
-    try:   # round 04: clear-coat lens with a grazing-angle falloff; the old simple lens stays as the fallback
+    try:   # round 04: glossy lens with a grazing-angle falloff; the old simple lens stays as the fallback
         hlens = build_hero_lens()
-        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.22, 'Specular': 0.8, 'ClearCoat': 1.0, 'ClearCoatRoughness': 0.03, 'Emissive': 0.03}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-        log('hero lens: clear coat')
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.07, 'Specular': 1.0, 'EdgeDarken': 0.55, 'Emissive': 0.03}, vec={'Color': (0.82, 0.84, 0.86, 1)})
+        log('hero lens: glossy + fresnel falloff')
     except Exception as e:
-        log('hero lens: clear coat failed, simple lens', str(e)[:160])
+        log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
     mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.35}, vec={'Color': (0.02, 0.02, 0.025, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
