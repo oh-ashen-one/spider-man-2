@@ -14,13 +14,13 @@
 // other control is a real key / mouse event.
 // Needs a Vite dev server of this worktree (URL, default http://127.0.0.1:5201/). Scratch output: SCRATCH dir.
 import { chromium } from 'playwright-core';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { once } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const MODE = process.env.MODE || 'film';
-const W = +(process.env.W || 1920), H = +(process.env.H || 1080);
+const W = +(process.env.W || 1920), H = +(process.env.H || 1080), DPR = +(process.env.DPR || 1);
 const BASE = process.env.URL || 'http://127.0.0.1:5201/';
 const SCRATCH = process.env.SCRATCH || '/Users/midir/sm2-n1/_scratch/baseline';
 const OUTDIR = process.env.OUT || 'docs/night1/baseline';
@@ -31,9 +31,15 @@ fs.mkdirSync(path.join(OUTDIR, 'clips'), { recursive: true });
 fs.mkdirSync(path.join(OUTDIR, 'logs'), { recursive: true });
 fs.mkdirSync(path.join(OUTDIR, 'perf'), { recursive: true });
 
+// GPU utilisation (ioreg IOAccelerator "Device Utilization %") -- the GPU is shared with other sessions (Unreal editors, other Chromes), so every
+// perf run records it before / during / after and is flagged contaminated when the box was not quiet.
+const gpuUtil = () => new Promise(r => execFile('/bin/sh', ['-c', "ioreg -r -d 1 -c IOAccelerator | grep -o '\"Device Utilization %\"=[0-9]*' | head -1 | cut -d= -f2"], (e, out) => r(e ? null : +String(out).trim())));
+async function waitQuiet(maxS, thr = 25) { const end = Date.now() + maxS * 1000; let u = await gpuUtil(); while (u != null && u > thr && Date.now() < end) { await new Promise(r => setTimeout(r, 4000)); u = await gpuUtil(); } return u; }
+// perf: external GPU load is read BEFORE Chrome is launched (so it excludes this game); QUIET_WAIT=<s> waits for a quiet GPU (<25 %) first
+const gpuLaunch = MODE === 'perf' ? await waitQuiet(+(process.env.QUIET_WAIT || 0)) : null;
 const profile = path.join(SCRATCH, `chrome-profile-${process.pid}`);
 const browser = await chromium.launchPersistentContext(profile, {
-  channel: 'chrome', headless: true, viewport: { width: W, height: H }, deviceScaleFactor: 1,
+  channel: 'chrome', headless: true, viewport: { width: W, height: H }, deviceScaleFactor: DPR,
   args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--disable-frame-rate-limit', '--disable-gpu-vsync',
     '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
 });
@@ -41,6 +47,7 @@ const page = browser.pages()[0] || await browser.newPage();
 const consoleLog = [];
 page.on('console', m => consoleLog.push({ t: Date.now(), type: m.type(), text: m.text().slice(0, 400) }));
 page.on('pageerror', e => consoleLog.push({ t: Date.now(), type: 'pageerror', text: String(e.message).slice(0, 400) }));
+
 const cdp = await page.context().newCDPSession(page);
 
 const t0 = Date.now();
@@ -52,8 +59,8 @@ console.log(`[pt] game ready in ${((Date.now() - t0) / 1000).toFixed(1)} s (${W}
 const helpVisible = await page.evaluate(() => [...document.querySelectorAll('div')].some(d => d.offsetParent && /^CONTROLS/i.test(d.textContent.trim()) && d.textContent.length < 2000));
 if (helpVisible) { await page.keyboard.press('KeyH'); }
 await page.mouse.move(W / 2, H / 2);
-const renderInfo = await page.evaluate(() => { const C = __ctx, gl = C.renderer.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info');
-  return { pixelRatio: C.renderer.getPixelRatio(), drawingBuffer: C.renderer.getDrawingBufferSize(new C.THREE.Vector2()).toArray(), css: [innerWidth, innerHeight],
+const renderInfo = await page.evaluate(() => { const C = __ctx, dpr = devicePixelRatio, gl = C.renderer.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info');
+  return { devicePixelRatio: dpr, pixelRatio: C.renderer.getPixelRatio(), drawingBuffer: C.renderer.getDrawingBufferSize(new C.THREE.Vector2()).toArray(), css: [innerWidth, innerHeight],
     gpu: e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : '?', quality: C.lighting.quality?.name, maxTexUnits: gl.getParameter(gl.MAX_TEXTURE_IMAGE_UNITS) }; });
 console.log('[pt] render', JSON.stringify(renderInfo));
 
@@ -91,6 +98,33 @@ function makeApi(name) {
     },
     everyFrame(fn) { st.perFrame = fn; },
     async until(pred, max = 5, fn = null) { const end = st.frame + max * 60; while (st.frame < end) { await api.sec(1 / 60, fn); if (await page.evaluate(pred)) return true; } return false; },
+    // steering autopilot (real W key held by the caller; only the CAMERA yaw is steered, through ctx.input.mouse.dx): heads for (x,z), picks the
+    // clearest heading among +-offsets (world.raycast at 3 heights), detects being stuck and side-steps. Returns the distance to the target.
+    async pilotInit() { await page.evaluate(() => {
+      window.__pilot = { hist: [], esc: 0, escDir: 1, prev: 0 };
+      window.__steer = (tx, tz, stop = 1.5) => {
+        const C = __ctx, P = C.player, p = P.position, V = C.THREE.Vector3, pl = window.__pilot, wrap = a => Math.atan2(Math.sin(a), Math.cos(a));
+        const dx = tx - p.x, dz = tz - p.z, dist = Math.hypot(dx, dz), goal = Math.atan2(dx, dz);
+        const clear = h => { let m = 10; for (const y of [-0.4, 0.3, 0.9]) { const hit = C.world.raycast(new V(p.x, p.y + y, p.z), new V(Math.sin(h), 0, Math.cos(h)), 10); if (hit) m = Math.min(m, hit.distance); } return m; };
+        pl.hist.push([p.x, p.z]); if (pl.hist.length > 50) pl.hist.shift();
+        if (pl.esc <= 0 && pl.hist.length >= 50 && dist > stop + 1.5 && Math.hypot(pl.hist[0][0] - p.x, pl.hist[0][1] - p.z) < 1.0) { pl.esc = 50; pl.escDir *= -1; pl.hist.length = 0; }
+        let h = goal;
+        if (pl.esc > 0) { pl.esc--; h = goal + pl.escDir * 1.5; }
+        else { let best = -1e9; for (const off of [0, 0.3, -0.3, 0.6, -0.6, 0.9, -0.9, 1.3, -1.3, 1.8, -1.8]) { const c = clear(goal + off), sc = Math.min(c, dist + 2, 7) - 1.6 * Math.abs(off) + (off * pl.prev > 0 ? 0.4 : 0) - (c < 2.2 ? 6 : 0); if (sc > best) { best = sc; h = goal + off; pl.prev = off; } } }
+        const dyaw = Math.max(-0.09, Math.min(0.09, wrap(h - P.heading))); C.input.mouse.dx += -dyaw / 0.0023;
+        return dist;
+      };
+    }); },
+    // walk to a point ([x,z] or a JS expression string evaluated in the page returning [x,z]); W is held by the caller. true = arrived
+    async goto(target, { stop = 2, max = 10 } = {}) {
+      const end = st.frame + Math.round(max * 60);
+      while (st.frame < end) {
+        const d = await page.evaluate(([t, stop]) => { const [x, z] = typeof t === 'string' ? (0, eval)(t) : t; return window.__steer(x, z, stop); }, [target, stop]);
+        if (d <= stop) return true;
+        await api.sec(1 / 60);
+      }
+      return false;
+    },
     teleport: (x, z, y = null, yaw = Math.PI) => page.evaluate(([x, z, y, yaw]) => { const C = __ctx; const gy = C.world.groundHeight(x, z, y ?? 999);
       C.player.teleport(new C.THREE.Vector3(x, y ?? gy + 1.0, z), yaw); }, [x, z, y, yaw]),
   };
@@ -139,37 +173,66 @@ S.trickZip = async a => {
   await a.mark('after zip (expect perch)'); await a.sec(2.0);
 };
 // (c) wall-run up a skyscraper (Shift + W into the facade), wall zips (E), top-out and perch
+// Take 1 stood 6 m from a shop shutter (roof 20 m, low) and take 2 stood behind a parked car (the player cannot vault cars), so the
+// approach point is now PROVEN with an un-filmed dry run: candidate facades (roof > 90 m) x lateral offsets are tried by holding
+// Shift+W for ~1.7 s of un-captured frames; the first candidate whose player.mode becomes 'wall' is the one that is filmed.
 S.wallRun = async a => {
   await reset(a);
-  // (__cmb.debug.nearWall picked a parked vehicle / low obstacle in the first take) -> find a real tower facade: ray at
-  // 30 m height from the avenue, facade whose roof is > 90 m, stand 6 m in front of it facing it
-  const w = await a.ev(() => {
-    const C = __ctx, V = (x, y, z) => new C.THREE.Vector3(x, y, z); let best = null;
-    for (const [ox, oz] of [[250, 120], [250, 60], [250, 0], [250, -60], [250, 200]]) for (let i = 0; i < 16; i++) {
-      const a = i / 16 * Math.PI * 2, d = V(Math.sin(a), 0, Math.cos(a)); const h = C.world.raycast(V(ox, 30, oz), d, 60);
+  const cands = await a.ev(() => {
+    const C = __ctx, V = (x, y, z) => new C.THREE.Vector3(x, y, z), out = [];
+    for (const [ox, oz] of [[250, 120], [250, 60], [250, 0], [250, -60], [250, -120], [250, 200], [250, -200]]) for (let i = 0; i < 16; i++) {
+      const ang = i / 16 * Math.PI * 2, d = V(Math.sin(ang), 0, Math.cos(ang)); const h = C.world.raycast(V(ox, 30, oz), d, 60);
       if (!h || Math.abs(h.normal.y) > 0.2) continue;
       const top = C.world.raycast(V(h.point.x - h.normal.x, 900, h.point.z - h.normal.z), V(0, -1, 0), 900); const roof = top ? top.point.y : 0;
-      if (roof > 90 && (!best || roof > best.roof)) best = { p: h.point.clone(), n: h.normal.clone().setY(0).normalize(), roof };
+      if (roof > 90) out.push({ p: h.point.toArray(), n: h.normal.clone().setY(0).normalize().toArray(), roof });
     }
-    if (!best) return null;
-    const q = best.p.clone().addScaledVector(best.n, 6); q.y = C.world.groundHeight(q.x, q.z, 5) + 1.0;
-    C.player.teleport(q, Math.atan2(-best.n.x, -best.n.z)); return { at: [+q.x.toFixed(1), +q.z.toFixed(1)], roof: Math.round(best.roof) };
+    return out.sort((x, y) => y.roof - x.roof);
   });
-  a.mark('tower facade ' + JSON.stringify(w));
+  let chosen = null, tried = 0;
+  outer: for (const c of cands) for (const lat of [0, -4, 4, -8, 8]) for (const dist of [6, 4]) {
+    if (++tried > 14) break outer;
+    const ok = await a.ev(([c, lat, dist]) => {
+      const C = __ctx, n = new C.THREE.Vector3(...c.n), p = new C.THREE.Vector3(...c.p), t = new C.THREE.Vector3(-n.z, 0, n.x);
+      const q = p.clone().addScaledVector(n, dist).addScaledVector(t, lat); q.y = C.world.groundHeight(q.x, q.z, 5) + 1.0;
+      C.player.teleport(q, Math.atan2(-n.x, -n.z)); return q.toArray();
+    }, [c, lat, dist]);
+    await page.keyboard.down('ShiftLeft'); await page.keyboard.down('KeyW');
+    let hit = false;
+    for (let f = 0; f < 110 && !hit; f++) { await page.evaluate(() => __ctx.stepFrame(1 / 60)); hit = await page.evaluate(() => __ctx.player.mode === 'wall'); }
+    await page.keyboard.up('ShiftLeft'); await page.keyboard.up('KeyW');
+    await a.ev(() => { __ctx.input.releaseAll(); });
+    console.log(`  [wallRun] candidate roof ${Math.round(c.roof)} lat ${lat} dist ${dist} -> ${hit ? 'WALL' : 'blocked'}`);
+    if (hit) { chosen = { c, lat, dist, ok }; break outer; }
+  }
+  if (!chosen) { a.mark('NO wall-run approach found (all candidates blocked)'); await a.sec(2); return; }
+  await a.ev(([c, lat, dist]) => {
+    const C = __ctx, n = new C.THREE.Vector3(...c.n), p = new C.THREE.Vector3(...c.p), t = new C.THREE.Vector3(-n.z, 0, n.x);
+    const q = p.clone().addScaledVector(n, dist).addScaledVector(t, lat); q.y = C.world.groundHeight(q.x, q.z, 5) + 1.0;
+    C.player.teleport(q, Math.atan2(-n.x, -n.z));
+  }, [chosen.c, chosen.lat, chosen.dist]);
+  a.mark(`tower facade roof ${Math.round(chosen.c.roof)} m, start ${JSON.stringify(chosen.ok.map(x => +x.toFixed(1)))}`);
   await a.sec(0.8);
   await a.mark('Shift+W into the facade'); await a.down('ShiftLeft'); await a.down('KeyW');
   await a.sec(4.0);
   await a.mark('E: wall zip up'); await a.tap('KeyE'); await a.sec(2.0); await a.tap('KeyE'); await a.sec(2.0); await a.tap('KeyE'); await a.sec(3.0);
-  await a.up('ShiftLeft'); await a.up('KeyW');
+  await a.mark('keep running up until the top-out (max 12 s)');
+  const top = await a.until(() => __ctx.player.mode !== 'wall', 12);
+  a.mark(top ? 'left the wall (top-out / launch)' : 'STILL ON THE WALL after 12 s (no top-out)');
+  await a.sec(2.5); await a.up('ShiftLeft'); await a.up('KeyW');
   await a.mark('released: expect perch / top'); await a.sec(3.0);
 };
-// (d) ground run through a street with crowd / traffic
+// (d) ground run through a street with crowd / traffic. Take 1 (W held, no steering) ended stuck in a subway-entrance stairwell / behind a
+// hot-dog cart, so this take uses the steering autopilot along the east sidewalk of the avenue, then a Shift parkour run.
 S.street = async a => {
   await reset(a, 262, 150, Math.PI);
-  await a.mark('run W down the east sidewalk'); await a.down('KeyW');
-  await a.sec(5.0);
-  await a.mark('Shift parkour run'); await a.down('ShiftLeft'); await a.sec(5.0, i => i % 2 ? null : a.look(i < 60 ? 3 : -3, 0));
-  await a.up('ShiftLeft'); await a.sec(3.0); await a.up('KeyW'); await a.sec(1.0);
+  await a.pilotInit();
+  await a.mark('run down the east sidewalk of the avenue (steering autopilot, W held)'); await a.down('KeyW');
+  await a.goto([262, 60], { stop: 4, max: 9 });
+  await a.mark('Shift parkour run'); await a.down('ShiftLeft');
+  await a.goto([262, -40], { stop: 4, max: 9 });
+  await a.up('ShiftLeft');
+  await a.goto([262, -120], { stop: 4, max: 9 });
+  await a.up('KeyW'); await a.sec(1.0);
 };
 // (e) street fight: spawned thugs, combos, dodge, web shooter, web strike, finisher
 S.fight = async a => {
@@ -212,13 +275,48 @@ S.skins = async a => {
   }
   await a.up('KeyW'); await a.sec(1.0);
 };
-// (h) citizens + animals up close: walk the busy sidewalk near the spawn, orbit the camera slowly
+// (h) citizens + animals up close while moving. Take 1 ran into a shop window and the camera collapsed into the hero's head at the end
+// (kept as still bugs/camera_inside_hero.jpg); this take follows a dog walker, then walks up to a street critter.
 S.crowd = async a => {
   await reset(a, 262.5, 172, Math.PI);
-  await a.mark('slow sidewalk run past citizens / dog walkers, camera swinging side to side');
-  await a.down('KeyW');
-  await a.sec(9.0, i => a.look(Math.sin(i / 40) * 6, 0));
-  await a.up('KeyW'); await a.mark('stand + orbit'); await a.sec(4.0, () => a.look(8, 0));
+  await a.pilotInit();
+  const dog = await a.ev(() => { const A = __ctx.world.life.crowd.agents, p = __ctx.player.position; let best = null, bd = 1e9;
+    for (const g of A) if (g.dog && !g.dead) { const d = Math.hypot(g.x - p.x, g.z - p.z); if (d < bd) { bd = d; best = g; } }
+    window.__dogA = best; return best ? [+best.x.toFixed(1), +best.z.toFixed(1), +bd.toFixed(1)] : null; });
+  await a.mark('walk up to the nearest dog walker ' + JSON.stringify(dog)); await a.down('KeyW');
+  await a.goto('[__dogA.x, __dogA.z]', { stop: 3, max: 9 });
+  await a.mark('follow the dog walker for 7 s (camera glancing side to side)');
+  for (let i = 0; i < 420; i++) {
+    const d = await a.ev(() => window.__steer(__dogA.x, __dogA.z, 2.2));
+    if (d > 2.6) await a.down('KeyW'); else if (d < 2.0) await a.up('KeyW');
+    await a.sec(1 / 60, () => a.look(Math.sin(i / 50) * 2.5, 0));
+  }
+  const crit = await a.ev(() => { const p = __ctx.player.position; let best = null, bd = 1e9;
+    for (const s of __ctx.world.life.critters.sites) for (const c of s.a || []) { const d = Math.hypot(c.x - p.x, c.z - p.z); if (d < bd) { bd = d; best = c; window.__critKind = s.kind; } }
+    window.__crit = best; return best ? [window.__critKind, +best.x.toFixed(1), +best.z.toFixed(1), +bd.toFixed(1)] : null; });
+  a.mark('walk up to the nearest street critter ' + JSON.stringify(crit));
+  if (crit) { await a.down('KeyW'); await a.goto('[__crit.x, __crit.z]', { stop: 2.2, max: 12 }); }
+  await a.up('KeyW'); await a.mark('stand next to it'); await a.sec(3.0);
+};
+
+// (bug evidence) hero runs straight at the side of a parked car: no vault / step-up, the run cycle plays in place against the door
+// (an oblique approach slides along the body). Approach side chosen by an un-filmed dry run (sd = +1 / -1 around each of the nearest parked cars).
+S.carBlock = async a => {
+  await reset(a);
+  const cars = await a.ev(() => { const C = __ctx, o = C.player.position.clone(); return (C.world.carsNear(o, 80) || []).filter(c => c.parked).slice(0, 4).map(c => ({ x: c.x, z: c.z, ry: c.ry, wid: c.wid })); });
+  const place = ([c, sd]) => { const C = __ctx, V = (x, y, z) => new C.THREE.Vector3(x, y, z), fx = Math.cos(c.ry), fz = -Math.sin(c.ry), sx = -fz, sz = fx;
+    const q = V(c.x + sx * sd * (c.wid / 2 + 5), 0, c.z + sz * sd * (c.wid / 2 + 5)); q.y = C.world.groundHeight(q.x, q.z, 1.5) + 1.0; C.player.teleport(q, Math.atan2(-sx * sd, -sz * sd)); return q.toArray(); };
+  let chosen = null;
+  outer: for (const c of cars) for (const sd of [-1, 1]) {
+    await a.ev(place, [c, sd]); await page.keyboard.down('KeyW');
+    let p0 = null; for (let f = 0; f < 120; f++) { await page.evaluate(() => __ctx.stepFrame(1 / 60)); if (f === 89) p0 = await a.ev(() => __ctx.player.position.toArray()); }
+    const p1 = await a.ev(() => __ctx.player.position.toArray()); await page.keyboard.up('KeyW'); await a.ev(() => __ctx.input.releaseAll());
+    const moved = Math.hypot(p1[0] - p0[0], p1[2] - p0[2]); console.log(`  [carBlock] car (${c.x.toFixed(1)}, ${c.z.toFixed(1)}) sd ${sd}: moved ${moved.toFixed(2)} m in the last 0.5 s of a 2 s run -> ${moved < 0.3 ? 'STUCK' : 'slides / passes'}`);
+    if (moved < 0.3) { chosen = [c, sd]; break outer; }
+  }
+  if (!chosen) { a.mark('no head-on blocked approach found'); await a.sec(2); return; }
+  await a.ev(place, chosen); a.mark('parked car at ' + JSON.stringify([+chosen[0].x.toFixed(1), +chosen[0].z.toFixed(1)]) + ': W held straight at its side');
+  await a.sec(0.8); await a.down('KeyW'); await a.sec(5.0); await a.up('KeyW'); await a.sec(0.5);
 };
 
 // ------------------------------------------------------------------------------------------------ run
@@ -226,8 +324,8 @@ const summary = [];
 for (const name of names) {
   const fn = S[name]; if (!fn) { console.error('unknown scenario', name); continue; }
   const { api, st } = makeApi(name);
-  const tag = `${name}_${W}x${H}`;
-  let perfHandle = null;
+  const tag = `${name}_${W}x${H}${DPR !== 1 ? '_dpr' + DPR : ''}${process.env.TAG ? '_' + process.env.TAG : ''}`;
+  let perfHandle = null; const rec0 = {};
   if (MODE === 'film') {
     await page.evaluate(() => { __ctx.manualStep = true; });
     st.rawPath = path.join(SCRATCH, 'raw', `${tag}.mp4`);
@@ -235,8 +333,17 @@ for (const name of names) {
       '-an', '-c:v', 'libx264', '-preset', 'medium', '-crf', '16', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', st.rawPath], { stdio: ['pipe', 'ignore', 'inherit'] });
     st.done = once(st.ff, 'close');
   } else {
-    await page.evaluate(() => { __ctx.manualStep = false; window.__ft = []; let last = performance.now();
-      const f = now => { window.__ft.push(now - last); last = now; if (!window.__ftStop) requestAnimationFrame(f); }; window.__ftStop = false; requestAnimationFrame(f); });
+    rec0.gpuBefore = gpuLaunch;
+    st.gpuSamples = []; st.gpuTimer = setInterval(async () => { const u = await gpuUtil(); if (u != null) st.gpuSamples.push(u); }, 1500);
+    // rAF deltas + GPU time per frame from EXT_disjoint_timer_query_webgl2 wrapped around pipeline.render (the whole scene + post chain; excludes
+    // the JS world / player update). rAF deltas alone can under-report when the browser does not throttle the page to GPU completion.
+    await page.evaluate(() => { __ctx.manualStep = false; window.__ft = []; window.__gq = { pend: [], ms: [], disjoint: 0 }; let last = performance.now();
+      const C = __ctx, gl = C.renderer.getContext(), ext = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+      if (ext && !C.__gqWrapped) { const orig = C.pipeline.render.bind(C.pipeline); C.__gqWrapped = true;
+        C.pipeline.render = dt => { if (window.__gq.pend.length < 60 && !window.__ftStop) { const q = gl.createQuery(); gl.beginQuery(ext.TIME_ELAPSED_EXT, q); orig(dt); gl.endQuery(ext.TIME_ELAPSED_EXT); window.__gq.pend.push(q); } else orig(dt); }; }
+      const poll = () => { const Q = window.__gq; while (Q.pend.length && gl.getQueryParameter(Q.pend[0], gl.QUERY_RESULT_AVAILABLE)) { const q = Q.pend.shift();
+        if (gl.getParameter(ext.GPU_DISJOINT_EXT)) Q.disjoint++; else Q.ms.push(gl.getQueryParameter(q, gl.QUERY_RESULT) / 1e6); gl.deleteQuery(q); } };
+      const f = now => { window.__ft.push(now - last); last = now; if (ext) poll(); if (!window.__ftStop) requestAnimationFrame(f); }; window.__ftStop = false; requestAnimationFrame(f); });
   }
   const c0 = consoleLog.length, w0 = Date.now();
   try { await fn(api); } catch (e) { console.error(`[pt] ${name} failed:`, e.message); api.mark('SCRIPT ERROR ' + e.message); }
@@ -256,14 +363,19 @@ for (const name of names) {
     fs.writeFileSync(path.join(OUTDIR, 'logs', `${name}.json`), JSON.stringify(rec, null, 1));
   } else {
     const ft = await page.evaluate(() => { window.__ftStop = true; return window.__ft; });
+    await page.waitForTimeout(500); const gq = await page.evaluate(() => { const Q = window.__gq; return Q ? { ms: Q.ms, disjoint: Q.disjoint } : null; });
+    clearInterval(st.gpuTimer); rec.gpuUtil = { before: rec0.gpuBefore, during: st.gpuSamples, duringMean: st.gpuSamples.length ? +(st.gpuSamples.reduce((x, y) => x + y, 0) / st.gpuSamples.length).toFixed(1) : null, after: await gpuUtil() };
+    rec.contaminated = rec0.gpuBefore == null || rec0.gpuBefore > 25;
+    rec.endRender = await page.evaluate(() => { const C = __ctx; return { pixelRatio: C.renderer.getPixelRatio(), drawingBuffer: C.renderer.getDrawingBufferSize(new C.THREE.Vector2()).toArray() }; });
     ft.shift(); const s = [...ft].sort((x, y) => x - y), pc = p => s[Math.min(s.length - 1, Math.floor(s.length * p))];
     const stats = { frames: ft.length, avg: +(ft.reduce((x, y) => x + y, 0) / ft.length).toFixed(2), median: +pc(0.5).toFixed(2), p95: +pc(0.95).toFixed(2), p99: +pc(0.99).toFixed(2), max: +s[s.length - 1].toFixed(1),
       hitches33: ft.filter(x => x > 33.4).length, hitches50: ft.filter(x => x > 50).length, fps: +(1000 / (ft.reduce((x, y) => x + y, 0) / ft.length)).toFixed(1) };
+    if (gq && gq.ms.length) { const g = [...gq.ms].sort((x, y) => x - y), gp = p => g[Math.min(g.length - 1, Math.floor(g.length * p))]; stats.gpuMs = { n: g.length, disjoint: gq.disjoint, median: +gp(0.5).toFixed(2), p95: +gp(0.95).toFixed(2), p99: +gp(0.99).toFixed(2), max: +g[g.length - 1].toFixed(1), mean: +(g.reduce((x, y) => x + y, 0) / g.length).toFixed(2) }; rec.rawGpuMs = gq.ms.map(x => +x.toFixed(2)); }
     rec.frameTimes = stats; rec.gpu = await page.evaluate(() => { const i = __ctx.renderer.info.render; return { calls: i.calls, tris: i.triangles }; });
-    fs.writeFileSync(path.join(OUTDIR, 'perf', `${tag}.json`), JSON.stringify({ ...rec, log: undefined, rawFrameTimes: ft.map(x => +x.toFixed(2)) }));
-    console.log(`[perf] ${tag}: ${JSON.stringify(stats)}`);
+    fs.writeFileSync(path.join(OUTDIR, 'perf', `${tag}.json`), JSON.stringify({ ...rec, log: undefined, rawFrameTimes: ft.map(x => +x.toFixed(2)), rawGpuMs: rec.rawGpuMs }));
+    console.log(`[perf] ${tag}: ${JSON.stringify(stats)} gpu before ${rec0.gpuBefore}% during-mean ${rec.gpuUtil.duringMean}% ${rec.contaminated ? 'CONTAMINATED' : 'quiet'}`);
   }
-  summary.push({ name, clipMB: rec.clipMB, game: rec.gameSeconds, wall: rec.wallSeconds, errs: Object.keys(counts).length, ...(rec.frameTimes || {}) });
+  summary.push({ name, clipMB: rec.clipMB, game: rec.gameSeconds, wall: rec.wallSeconds, errs: Object.keys(counts).length, ...(rec.frameTimes || {}), gpuBefore: rec.gpuUtil?.before, gpuMean: rec.gpuUtil?.duringMean });
   console.log(`[pt] ${name} done: ${rec.gameSeconds}s game / ${rec.wallSeconds}s wall`, Object.keys(counts).length ? 'console: ' + JSON.stringify(counts).slice(0, 600) : '');
 }
 console.table(summary);

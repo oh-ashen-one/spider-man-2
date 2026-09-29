@@ -17,20 +17,20 @@
   "quality": "high",
   "maxTexUnits": 16
  },
- "gameSeconds": 15,
- "wallSeconds": 52,
+ "gameSeconds": 29,
+ "wallSeconds": 95.9,
  "marks": [
   {
    "t": 1,
-   "label": "run W down the east sidewalk"
+   "label": "run down the east sidewalk of the avenue (steering autopilot, W held)"
   },
   {
-   "t": 6,
+   "t": 10,
    "label": "Shift parkour run"
   }
  ],
  "console": {
-  "warning: THREE.WebGLTextures: Trying to use 17 texture units while this GPU supports only 16": 907
+  "warning: THREE.WebGLTextures: Trying to use 17 texture units while this GPU supports only 16": 1828
  },
  "log": [
   {
@@ -118,7 +118,7 @@
    "pos": [
     262,
     1.1,
-    148.6
+    148.9
    ],
    "spd": 9.2,
    "mode": "ground",
@@ -132,9 +132,9 @@
   {
    "t": 1.5,
    "pos": [
-    261.5,
+    261.2,
     1.1,
-    146.7
+    146.8
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -148,9 +148,9 @@
   {
    "t": 1.75,
    "pos": [
-    260.9,
+    261,
     0.9,
-    145.6
+    144.6
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -164,9 +164,9 @@
   {
    "t": 2,
    "pos": [
-    260.8,
+    261,
     0.9,
-    143.2
+    142.1
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -180,9 +180,9 @@
   {
    "t": 2.25,
    "pos": [
-    260.9,
-    0.9,
-    140.7
+    261,
+    1.1,
+    139.7
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -196,9 +196,9 @@
   {
    "t": 2.5,
    "pos": [
-    261.6,
+    261,
     1.1,
-    138.4
+    137.2
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -212,9 +212,9 @@
   {
    "t": 2.75,
    "pos": [
-    262.6,
+    261,
     1.1,
-    136.1
+    134.8
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -228,57 +228,57 @@
   {
    "t": 3,
    "pos": [
-    262.8,
+    261,
     1.1,
-    134.7
+    132.3
    ],
-   "spd": 3.5,
+   "spd": 9.8,
    "mode": "ground",
-   "sub": "walk",
+   "sub": "run",
    "trick": null,
    "node": "ground",
-   "clip": "jog>run@0.15 r1.92 k1.18",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
    "cmb": "free hp100 c0 ",
    "suit": "advanced"
   },
   {
    "t": 3.25,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.9
+    129.9
    ],
-   "spd": 3.3,
+   "spd": 9.8,
    "mode": "ground",
-   "sub": "walk",
+   "sub": "run",
    "trick": null,
    "node": "ground",
-   "clip": "walk>jog@0.75 r1.57 k1.11",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
    "cmb": "free hp100 c0 ",
    "suit": "advanced"
   },
   {
    "t": 3.5,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    127.4
    ],
-   "spd": 5.8,
+   "spd": 9.8,
    "mode": "ground",
    "sub": "run",
    "trick": null,
    "node": "ground",
-   "clip": "jog>run@0.26 r1.91 k1.19",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
    "cmb": "free hp100 c0 ",
    "suit": "advanced"
   },
   {
    "t": 3.75,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    125
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -292,9 +292,9 @@
   {
    "t": 4,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    122.5
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -308,9 +308,9 @@
   {
    "t": 4.25,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    120.1
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -324,9 +324,9 @@
   {
    "t": 4.5,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    117.6
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -340,9 +340,9 @@
   {
    "t": 4.75,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    115.2
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -356,9 +356,9 @@
   {
    "t": 5,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    112.8
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -372,9 +372,9 @@
   {
    "t": 5.25,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    110.3
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -388,9 +388,9 @@
   {
    "t": 5.5,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    107.9
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -404,9 +404,9 @@
   {
    "t": 5.75,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    105.4
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -420,9 +420,9 @@
   {
    "t": 6,
    "pos": [
-    262.8,
+    261.3,
     1.1,
-    133.3
+    103
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -436,9 +436,9 @@
   {
    "t": 6.25,
    "pos": [
-    262.8,
+    261.3,
     1.1,
-    133.3
+    100.5
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -452,9 +452,9 @@
   {
    "t": 6.5,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    98.1
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -468,9 +468,9 @@
   {
    "t": 6.75,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    95.6
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -484,9 +484,9 @@
   {
    "t": 7,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    93.3
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -500,9 +500,9 @@
   {
    "t": 7.25,
    "pos": [
-    262.8,
+    261,
     1.1,
-    133.3
+    91.2
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -516,9 +516,9 @@
   {
    "t": 7.5,
    "pos": [
-    262.8,
+    261,
     1.1,
-    133.3
+    88.7
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -532,9 +532,9 @@
   {
    "t": 7.75,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    86.3
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -548,9 +548,9 @@
   {
    "t": 8,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    83.8
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -564,9 +564,9 @@
   {
    "t": 8.25,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261.3,
+    0.9,
+    81.4
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -580,9 +580,9 @@
   {
    "t": 8.5,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261.4,
+    0.9,
+    78.9
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -596,9 +596,9 @@
   {
    "t": 8.75,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261.4,
+    0.9,
+    76.5
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -612,9 +612,9 @@
   {
    "t": 9,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261,
+    0.9,
+    74.1
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -628,9 +628,9 @@
   {
    "t": 9.25,
    "pos": [
-    262.8,
+    261,
     1.1,
-    133.3
+    71.6
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -644,9 +644,9 @@
   {
    "t": 9.5,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261,
+    0.9,
+    69.4
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -660,9 +660,9 @@
   {
    "t": 9.75,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    66.9
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -676,9 +676,9 @@
   {
    "t": 10,
    "pos": [
-    262.8,
+    261.5,
     1.1,
-    133.3
+    64.5
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -692,9 +692,9 @@
   {
    "t": 10.25,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    62.2
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -708,9 +708,9 @@
   {
    "t": 10.5,
    "pos": [
-    262.8,
+    261,
     1.1,
-    133.3
+    59.8
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -724,9 +724,9 @@
   {
    "t": 10.75,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    57.3
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -740,11 +740,11 @@
   {
    "t": 11,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    54.9
    ],
-   "spd": 9.7,
+   "spd": 9.8,
    "mode": "ground",
    "sub": "run",
    "trick": null,
@@ -756,27 +756,27 @@
   {
    "t": 11.25,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    52.4
    ],
-   "spd": 9.7,
+   "spd": 9.8,
    "mode": "ground",
    "sub": "run",
    "trick": null,
    "node": "ground",
-   "clip": "run>sprint@0.13 r1.97 k1.34",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
    "cmb": "free hp100 c0 ",
    "suit": "advanced"
   },
   {
    "t": 11.5,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    50
    ],
-   "spd": 9.7,
+   "spd": 9.8,
    "mode": "ground",
    "sub": "run",
    "trick": null,
@@ -788,25 +788,25 @@
   {
    "t": 11.75,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    47.5
    ],
-   "spd": 9.7,
+   "spd": 9.8,
    "mode": "ground",
    "sub": "run",
    "trick": null,
    "node": "ground",
-   "clip": "run>sprint@0.13 r1.97 k1.34",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
    "cmb": "free hp100 c0 ",
    "suit": "advanced"
   },
   {
    "t": 12,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    45.1
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -820,9 +820,9 @@
   {
    "t": 12.25,
    "pos": [
-    262.8,
+    261.2,
     1.1,
-    133.3
+    42.6
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -836,9 +836,9 @@
   {
    "t": 12.5,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261,
+    0.9,
+    40.4
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -852,9 +852,9 @@
   {
    "t": 12.75,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    261,
+    0.9,
+    38
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -868,9 +868,9 @@
   {
    "t": 13,
    "pos": [
-    262.8,
+    261,
     1.1,
-    133.3
+    35.5
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -884,9 +884,9 @@
   {
    "t": 13.25,
    "pos": [
-    262.8,
+    261,
     1.1,
-    133.3
+    33.1
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -900,9 +900,9 @@
   {
    "t": 13.5,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    30.6
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -916,9 +916,9 @@
   {
    "t": 13.75,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    28.2
    ],
    "spd": 9.8,
    "mode": "ground",
@@ -932,9 +932,905 @@
   {
    "t": 14,
    "pos": [
-    262.8,
+    261.1,
     1.1,
-    133.3
+    25.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 14.25,
+   "pos": [
+    261.2,
+    1.1,
+    23.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 14.5,
+   "pos": [
+    261.2,
+    1.1,
+    20.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 14.75,
+   "pos": [
+    261.2,
+    1.1,
+    18.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 15,
+   "pos": [
+    261.3,
+    1.1,
+    15.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 15.25,
+   "pos": [
+    261,
+    1.1,
+    13.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 15.5,
+   "pos": [
+    260.9,
+    1.1,
+    11.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 15.75,
+   "pos": [
+    261,
+    1.1,
+    8.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 16,
+   "pos": [
+    261,
+    1.1,
+    6.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 16.25,
+   "pos": [
+    261.1,
+    1.1,
+    3.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 16.5,
+   "pos": [
+    261.1,
+    0.9,
+    1.5
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 16.75,
+   "pos": [
+    261.2,
+    0.9,
+    -1
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 17,
+   "pos": [
+    261.2,
+    1.1,
+    -3.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 17.25,
+   "pos": [
+    261.3,
+    1.1,
+    -5.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 17.5,
+   "pos": [
+    261.1,
+    1.1,
+    -8.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 17.75,
+   "pos": [
+    261.2,
+    1.1,
+    -10.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 18,
+   "pos": [
+    261.2,
+    1.1,
+    -13.1
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 18.25,
+   "pos": [
+    261,
+    0.9,
+    -15.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 18.5,
+   "pos": [
+    261.1,
+    1.1,
+    -17.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 18.75,
+   "pos": [
+    261.1,
+    1.1,
+    -20.1
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 19,
+   "pos": [
+    261.2,
+    1.1,
+    -22.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 19.25,
+   "pos": [
+    261.2,
+    1.1,
+    -25
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 19.5,
+   "pos": [
+    261.2,
+    1.1,
+    -27.5
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 19.75,
+   "pos": [
+    261.2,
+    1.1,
+    -29.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 20,
+   "pos": [
+    261.3,
+    1.1,
+    -32.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 20.25,
+   "pos": [
+    261.3,
+    1.1,
+    -34.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 20.5,
+   "pos": [
+    261.3,
+    1.1,
+    -37.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 20.75,
+   "pos": [
+    261.3,
+    1.1,
+    -39.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 21,
+   "pos": [
+    261.3,
+    1.1,
+    -42.2
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 21.25,
+   "pos": [
+    261,
+    1.1,
+    -44.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 21.5,
+   "pos": [
+    261.1,
+    1.1,
+    -46.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 21.75,
+   "pos": [
+    261.1,
+    1.1,
+    -49.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 22,
+   "pos": [
+    261.1,
+    1.1,
+    -51.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 22.25,
+   "pos": [
+    261.2,
+    1.1,
+    -54.2
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 22.5,
+   "pos": [
+    261.2,
+    1.1,
+    -56.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 22.75,
+   "pos": [
+    261.2,
+    1.1,
+    -59.1
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 23,
+   "pos": [
+    261.2,
+    1.1,
+    -61.5
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 23.25,
+   "pos": [
+    261.3,
+    1.1,
+    -64
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 23.5,
+   "pos": [
+    261.2,
+    1.1,
+    -66.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 23.75,
+   "pos": [
+    261.1,
+    1.1,
+    -68.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 24,
+   "pos": [
+    260.9,
+    0.9,
+    -71.1
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 24.25,
+   "pos": [
+    261,
+    0.9,
+    -73.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 24.5,
+   "pos": [
+    261,
+    0.9,
+    -76
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 24.75,
+   "pos": [
+    261.1,
+    0.9,
+    -78.5
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 25,
+   "pos": [
+    261.1,
+    0.9,
+    -80.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 25.25,
+   "pos": [
+    261.2,
+    0.9,
+    -83.4
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 25.5,
+   "pos": [
+    261.3,
+    0.9,
+    -85.8
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 25.75,
+   "pos": [
+    261.3,
+    1.1,
+    -88.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 26,
+   "pos": [
+    261.4,
+    1.1,
+    -90.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 26.25,
+   "pos": [
+    261.2,
+    1.1,
+    -93.1
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 26.5,
+   "pos": [
+    261.3,
+    1.1,
+    -95.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 26.75,
+   "pos": [
+    261,
+    1.1,
+    -97.9
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 27,
+   "pos": [
+    261.1,
+    1.1,
+    -100.3
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 27.25,
+   "pos": [
+    261.3,
+    1.1,
+    -102.7
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 27.5,
+   "pos": [
+    261,
+    1.1,
+    -105.2
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 27.75,
+   "pos": [
+    261,
+    1.1,
+    -107.6
+   ],
+   "spd": 9.8,
+   "mode": "ground",
+   "sub": "run",
+   "trick": null,
+   "node": "ground",
+   "clip": "run>sprint@0.14 r1.97 k1.34",
+   "cmb": "free hp100 c0 ",
+   "suit": "advanced"
+  },
+  {
+   "t": 28,
+   "pos": [
+    261.2,
+    1.1,
+    -110
    ],
    "spd": 9.3,
    "mode": "ground",
@@ -946,11 +1842,11 @@
    "suit": "advanced"
   },
   {
-   "t": 14.25,
+   "t": 28.25,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    260.6,
+    0.9,
+    -111.2
    ],
    "spd": 2.3,
    "mode": "ground",
@@ -962,11 +1858,11 @@
    "suit": "advanced"
   },
   {
-   "t": 14.5,
+   "t": 28.5,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    260.5,
+    0.9,
+    -111.3
    ],
    "spd": 0,
    "mode": "ground",
@@ -978,11 +1874,11 @@
    "suit": "advanced"
   },
   {
-   "t": 14.75,
+   "t": 28.75,
    "pos": [
-    262.8,
-    1.1,
-    133.3
+    260.5,
+    0.9,
+    -111.3
    ],
    "spd": 0,
    "mode": "ground",
@@ -995,6 +1891,6 @@
   }
  ],
  "clip": "docs/night1/baseline/clips/street.mp4",
- "clipMB": 12.58,
+ "clipMB": 13.17,
  "captureFps": "60 (frame-stepped game time, 1/60 s per frame)"
 }
