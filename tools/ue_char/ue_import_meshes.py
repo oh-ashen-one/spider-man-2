@@ -1,7 +1,8 @@
 # UE-side (run through tools/ue_char/uebox.py). Imports hero / thug / suits into /Game/Characters via Interchange glTF.
 # ARGS: {"which": ["hero","thug","suits"]}. Fan homage project; not official Marvel/Sony/Insomniac.
-import unreal, os
-SRC = '/Users/midir/sm2-n1/_scratch/characters/ueimport'
+import unreal, os, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '.')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
+SRC = _scr('ueimport')
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
 HERO_SKEL = '/Game/Characters/Hero/SKEL_Hero'

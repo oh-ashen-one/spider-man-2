@@ -6,7 +6,8 @@ Needs opencv (+ ultralytics for `people`): run with a venv that has them.
                                 last grounded frame (mask bottom leaves the ground line)                 (CH10)
   people    CLIP|IMG [step_s]   YOLO11x person boxes per sampled frame: count, count >= 3 % height, heights (CH11, CH12, CH16)
 Same colour-mask approach as the round-03 critic's bob.py / hero_meas.py."""
-import sys, json
+import sys, os, json
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import scr as _scr  # noqa: E402
 import numpy as np
 import cv2
 
@@ -71,7 +72,7 @@ def takeoff(path, t0, t1):
 def people(path, step=0.5):
     from ultralytics import YOLO
     import os
-    m = YOLO(os.environ.get('YOLO_WEIGHTS', '/Users/midir/sm2-n1/_scratch/characters/r4/spectools/yolo11x-seg.pt'))   # same weights as specs/tools
+    m = YOLO(os.environ.get('YOLO_WEIGHTS', _scr('r4', 'spectools', 'yolo11x-seg.pt')))   # same weights as specs/tools
     out = []
     ims = [(0.0, cv2.imread(path))] if path.lower().endswith(('.jpg', '.png')) else None
     if ims is None:

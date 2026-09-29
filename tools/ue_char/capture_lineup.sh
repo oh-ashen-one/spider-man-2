@@ -9,14 +9,16 @@
 # usage: tools/ue_char/capture_lineup.sh <out_dir>        Fan homage project; not official Marvel/Sony/Insomniac.
 set -e
 WT="$(cd "$(dirname "$0")/../.." && pwd)"
-OUT=${1:-/Users/midir/sm2-n1/_scratch/characters/mov}
+P2_SCRATCH="${P2_SCRATCH:-$WT/unreal/WebHomage/Saved/P2Build}"   # tools/ue_char/p2paths.py
+GPU_SLOT="${GPU_SLOT:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"   # shared GPU lock (docs/night1/gpu/PROTOCOL.md)
+OUT=${1:-$P2_SCRATCH/mov}
 mkdir -p "$OUT"
 FR="$OUT/lineup_frames"
 if [ ! -d "$FR" ] || [ -z "$(ls "$FR" 2>/dev/null)" ]; then
   "$WT/tools/ue_char/ue_wait.sh"   # owner rule: never a 3rd+ Unreal instance (run_game.sh passes -RenderOffScreen -NoSound)
   cd "$WT/unreal/WebHomage"
   # owner rule: every game capture goes through the shared GPU lock (max 2 slots, protocol docs/night1/gpu/PROTOCOL.md)
-  /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- Scripts/run_game.sh "$OUT" -map /Game/Tests/Characters/Char_Lineup -res 1920x1080 -quit 91 -name lineup -movie -timeout 5400 -- -WHCharShot=0 < /dev/null | tail -3
+  "$GPU_SLOT" capture --label characters -- Scripts/run_game.sh "$OUT" -map /Game/Tests/Characters/Char_Lineup -res 1920x1080 -quit 91 -name lineup -movie -timeout 5400 -- -WHCharShot=0 < /dev/null | tail -3
 fi
 cut_clip() {   # name start_s dur_s
   ffmpeg -loglevel error -y -framerate 60 -start_number $(python3 -c "print(int(round($2 * 60)))") -i "$FR/MovieFrame%05d.png" -frames:v $(python3 -c "print(int(round($3 * 60)))") \

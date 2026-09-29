@@ -5,12 +5,14 @@
 #   tools/ue_char/people/build_people.sh [--force]
 set -e
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SCR=/Users/midir/sm2-n1/_scratch/characters/r3
-GLB=/Users/midir/sm2-n1/_scratch/characters/ueimport
+P2_SCRATCH="${P2_SCRATCH:-$WT/unreal/WebHomage/Saved/P2Build}"; export P2_SCRATCH   # tools/ue_char/p2paths.py
+SCR="$P2_SCRATCH/r3"
+GLB="$P2_SCRATCH/ueimport"
+RAW="${P2_RAW:-$HOME/sm2-assets/raw}"
 ART="$WT/art/night1/characters/people"
 mkdir -p "$SCR/people" "$SCR/fit" "$GLB" "$ART"
 for src in "leather+jacket+man+3d+model.glb" "human+character+3d+model.glb" "human+figure+3d+model.glb" "adult+male+3d+model.glb" "human+character+3d+model (3).glb" "baseball+cap+3d+model.glb"; do
-  [ -f "$HOME/sm2-assets/raw/$src" ] || { echo "missing raw Tripo person: ~/sm2-assets/raw/$src" >&2; exit 1; }
+  [ -f "$RAW/$src" ] || { echo "missing raw Tripo person: $RAW/$src" >&2; exit 1; }
 done
 pids=()
 PEOPLE="thug brute hood tee beard"

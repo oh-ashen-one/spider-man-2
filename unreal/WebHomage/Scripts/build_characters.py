@@ -9,6 +9,12 @@
 # Steps: prep,clean,tex,mat,mesh,citizens,rename,abp,map   (default all)
 import unreal, os, subprocess, time, glob
 
+# ---- paths (round 04: relocatable; nothing is tied to one worktree or scratch dir) ------------------------------------
+#   repo root   ARGS['wt']     | env P2_WT      | default: this project's dir (unreal/WebHomage) + ../..
+#   art dir     ARGS['art']    | env P2_ART     | default: <repo>/art/night1/characters   (git-ignored PNG/FBX made by 'prep')
+#   GLB inputs  ARGS['inputs'] | env P2_INPUTS  | default: <P2_SCRATCH>/ueimport          (stripped GLBs made by 'prep')
+#   scratch     ARGS['scratch']| env P2_SCRATCH | default: <repo>/unreal/WebHomage/Saved/P2Build (tools/ue_char/p2paths.py)
+# Legacy: build_manhattan.py (round 01) text-substitutes the 4 constant lines below; a substituted value is kept as is.
 WT = '/Users/midir/sm2-n1/characters'
 ART = WT + '/art/night1/characters'
 GLB = '/Users/midir/sm2-n1/_scratch/characters/ueimport'
@@ -30,6 +36,19 @@ try:
 except NameError:
     import json
     ARGS = json.loads(os.environ.get('CHAR_BUILD_ARGS', '{}'))
+_LEGACY = '/Users/midir/sm2-n1/' + 'characters'   # the pre-round-04 hard-coded values (spelled so the legacy substitution skips it)
+_LEGACY_ART, _LEGACY_GLB = _LEGACY + '/art/night1/characters', '/Users/midir/sm2-n1/_scratch/' + 'characters/ueimport'
+def _cfg(key, env, cur, legacy, default):
+    v = ARGS.get(key) or os.environ.get(env)
+    if v: return os.path.abspath(v)
+    return cur if cur != legacy else default()   # substituted by a caller -> keep; untouched -> derive
+_PROJ = os.path.abspath(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()))
+WT = _cfg('wt', 'P2_WT', WT, _LEGACY, lambda: os.path.abspath(os.path.join(_PROJ, '..', '..')))
+SCRATCH = os.path.abspath(ARGS.get('scratch') or os.environ.get('P2_SCRATCH') or os.path.join(WT, 'unreal', 'WebHomage', 'Saved', 'P2Build'))
+ART = _cfg('art', 'P2_ART', ART, _LEGACY_ART, lambda: WT + '/art/night1/characters')
+GLB = _cfg('inputs', 'P2_INPUTS', GLB, _LEGACY_GLB, lambda: SCRATCH + '/ueimport')
+CIT = ART + '/export/citizens'
+_ENV = dict(os.environ, P2_WT=WT, P2_SCRATCH=SCRATCH)   # the 'prep' tools read these (tools/ue_char/p2paths.py)
 STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,abp,map').split(','))
 ROOT, TESTS = '/Game/Characters', '/Game/Tests/Characters'
 EAL = unreal.EditorAssetLibrary
@@ -37,19 +56,20 @@ AT = unreal.AssetToolsHelpers.get_asset_tools()
 MEL = unreal.MaterialEditingLibrary
 T0 = time.time()
 def log(*a): print('[build_characters %5.0fs]' % (time.time() - T0), *a)
+log('paths: wt=%s art=%s inputs=%s scratch=%s' % (WT, ART, GLB, SCRATCH))
 def load(p): return unreal.load_asset(p)
 
 # ------------------------------------------------------------------------------------------------ prep (outside UE)
 if 'prep' in STEPS:
-    subprocess.run(['python3', WT + '/tools/ue_char/prep_glbs.py'], check=True, capture_output=True)
-    subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_hand_fix.py'], check=True, capture_output=True)
+    subprocess.run(['python3', WT + '/tools/ue_char/prep_glbs.py'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_hand_fix.py'], check=True, capture_output=True, env=_ENV)
     # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
-    subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True)
+    subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True, env=_ENV)
     # street thug + brute: raw Tripo people (~/sm2-assets/raw) dressed, fitted to the hero skeleton (cached), textures + stripped GLBs
-    subprocess.run(['bash', WT + '/tools/ue_char/people/build_people.sh'], check=True, capture_output=True)
+    subprocess.run(['bash', WT + '/tools/ue_char/people/build_people.sh'], check=True, capture_output=True, env=_ENV)
     if not all(os.path.exists('%s/%s.fbx' % (CIT, c)) for c in CITIZENS):
-        subprocess.run(['bash', WT + '/tools/ue_char/eval/export_citizens.sh'] + CITIZENS, check=True, capture_output=True)
+        subprocess.run(['bash', WT + '/tools/ue_char/eval/export_citizens.sh'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     log('prep ok')
 
 if 'clean' in STEPS:
@@ -222,6 +242,30 @@ def build_simple(name, shading=None, emissive=False):
     MEL.recompile_material(m)
     return m
 
+def build_hero_lens():
+    """M_Char_HeroLens (round 04, critic: 'flat white lenses, no specular'): clear-coat lacquer over a white lens. The lens triangles are
+    flat, so the dome is suggested in shading: the base colour falls off toward grazing angles (Fresnel), the clear coat adds a sharp
+    specular on top of a slightly rougher base."""
+    m = new_material(ROOT + '/Shared/Materials', 'M_Char_HeroLens', skeletal=True)
+    m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_CLEAR_COAT)
+    c = vector(m, 'Color', (0.82, 0.84, 0.86, 1), -700, -250)
+    fr = E(m, unreal.MaterialExpressionFresnel, -700, -80)
+    fr.set_editor_property('exponent', 2.2); fr.set_editor_property('base_reflect_fraction', 0.0)
+    edge = E(m, unreal.MaterialExpressionMultiply, -450, -120)
+    MEL.connect_material_expressions(c, 'RGB', edge, 'A'); MEL.connect_material_expressions(scalar(m, 'EdgeDarken', 0.55, -700, 40), '', edge, 'B')
+    lp = E(m, unreal.MaterialExpressionLinearInterpolate, -250, -200)
+    MEL.connect_material_expressions(c, 'RGB', lp, 'A'); MEL.connect_material_expressions(edge, '', lp, 'B'); MEL.connect_material_expressions(fr, '', lp, 'Alpha')
+    MEL.connect_material_property(lp, '', unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(scalar(m, 'Roughness', 0.22, -500, 120), '', unreal.MaterialProperty.MP_ROUGHNESS)
+    MEL.connect_material_property(scalar(m, 'Specular', 0.8, -500, 200), '', unreal.MaterialProperty.MP_SPECULAR)
+    MEL.connect_material_property(scalar(m, 'ClearCoat', 1.0, -500, 280), '', unreal.MaterialProperty.MP_CUSTOM_DATA0)
+    MEL.connect_material_property(scalar(m, 'ClearCoatRoughness', 0.03, -500, 360), '', unreal.MaterialProperty.MP_CUSTOM_DATA1)
+    em = E(m, unreal.MaterialExpressionMultiply, -250, 440)
+    MEL.connect_material_expressions(lp, '', em, 'A'); MEL.connect_material_expressions(scalar(m, 'Emissive', 0.03, -500, 460), '', em, 'B')
+    MEL.connect_material_property(em, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(m)
+    return m
+
 def build_idmask():
     """M_Char_IDMask: unlit emissive of a region texture (test captures only: brute face/hands/cloth masks)."""
     m = new_material(ROOT + '/Shared/Materials', 'M_Char_IDMask', skeletal=True)
@@ -274,7 +318,13 @@ if 'mat' in STEPS:
        tex={'BaseColor': ROOT + '/Hero/Textures/T_Hero_BaseColor', 'ORM': ROOT + '/Hero/Textures/T_Hero_ORM',
             'Normal': ROOT + '/Hero/Textures/T_Hero_Normal', 'DetailNormal': ROOT + '/Shared/Textures/T_Fabric_Knit_N'},
        scal={'DetailTiling': 48.0, 'DetailStrength': 0.6, 'Cloth': 0.55}, switches={'HasORM': True})
-    mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
+    try:   # round 04: clear-coat lens with a grazing-angle falloff; the old simple lens stays as the fallback
+        hlens = build_hero_lens()
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.22, 'Specular': 0.8, 'ClearCoat': 1.0, 'ClearCoatRoughness': 0.03, 'Emissive': 0.03}, vec={'Color': (0.82, 0.84, 0.86, 1)})
+        log('hero lens: clear coat')
+    except Exception as e:
+        log('hero lens: clear coat failed, simple lens', str(e)[:160])
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
     mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.35}, vec={'Color': (0.02, 0.02, 0.025, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
@@ -360,6 +410,7 @@ HERO_SKEL = ROOT + '/Hero/SK_Hero_Skeleton'
 CIT_SKEL = ROOT + '/Citizens/SK_Citizen_Skeleton'
 HERO_PHYS = ROOT + '/Hero/SK_Hero_PhysicsAsset'
 CIT_TMP = '/Users/midir/sm2-n1/_scratch/characters/ueimport/citizens'
+if CIT_TMP == _LEGACY_GLB + '/citizens': CIT_TMP = GLB + '/citizens'   # untouched legacy value -> next to the GLB inputs
 MESHES = [('SK_Hero', ROOT + '/Hero', None, True), ('SK_Thug', ROOT + '/Thug', HERO_SKEL, True)] + \
          [('SK_Suit_' + s, ROOT + '/Suits/' + s, HERO_SKEL, False) for s in SUITS] + \
          [('SK_Street_' + k, ROOT + '/People', HERO_SKEL, False) for k in PEOPLE] + \

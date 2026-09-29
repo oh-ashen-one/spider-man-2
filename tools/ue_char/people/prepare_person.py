@@ -20,6 +20,7 @@ Fan homage project; not official Marvel/Sony/Insomniac; no affiliation. Sources 
 usage: python3 tools/ue_char/people/prepare_person.py thug|brute|hood|tee|beard [--out DIR]
 """
 import os, sys, argparse, json, time
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr, RAW as _P2RAW  # noqa: E402
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
@@ -29,8 +30,8 @@ sys.path.insert(0, HERE)
 import gltfio, skinfit, mask as M  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, '../../..'))
-RAW = os.path.expanduser('~/sm2-assets/raw')
-SCR = '/Users/midir/sm2-n1/_scratch/characters/r3'   # (path kept from round 03; scratch, regenerated)
+RAW = _P2RAW
+SCR = _scr('r3')   # scratch, regenerated
 ATLAS = 4096
 SIZES = json.load(open(os.path.join(HERE, 'people.json')))
 CONTENT_H = 3584            # raw atlas is squeezed into rows [0, 3584); rows [3584, 4096) hold the accessory strip (cap)

@@ -7,10 +7,11 @@
 # and keeps every still within ~20 s of the start: still time = ~1.5 s start offset + a time inside the shot.
 set -e
 WT="$(cd "$(dirname "$0")/../.." && pwd)"
-OUT=${1:-/Users/midir/sm2-n1/_scratch/characters/stills4k}
+P2_SCRATCH="${P2_SCRATCH:-$WT/unreal/WebHomage/Saved/P2Build}"   # tools/ue_char/p2paths.py
+OUT=${1:-$P2_SCRATCH/stills4k}
 mkdir -p "$OUT"
 ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | tee "$OUT/gpu_util_before.txt"   # shared GPU: report next to any frame time
-GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh          # owner rule: every game capture goes through the shared GPU lock (max 2 slots)
+GPU="${GPU_SLOT:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"         # owner rule: every game capture goes through the shared GPU lock (max 2 slots)
 cd "$WT/unreal/WebHomage"
 # group: start_shot | still times (s) | quit | names (one per still)
 run_group() {

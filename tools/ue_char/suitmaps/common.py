@@ -3,6 +3,7 @@
 Homage fan project, not an official Marvel/Sony/Insomniac product.
 """
 import io, os, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
@@ -50,7 +51,7 @@ SUITS = {  # skin name -> Tripo source GLB (identical vertex count/order to the 
     'kimi': os.path.join(DL, 'kimi spiderman.glb'),
     'qwen': os.path.join(DL, 'qwen spioderman.glb'),
 }
-SCRATCH = '/Users/midir/sm2-n1/_scratch/characters/suits'
+SCRATCH = _scr('suits')
 ART = os.path.join(ROOT, 'art', 'night1', 'characters', 'suits')
 SKINS = os.path.join(ROOT, 'public', 'assets', 'skins')
 

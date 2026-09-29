@@ -1,8 +1,10 @@
 // Headless load check: wear each AI suit in the running game (default camera), collect console errors, screenshot. Port 5203 only.
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
-const OUT = process.env.OUT || '/Users/midir/sm2-n1/_scratch/characters/suits/browser';
-const server = await createServer({ root: '/Users/midir/sm2-n1/characters', server: { port: 5203, strictPort: true, host: '127.0.0.1' }, logLevel: 'error' });
+const ROOT = new URL('../../..', import.meta.url).pathname.replace(/\/$/, '');
+const SCR = process.env.P2_SCRATCH || ROOT + '/unreal/WebHomage/Saved/P2Build';
+const OUT = process.env.OUT || SCR + '/suits/browser';
+const server = await createServer({ root: ROOT, server: { port: 5203, strictPort: true, host: '127.0.0.1' }, logLevel: 'error' });
 await server.listen();
 const base = 'http://127.0.0.1:5203/';
 const ctxB = await chromium.launchPersistentContext(OUT + '/profile', { channel: 'chrome', headless: true, viewport: { width: 1280, height: 720 },

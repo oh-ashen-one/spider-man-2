@@ -9,12 +9,13 @@ T-pose so arms run along X), dominant skin bone id. Also the bone name list. Use
 brute onto the ORIGINAL thug UV layout (the old brute_basecolor.webp belonged to a different layout).
 """
 import bpy, sys, os, numpy as np
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 from collections import defaultdict
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 GLB = argv[0] if argv else os.path.join(ROOT, 'public/assets/thug.glb')
-OUT = argv[1] if len(argv) > 1 else '/Users/midir/sm2-n1/_scratch/characters/r2/uvgeom.npz'
+OUT = argv[1] if len(argv) > 1 else _scr('r2', 'uvgeom.npz')
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=GLB)
