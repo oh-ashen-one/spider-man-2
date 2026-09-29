@@ -35,6 +35,8 @@ if 'prep' in STEPS:
     subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True)
     # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
     subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True)
+    # street thug + brute: raw Tripo people (~/sm2-assets/raw) dressed, fitted to the hero skeleton (cached), textures + stripped GLBs
+    subprocess.run(['bash', WT + '/tools/ue_char/people/build_people.sh'], check=True, capture_output=True)
     if not all(os.path.exists('%s/%s.fbx' % (CIT, c)) for c in CITIZENS):
         subprocess.run(['bash', WT + '/tools/ue_char/eval/export_citizens.sh'] + CITIZENS, check=True, capture_output=True)
     log('prep ok')
@@ -89,6 +91,8 @@ if 'tex' in STEPS:
         import_tex(TH + '/brute_regions.png', ROOT + '/Thug/Textures', 'T_Brute_Regions', 'linear')
     import_tex(TH + '/thug_normal.png', ROOT + '/Thug/Textures', 'T_Thug_Normal', 'normal_gl')
     import_tex(TH + '/thug_orm.png', ROOT + '/Thug/Textures', 'T_Thug_ORM', 'linear')
+    for k in ('thug', 'brute'):
+        import_tex(ART + '/people/%s_basecolor.png' % k, ROOT + '/People/Textures', 'T_Street_%s_BaseColor' % k.capitalize(), 'srgb')
     for s in SUITS:
         bc, n, orm = suit_maps(s)
         import_tex(bc, ROOT + '/Suits/%s/Textures' % s, 'T_Suit_%s_BaseColor' % s, 'srgb')
@@ -266,6 +270,9 @@ if 'mat' in STEPS:
         vc_ = {}
         if v == 'Brute': vc_['Tint'] = (BRUTE_TINT, BRUTE_TINT, BRUTE_TINT, 1.0)   # test stage renders albedo ~3x brighter (sRGB); UE-only, the browser texture is untouched
         mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal=sc_, vec=vc_, switches={'HasORM': True})
+    for k in ('Thug', 'Brute'):   # street people: one 4096 atlas each (skin, cloth, bandana strip); Cloth shading with a light sheen
+        mi('MI_Street_' + k, ROOT + '/People/Materials', suit, tex={'BaseColor': ROOT + '/People/Textures/T_Street_%s_BaseColor' % k},
+           scal={'Roughness': 0.78, 'Cloth': 0.16, 'DetailStrength': 0.0, 'Specular': 0.35}, switches={'HasORM': False})
     if EAL.does_asset_exist(ROOT + '/Thug/Textures/T_Brute_Regions'):
         mi('MI_BruteMask', ROOT + '/Thug/Materials', build_idmask(), tex={'Regions': ROOT + '/Thug/Textures/T_Brute_Regions'})
         mi('MI_MaskOther', ROOT + '/Shared/Materials', build_maskother())
@@ -340,11 +347,15 @@ CIT_SKEL = ROOT + '/Citizens/SK_Citizen_Skeleton'
 HERO_PHYS = ROOT + '/Hero/SK_Hero_PhysicsAsset'
 CIT_TMP = '/Users/midir/sm2-n1/_scratch/characters/ueimport/citizens'
 MESHES = [('SK_Hero', ROOT + '/Hero', None, True), ('SK_Thug', ROOT + '/Thug', HERO_SKEL, True)] + \
-         [('SK_Suit_' + s, ROOT + '/Suits/' + s, HERO_SKEL, False) for s in SUITS]
+         [('SK_Suit_' + s, ROOT + '/Suits/' + s, HERO_SKEL, False) for s in SUITS] + \
+         [('SK_Street_' + k, ROOT + '/People', HERO_SKEL, False) for k in ('Thug', 'Brute')]
 if 'mesh' in STEPS:
     for name, dest, skel, anims in MESHES:
         got = do_import('%s/%s.glb' % (GLB, name), dest, skeleton=skel, anims=anims)
         log('imported', name, len(got), [g for g in got if 'Anim' not in g][:4])
+if 'mesh' in STEPS:   # walk clips for the street people (a copy of the thug mesh rides along in the GLB and is deleted again)
+    do_import('%s/SK_Street_Walks.glb' % GLB, ROOT + '/People', skeleton=HERO_SKEL, anims=True)
+    log('imported street walks', [p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People', recursive=True) if 'Walks' in p])
 if 'citizens' in STEPS:
     import shutil
     os.makedirs(CIT_TMP, exist_ok=True)
@@ -374,6 +385,9 @@ if 'rename' in STEPS:
     rename_anims(ROOT + '/Hero', 'SK_Hero', 'A_Hero_')
     rename_anims(ROOT + '/Thug', 'SK_Thug', 'A_Thug_')
     rename_anims(ROOT + '/Citizens', 'SK_Citizen', 'A_Citizen_')
+    rename_anims(ROOT + '/People', 'SK_Street_Walks', 'A_Street_')
+    for junk in (ROOT + '/People/SK_Street_Walks',):   # the mesh that carried the clips
+        if EAL.does_asset_exist(junk): EAL.delete_asset(junk)
     # the first citizen FBX names the mesh SK_Citizen: give it its citizen name like the others
     if EAL.does_asset_exist(ROOT + '/Citizens/SK_Citizen'):
         EAL.rename_asset(ROOT + '/Citizens/SK_Citizen', ROOT + '/Citizens/SK_Citizen_' + CITIZENS[0])
@@ -381,6 +395,9 @@ if 'rename' in STEPS:
         'Lens': ROOT + '/Hero/Materials/MI_Hero_Lens', 'LensFrame': ROOT + '/Hero/Materials/MI_Hero_LensFrame'}))
     set_slots(ROOT + '/Thug/SK_Thug', {'*': ROOT + '/Thug/Materials/MI_Thug'})
     load(ROOT + '/Thug/SK_Thug').set_editor_property('physics_asset', load(HERO_PHYS))
+    for k in ('Thug', 'Brute'):
+        set_slots(ROOT + '/People/SK_Street_' + k, {'*': ROOT + '/People/Materials/MI_Street_' + k})
+        load(ROOT + '/People/SK_Street_' + k).set_editor_property('physics_asset', load(HERO_PHYS))
     for s in SUITS:
         set_slots(ROOT + '/Suits/%s/SK_Suit_%s' % (s, s), {'*': ROOT + '/Suits/%s/Materials/MI_Suit_%s' % (s, s)})
         load(ROOT + '/Suits/%s/SK_Suit_%s' % (s, s)).set_editor_property('physics_asset', load(HERO_PHYS))
@@ -416,6 +433,10 @@ if 'abp' in STEPS:
     hero_loco = [(HA + 'walk', 160.0), (HA + 'jog', 450.0), (HA + 'run', 850.0), (HA + 'sprint', 1400.0)]
     make_abp('ABP_Hero_Lineup', ROOT + '/Hero', HERO_SKEL, HA + 'idle', hero_loco, HA + 'jump', HA + 'fall', HA + 'landLight')
     make_abp('ABP_Thug_Lineup', ROOT + '/Thug', HERO_SKEL, ROOT + '/Thug/Anims/A_Thug_thugIdle', hero_loco, HA + 'jump', HA + 'fall', HA + 'landLight')
+    PA = ROOT + '/People/Anims/A_Street_'
+    idle_t = ROOT + '/Thug/Anims/A_Thug_thugIdle'
+    make_abp('ABP_Street_Thug', ROOT + '/People', HERO_SKEL, idle_t, [(PA + 'walkStreet', 160.0)] + hero_loco[1:], HA + 'jump', HA + 'fall', HA + 'landLight')
+    make_abp('ABP_Street_Brute', ROOT + '/People', HERO_SKEL, idle_t, [(PA + 'walkBrute', 142.2)] + hero_loco[1:], HA + 'jump', HA + 'fall', HA + 'landLight')
     CA = ROOT + '/Citizens/Anims/A_Citizen_'
     # crowd clips: walk stride 1.1543 m / (32/30 s) = 1.08 m/s, run stride 3.4181 m / (19/30 s) = 5.40 m/s (people.json)
     make_abp('ABP_Citizen_Lineup', ROOT + '/Citizens', CIT_SKEL, CA + 'idle', [(CA + 'walk', 108.0), (CA + 'run', 540.0)])
@@ -447,11 +468,16 @@ def walker(label, mesh, abp, loc, mode, speed, rx=0, ry=0, start=0, hop=0, scale
         a.set_editor_property(k, v)
     return a
 
-BRUTE_GIRTH = float(ARGS.get('brute_girth', 1.2))   # heavy-set build: X/Y scale on top of the 1.24 uniform scale
+import json as _json
+_SZ = _json.load(open(WT + '/tools/ue_char/people/people.json'))['brute']
+BRUTE_SCALE = float(ARGS.get('brute_scale', _SZ['scale']))   # brute height scale on the fitted Tripo mesh (hero height 1.79 m)
+BRUTE_GIRTH = float(ARGS.get('brute_girth', _SZ['girth']))   # extra X/Y scale (heavy-set build) on top of it
+LANE = (3000.0, 0.0)                                  # straight lane for the side-tracking clips
+LANE_SPEED = 135.0
 MESH_YAW = float(ARGS.get('mesh_yaw', -90.0))   # glTF +Z forward -> UE: mesh faces +Y after import; walker moves along +X
 if 'map' in STEPS:
     variants = [(TESTS + '/Char_Lineup', False)]
-    if ARGS.get('mask_map', True) and EAL.does_asset_exist(ROOT + '/Thug/Materials/MI_BruteMask'):
+    if ARGS.get('mask_map', False) and EAL.does_asset_exist(ROOT + '/Thug/Materials/MI_BruteMask'):   # round-02 test map (old brute); off by default
         variants.append((TESTS + '/Char_Lineup_BruteMask', True))   # test-only twin: brute drawn with the unlit region mask (R face skin, G hands, B cloth)
     for MAP, MASK in variants:
         les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -485,12 +511,24 @@ if 'map' in STEPS:
         H = ROOT + '/Hero/'; T = ROOT + '/Thug/'
         hero = walker('Hero_Loop', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (0, 0, 0), W.LOOP, 560.0, 900, 420, 0, hop=5.0)
         hero_tt = walker('Hero_Turntable', H + 'SK_Hero', H + 'ABP_Hero_Lineup', (-2400, -900, 0), W.TURNTABLE, 160.0)
-        thug = walker('Thug_Walk', T + 'SK_Thug', T + 'ABP_Thug_Lineup', (0, 1100, 0), W.LOOP, 150.0, 500, 250, 90)
-        brute = walker('Brute_Walk', T + 'SK_Thug', T + 'ABP_Thug_Lineup', (0, 1100, 0), W.LOOP, 130.0, 500, 250, 270, scale=1.24, girth=BRUTE_GIRTH, mat=T + 'Materials/MI_Brute')
+        PP = ROOT + '/People/'
+        thug = walker('Thug_Walk', PP + 'SK_Street_Thug', PP + 'ABP_Street_Thug', (0, 1100, 0), W.LOOP, 160.0, 500, 250, 90, mat=PP + 'Materials/MI_Street_Thug')
+        brute = walker('Brute_Walk', PP + 'SK_Street_Brute', PP + 'ABP_Street_Brute', (0, 1100, 0), W.LOOP, 143.0, 500, 250, 270, scale=BRUTE_SCALE, girth=BRUTE_GIRTH, mat=PP + 'Materials/MI_Street_Brute')
+        # straight lane (side-tracking clips): thug and brute walk +X side by side in line, a mesh-less tracker marks the midpoint
+        def lane(label, mesh, abp, mat, start, speed, scale=1.0, girth=1.0):
+            a = walker(label, mesh, abp, (LANE[0], LANE[1], 0), W.LINE, speed, scale=scale, girth=girth, mat=mat)
+            a.set_editor_property('line_length', 3000.0); a.set_editor_property('line_start', start)
+            return a
+        thug_l = lane('Thug_Lane', PP + 'SK_Street_Thug', PP + 'ABP_Street_Thug', PP + 'Materials/MI_Street_Thug', 1500.0 + 110.0, 160.0)
+        brute_l = lane('Brute_Lane', PP + 'SK_Street_Brute', PP + 'ABP_Street_Brute', PP + 'Materials/MI_Street_Brute', 1500.0 - 120.0, 143.0, scale=BRUTE_SCALE, girth=BRUTE_GIRTH)
+        track = spawn(unreal.WHCharLoopWalker, (LANE[0], LANE[1], 0), (0, 0, 0), 'Lane_Track')
+        track.set_editor_property('mode', W.LINE); track.set_editor_property('speed', 151.0)
+        track.set_editor_property('line_length', 3000.0); track.set_editor_property('line_start', 1500.0)
+        chan_lane = [thug_l, brute_l]
         # enemy fill: 4 shadowless directional lights on lighting channel 1 only, used by the thug and the brute so the shaded flank stays readable
         # (the sun alone leaves the camera-facing side of a walking enemy near black). Nothing else uses channel 1.
         chan = unreal.LightingChannels(); chan.set_editor_property('channel0', True); chan.set_editor_property('channel1', True)
-        for enemy in (thug, brute):
+        for enemy in (thug, brute) + tuple(chan_lane):
             enemy.get_editor_property('mesh').set_editor_property('lighting_channels', chan)
         only1 = unreal.LightingChannels(); only1.set_editor_property('channel0', False); only1.set_editor_property('channel1', True)
         for fi, fyaw in enumerate((0, 90, 180, 270)):
@@ -510,10 +548,10 @@ if 'map' in STEPS:
         # capture director (shot list; times are cumulative in CAPTURE notes)
         d = spawn(unreal.WHCharShowDirector, (0, 0, 0), label='CaptureDirector')
         K = unreal.WHShotKind
-        def shot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, wl=(0, 0, 0), label=''):
+        def shot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, wl=(0, 0, 0), label='', restart=()):
             s = unreal.WHShot()
             for k, v in (('target', t), ('kind', kind), ('duration', dur), ('distance', dist), ('aim_height', aim), ('cam_height', camh),
-                         ('fov', fov), ('orbit_deg_per_sec', orbit), ('azimuth', az), ('world_location', unreal.Vector(*wl)), ('label', label)):
+                         ('fov', fov), ('orbit_deg_per_sec', orbit), ('azimuth', az), ('world_location', unreal.Vector(*wl)), ('label', label), ('restart_walkers', list(restart))):
                 s.set_editor_property(k, v)
             return s
         shots = [shot(hero_tt, K.ORBIT, 6, 340, 100, 20, 40, 45, 0, label='hero moving turntable'),
@@ -526,7 +564,13 @@ if 'map' in STEPS:
                  shot(cits[0], K.SIDE, 4, 380, 95, 5, 40, label='citizen side'),
                  shot(cits[2], K.THREE_QUARTER, 4, 380, 95, 10, 40, label='citizen 3/4'),
                  shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-1200, 820, 170), label='AI suits walking in place'),
-                 shot(brute, K.ORBIT, 6, 700, 105, 15, 40, 60, 0, label='brute walk orbit (360 deg)')]
+                 shot(brute, K.ORBIT, 6, 700, 105, 15, 40, 60, 0, label='brute walk orbit (360 deg)'),
+                 # side-tracking at 60 fps (round 03 test): both together, then each at 3 m, then face close-ups
+                 shot(track, K.SIDE, 6, 420, 95, 10, 58, restart=[thug_l, brute_l, track], label='thug + brute side tracking (4.2 m)'),
+                 shot(thug_l, K.SIDE, 5, 300, 92, 5, 62, restart=[thug_l], label='thug side tracking 3 m'),
+                 shot(brute_l, K.SIDE, 5, 300, 100, 5, 66, restart=[brute_l], label='brute side tracking 3 m'),
+                 shot(thug_l, K.CLOSEUP, 4, 105, 160, 0, 28, restart=[thug_l], label='thug face close-up'),
+                 shot(brute_l, K.CLOSEUP, 4, 115, 168, 0, 28, restart=[brute_l], label='brute face close-up')]
         d.set_editor_property('shots', shots)
         if MASK:
             eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
