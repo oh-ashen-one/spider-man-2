@@ -108,6 +108,7 @@ public:
 	double SwingTension() const { return S.Sw.Tension; }
 	double SwingBank() const { return S.Sw.Bank; }
 	double SwingRope() const { return S.Sw.Rope; }
+	double SwingTime() const { return S.Sw.T; }
 	int32 Chain() const { return S.Chain; }
 	const FVector& WallNormal() const { return S.W.Normal; }
 	FName TrickName() const { return S.Trick; }
@@ -188,6 +189,7 @@ private:
 		bool bLastTrick = false, bTrickBoosted = false, bTrickNoUp = false;
 		FName Trick, LastTrickName;
 		double TrickSide = 1, TrickDur = 0, TrickSnapT = 9, TrickLat = 0, TrickSteep = 0;
+		double TrickBuf = 0;
 		double SearchT = 0, SwingCooldown = 0, WallCooldown = 0, ZipCooldown = 0, DashWebT = 0, QuickBuf = 0;
 		int32 DashCount = 0;
 		FZip Z;

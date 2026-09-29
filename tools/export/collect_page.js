@@ -8,6 +8,7 @@
   const TILE_RE = /^(facade|detail|roofs|signage) (\d+)$/;
 
   const T = 256;
+  const FAR_RE = /^(parkPaths$|farCity|farCityRoofs|farCityMass|farBulkheads|farLand-|coast-|horizonSkirt|palisadesCliff|bridge(Stone|Steel|Cables|Deck|Truss)$|seawall|mapLawns)/;
   const tileOf = (x, z) => [Math.floor(x / T), Math.floor(z / T)];
 
   function kindOf(name, g) {
@@ -30,7 +31,7 @@
   }
 
   // triangles of mesh m (world space), grouped by the tile of their centroid (or all into `forceTile`)
-  function splitMesh(m, region, forceTile) {
+  function splitMesh(m, region, forceTile, T = 256) {
     const g = m.geometry, pos = g.attributes.position; if (!pos || pos.count === 0) return [];
     m.updateMatrixWorld(true);
     const M = m.matrixWorld.elements, ident = m.matrixWorld.equals(new m.matrixWorld.constructor());
@@ -134,7 +135,12 @@
     const stats = {};
     for (const m of meshes) {
       const name = m.name || '';
-      if (!name || (SKIP.test(name) && !/^facadeLod \d+$/.test(name))) continue;
+      if (!name || (SKIP.test(name) && !/^facadeLod \d+$/.test(name) && !(opts.farRegion && FAR_RE.test(name)))) continue;
+      if (opts.farRegion && FAR_RE.test(name)) { // (r02) far shores, waterfront, bridges: whole meshes in 1024 m tiles
+        for (const p of splitMesh(m, opts.farRegion, null, /^(farLand-|horizonSkirt|palisadesCliff)/.test(name) ? 60000 : 2048)) await postPart(url, name.replace(/[^A-Za-z0-9_]+/g, '_'), kindOf(name, m.geometry) === 'facade' ? 'facade' : 'far', p,
+          { src: name, lod: true, mat: { type: m.material?.type, color: m.material?.color?.toArray?.(), roughness: m.material?.roughness, metalness: m.material?.metalness, vertexColors: !!m.material?.vertexColors, map: m.material?.map?.image?.src ?? null } });
+        continue;
+      }
       const lm = /^facadeLod (\d+)$/.exec(name);
       if (lm && opts.lodRegion) { // far ring: bare-mass facade LOD tiles outside the full-detail region (same facade material)
         const g = m.geometry, bb = g.boundingBox ?? (g.computeBoundingBox(), g.boundingBox), cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, L = opts.lodRegion;
@@ -162,12 +168,39 @@
       }
     }
     log.push('meshes done');
+    if (opts.farRegion) { // (r02) Manhattan land surface (block interiors, parks) from the layout polygon, y = -0.06
+      const THREE = window.__ctx.THREE, F0 = world.getMapFeatures();
+      for (const [li, poly] of F0.land.entries()) {
+        const pts = poly.map(([x, z]) => new THREE.Vector2(x, z));
+        const tris = THREE.ShapeUtils.triangulateShape(pts, []);
+        const P = new Float32Array(pts.length * 3), N = new Float32Array(pts.length * 3);
+        pts.forEach((v, i) => { P[i * 3] = v.x; P[i * 3 + 1] = -0.06; P[i * 3 + 2] = v.y; N[i * 3 + 1] = 1; });
+        const I = []; for (const [a, b, c] of tris) { // up-facing winding (three: counter-clockwise seen from +y)
+          const cr = (pts[b].y - pts[a].y) * (pts[c].x - pts[a].x) - (pts[b].x - pts[a].x) * (pts[c].y - pts[a].y); if (cr > 0) I.push(a, b, c); else I.push(a, c, b); }
+        const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.BufferAttribute(N, 3)); g.setIndex(I);
+        const fake = { geometry: g, matrixWorld: new THREE.Matrix4(), updateMatrixWorld() {} };
+        for (const p of splitMesh(fake, opts.farRegion, null, 2048)) await postPart(url, 'land' + li, 'land', p, { src: 'LAND_POLY', lod: true });
+      }
+      const H = []; scene.traverse(o => { if (o.name === 'hinterland' && o.isInstancedMesh) H.push(o); });
+      for (const hm of H) {
+        const a = hm.instanceMatrix.array, W = hm.geometry.attributes.aWall.array, R = hm.geometry.attributes.aRoof.array, out = [];
+        for (let i = 0; i < hm.count; i++) { const e = a.subarray(i * 16, i * 16 + 16);
+          out.push([e[12], e[13], e[14], Math.hypot(e[0], e[1], e[2]), Math.hypot(e[4], e[5], e[6]), Math.hypot(e[8], e[9], e[10]), Math.atan2(e[8], e[10]), ...W.subarray(i * 3, i * 3 + 3), ...R.subarray(i * 3, i * 3 + 3)].map(v => +v.toFixed(3))); }
+        await post(url + '&file=hinterland.json', { type: 'json', file: 'hinterland.json', data: { note: '[x,y,z, sx,sy,sz, yaw, wall rgb, roof rgb] unit box, pivot at the bottom', items: out } }, []);
+        const fake = { geometry: hm.geometry, matrixWorld: new THREE.Matrix4(), updateMatrixWorld() {} };
+        const pp = splitMesh(fake, region, '0,0'); for (const p of pp) { p.center = [0, 0, 0]; for (let i = 0; i < p.attrs.position.data.length; i += 3) { p.attrs.position.data[i] += 128; p.attrs.position.data[i + 2] += 128; } }
+        if (pp[0]) await postPart(url, 'hinterland', 'proto', pp[0], { src: 'hinterland', proto: true, mat: {} });
+      }
+    }
     // ---- 2. instanced pools (props / trees): prototype geometry once + every item inside the region
     const pools = [...(window.__pools ?? [])];
     const instances = {};
     for (const P of pools) {
       const name = P.mesh?.name || ''; if (!name) continue;
-      const items = P.items.filter(it => !it.hidden && it.x >= region.x0 && it.x < region.x1 && it.z >= region.z0 && it.z < region.z1);
+      const R0 = opts.farRegion && /^ez-.*-l1-(leaves|bark)$|^trees-(park|elm|conifer)-crownfar$/.test(name) ? opts.farRegion : region; // (r03) real ez-tree LOD1 for every tree outside the detailed block
+      const inReg = (it) => it.x >= R0.x0 && it.x < R0.x1 && it.z >= R0.z0 && it.z < R0.z1;
+      const inNear = (it) => it.x >= region.x0 && it.x < region.x1 && it.z >= region.z0 && it.z < region.z1;
+      const items = P.items.filter(it => !it.hidden && inReg(it) && (R0 === region || !inNear(it) || /crownfar$/.test(name))); // far crowns only outside the detailed block
       if (!items.length) continue;
       instances[name] = { near: P.near, far: P.far, n: items.length, items: items.map(it => {
         const o = { x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), ry: +(it.ry || 0).toFixed(4), s: +(it.s ?? 1).toFixed(4) };

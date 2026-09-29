@@ -32,7 +32,7 @@ const URL0 = arg('url', 'http://127.0.0.1:5202/');
 const PROFILE = arg('profile', '/Users/midir/sm2-n1/_scratch/city/chrome-profile');
 const T = 256;
 const region = { x0: tx0 * T, z0: tz0 * T, x1: (tx1 + 1) * T, z1: (tz1 + 1) * T };
-const [lx0, lz0, lx1, lz1] = arg('lodtiles', '-4,-8,3,4').split(',').map(Number); // far ring (facade LOD masses)
+const [lx0, lz0, lx1, lz1] = arg('lodtiles', '-4,-14,3,13').split(',').map(Number); // far ring (facade LOD masses)
 const lodRegion = { x0: lx0 * T, z0: lz0 * T, x1: (lx1 + 1) * T, z1: (lz1 + 1) * T };
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -146,7 +146,7 @@ try {
     return window.__pools.size;
   }).then(n => console.log('pools registered:', n));
   await page.addScriptTag({ content: fs.readFileSync(path.join(HERE, 'collect_page.js'), 'utf8') });
-  const res = await page.evaluate(o => window.__cityExport(o), { region, lodRegion, url: recvURL });
+  const res = await page.evaluate(o => window.__cityExport(o), { region, lodRegion, farRegion: { x0: -30000, z0: -30000, x1: 30000, z1: 30000 }, url: recvURL });
   console.log(JSON.stringify(res.log), 'pools with instances in region:', res.nInstances);
   manifest.stats = res.stats;
 } finally {

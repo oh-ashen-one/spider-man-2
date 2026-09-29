@@ -64,6 +64,7 @@ protected:
 private:
 	void BuildTravInput();
 	void BuildFigure();
+	bool SetupHeroMesh();
 	void PoseFigure(float Dt);
 	void UpdateWebs(float Dt, const FVector& CamPosCm);
 	FVector HandWorldCm(bool bRight) const;
@@ -78,12 +79,13 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UInputAction> ZipAction;
 	UPROPERTY(Transient) TObjectPtr<UInputAction> DropAction;
 	UPROPERTY(Transient) TObjectPtr<UInputAction> QuickAction;
+	UPROPERTY(Transient) TObjectPtr<UInputAction> TrickAction;
 	UPROPERTY(Transient) TObjectPtr<UInputAction> LookMouseAction;
 	UPROPERTY(Transient) TObjectPtr<UInputAction> LookPadAction;
 
 	// live input state
 	FVector2D LiveMove = FVector2D::ZeroVector, MouseAccum = FVector2D::ZeroVector, PadLook = FVector2D::ZeroVector;
-	bool bRMB = false, bR2 = false, bL2 = false, bShift = false, bZipKey = false, bDropKey = false, bQuickKey = false, bJumpKey = false;
+	bool bRMB = false, bR2 = false, bL2 = false, bShift = false, bZipKey = false, bDropKey = false, bQuickKey = false, bJumpKey = false, bTrickKey = false;
 	FWebTravInput PrevInput;
 
 	FWebTravCamera Cam;
@@ -92,6 +94,7 @@ private:
 	// autoChain rhythm rule state
 	bool bAutoHeld = true, bAutoWasSwinging = false;
 	double AutoGapT = 0.0;
+	int32 AutoReleases = 0;
 	int64 FrameIndex = 0;
 
 	// placeholder figure parts
@@ -100,6 +103,13 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FigureParts;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> WebSegs;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
+	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
+	bool bHeroMesh = false;
+	// round 05: pixel measurement of the hero (depth capture that shows only the hero, same camera as the view)
+	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;
+	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> MaskRT;
+	float PxTop = -1.f, PxBottom = -1.f, PxLeft = -1.f, PxRight = -1.f;
+	void ReadHeroMask();
 	double RunPhase = 0.0;
 	FVector ReleaseHandCm[2];
 	bool bWasReleased[2] = { false, false };
