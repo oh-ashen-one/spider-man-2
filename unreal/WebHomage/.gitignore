@@ -5,3 +5,5 @@ DerivedDataCache/
 .vs/
 *.xcworkspace
 *.xcodeproj
+
+Content/
