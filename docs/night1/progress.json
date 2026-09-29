@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 15:34",
+ "updated": "2026-09-29 15:48",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -36,9 +36,9 @@
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "fixing",
-   "round": 6,
-   "verdict": "R5: FAILS (facades 5, street 4, skyline 3, Manhattan 4, IQ 5)",
-   "gap": "Far skyline: lavender untextured boxes, white shoreline strip, windowless mid-ground"
+   "round": 7,
+   "verdict": "R6: FAILS (facades 5, street 4, skyline 4, Manhattan 5, IQ 5)",
+   "gap": "Far field still plain boxes; facade base colours clip; shared spec-check script (builder and critic measured differently)"
   },
   {
    "id": "P2",
@@ -508,6 +508,14 @@
    "verdict": "fails",
    "gap": "Every 8 s: rope on screen 25\u201345%, \u22651.5 s web-less trick phase, peak at roofline then drop 1\u20134 storeys (T3/T4/T7).",
    "notes": "Best round yet (avg 5.0, from 3.6): camera passes most spec lines (hero height .217, yaw 7.5\u00b0, hFOV 103\u00b0); round 9 beat round 8 by ~1 pt on camera. Critic used the spec's own measuring tools."
+  },
+  {
+   "t": "15:48",
+   "piece": "P1 City",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Far field C11/C13\u2013C15, facade base colours C1, plus IP (transit slogan, game key art, product mural).",
+   "notes": "Far-shore bugs fixed (window flag clamped, white generic material, blue haze); round 6 beat round 5 by ~0.5 on skyline. Builder and critic measured the same spec lines differently \u2192 round 7 commits shared crop regions + one check script. Lighting-owned issues (crushed S1/S7, blown S4 sky) routed to P4."
   }
  ],
  "perf": [
@@ -698,6 +706,10 @@
   {
    "t": "15:34",
    "text": "Traversal R9: best yet (avg 5.0) after the spec correction; round 10 on a fresh Opus-high builder, captures move into the real lit city."
+  },
+  {
+   "t": "15:48",
+   "text": "City R6 merged; critic FAILS (avg 4.6, up from 4.2); round 7 on a fresh Sonnet builder with a shared spec-check script."
   }
  ]
 }

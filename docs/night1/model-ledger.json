@@ -235,6 +235,19 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 6,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    4,
+    4,
+    5,
+    5
+   ]
   }
  ],
  "agents": [
@@ -297,6 +310,12 @@
    "rounds": "6\u20139",
    "model": "Opus 5.5",
    "tokens": 747000
+  },
+  {
+   "piece": "P1 City",
+   "rounds": "4\u20136",
+   "model": "Sonnet 5.5",
+   "tokens": 769000
   }
  ],
  "caveats": [
