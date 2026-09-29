@@ -31,6 +31,7 @@ export function attachLife(world, { traffic, crowd = null, pigeons = null }) {
   if (world.spawn) { state.pos.copy(world.spawn); sim?.setPlayer(world.spawn, null, world.spawn.y ?? 0); }
   world.setPlayerState = (pos, vel) => { state.last = state.t; feed(pos, vel); };
   world.collideDynamic = (pos, radius = 0.4, height = 1.8) => sim ? sim.collideDynamic(pos, radius, height) : null;
+  world.carsNear = (pos, r = 6) => sim?.carsNear ? sim.carsNear(pos, r) : []; // (pinata-and-trees) destruction: glass / panels
   world.alarm = (pos, radius = 25) => { sim?.alarm(pos, radius); crowd?.alarm?.(pos, radius); pigeons?.alarm?.(pos, radius); };
   world.life = {
     traffic: sim, crowd, pigeons, player: state,

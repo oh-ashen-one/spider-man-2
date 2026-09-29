@@ -11,6 +11,7 @@ import { createZipPoints, createZipTargeting } from './zippoints.js';
 import { createAnchorFinder } from './anchors.js';
 import { makeAnim, writeAnim } from './anim.js';
 import { ROPE, makeRope, ropePoint, stepRopeSpring } from './rope.js';
+import { WEB_MASS, applyWebForces, enforceWeb, projectPerpendicular } from './webtension.js';
 
 export const H = 0.95;               // body centre above the feet
 export const R = 0.36;               // capsule radius
@@ -45,6 +46,7 @@ const SWING_DIP = 6;
 const SWING_GAIN = 5;       // climb assist target: exit this far above the attach height (m) — user r10f        // max arc dip below the attach height (m) — user r10f
 const RELEASE_BOOST = 1.5; // m/s added along the release velocity when the web is let go (x skill 'swingReleaseBoost')
 const SWING_DRAG = 0.0022;  // aerodynamic drag while swinging (1/m): a held swing with no input decays like a real pendulum
+const SOFT_DEFLECT = true;  // swing: glance off facades ahead instead of wall-kicking into them (false = previous behaviour)
 const PUMP_MAX_ANG = 1.15;  // pumping (W along the swing) never adds energy beyond what reaches ~75 deg of arc (chains stay in the canyon)
 const JUMP = 11.2, JUMP_MAX = 19.5;  // tap jump (~2.6 m, user r9: higher) / full charge (~7.9 m)
 const UP = new THREE.Vector3(0, 1, 0);
@@ -83,7 +85,11 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     airT: 0, apexY: 0, dive: false, relT: 99,
     swing: { anchor: new THREE.Vector3(), normal: new THREE.Vector3(), pivot: new THREE.Vector3(), rope: 20, ropeTarget: 20, t: 0,
       dir: new THREE.Vector3(0, 0, 1), hand: 'R', phase: 0, bank: 0, tension: 0, kind: 'wall',
-      slack: 0, kick: 0, kickCd: 0, apexed: false, angPrev: 0, slackT: 0 },
+      slack: 0, kick: 0, kickCd: 0, apexed: false, angPrev: 0, slackT: 0,
+      // flight dynamics (./webtension.js): |R| (m), cos(theta), tension F_T (N, < 0 = the rigid web pushes), radial speed
+      // removed by the velocity projection before / after the step (> 0 = was pushing into the web, < 0 = pulling away)
+      fd: { Rlen: 0, cosTheta: 1, tension: 0, radial: 0, corr: 0 },
+      src: undefined, model: null, modelT: 0 }, // anchor source ('tree' = canopy) and the 3D model it is attached to
     lastTrick: false, trick: null, searchT: 0, swingCooldown: 0, wallCooldown: 0, zipCooldown: 0, dashCount: 0,
     zip: { target: new THREE.Vector3(), normal: new THREE.Vector3(), kind: '', p0: new THREE.Vector3(), p1: new THREE.Vector3(), p2: new THREE.Vector3(), t: 0, dur: 0.5, launch: false, dash: false },
     perch: { pos: new THREE.Vector3(), normal: new THREE.Vector3(0, 0, 1), kind: 'roofEdge', roof: true },
@@ -735,15 +741,12 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     const S = s.swing;
     s.chain = (s.sinceSwing ?? 99) <= CHAIN_BUF ? Math.min(CHAIN_MAX, (s.chain || 0) + 1) : 0; // user r10g momentum chain
     events.push({ type: 'swingChain', n: s.chain });
-    S.anchor.copy(a.point); S.normal.copy(a.normal); S.kind = a.kind;
+    S.anchor.copy(a.point); S.normal.copy(a.normal); S.kind = a.kind; S.src = a.src; S.model = a.model || null; S.modelT = 0.1;
     S.dir.copy(turn ? fwd.clone().lerp(turn, 0.6).normalize() : fwd);
-    // physics pivot: the real anchor with part of its lateral offset removed (keeps the arc in the travel plane; corner swings keep more)
-    // (always fully in-plane: corner turns are done by steering the plane, never by a laterally offset pivot — an
-    // offset pivot plus rope reel-in was the source of sideways position jumps)
-    const keep = 0.0;
-    const dx = a.point.x - s.pos.x, dz = a.point.z - s.pos.z, along = dx * S.dir.x + dz * S.dir.z;
-    const lx = dx - S.dir.x * along, lz = dz - S.dir.z * along;
-    S.pivot.set(s.pos.x + S.dir.x * along + lx * keep, a.point.y, s.pos.z + S.dir.z * along + lz * keep);
+    // flight dynamics: the physics pivot IS the web's anchor on the model, so R = anchor - body is the web you see
+    // (a laterally offset anchor swings him sideways like a real pendulum; the old in-plane virtual pivot is gone)
+    S.pivot.copy(a.point);
+    const dx = a.point.x - s.pos.x, dz = a.point.z - s.pos.z;
     const L = s.pos.distanceTo(S.pivot);
     // no ground scraping: the bottom of the arc keeps the feet >= 2.4 m over the highest floor under the arc
     let fmax = -Infinity;
@@ -754,27 +757,16 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     // user r10f: chained swings climb — the arc dips at most SWING_DIP below the entry, so every swing exits near its
     // entry height and the release pop (REL_UP) nets height each time (the street-dip look above still applies low down)
     if (a.kind !== 'low') bottomFeet = Math.max(bottomFeet, hEntry - SWING_DIP);
+    // arc depth: with the pivot fixed on the model the web reels in toward ropeTarget (speed-limited, see stepSwing)
     S.ropeTarget = Math.max(4, Math.min(L, S.pivot.y - fmax - H - bottomFeet));
-    // Arc depth without reel-in: if the rope from here would swing the feet below the clearance line, the (virtual)
-    // physics pivot is raised instead (longer, flatter arc; the web is still drawn to the real anchor). Solves
-    // u - sqrt(hd^2 + u^2) = -(y0 - B) for the pivot height u above the body.
-    // low entries (street-level chains): the bottom may not be above the entry — it sits >= 3.5 m over the floor and
-    // at most ~2 m under the entry height (a flat, fast arc over the traffic)
-    { const y0 = s.pos.y, B = fmax + H + bottomFeet, dyc = y0 - B;
-      const hd = Math.hypot(S.pivot.x - s.pos.x, S.pivot.z - s.pos.z);
-      if (dyc > 0.5 && S.pivot.y - L < B) {
-        const u = Math.min(70, (hd * hd - dyc * dyc) / (2 * dyc));
-        if (u > S.pivot.y - y0) S.pivot.y = y0 + u;
-        S.ropeTarget = Math.max(S.ropeTarget, s.pos.distanceTo(S.pivot) - 1);
-      } }
     S.rope = s.pos.distanceTo(S.pivot); S.t = 0; S.tension = 0; S.tautT = 0; S.cornered = false; S.y0 = s.pos.y;
     S.slack = 0; S.slackT = 0; S.kick = 0; S.kickCd = 0; S.apexed = false; S.angMax = -9;
-    // momentum conservation: redirect velocity along the swing tangent keeping speed (dive speed becomes swing speed)
+    // incoming velocity projection: v - (v . R^) R^ puts him perpendicular to the web at once (the web is taut from the
+    // first frame). Momentum conservation (dive speed becomes swing speed): the projected direction keeps the incoming
+    // speed; moving away from the anchor the web catches (small loss), moving toward it the web is reeled in (no loss).
     const rd = _v.copy(S.pivot).sub(s.pos).normalize();
-    const sp = s.vel.length(), vr = s.vel.dot(rd);
-    // the web goes taut on attach (no slack free-fall + snap): velocity is rotated onto the arc tangent, keeping speed.
-    // Moving away from the pivot the web catches (small loss); moving toward it the web is reeled in (no loss).
-    { const tan = _v2.copy(s.vel).addScaledVector(rd, -vr);
+    const sp = s.vel.length();
+    { const tan = _v2.copy(s.vel), vr = projectPerpendicular(tan, rd);
       if (tan.lengthSq() > 0.01) s.vel.copy(tan.normalize().multiplyScalar(sp * (vr < 0 ? 0.96 : 1)));
       else if (sp > 0.5) s.vel.copy(S.dir).multiplyScalar(sp); }
     if (hs < 11) { // web yank when starting slow — along the arc tangent (never toward the pivot, which would slacken the web)
@@ -803,14 +795,19 @@ export function createTraversal({ world, cam, web, rig, camera }) {
       s.swingCooldown = 0.35; events.push({ type: 'swingJump' });
       return;
     }
-    s.vel.y -= GS * h;
-    const rd = _v.copy(S.pivot).sub(s.pos); const dist = rd.length(); rd.divideScalar(dist);
-    // steering: input perpendicular to the rope; also bends the travel plane (corner swings)
+    // the anchor must stay connected to a 3D model (re-checked every 0.1 s)
+    if (!anchorCheck(h)) return;
+    // ---- flight dynamics (./webtension.js). R = anchor - body (centre of mass). The velocity is projected
+    // perpendicular to R (pulling away from the web / pushing into it is removed), then gravity plus the artificial
+    // tension F_T = m g cos(theta) + m v^2 / |R| along R^ bend the path into a smooth circular arc around the anchor.
+    applyWebForces(s.pos, s.vel, S.pivot, WEB_MASS, GS, h, S.fd);
+    const rd = _v.copy(S.pivot).sub(s.pos).normalize(); // R^ (body -> anchor)
+    // steering: input perpendicular to the rope
     const inD = inputDir(I, new THREE.Vector3());
-    // STEERING (Insomniac): the desired heading = camera forward turned by the stick. The whole swing (plane, body
-    // position and velocity) precesses about the vertical line through the pivot toward that heading — a conical /
-    // tangential turn that keeps speed and rope length (no sideways shove, no out-of-plane drift). Facades on the
-    // predicted arc bend the heading away pre-emptively.
+    // STEERING (Insomniac): the desired heading = camera forward turned by the stick. The heading and the velocity turn
+    // together about the vertical; the velocity is then put back perpendicular to R at the same speed (a conical turn
+    // around the anchor, no speed loss). The anchor itself never moves: it is where the web hit the model. Facades on
+    // the predicted arc bend the heading away pre-emptively.
     const sideA = _v5.set(-S.dir.z, 0, S.dir.x);
     let latIn = 0;
     {
@@ -827,25 +824,23 @@ export function createTraversal({ world, cam, web, rig, camera }) {
       if (Math.abs(dyaw) > 1e-6) {
         _q.setFromAxisAngle(UP, dyaw);
         S.dir.applyQuaternion(_q).normalize();
-        s.vel.applyQuaternion(_q);
-        // the (virtual) physics pivot swings around the BODY: the body path stays continuous (no sideways slide), only
-        // the arc's heading turns; the drawn web stays on the real anchor
-        const rel = _v3.copy(S.pivot).sub(s.pos); rel.applyQuaternion(_q); S.pivot.copy(s.pos).add(rel);
+        const sp0 = s.vel.length();
+        s.vel.applyQuaternion(_q); projectPerpendicular(s.vel, rd);
+        const sp1 = s.vel.length(); if (sp1 > 1e-3) s.vel.multiplyScalar(sp0 / sp1);
         sideA.set(-S.dir.z, 0, S.dir.x);
       }
     }
-    // never grind along a facade: a wall within ~2.5 m at the side pushes the body (and the virtual pivot) out
-    // toward the street, so a pinned swing peels off the wall instead of dangling against the bricks
+    // never grind along a facade: a wall within ~2.5 m at the side pushes the body out toward the street, so a pinned
+    // swing peels off the wall instead of dangling against the bricks
     { S.sideT = (S.sideT || 0) - h;
       if (S.sideT <= 0) { S.sideT = 0.05; S.sideN = null;
         for (const sg of [1, -1]) { const hh = world.raycast(s.pos, _v2.copy(sideA).multiplyScalar(sg), 2.5); if (hh && Math.abs(hh.normal.y) < 0.5) { S.sideN = (S.sideN || new THREE.Vector3()).set(hh.normal.x, 0, hh.normal.z).normalize(); S.sideK = 1 - hh.distance / 2.5; } } }
-      if (S.sideN) { s.vel.addScaledVector(S.sideN, 10 * S.sideK * h); S.pivot.addScaledVector(S.sideN, 3 * S.sideK * h); } }
-    // keep the pendulum in its plane: sideways velocity decays -> no drift into facades
-    { const vl = s.vel.dot(sideA); s.vel.addScaledVector(sideA, -vl * (1 - Math.exp(-2.5 * h))); }
+      if (S.sideN) s.vel.addScaledVector(S.sideN, 10 * S.sideK * h); }
     corridor(h, inD);
     const spd = s.vel.length();
     // Insomniac "pump": ONLY with stick input along the swing direction while moving forward along the arc, strongest at
     // the bottom, and never beyond the energy that reaches ~100 deg of arc (a held swing without input is a pendulum).
+    // (pump / climb assist / first-arc carry only add speed along the arc: the web stays perpendicular)
     const tan = _v2.copy(s.vel).addScaledVector(rd, -s.vel.dot(rd));
     const push = inD.lengthSq() > 0.01 ? clamp(inD.dot(S.dir) / Math.max(inD.length(), 1e-3), 0, 1) : 0;
     if (push > 0 && tan.lengthSq() > 0.01 && tan.dot(S.dir) > 0 && S.tautT > 0) {
@@ -869,6 +864,7 @@ export function createTraversal({ world, cam, web, rig, camera }) {
       const ang = swingAngle();
       if (ang > 0.15 && ang < 1.0 && S.tautT > 0.05 && S.tension > 0.05) {
         const tg = _v3.copy(S.dir).multiplyScalar(Math.cos(ang)).addScaledVector(UP, Math.sin(ang)); // arc tangent (forward/up)
+        projectPerpendicular(tg, rd); if (tg.lengthSq() > 1e-4) tg.normalize();
         const vt = s.vel.dot(tg);
         if (vt > -1.5) {
           const u = clamp((ang - 0.15) / 0.85, 0, 1);
@@ -886,44 +882,42 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     if (clearance < 2.2 && s.vel.y < 0) S.ropeTarget = Math.min(S.ropeTarget, Math.max(3, S.pivot.y - (fl + 2.4 + H)));
     { const want = damp(S.rope, S.ropeTarget, clearance < 1.5 ? 10 : (S.kind === 'low' || clearance < 4) ? 6 : 3.2, h);
       S.rope = Math.max(want, S.rope - (clearance < 3 ? 22 : 14) * h); } // reel-in speed limit: the body is never yanked along the rope
-    // web auto-tension: a slack web retracts (down to the clearance length) so the arc starts smoothly, no free-fall jerk
-    const Lnow = s.pos.distanceTo(S.pivot);
-    // (not over the top: above the pivot's level a slack web stays slack and snaps taut when he falls back onto it)
-    if (Lnow < S.rope && S.t < 0.6) S.rope = Math.max(S.ropeTarget, Lnow);                       // attach: taut at once
-    else if (Lnow < S.rope && s.pos.y < S.pivot.y - 0.5) S.rope = Math.max(S.ropeTarget, Math.max(Lnow, S.rope - 45 * h));
+    // soft facade deflect: a pendulum around a wall anchor carries him toward facades; a facade within ~0.35 s of
+    // travel gradually turns the velocity INTO it along the wall (speed kept), so he glances off instead of slamming
+    // into the wall-kick
+    if (SOFT_DEFLECT) {
+      const sp = s.vel.length();
+      if (sp > 4) {
+        const look = Math.min(12, sp * 0.35 + 1);
+        const hit = world.raycast(s.pos, _v3.copy(s.vel).divideScalar(sp), look);
+        if (hit && Math.abs(hit.normal.y) < 0.5) {
+          const vn = s.vel.dot(hit.normal);
+          if (vn < 0) {
+            const k = clamp(1 - hit.distance / look, 0, 1) * (1 - Math.exp(-10 * h));
+            s.vel.addScaledVector(hit.normal, -vn * k);
+            const l = s.vel.length(); if (l > 1e-3) s.vel.multiplyScalar(sp / l);
+          }
+        }
+      }
+    }
     capSpeed();
     s.pos.addScaledVector(s.vel, h);
-    // rope constraint (inequality: slack allowed)
-    const d = _v3.copy(s.pos).sub(S.pivot); const L = d.length();
-    let tension = 0, vrIn = 0;
-    if (L > S.rope) {
-      d.divideScalar(L); s.pos.copy(S.pivot).addScaledVector(d, S.rope);
-      const vr = s.vel.dot(d); if (vr > 0) { s.vel.addScaledVector(d, -vr); vrIn = vr; }
-      const vt2 = s.vel.lengthSq(); tension = clamp((vt2 / Math.max(S.rope, 1) + GS * Math.max(0, -d.y)) / (GS * 2.6), 0, 1);
-    }
-    // slack: over the top (angle > 90 deg without enough speed for v^2/r > g) the body free-falls inside the circle; the
-    // web sags (web.setSlack) and the pose leaves the hang. When the rope catches again it snaps taut with a jolt.
-    // physical criterion: required rope pull = v_t^2/L - g.(outward); < 0 means gravity out-pulls the circle -> free fall
-    const du = _v4.copy(s.pos).sub(S.pivot).divideScalar(Math.max(L, 1e-3));
-    const vtan2 = s.vel.lengthSq() - s.vel.dot(du) ** 2;
-    const need = vtan2 / Math.max(L, 1) - GS * du.y;
-    const slackT = tension < 0.05 ? Math.max(clamp(-need / (GS * 0.35), 0, 1), clamp((S.rope - L) / 1.0, 0, 1)) : 0;
-    if (slackT > 0.2) S.slackT += h;
-    else if (tension > 0.05) {
-      if (S.slackT > 0.18 && vrIn > 2) { tension = 1; events.push({ type: 'ropeSnap', severity: clamp(vrIn / 14, 0.15, 1) }); }
-      S.slackT = 0;
-    }
-    S.slack = damp(S.slack, slackT, slackT > S.slack ? 6 : 14, h);
+    // rigid web constraint: back on |R| = rope, velocity perpendicular to the new R (never slack: the web both pulls and
+    // pushes, so he always rides the circle, over the top included)
+    S.fd.corr = enforceWeb(s.pos, s.vel, S.pivot, S.rope);
+    // tension 0..1 for the web / pose / camera (F_T relative to 2.6 g of pull; a pushing web reads as 0)
+    const tension = clamp(S.fd.tension / (WEB_MASS * GS * 2.6), 0, 1);
+    S.slack = 0; S.slackT = 0;
     S.tension = damp(S.tension, tension, 12, h);
     if (tension > 0.05) S.tautT += h;
     // wall contact: the web stays attached (never a wall-run takeover / drop while held). A real impact becomes a
     // "wall-skip": velocity is redirected along the facade (keeps ~88% of the speed, biased along the swing direction and
     // up) plus a push-off, with a short cooldown so he does not grind. A wider capsule keeps the limbs out of the facade.
     S.kickCd -= h; S.kick = Math.max(0, S.kick - h / 0.4);
+    let moved = false;
     const c = collide(0.3, R + 0.22);
     if (c) {
-      // the pivot is never deeper toward this facade than the body: gravity must not keep pulling him into the wall
-      { const dn = (s.pos.x - S.pivot.x) * c.normal.x + (s.pos.z - S.pivot.z) * c.normal.z; if (dn > 0) { S.pivot.x += c.normal.x * (dn + 0.6); S.pivot.z += c.normal.z * (dn + 0.6); } }
+      moved = true;
       const vn = s.vel.dot(c.normal);
       if (vn < 0) {
         const sp0 = s.vel.length();
@@ -943,17 +937,55 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     }
     // floor contact: never scrape — lift and keep going
     const f2 = floorAt(s.pos.x, s.pos.z, feetY() + 0.4);
-    if (feetY() < f2 + 0.3) { s.pos.y = f2 + 0.3 + H; if (s.vel.y < 0) s.vel.y = 0; }
+    if (feetY() < f2 + 0.3) { s.pos.y = f2 + 0.3 + H; if (s.vel.y < 0) s.vel.y = 0; moved = true; }
+    // a facade / the floor moved the body: the model's surface wins — the web takes the new length (it reels back
+    // toward ropeTarget) and the velocity is put back perpendicular to R
+    if (moved) {
+      const Rn = _v4.copy(S.pivot).sub(s.pos), Ln = Rn.length();
+      if (Ln > 1e-3) { S.rope = Ln; S.ropeTarget = Math.min(S.ropeTarget, Ln); projectPerpendicular(s.vel, Rn.divideScalar(Ln)); }
+    }
     // phase / sub-state
     S.phase = swingPhase(); S.angle = swingAngle();
     S.angMax = Math.max(S.angMax ?? -9, S.angle);
     if (!S.apexed && (S.angle < S.angMax - 0.06 && S.angMax > 0.2 || S.t > 4)) S.apexed = true;
     if (S.kick > 0.3) setSub('wallKick');
-    else if (S.slack > 0.5) setSub('swingSlack');
     else setSub(S.phase < -0.28 ? 'swingLow' : S.phase < 0.28 ? 'swingBottom' : 'swingHigh');
-    web.setSlack?.(S.slack, S.tension);
-    // NO auto-release: while the button is held he keeps swinging — up past the anchor, over and around (pure rope physics)
+    web.setSlack?.(0, S.tension);
+    // NO auto-release: while the button is held he keeps swinging — up past the anchor, over and around (rigid web)
     ropeWrap(h);
+  }
+  // Anchor <-> 3D model: every 0.1 s the anchor is re-checked (anchors.attached). If the model it hit is gone (e.g. a
+  // tree dropped out of the rendered near-LOD pool) the web is re-shot to a verified anchor ahead; with nothing to
+  // re-shoot to, the web lets go (the one release that does not need the button: there is nothing left to hold).
+  function anchorCheck(h) {
+    const S = s.swing;
+    S.modelT -= h; if (S.modelT > 0) return true;
+    S.modelT = 0.1;
+    const m = anchors.attached(S.anchor, S.normal, S.src);
+    if (m) { S.model = m; return true; }
+    const fl = floorAt(s.pos.x, s.pos.z, feetY() + 0.1);
+    const a = anchors.find(s.pos, _v3.set(S.dir.x, 0, S.dir.z).normalize(), null, s.vel.length(), fl);
+    if (a && a.point.y > s.pos.y + 3) {
+      reanchor(a);
+      events.push({ type: 'anchorLost', reanchored: true });
+      return true;
+    }
+    events.push({ type: 'anchorLost', reanchored: false });
+    leaveSwingOK = true;
+    web.release(); setMode('air', 'fall'); s.airT = 0; s.apexY = feetY(); s.swingCooldown = 0.3;
+    leaveSwingOK = false;
+    return false;
+  }
+  // move the web to a new verified anchor mid-swing: R = new anchor - body, velocity back onto the new arc at the same
+  // speed (momentum conserved), web re-shot (never dropped)
+  function reanchor(a) {
+    const S = s.swing;
+    S.anchor.copy(a.point); S.normal.copy(a.normal); S.kind = a.kind; S.src = a.src; S.model = a.model || null; S.modelT = 0.1;
+    S.pivot.copy(a.point);
+    const Ln = s.pos.distanceTo(S.pivot); S.rope = Ln; S.ropeTarget = Math.max(4, Ln - 6);
+    const sp = s.vel.length(); projectPerpendicular(s.vel, _v5.copy(S.pivot).sub(s.pos).divideScalar(Math.max(Ln, 1e-3)));
+    const sp1 = s.vel.length(); if (sp1 > 1e-3) s.vel.multiplyScalar(sp / sp1);
+    web.attach(rig.handWorld(S.hand), S.anchor, S.normal, { shootDur: 0.06 });
   }
   // Rope wrap: if a building now sits between the body and the anchor (the rope would pass THROUGH it — physically
   // impossible) the web wraps on that edge: the contact point becomes the new anchor/pivot with the remaining length.
@@ -971,18 +1003,13 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     // heading when a good anchor exists (the web is re-shot, never dropped); otherwise wrap on the building edge
     { const fl = floorAt(s.pos.x, s.pos.z, feetY() + 0.1);
       const a = anchors.find(s.pos, _v3.set(S.dir.x, 0, S.dir.z).normalize(), null, s.vel.length(), fl);
-      if (a && a.point.y > s.pos.y + 3) {
-        S.anchor.copy(a.point); S.normal.copy(a.normal); S.kind = a.kind;
-        const dx = a.point.x - s.pos.x, dz = a.point.z - s.pos.z, al = dx * S.dir.x + dz * S.dir.z;
-        S.pivot.set(s.pos.x + S.dir.x * al, a.point.y, s.pos.z + S.dir.z * al);
-        const Ln = s.pos.distanceTo(S.pivot); S.rope = Ln; S.ropeTarget = Math.max(4, Ln - 6);
-        web.attach(rig.handWorld(S.hand), S.anchor, S.normal, { shootDur: 0.06 });
-        events.push({ type: 'ropeReanchor' }); return;
-      } }
+      if (a && a.point.y > s.pos.y + 3) { reanchor(a); events.push({ type: 'ropeReanchor' }); return; } }
+    if (hit.ground) return; // the strand may only wrap on a model, never on bare terrain
     const p = _v5.copy(hit.point).addScaledVector(hit.normal, 0.06);
-    S.anchor.copy(p); S.normal.copy(hit.normal);
-    // physics pivot stays in the current swing plane (the wrap never turns the chain on its own; S.dir unchanged)
-    { const dx = p.x - s.pos.x, dz = p.z - s.pos.z, al = dx * S.dir.x + dz * S.dir.z; S.pivot.set(s.pos.x + S.dir.x * al, p.y, s.pos.z + S.dir.z * al); }
+    S.anchor.copy(p); S.normal.copy(hit.normal); S.src = undefined;
+    S.model = anchors.attached(S.anchor, S.normal) || { model: hit.kind, id: hit.box }; S.modelT = 0.1;
+    // the wrap point lies on the old web line, so R keeps its direction and the velocity stays perpendicular
+    S.pivot.copy(p);
     const Ln = s.pos.distanceTo(S.pivot); S.rope = Ln; S.ropeTarget = Math.min(S.ropeTarget, Ln);
     web.retarget?.(p, hit.normal);
     events.push({ type: 'ropeWrap' });

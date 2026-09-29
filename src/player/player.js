@@ -254,6 +254,11 @@ export async function createPlayer({ scene, world, camera, input, renderer }) {
       nC: trav.targeting.candidates.length, feet: +(s.pos.y - H).toFixed(2), floor: +trav.floorAt(s.pos.x, s.pos.z, s.pos.y - H + 0.3).toFixed(2),
       rope: s.mode === 'swing' ? +s.swing.rope.toFixed(1) : null, ang: s.mode === 'swing' ? Math.round((s.swing.angle || 0) * 57.3) : null,
       woff: s.mode === 'wall' ? +s.wall.off.toFixed(2) : null, runK: s.mode === 'wall' ? +s.wall.runK.toFixed(2) : null, node: anim.animNode || null, ropeU: s.mode === 'rope' && s.rope ? +s.rope.u.toFixed(3) : null, ropeN: s.ropes.length, anc: s.mode === 'swing' ? s.swing.anchor.toArray().map(v => +v.toFixed(1)) : null,
+      // flight dynamics: |R| (m), theta (deg from straight down), F_T = m g cos(theta) + m v^2/|R| (N), radial speed the
+      // projection removed this step (m/s, + into the web / - away), the 3D model the anchor is attached to
+      R: s.mode === 'swing' ? +s.swing.fd.Rlen.toFixed(2) : null, th: s.mode === 'swing' ? Math.round(Math.acos(THREE.MathUtils.clamp(s.swing.fd.cosTheta, -1, 1)) * 57.3) : null,
+      FT: s.mode === 'swing' ? Math.round(s.swing.fd.tension) : null, vr: s.mode === 'swing' ? +s.swing.fd.radial.toFixed(2) : null,
+      model: s.mode === 'swing' && s.swing.model ? `${s.swing.model.model}#${s.swing.model.id}` : null,
     });
   }
   return api;

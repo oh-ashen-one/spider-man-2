@@ -9,6 +9,8 @@ const PRESETS = {
     charShadow: 0, ssr: false, shafts: false, shaftSteps: 0,
     ssgi: false, wet: false, // (lighting2 r1)
     waterGrid: 16, waterSpray: 900, waterCaustics: false, waterShafts: 0, gulls: 0.5, // (water-effects)
+    debris: 120, // (pinata-and-trees) live destruction fragments (0 = off)
+    eztree: false, grass: 0, // (pinata-and-trees) ez-tree near trees (false = the card trees everywhere), grass blades (0 = shader lawn only)
   },
   med: {
     name: 'med',
@@ -19,6 +21,7 @@ const PRESETS = {
     charShadow: 1024, ssr: true, ssrSteps: 20, shafts: true, shaftSteps: 12,
     ssgi: true, ssgiDirs: 4, ssgiSteps: 4, wet: true, // (lighting2 r1)
     waterGrid: 24, waterSpray: 1600, waterCaustics: true, waterShafts: 8, gulls: 1, // (water-effects)
+    debris: 200, eztree: true, grass: 0.6, // (pinata-and-trees)
   },
   high: {
     name: 'high',
@@ -30,6 +33,7 @@ const PRESETS = {
     charShadow: 2048, ssr: true, ssrSteps: 28, shafts: true, shaftSteps: 16,
     ssgi: true, ssgiDirs: 6, ssgiSteps: 4, wet: true, // (lighting2 r1) SSGI + wet-patch roughness
     waterGrid: 32, waterSpray: 2400, waterCaustics: true, waterShafts: 12, gulls: 1, // (water-effects) CDLOD grid, spray budget, under-water caustics / shaft steps, gull count scale
+    debris: 300, eztree: true, grass: 1, // (pinata-and-trees)
   },
 };
 

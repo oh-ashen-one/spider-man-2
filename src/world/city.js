@@ -23,6 +23,8 @@ import { CollisionGrid, makeQueries, collisionDebugLines, fitInstancedSolids } f
 import { addPropAnchors, createGeoDebug } from './zippoints.js';
 import { buildProps } from './props.js';
 import { buildTrees, meadowDist } from './trees.js';
+import { buildGrass } from './grass.js'; // (pinata-and-trees) park grass blades
+import { getQuality } from '../render/quality.js';
 import { buildPark } from './park.js';
 import { buildTraffic, loadVehicleModels } from './vehicles.js';
 import { buildPeds } from './peds.js';
@@ -162,6 +164,7 @@ export async function buildCity({ scene, renderer }) {
   }
   if (gen.variety) console.log('[city] (layout2 r3) block variety', JSON.stringify(gen.variety));
   const trees = buildTrees({ scene: root, T, spots: props.treeSpots, parkPaths: ground.parkPaths });
+  const grass = buildGrass({ scene: root, parkPaths: ground.parkPaths, density: getQuality().grass ?? 0 }); // (pinata-and-trees)
   const traffic = buildTraffic({ scene: root, phase: props.phase, models: vehModels });
   const peds = await buildPeds({ scene: root, blocks, parkPaths: ground.parkPaths, props, traffic }); // citylife
   const flags = buildFlags({ scene: root, flags: gen.buildings.flags });
@@ -211,6 +214,7 @@ export async function buildCity({ scene, renderer }) {
     bridgeLimit: null, bridgeDeckY,
     propAnchors: () => props.propAnchors?.() ?? [], // citylife: exact lamp-head / signal-mast / antenna tops + normals
     grabbables: (c, r) => props.grabbables?.(c, r) ?? [], grabProp: (id) => props.grab?.(id), releaseProp: (id) => props.release?.(id), // citylife: combat throwables
+    propPool: (name) => props.pool?.(name) ?? null, // (pinata-and-trees) breakable street props
     collision: grid, geoDebug,
     buildings: gen.boxes,
     footprints: gen.footprints,
@@ -240,12 +244,13 @@ export async function buildCity({ scene, renderer }) {
         props.update(dt, cp, time);
         const t1_ = P_ ? performance.now() : 0;
         trees.update(dt, cp);
+        grass.update(dt, camera); // (pinata-and-trees)
         flags.update(dt, cp);
         rooftops.update(camera);
         signage.update(cp); // billboards: per-cell distance culling
         const t2_ = P_ ? performance.now() : 0;
         let clear = null;
-        if (shotMode && !forced) {
+        if (shotMode && !forced && world.shotClear !== false) { // (pinata-and-trees) world.shotClear = false: shots that need the cars
           // screenshot mode: keep the lens + sightline free of vehicles (deterministic sim: seeded rng, fixed dt)
           camera.getWorldDirection(_dir); _dir.y = 0; _dir.normalize();
           clear = { pos: cp, dir: _dir, len: 32, half: 2.2 };

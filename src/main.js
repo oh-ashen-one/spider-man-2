@@ -79,6 +79,7 @@ await boot.stage('frame');
 let framesDrawn = 0;
 const systemsReady = shotName ? Promise.resolve() : import('./game/systems/index.js').then(m => m.initSystems(ctx)).catch(e => console.error('[systems] init failed', e)) // open-world systems (C5)
   .then(() => import('./game/combat/index.js')).then(m => m.initCombat(ctx)).catch(e => console.error('[combat] init failed', e)) // combat (C5)
+  .then(() => import('./game/destruction/index.js')).then(m => m.initDestruction(ctx)).catch(e => console.error('[destruction] init failed', e)) // (pinata-and-trees) breakables + debris
   .then(() => warmup?.rescan()); // (perf r3) + the meshes the systems / combat added (trickled by warmup.step)
 // the loading screen goes once the game systems (HUD, save position) are in and a few frames have been drawn
 systemsReady.then(async () => { boot.sub(0.8); while (framesDrawn < 4) await new Promise(r => requestAnimationFrame(r)); boot.done(); });
@@ -90,7 +91,8 @@ if (shotName) {
   shot.apply(ctx);
   // Warm up: let shadows, TAA/accumulation, streaming settle.
   const dt = 1 / 60;
-  for (let i = 0; i < (shot.frames ?? 90); i++) {
+  // shot.until(ctx): keep rendering past `frames` until it returns true (async set-ups, e.g. destruction shots)
+  for (let i = 0; i < (shot.frames ?? 90) || (shot.until && !shot.until(ctx) && i < 1500); i++) {
     shot.tick?.(ctx, dt, i);
     world.update(dt, camera); lighting.update(camera); hud.update(dt);
     pipeline.render(dt);

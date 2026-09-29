@@ -1577,6 +1577,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
       }
       return out;
     },
+    pool: (name) => P[name] ?? null, // (pinata-and-trees) breakable street props (game/destruction/breakables.js)
     grab(id) { const g = grabRef(id); if (g) g.pool.hide(g.it); return !!g; },
     release(id) { const g = grabRef(id); if (g) g.pool.show(g.it); return !!g; },
     // zip / perch anchors (consumed by zippoints.addPropAnchors -> world.getZipPoints) — C2

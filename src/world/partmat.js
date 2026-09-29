@@ -6,6 +6,7 @@ import { nightK } from '../render/daynight.js'; // (daynight)
 export const PART = {
   BASE: 0, PAINT: 1, METAL: 2, GLASS: 3, LAMP: 4, RUBBER: 5, PLASTIC: 6, HEAD: 7, TAIL: 8, FABRIC: 9,
   SIG_R: 10, SIG_Y: 11, SIG_G: 12, PED: 13, SCREEN: 14, TAXI: 15, SKIN: 16, SHIRT: 17, PANTS: 18, HAIR: 19, LEAF: 20, WOOD: 21, CONCRETE: 22,
+  SHARD: 23, // (pinata-and-trees) broken glass: faces keep the vertex colour (pale green cut edges), mirror-smooth
 };
 
 export function createPartMaterial({ name = 'part', instTint = true, instState = false, physical = false, extraVert = '', extraVertMain = '', map = null } = {}) {
@@ -48,6 +49,7 @@ export function createPartMaterial({ name = 'part', instTint = true, instState =
       else if (P == 20) { pR = 0.85; }
       else if (P == 21) { pR = 0.78; }
       else if (P == 22) { pR = 0.92; }
+      else if (P == 23) { pR = 0.03; pM = 0.0; pE = diffuseColor.rgb * 0.15; } // (pinata-and-trees) glass shards
       // (daynight) lamps, headlights, tail lights, screens and taxi signs light up at night
       if (uNightK > 0.0) {
         if (P == 4) pE += vec3(1.0, 0.78, 0.5) * 9.0 * uNightK;

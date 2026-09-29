@@ -4,9 +4,13 @@
 // web visibly hits that surface. Passes: (1) normal cone (ahead, 30-75 deg up, both sides), (2) wide / far / tall search,
 // (3) low swings off lamp tops, signal masts, trees, water towers (from C2 zip points). Falls back to a ray cone when the
 // world exposes no box list.
+// Every anchor returned is verified to be connected to a 3D model (onModel): a short probe into the surface must hit a
+// collision solid (contract C4: the solids mirror the rendered meshes), or, for tree anchors, the point must sit in the
+// crown of a rendered tree instance. Bare terrain and empty air never hold a web. traversal re-checks it mid-swing.
 import * as THREE from 'three';
 
-const _rel = new THREE.Vector3(), _d = new THREE.Vector3(), _A = new THREE.Vector3();
+const _rel = new THREE.Vector3(), _d = new THREE.Vector3(), _A = new THREE.Vector3(), _o = new THREE.Vector3(), _pn = new THREE.Vector3();
+const DOWN = new THREE.Vector3(0, -1, 0);
 const near = [];
 
 export function createAnchorFinder(world, index, zipPoints) {
@@ -73,15 +77,19 @@ export function createAnchorFinder(world, index, zipPoints) {
   // grabs the crown's main branches). Cached, refreshed every 0.8 s or 40 m of travel.
   const trees = { meshes: null, pts: [], t: -1e9, at: new THREE.Vector3(1e9, 0, 0) };
   const _m4 = new THREE.Matrix4(), _tp = new THREE.Vector3(), _ts = new THREE.Vector3(), _tq = new THREE.Quaternion();
+  function treeMeshes() {
+    if (!trees.meshes) {
+      const scene = globalThis.__ctx?.scene; if (!scene) return null;
+      trees.meshes = [];
+      scene.traverse(o => { if (o.isInstancedMesh && /^trees-.*-near$/.test(o.name)) trees.meshes.push(o); });
+    }
+    return trees.meshes;
+  }
   function treePoints(pos) {
     const now = performance.now();
     if (now - trees.t < 800 && trees.at.distanceToSquared(pos) < 1600) return trees.pts;
     trees.t = now; trees.at.copy(pos); trees.pts.length = 0;
-    if (!trees.meshes) {
-      const scene = globalThis.__ctx?.scene; if (!scene) return trees.pts;
-      trees.meshes = [];
-      scene.traverse(o => { if (o.isInstancedMesh && /^trees-.*-near$/.test(o.name)) trees.meshes.push(o); });
-    }
+    if (!treeMeshes()) return trees.pts;
     for (const m of trees.meshes) {
       const g = m.geometry; if (!g.boundingBox) g.computeBoundingBox();
       const top = g.boundingBox.max.y, arr = m.instanceMatrix.array;
@@ -96,6 +104,42 @@ export function createAnchorFinder(world, index, zipPoints) {
     }
     return trees.pts;
   }
+  // a rendered tree instance whose crown holds p (the instance pools are repacked as the camera moves, so match by
+  // position, never by instance index)
+  function treeAt(p) {
+    if (!treeMeshes()) return null;
+    for (const m of trees.meshes) {
+      if (!m.parent || !m.visible) continue;
+      const g = m.geometry; if (!g.boundingBox) g.computeBoundingBox();
+      const top = g.boundingBox.max.y, arr = m.instanceMatrix.array;
+      for (let k = 0; k < m.count; k++) {
+        const x = arr[k * 16 + 12], z = arr[k * 16 + 14];
+        if ((x - p.x) ** 2 + (z - p.z) ** 2 > 4) continue;
+        _m4.fromArray(arr, k * 16); _m4.decompose(_tp, _tq, _ts);
+        const crown = _tp.y + top * _ts.y, r = top * _ts.y * 0.34;
+        if (p.y < crown + 0.5 && p.y > crown - 2 * r) return { model: 'tree', mesh: m.name, id: k };
+      }
+    }
+    return null;
+  }
+
+  // ---- anchor <-> 3D model check
+  // probe from 0.6 m outside the surface back into it along dir; the hit must be a collision solid (not terrain) and
+  // land within 0.4 m of the anchor point
+  function probe(point, dir) {
+    _o.copy(point).addScaledVector(dir, -0.6);
+    const h = world.raycast(_o, dir, 1.4);
+    if (!h || h.ground || h.box == null) return null;
+    return h.point.distanceTo(point) < 0.4 ? { model: h.kind, id: h.box } : null;
+  }
+  // {model, id} when the anchor at point (surface normal) is attached to a 3D model, else null.
+  // src 'tree' = a canopy anchor (canopies have no collision: checked against the rendered tree instances)
+  function onModel(point, normal, src) {
+    if (src === 'tree') return treeAt(point);
+    if (normal && normal.lengthSq() > 0.5 && !(normal.y > 0.7)) { const w = probe(point, _pn.copy(normal).normalize().negate()); if (w) return w; }
+    return probe(point, DOWN); // tops (roofs, lamp heads, water towers) and roof-edge perch points: straight down
+  }
+  const verify = a => { if (!a) return null; const m = onModel(a.point, a.normal, a.src); if (!m) return null; a.model = m; return a; };
 
   function coneRays(pos, fwd) { // fallback without box list
     let best = null, bestScore = Infinity; const dir = new THREE.Vector3();
@@ -103,7 +147,7 @@ export function createAnchorFinder(world, index, zipPoints) {
       const cy = Math.cos(y), sy = Math.sin(y);
       const fx = fwd.x * cy + fwd.z * sy, fz = -fwd.x * sy + fwd.z * cy;
       dir.set(fx * Math.cos(e), Math.sin(e), fz * Math.cos(e)).normalize();
-      const h = world.raycast(pos, dir, 90); if (!h || h.point.y < pos.y + 5 || h.distance < 9 || h.normal.y > 0.7) continue;
+      const h = world.raycast(pos, dir, 90); if (!h || h.ground || h.point.y < pos.y + 5 || h.distance < 9 || h.normal.y > 0.7) continue;
       const score = Math.abs(e - 0.95) * 2 + Math.abs(y) * 1.2 + Math.abs(h.distance - 30) / 20;
       if (score < bestScore) { bestScore = score; best = { point: h.point.clone(), normal: h.normal.clone(), L: h.distance, lat: 0, kind: 'wall' }; }
     }
@@ -113,11 +157,13 @@ export function createAnchorFinder(world, index, zipPoints) {
   return {
     // tree canopies near p (for camera foliage avoidance): [{pos, cy, r}]
     canopies(p) { return treePoints(p); },
+    // is the web anchor still connected to a 3D model? -> {model, id} | null (see onModel)
+    attached(point, normal, src) { return onModel(point, normal, src); },
     // pos: body centre; fwd: horizontal travel dir (unit); turn: horizontal steer dir or null; speed: m/s
     find(pos, fwd, turn, speed, floorY) {
       const want = turn ? fwd.clone().multiplyScalar(0.55).addScaledVector(turn, 0.9).normalize() : fwd;
       const right = new THREE.Vector3(-want.z, 0, want.x); // right-hand side of travel (matches camera right)
-      if (!index.ok) return coneRays(pos, want);
+      if (!index.ok) return verify(coneRays(pos, want));
       const hAbove = pos.y - floorY;
       // Altitude band (Insomniac keeps chains in the street canyon): the desired anchor sits ~30-42 m over the STREET.
       // Above the band the anchor may be only slightly above the body, so the next arc dips back down into the canyon
@@ -139,7 +185,7 @@ export function createAnchorFinder(world, index, zipPoints) {
         let tries = 0;
         for (const c of list) {
           if (++tries > 7) break;
-          const a = confirm(pos, c, !!turn); if (!a) continue;
+          const a = verify(confirm(pos, c, !!turn)); if (!a) continue;
           const pivotY = a.point.y, rope = Math.max(5, Math.min(a.L, pivotY - floorY - 3.2));
           if (!arcClear(pos, pivotY, a.point, rope) && tries < 6) continue;
           return a;
@@ -156,10 +202,14 @@ export function createAnchorFinder(world, index, zipPoints) {
         const ahead = _rel.x * want.x + _rel.z * want.z; if (ahead < 1) continue;
         const L = _rel.length(); if (L < 5 || L > 40) continue;
         const s = Math.abs(ahead - 12) / 8 + Math.abs(_rel.x * right.x + _rel.z * right.z) / 10 - Math.min(up, 20) / 20;
-        if (s < bs) { _d.copy(_rel).divideScalar(L); const h = world.raycast(pos, _d, L - (p.kind === 'tree' ? 3 : 0.5)); if (h) continue; bs = s; best = p; }
+        if (s < bs) {
+          _d.copy(_rel).divideScalar(L); const h = world.raycast(pos, _d, L - (p.kind === 'tree' ? 3 : 0.5)); if (h) continue;
+          if (!onModel(_A.copy(p.pos).setY(p.pos.y + 0.1), p.normal, p.kind === 'tree' ? 'tree' : undefined)) continue; // not on a model: next candidate
+          bs = s; best = p;
+        }
       }
-      if (best) return { point: best.pos.clone().add(new THREE.Vector3(0, 0.1, 0)), normal: best.normal?.clone() || new THREE.Vector3(0, 1, 0), L: best.pos.distanceTo(pos), lat: 0, kind: 'low' };
-      if (hAbove > 3) return coneRays(pos, want);
+      if (best) return verify({ point: best.pos.clone().add(new THREE.Vector3(0, 0.1, 0)), normal: best.normal?.clone() || new THREE.Vector3(0, 1, 0), L: best.pos.distanceTo(pos), lat: 0, kind: 'low', src: best.kind === 'tree' ? 'tree' : undefined });
+      if (hAbove > 3) return verify(coneRays(pos, want));
       return null;
     },
   };

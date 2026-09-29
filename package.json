@@ -5,9 +5,11 @@
   "scripts": {
     "dev": "vite --port 5173 --host 127.0.0.1",
     "build": "vite build",
-    "preview": "vite preview --port 4173 --host 127.0.0.1"
+    "preview": "vite preview --port 4173 --host 127.0.0.1",
+    "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
+    "@dgreenheck/three-pinata": "^2.0.1",
     "n8ao": "^2.0.1",
     "postprocessing": "^6.39.5",
     "three": "^0.186.0"

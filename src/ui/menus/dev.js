@@ -34,6 +34,7 @@ export function createDevMenu(sys) {
   const P = ctx.player;
   const hdist = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
   let note = '';                        // last one-off message for the robbery item (spawn failed, cleared, ...)
+  let smashNote = '';                   // (pinata-and-trees) same for the smash item
   const robbery = () => { const c = sys.crimes.active; return c && c.dev && c.type === 'bankAlarm' ? c : null; };
 
   const ITEMS = [
@@ -53,6 +54,21 @@ export function createDevMenu(sys) {
         if (c.claimed) return c.cmbTotal ? `Fighting · ${c.cmbLeft} of ${c.cmbTotal} left` : 'Fighting';
         if (c.state === 'engaged') return 'Starting the fight…';
         return `Bank robbery · ${d} m away`;
+      },
+    },
+    { // (pinata-and-trees) destruction test: smash the street furniture / glass / cars within 5 m
+      id: 'smash', label: 'Smash everything nearby',
+      on: () => (ctx.destruction?.debris.count ?? 0) > 0,
+      toggle() {
+        const D = ctx.destruction; if (!D?.enabled) { smashNote = 'Destruction off (quality debris:0)'; return; }
+        const p = P.position.clone(); p.y = ctx.world.groundHeight(p.x, p.z, p.y + 0.5) + 0.5;
+        const n = D.breakAt(p, 5, { power: 6, up: 4 }) + D.hitCar(p, 4, {});
+        D.debris.blast(p, 6, 6);
+        smashNote = n ? '' : 'Nothing breakable within 5 m';
+      },
+      status() {
+        const D = ctx.destruction; if (!D) return 'Loading…';
+        return smashNote && !D.debris.count ? smashNote : `${D.debris.count} fragments live · ${D.breakables.brokenCount()} props broken`;
       },
     },
   ];

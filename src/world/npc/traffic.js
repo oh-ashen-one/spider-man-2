@@ -640,7 +640,7 @@ export function createTraffic({ scene, roads, phase, geos, mats, models = null }
         else c.stuckT = 0;
         c.stillT = c.v < 0.3 ? c.stillT + dt : 0;
         c.brake = (acc < -0.6 || c.v < 0.4) ? 1 : 0;
-        if (c.inZone) { c.v = Math.max(0, c.v - 12 * dt); c.brake = (time * 1.6) % 1 < 0.5 ? 1 : 0; }   // hazards
+        if (c.inZone || c.dmg) { c.v = Math.max(0, c.v - 12 * dt); c.brake = (time * 1.6) % 1 < 0.5 ? 1 : 0; }   // hazards ((pinata-and-trees) + smashed cars stay put)
         c.pitch += ((acc < -1.5 ? Math.min(0.025, -acc * 0.004) : 0) - c.pitch) * Math.min(1, dt * 6);
         // honk when Spider-Man is standing in the way
         if (blocked && c.v < 1.0 && gap < 6) {
@@ -883,6 +883,12 @@ export function createTraffic({ scene, roads, phase, geos, mats, models = null }
       player.ground = groundY ?? 0;
     },
     collideDynamic,
+    // (pinata-and-trees) cars (moving + parked) whose centre is within r of pos (from the 40 m near list)
+    carsNear(pos, r = 6) {
+      const list = near.length ? near : cars, out = [];
+      for (const c of list) { const d = Math.hypot(c.x - pos.x, c.z - pos.z); if (d < r + c.len / 2) out.push(c); }
+      return out;
+    },
     // danger/alarm hook: cars in the radius slam on the brakes and honk
     zone(key, pos, r = 18, active = true, ttl = 1e9) {
       if (!active) { zones.delete(key); return; }

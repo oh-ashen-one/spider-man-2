@@ -1,7 +1,7 @@
 // Deterministic screenshot capture for the ?shot= harness (src/shots.js).
 //   node tools/shot.mjs riverHigh 'riverHigh&tod=sunset' riverLow eastRiver    -> shots/<name>.png
 //   OUT=shots/before node tools/shot.mjs riverHigh                             -> shots/before/riverHigh.png
-// Starts its own Vite dev server on a free port (never 5173/5191, used by other sessions) unless URL= is given.
+// Starts its own Vite dev server on a free port (never 5173/5191/5192, used by other sessions) unless URL= is given.
 // Uses the installed Google Chrome (playwright-core, no browser download), headless with the GPU on (Metal ANGLE).
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
@@ -16,7 +16,7 @@ fs.mkdirSync(OUT, { recursive: true });
 
 let server = null, base = process.env.URL;
 if (!base) {
-  server = await createServer({ server: { port: +(process.env.PORT || 5192), strictPort: false, host: '127.0.0.1' }, logLevel: 'error' });
+  server = await createServer({ server: { port: +(process.env.PORT || 5193), strictPort: false, host: '127.0.0.1' }, logLevel: 'error' });
   await server.listen();
   base = server.resolvedUrls.local[0];
 }
