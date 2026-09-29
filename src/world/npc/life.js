@@ -6,7 +6,7 @@
 // If traversal never calls setPlayerState, the player state is polled from window.__ctx.player defensively.
 import * as THREE from 'three';
 
-export function attachLife(world, { traffic, crowd = null, pigeons = null }) {
+export function attachLife(world, { traffic, crowd = null, pigeons = null, critters = null }) {
   const sim = traffic?.sim;
   const state = { pos: new THREE.Vector3(1e9, 0, 0), vel: new THREE.Vector3(), last: -1, t: 0, prevVy: 0, landT: -9, airT: 0 };
   const _v = new THREE.Vector3(), _p = new THREE.Vector3();
@@ -26,16 +26,17 @@ export function attachLife(world, { traffic, crowd = null, pigeons = null }) {
     sim?.setPlayer(pos, vel, gy);
     crowd?.setPlayer?.(state);
     pigeons?.setPlayer?.(state);
+    critters?.setPlayer?.(state);
   };
   // until traversal feeds us, assume the player stands at the spawn (no car is ever streamed in on top of him)
   if (world.spawn) { state.pos.copy(world.spawn); sim?.setPlayer(world.spawn, null, world.spawn.y ?? 0); }
   world.setPlayerState = (pos, vel) => { state.last = state.t; feed(pos, vel); };
   world.collideDynamic = (pos, radius = 0.4, height = 1.8) => sim ? sim.collideDynamic(pos, radius, height) : null;
   world.carsNear = (pos, r = 6) => sim?.carsNear ? sim.carsNear(pos, r) : []; // (pinata-and-trees) destruction: glass / panels
-  world.alarm = (pos, radius = 25) => { sim?.alarm(pos, radius); crowd?.alarm?.(pos, radius); pigeons?.alarm?.(pos, radius); };
+  world.alarm = (pos, radius = 25) => { sim?.alarm(pos, radius); crowd?.alarm?.(pos, radius); pigeons?.alarm?.(pos, radius); critters?.alarm?.(pos, radius); };
   world.life = {
-    traffic: sim, crowd, pigeons, player: state,
-    stats: () => ({ ...(sim?.stats() || {}), ...(crowd?.stats?.() || {}), ...(pigeons?.stats?.() || {}) }),
+    traffic: sim, crowd, pigeons, critters, player: state,
+    stats: () => ({ ...(sim?.stats() || {}), ...(crowd?.stats?.() || {}), ...(pigeons?.stats?.() || {}), ...(critters?.stats?.() || {}) }),
   };
   // crime zones -> crowd danger zones. Systems emit ctx.events 'crime:zone' {pos, radius, active, id?}; fallback: poll
   // __sys.crimes.active (pos) so civilians clear out of fights even before the event ships.

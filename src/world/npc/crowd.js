@@ -18,6 +18,8 @@ import { PLAZA_CROWD_SPOTS } from '../props.js'; // (street r7) forecourt-plaza 
 import { PARK_CROWD_SPOTS } from '../park.js'; // (peds r6) lawn + park-edge people (were box figures in park.js)
 import { GC_CROWD_SPOTS } from '../grandcentral.js'; // (street r7) Park Av podium roof garden + colonnade people
 import { perf2Off } from '../tilebatch.js'; // (perf r2) A/B switch
+import { createDogsHQ } from './fauna.js'; // (3d-assets)
+
 
 const RP = 270;                 // sidewalk population radius around the camera
 const RNEAR = [120, 160]; /* (street r10) 95/135 -> 120/160 (director: 'many more pedestrians') */        // (street r8) 70/110 -> 95/135: denser sidewalks seen from swing height. near tier (extra walkers + crosswalk corner crowds): populate / release block distance
@@ -486,6 +488,53 @@ function buildGeometry(bin, L) {
   return g;
 }
 
+// ------------------------------------------------------------------ custom citizens (3d-assets)
+// Tripo-modelled citizens fitted onto the crowd skeleton by tools/crowdfit/crowdfit.py: citizens.json / citizens.bin
+// (same LOD idea as people.json, plus a texture-atlas uv) and citizens_atlas.webp. They run through the SAME skinning
+// (anim texture, clip blend, look-at, body-shape girth) and the same PeoplePool instancing as the painted variants; only
+// the surface differs (a real texture instead of per-region garment colours). ?nocitizens = old crowd only (A/B)
+async function loadCitizens() {
+  if (/[?&]nocitizens/.test(typeof location !== 'undefined' ? location.search : '')) return null;
+  try {
+    const meta = await fetch('/assets/city/npc/citizens.json').then(r => r.json());
+    if (!meta?.variants?.length) return null;
+    const [bin, atlas] = await Promise.all([
+      fetch('/assets/city/npc/citizens.bin').then(r => r.arrayBuffer()),
+      new THREE.TextureLoader().loadAsync(`/assets/city/npc/${meta.atlas || 'citizens_atlas'}.webp`),
+    ]);
+    atlas.flipY = false; atlas.colorSpace = THREE.SRGBColorSpace; atlas.anisotropy = 4; atlas.needsUpdate = true;
+    return { meta, bin, atlas };
+  } catch (e) { return null; } // no citizens shipped (or a fetch fell back to index.html): painted crowd only
+}
+function buildCitizenGeometry(bin, L) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(bin, L.pos, L.nv * 3), 3));
+  g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(bin, L.nrm, L.nv * 3), 3));
+  g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(bin, L.uv, L.nv * 2), 2));
+  g.setAttribute('aSI', new THREE.BufferAttribute(new Uint8Array(bin, L.si, L.nv * 4), 4));
+  g.setAttribute('aSW', new THREE.BufferAttribute(new Uint8Array(bin, L.sw, L.nv * 4), 4, true));
+  g.setAttribute('aRA', new THREE.BufferAttribute(new Uint8Array(L.nv * 3), 3)); // region 0, no AO, no optional part
+  g.setIndex(new THREE.BufferAttribute(L.idx32 ? new Uint32Array(bin, L.idx, L.nt * 3) : new Uint16Array(bin, L.idx, L.nt * 3), 1));
+  g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 1, 0), 1.2);
+  return g;
+}
+function makeCitizenMaterial(uni, meta, atlas) {
+  const mat = new THREE.MeshStandardMaterial({ map: atlas, roughness: 0.82, metalness: 0.0 });
+  const common = skinningGLSL(meta.nb);
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, { uAnim: uni.uAnim, uTime: uni.uTime, uNeck: uni.uNeck, uHead: uni.uHead });
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>\n${common}\nattribute vec4 iC;`)
+      .replace('#include <beginnormal_vertex>', `mat4 sk = skinMatrix();
+        vec3 objectNormal = normalize(mat3(sk) * normal);
+        #ifdef USE_TANGENT
+        vec3 objectTangent = vec3(1.0, 0.0, 0.0);
+        #endif`)
+      .replace('#include <begin_vertex>', 'vec3 transformed = (sk * vec4(bodyShape(position), 1.0)).xyz;');
+  };
+  mat.customProgramCacheKey = () => 'city-citizens-v1';
+  return mat;
+}
+
 // ------------------------------------------------------------------ dogs (citylife r1)
 // Rigid-part dog mesh (tools/blender/city_npc.py build_dog) animated in the vertex shader: diagonal leg pairs swing about
 // their hip / shoulder pivots with the gait phase, the tail wags, the head bobs. Each dog follows its owner at the
@@ -681,7 +730,7 @@ function createBlobs(scene, animTex, meta) {
 }
 
 // ------------------------------------------------------------------ crowd
-export async function createCrowd({ scene, blocks, parkPaths, props, roads, phase }) {
+export async function createCrowd({ scene, blocks, parkPaths, props, roads, phase, fauna = null }) {
   const [meta, bin, pedTex, bakeTex] = await Promise.all([
     fetch('/assets/city/npc/people.json').then(r => r.json()),
     fetch('/assets/city/npc/people.bin').then(r => r.arrayBuffer()),
@@ -699,16 +748,43 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
   const CL = {};
   for (const [k, c] of Object.entries(meta.clips)) CL[k] = c;
   const variants = meta.variants;
+  const cit = await loadCitizens();   // (3d-assets) custom citizens: extra, textured variants of the same crowd
+  const citMat = cit ? makeCitizenMaterial(uni, meta, cit.atlas) : null;
+  if (cit) for (const cv of cit.meta.variants) variants.push({ name: 'cit_' + cv.name, female: !!cv.female, walk: 'walk',
+    hair: cv.female ? 'long' : 'short', hairs: [cv.female ? 'long' : 'short'], textured: true, no: cv.no || [], lods: cv.lods });
   const pools = variants.map((v, vi) => v.lods.map((L, li) => {
-    const p = new PeoplePool(buildGeometry(bin, L), mat, depth, LOD_MAX[li], li < 2, `people-${v.name}-L${li}`);
+    const p = v.textured
+      ? new PeoplePool(buildCitizenGeometry(cit.bin, L), citMat, depth, LOD_MAX[li], li < 2, `citizen-${v.name}-L${li}`)
+      : new PeoplePool(buildGeometry(bin, L), mat, depth, LOD_MAX[li], li < 2, `people-${v.name}-L${li}`);
     // (perf r2) 23 variants x 2 LODs = 46 shadow draws per cascade -> 23: LOD0 (< 24 m) casts into cascades 0-1 only,
     // LOD1 (24-70 m) into 1-2 only (cascade 0 covers < ~14 m, cascade 2 > ~50 m: only very long low-sun shadows differ)
     if (!perf2Off('nocrowdopt')) { if (li === 0) p.mesh.userData.maxCascade = 1; else if (li === 1) p.mesh.userData.minCascade = 1; }
     scene.add(p.mesh);
     return p;
   }));
-  const allPools = pools.flat();
-  const dogs = meta.dog ? createDogs(scene, bin, meta.dog) : null;   // (citylife r1) dog walkers
+  // (3d-assets) accessories: rigid meshes skinned to one crowd bone (head / chest / hips), drawn with the wearer's own
+  // instance data (same clip, blend, look-at, girth) at LOD0-1. Citizens replace the painted crowd outright when present:
+  // the anti-clone pass below (variant + hairstyle within DECLONE_R) then keeps any one person from repeating nearby.
+  const citIdx = []; variants.forEach((v, i) => { if (v.textured) citIdx.push(i); });
+  const accMeta = cit?.meta.accessories || [];
+  const accPools = accMeta.map(ac => ac.lods.map((L, li) => {
+    const p = new PeoplePool(buildCitizenGeometry(cit.bin, L), citMat, depth, LOD_MAX[li], li < 1, `citizen-acc-${ac.name}-L${li}`);
+    scene.add(p.mesh); return p;
+  }));
+  const accBy = {}; accMeta.forEach((ac, i) => (accBy[ac.slot] ||= []).push(i));
+  const ACC_P = { hat: 0.36, headphones: 0.14, glasses: 0.22, back: 0.2, bag: 0.14 };
+  const pickAcc = (v, seed) => {
+    if (!v.textured || !accMeta.length) return null;
+    const r = mulberry32(Math.imul(seed ^ 0x3c6ef372, 1103515245) >>> 0), out = [], no = v.no || [];
+    let head = false;
+    for (const slot of ['hat', 'headphones', 'glasses', 'back', 'bag']) {
+      const L = accBy[slot]; if (!L || no.includes(slot) || ((slot === 'hat' || slot === 'headphones') && head)) continue;
+      if (r() < ACC_P[slot]) { out.push(L[Math.floor(r() * L.length)]); if (slot === 'hat' || slot === 'headphones') head = true; }
+    }
+    return out.length ? out : null;
+  };
+  const allPools = pools.flat().concat(accPools.flat());
+  const dogs = (fauna && createDogsHQ(scene, fauna)) || (meta.dog ? createDogs(scene, bin, meta.dog) : null);   // (citylife r1) dog walkers ((3d-assets) textured breeds)
   const blobs = /[?&]noblob/.test(typeof location !== 'undefined' ? location.search : '') ? null : createBlobs(scene, animTex, meta); // (peds r2) contact shadows
   const femaleV = [], maleV = [];
   variants.forEach((v, i) => (v.female ? femaleV : maleV).push(i));
@@ -726,7 +802,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
   // ---- agent factory
   const newAgent = (seed, extra) => {
     const r = mulberry32(seed);
-    const vi = r() < 0.5 ? pickV(femaleV, wF, r) : pickV(maleV, wM, r);
+    const vi = citIdx.length ? citIdx[Math.floor(r() * citIdx.length)] : (r() < 0.5 ? pickV(femaleV, wF, r) : pickV(maleV, wM, r));
     const v = variants[vi];
     const fit = outfitFor(v, r);
     const skin = Math.min(0.999, SKIN[Math.floor(r() * SKIN.length)] * 0 + Math.pow(r(), 1.3)); // (kept: preserves the RNG stream)
@@ -767,6 +843,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
       ...extra,
     };
     a.A = new Float32Array(a.A); a.B = new Float32Array(a.B); a.seed = seed; a.hi = hi;
+    a.acc = pickAcc(v, seed);   // (3d-assets) random accessories for custom citizens
     { // (citylife r2) per-person standing idle (hands in pockets / arms crossed / hand on hip) and phone-reading walkers;
       // own RNG stream so the outfit / speed draws above stay as they were
       const r2 = mulberry32(Math.imul(seed, 2654435761) >>> 0), carry = a.wc === 'walkCarry', x = r2();
@@ -793,7 +870,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
   };
   // (peds r2) anti-clone: nobody shares variant + hairstyle with anyone within DECLONE_R m (critic: 'the same camel
   // trench-coat woman 4-5 times'); clashing newcomers are re-dressed from a derived seed (up to 5 tries)
-  const DECLONE_R = 20, LOOK = ['vi', 'wid', 'girth', 'old', 'cols', 'code', 'mask', 'skin', 'hair', 'shoe', 'wc', 'ic', 'hi'];
+  const DECLONE_R = 20, LOOK = ['vi', 'wid', 'girth', 'old', 'cols', 'code', 'mask', 'skin', 'hair', 'shoe', 'wc', 'ic', 'hi', 'acc'];
   const redress = (a, salt) => {
     const b = newAgent((Math.imul(a.seed, 31) + salt * 7919 + 13) >>> 0, {});
     for (const k of LOOK) a[k] = b[k];
@@ -1778,6 +1855,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
         if (a._hy === undefined) { a._hy = heightAt(a); a._or = a._hy === 0 && onRoad(a.x, a.z); } // (perf r2) only after a step
         const hy = a._hy;
         pools[a.vi][lod].push(a, a.x, hy, a.z);
+        if (a.acc && lod < 2) for (const ai of a.acc) accPools[ai][lod].push(a, a.x, hy, a.z);
         if (blobs && dc2 < BLOB_D * BLOB_D && a.mode !== 'sit') blobs.push(a, hy, Math.sqrt(dc2)); // (peds r2) contact shadow
         if (a.dog && lod < 2) dogs.push(a, hy, lod, time);
       };

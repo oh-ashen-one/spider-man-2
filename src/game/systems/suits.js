@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { addShaderPatch } from '../../render/materials.js';
 import { setSuitFabric } from '../../player/suitfabric.js';
 import { setWebVenom } from '../../player/web.js';
+import { createSkinSwap } from './skinswap.js';
 
 const C = (r, g, b) => new THREE.Vector3(r, g, b);
 // colours are LINEAR albedo; rough/metal: -1 = keep original
@@ -24,6 +25,18 @@ export const SUITS = [
     swatch: ['#0a0b0e', '#16181d', '#f0f0f2'], strength: 1, symbiote: 1, normalScale: 0, env: 1.6,
     red: C(0.009, 0.009, 0.011), blue: C(0.009, 0.009, 0.011), white: C(0.009, 0.009, 0.011), black: C(0.009, 0.009, 0.011),
     rough: [0.18, 0.16, 0.42, 0.58], metal: [0, 0, 0, 0], lens: { color: 0xffffff, emissive: 0xffffff, intensity: 0.12 } },
+  // 3d-assets: whole-mesh AI-logo suits (a homage tribute; logos belong to their owners, no endorsement). Tripo models
+  // fitted onto the hero skeleton by tools/skinfit/skinfit.py and worn through skinswap.js; `skin` replaces the body mesh.
+  { id: 'claude', name: 'Claude Suit', level: 1, skin: '/assets/skins/claude.glb', emblem: 'ai',
+    desc: 'Matte black spandex with terracotta rubber panels and the Claude spark across the chest.', swatch: ['#15161a', '#c96442', '#e07a52'], strength: 0 },
+  { id: 'codex', name: 'Codex Suit', level: 1, skin: '/assets/skins/codex.glb', emblem: 'ai',
+    desc: 'Stark white and gloss-black rubber, silver lenses, and the Codex knot front and centre.', swatch: ['#f2f2f2', '#111111', '#9aa0a6'], strength: 0 },
+  { id: 'gemini', name: 'Gemini Suit', level: 1, skin: '/assets/skins/gemini.glb', emblem: 'ai',
+    desc: 'Glossy red and deep blue with raised silver seams and a Gemini sparkle on the chest.', swatch: ['#c1121f', '#1d3a8a', '#8f7cff'], strength: 0 },
+  { id: 'kimi', name: 'Kimi Suit', level: 1, skin: '/assets/skins/kimi.glb', emblem: 'ai',
+    desc: 'Crimson and navy carbon-weave with amber-gold lenses and the Kimi badge.', swatch: ['#8e1b2c', '#1b2440', '#f0a81c'], strength: 0 },
+  { id: 'qwen', name: 'Qwen Suit', level: 1, skin: '/assets/skins/qwen.glb', emblem: 'ai',
+    desc: 'Bright red and royal blue with violet piping, violet lenses and the Qwen pinwheel.', swatch: ['#d61f26', '#2447c9', '#8b5cf6'], strength: 0 },
 ];
 
 export function createSuits(ctx) {
@@ -35,6 +48,7 @@ export function createSuits(ctx) {
     uSym: { value: 0 }, uSymBump: { value: 1 }, uSymW: { value: C(0.72, 0.72, 0.75) }, uSymMask: { value: null },
   };
   let suitMat = null, lensMat = null, lensOrig = null, current = null, nrmOrig = null;
+  const skins = createSkinSwap(ctx);
   let placeholderMats = [];
 
   function patch(mat) {
@@ -308,6 +322,7 @@ if (uSuitOn > 0.5) totalEmissiveRadiance += uSuitER * sysW.x + uSuitEB * sysW.y 
   function apply(id) {
     const S = SUITS.find(s => s.id === id) || SUITS[0]; current = S.id;
     find();
+    skins.wear(S.skin || null); // whole-mesh skins hide the body + lenses; every other suit restores them
     uniforms.uSuitOn.value = S.strength ? 1 : 0;
     setSuitFabric(!S.strength); // Advanced suit: rough fabric + weave detail (player/suitfabric.js); Iron / Symbiote untouched
     if (S.strength) {
@@ -335,7 +350,7 @@ if (uSuitOn > 0.5) totalEmissiveRadiance += uSuitER * sysW.x + uSuitEB * sysW.y 
 
   let check = 0;
   return {
-    SUITS, apply, get current() { return current; },
+    SUITS, apply, skins, get current() { return current; },
     update(dt) { check += dt; if (check > 2) { check = 0; const prev = suitMat; find(); if (suitMat !== prev && current) apply(current); } },
   };
 }

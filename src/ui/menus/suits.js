@@ -3,15 +3,10 @@
 import * as THREE from 'three';
 import { SUITS } from '../../game/systems/suits.js';
 
+// Card art: one painted portrait per suit (public/assets/ui/suits/<id>.webp), generated with Higgsfield: the AI-logo
+// suits with Nano Banana Pro, Advanced / Iron / Symbiote with Grok Image 2.0. Replaces the old procedural SVG silhouettes.
 function suitArt(s) {
-  const [a, b, c] = s.swatch;
-  return `<svg viewBox="0 0 100 120"><defs><linearGradient id="g${s.id}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="rgba(255,255,255,.18)"/><stop offset="1" stop-color="rgba(0,0,0,.2)"/></linearGradient></defs>
-    <path d="M50 6 C33 6 28 20 29 34 C30 46 36 54 42 58 L40 66 C24 68 12 76 8 96 L6 120 L94 120 L92 96 C88 76 76 68 60 66 L58 58 C64 54 70 46 71 34 C72 20 67 6 50 6 Z" fill="${a}"/>
-    <path d="M8 96 C12 76 24 68 40 66 L44 80 L30 120 L6 120 Z M92 96 C88 76 76 68 60 66 L56 80 L70 120 L94 120 Z" fill="${b}"/>
-    <g fill="${c}"><ellipse cx="50" cy="86" rx="4" ry="6"/><ellipse cx="50" cy="96" rx="5" ry="8"/></g>
-    <path d="M46 84 L34 74 M54 84 L66 74 M45 88 L30 88 M55 88 L70 88 M46 94 L34 104 M54 94 L66 104" stroke="${c}" stroke-width="2.4"/>
-    <path d="M36 30 C38 38 44 40 47 36 C45 30 40 27 36 30 Z M64 30 C62 38 56 40 53 36 C55 30 60 27 64 30 Z" fill="#fff" stroke="#000" stroke-width="2"/>
-    <path d="M50 6 C33 6 28 20 29 34 C30 46 36 54 42 58 L40 66 C24 68 12 76 8 96 L6 120 L94 120 L92 96 C88 76 76 68 60 66 L58 58 C64 54 70 46 71 34 C72 20 67 6 50 6 Z" fill="url(#g${s.id})"/></svg>`;
+  return `<img class="art" src="/assets/ui/suits/${s.id}.webp" alt="" draggable="false" decoding="async">`;
 }
 
 export function createSuitsPage(sys) {
@@ -101,6 +96,9 @@ export function createSuitsPage(sys) {
   }
   function camera(dt) {
     const cam = ctx.camera, P = ctx.player;
+    // while the standing preview pose is held, tell rig.js' 'anim-fallback' system the animation already ran this frame:
+    // otherwise it re-runs the animator every menu frame (player.update is paused) and rewrites the frozen air pose
+    if (poseSave && P.rig) P.rig._ranThisFrame = true;
     targetYaw += dt * (dragX == null ? 0.12 : 0);
     yaw += (targetYaw - yaw) * (1 - Math.exp(-8 * dt));
     const center = _c.copy(P.position); center.y += 0.05;
@@ -116,6 +114,42 @@ export function createSuitsPage(sys) {
     ctx.pipeline.setMotionBlur?.(0);
   }
   let camSave = null;
+  // (3d-assets) the preview must show Spider-Man STANDING: opening the menu mid-swing / mid-fall used to freeze him in
+  // that air pose (flow.js stops player.update while a menu is up, so the bones keep their last pose). While the page is
+  // open the hero's bones take one idle frame with the hips upright on the stage facing the camera; hide() restores the
+  // exact bones, so play resumes from where it paused.
+  let poseSave = null;
+  function standPose() {
+    const rig = ctx.player?.rig; if (!rig?.model || !rig.allClips?.length) return;
+    const bones = []; rig.model.traverse(o => { if (o.isBone) bones.push(o); });
+    poseSave = { bones: bones.map(b => [b, b.position.clone(), b.quaternion.clone(), b.scale.clone()]),
+      pos: rig.object.position.clone(), quat: rig.object.quaternion.clone(), vis: rig.object.visible };
+    const clip = rig.allClips.find(c => c.name === 'idle') || rig.allClips.find(c => /^idle/i.test(c.name));
+    const hips = rig.bones?.hips;
+    if (!clip || !hips) return;
+    // Never move rig.object: depending on the traversal mode the animator puts the hero's world placement on
+    // rig.object or on the hips bone, so the only safe thing is to pose BONES and express the hips in world terms.
+    rig.object.updateMatrixWorld(true);
+    const where = hips.getWorldPosition(new THREE.Vector3());
+    const m = new THREE.AnimationMixer(rig.model); m.clipAction(clip).play(); m.setTime(clip.duration * 0.25); // no stop(): stopping would restore the air pose
+    // hips: upright, facing the preview camera (it orbits at `yaw`, chosen in show() before this runs), feet on the
+    // stage (stageOn puts it at player.position.y - 0.95). The clip's hips height/tilt are in character space.
+    const par = hips.parent; par.updateMatrixWorld(true);
+    const wantPos = new THREE.Vector3(where.x, ctx.player.position.y - 0.95 + hips.position.y, where.z);
+    const wantQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw).multiply(hips.quaternion);
+    const parQ = par.getWorldQuaternion(new THREE.Quaternion());
+    hips.position.copy(par.worldToLocal(wantPos));
+    hips.quaternion.copy(parQ.invert().multiply(wantQ));
+    rig.object.visible = true;
+    rig.object.updateMatrixWorld(true);
+  }
+  function restorePose() {
+    if (!poseSave) return;
+    const rig = ctx.player.rig;
+    for (const [b, p, q, s] of poseSave.bones) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(s); }
+    rig.object.position.copy(poseSave.pos); rig.object.quaternion.copy(poseSave.quat); rig.object.visible = poseSave.vis;
+    rig.object.updateMatrixWorld(true); poseSave = null;
+  }
 
   return {
     id: 'suits', title: 'Suits', el, seeThrough: true, camera,
@@ -133,11 +167,11 @@ export function createSuitsPage(sys) {
       }
       targetYaw = yaw; camDist = THREE.MathUtils.clamp(bestD, 1.3, 3.1);
       camSave = { p: ctx.camera.position.clone(), q: ctx.camera.quaternion.clone(), fov: ctx.camera.fov };
-      stageOn(); camDist = 3.1;
+      standPose(); stageOn(); camDist = 3.1;
       ctx.pipeline.resetHistory?.();
     },
     hide() {
-      stageOff();
+      stageOff(); restorePose();
       sys.suits.apply(save.state.suit);
       ctx.pipeline.setDof?.({ aperture: 0 });
       if (camSave) { ctx.camera.position.copy(camSave.p); ctx.camera.quaternion.copy(camSave.q); ctx.camera.fov = camSave.fov; ctx.camera.updateProjectionMatrix(); camSave = null; }

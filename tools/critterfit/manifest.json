@@ -1,0 +1,357 @@
+{
+ "props_hq": {
+  "out": "public/assets/city/props",
+  "items": [
+   {
+    "name": "hydrant",
+    "glb": "~/sm2-assets/raw2/fire_hydrant.glb",
+    "size": {
+     "h": 0.78
+    },
+    "lods": [
+     3000,
+     700
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "trash",
+    "glb": "~/sm2-assets/raw2/mesh_trash_can.glb",
+    "size": {
+     "h": 0.92
+    },
+    "lods": [
+     3000,
+     1000
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "bench",
+    "glb": "~/sm2-assets/raw2/park_bench.glb",
+    "size": {
+     "w": 1.9
+    },
+    "lods": [
+     3000,
+     500
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "cart",
+    "glb": "~/sm2-assets/raw2/street_food_cart.glb",
+    "size": {
+     "h": 2.45
+    },
+    "lods": [
+     5000,
+     900
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "cart2",
+    "glb": "~/sm2-assets/raw2/food_cart.glb",
+    "size": {
+     "h": 2.25
+    },
+    "lods": [
+     5000,
+     900
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "planter",
+    "glb": "~/sm2-assets/raw2/potted_plant.glb",
+    "size": {
+     "h": 1.15
+    },
+    "lods": [
+     4000,
+     700
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "mailbox",
+    "glb": "~/sm2-assets/raw2/blue_mailbox.glb",
+    "size": {
+     "h": 1.25
+    },
+    "lods": [
+     2500,
+     700
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "meter",
+    "glb": "~/sm2-assets/raw2/parking_meter.glb",
+    "size": {
+     "h": 1.55
+    },
+    "lods": [
+     1200
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "newsbox",
+    "glb": "~/sm2-assets/raw2/red_metal_cabinet.glb",
+    "size": {
+     "h": 1.12
+    },
+    "lods": [
+     1500,
+     300
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "bags",
+    "glb": "~/sm2-assets/raw2/trash_bags.glb",
+    "size": {
+     "h": 0.8
+    },
+    "lods": [
+     3000,
+     500
+    ],
+    "part": "PLASTIC"
+   },
+   {
+    "name": "drum",
+    "glb": "~/sm2-assets/raw2/traffic_barrel.glb",
+    "size": {
+     "h": 1.0
+    },
+    "lods": [
+     2500,
+     900
+    ],
+    "part": "PLASTIC"
+   },
+   {
+    "name": "oildrum",
+    "glb": "~/sm2-assets/raw2/blue_oil_drum.glb",
+    "size": {
+     "h": 0.88
+    },
+    "lods": [
+     2000,
+     800
+    ],
+    "part": "BASE"
+   },
+   {
+    "name": "crate",
+    "glb": "~/sm2-assets/raw2/wooden_crate.glb",
+    "size": {
+     "h": 0.64
+    },
+    "lods": [
+     1500,
+     600
+    ],
+    "part": "WOOD"
+   },
+   {
+    "name": "sawhorse",
+    "glb": "~/sm2-assets/raw2/weathered_sawhorse.glb",
+    "size": {
+     "w": 1.5
+    },
+    "lods": [
+     1600
+    ],
+    "part": "WOOD"
+   },
+   {
+    "name": "shopcart",
+    "glb": "~/sm2-assets/raw2/metal_shopping_cart.glb",
+    "size": {
+     "h": 1.02
+    },
+    "lods": [
+     6000,
+     1200
+    ],
+    "part": "METAL"
+   },
+   {
+    "name": "parklamp",
+    "glb": "~/sm2-assets/raw2/street_lamp.glb",
+    "size": {
+     "h": 4.2
+    },
+    "lods": [
+     2500,
+     400
+    ],
+    "part": "BASE"
+   }
+  ]
+ },
+ "fauna": {
+  "out": "public/assets/city/npc",
+  "items": [
+   {
+    "name": "golden",
+    "glb": "~/sm2-assets/raw2/golden_retriever.glb",
+    "size": {
+     "l": 1.05
+    },
+    "lods": [
+     3000,
+     800
+    ],
+    "rig": {
+     "type": "quadruped",
+     "leg_v": 0.4,
+     "tail_u": 0.17,
+     "head_u": 0.8,
+     "head_v": 0.6
+    }
+   },
+   {
+    "name": "bulldog",
+    "glb": "~/sm2-assets/raw2/french_bulldog.glb",
+    "size": {
+     "l": 0.52
+    },
+    "lods": [
+     3000,
+     800
+    ],
+    "rig": {
+     "type": "quadruped",
+     "leg_v": 0.36,
+     "tail_u": 0.06,
+     "head_u": 0.78,
+     "head_v": 0.5
+    }
+   },
+   {
+    "name": "cat",
+    "glb": "~/sm2-assets/raw2/orange_tabby_cat.glb",
+    "size": {
+     "l": 0.58
+    },
+    "lods": [
+     2000,
+     500
+    ],
+    "rig": {
+     "type": "quadruped",
+     "leg_v": 0.3,
+     "tail_u": 0.13,
+     "head_u": 0.8,
+     "head_v": 0.5
+    }
+   },
+   {
+    "name": "rat",
+    "glb": "~/sm2-assets/raw2/rat.glb",
+    "size": {
+     "l": 0.48
+    },
+    "lods": [
+     1200,
+     400
+    ],
+    "rig": {
+     "type": "quadruped",
+     "leg_v": 0.3,
+     "tail_u": 0.42,
+     "head_u": 0.82,
+     "head_v": 0.2
+    }
+   },
+   {
+    "name": "squirrel",
+    "glb": "~/sm2-assets/raw2/squirrel.glb",
+    "size": {
+     "l": 0.45
+    },
+    "lods": [
+     1200,
+     400
+    ],
+    "rig": {
+     "type": "quadruped",
+     "leg_v": 0.25,
+     "tail_u": 0.4,
+     "head_u": 0.78,
+     "head_v": 0.3
+    },
+    "yaw": "-90:weld"
+   },
+   {
+    "name": "pigeon",
+    "glb": "~/sm2-assets/raw2/pigeon.glb",
+    "size": {
+     "l": 0.33
+    },
+    "lods": [
+     700,
+     300
+    ],
+    "rig": {
+     "type": "bird",
+     "head_u": 0.72,
+     "head_v": 0.6
+    }
+   },
+   {
+    "name": "gull",
+    "glb": "~/sm2-assets/raw2/seagull.glb",
+    "size": {
+     "l": 0.58
+    },
+    "lods": [
+     800,
+     300
+    ],
+    "rig": {
+     "type": "bird",
+     "head_u": 0.75,
+     "head_v": 0.62
+    }
+   },
+   {
+    "name": "pigeonfly",
+    "glb": "~/sm2-assets/raw2/pigeon_in_flight.glb",
+    "size": {
+     "w": 0.66
+    },
+    "lods": [
+     400,
+     150
+    ],
+    "rig": {
+     "type": "flight",
+     "root": 0.09
+    },
+    "paint": "pigeon"
+   },
+   {
+    "name": "gullfly",
+    "glb": "~/sm2-assets/raw2/pigeon_in_flight.glb",
+    "size": {
+     "w": 1.3
+    },
+    "lods": [
+     400,
+     150
+    ],
+    "rig": {
+     "type": "flight",
+     "root": 0.09
+    },
+    "paint": "gull"
+   }
+  ]
+ }
+}
