@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 09:43",
+ "updated": "2026-09-29 09:56",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -36,9 +36,9 @@
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (facades 5, street 2, skyline 4, Manhattan 4, IQ 3)",
-   "gap": "Foliage: black cards on streets, grey spheres in the park"
+   "round": 4,
+   "verdict": "R3: FAILS (facades 4, street 3, skyline 4, Manhattan 4, IQ 4)",
+   "gap": "Window glass/storefronts render as opaque beige slabs; Marvel/SM2 brand ads must be excluded"
   },
   {
    "id": "P2",
@@ -87,6 +87,24 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "City round 3 \u2014 real ez-tree foliage",
+   "note": "Street trees are leaf clusters now (were black cards); park is green canopy (was grey blobs).",
+   "images": [
+    {
+     "label": "Round 2 street",
+     "src": "docs/night1/city/round-02/S1_avenue_street_1920x1080.jpg"
+    },
+    {
+     "label": "Round 3 street",
+     "src": "docs/night1/city/round-03/S1_avenue_street_1920x1080.jpg"
+    },
+    {
+     "label": "Round 3 perch",
+     "src": "docs/night1/city/round-03/S4_perch_skyline_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "City round 2 \u2014 the city now reaches the horizon",
    "note": "Far-LOD Manhattan, Hudson River, NJ shore, Central Park, haze. Before: grey ground plane at 1 km.",
@@ -243,6 +261,14 @@
    "verdict": "fails",
    "gap": "Wall-run: camera 3\u20135 m behind/below pitched 20\u201335\u00b0 up the facade with the roof edge in frame; hero head-up with alternating hand/foot cycle at 2\u20133 steps/s; stays in frame through the top-out.",
    "notes": "Up: arc 4\u21925, web 4\u21925, moves 3\u21924. Down: body 4\u21923 (one-frame pose pops on release, white unshaded suit at clip starts). Hero leaves frame during zip and wall top-out."
+  },
+  {
+   "t": "09:56",
+   "piece": "P1 City",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Dark reflective window glass with recessed frames and varied interiors; storefronts with visible interiors. Test: \u226410% of window pixels above 80% brightness in daylight crops.",
+   "notes": "Foliage fixed: round 3 beat round 2 on both street and park views. Critic flagged that upstream Times Square ads include Marvel/real-game brands (Oscorp, Osborn, Roxxon, Daily Bugle, Frosted Halos, Botanica); the Unreal port now excludes those cells. The browser build's atlas is upstream and unchanged."
   }
  ],
  "perf": [
@@ -267,7 +293,8 @@
   "Unreal port has only a gray-box test map and a capsule character so far.",
   "No trustworthy 4K/60 numbers yet: the shared GPU is 42\u201399 % busy with other sessions' Chrome/Blender work.",
   "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100.",
-  "GitHub LFS budget exhausted: reference video clips (656 MB) are local-only on the Studio; no Unreal binary snapshots anywhere."
+  "GitHub LFS budget exhausted: reference video clips (656 MB) are local-only on the Studio; no Unreal binary snapshots anywhere.",
+  "Owner decision: the browser build's upstream ad atlas (ts_ads.webp) shows Marvel-universe brands (Oscorp, Re-Elect Osborn, Roxxon, Daily Bugle) and likely real-game brands; the Unreal port excludes them, the browser build still shows them."
  ],
  "log": [
   {
@@ -341,6 +368,10 @@
   {
    "t": "09:43",
    "text": "Traversal R5 merged; critic FAILS with gains on arc/web/moves; next gap = wall-run. Traversal builder hands off to a fresh Opus agent (context limit)."
+  },
+  {
+   "t": "09:56",
+   "text": "City R3 merged (foliage); critic FAILS, next gap = window glass. City round 4 now on a Sonnet 5.5 builder. IP: Marvel/real-game brand ads excluded in the Unreal port."
   }
  ]
 }
