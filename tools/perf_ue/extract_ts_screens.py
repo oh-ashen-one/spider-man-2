@@ -23,7 +23,7 @@ def glb_prims(path):
             yield at
 
 def main():
-    export = next((a for a in sys.argv[1:] if not a.startswith('--')), '/Users/midir/sm2-n1/_scratch/look/export/midtown3x3')
+    export = next((a for a in sys.argv[1:] if not a.startswith('--')), os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'export', 'midtown3x3'))
     min_area = float(sys.argv[sys.argv.index('--min-area') + 1]) if '--min-area' in sys.argv else 25.0
     man = json.load(open(os.path.join(export, 'manifest.json')))
     out = []

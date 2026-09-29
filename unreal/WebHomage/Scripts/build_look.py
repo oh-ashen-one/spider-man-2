@@ -16,8 +16,8 @@
 #   /Game/Tests/Look/Look_View_<preset>_<S#>          the city shot views (Scripts/city_shots.json) under each preset
 import unreal, os, json, math, time, random
 
-EXPORT = os.environ.get('SM2_CITY_EXPORT', '/Users/midir/sm2-n1/_scratch/look/export/midtown3x3')
-HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/look/unreal/WebHomage/Scripts'
+EXPORT = os.environ.get('SM2_CITY_EXPORT', os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'export', 'midtown3x3'))   # the city export (collision.json, layout.json)
+HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.path.join(os.environ.get('SM2_LOOK_WORKTREE', '/Users/midir/sm2-n1/look'), 'unreal/WebHomage/Scripts')
 try: ARGS = JOB_ARGS  # noqa: F821 (set by tools/perf_ue/uejob.py)
 except NameError: ARGS = {}
 STEPS = set((ARGS.get('steps') or os.environ.get('SM2_LOOK_STEPS') or 'geo,rigs,night,maps').split(','))

@@ -109,6 +109,9 @@ def main():
     ap.add_argument('--timeout', type=int, default=900); ap.add_argument('--gpu-stats', action='store_true', default=True)
     ap.add_argument('--reanalyze', action='store_true', help='recompute the CSV statistics of an existing --out directory'); ap.add_argument('--name', default='perf'); ap.add_argument('--fixed-step', action='store_true', help='-benchmark -fps=60: fixed 1/60 s game step, so the hero replays the SAME path in every config (frame times are still wall-clock)')
     a = ap.parse_args()
+    sys.path.insert(0, HERE)
+    import ensure_boxes
+    if not ensure_boxes.ensure(): sys.exit('traversal boxes are stale (see above): capture / perf would run against boxes of an older city')
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     frm, to = a.window.split(':')
     summary = []

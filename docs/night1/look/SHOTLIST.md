@@ -37,3 +37,11 @@ at 22 m/s northward and web-swings with the deterministic autoChain rhythm throu
 `tools/perf_ue/run_perf.py`: the same hero replays `tools/perf_ue/scripts/city_swing_avenue.json` (14 s standing warm-up, then a
 sprint, jump and continuous swing chain up the avenue) at 3840x2160 output with `r.ScreenPercentage` 50 (TSR, 1920x1080 internal),
 67 (2573x1447) and 100 (native). Numbers, GPU utilisation before each run and the top GPU passes: `round-NN/PERF.md`.
+
+## Round 02 additions (night tests and spec numbers)
+
+- Night stills S1 and S6 (street level) are measured by `tools/perf_ue/night_tests.py` (round-1 critic tests: mean luma, share of pixels below 10/255, distinct light pools in the bottom third with peak >= 120 and
+  valley <= 40) and, for every still of every preset, by `tools/perf_ue/look_lum_check.py` (LOOK-SPEC L1..L8, L13, L14: mean, near-black share, clipped share, B-R, lit blobs in the bottom half, bottom-third p90 / p10).
+- `swing_night.mp4`: per frame, the mean luma inside the hero's pixel bounding box (telemetry `px_left/right/top/bottom` from the P3 hero-only depth capture) is written to `swing_night_hero_luma.json`.
+- Every clip is preceded by an unrecorded low-resolution shader warm-up render and starts after a 0.8 s pre-roll (exposure / Lumen / TSR settle) that is trimmed from the video and the telemetry.
+- All captures run inside `gpu_slot.sh capture`; perf under `gpu_slot.sh perf` (`round-02/perf_gpu*.json` sidecars).

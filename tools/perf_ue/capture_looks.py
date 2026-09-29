@@ -15,7 +15,7 @@ UE = os.path.join(WT, 'unreal', 'WebHomage')
 RUN_GAME = os.path.join(UE, 'Scripts', 'run_game.sh')
 GPU_SLOT = os.environ.get('GPU_SLOT', '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh')   # docs/night1/gpu/PROTOCOL.md: every game capture runs inside a shared slot (2 at once)
 def slot(cmd): return [GPU_SLOT, 'capture', '--label', 'look', '--'] + cmd if os.path.exists(GPU_SLOT) else cmd
-SCR = '/Users/midir/sm2-n1/_scratch/look/capture'
+SCR = os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'capture')   # heavy frames (env SM2_LOOK_SCRATCH)
 
 def util():
     s = subprocess.run("ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '\"Device Utilization %\"=[0-9]*'", shell=True, capture_output=True, text=True).stdout
@@ -29,6 +29,9 @@ def main():
     ap.add_argument('--clip-seconds', type=float, default=12.0); ap.add_argument('--sp', default='100', help='r.ScreenPercentage for the captures')
     ap.add_argument('--jpeg-q', type=int, default=90)
     a = ap.parse_args()
+    sys.path.insert(0, HERE)
+    import ensure_boxes
+    if not ensure_boxes.ensure(): sys.exit('traversal boxes are stale (see above): capture / perf would run against boxes of an older city')
     rnd = os.path.abspath(a.round); os.makedirs(rnd + '/stills', exist_ok=True); os.makedirs(SCR, exist_ok=True)
     shots = json.load(open(os.path.join(UE, 'Scripts', 'city_shots.json')))
     want = [s for s in a.shots.split(',') if s]
