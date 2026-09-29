@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 09:35",
+ "updated": "2026-09-29 10:25",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "The change of approach worked: traversal round 4 (real hero + the browser animator ported to C++) raised body animation 2\u21924, arc 3\u21924, moves 2\u21923, and the blind critic preferred it to round 3. Still FAILS; the camera is the biggest gap again, and the critic caught that our framing metric disagrees with the pixels, so round 5 measures framing from rendered pixels.",
+ "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -17,19 +17,19 @@
    "id": "F2",
    "name": "Reference library",
    "branch": "spiderman-learnings \u00b7 night1/refs",
-   "state": "blocked",
+   "state": "building",
    "round": 1,
    "verdict": "",
-   "gap": "~140 stills + CRITIC_GUIDE pushed; 43 critic clips local-only (LFS budget); INDEX.md unfinished"
+   "gap": "Sonnet 5.5 xhigh finishing INDEX/SOURCES; clips local-only"
   },
   {
    "id": "F3",
    "name": "Browser baseline + playtest",
    "branch": "night1/browser-baseline",
-   "state": "queued",
+   "state": "building",
    "round": 1,
    "verdict": "",
-   "gap": "Paused by usage limit; work-in-progress kept in its worktree"
+   "gap": "Sonnet 5.5 xhigh builder finishing the browser baseline"
   },
   {
    "id": "P1",
@@ -54,18 +54,18 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 5,
-   "verdict": "R4: FAILS (arc 4, camera 3, web 4, moves 3, body 4)",
-   "gap": "Camera too far and too steep: hero only 4\u20136% of frame height, no sky; framing metric was wrong"
+   "round": 6,
+   "verdict": "R5: FAILS (arc 5, camera 3, web 5, moves 4, body 3)",
+   "gap": "Wall-run: frozen splayed pose, camera flat at the facade; unshaded suit at clip starts"
   },
   {
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "Waits for the first city tiles"
+   "gap": "Sonnet 5.5 xhigh builder"
   },
   {
    "id": "P5",
@@ -154,6 +154,11 @@
  ],
  "clips": [
   {
+   "title": "Traversal R5 \u2014 pixel-true chase framing",
+   "src": "docs/night1/traversal/round-05/a_swing_chain.mp4",
+   "caption": "camera ~4 m behind, 1 m above; anchor shown at each attach"
+  },
+  {
    "title": "Traversal R4 \u2014 real hero + ported animator",
    "src": "docs/night1/traversal/round-04/a_swing_chain.mp4",
    "caption": "79 browser clips at 30 fps, hand aimed at the anchor, varied air phase"
@@ -230,6 +235,14 @@
    "verdict": "fails",
    "gap": "Chase camera 4\u20135 m behind and 1\u20131.5 m above, pitched 10\u201320\u00b0 down; hero \u2265160 px tall at 1080p in \u226590% of frames; anchor and sky visible at each attach.",
    "notes": "Up from round 3: body 2\u21924, arc 3\u21924, moves 2\u21923. The builder's telemetry claimed the hero filled 25% of frame height; pixels show 4\u20136%. Secondary: 1.2\u20131.5 s rope-less drifts; wall-run camera faces the wall; no landing crouch; torso flat against the rope at the arc bottom."
+  },
+  {
+   "t": "10:20",
+   "piece": "P3 Traversal",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "Wall-run: camera 3\u20135 m behind/below pitched 20\u201335\u00b0 up the facade with the roof edge in frame; hero head-up with alternating hand/foot cycle at 2\u20133 steps/s; stays in frame through the top-out.",
+   "notes": "Up: arc 4\u21925, web 4\u21925, moves 3\u21924. Down: body 4\u21923 (one-frame pose pops on release, white unshaded suit at clip starts). Hero leaves frame during zip and wall top-out."
   }
  ],
  "perf": [
@@ -316,6 +329,18 @@
   {
    "t": "09:30",
    "text": "Blocker: the GitHub account's Git LFS budget is exhausted, so reference clips and Unreal binary snapshots can't be pushed anywhere. Unreal content is script-generated only; reference clips stay local on the Studio. Agents P1, P2, P3 resumed."
+  },
+  {
+   "t": "09:55",
+   "text": "Owner: Sonnet 5.5 is the default subagent model (extra-high thinking); Opus 5.5 only for critics, deep engineering, integration. Rule landed in global AGENTS.md (main) and memory."
+  },
+  {
+   "t": "10:00",
+   "text": "Started Sonnet 5.5 xhigh builders: P4 Look/lighting/4K perf round 1, F3 browser baseline finish, F2 reference index."
+  },
+  {
+   "t": "10:20",
+   "text": "Traversal R5 merged; critic FAILS with gains on arc/web/moves; next gap = wall-run. Traversal builder hands off to a fresh Opus agent (context limit)."
   }
  ]
 }
