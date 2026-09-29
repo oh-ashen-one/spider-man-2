@@ -1,4 +1,4 @@
-# P1 City — handoff after round 04 (for the next builder)
+# P1 City — handoff after round 05 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
@@ -7,13 +7,25 @@ Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, p
 `unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
 Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city.
 
-## State (round 04)
-- Critic rounds: r01 FAILS, r02 FAILS-improving, r03 FAILS (facades 4, street 3, skyline 4, Manhattan 4, IQ 4; single biggest gap:
-  opaque beige window slabs and blank storefronts). r04 = window glass + storefronts, IP atlas exclusions, S5 black housing.
-- Detailed block: tiles ix -1..1, iz -2..0 (x -256..512, z -512..256). Far: facade-LOD masses for the whole island, far shores, bridges,
-  hinterland boxes, land polygon, one water plane at y = -1.6 m, height-fog haze from 400 m. Views: 8 maps `/Game/Tests/City/City_View_<id>`.
-- r04 window work (all UE-side, browser sources untouched): see "Facade patch layer" below. Numbers for the critic's test
-  (share of window pixels above 80 % luminance in 400 px crops of the 4K frames) are in `round-04/README.md` and `round-04/window_stats.json`.
+## State (round 05)
+- Critic rounds: r01-r03 FAIL; r04 FAILS-improving (facades 5, street 3, skyline 4, Manhattan 4, IQ 5; gap: street level 0-3 storeys unbuilt).
+  r05 = street-level kit + crisp shop interiors + supplemental street furniture + sidewalk slabs + two more IP cell exclusions.
+- Detailed block: tiles ix -1..1, iz -2..0 (x -256..512, z -512..256). Far: facade-LOD masses for the whole island, far shores, bridges, hinterland
+  boxes, land polygon, one water plane at y = -1.6 m, height-fog haze from 400 m. Views: 8 maps `/Game/Tests/City/City_View_<id>` (S1..S8).
+- **Street-level kit (r05)**: `tools/export/street_kit.py` reads every ground-floor face of the exported facade meshes (`street_faces.py`: face frame,
+  storefront height gH, bay layout of the shader) and builds real geometry in front of the shader wall: stone / brick piers with plinth + capital, a
+  stepped stone cornice with dentils (metal canopy on curtain-wall podiums), 3D storefront frames (jambs, head, transom, mullions, door leaves with kick
+  plates + pull bars), fascia sign boards, fabric awnings (stripes, lettered valance) or metal marquees, and fire escapes (grated platforms, railings,
+  stair flights, drop ladder aligned with a pier) on ~90 % of pre-war faces and on side / deco faces. 578 faces, 2225 bays, ~580 k tris, 9 GLBs
+  (`mesh/streetkit/`), Nanite, material `M_CityKit`. Signage = `gen_street_signs.py` (original generic shop names, system fonts).
+- **Crisp shop interiors (r05)**: the atlas photos were ~85 px / m and blurry at street distance. `gen_shaders.mjs` `uePatch` list now draws four shop
+  types analytically (grocery shelves + produce crates, cafe slat wall + jars + menu boards + pendant lamps, boutique rails + mannequins, pharmacy /
+  bank), customers, checker floor, side walls, soffit + ceiling tubes; anti-aliased from the pixel footprint.
+- **Street furniture (r05)**: `street_props.py` adds a hydrant, trash can, newspaper box and tree pit every ~20 m of avenue frontage (149 / 151 / 143 / 127
+  instances) to the browser pools' ISMs (`streetprops.json`, merged in `build_city.py`). Sidewalk shader patch: 1.5 m slab joints, bevel, per-slab tone,
+  hairline cracks, gum spots (`gen_shaders.mjs`, Sidewalk block). S1 corridor street trees thinned (45 %; the deco podium in front of the fire escape is
+  cleared: `thin()` in build_city.py) and SkyLight intensity 1.7 in every view map.
+- IP: `ip_sanitize.py` also excludes COLTEX SPORT (L27), COLTEX (P27) and COLEXCO (P38) ad cells. See `IP_EXCLUSIONS.md`.
 
 ## Round 04 numbers (details: round-04/README.md, window_stats.json, window_crops/)
 Share of window pixels above 80 % luminance in 400 px crops of the 4K frames (round 03 -> round 04): S1 right facade 0.0 % -> 0.0 % (median luminance
@@ -26,8 +38,8 @@ Open: S1's right tower may now be too dark (median 0.07); DayEmisK / InteriorGai
 ```
 npx vite --port 5202 --host 127.0.0.1 --strictPort &        # browser city (exporter needs it)
 tools/export/ue/launch_editor.sh                            # P1 editor, OFFSCREEN (-RenderOffScreen -NoSound), MCP :8771, job server; waits while 3+ Unreal run
-tools/export/build_city.sh                                  # export -> patch_export -> prep textures (IP sanitiser) -> gen shaders -> build_city.py
-SKIP_EXPORT=1 STEPS=mat,map tools/export/build_city.sh      # partial rebuild (steps: clean,tex,mat,mesh,proto,map,frames)
+tools/export/build_city.sh                                  # export -> patch_export -> prep textures (IP sanitiser) -> street signs -> street kit -> street props -> gen shaders -> build_city.py
+SKIP_EXPORT=1 STEPS=mat,map tools/export/build_city.sh      # partial rebuild (steps: clean,tex,mat,mesh,proto,map,frames,kit)
 tools/export/capture_round.sh <raw_dir> [ids...]            # run_game.sh per view, 1080p + 4K, perf + GPU util (waits for a free Unreal slot)
 python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN   # JPGs + perf.json + README
 python3 tools/export/window_stats_round.py <lit_dir> <mask_dir> out.json [crop_dir]  # window brightness test (mask = DebugMode 3 frames)
@@ -53,7 +65,7 @@ No numpy inside the editor's Python.
 - `tools/export/glsl2hlsl.mjs` + `gen_shaders.mjs`: browser GLSL -> `Shaders/City/{Facade,Detail,Roof,Asphalt,Sidewalk}.ush`. **Facade.ush is
   generated: never edit it by hand.** UE-only changes go into the `uePatch(...)` list in gen_shaders.mjs (each patch must match exactly once).
 - `unreal/WebHomage/Scripts/build_city.py`: textures, materials (Custom nodes), meshes, protos, maps, `frames` step. `city_shots.json`: the 8 cameras.
-- Materials: M_CityFacade/Detail/Roof/Asphalt/Sidewalk (ports), M_CitySignage (signage.js port, r04), M_CityFrame (gunmetal billboard housings,
+- Materials: M_CityFacade/Detail/Roof/Asphalt/Sidewalk (ports), M_CitySignage (signage.js port, r04), M_CityKit (street kit, r05), M_CityFrame (gunmetal billboard housings,
   r04), M_CityProp, M_CityVC, M_CityLeaves, M_CityCrown, M_CityLand, M_CityWater (placeholder, P6), M_CityHinter, MPC_City.
 
 ## MPC_City (Content/City/Materials/MPC_City, defaults in build_city.py MPC_DEFAULTS)
@@ -90,11 +102,17 @@ Result: dark glass with Lumen reflections, visible room interiors (desks, painti
     1080p in `-game`, read pixel values with PIL.
 
 ## Known problems / next rounds
-- Storefront signage: M_CitySignage is a port of signage.js kinds 0-10; it compiles and renders but only S5 / S6 show signs clearly. The green
-  sidewalk-shed canopy in S1 has no lettering (browser shows "THAI KITCHEN"); check which mesh carries it.
-- Shop interiors: single photo per storefront, blurry at grazing angles; no people-scale props.
-- Sunset (S7) and night: interior emission only follows NightK; a dusk ramp (rooms lighting up as the sun drops) belongs to P4.
-- The dark slab at the right edge of S5 (x > 1820 px) is another tsFrames / screen back; only the housing over the camera was removed.
-- Far shore / coast (S4): still lavender untextured boxes and a white shoreline band; bridges and piers missing (critic secondary issue).
-- Street clutter (fire escapes, hydrants, newspaper boxes, wet patches), traffic and pedestrians (P6): not done.
-- Perf r04: see round-04 README; captures ran with other Unreal sessions active, numbers are contaminated (GPU util column).
+- Fire escapes are in the S1 crop x 0-1600, y 800-1700 only at its top-right corner (the lowest platforms of the far deco tower, x ~1525-1600,
+  y 800-1000); nearer escapes start above the 6 m cornice, above that crop. If the critic wants them lower in frame: move the camera or add a
+  retracted-ladder variant. Drop ladders end at 2.6 m and are aligned with a pier (behind awnings they are hidden at oblique angles).
+- Street kit density: every ground-floor bay gets a fascia board; ~38 % of bays get a fabric awning, ~21 % a marquee (curtain-wall podiums: marquee only);
+  bays that already carry a browser awning mesh (fabric / marquee bulbs) get no second awning. Awnings are dark-ish (palette in `street_kit.py` AWN).
+- Shop interiors are analytic (crisp) but simple: no depth-of-field cues, customers are flat silhouettes, no per-shop signage inside. Upper wall / soffit
+  is a dark band; the glass reflects the sky (white panes at grazing angles).
+- S5 / S6 (Times Square): the kit also dresses those podiums; tree guards there still hold no trees; red steps flat; white clipping on the curb.
+- Sunset (S7) and night: interior emission only follows NightK; a dusk ramp belongs to P4.
+- Far shore / coast (S4): lavender untextured boxes and a white shoreline band; bridges and piers missing (critic secondary issue).
+- No traffic or pedestrians (P6); sidewalk joints are visible in sun only (the avenue sidewalks sit in canyon shade).
+- Perf r05: see round-05 README; captures ran with other Unreal sessions active, numbers are contaminated (GPU util column).
+- Window brightness test (r04 numbers in the section above) was not re-measured in r05 (upper-floor glass unchanged; SkyLight 1.0 -> 1.7 brightens
+  reflections slightly): re-run `window_stats_round.py` with fresh DebugMode-3 masks before quoting.

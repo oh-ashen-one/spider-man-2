@@ -25,6 +25,10 @@ bottom half 64 portrait cells 256 x 512 (16 x 4, index = row * 16 + col). `ts_si
 | L 34 | FROSTED HALOS, "Start Bright" | L 20 (Big Apple Burger) |
 | L 39 | HELL'S KITCHEN BLUES, "New Season Streaming" | L 41 (Neon Racers) |
 | L 60 | THE DAILY BUGLE, "New York's News" | L 59 (New York Knights) |
+| L 27 | COLTEX SPORT (sneaker brand; round-04 critic: too close to the real game's COLEXCO) | L 4 (Lumen X5) |
+| P 27 | COLTEX - "Own the Court" (same brand, portrait cell) | P 8 (Kinetix, "Rise Above") |
+| P 38 | COLEXCO - "Run the City" (near-copy of the real game's brand) | P 15 (Skyward Air) |
+| L 35 | COLEXCO SPORT (red-on-white sneaker ad; the "COLEX SPOR..." banner in S6, found after the round-04 critic note) | L 47 (Big Apple Tours) |
 | P 6 | OSCORP, "A Healthier Tomorrow" | P 20 (Spark) |
 | P 7 | DAILY BUGLE, "Read All About It" | P 22 (Ashby & Cole) |
 | P 13 | ROXXON, "Fueling Tomorrow" | P 31 (Sol Airways) |
@@ -51,6 +55,16 @@ generic trades plus a "CHASE BANK" cell, a real-world brand, not Marvel / game I
 
 Not used in the Unreal port but listed for whoever ports traffic (P6): `vehicles_atlas2.webp` carries "DAILY BUGLE - THE TRUTH, EVERY
 MORNING" and "A HEALTHIER TOMORROW" (Oscorp) livery cells; exclude them the same way (`ip_sanitize.py` has the pattern).
+
+## Round 05: original signage (nothing copied)
+
+The street-level kit (`tools/export/street_kit.py`, `tools/export/gen_street_signs.py`) draws its own fascia boards and awning valances from
+invented generic shop names with system fonts (Halvorsen & Daughters books, Silver Fern Cafe, Osteria Luna, Pine Street Pharmacy, Golden Lotus,
+Kestrel Watch & Clock, Harbor Hardware, North Corner Deli, Sunrise Bagels, Velvet & Vine, Antonelli Pizza, Bluebird Laundry, Mercer Optical,
+Copper Kettle Tea Room, Rosa's Flowers, Iron Gate Fitness, Lark & Finch, Harbor Light Photo, The Paper Mill, Dr. Amara Voss, Haley's Shoe Repair,
+Orchard Street Bakery, First Harbor Credit Union, Lotus Nail & Spa, Anchor & Oak, Salt & Pepper Diner, Maple Leaf Fruit Market, Quill & Ink,
+Cornerstone Medical, Neon Dragon Noodles, Sage Health Food; 48 generic valance lines such as "FRESH BAKED DAILY"). No logos, no marks of any
+real or fictional franchise. If any of these turns out to collide with a real brand, edit the `FASCIA` list in `gen_street_signs.py`.
 
 ## Verification
 
