@@ -15,7 +15,7 @@ Each piece has its own branch, worktree, Unreal content folder, MCP port and Ble
 | F1 UE C++ foundation | `night1/ue-foundation` | `~/sm2-n1/ue-foundation` | `Source/WebHomage/Core`, Target files, `Config/` (until handed back) | 8770 | — |
 | F2 Reference library | (private repo `spiderman-learnings`, branch `night1/refs`) | `~/spiderman-learnings` | `refs/` | — | — |
 | F3 Browser baseline + playtest | `night1/browser-baseline` | `~/sm2-n1/browser-baseline` | `docs/night1/baseline/` | — | 5201 |
-| P1 City (export + UE city + facades) | `night1/city` | `~/sm2-n1/city` | `tools/export/`, `/Game/City`, `/Game/Tests/City` | 8771 | 5202 |
+| P1 City (export + UE city + facades) | `night1/city` | `~/sm2-n1/city` | `tools/export/`, `/Game/City`, `/Game/Tests/City`, `Shaders/City/`, `Scripts/build_city.py`, `Scripts/city_shots.json` | 8771 | 5202 |
 | P2 Characters (hero, skins, thugs, crowd) | `night1/characters` | `~/sm2-n1/characters` | `/Game/Characters`, `tools/ue_char/`, Blender work under `art/night1/characters` | 8772 | 5203 |
 | P3 Traversal + camera | `night1/traversal` | `~/sm2-n1/traversal` | `Source/WebHomage/Traversal`, `/Game/Traversal`, `/Game/Tests/Traversal` | 8773 | 5204 |
 | P4 Look, lighting, post, perf | `night1/look` | `~/sm2-n1/look` | `/Game/Look`, `/Game/Tests/Look`, `tools/perf_ue/` | 8774 | 5205 |
