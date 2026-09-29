@@ -26,7 +26,12 @@
   },
   {
    "t": 3.2,
-   "swing": false
+   "swing": false,
+   "trick": true
+  },
+  {
+   "t": 3.3,
+   "trick": false
   },
   {
    "t": 4.4,

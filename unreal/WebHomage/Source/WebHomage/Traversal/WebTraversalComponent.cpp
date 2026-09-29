@@ -373,6 +373,11 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		}
 		else S.AirTapT = S.AirT;
 	}
+	if (S.TrickBuf > 0 && S.Sub != N_trick && S.Trick.IsNone() && HeightAboveFloor() > 4.0 && S.AirT > 0.05)
+	{ // round 04: trick on input during the air phase
+		StartTrick(ChooseTrick(I)); S.TrickBuf = 0; S.bAirTrickUsed = true;
+		Emit(N_airTrick);
+	}
 	if (S.Sub == N_trick && !S.Trick.IsNone() && !S.bTrickBoosted && S.SubT >= S.TrickSnapT) TrickBoost(I);
 	// user r10m: holding forward (W) while falling tips into the head-first dive; letting go returns to the flat fall
 	const double HAF = HeightAboveFloor();
@@ -1091,7 +1096,8 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 	// release trick (user r10): the common case (~80 %); a plain release never twice in a row. Needs room to play out.
 	const double HF = HeightAboveFloor();
 	const bool bRoom = HF > 5 && S.Vel.Size() > 9 && (S.Vel.Z > -5 || HF > 14);
-	if (bRoom && (!S.bLastTrick || Rng.FRand() < 0.8)) { StartTrick(ChooseTrick(I)); S.bLastTrick = true; }
+	// round 04: tricks only on input (trick pressed up to 0.4 s before the release, or during the air phase below)
+	if (bRoom && S.TrickBuf > 0) { StartTrick(ChooseTrick(I)); S.bLastTrick = true; S.TrickBuf = 0; }
 	else { S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K; }
 	S.bTrickNoUp = false; // user r10f: every release gains height again
 	const double HS = HLen(S.Vel), HL = FMath::Max(VmaxC(), Sp);
@@ -2013,6 +2019,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 	if (!bWorldReady || !Anchors) return;
 	LastInput = I;
 	S.JumpBuf = I.bJumpPressed ? 0.22 : FMath::Max(0.0, S.JumpBuf - Dt);
+	S.TrickBuf = I.bTrickPressed ? 0.4 : FMath::Max(0.0, S.TrickBuf - Dt);
 	S.SubT += Dt; S.ModeT += Dt;
 	if (S.Mode == EWebTravMode::Swing) S.SinceSwing = 0;
 	else

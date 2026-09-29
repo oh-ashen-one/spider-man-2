@@ -188,6 +188,7 @@ private:
 		bool bLastTrick = false, bTrickBoosted = false, bTrickNoUp = false;
 		FName Trick, LastTrickName;
 		double TrickSide = 1, TrickDur = 0, TrickSnapT = 9, TrickLat = 0, TrickSteep = 0;
+		double TrickBuf = 0;
 		double SearchT = 0, SwingCooldown = 0, WallCooldown = 0, ZipCooldown = 0, DashWebT = 0, QuickBuf = 0;
 		int32 DashCount = 0;
 		FZip Z;

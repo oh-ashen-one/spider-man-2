@@ -138,6 +138,87 @@ mel.recompile_material(color_m)
 for m in (facade, ground_m, color_m):
     eal.save_loaded_asset(m)
 
+
+# ------------------------------------------------------------------ HeroDev: dev proxy of the real hero (round 04)
+# public/assets/spiderman.glb (58 bones, 79 clips at 30 fps) -> /Game/Traversal/HeroDev. P2 owns the final hero in
+# /Game/Characters; bone and clip names are kept unchanged so the swap is a path change. Interchange's glTF reader does not
+# support EXT_texture_webp, so the textures are converted to PNG (macOS sips) into Saved/ first.
+import struct
+import subprocess
+import tempfile
+
+def convert(src, dst):
+    """Rewrite a GLB so every EXT_texture_webp image becomes an embedded PNG (sips), extension removed."""
+    b = open(src, "rb").read()
+    L = struct.unpack("<I", b[12:16])[0]
+    j = json.loads(b[20:20 + L])
+    off = 20 + L
+    BL = struct.unpack("<I", b[off:off + 4])[0]
+    binc = b[off + 8: off + 8 + BL]
+    views = j["bufferViews"]
+    blobs = {i: binc[v.get("byteOffset", 0): v.get("byteOffset", 0) + v["byteLength"]] for i, v in enumerate(views)}
+    tmp = tempfile.mkdtemp()
+    for ii, im in enumerate(j.get("images", [])):
+        if im.get("mimeType") == "image/webp":
+            wp, pp = os.path.join(tmp, "i%d.webp" % ii), os.path.join(tmp, "i%d.png" % ii)
+            open(wp, "wb").write(blobs[im["bufferView"]])
+            subprocess.run(["sips", "-s", "format", "png", wp, "--out", pp], check=True, capture_output=True)
+            blobs[im["bufferView"]] = open(pp, "rb").read()
+            im["mimeType"] = "image/png"
+    for t in j.get("textures", []):
+        ext = t.get("extensions", {}).pop("EXT_texture_webp", None)
+        if ext is not None:
+            t["source"] = ext["source"]
+        if "extensions" in t and not t["extensions"]:
+            del t["extensions"]
+    for k in ("extensionsUsed", "extensionsRequired"):
+        if k in j:
+            j[k] = [e for e in j[k] if e != "EXT_texture_webp"]
+            if not j[k]:
+                del j[k]
+    out = bytearray()
+    for i, v in enumerate(views):
+        while len(out) % 4:
+            out.append(0)
+        v["byteOffset"] = len(out)
+        v["byteLength"] = len(blobs[i])
+        out += blobs[i]
+    while len(out) % 4:
+        out.append(0)
+    j["buffers"][0]["byteLength"] = len(out)
+    js = json.dumps(j, separators=(",", ":")).encode()
+    while len(js) % 4:
+        js += b" "
+    total = 12 + 8 + len(js) + 8 + len(out)
+    with open(dst, "wb") as f:
+        f.write(struct.pack("<III", 0x46546C67, 2, total))
+        f.write(struct.pack("<II", len(js), 0x4E4F534A)); f.write(js)
+        f.write(struct.pack("<II", len(out), 0x004E4942)); f.write(out)
+    return dst
+
+
+
+HERO_DIR = "/Game/Traversal/HeroDev"
+_proj_dir = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())
+_hero_src = os.path.normpath(os.path.join(_proj_dir, "..", "..", "public", "assets", "spiderman.glb"))
+_hero_tmp = os.path.join(_proj_dir, "Saved", "HeroDev.glb")
+convert(_hero_src, _hero_tmp)
+_task = unreal.AssetImportTask()
+_task.set_editor_property("filename", _hero_tmp)
+_task.set_editor_property("destination_path", HERO_DIR)
+_task.set_editor_property("automated", True)
+_task.set_editor_property("replace_existing", True)
+_task.set_editor_property("save", True)
+tools.import_asset_tasks([_task])
+_n_anim = 0
+for _a in eal.list_assets(HERO_DIR, recursive=True):
+    _name = _a.split("/")[-1].split(".")[0]
+    if _name.startswith("HeroDev") and len(_name) > len("HeroDev"):
+        _clip = _name[len("HeroDev"):]
+        eal.rename_asset(_a.split(".")[0], HERO_DIR + "/" + _clip)
+        _n_anim += 1
+unreal.log("HERODEV_OK assets=%d clips_renamed=%d" % (len(eal.list_assets(HERO_DIR, recursive=True)), _n_anim))
+
 # ------------------------------------------------------------------ map
 if MAP_EXISTS:
     assert les.load_level(MAP), "reload failed"

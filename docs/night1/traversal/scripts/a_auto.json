@@ -25,7 +25,8 @@
    "autoChain": true,
    "releasePhase": 0.95,
    "gap": 0.3,
-   "repressVz": 0.0
+   "repressVz": 0.0,
+   "trickEvery": 2
   }
  ]
 }
