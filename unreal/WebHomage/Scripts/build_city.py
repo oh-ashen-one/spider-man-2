@@ -46,14 +46,14 @@ if 'clean' in STEPS:
 
 # ------------------------------------------------------------------------------------------------ textures
 PLAIN_SRGB = {'interiors': True, 'signs': True, 'noise': False, 'detail_nrm': False, 'asphalt_col': True, 'asphalt_nrm': False, 'asphalt_macro': False,
-              'asphalt_decals': False, 'sidewalk_col': True, 'sidewalk_nrm': False, 'curb_col': True, 'markings': True, 'leaves': True, 'water_nrm': False}
+              'asphalt_decals': False, 'sidewalk_col': True, 'sidewalk_nrm': False, 'curb_col': True, 'markings': True, 'leaves': True, 'water_nrm': False, 'street_signs': True}
 ARRAYS = {'walls_col': (16, True), 'walls_nrm': (16, False), 'walls_hao': (17, False), 'roof_col': (19, True), 'roof_nrm': (19, False)}
 if 'tex' in STEPS:
     import_files([os.path.join(TEX, k + '.png') for k in PLAIN_SRGB], ROOT + '/Textures')
     for k, s in PLAIN_SRGB.items():
         t = load(f'{ROOT}/Textures/{k}')
         tex_settings(t, s, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP if k == 'noise' else unreal.TextureCompressionSettings.TC_BC7,
-                     wrap=k not in ('interiors', 'signs', 'markings', 'leaves'))
+                     wrap=k not in ('interiors', 'signs', 'markings', 'leaves', 'street_signs'))
 
     maps = sorted(f for f in os.listdir(os.path.join(TEX, 'maps')) if f.endswith('.png'))
     import_files([os.path.join(TEX, 'maps', f) for f in maps], ROOT + '/Textures/Maps')
@@ -265,6 +265,64 @@ return c;''',
         [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1))],
         [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
         blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    # (r05) street-level kit (tools/export/street_kit.py): piers, cornices, storefront frames, awnings, sign boards, fire escapes.
+    # UV0 = atlas uv (image space, v down) or metres (gratings), UV1 = (kind, param), UV2 = metres along the element, vertex colour = linear base.
+    # kinds: 0 masonry (param 0 ashlar / 1 brick / 2 smooth), 1 metal, 2 fabric (param stripes / m), 3 sign atlas (0 fascia, 1 / 2 valance letters
+    # light / dark), 4 grating, 5 railing, 6 ladder, 7 lamp.  Masked, two-sided.
+    make_material('M_CityKit', None, r"""
+float2 kp = uv1; int K = (int)(kp.x + 0.5); float Pm = kp.y;
+float3 p = wpos * 0.01; float2 a = uv2; float2 fw = abs(ddx(a)) + abs(ddy(a)); float fwm = max(fw.x, fw.y);
+float3 nz = Texture2DSampleLevel(tNoise, tNoiseSampler, p.xy / 5.3 + p.z / 9.0, 0.0).rgb;
+float3 nzf = Texture2DSampleLevel(tNoise, tNoiseSampler, p.xy / 0.9 + p.z / 1.1, 0.0).rgb;
+float3 alb = vc.rgb; float rough = 0.7; float metal = 0.0; float3 emis = float3(0, 0, 0); float op = 1.0;
+float4 tA = Texture2DSampleGrad(tSigns, tSignsSampler, uv0, ddx(uv0), ddy(uv0));
+if (K == 0) {
+  float aa = saturate(fwm * 6.0);
+  if (Pm < 0.5) {            // ashlar: 0.34 m courses, 0.9 m blocks, staggered joints
+    float row = floor(a.y / 0.34); float ax = a.x / 0.9 + 0.37 * frac(row * 0.618) * 2.0; float col = floor(ax);
+    float hv = frac(sin(row * 12.9898 + col * 78.233) * 43758.5453);
+    float j = min(min(frac(a.y / 0.34), 1.0 - frac(a.y / 0.34)) * 0.34, min(frac(ax), 1.0 - frac(ax)) * 0.9);
+    float joint = 1.0 - smoothstep(0.004, 0.012 + fwm, j);
+    alb *= (0.86 + 0.28 * hv) * (1.0 - 0.55 * joint * (1.0 - aa));
+    rough = 0.78;
+  } else if (Pm < 1.5) {     // brick, running bond
+    float row = floor(a.y / 0.0762); float ax = a.x / 0.215 + 0.5 * fmod(row, 2.0); float col = floor(ax);
+    float hv = frac(sin(row * 12.9898 + col * 78.233) * 43758.5453);
+    float j = min(min(frac(a.y / 0.0762), 1.0 - frac(a.y / 0.0762)) * 0.0762, min(frac(ax), 1.0 - frac(ax)) * 0.215);
+    float joint = 1.0 - smoothstep(0.003, 0.008 + fwm, j);
+    alb *= (0.75 + 0.5 * hv) * lerp(1.0 - 0.6 * joint, 0.9, aa); alb = lerp(alb, float3(0.3, 0.29, 0.27) * 0.5, joint * (1.0 - aa) * 0.5);
+    rough = 0.85;
+  } else { alb *= 0.9 + 0.2 * nzf.g; rough = 0.6; }
+  alb *= 0.82 + 0.3 * nz.g; alb *= lerp(0.55, 1.0, smoothstep(0.0, 1.4, p.z));  // soot / splash near the pavement
+} else if (K == 1) {
+  metal = (Pm > 2.5 && Pm < 3.5) ? 1.0 : 0.65; rough = (Pm > 2.5 && Pm < 3.5) ? 0.22 : 0.4; alb *= 0.9 + 0.2 * nzf.b;
+  if (Pm > 3.5) { metal = 0.3; rough = 0.6; }
+} else if (K == 2) {
+  float st = Pm > 0.0 ? step(0.5, frac(uv0.x)) : 0.0;
+  alb = lerp(alb, float3(0.42, 0.4, 0.36), st * 0.85) * (0.85 + 0.25 * nzf.g) * (1.0 - 0.25 * smoothstep(0.55, 0.9, nz.r)); rough = 0.88;
+} else if (K == 3) {
+  if (Pm < 0.5) { alb = tA.rgb * 0.9; emis = tA.rgb * (0.3 + 0.9 * nightk); rough = 0.45; }
+  else {
+    float m = tA.r; float3 lc = Pm < 1.5 ? float3(0.82, 0.8, 0.74) : float3(0.025, 0.025, 0.028);
+    alb = lerp(alb * (0.85 + 0.2 * nzf.g), lc, saturate(m * 1.15)); rough = 0.85;
+  }
+} else if (K == 4 || K == 5 || K == 6) {
+  float2 g = uv0; float fwg = max(abs(ddx(g.x)) + abs(ddy(g.x)), abs(ddx(g.y)) + abs(ddy(g.y)));
+  float aa = saturate(fwg * 22.0 - 0.35);
+  if (K == 4) { float2 c = frac(g / 0.045); float hole = step(0.28, c.x) * step(0.28, c.y); op = lerp(1.0 - hole * 0.92, 0.85, aa); }
+  else if (K == 5) {
+    float bar = step(0.75, frac(g.x / 0.13 + 0.5)) * 0.0 + (1.0 - smoothstep(0.06, 0.1, abs(frac(g.x / 0.13) - 0.5)));
+    float rails = max(step(0.93, g.y), max(step(g.y, 0.06), 1.0 - step(0.035, abs(g.y - 0.5))));
+    op = lerp(max(bar, rails), max(rails, 0.5), aa);
+  } else { float sides = max(step(g.x, 0.035), step(0.405, g.x)); float rung = 1.0 - step(0.03, abs(frac(g.y / 0.3) - 0.5) * 0.3 * 3.3); op = lerp(max(sides, rung), 0.7, aa); }
+  alb = vc.rgb * (0.85 + 0.5 * nzf.r); metal = 0.55; rough = 0.55;
+} else { emis = alb * 4.0; }
+Rough = rough; Metal = metal; Op = op; Emis = emis * escale;
+return alb;""",
+        [('tSigns', 'tex', TEXA('street_signs')), ('tNoise', 'tex', TEXA('noise')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None),
+         ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
+        blend='masked', two_sided=True, world_normal=False)
     # (r04) Times Square frame / housing blocks (tsFrames): the exporter paints the big billboard housings vertex-colour black (0.018),
     # which rendered as untextured black masses (critic r03: S5 top right). Dark gunmetal cladding: 1.5 x 3 m panel seams, per-panel
     # tone, grime, metallic sheen; lighter frame parts (gold, chrome, white trim) keep their vertex colour.
@@ -569,6 +627,45 @@ def open_level(path):
         les.new_level(path)
     return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
+KIT_DIR = ROOT + '/Meshes/streetkit'
+def kit_spawn():
+    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level"""
+    kp = os.path.join(EXPORT, 'streetkit.json')
+    if not os.path.exists(kp): return 0
+    n = 0
+    for r in json.load(open(kp))['files']:
+        sp = f'{KIT_DIR}/SM_{r["name"]}'
+        if not EAL.does_asset_exist(sp): continue
+        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/streetkit')
+        a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC); n += 1
+    return n
+
+def kit_import():
+    """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them"""
+    kp = os.path.join(EXPORT, 'streetkit.json')
+    recs = json.load(open(kp))['files']
+    if EAL.does_directory_exist(KIT_DIR): EAL.delete_directory(KIT_DIR)
+    import_files([os.path.join(EXPORT, r['file']) for r in recs], KIT_DIR + '/_in', mesh_pipeline(True))
+    mat = load(MAT + '/M_CityKit')
+    for r in recs:
+        base = r['name']; src = f'{KIT_DIR}/_in/{base}/StaticMeshes/{base}'; dst = f'{KIT_DIR}/SM_{base}'
+        if not EAL.does_asset_exist(src): log('MISSING kit mesh', src); continue
+        EAL.rename_asset(src, dst); sm = load(dst)
+        finish_mesh(sm, mat, False, nanite=True); EAL.save_asset(dst)
+    EAL.delete_directory(KIT_DIR + '/_in')
+    log('kit meshes', len(recs))
+
+if 'kit' in STEPS:
+    # remove the kit actors from the geometry level first (deleting referenced assets pops a modal dialog), then re-import and respawn
+    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
+    eas_ = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    for a in eas_.get_all_level_actors():
+        if a.get_actor_label().startswith('streetkit__'): eas_.destroy_actor(a)
+    unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
+    kit_import()
+    log('kit actors', kit_spawn())
+    unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
+
 def build_geo_level(path):
     open_level(path)
     recs = [r for r in man['meshes'] if keep_mesh(r)]
@@ -578,11 +675,19 @@ def build_geo_level(path):
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
         smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
         a.set_mobility(unreal.ComponentMobility.STATIC)
+    kit_spawn()
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
     ni = 0
+    EXTRA_PROPS = json.load(open(os.path.join(EXPORT, 'streetprops.json'))) if os.path.exists(os.path.join(EXPORT, 'streetprops.json')) else {}
+    def thin(it):  # (r05) S1 / S2 avenue corridor: ~45 % of the street trees are left out so the storefronts read (one hash per tree position)
+        x, z = it['x'], it['z']
+        pr = 1.01 if (x < 243.0 and 40.0 < z < 152.0) else (0.78 if (x < 243.0 and 50.0 < z < 150.0) else 0.45)  # the deco podium at z 117-151 carries a fire escape: keep it in view  # west sidewalk in front of the S1 storefronts (deco tower + fire escapes behind): thinner still
+        return 225.0 < x < 276.0 and -350.0 < z < 200.0 and math.modf(abs(math.sin(round(x * 0.5) * 12.9898 + round(z * 0.5) * 78.233) * 43758.5453))[0] < pr
     for p in protos:
         pool = p['src']; items = (L['instances'].get(pool) or {}).get('items') or []
+        if p['name'].startswith('ez_street'): items = [it for it in items if not thin(it)]
+        items = list(items) + EXTRA_PROPS.get(pool, [])  # (r05) supplemental street furniture (tools/export/street_props.py)
         sp = f'{ROOT}/Props/SM_{p["name"]}'
         if not items or not EAL.does_asset_exist(sp): continue
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + p['name'], folder='City/Props')
@@ -628,6 +733,7 @@ def add_lighting(sun_pitch, sun_yaw, sunset=False):
     spawn(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), label='SkyAtmosphere', folder='Lighting')
     sl = spawn(unreal.SkyLight, unreal.Vector(0, 0, 2000), label='SkyLight', folder='Lighting')
     sl.light_component.set_editor_property('real_time_capture', True); sl.light_component.set_mobility(unreal.ComponentMobility.MOVABLE)
+    sl.light_component.set_editor_property('intensity', 1.7)  # (r05) canyon shade: more sky fill (ground floors read as dark slabs at 1.0)
     fog = spawn(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0), label='HeightFog', folder='Lighting')
     fc = fog.component; fc.set_editor_property('fog_density', 0.006 if not sunset else 0.009); fc.set_editor_property('fog_height_falloff', 0.12)
     fc.set_editor_property('start_distance', 40000.0)  # (r02) clear near field, aerial haze band toward the horizon

@@ -57,12 +57,126 @@ float3 CityU2B(float3 v) { return float3(v.x, v.z, v.y); }            // UE fram
   uePatch('return col * lerp(0.55f, 1.0f, lit);', 'return col * lerp(0.2f, 1.0f, lit);');
   // storefront sign band: same derivative-mip problem as the interiors (sign lettering smeared into a colour gradient) -> -2 mips
   uePatch('clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)), 0.0f, 9.0f)', 'clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)) - 2.0f, 0.0f, 9.0f)');
+  // ---- (r05) crisp procedural shop interiors (the atlas photos are ~85 px / m: blurry at street distance). Four shop types (grocery, cafe,
+  // boutique, pharmacy / bank), analytic shelves / racks / counters / pendant lamps / customers, anti-aliased by the pixel footprint on the back wall.
+  uePatch('static float gRoomWrap = 0.0f;', 'static float gPixM = 0.01f; static float gRoomWrap = 0.0f;');
+  uePatch('gLodI = clamp(log2(max(aw, ah) * 512.0f / max(vF.y, 2.0f)) - 2.5f, 0.0f, 9.0f);', 'gLodI = clamp(log2(max(aw, ah) * 512.0f / max(vF.y, 2.0f)) - 2.5f, 0.0f, 9.0f); gPixM = max(aw, ah);');
+  uePatch('// Interior mapping into a room box [0,rw]x[0,rh]x[-rd,0], entering at p (z=0) along dir (dir.z<0)\nfloat3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, float tile, float lit, float shop) {', String.raw`
+float shH(float2 p) { return frac(sin(dot(p, float2(127.1f, 311.7f))) * 43758.5453f); }
+float3 shHue(float h, float sat, float val) { float3 c = saturate(float3(abs(h * 6.0f - 3.0f) - 1.0f, 2.0f - abs(h * 6.0f - 2.0f), 2.0f - abs(h * 6.0f - 4.0f))); return lerp(float3(1.0f, 1.0f, 1.0f), c, sat) * val; }
+float shBox(float x, float a, float b, float w) { return smoothstep(a - w, a + w, x) * (1.0f - smoothstep(b - w, b + w, x)); }
+// muted packaging palette (10 colours)
+float3 shPack(float h) {
+  float k = floor(h * 10.0f);
+  if (k < 1.0f) return float3(0.42f, 0.07f, 0.05f); if (k < 2.0f) return float3(0.55f, 0.42f, 0.09f); if (k < 3.0f) return float3(0.07f, 0.16f, 0.36f);
+  if (k < 4.0f) return float3(0.07f, 0.27f, 0.11f); if (k < 5.0f) return float3(0.62f, 0.59f, 0.52f); if (k < 6.0f) return float3(0.24f, 0.15f, 0.09f);
+  if (k < 7.0f) return float3(0.5f, 0.2f, 0.06f); if (k < 8.0f) return float3(0.7f, 0.68f, 0.62f); if (k < 9.0f) return float3(0.12f, 0.12f, 0.13f);
+  return float3(0.3f, 0.06f, 0.2f);
+}
+// back wall of a shop: m = metres (x along the wall, y above the floor), typ 0..3, sd = per-segment seed, w = pixel footprint in metres
+float3 shopBack(float2 m, float typ, float sd, float w) {
+  w = max(w, 0.004f);
+  float3 wallC = lerp(float3(0.62f, 0.58f, 0.5f), float3(0.42f, 0.4f, 0.36f), shH(float2(sd, 1.7f)));
+  float3 c = wallC * (0.5f + 0.35f * smoothstep(0.0f, 2.2f, m.y)) * (0.9f + 0.2f * shH(floor(m.xy * 3.0f) + sd));
+  c *= lerp(1.0f, 0.3f, smoothstep(2.0f, 2.4f, m.y)); // dark soffit band above the fixtures (no blank white wall)
+  c += float3(1.0f, 0.95f, 0.8f) * 1.3f * shBox(m.y, 3.05f, 3.14f, w) * shBox(frac(m.x / 1.8f), 0.1f, 0.9f, w / 1.8f + 0.01f); // ceiling light tubes
+  float fine = saturate(1.0f - w * 9.0f);  // fine detail fades to its mean colour at distance
+  if (typ < 0.5f) {                                   // grocery: shelving with packaged goods, produce crates, price strips
+    float ty = m.y - 0.32f; float tier = floor(ty / 0.42f); float ft = ty - tier * 0.42f;
+    if (ty > 0.0f && tier < 4.0f) {
+      float cw = 0.15f; float cx = floor(m.x / cw); float hh = shH(float2(cx + sd, tier * 3.1f)); float hh2 = shH(float2(cx * 1.7f + sd, tier + 9.0f));
+      float ph = 0.17f + 0.2f * hh2; float3 pc = shPack(hh) * (0.75f + 0.5f * hh2);
+      float band = shBox(ft, ph * 0.35f, ph * 0.7f, w * fine + 0.002f);
+      float3 prod = lerp(pc, lerp(pc, float3(0.62f, 0.6f, 0.55f), 0.65f), band * fine);
+      float fx = frac(m.x / cw); float inCell = shBox(fx, 0.06f, 0.94f, w / cw * 0.7f + 0.01f);
+      float onShelf = shBox(ft, 0.05f, ph, w + 0.003f) * inCell;
+      float3 shelfBack = float3(0.045f, 0.04f, 0.035f);
+      c = lerp(shelfBack, prod, onShelf);
+      float plank = 1.0f - smoothstep(0.03f, 0.05f + w, ft);
+      c = lerp(c, float3(0.32f, 0.26f, 0.2f), plank * 0.9f);
+      float tag = shBox(ft, 0.01f, 0.04f, w) * step(0.6f, shH(float2(cx, tier + sd)));
+      c = lerp(c, float3(0.85f, 0.15f, 0.1f), tag * fine);
+    } else if (ty <= 0.0f) {
+      float cx = floor(m.x / 0.4f); float h3 = shH(float2(cx + sd, 4.4f)); float crate = shBox(m.y, 0.02f, 0.3f, w);
+      float3 prod = lerp(float3(0.35f, 0.5f, 0.1f), float3(0.55f, 0.16f, 0.06f), frac(h3 * 3.0f)) * 0.7f;
+      c = lerp(float3(0.28f, 0.19f, 0.1f), lerp(prod, float3(0.3f, 0.2f, 0.1f), 0.35f + 0.4f * smoothstep(0.1f, 0.3f, m.y)), crate * shBox(frac(m.x / 0.4f), 0.05f, 0.95f, w / 0.4f + 0.01f));
+    } else c = wallC;
+  } else if (typ < 1.5f) {                            // cafe: slatted wood wall, jars on floating shelves, menu boards, counter, pendant lamps
+    float slat = shBox(frac(m.x / 0.1f), 0.04f, 0.96f, w / 0.1f + 0.01f);
+    c = lerp(float3(0.06f, 0.035f, 0.02f), float3(0.34f, 0.2f, 0.11f) * (0.75f + 0.5f * shH(float2(floor(m.x / 0.1f), sd))), slat);
+    float shelf = shBox(m.y, 1.55f, 1.6f, w) + shBox(m.y, 1.95f, 2.0f, w);
+    float jars = shBox(frac(m.x / 0.13f), 0.1f, 0.9f, w / 0.13f + 0.01f) * (shBox(m.y, 1.6f, 1.83f, w) + shBox(m.y, 2.0f, 2.2f, w));
+    c = lerp(c, shPack(shH(float2(floor(m.x / 0.13f), floor(m.y / 0.2f) + sd))) * 0.8f, jars * fine);
+    c = lerp(c, float3(0.55f, 0.38f, 0.22f), saturate(shelf));
+    float mb = shBox(frac(m.x / 1.6f), 0.2f, 0.8f, w / 1.6f + 0.005f) * shBox(m.y, 1.0f, 1.45f, w);   // menu boards
+    float lines = step(0.5f, frac(m.y / 0.07f)) * shBox(frac(m.x / 0.9f), 0.12f, 0.35f + 0.5f * shH(float2(floor(m.y / 0.07f), sd)), 0.01f);
+    c = lerp(c, lerp(float3(0.03f, 0.035f, 0.04f), float3(0.6f, 0.58f, 0.5f), lines * 0.4f * fine), mb);
+    float cn = smoothstep(0.96f, 0.94f, m.y);                                                        // counter front + lit top edge
+    c = lerp(c, float3(0.22f, 0.12f, 0.06f) * (0.8f + 0.4f * smoothstep(0.1f, 0.6f, m.y)), cn * 0.98f);
+    c = lerp(c, float3(0.85f, 0.65f, 0.4f), shBox(m.y, 0.93f, 0.97f, w) * 0.9f);
+    float pl = length(float2(frac(m.x / 1.4f + 0.5f) - 0.5f, (m.y - 2.55f) * 0.55f)) * 1.4f;          // pendant lamps
+    c += float3(1.0f, 0.75f, 0.42f) * 2.2f * smoothstep(0.1f + w, 0.05f, pl) + float3(1.0f, 0.6f, 0.3f) * 0.25f * smoothstep(0.45f, 0.1f, pl);
+  } else if (typ < 2.5f) {                            // boutique: hanging garments on rails, mannequins, folded stacks on tables
+    float gx = floor(m.x / 0.06f); float gh = shH(float2(gx + sd, 2.2f)); float len = 0.5f + 0.5f * frac(gh * 5.1f);
+    float3 gc = lerp(shPack(frac(gh * 3.7f)) * 0.7f, float3(0.5f, 0.5f, 0.47f), step(0.6f, frac(gh * 13.0f)));
+    float row = shBox(m.y, 1.62f - len, 1.58f, w) * shBox(frac(m.x / 0.06f), 0.06f, 0.94f, w / 0.06f * 0.8f + 0.01f);
+    float rail = shBox(m.y, 1.62f, 1.66f, w);
+    c = lerp(c, float3(0.16f, 0.13f, 0.1f), 0.5f * smoothstep(0.7f, 1.6f, m.y));
+    c = lerp(c, gc, row * (fine * 0.85f + 0.15f));
+    c = lerp(c, float3(0.5f, 0.5f, 0.5f), rail);
+    float sx = frac(m.x / 1.9f + 0.3f) - 0.5f;                                                        // mannequin
+    float body = shBox(abs(sx), 0.0f, 0.15f - 0.05f * smoothstep(1.0f, 1.5f, m.y), w) * shBox(m.y, 0.45f, 1.5f, w) + smoothstep(0.12f + w, 0.11f, length(float2(sx * 1.0f, (m.y - 1.6f)))) ;
+    c = lerp(c, lerp(gc * 1.2f, float3(0.75f, 0.72f, 0.68f), 0.4f), saturate(body) * step(0.35f, shH(float2(floor(m.x / 1.9f + 0.3f), sd))));
+    float table = shBox(m.y, 0.0f, 0.72f, w) * shBox(frac(m.x / 1.3f), 0.08f, 0.92f, w / 1.3f + 0.01f);
+    float stack = step(0.5f, frac(m.y / 0.09f));
+    c = lerp(c, lerp(float3(0.25f, 0.2f, 0.16f), gc * 1.1f, stack * fine + 0.3f), table);
+  } else {                                            // pharmacy / bank: bright wall, light aisle shelves, dark counter, logo slab
+    c = lerp(float3(0.36f, 0.38f, 0.4f), float3(0.5f, 0.53f, 0.56f), smoothstep(0.0f, 2.0f, m.y));
+    float sh2 = step(1.1f, m.y) * step(m.y, 2.3f); float cx = floor(m.x / 0.14f); float h4 = shH(float2(cx + sd, floor(m.y / 0.36f)));
+    float box2 = sh2 * shBox(frac(m.x / 0.14f), 0.08f, 0.92f, w / 0.14f + 0.01f) * shBox(frac(m.y / 0.36f), 0.1f, 0.85f, w / 0.36f + 0.01f);
+    c = lerp(c, shPack(h4) * 0.85f, box2 * fine * 0.9f + box2 * 0.1f);
+    c = lerp(c, float3(0.86f, 0.86f, 0.84f), shBox(frac(m.y / 0.36f), 0.0f, 0.1f, w / 0.36f) * sh2);
+    float slab = shBox(m.y, 2.35f, 2.9f, w) * shBox(frac(m.x / 3.4f), 0.25f, 0.75f, w / 3.4f + 0.005f);
+    c = lerp(c, shPack(frac(sd * 5.3f)) * 0.9f, slab);
+    c = lerp(c, float3(0.09f, 0.1f, 0.12f), smoothstep(0.92f, 0.9f, m.y) * 0.95f);
+    c = lerp(c, float3(0.9f, 0.9f, 0.88f), shBox(m.y, 0.9f, 0.96f, w) * 0.8f);
+  }
+  // customers: dark silhouettes in front of the back wall
+  float pp = frac(m.x / 3.1f + 0.15f * sd); float pid = floor(m.x / 3.1f + 0.15f * sd); float pr = shH(float2(pid, sd + 3.0f));
+  if (pr > 0.55f) {
+    float px = (pp - (0.25f + 0.5f * frac(pr * 7.0f))) * 3.1f; float ph = 1.55f + 0.3f * frac(pr * 11.0f);
+    float torso = shBox(abs(px), 0.0f, 0.21f - 0.08f * smoothstep(0.7f, 0.0f, ph - m.y) * 0.0f, w) * shBox(m.y, 0.75f, ph - 0.22f, w);
+    float legs = shBox(abs(px), 0.03f, 0.17f, w) * shBox(m.y, 0.0f, 0.8f, w);
+    float head = smoothstep(0.115f + w, 0.105f, length(float2(px, (m.y - (ph - 0.1f)) * 1.05f)));
+    float sil = saturate(torso + legs * 0.9f);
+    float3 cc = lerp(float3(0.02f, 0.024f, 0.036f), lerp(float3(0.07f, 0.06f, 0.05f), float3(0.1f, 0.075f, 0.06f), frac(pr * 17.0f)), step(0.5f, frac(pr * 5.0f)));
+    c = lerp(c, cc, sil); c = lerp(c, float3(0.22f, 0.14f, 0.1f), head);
+  }
+  return c;
+}
+float3 shopWall(float3 h, float dirx) {   // side walls of a shop: plaster above a dark wainscot, picture rail, a few framed prints
+  float3 c = float3(0.5f, 0.46f, 0.4f) * (dirx > 0.0f ? 0.85f : 0.75f);
+  c = lerp(float3(0.12f, 0.08f, 0.05f), c, smoothstep(0.85f, 0.92f, h.y));
+  float fr = shBox(frac(-h.z / 1.3f), 0.25f, 0.75f, 0.03f) * shBox(h.y, 1.3f, 1.95f, 0.02f);
+  return lerp(c, float3(0.3f, 0.25f, 0.2f), fr * 0.7f);
+}
+float3 shopFloor(float3 h) {
+  float2 g = float2(h.x, -h.z) / 0.6f; float chk = step(0.5f, frac(g.x * 0.5f)) != step(0.5f, frac(g.y * 0.5f)) ? 1.0f : 0.0f;
+  return lerp(float3(0.07f, 0.065f, 0.06f), float3(0.1f, 0.09f, 0.08f), chk);
+}
+// Interior mapping into a room box [0,rw]x[0,rh]x[-rd,0], entering at p (z=0) along dir (dir.z<0)
+float3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, float tile, float lit, float shop) {`);
+  uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + q.x) / 4.0f,1.0f - (tileUV.y + 1.0f - q.y) / 4.0f)), gLodI).rgb;\n  } else if (t == ty) {',
+          '    if (shop > 0.5f) { float wr = gRoomWrap > 0.0f ? gRoomWrap : rw; col = shopBack(float2(frac(h.x / wr) * wr, h.y), tile - 12.0f, floor(h.x / wr) * 3.7f + tile, gPixM * 1.6f); }\n    else col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + q.x) / 4.0f,1.0f - (tileUV.y + 1.0f - q.y) / 4.0f)), gLodI).rgb;\n  } else if (t == ty) {');
+  uePatch('col = shop > 0.5f ? float3(0.55f,0.52f,0.48f) :', 'col = shop > 0.5f ? shopFloor(h) :');
+  uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));',
+          '    if (shop > 0.5f) col = shopWall(h, dir.x);\n    else { col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f)); }');
   // blinds / curtains sit behind the glass and the window reveal shades them: they must not out-shine the sunlit masonry
   uePatch('gl.alb = lerp(gl.alb, bc * slats * 0.8f, bl);', 'gl.alb = lerp(gl.alb, bc * slats * 0.5f, bl);');
   // ceilings / floors seen from the street are the brightest surfaces in a room but never sunlit: darker (critic: <= 10 % of window pixels above 80 %)
   uePatch('col = float3(0.72f,0.72f,0.7f) * (0.75f + 0.25f * lit) + pe * lit * float3(0.55f,0.53f,0.48f) * (1.0f + shop) * (1.0f - 0.6f * c.y);',
           'col = float3(0.42f,0.42f,0.41f) * (0.6f + 0.4f * lit) + pe * lit * float3(0.45f,0.43f,0.38f) * (1.0f + shop) * (1.0f - 0.6f * c.y);');
-  uePatch('col = shop > 0.5f ? float3(0.55f,0.52f,0.48f) :', 'col = shop > 0.5f ? float3(0.3f,0.28f,0.25f) :');
+
 
   const ush = `${HDR('facade.js (FRAG_DECL)')}
 #define TEXDECL ${decl}
@@ -200,7 +314,32 @@ float3 CitySidewalk(TEXDECL, float4 rect, float3 wposU, float3 wnU, float3 camU,
   const fn = between(js, marker, 'mat.customProgramCacheKey');
   const decls = between(fn, "'#include <common>', `#include <common>", '`)');
   const { decl, pass } = texMacros(TEX);
-  const body = translate(decls, { textures: TEX.map(t => t[0]) });
+  let body = translate(decls, { textures: TEX.map(t => t[0]) });
+  if (name === 'Sidewalk') { // ---- UE-only (r05): visible 1.5 m slab joints, per-slab tone, hairline cracks, stains, gum spots
+    const anchor = 'c *= 0.93f + 0.14f * nz.r;';
+    if (body.split(anchor).length !== 2) throw new Error('sidewalk patch anchor');
+    body = body.replace(anchor, () => anchor + String.raw`
+        { // (r05) critic: 'sidewalk slabs with joints / cracks'
+          float slabM = 1.0f - curb;
+          float2 sp = p / 1.5f; float2 sc = floor(sp); float2 sf = frac(sp);
+          float sh = frac(sin(dot(sc, float2(12.9898f, 78.233f))) * 43758.5453f);
+          float wJ = clamp(max(fwP.x, fwP.y) / 1.5f * 1.5f, 0.0f, 0.5f);
+          float jd = min(min(sf.x, 1.0f - sf.x), min(sf.y, 1.0f - sf.y));
+          float joint = (1.0f - smoothstep(0.012f, 0.03f + wJ * 1.5f, jd)) * (1.0f - saturate(wJ * 1.6f));
+          float bevel = smoothstep(0.03f, 0.05f, jd) * (1.0f - smoothstep(0.05f, 0.12f + wJ, jd)) * (1.0f - saturate(wJ * 3.0f));
+          float2 cp = p / 2.3f + sc * 0.41f;
+          float cn1 = Texture2DSampleLevel(tNoise, tNoiseSampler, fl2(cp), 0.0f).r, cn2 = Texture2DSampleLevel(tNoise, tNoiseSampler, fl2(cp * 2.7f + 0.3f), 0.0f).g;
+          float crack = (1.0f - smoothstep(0.0f, 0.007f + wJ * 0.06f, abs(cn1 - 0.52f))) * step(0.5f, sh) + (1.0f - smoothstep(0.0f, 0.005f + wJ * 0.05f, abs(cn2 - 0.47f))) * step(0.72f, frac(sh * 7.0f));
+          crack *= (1.0f - saturate(wJ * 3.0f));
+          float gum = step(0.985f, frac(sin(dot(floor(p * 9.0f), float2(41.3f, 17.7f))) * 9871.13f)) * (1.0f - saturate(wJ * 6.0f));
+          float stain = smoothstep(0.62f, 0.85f, nz.b) * 0.22f;
+          float tone = (0.62f + 0.75f * sh) * (1.0f - stain);
+          c = lerp(c, c * tone, slabM);
+          c = lerp(c, c * 0.12f, saturate(joint * 0.97f + crack * 0.85f) * slabM);
+          c = lerp(c, c * 1.5f + 0.02f, bevel * 0.5f * slabM);
+          c = lerp(c, c * 0.3f, gum * 0.8f * slabM);
+        }`);
+  }
   const ush = `${HDR('ground.js (' + marker.split(' ').pop() + ')')}
 #define TEXDECL ${decl}
 #define TEXPASS ${pass}

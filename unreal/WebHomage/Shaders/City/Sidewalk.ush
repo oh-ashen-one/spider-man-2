@@ -48,7 +48,27 @@ static float3 vWP; static float3 vRoad; static float4 vRect; static float3 vWN; 
           c = lerp(c, cc, curb);
           n = lerp(n, float3(0.5f,0.5f,0.7f), curb);
         }
-        c *= 0.93f + 0.14f * nz.r; // subtle slab-to-slab variation (refs/road/road_2_sidewalk)
+        c *= 0.93f + 0.14f * nz.r;
+        { // (r05) critic: 'sidewalk slabs with joints / cracks'
+          float slabM = 1.0f - curb;
+          float2 sp = p / 1.5f; float2 sc = floor(sp); float2 sf = frac(sp);
+          float sh = frac(sin(dot(sc, float2(12.9898f, 78.233f))) * 43758.5453f);
+          float wJ = clamp(max(fwP.x, fwP.y) / 1.5f * 1.5f, 0.0f, 0.5f);
+          float jd = min(min(sf.x, 1.0f - sf.x), min(sf.y, 1.0f - sf.y));
+          float joint = (1.0f - smoothstep(0.012f, 0.03f + wJ * 1.5f, jd)) * (1.0f - saturate(wJ * 1.6f));
+          float bevel = smoothstep(0.03f, 0.05f, jd) * (1.0f - smoothstep(0.05f, 0.12f + wJ, jd)) * (1.0f - saturate(wJ * 3.0f));
+          float2 cp = p / 2.3f + sc * 0.41f;
+          float cn1 = Texture2DSampleLevel(tNoise, tNoiseSampler, fl2(cp), 0.0f).r, cn2 = Texture2DSampleLevel(tNoise, tNoiseSampler, fl2(cp * 2.7f + 0.3f), 0.0f).g;
+          float crack = (1.0f - smoothstep(0.0f, 0.007f + wJ * 0.06f, abs(cn1 - 0.52f))) * step(0.5f, sh) + (1.0f - smoothstep(0.0f, 0.005f + wJ * 0.05f, abs(cn2 - 0.47f))) * step(0.72f, frac(sh * 7.0f));
+          crack *= (1.0f - saturate(wJ * 3.0f));
+          float gum = step(0.985f, frac(sin(dot(floor(p * 9.0f), float2(41.3f, 17.7f))) * 9871.13f)) * (1.0f - saturate(wJ * 6.0f));
+          float stain = smoothstep(0.62f, 0.85f, nz.b) * 0.22f;
+          float tone = (0.62f + 0.75f * sh) * (1.0f - stain);
+          c = lerp(c, c * tone, slabM);
+          c = lerp(c, c * 0.12f, saturate(joint * 0.97f + crack * 0.85f) * slabM);
+          c = lerp(c, c * 1.5f + 0.02f, bevel * 0.5f * slabM);
+          c = lerp(c, c * 0.3f, gum * 0.8f * slabM);
+        } // subtle slab-to-slab variation (refs/road/road_2_sidewalk)
         c *= 1.0f - 0.12f * (1.0f - smoothstep(0.0f, 1.2f, abs(d - 0.3f))) * nz.b;
         // (foundation r13) critic: 'streets from altitude read as blank white stripes', 'riverfront edges are ruler-
         // straight white strips'. Aerial LOD tone: grime, tree pits, street furniture and kerb shadows aggregate, so from
