@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 10:12",
+ "updated": "2026-09-29 11:00",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 6,
-   "verdict": "R5: FAILS (arc 5, camera 3, web 5, moves 4, body 3)",
-   "gap": "Wall-run: frozen splayed pose, camera flat at the facade; unshaded suit at clip starts"
+   "round": 7,
+   "verdict": "R6: FAILS (arc 4, camera 4, web 5, moves 4, body 4)",
+   "gap": "Swing cadence: ~4 s per swing vs ~1.3 s in the reference; long web-less falls"
   },
   {
    "id": "P4",
@@ -190,6 +190,11 @@
  ],
  "clips": [
   {
+   "title": "Traversal R6 \u2014 wall-run with climb cycle and top-out",
+   "src": "docs/night1/traversal/round-06/c_wallrun_perch.mp4",
+   "caption": "head-up alternating climb, camera looks up the facade, front-flip top-out"
+  },
+  {
    "title": "Characters R1 \u2014 citizens walking",
    "src": "docs/night1/characters/round-01/captures/citizens_walk.mp4",
    "caption": "critic: slides in a frozen pose at 2\u20135 s"
@@ -300,6 +305,14 @@
    "verdict": "fails",
    "gap": "Fix the brute's material/texture assignment so it reads as one heavy-set street criminal: solid clothes, no skin through them, lit readable head.",
    "notes": "39 assets evaluated individually on moving clips (21 keep, 13 refine, 5 replace). Secondary: civilians slide in a frozen pose; white crack artifacts on two citizens; hero lenses flat decals, web lines painted not raised, weave too coarse; hero run upright with no lean; AI suits walk in lockstep."
+  },
+  {
+   "t": "11:00",
+   "piece": "P3 Traversal",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Swing cadence: attach\u2192release 1.2\u20131.8 s, next web within 0.5 s, no web-less fall >0.6 s; \u22657 attaches in 12 s.",
+   "notes": "Best round yet: every axis 4\u20135; the new wall-run (head-up alternating climb, camera looking up the facade, flip top-out) rated ~2 points better than round 5. Deep drops from round 2 lengthened swings; round 7 keeps depth but adds speed."
   }
  ],
  "perf": [
@@ -411,6 +424,10 @@
   {
    "t": "10:12",
    "text": "Characters R1 merged; critic FAILS; round 2 on a Sonnet 5.5 builder (brute texture)."
+  },
+  {
+   "t": "11:00",
+   "text": "Traversal R6 merged: wall-run fixed (critic +2 on that sequence); still FAILS; round 7 targets swing cadence."
   }
  ]
 }
