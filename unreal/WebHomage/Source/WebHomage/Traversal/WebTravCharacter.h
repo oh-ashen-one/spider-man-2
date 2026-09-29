@@ -100,6 +100,10 @@ private:
 	bool bAutoHeld = true, bAutoWasSwinging = false;
 	double AutoGapT = 0.0;
 	int32 AutoReleases = 0;
+	// round 10: auto-chain sky launch (jump-release + chained tricks, re-press below skyRepressH)
+	bool bSkyAuto = false, bSkyWasTrick = false;
+	int32 SkyTricksLeft = 0;
+	double SkyAutoT = 0.0;
 	int64 FrameIndex = 0;
 
 	// placeholder figure parts

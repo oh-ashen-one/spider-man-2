@@ -193,6 +193,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp((P.HAbove - 8.0) / 32.0, 0.0, 1.0)) - P.Vel.Z * 0.0025;
 	}
 	if (P.Mode == EWebTravMode::Wall || P.Sub == N_topOut) SWant = WallFrameS;
+	// round 10: sky launch — the camera sinks under the hero and looks up while he rises / hangs (released at a fast fall)
+	SD(SkyK, SkyKV, (P.bSky && P.Vel.Z > -9.0) ? 1.0 : 0.0, P.bSky && P.Vel.Z > -9.0 ? 0.25 : 0.35, Dt);
+	SkyK = FMath::Clamp(SkyK, 0.0, 1.0);
+	SWant = FMath::Lerp(SWant, SkySFrame, SkyK);
 	SWant = FMath::Clamp(SWant, 0.32, 0.72);
 	SD(FrameS, FrameSV, SWant, 0.22, Dt);
 	// ---- desired position: behind the (lagged) heading yaw, above the hero
@@ -216,7 +220,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if (P.bDive || ChainAirT > 0.8) bInChain = false;       // a long fall / dive is not the chain rhythm: centred again (aiming)
 	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
 	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
-	const double ZWant = Hero.Z + ChaseHeight + OU;
+	const double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -SkyCamBelow, SkyK) + OU;
 	if (!bChaseInit)
 	{
 		bChaseInit = true;
@@ -230,7 +234,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if (HL < 1e-3) HD = BackR * MinH; else if (HL < MinH) HD *= MinH / HL; else if (HL > MaxH) HD *= MaxH / HL;
 	CamXY = FVector(Hero.X + HD.X, Hero.Y + HD.Y, 0);
 	SD(CamZ, CamZV, ZWant, 0.05, Dt);
-	CamZ = FMath::Clamp(CamZ, Hero.Z + CamZMin + OU, Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6
+	CamZ = FMath::Clamp(CamZ, Hero.Z + FMath::Lerp(CamZMin, -SkyCamBelow - 0.3, SkyK) + OU, Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6
 	FVector Cam(CamXY.X, CamXY.Y, CamZ);
 	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /
 	// rotated positions and move there smoothly (held ~1 s so the camera does not flicker)
@@ -363,7 +367,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
 	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
 	// (round 06: on the wall the lower clamp opens up to an 80 deg look UP the facade)
-	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(PitchDownMin, -80.0, Smooth(WallK, 0.0, 1.0))),
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, SkyK), -80.0, Smooth(WallK, 0.0, 1.0))),
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));

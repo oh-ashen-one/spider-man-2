@@ -65,8 +65,25 @@ public:
 	/** Round 09: alternating arc depth below the entry height (m): odd swings shallow, even swings deep. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropShallow = 10.2f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropDeep = 17.5f;
+	/** Round 10: lowest designed arc bottom (feet over the floor, m; T7: 1-4 storeys over the street, never skimming car roofs). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcLowMin = 5.f;
+	/** Round 10: the first web after a sky launch bottoms out ArcLowMin + 0..SkyArcExtra m over the street (dives back into the canyon). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyArcExtra = 4.f;
 	/** Round 09: the next anchor search leans this far (deg) toward the side opposite the previous web. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAltDeg = 30.f;
+	/**
+	 * Round 10 (critic r09 T3/T4/T7: four identical 2 s swings, never at the roofline): a jump-release with a trick pressed is a
+	 * SKY LAUNCH — the release climbs at up to SkyLaunchVz m/s (plain jump-release: 22), gravity is x SkyHangK while |vz| <
+	 * SkyHangVz (hang time at the top, tricks chained on input), and no web is searched on the way up. The camera drops under the
+	 * hero and looks up (sky behind him) until he falls faster than 8 m/s.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyLaunchVz = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyHangK = 0.55f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyHangVz = 7.f;
+	/** Round 10: gravity scale on the rest of a sky launch's climb (vz >= SkyHangVz): the release carries him to the roofline. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyRiseK = 1.4f;
+	/** Round 10: a new web's anchor must sit at least this far (m) above the body (critic r09: rope anchored below / behind, b 2.0 s). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorMinAbove = 3.f;
 
 	/**
 	 * Fraction of the anchor's lateral offset (relative to the swing direction) kept in the physics pivot.
@@ -122,6 +139,10 @@ public:
 	FVector RootPosM() const { return RootPos; }
 	double Facing() const { return S.Facing; }
 	bool IsDiving() const { return S.bDive || S.bGliding; }
+	/** Round 10: airborne from a sky launch (jump-release + trick) and not yet falling into the dive. */
+	/** Round 10: feet height over the street / building mass below (props, trees, awnings ignored). */
+	double HeightAboveStreet() const { return FeetZ() - TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); }
+	bool IsSkyLaunch() const { return S.bSky && S.Mode == EWebTravMode::Air; }
 	bool IsSwinging() const { return S.Mode == EWebTravMode::Swing; }
 	const FVector& SwingAnchor() const { return S.Sw.Anchor; }
 	const FVector& SwingDir() const { return S.Sw.Dir; }
@@ -221,6 +242,7 @@ private:
 		double LandSeverity = 0, LandLock = 0;
 		FQuat BodyQ = FQuat::Identity;
 		double Roll = 0, Pitch = 0, Bank = 0, RollA = 0, PitchA = 0;
+		bool bSky = false;      // round 10: sky launch (jump-release + trick) until the next web / landing
 		bool bTopOut = false;   // round 06: airborne from a wall-run top-out (crouch landing on touchdown)
 		int32 SwingIdx = 0;     // round 09: swings started (alternating arc depth)
 		int32 LastAnchorSide = 0; // round 09: side of the last web anchor (+1 right of travel, -1 left)

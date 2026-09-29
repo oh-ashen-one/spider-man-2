@@ -398,6 +398,8 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	S.bDive = (I.bDrop || bWDive) && S.AirT > 0.08 && HAF > 3;
 	double Gr = G;
 	if (!S.bDive && FMath::Abs(S.Vel.Z) < 3.5 && S.Sub != N_zipPull) Gr *= 0.55; // apex hang time
+	else if (S.bSky && !S.bDive && FMath::Abs(S.Vel.Z) < SkyHangVz) Gr *= SkyHangK; // round 10: sky-launch hang time
+	else if (S.bSky && !S.bDive && S.Vel.Z >= SkyHangVz) Gr *= SkyRiseK;              // round 10: sky-launch climb
 	if (S.bDive) Gr *= 1.55;
 	// open areas with the swing button held and nothing to attach to: never a dead free-fall — web-assisted glide-dive
 	const bool bGlide = I.bSwing && !S.bDive && S.NoAnchorT > 0.15 && S.Vel.Z < -4 && S.AirT > 0.3 && HAF > 3.5;
@@ -694,6 +696,15 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 		Emit(N_noAnchor); S.NoAnchorT += 0.06;
 		return false;
 	}
+	{ // round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
+		FVector HVg;
+		if (!HDir(S.Vel, HVg)) HVg = Fwd;
+		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0)
+		{
+			Emit(N_noAnchor); S.NoAnchorT += 0.06;
+			return false;
+		}
+	}
 	S.NoAnchorT = 0;
 	{
 		FVector HVx;
@@ -738,7 +749,7 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		for (double K : { 0.0, 0.5, 1.0, 1.4 })
 		{
 			const FVector Q = S.Pos + Fl * (AheadA * K);
-			FMaxD = FMath::Max(FMaxD, FloorAt(Q.X, Q.Y, S.Pos.Z));
+			FMaxD = FMath::Max(FMaxD, TravWorld.StreetHeight(Q.X, Q.Y, S.Pos.Z - 0.5)); // round 10: the street, not tree canopies / awnings
 		}
 		const double HEntry = S.Pos.Z - H - FMaxD;
 		double BottomFeet = FMath::Lerp(double(ArcBottomMin), double(ArcBottomMax), double(Rng.FRand()));
@@ -748,8 +759,10 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		// between consecutive swings (ArcDropShallow / ArcDropDeep below the entry, 0-1.5 m jitter)
 		++S.SwingIdx;
 		{
-			const double Drop = (S.SwingIdx % 2 ? double(ArcDropShallow) : double(ArcDropDeep)) + 1.5 * Rng.FRand();
-			BottomFeet = FMath::Max(3.0, HEntry - Drop);
+			double Drop = (S.SwingIdx % 2 ? double(ArcDropShallow) : double(ArcDropDeep)) + 1.5 * Rng.FRand();
+			BottomFeet = FMath::Max(double(ArcLowMin), HEntry - Drop); // round 10: 3 -> ArcLowMin (5 m)
+			// round 10: the first web after a sky launch dives back into the canyon: low point 1-3 storeys over the street
+			if (S.bSky) BottomFeet = double(ArcLowMin) + double(SkyArcExtra) * Rng.FRand();
 		}
 		double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
 		const double BottomZ = FMaxD + BottomFeet + H;
@@ -1209,6 +1222,12 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 		S.Vel.X += HV.X * SWING_JUMP * K; S.Vel.Y += HV.Y * SWING_JUMP * K;
 		S.Vel.Z = FMath::Min(SWING_JUMP_VY, FMath::Max(S.Vel.Z + SWING_JUMP_UP, SWING_JUMP_UP * 0.85));
 		S.bJumpRelHold = true; // user r10c: no new web until the apex
+		// round 10: jump-release with a trick pressed = sky launch (climb to the roofline, hang, chained tricks, dive back in)
+		if (S.TrickBuf > 0)
+		{
+			S.bSky = true;
+			S.Vel.Z = FMath::Max(S.Vel.Z, double(SkyLaunchVz));
+		}
 	}
 	SetMode(EWebTravMode::Air, N_release); S.AirT = 0; S.ApexZ = FeetZ();
 	S.SwingCooldown = 0.05; S.RelT = 0;
@@ -2226,6 +2245,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 			}
 		}
 	}
+	if (S.Mode != EWebTravMode::Air) S.bSky = false; // round 10: a sky launch ends at the next web / landing / wall / zip
 	S.bGrounded = S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch;
 	if (S.Mode == EWebTravMode::Ground) S.DashCount = 0;
 	FinalQ = Orient(Dt);

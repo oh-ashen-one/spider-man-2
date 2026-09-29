@@ -1,0 +1,15 @@
+{
+ "name": "b_release_trick_dive_zip_city",
+ "note": "Round 10, lit city: swing up the avenue, SKY LAUNCH at 3.0 s (jump-release + trick: rise, silhouette against the sky), dive, zip to a roof point, perch.",
+ "seed": 1234,
+ "spawn": { "pos": [250, 150, 40], "yaw": -90, "camPitch": 0.12, "vel": [0, -26, 2] },
+ "keys": [
+  { "t": 0.0, "move": [0, 1], "heading": -90, "swing": true },
+  { "t": 3.0, "jump": true, "trick": true },
+  { "t": 3.02, "swing": false, "jump": false, "trick": false },
+  { "t": 4.4, "drop": true },
+  { "t": 4.78, "drop": false },
+  { "t": 4.8, "zip": true, "move": [0, 0], "heading": false },
+  { "t": 4.9, "zip": false }
+ ]
+}

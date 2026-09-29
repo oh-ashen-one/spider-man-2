@@ -31,6 +31,7 @@ struct FTravCamInput
 	double HAbove = 0.0;   // feet height above the floor below (m)
 	double SwingAngle = 0.0; // rope angle from straight down (rad), swinging only
 	double SwingT = 99.0;    // s since the current web attached
+	bool bSky = false;       // round 10: sky launch (jump-release + trick) in progress
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -65,6 +66,10 @@ public:
 	double WallFrameS = 0.68;      // hero screen centre on the wall
 	double WallFovAdd = 4.0;       // deg vertical FOV added on the wall
 	double WallK = 0.0;            // 0 chase .. 1 wall camera (spring)
+	// round 10 (TRAVERSAL-SPEC T23: release trick silhouetted against the sky, with a rise): during a sky launch the camera sinks
+	// SkyCamBelow m under the hero centre and frames him at SkySFrame (upper centre), look-up limited to SkyPitchUp deg (T11 p5)
+	double SkyCamBelow = 1.2, SkySFrame = 0.40, SkyPitchUp = 10.0;
+	double SkyK = 0.0, SkyKV = 0.0;
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame

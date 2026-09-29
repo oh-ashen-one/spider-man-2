@@ -9,9 +9,14 @@ set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
 HERE="$(cd "$(dirname "$0")" && pwd)"
 UE_DIR="$(cd "$HERE/../../../unreal/WebHomage" && pwd)"
-SCR="$HERE/scripts"
+# round 10: captures run in the lit city (P4 Look_Midtown_golden built in this worktree: city/build_city_p3.sh) with the
+# city scripts; TRAV_MAP=/Game/Tests/Traversal/Trav_Canyon TRAV_SCRIPTS=$HERE/scripts for the gray-box canyon
+SCR="${TRAV_SCRIPTS:-$HERE/scripts/city}"
 TMP=/Users/midir/sm2-n1/_scratch/traversal/capture
-MAP=/Game/Tests/Traversal/Trav_Canyon
+MAP="${TRAV_MAP:-/Game/Tests/Look/Look_Midtown_golden}"
+# GPU lock (RULES / docs/night1/gpu/PROTOCOL.md): every game run takes a shared capture slot
+GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
+RUN() { "$GPU" capture --label traversal -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 # round 06: pre-roll (s) rendered from the start pose before the sequence starts (exposure / Lumen settle), trimmed from the movie
 PRE=0.8
 mkdir -p "$TMP" "$ROUND/stills"
@@ -27,11 +32,13 @@ WANT=("$@")
 wait_slot() { while [ "$(pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l)" -ge 3 ]; do echo "waiting: 3+ Unreal instances running"; sleep 60; done; }
 # round 06: shader / texture warm-up render first (a fresh DDC compiles the hero and city materials on first use, which
 # rendered the suit white / unshaded in the first frames of a capture); low-res, not kept
+if [ -z "${SKIP_WARM:-}" ]; then
 echo "== warm-up render (not kept)"
 rm -rf "$TMP/warmup"
 wait_slot
-"$UE_DIR/Scripts/run_game.sh" "$TMP/warmup" -map "$MAP" -res 960x540 -quit 16 -name warmup -timeout 2400 \
+RUN "$TMP/warmup" -map "$MAP" -res 960x540 -quit ${WARM_QUIT:-16} -name warmup -timeout 2400 \
   -- -benchmark -fps=60 -WHTravScript="$SCR/a_swing_chain.json" | tail -1
+fi
 for entry in "${SEQS[@]}"; do
   read -r NAME JSON QUIT SHOTS <<< "$entry"
   if [ ${#WANT[@]} -gt 0 ] && [[ ! " ${WANT[*]} " =~ " $NAME " ]]; then continue; fi
@@ -40,7 +47,7 @@ for entry in "${SEQS[@]}"; do
   rm -rf "$TMP/$NAME"
   QUITP=$(python3 -c "print(round($QUIT + $PRE, 3))")
   wait_slot
-  "$UE_DIR/Scripts/run_game.sh" "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
+  RUN "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
     -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE | tail -3
   FR="$TMP/$NAME/${NAME}_frames"
   if [ -d "$FR" ] && [ -f "$TMP/$NAME/${NAME}_telemetry.csv" ]; then
@@ -63,7 +70,7 @@ for entry in "${SEQS[@]}"; do
   # shot times are world seconds: shift by the pre-roll; files are named by sequence time
   SHOTSP=$(python3 -c "print(','.join(str(round(float(t) + $PRE, 3)) for t in '$SHOTS'.split(',')))")
   wait_slot
-  "$UE_DIR/Scripts/run_game.sh" "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTSP" -name "$NAME" -timeout 1500 \
+  RUN "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTSP" -name "$NAME" -timeout 1500 \
     -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE \
     -WHTravCsv="$TMP/${NAME}_4k/stills_telemetry.csv" | tail -2
   I=0

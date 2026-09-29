@@ -470,15 +470,37 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// round 07: a player lets go after the swoop — only once this swing has come down (vz < -3 m/s)
 			if (!bSwinging) bAutoSawDescent = false;
 			else if (Traversal->VelM().Z < -3.0) bAutoSawDescent = true;
-			if (bAutoHeld && bSwinging && bAutoSawDescent && ((A.Swing.Phase > RelPhase && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex))
+			double SkyRepressH = 18.0, SkyMax = 3.0, SkyPhase = 0.8;
+			int32 SkyTricks = 2;
+			const int32 SkyEvery = Script->SkyEveryAt(TravTime, SkyRepressH, SkyTricks, SkyMax, SkyPhase);
+			bool bKeepSwingThisFrame = false;
+			// round 10: the sky release lets the arc climb further (skyPhase) before the launch
+			const double RelPhaseEff = (SkyEvery > 0 && (AutoReleases + 1) % SkyEvery == 0) ? SkyPhase : RelPhase;
+			if (bAutoHeld && bSwinging && bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;
 				const int32 Every = Script->TrickEveryAt(TravTime);
-				if (Every > 0 && AutoReleases % Every == 0) I.bTrick = true; // trick pressed together with this release
+				if (SkyEvery > 0 && AutoReleases % SkyEvery == 0)
+				{ // round 10: sky launch = jump pressed while the web is still held (jump-release) + trick pressed with it
+					I.bJump = true; I.bTrick = true; bKeepSwingThisFrame = true;
+					bSkyAuto = true; bSkyWasTrick = false; SkyTricksLeft = FMath::Max(0, SkyTricks - 1); SkyAutoT = 0.0;
+				}
+				else if (Every > 0 && AutoReleases % Every == 0) I.bTrick = true; // trick pressed together with this release
+			}
+			else if (!bAutoHeld && bSkyAuto)
+			{ // sky phase: chain the next trick the moment one ends, then re-press once falling through skyRepressH
+				SkyAutoT += Dt; AutoGapT += Dt;
+				const bool bTrickNow = A.Sub == FName(TEXT("trick"));
+				if (bSkyWasTrick && !bTrickNow && SkyTricksLeft > 0 && Traversal->VelM().Z > -12.0) { I.bTrick = true; --SkyTricksLeft; }
+				bSkyWasTrick = bTrickNow;
+				if ((Traversal->VelM().Z < 0 && Traversal->HeightAboveStreet() <= SkyRepressH && !bTrickNow) || SkyAutoT >= SkyMax)
+				{
+					bAutoHeld = true; bSkyAuto = false;
+				}
 			}
 			else if (!bAutoHeld) { AutoGapT += Dt; if (AutoGapT >= Gap && Traversal->VelM().Z <= RepressVz) bAutoHeld = true; }
 			bAutoWasSwinging = bSwinging;
-			I.bSwing = bAutoHeld;
+			I.bSwing = bAutoHeld || bKeepSwingThisFrame;
 		}
 	}
 	else
@@ -522,6 +544,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.HAbove = Traversal->PosM().Z - UWebTraversalComponent::H - Traversal->FloorBelow();
 	CI.SwingAngle = Traversal->Anim.Swing.Angle;
 	CI.SwingT = Traversal->SwingTime();
+	CI.bSky = Traversal->IsSkyLaunch();
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
 	// ---- move the actor (capsule) with the simulated body

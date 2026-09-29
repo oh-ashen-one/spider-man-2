@@ -132,8 +132,9 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 	if (bInAirCycle)
 	{
 		const float T = AirCycleT;
-		const bool bReach = bSwingHeld && T > 0.25f; // swing re-pressed: reach up for the next web
-		if (bReach) return bReachRight ? FName(TEXT("air_reachR")) : FName(TEXT("air_reachL"));
+		// round 10 (critic r09 a 7.7-7.9 s: raised-fist hang with no rope): no held reach pose while searching for a web;
+		// the web arm aims only once a strand is out (swing node)
+		(void)bReachRight;
 		const float TailStart = FlavorIdx == 0 ? 1.0f : FlavorIdx == 3 ? 0.8f : 0.9f;
 		if (T >= TailStart) // long fall: alternate the two fall clips every 0.45 s (never one held pose)
 			return (int32((T - TailStart) / 0.45f) % 2 == 0) ? (FlavorIdx % 2 ? FName(TEXT("air_fall")) : FName(TEXT("air_fallCalm")))

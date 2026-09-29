@@ -48,6 +48,9 @@ public:
 	bool SphereOverlaps(const FVector& P, double Radius) const;
 	/** Highest surface at (X,Y) at or below FromZ (m). -1000 if nothing. */
 	double GroundHeight(double X, double Y, double FromZ) const;
+	/** Round 10 (lit city): like GroundHeight but passes through props / trees / street-kit meshes (only ground-tagged actors
+	 *  and indexed building boxes count), so a swing's designed low point is measured from the street, not a tree canopy. */
+	double StreetHeight(double X, double Y, double FromZ) const;
 	/** Pushes a vertical capsule (feet, radius R, height H) horizontally out of solids; only the part above StepH collides. */
 	bool PushOutCapsule(FVector& Feet, double R, double H, double StepH, FTravContact& Out) const;
 	/** Is the point inside a building box (margin m)? */
