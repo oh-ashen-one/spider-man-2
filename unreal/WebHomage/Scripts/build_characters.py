@@ -77,6 +77,7 @@ if 'tex' in STEPS:
     import_tex(H + '/suit_normal.png', ROOT + '/Hero/Textures', 'T_Hero_Normal', 'normal_gl')   # glTF = OpenGL (curl test)
     import_tex(H + '/suit_orm.png', ROOT + '/Hero/Textures', 'T_Hero_ORM', 'linear')
     # fabric micro-normal (browser detail maps; curl test says DirectX convention -> no flip)
+    import_tex(ART + '/shared/white.png', ROOT + '/Shared/Textures', 'T_White_Masks', 'linear')
     import_tex(WT + '/public/assets/tex/suit_weave_knit.png', ROOT + '/Shared/Textures', 'T_Fabric_Knit_N', 'normal_dx')
     import_tex(WT + '/public/assets/tex/suit_weave_hex.png', ROOT + '/Shared/Textures', 'T_Fabric_Hex_N', 'normal_dx')
     for v in ('', '_b', '_c'):
@@ -95,10 +96,13 @@ if 'tex' in STEPS:
     log('tex ok')
 
 # ------------------------------------------------------------------------------------------------ materials
-def new_material(path, name):
+def new_material(path, name, skeletal=False):
     if EAL.does_asset_exist(path + '/' + name):
         EAL.delete_asset(path + '/' + name)
-    return AT.create_asset(name, path, unreal.Material, unreal.MaterialFactoryNew())
+    m = AT.create_asset(name, path, unreal.Material, unreal.MaterialFactoryNew())
+    if skeletal:   # -game can't add usage flags at runtime: without this the default material is drawn
+        m.set_editor_property('used_with_skeletal_mesh', True)
+    return m
 
 def E(m, cls, x, y):
     return MEL.create_material_expression(m, cls, x, y)
@@ -121,16 +125,16 @@ def vector(m, name, v, x, y):
 def build_suit_master():
     """M_Char_Suit: basecolor x tint, ORM (or constants), macro normal + tiled fabric micro-normal
     (BlendAngleCorrectedNormals), Cloth shading model for a fabric sheen (fuzz colour + cloth amount)."""
-    m = new_material(ROOT + '/Shared/Materials', 'M_Char_Suit')
+    m = new_material(ROOT + '/Shared/Materials', 'M_Char_Suit', skeletal=True)
     m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_CLOTH)
     ST = unreal.MaterialSamplerType
     bc = tex_param(m, 'BaseColor', '/Engine/EngineResources/WhiteSquareTexture', ST.SAMPLERTYPE_COLOR, -900, -300)
     tint = vector(m, 'Tint', (1, 1, 1, 1), -900, -520)
     bcm = E(m, unreal.MaterialExpressionMultiply, -600, -350)
-    MEL.connect_material_expressions(bc, 'RGB', bcm, 'A'); MEL.connect_material_expressions(tint, '', bcm, 'B')
+    MEL.connect_material_expressions(bc, 'RGB', bcm, 'A'); MEL.connect_material_expressions(tint, 'RGB', bcm, 'B')
     MEL.connect_material_property(bcm, '', unreal.MaterialProperty.MP_BASE_COLOR)
     # ORM switch
-    orm = tex_param(m, 'ORM', '/Engine/EngineResources/WhiteSquareTexture', ST.SAMPLERTYPE_LINEAR_COLOR, -900, 0)
+    orm = tex_param(m, 'ORM', ROOT + '/Shared/Textures/T_White_Masks', ST.SAMPLERTYPE_MASKS, -900, 0)
     rs = scalar(m, 'RoughnessScale', 1.0, -900, 250); ro = scalar(m, 'Roughness', 0.7, -900, 330)
     rmul = E(m, unreal.MaterialExpressionMultiply, -600, 60)
     MEL.connect_material_expressions(orm, 'G', rmul, 'A'); MEL.connect_material_expressions(rs, '', rmul, 'B')
@@ -168,7 +172,7 @@ def build_suit_master():
     # cloth sheen
     fz = vector(m, 'FuzzColor', (0.55, 0.45, 0.45, 1), -350, -600)
     fzm = E(m, unreal.MaterialExpressionMultiply, -150, -560)
-    MEL.connect_material_expressions(fz, '', fzm, 'A'); MEL.connect_material_expressions(bcm, '', fzm, 'B')
+    MEL.connect_material_expressions(fz, 'RGB', fzm, 'A'); MEL.connect_material_expressions(bcm, '', fzm, 'B')
     # 'Cloth' input (CustomData0) is not exposed to Python's MaterialProperty enum and defaults to 1, so the sheen
     # amount is carried by the fuzz colour: fuzz = FuzzColor * basecolor * Cloth
     cl = scalar(m, 'Cloth', 0.6, -150, -420)
@@ -178,18 +182,20 @@ def build_suit_master():
     spec = scalar(m, 'Specular', 0.5, -150, -330)
     MEL.connect_material_property(spec, '', unreal.MaterialProperty.MP_SPECULAR)
     MEL.recompile_material(m)
+    try: log('M_Char_Suit compile errors:', list(MEL.get_material_compile_errors(m)) if hasattr(MEL, 'get_material_compile_errors') else 'n/a')
+    except Exception as e: log('compile error query failed', e)
     return m
 
 def build_simple(name, shading=None, emissive=False):
-    m = new_material(ROOT + '/Shared/Materials', name)
+    m = new_material(ROOT + '/Shared/Materials', name, skeletal=True)
     c = vector(m, 'Color', (0.8, 0.8, 0.8, 1), -500, -200)
-    MEL.connect_material_property(c, '', unreal.MaterialProperty.MP_BASE_COLOR)
+    MEL.connect_material_property(c, 'RGB', unreal.MaterialProperty.MP_BASE_COLOR)
     MEL.connect_material_property(scalar(m, 'Roughness', 0.3, -500, 0), '', unreal.MaterialProperty.MP_ROUGHNESS)
     MEL.connect_material_property(scalar(m, 'Metallic', 0.0, -500, 100), '', unreal.MaterialProperty.MP_METALLIC)
     MEL.connect_material_property(scalar(m, 'Specular', 0.5, -500, 200), '', unreal.MaterialProperty.MP_SPECULAR)
     if emissive:
         em = E(m, unreal.MaterialExpressionMultiply, -250, 300)
-        MEL.connect_material_expressions(c, '', em, 'A'); MEL.connect_material_expressions(scalar(m, 'Emissive', 0.0, -500, 350), '', em, 'B')
+        MEL.connect_material_expressions(c, 'RGB', em, 'A'); MEL.connect_material_expressions(scalar(m, 'Emissive', 0.0, -500, 350), '', em, 'B')
         MEL.connect_material_property(em, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(m)
     return m
@@ -212,7 +218,7 @@ def build_ground_materials():
                       ('M_Env_Brick', (0.28, 0.12, 0.08, 1), 0.85), ('M_Env_Stone', (0.45, 0.42, 0.37, 1), 0.75),
                       ('M_Env_Glass', (0.04, 0.05, 0.06, 1), 0.08), ('M_Env_Paint', (0.9, 0.85, 0.2, 1), 0.6)):
         m = new_material(TESTS + '/Materials', n)
-        MEL.connect_material_property(vector(m, 'Color', col, -400, -100), '', unreal.MaterialProperty.MP_BASE_COLOR)
+        MEL.connect_material_property(vector(m, 'Color', col, -400, -100), 'RGB', unreal.MaterialProperty.MP_BASE_COLOR)
         MEL.connect_material_property(scalar(m, 'Roughness', r, -400, 50), '', unreal.MaterialProperty.MP_ROUGHNESS)
         MEL.recompile_material(m); out[n] = m
     return out
@@ -284,19 +290,20 @@ def do_import(path, dest, **kw):
 
 def set_slots(mesh_path, mapping):
     sk = load(mesh_path)
-    mats = sk.get_editor_property('materials')
-    for sm in mats:
+    out = []
+    for sm in sk.get_editor_property('materials'):   # array elements come back as copies: rebuild the list
         slot = str(sm.get_editor_property('material_slot_name'))
         tgt = mapping.get(slot, mapping.get('*'))
-        if tgt: sm.set_editor_property('material_interface', load(tgt))
-    sk.set_editor_property('materials', mats)
+        if tgt:
+            sm.set_editor_property('material_interface', load(tgt))
+        out.append(sm)
+    sk.set_editor_property('materials', out)
     EAL.save_asset(mesh_path)
-    return [str(m.get_editor_property('material_slot_name')) for m in mats]
+    return [(str(m.get_editor_property('material_slot_name')), m.get_editor_property('material_interface').get_name()) for m in load(mesh_path).get_editor_property('materials')]
 
-# Interchange gotcha (UE 5.8.3, seen 2026-09-29, editor and -run=pythonscript alike): after an asset rename/delete
-# following an import, every LATER Interchange import starts but never completes. So ALL imports run first, straight
-# into their final folders with final names chosen at the source (prep_glbs.py writes SK_*.glb), and the renames
-# (animation clips only) run after the last import.
+# Interchange gotcha (UE 5.8.3, seen 2026-09-29): InterchangeManager.import_asset(+override_pipelines) only ever
+# completed the FIRST import of a session; AssetImportTask with an InterchangePipelineStackOverride completes every
+# import synchronously. Final names are chosen at the source (prep_glbs.py writes SK_*.glb); only clips get renamed.
 HERO_SKEL = ROOT + '/Hero/SK_Hero_Skeleton'
 CIT_SKEL = ROOT + '/Citizens/SK_Citizen_Skeleton'
 HERO_PHYS = ROOT + '/Hero/SK_Hero_PhysicsAsset'
@@ -402,7 +409,7 @@ def walker(label, mesh, abp, loc, mode, speed, rx=0, ry=0, start=0, hop=0, scale
     m.set_skeletal_mesh_asset(load(mesh))
     m.set_editor_property('animation_mode', unreal.AnimationMode.ANIMATION_BLUEPRINT)
     m.set_anim_instance_class(load(abp).generated_class())
-    m.set_relative_rotation(unreal.Rotator(0, MESH_YAW, 0), False, False)
+    m.set_relative_rotation(unreal.Rotator(roll=0.0, pitch=0.0, yaw=MESH_YAW), False, False)
     if mat: m.set_material(0, load(mat))
     a.set_actor_scale3d(unreal.Vector(scale, scale, scale))
     for k, v in (('mode', mode), ('speed', speed), ('radius_x', rx), ('radius_y', ry), ('start_angle', start), ('hop_interval', hop)):
@@ -413,7 +420,7 @@ MESH_YAW = float(ARGS.get('mesh_yaw', -90.0))   # glTF +Z forward -> UE: mesh fa
 if 'map' in STEPS:
     MAP = TESTS + '/Char_Lineup'
     les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
-    les.new_level('/Temp/Char_Lineup_Build')   # built in a temp level, then saved over MAP (idempotent)
+    les.new_level('/Temp/Char_Lineup_Build_%d' % int(time.time()))   # built in a temp level, then saved over MAP (idempotent)
     W = unreal.WHWalkerMode
     # light: neutral daylight
     sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-35, -40, 0), 'Sun')
@@ -469,7 +476,7 @@ if 'map' in STEPS:
              shot(hero_tt, K.CLOSEUP, 4, 95, 135, 5, 30, label='suit fabric close-up (chest)'),
              shot(thug, K.THREE_QUARTER, 4, 380, 95, 15, 40, label='thug walk 3/4'),
              shot(brute, K.SIDE, 3, 480, 110, 10, 40, label='brute walk side'),
-             shot(cit_center, K.WIDE, 5, 0, 90, 0, 45, wl=(600, -3100, 260), label='citizens walking wide'),
+             shot(cit_center, K.WIDE, 5, 0, 90, 0, 45, wl=(1900, -2150, 230), label='citizens walking wide'),
              shot(cits[0], K.SIDE, 4, 380, 95, 5, 40, label='citizen side'),
              shot(cits[2], K.THREE_QUARTER, 4, 380, 95, 10, 40, label='citizen 3/4'),
              shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-1200, 820, 170), label='AI suits walking in place')]

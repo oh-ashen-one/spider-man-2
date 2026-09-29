@@ -29,3 +29,9 @@ for glb, d in jobs:
 for v in ('b', 'c'):
     to_png(open(WT + '/public/assets/tex/thug_basecolor_%s.webp' % v, 'rb').read(), '%s/thug/tex/thug_basecolor_%s.png' % (ART, v), '.webp')
 to_png(open(WT + '/public/assets/enemies/brute_basecolor.webp', 'rb').read(), ART + '/thug/tex/brute_basecolor.png', '.webp')
+# 4x4 white, imported linear/TC_MASKS as the M_Char_Suit ORM default (a masks sampler needs a masks texture)
+_w = ART + '/shared/white.png'
+if not os.path.exists(_w):
+    os.makedirs(os.path.dirname(_w), exist_ok=True)
+    from PIL import Image
+    Image.new('RGB', (4, 4), (255, 255, 255)).save(_w)
