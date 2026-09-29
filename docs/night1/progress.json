@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 12:51",
+ "updated": "2026-09-29 13:53",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -36,9 +36,9 @@
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "fixing",
-   "round": 5,
-   "verdict": "R4: FAILS (facades 5, street 3, skyline 4, Manhattan 4, IQ 5)",
-   "gap": "Street level unbuilt: no recessed storefronts, awnings, fire escapes, sidewalk detail or street props"
+   "round": 6,
+   "verdict": "R5: FAILS (facades 5, street 4, skyline 3, Manhattan 4, IQ 5)",
+   "gap": "Far skyline: lavender untextured boxes, white shoreline strip, windowless mid-ground"
   },
   {
    "id": "P2",
@@ -87,6 +87,20 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "City round 5 \u2014 street level built",
+   "note": "Storefronts with original signs and awnings, fire escapes, street furniture. Before: blank ground floors.",
+   "images": [
+    {
+     "label": "Round 4 street",
+     "src": "docs/night1/city/round-04/S1_avenue_street_1920x1080.jpg"
+    },
+    {
+     "label": "Round 5 street",
+     "src": "docs/night1/city/round-05/S1_avenue_street_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "Look round 1 \u2014 three time-of-day presets over the Unreal city",
    "note": "First lighting pass (Sonnet builder). Critic: golden haze works; night is too dark to read.",
@@ -394,6 +408,14 @@
    "verdict": "fails",
    "gap": "Facade clearance and occlusion: keep \u22653 m wall clearance at the arc bottom, camera \u22651.5 m from facades; no facade >30% of frame in the problem spans.",
    "notes": "Cadence targets met (7 attaches in 12 s, 1.1\u20131.75 s swings, rope on screen 81%); round 7 beat round 6 in both version pairs. Orchestrator check: the critic's '6\u20138% hero height' was wrong (frames show ~17%, matching telemetry); the wall-hugging at 14.5 s and the whole-frame blur are real and are the next gap."
+  },
+  {
+   "t": "13:53",
+   "piece": "P1 City",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "Far skyline: window grids and material on every building past the first two rows; warm-neutral far shore; dark embankment with piers instead of a white strip; water reflecting the shore.",
+   "notes": "Street level built: 2,225 storefront bays with frames/awnings/original names, 616 fire escapes, street furniture every ~20 m; street dressing 3\u21924. More IP to exclude: 'HAUTE UNLIMITED' (real-game ad) and real-place evocations (Hotel Astor, Madison arena, L'Or\u00e9al-like)."
   }
  ],
  "perf": [
@@ -560,6 +582,10 @@
   {
    "t": "12:51",
    "text": "Traversal R7 merged: swing-rhythm targets met; critic FAILS (flat scores). Verified frames myself: critic's size claim wrong, facade clearance + blur real \u2192 round 8."
+  },
+  {
+   "t": "13:53",
+   "text": "City R5 merged (street level); critic FAILS; round 6 = far skyline + more IP exclusions."
   }
  ]
 }
