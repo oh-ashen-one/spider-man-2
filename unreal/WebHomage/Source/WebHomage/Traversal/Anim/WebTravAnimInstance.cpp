@@ -15,7 +15,7 @@ namespace
 	float Smooth01(float X) { X = FMath::Clamp(X, 0.f, 1.f); return X * X * (3.f - 2.f * X); }
 #define WA_NAME(x) const FName NA_##x(TEXT(#x));
 	WA_NAME(ground) WA_NAME(jumpCharge) WA_NAME(jumpLaunch) WA_NAME(land) WA_NAME(air) WA_NAME(trick) WA_NAME(swing) WA_NAME(zip)
-	WA_NAME(perch) WA_NAME(crawl) WA_NAME(wallRun) WA_NAME(wallJump) WA_NAME(corner) WA_NAME(pointLaunch) WA_NAME(vault)
+	WA_NAME(perch) WA_NAME(crawl) WA_NAME(wallRun) WA_NAME(wallJump) WA_NAME(corner) WA_NAME(pointLaunch) WA_NAME(vault) WA_NAME(topOut)
 #undef WA_NAME
 }
 
@@ -81,11 +81,12 @@ float UWebTravAnimInstance::BlendTime(FName F, FName T)
 		{ NA_jumpLaunch, NA_air, 0.38f }, { NA_jumpLaunch, NA_land, 0.12f },
 		{ NA_air, NA_ground, 0.2f }, { NA_air, NA_land, 0.1f }, { NA_air, NA_swing, 0.26f }, { NA_air, NA_air, 0.25f },
 		{ NA_swing, NA_air, 0.34f }, { NA_swing, NA_trick, 0.18f }, { NA_swing, NA_swing, 0.3f },
-		{ NA_trick, NA_air, 0.4f }, { NA_land, NA_ground, 0.38f }, { NA_land, NA_jumpCharge, 0.18f }, { NA_land, NA_jumpLaunch, 0.14f },
+		{ NA_trick, NA_air, 0.22f } /* round 06: 0.4 -> 0.22 (sway now ramps in; the long blend held the flip's end pose) */, { NA_land, NA_ground, 0.38f }, { NA_land, NA_jumpCharge, 0.18f }, { NA_land, NA_jumpLaunch, 0.14f },
 		{ NA_zip, NA_perch, 0.14f }, { NA_zip, NA_air, 0.34f }, { NA_perch, NA_ground, 0.34f },
 		{ NA_crawl, NA_wallRun, 0.3f }, { NA_crawl, NA_air, 0.32f }, { NA_crawl, NA_jumpLaunch, 0.26f }, { NA_crawl, NA_wallJump, 0.24f },
 		{ NA_wallRun, NA_crawl, 0.36f }, { NA_wallRun, NA_air, 0.34f }, { NA_wallRun, NA_jumpLaunch, 0.26f }, { NA_wallRun, NA_wallJump, 0.24f },
 		{ NA_wallRun, NA_ground, 0.3f }, { NA_wallJump, NA_air, 0.4f },
+		{ NA_wallRun, NA_topOut, 0.16f }, { NA_topOut, NA_land, 0.12f }, { NA_topOut, NA_air, 0.3f },
 	};
 	for (const FRow& R : Rows) { if (R.From == F && R.To == T) return R.S; }
 	for (const FRow& R : Rows) { if (R.From == NAME_None && R.To == T) return R.S; }
@@ -120,6 +121,7 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 		break;
 	}
 	// ---- air
+	if (Sub == TEXT("topOut")) return NA_topOut; // round 06: wall-run top-out flip
 	if (Sub == TEXT("trick") && !A.Trick.IsNone()) return FName(*(TEXT("trick_") + A.Trick.ToString()));
 	if (Sub == TEXT("jumpLaunch")) return NA_jumpLaunch;
 	if (Sub == TEXT("pointLaunch")) return NA_pointLaunch;
@@ -190,6 +192,7 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 	if (N.StartsWith(TEXT("land_")))
 	{
 		const FString S = N.Mid(5);
+		if (S == TEXT("landTopOut")) { Add(TEXT("perchLand"), T + 0.12f, 1.f, false); return; } // planted crouch, then the settle blend
 		Add(S == TEXT("landRoll") ? TEXT("landRoll") : S == TEXT("landHard") ? TEXT("landHard") : S == TEXT("landMedium") ? TEXT("landMedium") : TEXT("landLight"), T, 1.f, false);
 		return;
 	}
@@ -246,7 +249,25 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 		return;
 	}
 	if (N.StartsWith(TEXT("perch_"))) { if (N == TEXT("perch_land")) Add(TEXT("perchLand"), T, 1.f, false); else Add(TEXT("perchIdle"), T, 1.f, true); return; }
-	if (Node == NA_wallRun) { Add(TEXT("wallRun"), T * FMath::Max(0.6f, Sp / 8.f), 1.f, true); return; }
+	if (Node == NA_wallRun)
+	{ // round 06: head-up climb-run = the sprint stride on the wall (body frame from the traversal), steps driven by wall
+	  // speed: 1.8 steps/s at 6 m/s .. 2.6 steps/s at 14 m/s (the clip's own stride is 3.75 steps/s)
+		UAnimSequence* Spr = Clip(TEXT("sprint"));
+		const float Len = Spr ? Spr->GetPlayLength() : 0.533f;
+		const float StepsPerS = FMath::GetMappedRangeValueClamped(FVector2f(6.f, 14.f), FVector2f(1.8f, 2.6f), Sp);
+		WallRunPhase = FMath::Fmod(WallRunPhase + GetDeltaSeconds() * StepsPerS * 0.5f, 1.f);
+		Add(TEXT("sprint"), WallRunPhase * Len, 1.f, true);
+		return;
+	}
+	if (Node == NA_topOut)
+	{ // front flip over the roof edge: the releaseFlip clip carries its own full somersault and ends upright, legs
+	  // forward (landing prep, held until touchdown); stretched to ~1.1 s to fill the top-out air time
+		const float Tf = T * 0.72f;
+		Add(TEXT("releaseFlip"), FMath::Min(Tf, 0.78f), 1.f, false); // the clip's last 0.1 s opens the arms wide
+		// flip done, still falling to the roof: the limbs keep moving (a light fall cycle over the upright end pose)
+		if (Tf > 0.78f) Add(TEXT("fallCalm"), Tf - 0.78f, 0.45f * FMath::Clamp((Tf - 0.78f) / 0.15f, 0.f, 1.f), true);
+		return;
+	}
 	if (N == TEXT("wallRunSide")) { Add(TEXT("wallRunHorizontal"), T * FMath::Max(0.6f, Sp / 7.f), 1.f, true); return; }
 	if (Node == NA_corner) { Add(TEXT("cornerWrap"), T, 1.f, false); return; }
 	if (N == TEXT("wallZip")) { Add(TEXT("webZipPull"), T, 1.f, false); return; }
@@ -259,7 +280,8 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	Super::NativeUpdateAnimation(Dt);
 	// air cycle bookkeeping: a cycle starts at a web release and ends at the next attach / landing
 	// (any exit from a swing into the air: plain release, trick, quick boost, jump-release)
-	const bool bRelease = A.Mode == EWebTravMode::Air && (LastMode != EWebTravMode::Air || A.Sub == FName(TEXT("release"))); // any entry into the air
+	const bool bRelease = A.Mode == EWebTravMode::Air && A.Sub != NA_topOut
+		&& (LastMode != EWebTravMode::Air || A.Sub == FName(TEXT("release"))); // any entry into the air (not a wall top-out)
 	if (bRelease && !bInAirCycle)
 	{
 		bInAirCycle = true; AirCycleT = 0.f; ++CycleCount;

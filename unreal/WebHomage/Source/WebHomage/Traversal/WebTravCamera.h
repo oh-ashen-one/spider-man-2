@@ -50,6 +50,14 @@ public:
 	double ChaseHeight = 1.1;      // camera height over the hero centre (m) — round 05
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
 	double FrameLowS = 0.48, FrameHighS = 0.40; // hero screen centre (0 top .. 1 bottom): arc bottom .. top
+	// ---- round 06 wall-run camera (critic r05 / ref wall-run): below and out from the hero, looking UP the facade at a
+	// grazing angle (view 20-35 deg off the wall plane) so the wall converges to the roof edge; hero in the lower third
+	double WallCamBelow = 2.2;     // m under the hero centre
+	double WallCamOut = 2.2;       // m out from the wall (min; more when the street floor pushes the camera up)
+	double WallCamDist = 3.2;      // m camera -> hero kept while the floor clamps the camera height
+	double WallFrameS = 0.68;      // hero screen centre on the wall
+	double WallFovAdd = 4.0;       // deg vertical FOV added on the wall
+	double WallK = 0.0;            // 0 chase .. 1 wall camera (spring)
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame
@@ -97,5 +105,8 @@ private:
 	double CamZ = 0.0, CamZV = 0.0, FrameSV = 0.0, OccYawOff = 0.0, OccYawOffV = 0.0, OccUp = 0.0, OccUpV = 0.0;
 	double OccYawGoal = 0.0, OccUpGoal = 0.0, UserPitch = 0.0, AttachLook = 0.0, AttachLookV = 0.0, AttachFov = 0.0, AttachFovV = 0.0, AttachYaw = 0.0, AttachYawV = 0.0;
 	bool bOccGoal = false;
+	double WallKV = 0.0;
+	FVector WallHeroXY = FVector::ZeroVector;
+	bool bWallXY = false;
 	double OccGoalYaw = 0.0, OccGoalPitch = 0.0;
 };

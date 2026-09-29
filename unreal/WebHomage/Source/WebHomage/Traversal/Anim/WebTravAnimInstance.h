@@ -87,7 +87,7 @@ private:
 	FName CurNode, Dominant;
 	float NodeT = 0.f, FadeT = 1.f, FadeDur = 0.2f, TotalWeight = 0.f;
 	TArray<FWebTravAnimLayer> PrevLayers;
-	float LocoPhase = 0.f;
+	float LocoPhase = 0.f, WallRunPhase = 0.f;
 	// air cycle
 	bool bInAirCycle = false;
 	float AirCycleT = 0.f;

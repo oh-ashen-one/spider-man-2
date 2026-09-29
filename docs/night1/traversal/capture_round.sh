@@ -17,10 +17,16 @@ mkdir -p "$TMP" "$ROUND/stills"
 SEQS=(
   "a_swing_chain a_swing_chain.json 15.6 1.0,3.4,5.5,7.4"
   "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,2.2,3.6,5.9"
-  "c_wallrun_perch c_wallrun_perch.json 10.0 1.5,3.0,4.6,9.0"
+  "c_wallrun_perch c_wallrun_perch.json 10.0 2.0,3.2,4.6,5.45,9.0"
   "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,6.5,7.6,9.9"
 )
 WANT=("$@")
+# round 06: shader / texture warm-up render first (a fresh DDC compiles the hero and city materials on first use, which
+# rendered the suit white / unshaded in the first frames of a capture); low-res, not kept
+echo "== warm-up render (not kept)"
+rm -rf "$TMP/warmup"
+"$UE_DIR/Scripts/run_game.sh" "$TMP/warmup" -map "$MAP" -res 960x540 -quit 16 -name warmup -timeout 2400 \
+  -- -benchmark -fps=60 -WHTravScript="$SCR/a_swing_chain.json" | tail -1
 for entry in "${SEQS[@]}"; do
   read -r NAME JSON QUIT SHOTS <<< "$entry"
   if [ ${#WANT[@]} -gt 0 ] && [[ ! " ${WANT[*]} " =~ " $NAME " ]]; then continue; fi
