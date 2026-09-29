@@ -108,6 +108,7 @@ public:
 	double SwingTension() const { return S.Sw.Tension; }
 	double SwingBank() const { return S.Sw.Bank; }
 	double SwingRope() const { return S.Sw.Rope; }
+	double SwingTime() const { return S.Sw.T; }
 	int32 Chain() const { return S.Chain; }
 	const FVector& WallNormal() const { return S.W.Normal; }
 	FName TrickName() const { return S.Trick; }
