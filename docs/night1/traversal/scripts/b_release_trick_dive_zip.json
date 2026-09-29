@@ -25,19 +25,19 @@
    "swing": true
   },
   {
-   "t": 1.25,
+   "t": 3.2,
    "swing": false
   },
   {
-   "t": 2.3,
+   "t": 4.4,
    "drop": true
   },
   {
-   "t": 2.85,
+   "t": 4.78,
    "drop": false
   },
   {
-   "t": 2.9,
+   "t": 4.8,
    "zip": true,
    "move": [
     0,
@@ -46,7 +46,7 @@
    "heading": false
   },
   {
-   "t": 3.0,
+   "t": 4.9,
    "zip": false
   }
  ]

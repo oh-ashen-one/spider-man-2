@@ -58,6 +58,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	if (LastLook < 0.05 || !bAutoInit) { AutoYaw = Yaw; AutoYawV = 0; AutoPitch = Pitch; AutoPitchV = 0; bAutoInit = true; }
 	{
 		bool bWY = false, bWP = false;
+		const double HeightPitch = FMath::Clamp((P.HAbove - HeightPitchRef) * HeightPitchK, -0.1, 0.55);
 		double WantYaw = 0, WantPitch = 0, Rate = 0;
 		if (M == EWebTravMode::Wall)
 		{
@@ -69,22 +70,23 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		else if (bSwinging && P.bHasSwingDir)
 		{ // frame the ARC: recenter behind the swing plane direction, not the instantaneous velocity
 			WantYaw = FMath::Atan2(P.SwingDir.Y, P.SwingDir.X); Rate = 2.2; bWY = true;
-			WantPitch = FMath::Clamp(0.1 - Vel.Z * 0.006, -0.12, 0.3); bWP = true;
+			// round 02: height term (browser: 0.1 - vz*0.006) so the horizon travels with the pendulum
+			WantPitch = FMath::Clamp(0.04 + HeightPitch - Vel.Z * 0.0015, -0.15, 0.6); bWP = true;
 		}
 		else if (HS > 2.5)
 		{
 			WantYaw = FMath::Atan2(Vel.Y, Vel.X); bWY = true;
 			Rate = FMath::Clamp((HS - 2.0) / 10.0, 0.0, 1.0) * (bAir ? 1.8 : 1.3);
-			WantPitch = bDive ? 0.62 + 0.5 * Smooth(-Vel.Z, 18, 45) : bAir ? FMath::Clamp(0.14 - Vel.Z * 0.01, -0.1, 0.45) : 0.14; bWP = true;
+			WantPitch = bDive ? 0.62 + 0.5 * Smooth(-Vel.Z, 18, 45) : bAir ? FMath::Clamp(0.08 + HeightPitch - Vel.Z * 0.003, -0.1, 0.6) : 0.14; bWP = true;
 		}
 		OccHold -= Dt;
 		if (OccHold > 0) { bWY = false; bWP = false; }
 		if (bWY) SDA(AutoYaw, AutoYawV, WantYaw, 0.5, Dt);
 		else if (AutoRate < 0.05) { AutoYaw = Yaw; AutoYawV = 0; }
-		if (bWP) SD(AutoPitch, AutoPitchV, WantPitch, 0.5, Dt);
+		if (bWP) SD(AutoPitch, AutoPitchV, WantPitch, (bSwinging || bAir) && !bDive ? 0.18 : 0.5, Dt); // round 02: pitch tracks height closer
 		else if (AutoPRate < 0.05) { AutoPitch = Pitch; AutoPitchV = 0; }
 		SD(AutoRate, AutoRateV, bWY ? Rate : 0.0, 0.35, Dt);
-		SD(AutoPRate, AutoPRateV, bWP ? (bDive ? 2.4 : 1.1) : 0.0, 0.35, Dt);
+		SD(AutoPRate, AutoPRateV, bWP ? (bDive ? 2.4 : (bSwinging || bAir) ? 7.0 : 1.1) : 0.0, 0.35, Dt);
 		if (Blend > 0)
 		{
 			Yaw = AngDamp(Yaw, AutoYaw, FMath::Max(0.0, AutoRate) * Blend, Dt);
@@ -227,7 +229,8 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	// look target: ahead of the pivot; while swinging lean slightly toward the anchor (held after release, weight eases)
 	if (bSwinging && P.bHasAnchor)
 	{
-		const FVector Want = P.Anchor - Pivot;
+		FVector Want = P.Anchor - Pivot;
+		Want.Z *= 0.15; // round 02: lean toward the anchor sideways, not up (a 25 m-high anchor cancelled the height pitch)
 		if (AnchorLean < 0.005) LeanOff = Want;
 		SDV(LeanOff, LeanOffV, Want, 0.4, Dt);
 	}

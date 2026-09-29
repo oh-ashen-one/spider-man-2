@@ -28,6 +28,7 @@ struct FTravCamInput
 	bool bDive = false;
 	double Tension = 0.0;
 	double Bank = 0.0;
+	double HAbove = 0.0;   // feet height above the floor below (m)
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -36,6 +37,8 @@ public:
 	// ---- live state (public for telemetry)
 	double Yaw = 0.0, Pitch = 0.14, Dist = 4.2, Fov = 58.0, Roll = 0.0;
 	double Sens = 1.0;     // look input already in radians
+	/** Round 02: swing / air pitch follows height (looks down over the street when high, levels out at the arc bottom). */
+	double HeightPitchK = 0.024, HeightPitchRef = 10.0;
 	double Trauma = 0.0, Time = 0.0, HeightOff = 0.0, CollDist = 4.2, SideOff = 0.32;
 	double Punch = 0.0, PunchV = 0.0, Dip = 0.0, DipV = 0.0, AnchorLean = 0.0, AnchorLeanV = 0.0, LastLook = 10.0;
 	double KickV = 0.0, KickK = 0.0, MbK = 0.0, MbKV = 0.0;
@@ -47,6 +50,8 @@ public:
 	double MotionBlur = 0.0;                // 0..~1.8 (browser mbK)
 
 	void Reset(const FVector& Pos, double InYaw);
+	double DebugOccHold() const { return OccHold; }
+	double DebugAutoPitch() const { return AutoPitch; }
 	void Shake(double Amt) { Trauma = FMath::Min(1.0, Trauma + Amt); }
 	/** launch kick (zip slingshot / point launch): pull back + FOV widen, springs back */
 	void Kick(double Amt) { KickV += 9.0 * Amt; Trauma = FMath::Min(1.0, Trauma + 0.08 * Amt); }

@@ -314,7 +314,9 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		{ // deterministic swing rhythm: hold through the arc, let go on the rising front, re-press after the gap
 			const bool bSwinging = Traversal->IsSwinging();
 			const FWebTravAnim& A = Traversal->Anim;
-			if (bAutoHeld && bSwinging && A.Swing.Phase > RelPhase && Traversal->VelM().Z > 0 && A.T > 0.25f) { bAutoHeld = false; AutoGapT = 0.0; }
+			// release on the rising front of the arc, or at the forward apex if the arc never gets that far
+			const bool bFrontApex = A.Swing.Phase > 0.15f && Traversal->VelM().Z <= 0 && A.T > 0.6f;
+			if (bAutoHeld && bSwinging && ((A.Swing.Phase > RelPhase && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) { bAutoHeld = false; AutoGapT = 0.0; }
 			else if (!bAutoHeld) { AutoGapT += Dt; if (AutoGapT >= Gap && Traversal->VelM().Z <= RepressVz) bAutoHeld = true; }
 			bAutoWasSwinging = bSwinging;
 			I.bSwing = bAutoHeld;
@@ -355,6 +357,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.bHasSwingDir = Traversal->IsSwinging(); CI.SwingDir = Traversal->SwingDir();
 	CI.WallNormal = Traversal->WallNormal(); CI.Facing = Traversal->Facing(); CI.bDive = Traversal->IsDiving();
 	CI.Tension = Traversal->SwingTension(); CI.Bank = Traversal->SwingBank();
+	CI.HAbove = Traversal->PosM().Z - UWebTraversalComponent::H - Traversal->FloorBelow();
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
 	// ---- move the actor (capsule) with the simulated body
@@ -532,10 +535,11 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			B = A + (B - A) * Ext;
 			Wave = 30.0 * FMath::Exp(-9.0 * St.Age) * (1 - St.Taut);
 			if (bReleased)
-			{ // the free end falls away from the hand and the strand thins out
+			{ // round 02: the released strand retracts from the hand toward its anchor and thins out (never sweeps the lens)
 				const double R = St.ReleaseT;
-				A = ReleaseHandCm[SI] + FVector(0, 0, -490.0 * R * R) + (St.bSnap ? (B - ReleaseHandCm[SI]) * FMath::Min(1.0, R * 2.5) : FVector::ZeroVector);
-				Fade = FMath::Clamp(1.0 - R / 0.35, 0.0, 1.0);
+				const double E = 1.0 - FMath::Pow(1.0 - FMath::Min(1.0, R / 0.18), 2);
+				A = FMath::Lerp(Hand, B, E); // from the moving hand (stays in front of the lens), not the world point of release
+				Fade = FMath::Clamp(1.0 - R / 0.25, 0.0, 1.0);
 			}
 		}
 		const FVector D = B - A;
@@ -553,7 +557,9 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			const FVector Mid = (P0 + P1) * 0.5;
 			const double Len = FVector::Dist(P0, P1);
 			// world width 2.2 cm, never thinner than ~1.6 px at 1080p (the browser ribbon's minimum-pixel rule)
-			const double W = FMath::Max(2.2, 0.0019 * FVector::Dist(Mid, CamPosCm)) * Fade;
+			const double CamD = FVector::Dist(Mid, CamPosCm);
+			if (CamD < 300.0) { C->SetVisibility(false); continue; } // never draw a strand segment on the lens
+			const double W = FMath::Max(2.2, 0.0019 * CamD) * Fade;
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());
 			C->SetWorldScale3D(FVector(W / 100.0, W / 100.0, Len / 100.0));
 			C->SetVisibility(true);
@@ -566,19 +572,20 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	UWebTravScript* Script = GetGameInstance()->GetSubsystem<UWebTravScript>();
 	Script->SetTelemetryHeader(TEXT("frame,t,mode,sub,x_m,y_m,z_m,vx,vy,vz,speed_mps,hspeed_mps,height_above_floor_m,anchor_x,anchor_y,anchor_z,")
 		TEXT("rope_m,tension,chain,trick,zip_target,zt_x,zt_y,zt_z,cam_x,cam_y,cam_z,cam_yaw_deg,cam_pitch_deg,cam_vfov_deg,cam_dist_m,motion_blur,")
-		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick"));
+		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
 	const FWebTravAnim& A = Traversal->Anim;
 	const FString Row = FString::Printf(
-		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d"),
+		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f"),
 		FrameIndex, T, ModeName(A.Mode), *A.Sub.ToString(), P.X, P.Y, P.Z, V.X, V.Y, V.Z, V.Size(), FVector2D(V.X, V.Y).Size(),
 		P.Z - UWebTraversalComponent::H - Traversal->FloorBelow(), An.X, An.Y, An.Z, bSw ? Traversal->SwingRope() : 0.0, bSw ? Traversal->SwingTension() : 0.0,
 		Traversal->Chain(), A.Trick.IsNone() ? TEXT("") : *A.Trick.ToString(), Traversal->HasZipTarget() ? 1 : 0,
 		Traversal->ZipTargetPos().X, Traversal->ZipTargetPos().Y, Traversal->ZipTargetPos().Z,
 		Cam.CamPos.X, Cam.CamPos.Y, Cam.CamPos.Z, Cam.CamRot.Yaw, Cam.CamRot.Pitch, Cam.OutVFov, FVector::Dist(Cam.CamPos, P), Cam.MotionBlur,
-		I.Move.X, I.Move.Y, I.bSwing ? 1 : 0, I.bJump ? 1 : 0, I.bSprint ? 1 : 0, I.bZip ? 1 : 0, I.bDrop ? 1 : 0, I.bQuick ? 1 : 0);
+		I.Move.X, I.Move.Y, I.bSwing ? 1 : 0, I.bJump ? 1 : 0, I.bSprint ? 1 : 0, I.bZip ? 1 : 0, I.bDrop ? 1 : 0, I.bQuick ? 1 : 0,
+		-FMath::RadiansToDegrees(Cam.Pitch), -FMath::RadiansToDegrees(Cam.DebugAutoPitch()), Cam.DebugOccHold());
 	Script->AddTelemetryRow(Row);
 }
 
