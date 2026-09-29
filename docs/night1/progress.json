@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 09:56",
+ "updated": "2026-09-29 10:02",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -17,10 +17,10 @@
    "id": "F2",
    "name": "Reference library",
    "branch": "spiderman-learnings \u00b7 night1/refs",
-   "state": "building",
+   "state": "done",
    "round": 1,
-   "verdict": "",
-   "gap": "Sonnet 5.5 xhigh finishing INDEX/SOURCES; clips local-only"
+   "verdict": "219 stills + 43 clips indexed; clips regenerable (41/43 frame-identical)",
+   "gap": "Clips local-only (LFS budget); PS Blog article pages not reconstructable"
   },
   {
    "id": "F3",
@@ -293,8 +293,8 @@
   "Unreal port has only a gray-box test map and a capsule character so far.",
   "No trustworthy 4K/60 numbers yet: the shared GPU is 42\u201399 % busy with other sessions' Chrome/Blender work.",
   "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100.",
-  "GitHub LFS budget exhausted: reference video clips (656 MB) are local-only on the Studio; no Unreal binary snapshots anywhere.",
-  "Owner decision: the browser build's upstream ad atlas (ts_ads.webp) shows Marvel-universe brands (Oscorp, Re-Elect Osborn, Roxxon, Daily Bugle) and likely real-game brands; the Unreal port excludes them, the browser build still shows them."
+  "Owner decision: the browser build's upstream ad atlas (ts_ads.webp) shows Marvel-universe brands (Oscorp, Re-Elect Osborn, Roxxon, Daily Bugle) and likely real-game brands; the Unreal port excludes them, the browser build still shows them.",
+  "GitHub LFS budget exhausted: the 43 reference clips are local-only; refs/tools/regenerate_clips.sh rebuilds them anywhere."
  ],
  "log": [
   {
@@ -372,6 +372,10 @@
   {
    "t": "09:56",
    "text": "City R3 merged (foliage); critic FAILS, next gap = window glass. City round 4 now on a Sonnet 5.5 builder. IP: Marvel/real-game brand ads excluded in the Unreal port."
+  },
+  {
+   "t": "10:02",
+   "text": "F2 reference library done on Sonnet 5.5: INDEX (219 stills, 43 clips, each viewed), SOURCES, tested clip-regeneration script; ~70 manifest labels corrected."
   }
  ]
 }
