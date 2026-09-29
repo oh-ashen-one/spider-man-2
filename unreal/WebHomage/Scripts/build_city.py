@@ -234,7 +234,7 @@ return c;''',
     make_material('M_CityLeaves', None, '''
 float4 t = Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y));
 float e = saturate(uv1.x);
-float3 c = t.rgb * Tint.rgb * lerp(1.5, 2.3, e);
+float3 c = min(t.rgb * Tint.rgb * lerp(2.1, 3.0, e), 0.6);
 Op = t.a > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2); Rough = 0.7;
 return c;''',
         [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1))],
@@ -439,7 +439,7 @@ def build_geo_level(path):
             s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
             # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
             rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
-            if p['name'] in CROWN: s *= 0.9
+            if p["name"] in CROWN: s *= 1.0
             xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
         ids = c.add_instances(xs, True, True)
         for k, it in enumerate(items):
