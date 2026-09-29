@@ -59,6 +59,14 @@ public:
 	/** Round 08: facade clearance kept by the canyon spring (m) and the spring rate (1/s). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallClearance = 3.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallKeepRate = 2.5f;
+	/** Round 09: weave inside the corridor — swing target line toward the active anchor (x WeaveK, <= WeaveAmp m off centre). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WeaveK = 0.45f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WeaveAmp = 6.f;
+	/** Round 09: alternating arc depth below the entry height (m): odd swings shallow, even swings deep. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropShallow = 10.2f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropDeep = 17.5f;
+	/** Round 09: the next anchor search leans this far (deg) toward the side opposite the previous web. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAltDeg = 30.f;
 
 	/**
 	 * Fraction of the anchor's lateral offset (relative to the swing direction) kept in the physics pivot.
@@ -67,7 +75,7 @@ public:
 	 * arc stays in the direction of travel, and steering turns the whole arc about the body. P3 round-01 default: 0.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
-	float PivotLateralKeep = 0.1f;
+	float PivotLateralKeep = 0.25f; // round 09: 0.1 -> 0.25 (the pivot keeps some of the anchor's side: a weave)
 
 	/** Travel-plane pivot only: the pivot sits at least this high over the body at attach (m)... */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
@@ -214,6 +222,8 @@ private:
 		FQuat BodyQ = FQuat::Identity;
 		double Roll = 0, Pitch = 0, Bank = 0, RollA = 0, PitchA = 0;
 		bool bTopOut = false;   // round 06: airborne from a wall-run top-out (crouch landing on touchdown)
+		int32 SwingIdx = 0;     // round 09: swings started (alternating arc depth)
+		int32 LastAnchorSide = 0; // round 09: side of the last web anchor (+1 right of travel, -1 left)
 		// round 07: web stuck on the rise, swing pending until the top of the hop
 		bool bWebPending = false, bPendingTurn = false, bPendingRight = true;
 		double PendingT = 0;

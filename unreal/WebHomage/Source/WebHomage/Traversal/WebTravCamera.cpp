@@ -148,7 +148,10 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	LastVelYaw = VelYaw; bHasLastVelYaw = true;
 	SD(YawRate, YawRateV, HS > 3 ? FMath::Clamp(DY / FMath::Max(Dt, 1e-3), -3.0, 3.0) * FMath::Min(1.0, (HS - 3.0) / 17.0) : 0.0, 0.3, Dt);
 	SD(BankS, BankSV, bSwinging ? P.Bank : 0.0, 0.35, Dt);
-	const double WantRoll = FMath::Clamp(-YawRate * 0.04, -0.09, 0.09) - BankS * 0.05;
+	// round 09 (TRAVERSAL-SPEC T13: roll allowed, |roll| median <= 1.5 deg, p90 <= 10): a lean toward the anchor side only
+	// toward the arc ends
+	const double ArcRoll = SideK * FMath::DegreesToRadians(AnchorRollMax) * Smooth(FMath::Abs(P.SwingAngle), 0.55, 1.0);
+	const double WantRoll = FMath::Clamp(-YawRate * 0.04, -0.09, 0.09) - BankS * 0.05 + ArcRoll;
 	Roll = Damp(Roll, WantRoll, 3, Dt);
 	// ---- compose (round 03): lagged chase camera with explicit framing and collision
 	const FVector Fwd = Forward();
@@ -199,7 +202,20 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	const double BackDist = ChaseDist - AirClose + 1.3 * FMath::Max(0.0, KickK);
 	const double OY = OccYawOff, OU = OccUp;
 	const FVector BackR(Back.X * FMath::Cos(OY) - Back.Y * FMath::Sin(OY), Back.X * FMath::Sin(OY) + Back.Y * FMath::Cos(OY), 0);
-	FVector Desired = Hero + BackR * BackDist + Right * 0.3;
+	// round 09 (TRAVERSAL-SPEC T12/T17/T18): the camera slides AnchorShift m toward the ACTIVE anchor's side (kept through the
+	// swing chain's short air phases) while still looking at the hero: the view runs 2-25 deg off the avenue axis and the near
+	// facade on that side fills a side third, the hero stays centred
+	if (bSwinging && P.bHasAnchor)
+	{
+		const double Lat = FVector::DotProduct(P.Anchor - Hero, Right);
+		if (FMath::Abs(Lat) > 2.0) SideGoal = Lat > 0 ? 1.0 : -1.0;
+	}
+	if (bSwinging) { bInChain = true; ChainAirT = 0.0; }
+	else if (P.Mode != EWebTravMode::Air) bInChain = false; // ground / wall / perch / zip end the chain
+	else ChainAirT += Dt;
+	if (P.bDive || ChainAirT > 0.8) bInChain = false;       // a long fall / dive is not the chain rhythm: centred again (aiming)
+	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
+	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
 	const double ZWant = Hero.Z + ChaseHeight + OU;
 	if (!bChaseInit)
 	{
@@ -388,5 +404,6 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(AttachFov, AttachFovV, FovWant, P.SwingT < 0.5 ? 0.035 : 0.3, Dt);
 	PitchDown -= AttachLook;
 	Pitch = PitchDown; // keep the orbit state coherent for Forward()
+	// (round 09: the hero stays centred horizontally — TRAVERSAL-SPEC T9; the off-axis look comes from the sideways slide)
 	CamRot = FRotator(FMath::RadiansToDegrees(-PitchDown), FMath::RadiansToDegrees(ToHeroYaw + AttachYaw), 0);
 }
