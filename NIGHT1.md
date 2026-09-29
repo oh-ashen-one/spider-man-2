@@ -35,3 +35,14 @@ Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, cri
 ## Protected (never touch)
 
 `~/spider-man-2` (flight-dynamics session), `~/spider-man-2-claude` (3d-animations-astra), `~/spider-man-2-water-effects`, dev ports 5173/5191, Blender MCP port 19891 and any Blender/Unreal instance this loop did not start, branch `main`.
+
+## Model assignment (owner request 2026-09-29: Sonnet 5.5 where it fits, to save usage)
+
+| Role | Model | Why |
+|---|---|---|
+| Critics (every round, fresh context) | **Opus 5.5** | The verdict is the quality gate; it must stay harsh and trustworthy. |
+| P3 Traversal + camera + runtime animator (C++) | **Opus 5.5** | Deep physics/animation C++ with long accumulated context; highest-risk engineering. |
+| Integration playtester between waves | **Opus 5.5** | Cross-piece judgment, regression hunting. |
+| P1 City, P2 Characters, P4 Look/perf, P5 Combat port, P6 City life, F2 refs, F3 baseline captures | **Sonnet 5.5, extra-high thinking** | Pipeline, content-script, capture and port work driven by concrete critic instructions. |
+
+Sonnet builders run as Workflow agents (`model: 'sonnet', effort: 'xhigh'`), one fresh agent per round. Continuity comes from `docs/night1/<piece>/HANDOFF.md`, which every builder rewrites at the end of its round (state, how to build/capture, open issues, next gap). The agent type `~/.claude/agents/sm2-sonnet-builder.md` does the same for sessions started after 2026-09-29.
