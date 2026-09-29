@@ -1,5 +1,5 @@
 """Bake Blender Actions onto the original glTF node frames without changing the mesh or bind skeleton."""
-import json, math, struct
+import json, math, struct, uuid
 from pathlib import Path
 import bpy
 from mathutils import Matrix, Vector, Quaternion
@@ -89,8 +89,12 @@ def bake(rig,names,out,fps=60):
             for char in '[] .:/': node=node.replace(char, '_' if char==' ' else '')
             for prop,values in arrays[i].items():
                 tracks.append({'name':node+'.'+prop,'type':'quaternion' if prop=='quaternion' else 'vector','times':times,'values':values})
-        clips.append({'name':name,'duration':duration,'tracks':tracks,'blendMode':2500})
+        clips.append({'uuid':str(uuid.uuid5(uuid.NAMESPACE_URL, 'spiderbench/hero-animation/'+name)), 'name':name,'duration':duration,'tracks':tracks,'blendMode':2500})
     out.parent.mkdir(parents=True,exist_ok=True)
+    for clip in clips:
+        for track in clip['tracks']:
+            track['times'] = [round(v, 7) for v in track['times']]
+            track['values'] = [round(v, 7) for v in track['values']]
     out.write_text(json.dumps({'source':'Blender hand-authored Actions','fps':fps,'clips':clips},separators=(',',':')))
     return clips
 

@@ -1,30 +1,34 @@
 # Studio continuation: hero animations
 
-> A homage game. This is not an official Marvel game. See [DISCLAIMER.md](../../../DISCLAIMER.md).
+The owner cancelled crowd/animal animation work. Current scope is the main hero, manual plus automatic aerial tricks, and the suit-selection entrance.
 
-The owner cancelled the crowd/animal goal. Active objective: high-quality playable-hero jumping, flips and airborne spins, BOTH an explicit trick button and automatic context-sensitive traversal tricks, plus a side-entry flip/weighted landing/showcase idle in skin selection. Preserve existing bystander/animal behavior. Continue autonomously on 3d-animations-astra; no main merge or paid generation.
+## Ownership
 
-## Resume here
-- Authoritative task-owned checkout: /Users/midir/sm2-astra-anim (direct writable GitHub deploy-key remote).
-- Existing task-owned Blender PID 19303, port 19891, scene owner sm2-astra-anim, file art/anim/hero.blend. Revalidate live ownership; reuse it, do not launch a duplicate.
-- Actual stdio MCP bridge/client: tools/heroanim/mcp_client.py, launched with `uv run --with blender-mcp==1.9.1 python ...`. Each invocation starts its own short-lived MCP server on Studio and connects to the existing Blender. Catalog has 28 tools. Matching bundled addon protocol 5, Blender 5.2.0 LTS. No shared addon/config was modified.
-- Script call: `uv run --with blender-mcp==1.9.1 python tools/heroanim/mcp_client.py execute_blender_code --script tools/heroanim/FILE.py --args '{"user_prompt":"trick button and auto"}'`.
-- Screenshot: get_viewport_screenshot with --output to a PNG. Inspect after visible edits.
-- Own Vite on 5193 (.scratch/vite.pid); own desktop Chrome debug port 9334, profile .scratch/chrome-profile. Port 5192 belongs to somebody else. Verify actual processes, desktop visibility and browser readiness.
-- Model verified from originating thread context: gpt-6-astra, high effort.
+- Studio checkout: /Users/midir/sm2-astra-anim, branch 3d-animations-astra.
+- Direct remote: git@gh-sm2-astra-anim:oh-ashen-one/spider-man-2.git.
+- Dedicated Blender MCP port 19891, scene owner sm2-astra-anim; editable art/anim/hero.blend.
+- MCP bridge: blender-mcp 1.9.1 with its matching bundled addon, protocol 5; 28 tools verified. Blender 5.2.0 LTS. Shared addon/configuration untouched.
+- Own Vite port 5193 (.scratch/vite.pid); own Chrome CDP 9334, profile .scratch/chrome-profile.
+- Port 5192 and other Studio sessions are off limits. Revalidate live ownership before operating any process.
+- Agent model/settings recorded from original thread context: gpt-6-astra, high.
+- The requested chat migration failed. Work continued through this laptop-hosted chat, with all authoring/compute/testing on Studio. An unfinished agent turn still depends on the laptop connection; saved Studio assets and servers do not.
 
-## Completed and limits
-Imported hero GLB: 58 bones, 79 Actions, original textures. Visually inspected import-viewport.png; recognizable correct hero mesh/pose.
-bake_hero.py converts Blender posed bone matrices back to original glTF node coordinate frames, preserving the authoritative mesh/bind skeleton. Original import used factory 24 FPS; retained 24 FPS to preserve action durations. New baking samples at 60 FPS.
-Numerical check at EVERY original glTF key timestamp over all 79 clips/58 bones passes: max world-matrix component error 4.4226646423339844e-05, tolerance 0.0002.
-IMPORTANT: this is not a complete animation round-trip gate. An earlier seven off-grid samples per clip check failed (max 0.08796346187591553, worst landHard/deltoid.L), likely Blender quaternion component interpolation versus glTF slerp; investigate and preserve this distinction. Do not claim between-key or in-engine equivalence. Untouched original GLB remains authoritative and unmodified. Baseline baked test clips idle/releaseFlip/releaseCorkscrew are in ignored .scratch/roundtrip-clips.json and reproducible.
-No new hero motion has been authored. No runtime files changed. No visual quality/performance gate passed.
+## Current implementation
 
-## Next work
-1. Make MCP client exit nonzero for semantic tool errors: execute_blender_code can return text beginning Error while isError=false.
-2. Validate baked tracks with real Three GLTFLoader/ClipSampler and confirm sanitizeNodeName mapping (dots in source names are removed by PropertyBinding). Address interpolation accuracy, without weakening proof or replacing untouched source animations.
-3. Capture baseline desktop runtime and performance at 1920x1080; record quality settings.
-4. Author readable high-quality keyed hero actions in Blender, export additive clip library, integrate manual/automatic tricks and suit entrance. Existing automatic tricks are procedural (PTRICK in animator.js); preserve existing double-Space shortcut.
-5. Follow docs/anim/hero/PLAN.md for complete acceptance, sources, motion QA on original and all five custom skins, regression, real desktop performance, and pushed artifacts.
+Eight authored Blender Actions are baked at 120 Hz with stable unique IDs into an additive JSON library. Main runtime uses the new launch and trick clips, with original fallback. X/L3 is the manual trigger; automatic releases and double-Space remain. The suit preview owns its mixer and restores all saved transforms on close.
 
-Read the root handoff's superseded banner, not its obsolete crowd instructions as the active task. Read applicable AGENTS.md and Blender skill. Owner asked to move continuation to Studio so laptop can shut down; do not depend on a laptop SSH orchestrator for continued agent work.
+See [README.md](README.md), [PLAN.md](PLAN.md), [PERFORMANCE.md](PERFORMANCE.md) and the JSON checks. Preserve the original GLB and all five custom meshes. The old crowd handoff is superseded.
+
+## Reproduce
+
+Run commands from the Studio checkout:
+- npm test; npm run build.
+- uv run --with blender-mcp==1.9.1 python tools/heroanim/mcp_client.py catalog
+- Use execute_blender_code with --script tools/heroanim/author_hero.py to rebuild Actions/export through the dedicated MCP connection.
+- Run verify_export.py through MCP, then node tools/heroanim/verify_export.mjs for independent Blender-versus-Three sampling.
+- Run render_review.py through MCP, then uv run --with pillow python tools/heroanim/contact_sheet.py.
+- node tools/heroanim/runtime_checks.mjs and node tools/heroanim/extended_checks.mjs use only CDP 9334.
+- node tools/heroanim/capture_motion.mjs records the two-angle review page on Studio.
+- performance.mjs runs real visible desktop measurements; it moves only the task Chrome window onto the Studio 120 Hz display. Keep other rendering/encoding jobs idle during measurements.
+
+Do not replace paid generation, hand off to another model, merge main, modify other sessions, or declare owner acceptance without new authorization/evidence. Push all subsequent authored changes to the branch in the same session.

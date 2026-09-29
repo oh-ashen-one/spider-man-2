@@ -1,0 +1,15 @@
+{
+  "meta": null,
+  "content": [
+    {
+      "type": "text",
+      "text": "Code executed successfully: AUTHORED heroLayoutFront 1.3 8\nAUTHORED heroLayoutBack 1.3 7\nAUTHORED heroCorkscrew 1.1 7\nAUTHORED heroTuckFlip 0.98 7\nAUTHORED heroScissor 1.1 6\nAUTHORED heroJumpLaunch 0.6 6\nAUTHORED heroSuitEnter 2.2 11\nAUTHORED heroShowcaseIdle 3.2 5\nInfo: Saved as \"hero.blend\"\nAUTHORED_AND_BAKED 8\n",
+      "annotations": null,
+      "meta": null
+    }
+  ],
+  "structuredContent": {
+    "result": "Code executed successfully: AUTHORED heroLayoutFront 1.3 8\nAUTHORED heroLayoutBack 1.3 7\nAUTHORED heroCorkscrew 1.1 7\nAUTHORED heroTuckFlip 0.98 7\nAUTHORED heroScissor 1.1 6\nAUTHORED heroJumpLaunch 0.6 6\nAUTHORED heroSuitEnter 2.2 11\nAUTHORED heroShowcaseIdle 3.2 5\nInfo: Saved as \"hero.blend\"\nAUTHORED_AND_BAKED 8\n"
+  },
+  "isError": false
+}

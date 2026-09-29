@@ -1,7 +1,8 @@
 // OWNER: systems engineer. Suits screen: suit cards (left) + live 3D preview of Spider-Man (the game camera
-// orbits the frozen player on the right half; drag to rotate, shallow depth of field), equip applies instantly.
+// orbits the animated hero on the right half; drag to rotate, shallow depth of field), equip applies instantly.
 import * as THREE from 'three';
 import { SUITS } from '../../game/systems/suits.js';
+import { createHeroPreview } from './hero-preview.js';
 
 // Card art: one painted portrait per suit (public/assets/ui/suits/<id>.webp), generated with Higgsfield: the AI-logo
 // suits with Nano Banana Pro, Advanced / Iron / Symbiote with Grok Image 2.0. Replaces the old procedural SVG silhouettes.
@@ -14,7 +15,7 @@ export function createSuitsPage(sys) {
   const el = document.createElement('div'); el.className = 'sys-suits';
   el.innerHTML = `<div class="col"><div class="sys-h3">Suit Selection</div><h2 class="sys-h2">Suits</h2><div class="grid interactive"></div>
     <div class="info sys-panel cut"><div class="sys-h3 st"></div><h2 class="sys-h2 nm"></h2><div class="sw"></div><p class="sys-p ds"></p><div style="margin-top:18px"><button class="sys-btn red eqb">Equip</button></div></div></div>
-    <div class="rot">Drag to rotate</div>`;
+    <div class="rot">Drag to rotate · R to replay entrance</div>`;
   const grid = el.querySelector('.grid');
   let sel = save.state.suit;
   const unlocked = s => prog.level >= s.level;
@@ -96,13 +97,14 @@ export function createSuitsPage(sys) {
   }
   function camera(dt) {
     const cam = ctx.camera, P = ctx.player;
-    // while the standing preview pose is held, tell rig.js' 'anim-fallback' system the animation already ran this frame:
-    // otherwise it re-runs the animator every menu frame (player.update is paused) and rewrites the frozen air pose
-    if (poseSave && P.rig) P.rig._ranThisFrame = true;
+    // The preview marks the rig as animated so the gameplay fallback does not overwrite its pose.
+    if (heroPreview) heroPreview.update(dt);
     targetYaw += dt * (dragX == null ? 0.12 : 0);
     yaw += (targetYaw - yaw) * (1 - Math.exp(-8 * dt));
     const center = _c.copy(P.position); center.y += 0.05;
-    camDist += ((stage?.parent ? 3.1 : THREE.MathUtils.clamp(clearDist(yaw), 1.3, 3.1)) - camDist) * (1 - Math.exp(-10 * dt));
+    // Follow the airborne arc just enough to keep inverted feet below the menu header.
+    if (heroPreview && heroPreview.time < 1.2) center.y += 0.5 * Math.sin(Math.PI * heroPreview.time / 1.2);
+    camDist += ((stage?.parent ? (heroPreview && heroPreview.time < 1.25 ? 4.4 : 3.1) : THREE.MathUtils.clamp(clearDist(yaw), 1.3, 3.1)) - camDist) * (1 - Math.exp(-10 * dt));
     const dist = camDist;
     cam.position.set(center.x + Math.sin(yaw) * dist, center.y + 0.35, center.z + Math.cos(yaw) * dist);
     _f.copy(center).sub(cam.position).setY(0).normalize(); _r.set(-_f.z, 0, _f.x);
@@ -114,46 +116,19 @@ export function createSuitsPage(sys) {
     ctx.pipeline.setMotionBlur?.(0);
   }
   let camSave = null;
-  // (3d-assets) the preview must show Spider-Man STANDING: opening the menu mid-swing / mid-fall used to freeze him in
-  // that air pose (flow.js stops player.update while a menu is up, so the bones keep their last pose). While the page is
-  // open the hero's bones take one idle frame with the hips upright on the stage facing the camera; hide() restores the
-  // exact bones, so play resumes from where it paused.
-  let poseSave = null;
+  let heroPreview = null;
   function standPose() {
-    const rig = ctx.player?.rig; if (!rig?.model || !rig.allClips?.length) return;
-    const bones = []; rig.model.traverse(o => { if (o.isBone) bones.push(o); });
-    poseSave = { bones: bones.map(b => [b, b.position.clone(), b.quaternion.clone(), b.scale.clone()]),
-      pos: rig.object.position.clone(), quat: rig.object.quaternion.clone(), vis: rig.object.visible };
-    const clip = rig.allClips.find(c => c.name === 'idle') || rig.allClips.find(c => /^idle/i.test(c.name));
-    const hips = rig.bones?.hips;
-    if (!clip || !hips) return;
-    // Never move rig.object: depending on the traversal mode the animator puts the hero's world placement on
-    // rig.object or on the hips bone, so the only safe thing is to pose BONES and express the hips in world terms.
-    rig.object.updateMatrixWorld(true);
-    const where = hips.getWorldPosition(new THREE.Vector3());
-    const m = new THREE.AnimationMixer(rig.model); m.clipAction(clip).play(); m.setTime(clip.duration * 0.25); // no stop(): stopping would restore the air pose
-    // hips: upright, facing the preview camera (it orbits at `yaw`, chosen in show() before this runs), feet on the
-    // stage (stageOn puts it at player.position.y - 0.95). The clip's hips height/tilt are in character space.
-    const par = hips.parent; par.updateMatrixWorld(true);
-    const wantPos = new THREE.Vector3(where.x, ctx.player.position.y - 0.95 + hips.position.y, where.z);
-    const wantQ = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw).multiply(hips.quaternion);
-    const parQ = par.getWorldQuaternion(new THREE.Quaternion());
-    hips.position.copy(par.worldToLocal(wantPos));
-    hips.quaternion.copy(parQ.invert().multiply(wantQ));
-    rig.object.visible = true;
-    rig.object.updateMatrixWorld(true);
+    const rig = ctx.player?.rig;
+    if (!rig?.model) return;
+    const feet = ctx.player.position.clone(); feet.y -= 0.95;
+    heroPreview = createHeroPreview(rig, feet, yaw);
   }
-  function restorePose() {
-    if (!poseSave) return;
-    const rig = ctx.player.rig;
-    for (const [b, p, q, s] of poseSave.bones) { b.position.copy(p); b.quaternion.copy(q); b.scale.copy(s); }
-    rig.object.position.copy(poseSave.pos); rig.object.quaternion.copy(poseSave.quat); rig.object.visible = poseSave.vis;
-    rig.object.updateMatrixWorld(true); poseSave = null;
-  }
+  function restorePose() { heroPreview?.dispose(); heroPreview = null; }
+
 
   return {
     id: 'suits', title: 'Suits', el, seeThrough: true, camera,
-    hints: [['Click', 'Select'], ['Dbl-Click', 'Equip']],
+    hints: [['Click', 'Select'], ['Dbl-Click', 'Equip'], ['R', 'Replay Entrance']],
     footer: () => `${SUITS.filter(unlocked).length}/${SUITS.length} SUITS UNLOCKED`,
     show() {
       sel = save.state.suit; render();
@@ -167,7 +142,7 @@ export function createSuitsPage(sys) {
       }
       targetYaw = yaw; camDist = THREE.MathUtils.clamp(bestD, 1.3, 3.1);
       camSave = { p: ctx.camera.position.clone(), q: ctx.camera.quaternion.clone(), fov: ctx.camera.fov };
-      standPose(); stageOn(); camDist = 3.1;
+      standPose(); stageOn(); camDist = heroPreview?.duration ? 4.4 : 3.1;
       ctx.pipeline.resetHistory?.();
     },
     hide() {
@@ -178,6 +153,7 @@ export function createSuitsPage(sys) {
       ctx.pipeline.resetHistory?.();
     },
     key(e) {
+      if (e.code === 'KeyR') { heroPreview?.restart(); return true; }
       const i = SUITS.findIndex(s => s.id === sel);
       if (e.code === 'ArrowRight' || e.code === 'KeyD') { sel = SUITS[(i + 1) % SUITS.length].id; preview(); render(); audio.sfx.move(); return true; }
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') { sel = SUITS[(i - 1 + SUITS.length) % SUITS.length].id; preview(); render(); audio.sfx.move(); return true; }

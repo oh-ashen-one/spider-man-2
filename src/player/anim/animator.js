@@ -11,6 +11,7 @@
 //                   hand IK onto the web, legs reacting to swing acceleration, foot IK + pelvis adjust
 //                   against world.raycast, look-at toward camera/aim, breathing, hips XZ lock (no drift).
 import * as THREE from 'three';
+import { TRICK_DURATION } from '../traversal/tricks.js';
 import { Skel, Pose, blendPoses } from './skeleton.js';
 import { PoseBuilder, frameRot, X, Y, Z, clamp, lerp, smooth, smoother, damp, remap, Spring, Spring3, TAU, noise1 } from './builder.js';
 import { RigData, armTarget } from './rigdata.js';
@@ -64,9 +65,9 @@ const TRAITS = {
   wallJump: { frame: 'wallOut', foot: 0, look: 0 }, ledge: { frame: 'ledge', foot: 0, look: 0 }, vault: { frame: 'uprightWall', foot: 0, look: 0.2 },
   corner: { frame: 'wall', foot: 0, look: 0.2 },
 };
-// user r10: release tricks are procedural (PTRICK, trickPose/trickSpin); the tucked releaseTuck "crouch" is never used after a
-// release. Legacy names (flip/backflip/twist/spin/airTrick) still map to the authored clips.
-const PTRICK = { layout: 1.3, corkscrew: 0.78, tuckFlip: 0.9, scissor: 0.7 }; // durations = traversal TRICK_DEF
+// Blender-authored hero Actions are preferred; PTRICK/trickPose/trickSpin retain the original fallback.
+// Legacy names (flip/backflip/twist/spin/airTrick) still map to the original clips.
+const PTRICK = TRICK_DURATION; // durations = traversal TRICK_DEF
 // user r10b: no 'fan' spins — the cartwheel and the authored releaseCorkscrew (twist/spin) mappings are removed
 const TRICKS = { layout: 'proc', corkscrew: 'proc', tuckFlip: 'proc', scissor: 'proc', flip: 'releaseFlip', frontflip: 'releaseFlip', backflip: 'releaseFlip', airTrick: 'airTrick' };
 const WALL_Z = 0.30; // wall plane in wall-authored clips (character space +Z; SPIDERMAN.md conventions)
@@ -2341,7 +2342,7 @@ function makeNodes(S) {
         const high = (A.jumpCharge ?? 0) > 0.45 || (A.velocity?.y ?? 0) > 11.5 || (prev && prev.name === 'jumpCharge' && (A.jumpCharge ?? 1) > 0.45);
         // user r10: "wings" variant (knees tucked under, arms spread wide) on ~40% of jumps and always on charged/high ones
         S.jumpWingsOn = globalThis.__jumpWings != null ? !!globalThis.__jumpWings : (high || Math.random() < 0.4);
-        L.data.clip = high && C.has('jumpLaunchHigh') ? 'jumpLaunchHigh' : C.first('jumpLaunchSmall', 'jump');
+        L.data.clip = C.first('heroJumpLaunch', high && C.has('jumpLaunchHigh') ? 'jumpLaunchHigh' : 'jumpLaunchSmall', 'jump');
         // anticipation already shown (charge node) or running => start at the extension; standing tap => short dip
         const run = S.speedH > 2.5;
         L.data.t0 = prev && prev.name === 'jumpCharge' ? (L.data.clip === 'jumpLaunchHigh' ? 0.1 : 0.06) : run ? 0.12 : A.grounded ? 0.02 : 0.1;
@@ -2349,6 +2350,7 @@ function makeNodes(S) {
       hold: (L, A) => (A.mode === 'air' || A.mode === 'ground') && L.t + L.data.t0 < C.dur(L.data.clip) - 0.1 && (A.velocity?.y ?? 0) > -3 && !A.trick,
       eval(L, A, out) {
         if (!oneShot(L.data.clip, L.t + L.data.t0, out)) { S.fallback('jump', 0, out); return; }
+        if (L.data.clip === 'heroJumpLaunch') { if (S.jumpLead < 0) S.mirror(out); return; }
         // high launch: arms drive up but not locked straight overhead — relax them toward the rise pose
         if (L.data.clip !== 'jumpLaunchHigh' && C.has('jumpCrouch')) { C.sample('jumpCrouch', 0.3, S.P.c); blendPoses(out, S.P.c, 0.6, out, S.armMask || (S.armMask = S.maskFor('arms'))); }
         if (L.data.clip === 'jumpLaunchHigh' && C.has('airRise')) { C.sample('airRise', L.t, S.P.c); blendPoses(out, S.P.c, 0.6 * smooth((L.t + L.data.t0 - 0.04) / 0.14), out, S.armMask || (S.armMask = S.maskFor('arms'))); }
@@ -2412,6 +2414,12 @@ function makeNodes(S) {
     trick: {
       enter(L, A, prev) {
         const tr = A.trick || 'layout';
+        const authored = { layout: A.trickSide < 0 ? 'heroLayoutBack' : 'heroLayoutFront', corkscrew: 'heroCorkscrew', tuckFlip: 'heroTuckFlip', scissor: 'heroScissor' }[tr];
+        if (authored && C.has(authored)) {
+          Object.assign(L.data, { authored: true, tr, clip: authored, mirror: tr === 'corkscrew' && A.trickSide < 0 });
+          L.dur = 0.12;
+          return;
+        }
         if (PTRICK[tr]) { // procedural release trick on top of the normal air blend (it melts back into it)
           Object.assign(L.data, { proc: true, tr, dur: PTRICK[tr], side: A.trickSide || 1, clip: 'trick:' + tr, spr: null, air: { t: 0, data: { dive: 0, rel: null, hop: false } } });
           if (tr === 'layout' && prev && prev.name === 'swing') { // user r10c: seamless out of the web (same frame, no air settle)
@@ -2431,7 +2439,7 @@ function makeNodes(S) {
         L.data.clip = C.first(TRICKS[tr], 'releaseFlip', 'airTrick');
         L.data.reverse = tr === 'backflip'; L.data.mirror = tr === 'spin' || (tr === 'twist' && Math.random() < 0.5);
       },
-      hold: (L, A) => (A.mode === 'air') && L.t < (L.data.proc ? L.data.dur - 0.03 : C.dur(L.data.clip) - 0.12),
+      hold: (L, A) => (A.mode === 'air') && (!L.data.authored || (A.sub === 'trick' && A.trick === L.data.tr)) && L.t < (L.data.proc ? L.data.dur - 0.03 : C.dur(L.data.clip) - 0.12),
       eval(L, A, out) {
         if (L.data.proc) {
           L.data.air.t = L.t; nodes.air.eval(L.data.air, A, out);

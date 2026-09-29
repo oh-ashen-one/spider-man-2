@@ -13,6 +13,7 @@
 //   C / Ctrl        drop / dive             B / Circle
 //   Q               quick web boost (air)   L1 / LB — one-hand web to a far point ahead + forward boost (not in combat: Q = finisher)
 //   Ctrl (held, on the ground) + LMB / RMB  web slingshot: anchor a web to the left / right building (no swing / attack)
+//   X               air trick (direction + press)    L3 / left-stick click
 //   T               web tightrope (perched only): web to the highlighted point, then walk it (W / S)   —
 //
 // state: move {x,y} (x = right, y = forward, -1..1), look {dx,dy} (pixels-equivalent),
@@ -61,7 +62,7 @@ export function createInput(el) {
   const prev = {};
   const state = {
     move: { x: 0, y: 0 }, look: { dx: 0, dy: 0 }, usingPad: false,
-    swing: false, jump: false, zip: false, sprint: false, walk: false, drop: false, quick: false, rope: false, jumpHeld: 0, aimT: 99,
+    swing: false, jump: false, zip: false, sprint: false, walk: false, drop: false, quick: false, rope: false, trick: false, jumpHeld: 0, aimT: 99,
   };
   const dz = v => (Math.abs(v) < 0.15 ? 0 : (v - Math.sign(v) * 0.15) / 0.85);
   const has = c => keys.has(c) || synthetic.has(c) || tapped.has(c);
@@ -83,6 +84,7 @@ export function createInput(el) {
     let zip = has('KeyE') || !!(btn & 2);
     let quick = has('KeyQ');
     const rope = has('KeyT');
+    let trick = has('KeyX');
     let drop = has('KeyC') || has('ControlLeft') || has('ControlRight');
     const ctrl = keys.has('ControlLeft') || keys.has('ControlRight') || synthetic.has('ControlLeft') || synthetic.has('ControlRight');
     const slingL = !!(sling.tap & 1), slingR = !!(sling.tap & 4); sling.tap = 0;
@@ -93,18 +95,19 @@ export function createInput(el) {
       const ax = dz(p.axes[0]), ay = dz(p.axes[1]), rx = dz(p.axes[2]), ry = dz(p.axes[3]);
       const b = i => !!p.buttons[i]?.pressed;
       const rt = (p.buttons[7]?.value ?? 0) > 0.3, lt = (p.buttons[6]?.value ?? 0) > 0.3;
-      if (ax || ay || rx || ry || rt || lt || b(0) || b(1) || b(3)) usingPad = true;
+      if (ax || ay || rx || ry || rt || lt || b(0) || b(1) || b(3) || b(10)) usingPad = true;
       mx += ax; my -= ay;
       lx += rx * 900 * dt; ly += ry * 600 * dt;
       // L2+R2 = web-zip (R2 then no longer swings); R2 alone = swing in air / parkour on ground
       const zipCombo = lt && rt;
+      trick ||= b(10);
       quick ||= b(4) && !b(5); // L1 alone (L1+R1 = combat throw)
       swing ||= rt && !zipCombo; sprint ||= rt && !zipCombo; jump ||= b(0); zip ||= zipCombo || b(3); drop ||= b(1);
     }
     tapped.clear();
     const len = Math.hypot(mx, my); if (len > 1) { mx /= len; my /= len; }
-    Object.assign(state, { move: { x: mx, y: my }, look: { dx: lx, dy: ly }, swing, jump, zip, drop, sprint, walk, quick, rope, usingPad, ctrl, slingL, slingR });
-    for (const k of ['swing', 'jump', 'zip', 'drop', 'sprint', 'walk', 'quick', 'rope']) {
+    Object.assign(state, { move: { x: mx, y: my }, look: { dx: lx, dy: ly }, swing, jump, zip, drop, sprint, walk, quick, rope, trick, usingPad, ctrl, slingL, slingR });
+    for (const k of ['swing', 'jump', 'zip', 'drop', 'sprint', 'walk', 'quick', 'rope', 'trick']) {
       state[k + 'Pressed'] = state[k] && !prev[k];
       state[k + 'Released'] = !state[k] && prev[k];
       prev[k] = state[k];

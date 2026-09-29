@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import { Animator } from './anim/animator.js';
+import { loadHeroClips } from './anim/hero-clips.js';
 import { legacyAnim } from './anim/legacy.js';
 import { applySuitFabric } from './suitfabric.js';
 
@@ -243,7 +244,7 @@ export async function loadCharacter(renderer) {
 
   let root, bones, clips = [];
   if (gltf) {
-    root = gltf.scene; clips = gltf.animations || [];
+    root = gltf.scene; clips = [...(gltf.animations || []), ...await loadHeroClips(gltf.scene)];
     root.traverse(o => {
       if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; }
     });

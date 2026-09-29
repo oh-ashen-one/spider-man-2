@@ -1,0 +1,26 @@
+{
+  "checks": [
+    {
+      "name": "landing-releases-trick",
+      "passed": true,
+      "mode": "ground",
+      "sub": "landHard",
+      "frames": 69,
+      "clip": "landHard"
+    },
+    {
+      "name": "wall-interrupts-trick",
+      "passed": true,
+      "mode": "wall",
+      "sub": "wallRun",
+      "frames": 6,
+      "clip": "run@wall(vertical)"
+    },
+    {
+      "name": "missing-library-falls-back",
+      "passed": true,
+      "clip": "trick:layout",
+      "clips": 79
+    }
+  ]
+}

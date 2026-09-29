@@ -23,15 +23,15 @@ No new paid generation, mocap packs, or hero redesign is authorized.
 ## Implementation and acceptance
 
 1. [x] Prove dedicated MCP catalog/status/scene/execute round trip; save evidence.
-2. [ ] Import original hero GLB, inspect rig and all clip names, establish reproducible action export.
-3. [ ] Capture untouched baseline and verify skeletal import/export compatibility before replacing clips.
-4. [ ] Author front/back layout flips, corkscrew, controlled tuck flip and expressive split/scissor spin as editable Blender Actions. Build readable anticipation, rotation and recovery poses.
-5. [ ] Improve launch/rise/apex/landing transitions where needed for connected movement.
-6. [ ] Integrate automatic context-sensitive tricks and manual directional trick control; preserve existing shortcuts, combat and traversal responsiveness. Web attach, landing and obstacle contact must interrupt safely.
-7. [ ] Author side-entry flip, weighted landing, and breathing showcase idle for skin selection. Preserve equipment behavior and restore exact paused gameplay state on menu close.
-8. [ ] Check original hero and all five custom meshes, including fast menu changes and opening while airborne.
-9. [ ] Inspect side and three-quarter motion sequences in Blender and comparable in-game sequences. Fix visible defects, record residual issues.
-10. [ ] Run regression/build checks and representative real desktop performance at 1080p; report average frame time, 1% lows, hitches and before/after.
+2. [x] Import original hero GLB, inspect rig and all clip names, establish reproducible action export.
+3. [x] Capture untouched baseline and verify skeletal import/export compatibility before replacing clips.
+4. [x] Author front/back layout flips, corkscrew, controlled tuck flip and expressive split/scissor spin as editable Blender Actions. Build readable anticipation, rotation and recovery poses.
+5. [x] Improve launch/rise/apex/landing transitions where needed for connected movement.
+6. [x] Integrate automatic context-sensitive tricks and manual directional trick control; preserve existing shortcuts, combat and traversal responsiveness. Web attach, landing and obstacle contact must interrupt safely.
+7. [x] Author side-entry flip, weighted landing, and breathing showcase idle for skin selection. Preserve equipment behavior and restore exact paused gameplay state on menu close.
+8. [x] Check original hero and all five custom meshes, including fast menu changes and opening while airborne.
+9. [x] Inspect side and three-quarter motion sequences in Blender and comparable in-game sequences. Fix visible defects, record residual issues.
+10. [x] Run regression/build checks and representative real desktop performance at 1080p; report average frame time, 1% lows, hitches and before/after.
 11. [ ] Push sources, scripts, clips, captures and evidence to the branch; verify remote SHA. Owner acceptance remains distinct.
 
 ## Initial source audit
@@ -41,4 +41,6 @@ The suit menu manually applies one idle frame and restores saved bone transforms
 
 ## Current status
 
-Dedicated MCP and original hero import verified. Original key timestamps match within 4.43e-5 across 79 clips and 58 bones; between-key interpolation and runtime comparison remain unverified (see STUDIO-CONTINUATION.md). No new motion, animation quality or performance gate has passed.
+Eight Actions implemented and visually sampled in Blender and Three.js. Manual/automatic runtime checks, all five skins, and menu state restoration pass. Export comparison passes at nonuniform times between new 120 Hz baked keys (maximum joint-position difference 3.8 mm). See README.md for evidence and honest limits. Original legacy clips are untouched; their import-only between-key discrepancy remains documented. Performance and remote publication are tracked separately.
+
+Final desktop performance was measured at 1080p/High on the 50 Hz main display. Street and traversal averaged about 49.95 FPS; park about 49.34 FPS with three hitches. The 60 FPS target remains unverified; see PERFORMANCE.md. Implementation checks pass; owner feel/quality acceptance remains separate.

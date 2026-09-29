@@ -6,6 +6,7 @@
 //
 // Physics conventions: s.pos = body centre (feet + H); 120 Hz substeps; gravity 24 m/s^2; speed cap 45 m/s.
 import * as THREE from 'three';
+import { TRICK_DURATION, manualTrick, hasTrickRoom } from './tricks.js';
 import { BoxIndex, createCollider, pushOutCapsule, pushOutRays } from './collide.js';
 import { createZipPoints, createZipTargeting } from './zippoints.js';
 import { createAnchorFinder } from './anchors.js';
@@ -56,11 +57,11 @@ const UP = new THREE.Vector3(0, 1, 0);
 //   steer = max rad the heading turns toward the stick, side = m/s lateral drift (toward the stick),
 //   dur must match animator.js PTRICK.
 const TRICK_DEF = {
-  tuckFlip: { dur: 0.9, snap: 0.35, boost: 5.5, up: 0.8 },               // tucked front somersault (user r10c; replaces the flat dive-out)
-  layout: { dur: 1.3, snap: 0.35, boost: 4.0, up: 2.5 },                 // loose layout flip (slow, eased): speed + a bit of height
-  corkscrew: { dur: 0.78, snap: 0.35, boost: 5.0, up: 0.6, steer: 0.35, side: 2.5 }, // barrel roll: speed + steering / drift toward the stick
+  tuckFlip: { dur: TRICK_DURATION.tuckFlip, snap: 0.35, boost: 5.5, up: 0.8 },               // tucked front somersault (user r10c; replaces the flat dive-out)
+  layout: { dur: TRICK_DURATION.layout, snap: 0.35, boost: 4.0, up: 2.5 },                 // loose layout flip (slow, eased): speed + a bit of height
+  corkscrew: { dur: TRICK_DURATION.corkscrew, snap: 0.35, boost: 5.0, up: 0.6, steer: 0.35, side: 2.5 }, // barrel roll: speed + steering / drift toward the stick
   // (user r10b: the cartwheel 'fan' spin is removed — sideways stick input now drifts the corkscrew instead)
-  scissor: { dur: 0.7, snap: 0.32, boost: 3.5, up: 1.4 },                // running-in-air stride
+  scissor: { dur: TRICK_DURATION.scissor, snap: 0.32, boost: 3.5, up: 1.4 },                // running-in-air stride
 };
 const TRICKS = Object.keys(TRICK_DEF);
 const damp = (a, b, rate, dt) => a + (b - a) * (1 - Math.exp(-rate * dt));
@@ -411,11 +412,22 @@ export function createTraversal({ world, cam, web, rig, camera }) {
   function stepAir(h, I) {
     s.airT += h; s.coyote -= h;
     if (s.coyote > 0 && I.jumpPressed) { s.jumpCharge = 0; launchJump(I.sprint || I.swing); return; }
+    // A press starts one deliberate trick. It never adds physics impulses, so chaining cannot farm speed.
+    if (I.trickPressed && !I.drop && !I.combat && s.sub !== 'trick' && s.sub !== 'zipPull') {
+      const choice = manualTrick(I.move, s.manualTrickSequence || 0);
+      if (hasTrickRoom(heightAboveFloor(), s.vel.y, TRICK_DEF[choice.name].dur, G)) {
+        startTrick(choice.name); s.trickSide = choice.side; s.trickBoosted = true;
+        s.manualTrickSequence = (s.manualTrickSequence || 0) + 1;
+        events.push({ type: 'airTrick', trick: s.trick, source: 'manual' });
+      }
+    }
+    if (I.drop && s.sub === 'trick') { s.trick = null; setSub('dive'); }
     // user r4 #12: double-tap Space in the air = an air flip / corkscrew (once per airtime, animation only)
     if (I.jumpPressed) {
       const dtap = s.airT - (s.airTapT ?? -9);
-      if (dtap >= 0 && dtap < 0.4 && !s.airTrickUsed && heightAboveFloor() > 2.5 && s.sub !== 'trick') {
-        startTrick(chooseTrick(I)); s.airTrickUsed = true; s.airTapT = -9;
+      const choice = dtap >= 0 && dtap < 0.4 && !s.airTrickUsed && s.sub !== 'trick' ? chooseTrick(I) : null;
+      if (choice && hasTrickRoom(heightAboveFloor(), s.vel.y, TRICK_DEF[choice].dur, G)) {
+        startTrick(choice); s.airTrickUsed = true; s.airTapT = -9;
         events.push({ type: 'airTrick', trick: s.trick });
       } else s.airTapT = s.airT;
     }
@@ -472,6 +484,8 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     s.pos.addScaledVector(s.vel, h);
     const c = collide(0.35);
     if (c) {
+      // A facade graze must release the authored pose as well as resolve the capsule.
+      if (s.sub === 'trick') { s.trick = null; setSub(s.vel.y > 3 ? 'rise' : s.vel.y > -4 ? 'apex' : 'fall'); }
       const hv = hdir(s.vel, _v); const into = hv ? -hv.dot(c.normal) : 0;
       const pushIn = inD.dot(c.normal) < -0.4;
       // chaining (RMB held, or just released a swing) and not deliberately steering into the wall: skip off it
@@ -491,7 +505,7 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     // swing attach (RMB held): search throttled; after a release wait for the apex / trick to play out
     if (s.jumpRelHold && (s.vel.y <= 0 || s.mode !== 'air')) s.jumpRelHold = false;
     if (I.swing && s.swingCooldown <= 0 && (!s.jumpRelHold || I.swingPressed)) { // a fresh RMB press still grabs at once
-      const trickBusy = s.sub === 'trick' && s.subT < Math.max(0.62, (s.trickDur || 0) - 0.35); // let the (slow) flip finish
+      const trickBusy = !I.swingPressed && s.sub === 'trick' && s.subT < Math.max(0.62, (s.trickDur || 0) - 0.35); // let the (slow) flip finish
       const ready = I.swingPressed || (s.groundSwing && s.airT > 0.14) || (s.airT > 0.1 && s.vel.y < 5.5 && !trickBusy) || s.vel.y < -6;
       s.searchT -= h;
       if (ready && s.searchT <= 0 && !trickBusy) {
@@ -1086,10 +1100,12 @@ export function createTraversal({ world, cam, web, rig, camera }) {
     setMode('air', 'release'); s.airT = 0; s.apexY = feetY();
     s.swingCooldown = 0.05; s.relT = 0;
     // release trick (user r10): the common case (~80 %); a plain release (normal air blend) never twice in a row. Needs room
-    // to play out (~0.8 s of air). Velocity is untouched here — the trick's boost lands at its snap moment (trickBoost).
-    const hf = heightAboveFloor(), room = hf > 5 && s.vel.length() > 9 && (s.vel.y > -5 || hf > 14);
+    // to finish the selected authored clip before impact. Velocity is untouched here — the trick's boost lands at its snap moment (trickBoost).
+    const hf = heightAboveFloor();
     const force = globalThis.__forceTrick; // playtest / debug hook: trick name, or 'none'
-    if (force ? force !== 'none' && room : room && (!s.lastTrick || rnd() < 0.8)) { startTrick(TRICK_DEF[force] ? force : chooseTrick(I)); s.lastTrick = true; }
+    const choice = TRICK_DEF[force] ? force : chooseTrick(I);
+    const room = hf > 5 && s.vel.length() > 9 && hasTrickRoom(hf, s.vel.y, TRICK_DEF[choice].dur, G);
+    if (force ? force !== 'none' && room : room && (!s.lastTrick || rnd() < 0.8)) { startTrick(choice); s.lastTrick = true; }
     else { s.trick = null; s.lastTrick = false; s.vel.x += hv.x * REL_NOTRICK * k; s.vel.z += hv.z * REL_NOTRICK * k; }
     s.trickNoUp = false; // user r10f: every release gains height again (the trick's small `up` lands at its snap too)
     const hs = Math.hypot(s.vel.x, s.vel.z), hl = Math.max(vmaxC(), sp); if (hs > hl) { s.vel.x *= hl / hs; s.vel.z *= hl / hs; }

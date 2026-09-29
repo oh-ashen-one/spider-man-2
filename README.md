@@ -14,6 +14,10 @@ The code, shaders, procedural city, Blender-built models and generated textures 
 - **Rendering:** a Three.js (WebGL2) pipeline with cascaded shadows, screen-space GI, AO and reflections, bloom, TAA, motion blur, fixed time-of-day presets (including night and rain), and a day/night city.
 - **Assets:** character, vehicle and pedestrian models and animation clips built by Blender Python scripts, plus AI-generated textures and ad art. Advertised brands are invented, apart from in-universe Marvel names such as the Daily Bugle and Oscorp.
 
+## Hero animation branch
+
+The 3d-animations-astra branch adds eight Blender-authored hero clips, manual **X / L3** tricks alongside automatic releases, and an animated suit-selection entrance. See [controls, editable sources, motion previews and verification](docs/anim/hero/README.md).
+
 ## Run it
 Requires Node.js 20.19+ or 22.12+ and a WebGL2-capable browser. A discrete GPU is recommended.
 

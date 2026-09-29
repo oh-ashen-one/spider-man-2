@@ -18,6 +18,7 @@ async def main():
     a = p.parse_args()
     env = dict(os.environ, BLENDER_HOST="127.0.0.1", BLENDER_PORT="19891", BLENDER_MCP_DISABLE_TELEMETRY="1")
     server = StdioServerParameters(command="/opt/homebrew/bin/uvx", args=["--from", "blender-mcp==1.9.1", "blender-mcp"], env=env)
+    failed = False
     async with stdio_client(server) as (r, w):
         async with ClientSession(r, w) as session:
             await session.initialize()
@@ -40,4 +41,8 @@ async def main():
                 a.output.parent.mkdir(parents=True, exist_ok=True)
                 a.output.write_text(json.dumps(result, indent=2))
             print(json.dumps(result))
-asyncio.run(main())
+            texts = [c.get("text", "") for c in result.get("content", []) if c.get("type") == "text"]
+            if result.get("isError") or any(t.startswith("Error") for t in texts):
+                failed = True
+    return 1 if failed else 0
+raise SystemExit(asyncio.run(main()) or 0)

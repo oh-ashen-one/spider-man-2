@@ -1,0 +1,130 @@
+{
+  "started": "2026-09-29T04:08:07.233Z",
+  "checks": [
+    {
+      "name": "skin-claude",
+      "passed": true,
+      "bounds": [
+        0.9481677339705925,
+        1.332234314637921,
+        0.9599394742940603
+      ],
+      "bones": 58
+    },
+    {
+      "name": "skin-claude-idle",
+      "passed": true,
+      "x": 0.016500037078375683
+    },
+    {
+      "name": "skin-codex",
+      "passed": true,
+      "bounds": [
+        0.9387627401674195,
+        1.3204372504640232,
+        0.9379182813416378
+      ],
+      "bones": 58
+    },
+    {
+      "name": "skin-codex-idle",
+      "passed": true,
+      "x": 0.016500037078375683
+    },
+    {
+      "name": "skin-gemini",
+      "passed": true,
+      "bounds": [
+        0.9584960932095328,
+        1.344407011988615,
+        0.9569282207442029
+      ],
+      "bones": 58
+    },
+    {
+      "name": "skin-gemini-idle",
+      "passed": true,
+      "x": 0.016500037078375683
+    },
+    {
+      "name": "skin-kimi",
+      "passed": true,
+      "bounds": [
+        0.9532233887952941,
+        1.3351611039193174,
+        0.952084408290375
+      ],
+      "bones": 58
+    },
+    {
+      "name": "skin-kimi-idle",
+      "passed": true,
+      "x": 0.016500037078375683
+    },
+    {
+      "name": "skin-qwen",
+      "passed": true,
+      "bounds": [
+        0.9545069436880738,
+        1.3302346578650757,
+        0.9450956564913326
+      ],
+      "bones": 58
+    },
+    {
+      "name": "skin-qwen-idle",
+      "passed": true,
+      "x": 0.016500037078375683
+    },
+    {
+      "name": "rapid-card-switch",
+      "passed": true,
+      "current": "codex",
+      "worn": "/assets/skins/codex.glb"
+    },
+    {
+      "name": "low-clearance-rejects-manual",
+      "passed": true,
+      "mode": "air",
+      "sub": "fall"
+    },
+    {
+      "name": "drop-interrupts-trick",
+      "passed": true,
+      "before": "trick",
+      "sub": "dive",
+      "clip": "airApex"
+    },
+    {
+      "name": "fresh-web-press-interrupts-trick",
+      "passed": true,
+      "before": "trick",
+      "mode": "swing",
+      "frames": 1,
+      "clip": "swingLow"
+    },
+    {
+      "name": "held-key-does-not-retrigger",
+      "passed": true,
+      "entries": 1,
+      "mode": "air",
+      "sub": "dive"
+    },
+    {
+      "name": "airborne-menu-restores-state",
+      "passed": true,
+      "mode": "air",
+      "sub": "trick"
+    },
+    {
+      "name": "ground-jump-uses-authored-launch",
+      "passed": true,
+      "clips": [
+        "heroJumpLaunch",
+        "airApex"
+      ],
+      "mode": "air",
+      "sub": "apex"
+    }
+  ]
+}

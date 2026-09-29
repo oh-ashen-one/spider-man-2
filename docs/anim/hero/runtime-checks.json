@@ -1,0 +1,129 @@
+{
+  "started": "2026-09-29T04:08:42.417Z",
+  "checks": [
+    {
+      "name": "menu-restores-gameplay",
+      "passed": true
+    },
+    {
+      "name": "manual-front",
+      "start": {
+        "mode": "air",
+        "sub": "trick",
+        "trick": "tuckFlip",
+        "side": 1,
+        "clip": "heroTuckFlip"
+      },
+      "clips": [
+        "heroTuckFlip"
+      ],
+      "velocity": [
+        0,
+        -0.5600000000000007,
+        0.26666666666666666
+      ],
+      "passed": true
+    },
+    {
+      "name": "manual-back",
+      "start": {
+        "mode": "air",
+        "sub": "trick",
+        "trick": "layout",
+        "side": -1,
+        "clip": "heroLayoutBack"
+      },
+      "clips": [
+        "heroLayoutBack"
+      ],
+      "velocity": [
+        0,
+        -0.5600000000000007,
+        -0.26666666666666666
+      ],
+      "passed": true
+    },
+    {
+      "name": "manual-left",
+      "start": {
+        "mode": "air",
+        "sub": "trick",
+        "trick": "corkscrew",
+        "side": -1,
+        "clip": "heroCorkscrew"
+      },
+      "clips": [
+        "heroCorkscrew"
+      ],
+      "velocity": [
+        0.26666666666666666,
+        -0.5600000000000007,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "name": "manual-right",
+      "start": {
+        "mode": "air",
+        "sub": "trick",
+        "trick": "corkscrew",
+        "side": 1,
+        "clip": "heroCorkscrew"
+      },
+      "clips": [
+        "heroCorkscrew"
+      ],
+      "velocity": [
+        -0.26666666666666666,
+        -0.5600000000000007,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "name": "manual-neutral",
+      "start": {
+        "mode": "air",
+        "sub": "trick",
+        "trick": "layout",
+        "side": 1,
+        "clip": "heroLayoutFront"
+      },
+      "clips": [
+        "heroLayoutFront"
+      ],
+      "velocity": [
+        0,
+        -0.5600000000000007,
+        0
+      ],
+      "passed": true
+    },
+    {
+      "name": "automatic-release",
+      "passed": true,
+      "sub": "trick",
+      "trick": "tuckFlip",
+      "clip": "heroTuckFlip"
+    }
+  ],
+  "loaded": {
+    "clips": [
+      "heroLayoutFront",
+      "heroLayoutBack",
+      "heroCorkscrew",
+      "heroTuckFlip",
+      "heroScissor",
+      "heroJumpLaunch",
+      "heroSuitEnter",
+      "heroShowcaseIdle"
+    ],
+    "rig": "glb"
+  },
+  "errors": [
+    "warning: THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "warning: Canvas2D: Multiple readback operations using getImageData are faster with the willReadFrequently attribute set to true. See: https://html.spec.whatwg.org/multipage/canvas.html#concept-canvas-will-read-frequently",
+    "warning: THREE.WebGLTextures: Trying to use 17 texture units while this GPU supports only 16"
+  ]
+}
