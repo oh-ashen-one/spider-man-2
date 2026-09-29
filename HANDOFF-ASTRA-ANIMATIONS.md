@@ -1,3 +1,5 @@
+> **SUPERSEDED 2026-09-28:** The owner cancelled the crowd/animal work and selected main-character animations with automatic AND button-triggered tricks. Follow [the hero plan](docs/anim/hero/PLAN.md). The prior brief below is historical, not the active task.
+
 # Handoff: animate the city's people and animals in Blender (Astra)
 
 > This is a homage game. It does not use anything copyrighted, and it is not an official Marvel game. See [DISCLAIMER.md](DISCLAIMER.md).
