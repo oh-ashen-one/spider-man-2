@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 12:42",
+ "updated": "2026-09-29 12:43",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -62,10 +62,10 @@
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "critic",
-   "round": 1,
-   "verdict": "",
-   "gap": "4K/60 not reached: best 41 fps at TSR 50% (contaminated)"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (sun/sky 5, GI 3, atmos 4, refl 3, post 3, night 2)",
+   "gap": "Night streets 85% near-black; no lamp pools or car lights; hero vanishes"
   },
   {
    "id": "P5",
@@ -87,6 +87,24 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "Look round 1 \u2014 three time-of-day presets over the Unreal city",
+   "note": "First lighting pass (Sonnet builder). Critic: golden haze works; night is too dark to read.",
+   "images": [
+    {
+     "label": "Midday S2",
+     "src": "docs/night1/look/round-01/stills/midday_S2_1920x1080.jpg"
+    },
+    {
+     "label": "Golden hour S4",
+     "src": "docs/night1/look/round-01/stills/golden_S4_1920x1080.jpg"
+    },
+    {
+     "label": "Night S1 \u2014 85% near-black",
+     "src": "docs/night1/look/round-01/stills/night_S1_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "City round 4 \u2014 real window glass and interiors",
    "note": "Before: every window an opaque beige slab. After: dark reflective glass with mixed lit/dim/dark rooms.",
@@ -360,6 +378,14 @@
    "verdict": "fails",
    "gap": "Rebuild thug and brute to civilian quality: modelled heads/eyes, five-finger hands, folded clothes, real shoes; brute \u22651.3\u00d7 thug shoulder width, upright heavy walk.",
    "notes": "Brute texture fix confirmed (+~2 on enemies vs round 1). Critic also noted the hero's classic suit (white spider emblem, white cuffs, red leg stripes) closely resembles a licensed game suit design; flagged for the owner, not changed."
+  },
+  {
+   "t": "12:43",
+   "piece": "P4 Look",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Night street lighting and exposure: lamp pools every 25\u201330 m, storefront spill, car lights, lifted ambient; night_S1 mean \u226535/255 with \u22643% of pixels <10/255; hero \u226540/255 in every night-swing frame.",
+   "notes": "Golden-hour haze from above works. Secondary: no warmth at street level at golden hour, a green lens ghost, 4.7% blown pixels at sunset, glass going black mid-swing, midday horizon darker than the sky."
   }
  ],
  "perf": [
@@ -518,6 +544,10 @@
   {
    "t": "12:42",
    "text": "Characters R2 merged: brute fixed (+2 on enemies); still FAILS; round 3 rebuilds thug/brute from existing Tripo people (no paid generation)."
+  },
+  {
+   "t": "12:43",
+   "text": "Look R1 critic FAILS (night 2/10); round 2 on a fresh Sonnet builder with measurable night targets."
   }
  ]
 }
