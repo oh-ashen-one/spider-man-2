@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 11:10",
+ "updated": "2026-09-29 12:30",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "Traversal has stalled at FAILS for three rounds (scores 2\u20134) even though each targeted fix passed its numeric test. The limit is the placeholder body, so round 4 moves traversal onto the real hero rig with the browser's animation system ported to C++. City round 2 now reaches the horizon with rivers and haze and is with the critic.",
+ "headline": "The change of approach worked: traversal round 4 (real hero + the browser animator ported to C++) raised body animation 2\u21924, arc 3\u21924, moves 2\u21923, and the blind critic preferred it to round 3. Still FAILS; the camera is the biggest gap again, and the critic caught that our framing metric disagrees with the pixels, so round 5 measures framing from rendered pixels.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 4,
-   "verdict": "R3: FAILS (arc 3, camera 3, web 4, moves 2, body 2)",
-   "gap": "STALLED on the placeholder body: dead air phase (T-pose between swings). Approach changed: real hero + ported animator"
+   "round": 5,
+   "verdict": "R4: FAILS (arc 4, camera 3, web 4, moves 3, body 4)",
+   "gap": "Camera too far and too steep: hero only 4\u20136% of frame height, no sky; framing metric was wrong"
   },
   {
    "id": "P4",
@@ -154,6 +154,11 @@
  ],
  "clips": [
   {
+   "title": "Traversal R4 \u2014 real hero + ported animator",
+   "src": "docs/night1/traversal/round-04/a_swing_chain.mp4",
+   "caption": "79 browser clips at 30 fps, hand aimed at the anchor, varied air phase"
+  },
+  {
    "title": "Traversal R2 \u2014 swing chain",
    "src": "docs/night1/traversal/round-02/a_swing_chain.mp4",
    "caption": "deep pendulum arcs (16\u201357 m drops); camera still locked"
@@ -217,6 +222,14 @@
    "verdict": "fails",
    "gap": "Replace all foliage: leaf-cluster trees with alpha leaves, green albedo, light passing through; Central Park as a green canopy mass with paths.",
    "notes": "Improving: skyline 2\u21924, Manhattan 2\u21924, facades 4\u21925; round 2 perch rated ~3 points better than round 1. Secondary: flat storefronts, blue-tinted far shore with white quays, untextured water tower, no hydrants/fire escapes, identical glowing windows."
+  },
+  {
+   "t": "12:25",
+   "piece": "P3 Traversal",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "Chase camera 4\u20135 m behind and 1\u20131.5 m above, pitched 10\u201320\u00b0 down; hero \u2265160 px tall at 1080p in \u226590% of frames; anchor and sky visible at each attach.",
+   "notes": "Up from round 3: body 2\u21924, arc 3\u21924, moves 2\u21923. The builder's telemetry claimed the hero filled 25% of frame height; pixels show 4\u20136%. Secondary: 1.2\u20131.5 s rope-less drifts; wall-run camera faces the wall; no landing crouch; torso flat against the rope at the arc bottom."
   }
  ],
  "perf": [
@@ -286,6 +299,10 @@
   {
    "t": "11:00",
    "text": "Traversal R3 critic FAILS again; diagnosed a stall on the placeholder body; P3 now ports the browser animator onto the real hero. P2 characters resumed."
+  },
+  {
+   "t": "12:25",
+   "text": "Traversal R4 merged: real hero with C++ animator; first real score gains; round 5 fixes camera framing using pixel-based measurement."
   }
  ]
 }
