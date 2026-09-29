@@ -12,7 +12,9 @@ Cell layout (from src/world/timessq.js):
                   bottom half: 64 portrait cells 256x512 (16 x 4, index = row * 16 + col, y offset 2048)
   ts_signs.webp   64 signs 512x128 (4 cols x 16 rows, index = row * 4 + col)
 """
+import os, sys
 from PIL import Image
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # (kind, excluded cell, donor cell, why)
 ADS = [
@@ -24,10 +26,14 @@ ADS = [
     ('L', 26, 43, 'FROSTED HALOS - Part of a Heavenly Breakfast (brand from the real game)'),
     ('L', 33, 46, 'BOTANICA - Now Playing, Majestic Theatre (show ad from the real game)'),
     ('L', 34, 20, 'FROSTED HALOS - Start Bright (brand from the real game)'),
-    ('L', 39, 41, "HELL'S KITCHEN BLUES - New Season Streaming (Marvel-universe / Netflix-Marvel reference)"),
+    ('L', 39, 'art', "HELL'S KITCHEN BLUES (Marvel-universe / Netflix-Marvel reference); r05 donor L41 was 'NEON RACERS - OUT NOW' game key art (round-06 critic) -> original NIGHT LANTERN MARKET"),
+    ('L', 41, 'art', "NEON RACERS - OUT NOW (racing-franchise key art; round-06 critic) -> original HARBOR POOL"),
+    ('L', 23, 'art', "SEE SOMETHING? SAY SOMETHING. + call number (the real transit-authority slogan; round-06 critic, S6) -> original RIVERSIDE GARDEN WEEKEND"),
+    ('L', 61, 'art', "STAR RAIDERS 3 - OUT NOW (game key art, same 'OUT NOW' pattern as L39 / L41) -> original LATE NIGHT BAKERY"),
+    ('P', 8, 'art', "KINETIX - RISE ABOVE: basketball-shoe photo, the S3 wall mural (round-06 critic: 'looks like real product photography') -> original GOOD MORNING, CITY mural"),
+    ('P', 27, 'art', "COLTEX - Own the Court (portrait cell excluded since round 04); its donor P8 was the Kinetix shoe photo -> original PLANT A TREE poster"),
     ('L', 60, 16, "THE DAILY BUGLE - New York's News (Marvel-universe newspaper)"),
     ('L', 27, 4, 'COLTEX SPORT (sneaker brand too close to a real-game brand; round-04 critic)'),
-    ('P', 27, 8, 'COLTEX - Own the Court (same brand, portrait cell)'),
     ('P', 38, 15, 'COLEXCO - Run the City (near-copy of the real game\'s COLEXCO brand)'),
     ('L', 35, 47, 'COLEXCO SPORT (red-on-white sneaker ad; it is the "COLEX SPOR..." banner seen in S6; real-game brand)'),
     ('L', 32, 7, 'HAUTE UNLIMITED - New York / Paris / Milan (fictional brand of the real game; round-05 critic)'),
@@ -58,7 +64,11 @@ def sanitize(basename, im):
     stem = basename.split('.')[0].replace('assets_city_tex_', '')
     if stem == 'ts_ads':
         out = im.copy()
-        for kind, ex, do, _ in ADS: out.paste(im.crop(_box(kind, do)), _box(kind, ex)[:2])
+        for kind, ex, do, _ in ADS:
+            if do == 'art':
+                from ip_original_art import render  # original art drawn by tools/export/ip_original_art.py (no copied pixels)
+                out.paste(render(kind, ex), _box(kind, ex)[:2])
+            else: out.paste(im.crop(_box(kind, do)), _box(kind, ex)[:2])
         return out
     if stem == 'ts_signs':
         out = im.copy()
@@ -69,7 +79,7 @@ def sanitize(basename, im):
 if __name__ == '__main__':
     import os, sys
     src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '../../public/assets/city/tex')
-    dst = sys.argv[2] if len(sys.argv) > 2 else '/Users/midir/sm2-n1/_scratch/city/r04/atlas'
+    dst = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.environ.get('SM2_CITY_SCRATCH', '/Users/midir/sm2-n1/_scratch/city'), 'r04', 'atlas')
     os.makedirs(dst, exist_ok=True)
     for f in ('ts_ads.webp', 'ts_signs.webp'):
         im = Image.open(os.path.join(src, f)).convert('RGB'); s = sanitize(f, im)

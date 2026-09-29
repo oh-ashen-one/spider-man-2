@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Rebuild P1 City content from committed sources: browser export -> texture prep -> shader includes -> UE build.
-# Requires: dev server on :5202 (npx vite --port 5202 --host 127.0.0.1 --strictPort) and the P1 editor with its job
+# Requires: dev server on :$SM2_CITY_PORT (default 5202; npx vite --port <port> --host 127.0.0.1 --strictPort) unless SKIP_EXPORT=1 and the P1 editor with its job
 # server (tools/export/ue/launch_editor.sh).  STEPS=clean,tex,mat,mesh,proto,map (default all).
 set -e
 cd "$(dirname "$0")/../.."
