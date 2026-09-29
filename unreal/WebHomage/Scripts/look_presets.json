@@ -311,19 +311,19 @@
     "elev": 38.0,
     "az": 118.0,
     "lux": 30.0,
-    "temp": 7800.0,
+    "temp": 6500.0,
     "angle": 0.52
    },
    "sky": {
     "intensity": 5.0,
     "tint": [
-     0.75,
      0.85,
+     0.9,
      1.0
     ]
    },
    "atmosphere": {
-    "rayleigh_scattering_scale": 0.0331,
+    "rayleigh_scattering_scale": 0.012,
     "mie_scattering_scale": 0.012,
     "mie_absorption_scale": 0.0012,
     "mie_anisotropy": 0.8,
@@ -393,9 +393,9 @@
     "EmissiveScale": 12.0
    },
    "exposure": {
-    "min_ev": 3.7,
-    "max_ev": 3.7,
-    "bias": 0.0
+    "min_ev": 1.0,
+    "max_ev": 4.3,
+    "bias": -0.3
    },
    "post": {
     "bloom_intensity": 0.85,

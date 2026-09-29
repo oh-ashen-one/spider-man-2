@@ -11,7 +11,8 @@ Numbers of the round: `round-02/NOTES.md` (capture facts + test numbers), `round
   (P1 city round 4: new facade emission, signage, leaves, props; C++ traversal / characters). The city was re-exported and re-imported (`rebuild_city.sh`: 29 min in an editor without DDC).
   midday / golden differ from round 01 mostly because of that city update, not because of look settings.
 - **Night** (`look_presets.json` presets.night, `build_look.py` step `night` -> `/Game/Look/Look_NightLights`, an always-loaded sublevel of the night maps):
-  - fixed exposure EV 3.7 (min = max), cooler white balance (6100 K), contrast 1.35, `color_offset` black lift (0.004 / 0.005 / 0.009), lens flare 0.25, bloom 0.85; moon 30 lux; sky light 5 (tint 0.75 / 0.85 / 1.0);
+  - auto exposure limited to EV 1.0 .. 4.3 with bias -0.3 (dark rooftop / aerial views get the gain, the lamp-lit street views stay dark enough for distinct pools; a fixed EV 3.7 gave S3 mean 17 and S7 25),
+    white balance 6100 K, contrast 1.35, `color_offset` black lift (0.004 / 0.005 / 0.009), lens flare 0.25, bloom 0.85; moon 30 lux (6500 K); sky light 5 (tint 0.85 / 0.9 / 1.0); Rayleigh scale 0.012;
     four unshadowed low-elevation horizon "city glow" directional fills (`fills`; they light facades by cos(incidence) but streets only by sin(8 deg), so the road pools stay distinct).
   - 634 street lamps (layout.json `instances.lamp`, the browser's own positions, head = base + 2.9 m arm, 9.15 m up): spot pool (7000 cd, 46 deg outer) + small halo point light + emissive head,
     temperatures 3500 / 4300 / 5500 K, volumetric scattering on.
@@ -61,10 +62,17 @@ Iterate on a look: edit `look_presets.json`, `rebuild_look.sh rigs <preset>` (ri
 - Headless `-nullrhi` builds the maps fine; shaders compile at the first game run (the first run after a DDC delete is slow). The first `-game` run of a map after `night` rebuilt is not slower than later ones (project DDC).
 - Commit only mp4 / jpg / json / md: content, DDC and Intermediate stay out (`unreal/WebHomage/{DerivedDataCache,Intermediate}` are deleted at the end of a session).
 
+## Start of next round
+- `Opus-5.5-Loop-Night-1` has moved on (city round 6, traversal round 9, C++ changes, Manhattan integration): merge it first, `unreal/WebHomage/Scripts/build_editor.sh` (editor closed), then `tools/perf_ue/rebuild_city.sh`
+  (city re-import; it ends with the box / look rebuild), then `tools/perf_ue/capture_looks.py`. Round 02's stills / clips are against the round-4 city of the previous merge.
+- Hard GPU cap (RULES.md, 2026-09-29 16:43): at most 2 Unreal processes of any kind across all agents; every Unreal launch goes through `gpu_slot.sh capture` (`rebuild_look.sh`, `capture_looks.py`, `run_perf.py`, `launch_editor.sh` do it);
+  builds are `-nullrhi` commandlets; `capture_looks.py` stops after 2 consecutive failed game runs and resumes (skips stills that exist; `--redo` recaptures).
+
 ## Open issues / next gap (facts, not self-assessment)
-1. Perf: 60 fps at 4K is not reached (see `round-02/PERF.md`; the perf piece F profiles the integrated map and will send exact lighting changes). Night adds a `Lights` pass of roughly 5 ms GPU at TSR 50 %.
+1. Perf: 60 fps at 4K is not reached: clean (GPU lock, exclusive) TSR 50 % runs are 41.0 ms midday / 47.5 ms night average (`round-02/PERF.md`); the perf piece F profiles the integrated map and will send exact lighting changes. Night adds a `Lights` pass of about 2.5 ms GPU and +6.5 ms frame time.
 2. Night stand-in cars are boxes; the LED screens of the Times-Square-like district are black (IP exclusion); the far ring (river, opposite shore) is still a blown white / violet band in every preset (P1 far LOD).
-3. Numbers not met (see `round-02/TESTS.md`): night S6 bottom-third p90 (spec L14) and golden S3 mean, golden S7 clipped share (sun-facing view).
+3. Numbers not met (`round-02/TESTS.md`, 1080p stills): night S6 bottom-third p90 94 (L14 wants >= 100); night S4 / S8 B-R +26.9 / +19.8 (L8 -13..13: the blue river and the violet far ring, P1); night S1 pools by `night_tests.py` = 4 with peaks 253 / 214 / 181 / 156 (target >= 4, no margin; L13 blob count 9 >= 5);
+   golden S3 mean 57.6 (L1 >= 61), S4 mean 104.8 (<= 100), S2 / S4 B-R -66.7 / -57.1 (> -55 too warm), S7 clipped 2.58 % (L5 <= 0.7 %: the sky column at the end of the street), S8 clipped 2.05 % (<= 1.8 %); midday S4 / S8 B-R +25.8 / +13.2 (blue aerial views) and S3 / S7 clipped 0.65 / 1.24 % (L4 <= 0.3 %), midday S4 mean 90.7 (> 89).
 4. From the integrated-map measurements (orchestrator note): S2 sunlit stone tower has 30.7 % of pixels above Y204 (spec C1/C2 <= 1.5 %), S1 shadowed tower too dark (mean 20, target 52), the river reads 13.5 luma brighter than
    the far shore (C14: needs distance-dependent haze or lower sky exposure), sky blown (Y 229) under the city test maps' manual exposure. These are Look items for the next round.
 5. No depth of field, no lens dirt, no sun shafts other than volumetric fog; cloud layer banding at low sample counts; no runtime time-of-day blend (three fixed presets).

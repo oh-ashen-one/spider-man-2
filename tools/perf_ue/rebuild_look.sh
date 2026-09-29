@@ -14,6 +14,8 @@ export SM2_LOOK_STEPS=${1:-geo,rigs,night,maps}; export SM2_LOOK_PRESETS=${2:-mi
 LOG=${SM2_LOOK_LOG:-$SM2_LOOK_SCRATCH/build_look_headless.log}
 mkdir -p "$SM2_LOOK_SCRATCH"
 cd "$WT/unreal/WebHomage"
-"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor" "$PWD/WebHomage.uproject" -run=pythonscript \
+# RULES (2026-09-29 16:43): every Unreal launch goes through the GPU slot, at most 2 Unreal processes across all agents; -nullrhi = no GPU use
+GS=${GPU_SLOT:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}; [ -x "$GS" ] && SLOT=("$GS" capture --label look --) || SLOT=()
+"${SLOT[@]}" "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor" "$PWD/WebHomage.uproject" -run=pythonscript \
   -script="$PWD/Scripts/build_look.py" -unattended -nullrhi -NoCrashReports -abslog="$LOG" > "$LOG.stdout" 2>&1
 grep -E "LogPython: \[build_look|LogPython: (Error|Warning)|    [A-Za-z_.]+ \(" "$LOG" | grep -v Deprecat | sed 's/^.*LogPython: //' | tail -40
