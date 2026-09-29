@@ -51,7 +51,7 @@ for entry in "${SEQS[@]}"; do
       -movflags +faststart "$ROUND/$NAME.mp4"
     DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$ROUND/$NAME.mp4")
     if [ "$(stat -f %z "$ROUND/$NAME.mp4")" -gt 15000000 ]; then # re-encode at a bitrate that fits 14.5 MB
-      KBPS=$(python3 -c "print(int(14.5e6*8/1000/float('$DUR')))")
+      KBPS=$(python3 -c "print(int(13.5e6*8/1000/float('$DUR')))")
       ffmpeg -loglevel error -y -framerate 60 -start_number $SKIP -i "$FR/MovieFrame%05d.png" -c:v libx264 -preset slow \
         -b:v ${KBPS}k -maxrate ${KBPS}k -bufsize $((KBPS*2))k -pix_fmt yuv420p -movflags +faststart "$ROUND/$NAME.mp4"
     fi
