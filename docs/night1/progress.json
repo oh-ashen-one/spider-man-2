@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 13:53",
+ "updated": "2026-09-29 14:13",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
+ "headline": "Seven hours in, nothing meets the Marvel's Spider-Man 2 bar yet; every piece is climbing round by round under blind critics. Traversal R8 (camera 4), city R5 (street level built), characters R3 (thugs being rebuilt), lighting R2 (night) in progress. 4K/60 not reached (best \u224841 fps at TSR 50%, contaminated).",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 8,
-   "verdict": "R7: FAILS (arc 4, camera 3, web 4, moves 4, body 4)",
-   "gap": "Swings carry the hero into facades; camera hugs walls; whole-frame blur smears the hero"
+   "round": 9,
+   "verdict": "R8: FAILS (arc 4, camera 4, web 4, moves 3, body 3)",
+   "gap": "Locked symmetric camera + identical swings; needs weave inside a safe corridor"
   },
   {
    "id": "P4",
@@ -416,6 +416,14 @@
    "verdict": "fails",
    "gap": "Far skyline: window grids and material on every building past the first two rows; warm-neutral far shore; dark embankment with piers instead of a white strip; water reflecting the shore.",
    "notes": "Street level built: 2,225 storefront bays with frames/awnings/original names, 616 fire escapes, street furniture every ~20 m; street dressing 3\u21924. More IP to exclude: 'HAUTE UNLIMITED' (real-game ad) and real-place evocations (Hotel Astor, Madison arena, L'Or\u00e9al-like)."
+  },
+  {
+   "t": "14:13",
+   "piece": "P3 Traversal",
+   "round": 8,
+   "verdict": "fails",
+   "gap": "Camera yaws toward the anchor and rolls with the arc; hero alternates 30\u201370% of frame width; arc low point varies \u22651 storey; keep facade clearance.",
+   "notes": "Wall-hugging fixed (nearest facade ~1 m \u2192 \u226513 m); round 8 beat round 7 in both version pairs; camera 3\u21924. Now too centred and repetitive."
   }
  ],
  "perf": [
@@ -586,6 +594,10 @@
   {
    "t": "13:53",
    "text": "City R5 merged (street level); critic FAILS; round 6 = far skyline + more IP exclusions."
+  },
+  {
+   "t": "14:13",
+   "text": "Traversal R8 merged (facade clearance fixed); critic FAILS; round 9 = weave inside a safe corridor + dynamic camera."
   }
  ]
 }
