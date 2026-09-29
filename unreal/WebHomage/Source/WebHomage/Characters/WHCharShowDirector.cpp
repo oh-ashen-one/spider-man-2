@@ -1,5 +1,6 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Characters/WHCharShowDirector.h"
+#include "Characters/WHCharLoopWalker.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -35,6 +36,9 @@ void AWHCharShowDirector::Tick(float Dt)
 	int32 Idx = 0; for (; Idx < Shots.Num() - 1 && Tl >= Shots[Idx].Duration; ++Idx) Tl -= Shots[Idx].Duration;
 	const FWHShot& S = Shots[Idx];
 	if (!S.Target) return;
+	if (Idx != LastShot)
+		for (AActor* W : S.RestartWalkers)
+			if (AWHCharLoopWalker* LW = Cast<AWHCharLoopWalker>(W)) LW->RestartLine();
 	const FVector Base = S.Target->GetActorLocation();
 	const FVector Aim = Base + FVector(0, 0, S.AimHeight);
 	const bool bCut = Idx != LastShot; LastShot = Idx;

@@ -1,121 +1,109 @@
-# P2 Characters: handoff after round 02
+# P2 Characters: handoff after round 03
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
 Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203.
-Round 02 fixed the critic's single biggest gap (round-01 verdict: hero model 4, hero animation 4, enemies 2, civilians 2, image quality 3; FAILS). Everything not listed under "Round 02" is unchanged from round 01.
+Round-02 critic (blind): hero model 5, hero animation 4, enemies 2, civilians 3, image quality 4; FAILS. Its single biggest gap was the thug and brute: prototype-grade (low-poly, mitten hands, sticker eyes, block shoes; the brute the same mass as the thug, hunched). Round 03 rebuilt both. Everything not listed under "Round 03" is unchanged from round 02.
 
-## Round 02: the brute
+## Round 03: street thug and street brute
 
-**Cause (measured, not guessed).** `thug.glb` is ONE mesh with ONE material and 19 real UV islands. The brute is that mesh scaled up; the game and UE only swap the base-colour map (`enemy.js tintBrute`, `MI_Brute`). The old `public/assets/enemies/brute_basecolor.webp` was laid out for a different UV packing, so every island sampled the wrong garment. Texel audit on the thug UVs (`paint_brute.py --audit-png`): the old map has 149,841 skin-coloured texels and 97,688 white texels outside the hand/face islands. There was no material-slot problem to fix.
+**Sources (owner's assets, never committed).** `~/sm2-assets/raw/leather+jacket+man+3d+model.glb` (thug: grey-haired man, hooded leather jacket over a zip hoodie, jeans, boots) and `~/sm2-assets/raw/human+character+3d+model.glb` (brute: stocky bearded man, puffer vest over plaid shirt, work boots, beanie). Raw Tripo: 6.4k / 7.1k tris, one 8192^2 baked base-colour map, modelled faces with eyes, ears and hair, five-finger hands, folds in the cloth. The raw meshes face +X with the arms along Z; the pipeline rotates them into the game frame (faces +Z, +X = left).
+The old `thug.glb` / `public/assets/enemies/brute_basecolor.webp` are untouched, so **the browser build is unchanged** (UE-only round; `npm test` 15/15 and `vite build` re-run at the end).
 
-**Decision.** Re-paint the brute base colour ON THE THUG'S OWN UV LAYOUT (not re-project the old map: its layout is unknown and it has no matching mesh; not rebuild the mesh: the thug topology, weights and hero-skeleton fit are all good). Geometry, skeleton, skin weights, thug normal map and ORM are untouched.
-- `tools/ue_char/brute/uvgeom.py` (Blender headless): dumps every UV triangle of `thug.glb` with its rest-pose 3D position and dominant skin bone.
-- `tools/ue_char/brute/paint_brute.py` (numpy/PIL/scipy): rasterises that into per-texel island, position and bone maps. Island roles come from the bones and positions (torso front/back, head, thigh, shin, upper arm, forearm, hand, boot, sole), not from hard-coded ids. Paints: olive work jacket (chest pockets with flaps, zip, collar, yoke and centre-back seam, hem rib, belt and buckle), same-garment sleeves (elbow patches, cuffs), charcoal cargo trousers (pockets, worn knees, dirty hems), dark work boots (the thug's white sneaker pattern becomes laces), olive knit beanie, plain slate bandana (the red polka-dot pattern becomes a faint paisley), the thug's own skin/eyes/hands kept (brows shadowed). Gutters are filled by nearest island colour so no lavender bleeds into mips.
-- Outputs: `public/assets/enemies/brute_basecolor.webp` (committed, 136 KB, same 2048x2048, same path, same loader), `art/night1/characters/thug/tex/brute_basecolor.png` (UE) and `brute_regions.png` (R face skin, G hands, B everything else). Texel audit of the new map: 0 skin-coloured and 0 white texels outside hands/face.
-- `tools/ue_char/brute/build_brute.sh` runs both steps; the UE build's `prep` step calls it, so the browser webp and the UE PNG cannot drift apart. Deterministic: rerunning produces the same webp.
-- The torso/thigh UV cut is jagged (mesh cut along triangle edges). The waist is designed around it: the torso's lowest part is trouser-coloured, hem rib and belt are on the torso only. Do not paint colour steps on a torso/thigh or torso/sleeve seam.
+**Pipeline** (`tools/ue_char/people/`, run by the UE build's `prep` step through `build_people.sh`; about 2 min the first time, cached on the SHA of the prepared mesh afterwards):
+1. `prepare_person.py thug|brute`: rotate + scale to the hero's height; rasterise the UV layout into a per-texel 3D position map so every texture edit is placed by body position; **replace the atlas gaps by nearest-island colour** (the raw atlas is thousands of islands with blurry gaps, which read as dark dashes / sparkles at seams); dress:
+   - thug: ornamental belt buckle and key-chain metal (invented metalwork with pseudo-lettering) painted plain dark steel;
+   - brute: orange pom-pom beanie to charcoal knit (pom-pom vertices pulled onto the fitted dome sphere, so no hole), red-green plaid to one worn brown-grey flannel tone, head and neck shrunk by 1/girth so the head keeps natural proportions after the actor is widened;
+   - both: a **modelled bandana** (2,016 tris): a shell ray-cast from the head axis onto the real head surface, 8.5 mm off the skin (so it follows nose, cheeks, jaw and collar), with cloth folds, a rolled top edge and a tie strap behind the ears, on its own 4096x512 texture strip (plain dark navy / maroon with a faint dot print, no lettering). Eyes, forehead, ears and hair are untouched;
+   - one primitive, one material, one 4096^2 atlas (raw atlas squeezed to 4096x3584 + bandana strip). 8,380 / 8,427 tris.
+2. `tools/skinfit/skinfit.py` (extended, suits unchanged because both flags default off): pose-fit the hero mesh to the person, transfer weights from it, un-pose. New: `--weld` shares weights between coincident (UV-seam duplicate) vertices; without it every texture seam opened into a hairline crack as soon as the pose changed (in UE: thin see-through lines along seams; this is the "white seam cracks and sparkles" family of the round-02 critic's image-quality note); `--spatial-smooth 0.035` averages weights over 3D neighbours that face the same way, ACROSS mesh layers (jacket over hoodie, vest over shirt), so layers do not poke through each other. Chamfer rms before/after: thug 10.99 -> 4.85 cm, brute 7.84 -> 5.46 cm. The mesh sits on the game's exact 58-joint skeleton, so **all 79 hero clips and the 13 thug clips play on it**.
+3. `make_walk.py`: the hero `walk` is a stalking, bent-knee cycle (knee flexion mean 46 deg, stance mean 40 deg, hips 6-9 cm below standing height). `walkStreet` raises the hips 5.5 cm and re-solves both legs with analytic two-bone IK to the ORIGINAL ankle positions and orientations (stance knee flexion mean 9 deg, max ankle displacement vs the hero walk 9.6 mm: no foot sliding). `walkBrute` raises 4.5 cm, adds a 3.2 cm weight shift over the stance foot with 3 deg opposite torso roll and a 1.125x slower cadence (36 frames, 1.2 s; UE imports on the 1/30 s grid only). `evidence/walk_gait_report.json`.
+4. UE (`build_characters.py`): `/Game/Characters/People` = `SK_Street_Thug`, `SK_Street_Brute` (hero skeleton), `MI_Street_*` (M_Char_Suit master, no ORM, roughness 0.78, cloth 0.16), `A_Street_walkStreet` / `A_Street_walkBrute`, `ABP_Street_Thug` / `ABP_Street_Brute` (children of `UWHCharAnimInstance`, the walk swapped for the new clips at their natural speeds 160 / 142.2 cm/s).
 
-**UE-only look choices** (`build_characters.py`, ARGS in brackets):
-- `MI_Brute`: `Tint` 0.85 [`brute_tint`], `Specular` 0.15, `Cloth` 0.12. The lineup stage renders sRGB albedo about 3x brighter and dark cloth is veiled by spec/sheen; the browser texture is untouched. Palette lessons from four measured iterations: in this stage a khaki/tan beanie, dark-brown hair and warm-grey boots all read as white or skin-coloured in sun (up to hundreds of thousands of hits over a clip), so the final cloth is a darker olive beanie, near-neutral dark hair and near-neutral dark boots.
-- Actor scale 1.24 uniform x girth 1.2 [`brute_girth`] on X/Y (heavy-set build, same height). The browser still uses `scale 1.24` only (`enemy.js` not touched); to match, `this.root.scale.set(s * 1.2, s, s * 1.2)`.
-- Enemy fill: 4 shadowless directional lights (0.8 lux each [`enemy_fill`], yaw 0/90/180/270, pitch -30) on lighting channel 1 only; only the thug and brute are on channel 1. Without it the shaded flank of a walking enemy is near black.
-- Brute side shot: distance 700, aim 105, azimuth 180 [`brute_az`] (was 480/110/0: head cropped at the top of the frame). New shot 10 = brute orbit 360 deg in 6 s.
+**Sizes** (`tools/ue_char/people/measure_build.py`, rest pose, lineup actor scale applied; brute actor = 1.08 height x 1.32 X/Y girth, `people.json`): shoulder width thug 0.68 m, brute 0.93 m = **1.36x** (A-pose deltoid to deltoid); torso width 1.61x; chest depth 1.51x; hip width 1.60x; height 1.76 m vs 1.93 m (1.10x). `evidence/size_measure.json`, `evidence/thug_brute_front_compare.jpg` (front view at one scale with the shoulder lines).
 
-**Test (4K, brute only).** Two deterministic `-movie` runs of the same shot, 3840x2160:
-BEAUTY = `Char_Lineup`; MASK = `Char_Lineup_BruteMask` (built by the same script: identical actors and timing; brute unlit with `T_Brute_Regions`, every other character unlit yellow so it still occludes, black background, no lights).
-`measure_frames.py` classifies only pure-blue mask pixels (the brute's cloth), eroded 6 px, >= 14 px from face/hands and >= 30 px from any contaminated mask pixel (edge blends, other characters and their motion blur), then counts skin-like (hue 8-38, sat 0.22-0.65, value >= 0.42) and white-like (value >= 0.80, sat <= 0.18) pixels on the beauty frame. Control: the same detector on hand/face pixels fires on 24% (side) and 92% (orbit) of them, so it is not blind.
+**Lineup map** (`/Game/Tests/Characters/Char_Lineup`, now 75 s / 16 shots): shots 11-15 are new, on a straight lane at x = 3000 (`AWHCharLoopWalker` new `Line` mode + `RestartLine()`, `FWHShot.RestartWalkers` so each clip starts with the walkers in the same place): 11 thug + brute side-tracking together at 4.2 m (FOV 64), 12 thug at 3 m (FOV 62), 13 brute at 3 m (FOV 66), 14 thug face close-up, 15 brute face close-up. The mask-map / region-mask test of round 02 is off by default (`mask_map`); the old brute paint tools stay for the browser.
 
-| Run | Frames analysed (every 3rd from frame 30) | Cloth px judged | Skin-like (strict) | White-like | Largest flagged region |
-|---|---|---|---|---|---|
-| Side span (shot 5, 3.3 s) | 51 | 18,692,093 | 0 (loose threshold value >= 0.30: 0) | 10 px in 1 frame | 7 px |
-| Orbit 360 (shot 10, 6.3 s) | 111 | 50,134,901 | 0 (loose: 0) | 0 | 0 |
-
-Frames skipped: 6 of 57 side candidates and 6 of 117 orbit candidates (brute not in frame). Before the detector excluded other characters' blur, a hero motion-blur crossing in front of the brute produced thousands of false hits; that is why the mask run paints them yellow. Evidence: `round-02/captures/brute_test/` (3 side + 5 orbit 4K frames, both JSONs with per-frame counts, worst-frame overlays, a 4K side clip). Earlier iterations of this round failed the same test (earlier detector versions, so the counts are not comparable): a lighter olive beanie at tint 1.0 flagged white in the sun (795,049 px over the side span), brown hair flagged skin-like (9,590 px), a warm-grey boot heel flagged skin-like (a 535 px blob on the orbit). Each was fixed in the texture and the test re-run on the final assets above.
-Old map for comparison, texel level on the thug UVs: 149,841 skin-like and 97,688 white texels outside hands/face; new map 0 and 0. The round-01 clip itself was not re-measured (no mask exists for it).
-Internal render resolution of the 4K movie runs was not printed (`-perf` was off); per CAPTURE.md 2160p output renders at 1920x1080 internal, and the 4K stills run confirms `internal=1920x1080 (auto_display)`.
-
-**Browser.** `npm test` 15/15, `npx vite build` OK, `node tools/ue_char/brute/browser_check.mjs` (headless Chrome, port 5203) spawns `__cmb.debug.fight('b')`, confirms the brute mesh samples `brute_basecolor.webp` (2048x2048) and logs no console errors (screenshot in `round-02/captures/browser_brute_game.jpg`).
-
-## State after round 02 (all else as round 01)
-
-- **UE** (`/Game/Characters`, `/Game/Tests/Characters`, rebuilt from scratch by script, about 40 s headless): hero SK + 79 clips, thug + 5 suits + brute on the hero skeleton, 4 citizens, `M_Char_Suit` (+ lens materials), `ABP_*_Lineup`, plus new `T_Brute_Regions`, `M_Char_IDMask`, `MI_BruteMask`, `M_Char_MaskOther`, `MI_MaskOther`, maps `Char_Lineup` and `Char_Lineup_BruteMask` (test only).
-- **Lineup map** `/Game/Tests/Characters/Char_Lineup`: `AWHCharShowDirector` now has 11 shots, 51 s (0 hero turntable 6 s, 1 hero side 5, 2 hero 3/4 5, 3 suit close-up 4, 4 thug 4, 5 brute side 3, 6 citizens wide 5, 7 citizen side 4, 8 citizen 3/4 4, 9 AI suits 5, 10 brute orbit 6).
-- **Captures:** `round-02/captures/` (see `round-02/CAPTURES.md`).
-- **Not touched in round 02:** hero model/animation, AI suits, citizens, fauna, thug (still the round-01 hoodie/red-bandana texture on the same mesh), all C++.
+**Captures** (`round-03/CAPTURES.md`): one 75 s 1080p60 `-movie` run cut into clips; 4K stills rendered at NATIVE 3840x2160 (`-exec "r.ScreenPercentage 100"`; the round-02 critic noticed the round-02 "4K" stills were 1080p internal, upscaled).
 
 ## Commands
 
 ```
-# UE content (wipes + rebuilds /Game/Characters and /Game/Tests/Characters; runs the brute painter in 'prep')
-tools/ue_char/build_characters_headless.sh                 # all steps, waits while 3+ Unreal instances run
-tools/ue_char/build_characters_headless.sh '{"steps":"map","brute_girth":1.2}'   # map only (materials must exist)
-unreal/WebHomage/Scripts/build_editor.sh                   # after C++ changes (or after merging the integration branch)
-# brute texture alone
-tools/ue_char/brute/build_brute.sh                         # webp + PNG + region mask; add --audit-png X.png to audit any map on the thug UVs
-python3 tools/ue_char/brute/paint_brute.py --audit-png art/night1/characters/thug/tex/thug_basecolor.png
-blender -b -P tools/ue_char/brute/preview_brute.py -- /tmp/pv art/night1/characters/thug/tex/brute_basecolor.png --scale 1.24 --xy 1.2   # Blender stills (Blender's lighting differs from UE)
-# captures of the running game (offscreen, every launch waits for < 3 Unreal instances)
-tools/ue_char/capture_lineup.sh <out>                      # ONE 51 s 1080p60 -movie run, ffmpeg cuts 7 clips + 4 stills
-tools/ue_char/capture_4k_stills.sh <out>                   # 4K stills at 3,8,13,18,21 s + perf json (internal resolution)
-# 4K brute test: run_game.sh ... -res 3840x2160 -quit 3.3 -movie -- -WHCharShot=5   on Char_Lineup and on Char_Lineup_BruteMask, then
-python3 tools/ue_char/brute/measure_frames.py <beauty_frames> <mask_frames> out.json --step 3 --start 30 --overlay worst.jpg
-node tools/ue_char/brute/browser_check.mjs                 # browser brute load check (port 5203)
-# live editor (own instance, MCP :8772, python mailbox: tools/ue_char/uebox.py file.py | -c "code"); close it when idle
-tools/ue_char/launch_editor.sh ; pkill -9 -f "[c]haracters/unreal/WebHomage/WebHomage.uproject"
-# derived sources (git-ignored, regenerated by the build 'prep' step)
-python3 tools/ue_char/prep_glbs.py ; python3 tools/ue_char/extract_textures.py ; tools/ue_char/eval/export_citizens.sh
-python3 tools/ue_char/suitmaps/run.py --all [--from geom]  # suit PBR bake (Blender, ~2 min/suit)
+# UE content (wipes + rebuilds /Game/Characters and /Game/Tests/Characters; 'prep' builds the people; waits while 3+ Unreal instances run)
+tools/ue_char/build_characters_headless.sh
+unreal/WebHomage/Scripts/build_editor.sh                       # after C++ changes (Line mode, RestartLine, director RestartWalkers this round)
+# the people alone
+tools/ue_char/people/build_people.sh [--force]                 # prepare -> skinfit (cached) -> walks -> stripped GLBs + PNG atlases
+python3 tools/ue_char/people/prepare_person.py thug|brute      # ~8 s; outputs in _scratch/characters/r3/people
+python3 tools/ue_char/people/ortho.py PREPARED.glb out.png --view side|front|back --y0 1.40 --y1 1.82 --tex 4096   # metric textured view (no GPU)
+blender -b -P tools/ue_char/people/preview_fit.py -- FIT.glb OUT --clips walk,walkStreet --frames 2,8,14,20 --extra fit/walks.glb
+python3 tools/ue_char/people/measure_build.py [--out json]      # size ratios;  compare_front.py OUT.png = front view at one scale
+# captures (offscreen, every launch waits for < 3 Unreal instances)
+tools/ue_char/capture_lineup.sh <out>                           # ONE 75 s 1080p60 -movie run -> clips + stills
+tools/ue_char/capture_4k_stills.sh <out>                        # native 4K stills + perf json
+# round-02 tools (browser brute, 4K skin/white test): tools/ue_char/brute/*
+# live editor (own instance, MCP :8772, python mailbox): tools/ue_char/launch_editor.sh ; pkill -9 -f "[c]haracters/unreal/WebHomage/WebHomage.uproject"
 ```
 
 ## File map (what P2 owns)
 
 | Path | What |
 |---|---|
-| `unreal/WebHomage/Scripts/build_characters.py` | Idempotent UE build (steps prep, clean, tex, mat, mesh, citizens, rename, abp, map). Round 02: brute regions texture + mask materials, MI_Brute tint/spec, girth, enemy fill lights, brute orbit shot, mask map (built in the same loop as the lineup map) |
-| `unreal/WebHomage/Source/WebHomage/Characters/` | `WHCharAnimInstance`, `WHCharLoopWalker`, `WHCharShowDirector` (unchanged in round 02) |
-| `tools/ue_char/brute/` | `uvgeom.py`, `paint_brute.py`, `build_brute.sh`, `preview_brute.py`, `measure_frames.py`, `browser_check.mjs` |
-| `tools/ue_char/ue_wait.sh` | Polls every 60 s until fewer than 3 UnrealEditor processes run (owner rule); called by every launcher of mine |
-| `tools/ue_char/` | prep/strip GLB, texture extraction, normal convention test, mailbox, launch, headless build, capture scripts |
-| `tools/ue_char/eval/`, `tools/ue_char/suitmaps/` | Asset-eval renders, citizen rig/FBX, suit PBR bake |
-| `art/night1/characters/` | Derived PNG/FBX only (git-ignored `*.png *.fbx`) |
-| `public/assets/enemies/brute_basecolor.webp` | The brute map, now painted on the thug UVs (browser + UE) |
-| `docs/night1/characters/` | This file, `round-01/`, `round-02/` |
+| `tools/ue_char/people/` | `prepare_person.py`, `build_people.sh`, `make_walk.py`, `gltfio.py`, `ortho.py`, `preview_fit.py`, `measure_build.py`, `compare_front.py`, `inspect_raw.py`, `people.json` (brute scale/girth shared by the scripts) |
+| `tools/skinfit/skinfit.py` | `--weld`, `--spatial-smooth` added (default off) |
+| `unreal/WebHomage/Source/WebHomage/Characters/` | walker `Line` mode, `RestartLine()`, director `RestartWalkers` |
+| `unreal/WebHomage/Scripts/build_characters.py` | People folder, `MI_Street_*`, `ABP_Street_*`, walk import, lane walkers, shots 11-15, `brute_scale/brute_girth` from `people.json` |
+| `docs/night1/characters/round-03/` | `CAPTURES.md`, `captures/`, `evidence/` (own renders and JSON only; no reference images) |
 
 ## Local-only binaries (MANIFEST)
 
-Nothing below is committed. Everything is regenerable.
-- `unreal/WebHomage/Content/{Characters,Tests/Characters}`: UE assets (no LFS budget), rebuilt by the headless build. `DerivedDataCache/`, `Intermediate/` and `dist/` were deleted at the end of round 02.
-- `art/night1/characters/**/*.png, *.fbx` (about 60 MB).
-- `/Users/midir/sm2-n1/_scratch/characters/`: `ueimport/` (webp-free GLBs), `uebox/` (mailbox), `eval/`, `suits/`, `r2/` (round 02 scratch: `uvgeom.npz`, previews, 4K measurement frames, capture frames) was deleted after the push; `build_brute.sh` recreates `r2/uvgeom.npz` on demand.
-- No `.blend` kept.
+Nothing below is committed. Everything is regenerable from `~/sm2-assets/raw` (owner's, must exist) and the repo.
+- `unreal/WebHomage/Content/{Characters,Tests/Characters}`; `art/night1/characters/**/*.png, *.fbx` (incl. `people/*_basecolor.png`, 4096^2).
+- `/Users/midir/sm2-n1/_scratch/characters/`: `ueimport/` (stripped GLBs incl. `SK_Street_*.glb`, `SK_Street_Walks.glb`), `r3/people` (prepared meshes + atlases), `r3/fit` (skinfit outputs, `.sha` cache).
+- `DerivedDataCache/`, `Intermediate/`, `dist/` deleted at the end of the round.
 
 ## Gotchas
 
-Round 01 (still true): UE rejects `EXT_texture_webp`; Interchange scripting needs `AssetImportTask` + `InterchangePipelineStackOverride`; asset names come from the source file; skeletal material arrays come back as copies; skinned materials need `used_with_skeletal_mesh`; `VectorParameter` output is float4; `unreal.Rotator` is (roll, pitch, yaw) and the build's `spawn()` takes `rot = (yaw, pitch, roll)`; `-ExecutePythonScript` quits the editor; zsh does not word-split; below 60 fps the director clock drifts (use `-movie`); round-01 perf is not valid (GPU 91 % busy).
+Rounds 01-02 (still true): UE rejects `EXT_texture_webp`; Interchange scripting needs `AssetImportTask` + `InterchangePipelineStackOverride`; material sampler types must match the texture (masks texture = Masks sampler); `unreal.LightingChannels` needs `set_editor_property`; the build's `spawn()` takes `rot = (yaw, pitch, roll)`; use `pkill -f "[c]haracters/..."`; movie mode is brighter than real-time stills; every Unreal launch `-RenderOffScreen -NoSound` and waits while 3+ instances run.
 
-Round 02:
-1. **Material sampler types must match the texture.** A texture imported as `linear` (srgb off, character LOD group) is a *Masks* texture: `SAMPLERTYPE_COLOR` and `SAMPLERTYPE_LINEAR_COLOR` both fail to compile and UE silently draws WorldGridMaterial (log line "Failed to compile Material ... Sampler type is X, should be Masks"). Check `-abslog` for that line whenever a material looks grey.
-2. **Duplicating a map asset and editing it did not render (black).** Build the twin map in the same loop instead (`for MAP, MASK in variants`).
-3. **`unreal.LightingChannels` fields are read-only attributes**: use `chan.set_editor_property('channel1', True)`.
-4. **Post-process manual exposure** needs a large `auto_exposure_bias` (about +10 EV or more) for unlit emissive to show; the mask map now uses auto exposure with a black scene and unlit emissive (works).
-5. **`pkill -f` matches your own shell** if the pattern is in the command line: use `pkill -f "[c]haracters/..."`.
-6. **Movie mode looks brighter than real-time stills** (different exposure convergence); judge colours on the movie frames the critic sees.
-7. **Blender headless loads the BlenderMCP add-on** (harmless "unregister" traceback in the log); it does not open port 19891.
-8. **Owner rule 2026-09-29:** every Unreal launch `-RenderOffScreen -NoSound`; before launching, count `pgrep -fl "MacOS/UnrealEditor( |$)"` and wait (poll 60 s) while 3 or more run (`tools/ue_char/ue_wait.sh`); close the editor when idle. `capture_lineup.sh` therefore does one launch for all clips.
+Round 03:
+1. **Seam-duplicate vertices must share weights.** A skinned mesh whose UV-seam duplicates got different weights looks fine in the bind pose and cracks open in motion (see-through hairlines along every texture seam). `skinfit.py --weld`. Suspect any Tripo-derived skin (the citizens, the AI suits) that shows thin light lines when animated.
+2. **Layered garments interpenetrate** unless weights are smoothed across layers (`--spatial-smooth`).
+3. **Interchange imports animations on the 1/30 s grid only**: a clip length that is not a whole number of frames fails with "not compatible with import frame-rate 30 fps" and the second clip of a GLB is silently dropped (only the first `..._Anim` asset appears). Resample to k/30 s.
+4. **Blender 5.x slotted actions**: after `arm.animation_data.action = act` also set `arm.animation_data.action_slot = act.slots[0]`, or the pose stays in the bind pose.
+5. **Head landmarks for the bandana are per character** (`CFG` in `prepare_person.py`: eye, nose, ear-lobe, chin heights measured on the normalised mesh with `ortho.py`). A new person needs new numbers; the mask top must sit about 1.5 cm under the eye centre.
+6. **Skin and beard hues overlap the plaid red**: recolours need geometry (position) guards (`keep_skin`), not hue alone.
+7. **The lineup stage renders sRGB albedo about 3x brighter** than the texture (round 02), so real photographic albedo looks right and stylised dark palettes look washed; the 4-light enemy fill on lighting channel 1 stays.
+8. `pkill -f` and `rm -rf`: only inside this worktree or `_scratch/characters/` (owner hard limit 2026-09-29); the teardown at the end of the round uses a `case` check on the variable first.
 
-## Known problems (carried + new)
+## Against `docs/night1/characters/SPEC.md` (Opus-5.5-Loop-Night-1; lines that apply to enemies)
 
-- **Brute:** face is still the thug's flat painted mask (cartoon eyes, no folds); walks with the hero's walk clip (stiff, wide knees); girth is a uniform X/Y scale (head widens too); browser has no girth.
-- **Thug:** unchanged (round-01 critic: flat cartoon eye decals, mitten hands, stiff walk). The painter can be reused for thug variants B/C.
-- **Hero:** browser GLB has no TANGENT; lens material is a flat placeholder; no turn lean; the 5.6 m/s loop has no stride warping; the hop is a flat dive. The critic's suit-read notes (coarse weave, painted web lines, flat lenses) are open.
-- **Suits:** Qwen faint carved back-logo outline; Tripo UV fragmentation with seam dashes; all five walk in phase.
-- **Citizens:** glide in a stand pose in the lineup, long coats stretch, shard/white artifacts on the construction worker and businesswoman, accessories missing in UE.
-- **Perf:** one indicative run only: the 4K stills run (`round-02/captures/lineup4k_perf.json`, 18.98 s, 1094 frames, 3840x2160 output, internal 1920x1080): avg 17.35 ms (57.6 fps), p95 21.76 ms, p99 24.65 ms, one 2018 ms hitch, GPU avg 11.8 ms. `ioreg` Device Utilization was 69 % from other sessions right before it, so treat it as an upper bound on frame time, not a measurement of this piece.
+| line | target | thug / brute now |
+|---|---|---|
+| CH3 texel density (>= 680 texels/m) | 4K clothing | 1,949 (thug) and 1,947 (brute, mesh space) texels/m from a 4096^2 atlas; about 1,500 after the brute's actor scale. `evidence/texel_density.json` |
+| CH11 5-7 enemies in frame | fight framing | NOT met: the lineup shows 2 enemy characters (thug, brute). Open |
+| CH12 enemy screen height 0.16-0.60 | fight stills | pair shot (4.2 m, FOV 64): thug 0.59, brute 0.65 of frame height (camera geometry, not measured on pixels); the 3 m clips are close shots by design (0.85 / 0.94). Brute is above the line in the pair shot |
+| CH13 >= 5 outfit silhouettes, >= 2 weapon types among 7 thugs | variety | NOT met: 2 outfits, no weapons. Open (next: `CFG` entries + raw people 06 / 05 / 07, a bat and a pistol prop) |
+| CH14 modelled eyes/faces, five-finger hands, cloth folds, real shoes | side by side with thugs-close / thug-closeup | done in the meshes (`round-03/captures/*_face.mp4`, `*_4k.jpg`); the comparison is the critic's |
+| CH15 brute bulk | design choice | shoulder width 1.36x, torso 1.61x, chest depth 1.51x, hips 1.60x, height 1.10x |
+| CH18 zero seam cracks / sparkle pixels at native 4K | rule | cause fixed (weld); checked by eye on the 11 native-4K stills and the 3 m clips, no per-pixel crack detector was run on these two meshes (round 02's mask test does not apply: the new meshes have no region-mask map) |
+| CH9 foot slide <= 3 cm | engineering | the walk clips keep every ankle within 9.6 mm of the hero walk's, and the walkers move at each clip's natural speed (160 / 142.2 cm/s), so no slide by construction; not measured with engine telemetry |
+| CH6, CH7, CH10 | run cadence, sprint lean, pose pops | not touched (hero run unchanged; jog / run / sprint on the street people are the hero clips; blends not exercised) |
 
-## Round 03 should look at
+## No copied IP (owner rule)
 
-1. The next critic's single biggest gap. Likely candidates from round 01: civilians (real walk cycle with foot lock, kill the shard artifacts), then hero suit read (lenses, web lines, weave scale) and hero run (lean, arm swing, replace the dive hop, desync suit phases).
-2. Thug: apply the same UV-role painter approach (new palette, beanie/hood, bandana) and a real face (paint or a sculpted head).
-3. Give the brute its own walk (hero walk is used) and, if wanted, mirror girth in `enemy.js`.
-4. A perf pass on an idle GPU.
+The two people come from the owner's own Tripo generations; nothing on them is taken from a reference game. Checked on the 4096^2 atlases at reduced scale and on the native-4K stills: no readable lettering or logo on the jacket, vest, shirt, jeans, boots or bandana; the two pieces of invented ornamental metalwork on the thug (belt buckle with engraved pattern, key-chain with pseudo-lettering) were painted over with plain dark steel; the bandana print is a generic dot/ring lattice made by `prepare_person.py`. Small details (zip-pull faces, label stitching, boot-sole tread) were not inspected texel by texel. The hero's suit design is a separate open brand flag (see Known problems).
+
+## Known problems
+
+- **Thug / brute:** the meshes are 8.4k tris with 5-finger hands but low-detail fingers; faces are photo-textured (no facial animation, eyes do not move); the Tripo texture carries baked lighting (a soft AO-like shading, sun-side cloth does not darken); hair and beanie are cloth-shaded (no strand or knit shader); the bandana has geometric folds but no normal map. The walk is one clip (`walkStreet` / `walkBrute`) with no start/stop, turns, or run variants: jog/run/sprint and the 13 thug fight clips are the hero/thug ones, played on new proportions (the brute's arms/hands are scaled with the actor, so punches reach further and may clip the wider torso). Only ONE thug variant (browser has three colour variants; UE lineup shows one).
+- **Brute palette:** muted; a charcoal beanie, brown-grey flannel sleeves, black vest, maroon bandana. The plaid check is intentionally flattened. Face is hidden behind the bandana below the eyes.
+- **Hero:** unchanged; the round-02 critic's open items stand (coarse weave, flat lenses, thin web lines, upright jog, dive-to-run snap). **Brand flag from the round-02 critic:** the hero's white emblem, wrist cuffs and red leg stripes read as a near-copy of a studio suit design and should be redesigned.
+- **Civilians:** unchanged; they still stand or glide in the lineup and carry the white seam cracks (same skinning cause as gotcha 1: re-weld their weights; their rig is the 18-bone crowd rig, `crowdfit`).
+- **Perf:** one native-4K run under `gpu_slot.sh perf` (`round-03/perf_gpu.json`, `perf_native4k.json`, `perf_summary.txt`): shots 11-13 (lane: thug and brute walking, 4 enemy fill lights, no other characters near), 458 frames over 15 s at 3840x2160 internal (`r.ScreenPercentage 100`): avg 32.8 ms (30.5 fps), p50 32.1, p95 44.7, p99 49.9, max 57.4 ms, GPU avg 30.9 ms. It is **contaminated**: the lock was exclusive and the GPU was at 1 % before the run (after a 671 s wait), but another session's unwrapped traversal capture started during it (util during avg 67.6 %, max 100 %). Treat the numbers as an upper bound; re-baseline when the GPU is idle.
+
+## Round 04 should look at
+
+1. The next critic's single biggest gap. Likely: civilians (real walk cycles, weld the crowd weights, six or more distinct people, seams at native 4K), then the hero suit read and run, then a second and third thug variant on the same pipeline (`CFG` entries + raw people 06 hoodie/cargo, 05 black tee), and thug clips retargeted for the taller/wider brute.
+2. Apply `--weld` + `--spatial-smooth` to the five AI suits and to the citizen fit and rebuild their maps.
+3. Brute/thug hands: a glove or a hand-mesh swap for crisper fingers; a normal map for the bandana; soften baked lighting.

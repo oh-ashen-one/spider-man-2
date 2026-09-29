@@ -19,7 +19,8 @@ void AWHCharLoopWalker::BeginPlay()
 	Center = GetActorLocation();
 	Theta = FMath::DegreesToRadians(StartAngle);
 	Yaw = GetActorRotation().Yaw;
-	if (Mode == EWHWalkerMode::Loop) Tick(0.f);
+	LineD = LineStart;
+	if (Mode == EWHWalkerMode::Loop || Mode == EWHWalkerMode::Line) Tick(0.f);
 }
 
 void AWHCharLoopWalker::Tick(float Dt)
@@ -43,6 +44,13 @@ void AWHCharLoopWalker::Tick(float Dt)
 		SetActorLocationAndRotation(P + FVector(0, 0, Z), FRotator(0.f, T.Rotation().Yaw, 0.f));
 		if (AI) { AI->ForcedSpeed = Speed; AI->bForceAir = bAir; AI->ForcedVerticalSpeed = Vz; }
 	}
+	else if (Mode == EWHWalkerMode::Line)
+	{
+		LineD += Speed * Dt;
+		const float X = FMath::Fmod(LineD, FMath::Max(100.f, LineLength)) - LineLength * 0.5f;
+		SetActorLocationAndRotation(Center + FVector(X, 0.f, 0.f), FRotator(0.f, Yaw, 0.f));
+		if (AI) AI->ForcedSpeed = Speed;
+	}
 	else if (Mode == EWHWalkerMode::Turntable)
 	{
 		Yaw += TurntableDegPerSec * Dt;
@@ -50,4 +58,10 @@ void AWHCharLoopWalker::Tick(float Dt)
 		if (AI) AI->ForcedSpeed = Speed;
 	}
 	else if (AI) AI->ForcedSpeed = 0.f;
+}
+
+void AWHCharLoopWalker::RestartLine()
+{
+	LineD = LineStart;
+	if (Mode == EWHWalkerMode::Line) Tick(0.f);
 }

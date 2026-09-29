@@ -32,6 +32,8 @@ struct WEBHOMAGE_API FWHShot
 	/** Wide shots: fixed camera location. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") FVector WorldLocation = FVector::ZeroVector;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") FString Label;
+	/** Line-mode walkers restarted when this shot begins (so a side-tracking clip always starts with the walkers at the same place). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> RestartWalkers;
 };
 
 UCLASS()
