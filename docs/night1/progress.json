@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 10:25",
+ "updated": "2026-09-29 09:43",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -237,7 +237,7 @@
    "notes": "Up from round 3: body 2\u21924, arc 3\u21924, moves 2\u21923. The builder's telemetry claimed the hero filled 25% of frame height; pixels show 4\u20136%. Secondary: 1.2\u20131.5 s rope-less drifts; wall-run camera faces the wall; no landing crouch; torso flat against the rope at the arc bottom."
   },
   {
-   "t": "10:20",
+   "t": "09:43",
    "piece": "P3 Traversal",
    "round": 5,
    "verdict": "fails",
@@ -331,15 +331,15 @@
    "text": "Blocker: the GitHub account's Git LFS budget is exhausted, so reference clips and Unreal binary snapshots can't be pushed anywhere. Unreal content is script-generated only; reference clips stay local on the Studio. Agents P1, P2, P3 resumed."
   },
   {
-   "t": "09:55",
+   "t": "09:33",
    "text": "Owner: Sonnet 5.5 is the default subagent model (extra-high thinking); Opus 5.5 only for critics, deep engineering, integration. Rule landed in global AGENTS.md (main) and memory."
   },
   {
-   "t": "10:00",
+   "t": "09:38",
    "text": "Started Sonnet 5.5 xhigh builders: P4 Look/lighting/4K perf round 1, F3 browser baseline finish, F2 reference index."
   },
   {
-   "t": "10:20",
+   "t": "09:43",
    "text": "Traversal R5 merged; critic FAILS with gains on arc/web/moves; next gap = wall-run. Traversal builder hands off to a fresh Opus agent (context limit)."
   }
  ]
