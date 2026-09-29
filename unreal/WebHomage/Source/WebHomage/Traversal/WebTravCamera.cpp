@@ -23,7 +23,7 @@ namespace
 		for (int32 A = 0; A < 3; ++A) { SD(V[A], Vel[A], Target[A], St, Dt); }
 	}
 	double Noise(double T, double S) { return FMath::Sin(T * 1.7 + S) * 0.5 + FMath::Sin(T * 3.1 + S * 2.3) * 0.3 + FMath::Sin(T * 5.3 + S * 4.1) * 0.2; }
-	FName N_vault(TEXT("vault")), N_wallRun(TEXT("wallRun"));
+	FName N_vault(TEXT("vault")), N_wallRun(TEXT("wallRun")), N_topOut(TEXT("topOut"));
 }
 
 void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
@@ -132,7 +132,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	else if (M == EWebTravMode::Perch) { WantDist = 4.3; WantH = 0.25; WantSide = 0.4; }
 	if (M == EWebTravMode::Land || bLandSub) WantDist = 4.2;
 	if (bLedgeSub) { WantH = 1.4; Pitch = Damp(Pitch, 0.42, 4, Dt); }
-	const double WantFov = 58.0 + 13.0 * Smooth(Speed, 12, 44) + (bDive ? 5.0 : 0.0);
+	const double WantFov = 58.0 + 13.0 * Smooth(Speed, 12, 44) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
 	SD(Dist, DistV, WantDist, 0.55, Dt);
 	SD(HeightOff, HeightOffV, WantH, 0.5, Dt);
 	SD(SideOff, SideOffV, WantSide, 0.6, Dt);
@@ -162,7 +162,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	R.Pitch += FMath::RadiansToDegrees(Sh * 0.035 * Noise(Time * 25.0, 1.0));
 	R.Yaw += FMath::RadiansToDegrees(Sh * 0.035 * Noise(Time * 24.0, 7.0));
 	CamRot = R;
-	OutVFov = Fov + Punch + 9.0 * FMath::Max(0.0, KickK);
+	OutVFov = Fov + Punch + 9.0 * FMath::Max(0.0, KickK) + FMath::RadiansToDegrees(AttachFov);
 	(void)LookAt;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
 	const bool bGroundish = M == EWebTravMode::Ground || M == EWebTravMode::Land || M == EWebTravMode::Wall;
@@ -188,7 +188,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	{
 		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp((P.HAbove - 8.0) / 32.0, 0.0, 1.0)) - P.Vel.Z * 0.0025;
 	}
-	else if (P.Mode == EWebTravMode::Wall) SWant = 0.5;
+	if (P.Mode == EWebTravMode::Wall || P.Sub == N_topOut) SWant = WallFrameS;
 	SWant = FMath::Clamp(SWant, 0.32, 0.72);
 	SD(FrameS, FrameSV, SWant, 0.22, Dt);
 	// ---- desired position: behind the (lagged) heading yaw, above the hero
@@ -207,11 +207,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SDV(CamXY, CamXYV, FVector(Desired.X, Desired.Y, 0), 0.07, Dt);
 	FVector HD = FVector(CamXY.X - Hero.X, CamXY.Y - Hero.Y, 0);
 	const double HL = HD.Size();
-	const double MaxH = 6.5 + 1.3 * FMath::Max(0.0, KickK);
-	if (HL < 1e-3) HD = BackR * 4.0; else if (HL < 4.0) HD *= 4.0 / HL; else if (HL > MaxH) HD *= MaxH / HL;
+	const double MaxH = 5.0 + 1.3 * FMath::Max(0.0, KickK);
+	if (HL < 1e-3) HD = BackR * 3.5; else if (HL < 3.5) HD *= 3.5 / HL; else if (HL > MaxH) HD *= MaxH / HL;
 	CamXY = FVector(Hero.X + HD.X, Hero.Y + HD.Y, 0);
 	SD(CamZ, CamZV, ZWant, 0.05, Dt);
-	CamZ = FMath::Clamp(CamZ, Hero.Z + 1.6 + OU, Hero.Z + 3.2 + OU);
+	CamZ = FMath::Clamp(CamZ, Hero.Z + 0.7 + OU, Hero.Z + 1.8 + OU);
 	FVector Cam(CamXY.X, CamXY.Y, CamZ);
 	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /
 	// rotated positions and move there smoothly (held ~1 s so the camera does not flicker)
@@ -251,8 +251,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	};
 	FVector Tmp;
 	const double DefClear = ClearTo(Candidate(0, 0), Tmp);
-	if (DefClear >= MinHeroDist + 2.0) { OccYawGoal = 0; OccUpGoal = 0; }
-	else if ((OccYawGoal == 0 && OccUpGoal == 0) || ClearTo(Candidate(OccYawGoal, OccUpGoal), Tmp) < 4.0)
+	const double DefLen = FVector::Dist(Candidate(0, 0), Hero); // unobstructed distance of the default spot
+	if (DefClear >= DefLen - 0.3) { OccYawGoal = 0; OccUpGoal = 0; }
+	else if ((OccYawGoal == 0 && OccUpGoal == 0) || ClearTo(Candidate(OccYawGoal, OccUpGoal), Tmp) < DefLen - 0.8)
 	{ // default spot blocked and no clear orbit held: search raised / rotated spots
 		double BestC = -1e9, BY = 0, BU = 0;
 		for (double Up : { 0.0, 2.0, 4.0, 6.0, 9.0 })
@@ -261,7 +262,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			{
 				const double C2 = ClearTo(Candidate(DYw, Up), Tmp);
 				const double Score = FMath::Min(C2, 6.0) - 0.8 * FMath::Abs(DYw) - 0.25 * Up - (FMath::Abs(DYw - OccYawGoal) + FMath::Abs(Up - OccUpGoal) * 0.2) * 0.3;
-				if (C2 >= 4.0 && Score > BestC) { BestC = Score; BY = DYw; BU = Up; }
+				if (C2 >= DefLen - 0.8 && Score > BestC) { BestC = Score; BY = DYw; BU = Up; }
 			}
 		}
 		if (BestC > -1e8) { OccYawGoal = BY; OccUpGoal = BU; }
@@ -270,7 +271,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(OccUp, OccUpV, OccUpGoal, 0.3, Dt);
 	FVector Got;
 	ClearTo(Cam, Got);
-	if (FVector::Dist(Got, Hero) < 4.0)
+	if (FVector::Dist(Got, Hero) < 3.0)
 	{ // too close even after easing: cut to the chosen clear orbit instead of passing through the hero
 		OccYawOff = OccYawGoal; OccUp = OccUpGoal; OccYawOffV = OccUpV = 0;
 		ClearTo(Candidate(OccYawGoal, OccUpGoal), Got);
@@ -287,6 +288,28 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	const double GY = World.GroundHeight(Cam.X, Cam.Y, Cam.Z + 0.3) + 0.4;
 	if (Cam.Z < GY) Cam.Z = GY;
+	// ---- round 06: wall-run camera, blended in / out with a spring (held through the rising half of the top-out, so the
+	// hero clears the roof edge in frame, then handed back to the chase camera which comes up over the edge)
+	{
+		const bool bOnWall = P.Mode == EWebTravMode::Wall;
+		const bool bWant = bOnWall || (P.Sub == N_topOut && P.Vel.Z > 0.0);
+		SD(WallK, WallKV, bWant ? 1.0 : 0.0, bWant ? 0.16 : 0.22, Dt);
+		WallK = FMath::Clamp(WallK, 0.0, 1.0);
+		if (bOnWall) { WallHeroXY = FVector(Hero.X, Hero.Y, 0); bWallXY = true; }
+		if (WallK > 0.001)
+		{
+			FVector N(P.WallNormal.X, P.WallNormal.Y, 0.0);
+			N = N.SizeSquared() > 0.01 ? N.GetSafeNormal() : -ForwardFlat();
+			const FVector Base = (bOnWall || !bWallXY) ? Hero : FVector(WallHeroXY.X, WallHeroXY.Y, Hero.Z);
+			const double Floor = World.GroundHeight(Base.X + N.X * WallCamOut, Base.Y + N.Y * WallCamOut, Hero.Z + 0.5);
+			const double WZ = FMath::Max(Hero.Z - WallCamBelow, Floor + 0.6);
+			const double Dz = Hero.Z - WZ;
+			const double Out = FMath::Max(WallCamOut, FMath::Sqrt(FMath::Max(0.0, WallCamDist * WallCamDist - Dz * Dz)));
+			FVector WallCam(Base.X + N.X * Out, Base.Y + N.Y * Out, WZ), WallClear;
+			ClearFrom(From, WallCam, WallClear);
+			Cam = FMath::Lerp(Cam, WallClear, Smooth(WallK, 0.0, 1.0));
+		}
+	}
 	CamPos = Cam;
 	HeroDist = FVector::Dist(CamPos, Hero);
 	bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
@@ -296,7 +319,42 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	const double DownToHero = FMath::Atan2(-ToHero.Z, HLen);
 	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
 	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
-	const double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(8.0), FMath::DegreesToRadians(32.0));
+	// (round 06: on the wall the lower clamp opens up to an 80 deg look UP the facade)
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(5.0, -80.0, Smooth(WallK, 0.0, 1.0))),
+		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
+		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
+		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
+	// round 05: at each web attach, look up enough that the anchor on the facade (and a band of sky) is on screen for
+	// ~0.7 s, then settle back (spring); the hero stays in frame below
+	double LookWant = 0.0, FovWant = 0.0;
+	if (bSwinging && P.bHasAnchor && P.SwingT < 0.5)
+	{
+		const FVector ToA = P.Anchor - CamPos;
+		const double UpToAnchor = FMath::Atan2(ToA.Z, FMath::Max(0.1, FVector2D(ToA.X, ToA.Y).Size()));
+		const double TopM = FMath::DegreesToRadians(4.0), BotM = FMath::DegreesToRadians(8.0);
+		// if anchor (top) and hero (bottom) cannot both fit, widen the view for the attach beat (<= 20 deg)
+		const double Span = UpToAnchor + DownToHero + TopM + BotM;
+		FovWant = FMath::Clamp(Span - VFov, 0.0, FMath::DegreesToRadians(26.0));
+		const double Half = (VFov + FovWant) * 0.5;
+		const double Need = UpToAnchor - (Half - TopM);             // pitch-up that puts it TopM inside the top
+		const double HeroLimit = (Half - BotM) - DownToHero;        // keep the hero BotM inside the bottom
+		LookWant = FMath::Max(0.0, FMath::Min(Need + PitchDown, HeroLimit + PitchDown));
+	}
+	// horizontal: turn toward an anchor that is outside the sides (hero kept 10 deg inside the opposite edge)
+	double YawWant = 0.0;
+	const double ToHeroYaw = FMath::Atan2(ToHero.Y, ToHero.X);
+	if (bSwinging && P.bHasAnchor && P.SwingT < 0.5)
+	{
+		const FVector ToA = P.Anchor - CamPos;
+		const double HalfH = FMath::Atan(FMath::Tan((VFov + FovWant) * 0.5) * 16.0 / 9.0);
+		const double DA = FMath::Atan2(FMath::Sin(FMath::Atan2(ToA.Y, ToA.X) - ToHeroYaw), FMath::Cos(FMath::Atan2(ToA.Y, ToA.X) - ToHeroYaw));
+		const double Over = FMath::Abs(DA) - (HalfH - FMath::DegreesToRadians(5.0));
+		if (Over > 0) YawWant = FMath::Sign(DA) * FMath::Min(Over, HalfH - FMath::DegreesToRadians(10.0));
+	}
+	SD(AttachYaw, AttachYawV, YawWant, P.SwingT < 0.5 ? 0.035 : 0.3, Dt);
+	SD(AttachLook, AttachLookV, LookWant, P.SwingT < 0.5 ? 0.035 : 0.3, Dt);
+	SD(AttachFov, AttachFovV, FovWant, P.SwingT < 0.5 ? 0.035 : 0.3, Dt);
+	PitchDown -= AttachLook;
 	Pitch = PitchDown; // keep the orbit state coherent for Forward()
-	CamRot = FRotator(FMath::RadiansToDegrees(-PitchDown), FMath::RadiansToDegrees(FMath::Atan2(ToHero.Y, ToHero.X)), 0);
+	CamRot = FRotator(FMath::RadiansToDegrees(-PitchDown), FMath::RadiansToDegrees(ToHeroYaw + AttachYaw), 0);
 }

@@ -1,0 +1,129 @@
+// Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+#include "Characters/WHCharAnimInstance.h"
+#include "Animation/AnimSequence.h"
+#include "AnimationRuntime.h"
+#include "Animation/AnimationPoseData.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/CharacterMovementComponent.h"
+
+void UWHCharAnimInstance::NativeInitializeAnimation()
+{
+	Super::NativeInitializeAnimation();
+	Loco.RemoveAll([](const FWHLocoSample& S) { return S.Clip == nullptr || S.Speed <= 0.f; });
+	Loco.Sort([](const FWHLocoSample& A, const FWHLocoSample& B) { return A.Speed < B.Speed; });
+	bHasLast = false;
+}
+
+void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
+{
+	Super::NativeUpdateAnimation(Dt);
+	if (Dt <= 0.f) return;
+	USkeletalMeshComponent* Comp = GetSkelMeshComponent();
+	AActor* Owner = GetOwningActor();
+	FVector Vel = FVector::ZeroVector;
+	bool bAir = bForceAir;
+	float Vz = ForcedVerticalSpeed;
+	if (const ACharacter* C = Cast<ACharacter>(Owner))
+	{
+		if (const UCharacterMovementComponent* M = C->GetCharacterMovement())
+		{
+			Vel = M->Velocity; bAir = bAir || M->IsFalling(); if (!bForceAir) Vz = Vel.Z;
+		}
+	}
+	else if (Comp)
+	{
+		const FVector P = Comp->GetComponentLocation();
+		if (bHasLast) Vel = (P - LastPos) / Dt;
+		LastPos = P; bHasLast = true;
+	}
+	const float Measured = ForcedSpeed >= 0.f ? ForcedSpeed : FVector(Vel.X, Vel.Y, 0.f).Size();
+	SmoothedSpeed = FMath::FInterpTo(SmoothedSpeed, Measured, Dt, 8.f);
+	Speed = SmoothedSpeed; VerticalSpeed = Vz; bInAir = bAir;
+
+	// ---- locomotion 1D blend with a shared phase
+	GameLayers.Reset();
+	float LocoRate = 0.f;
+	int32 I0 = -1, I1 = -1; float A = 0.f;
+	if (Loco.Num() > 0)
+	{
+		if (Speed <= Loco[0].Speed) { I0 = I1 = 0; }
+		else if (Speed >= Loco.Last().Speed) { I0 = I1 = Loco.Num() - 1; }
+		else
+		{
+			for (int32 i = 0; i + 1 < Loco.Num(); ++i)
+				if (Speed >= Loco[i].Speed && Speed <= Loco[i + 1].Speed)
+				{ I0 = i; I1 = i + 1; A = (Speed - Loco[i].Speed) / FMath::Max(1.f, Loco[i + 1].Speed - Loco[i].Speed); break; }
+		}
+		const float L0 = Loco[I0].Clip->GetPlayLength(), L1 = Loco[I1].Clip->GetPlayLength();
+		const float NatV = FMath::Lerp(Loco[I0].Speed, Loco[I1].Speed, A);
+		const float NatRate = FMath::Lerp(1.f / FMath::Max(0.05f, L0), 1.f / FMath::Max(0.05f, L1), A);
+		const float Ratio = FMath::Clamp(FMath::Max(Speed, Loco[0].Speed * 0.5f) / NatV, 0.3f, 2.5f);
+		LocoRate = NatRate * FMath::Pow(Ratio, CadenceExp);
+		Phase = FMath::Fmod(Phase + Dt * LocoRate, 1.f);
+	}
+	IdleTime += Dt;
+	const float MoveW = Idle ? FMath::Clamp((Speed - IdleSpeed) / FMath::Max(1.f, (Loco.Num() ? Loco[0].Speed : 150.f) * 0.5f - IdleSpeed), 0.f, 1.f) : 1.f;
+
+	// ---- air / land
+	if (bAir && !bWasInAir) AirTime = 0.f;
+	if (!bAir && bWasInAir) LandTime = 0.f;
+	bWasInAir = bAir;
+	AirTime += Dt; LandTime += Dt;
+	AirAlpha = FMath::FInterpTo(AirAlpha, bAir ? 1.f : 0.f, Dt, bAir ? 14.f : 10.f);
+	FallAlpha = FMath::FInterpTo(FallAlpha, (Vz < 50.f || !JumpUp) ? 1.f : 0.f, Dt, 6.f);
+	float LandW = 0.f;
+	if (Land && !bAir)
+	{
+		const float LL = Land->GetPlayLength();
+		if (LandTime < LL) LandW = FMath::Clamp(1.f - LandTime / (0.8f * LL), 0.f, 1.f) * FMath::Clamp(1.f - Speed / 600.f, 0.25f, 1.f);
+	}
+	const float GroundW = (1.f - AirAlpha) * (1.f - LandW);
+
+	auto Push = [this](UAnimSequence* S, float T, float W, bool bLoop)
+	{
+		if (!S || W <= 1e-3f) return;
+		FWHAnimLayer L; L.Seq = S; L.Time = bLoop ? FMath::Fmod(T, S->GetPlayLength()) : FMath::Clamp(T, 0.f, S->GetPlayLength()); L.Weight = W; L.bLoop = bLoop;
+		GameLayers.Add(L);
+	};
+	if (Idle) Push(Idle, IdleTime, GroundW * (1.f - MoveW), true);
+	if (I0 >= 0)
+	{
+		Push(Loco[I0].Clip, Phase * Loco[I0].Clip->GetPlayLength(), GroundW * MoveW * (I0 == I1 ? 1.f : 1.f - A), true);
+		if (I1 != I0) Push(Loco[I1].Clip, Phase * Loco[I1].Clip->GetPlayLength(), GroundW * MoveW * A, true);
+	}
+	Push(Land, LandTime, (1.f - AirAlpha) * LandW, false);
+	Push(JumpUp, AirTime, AirAlpha * (1.f - FallAlpha), false);
+	Push(Fall, AirTime, AirAlpha * FallAlpha, true);
+}
+
+void FWHCharAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds)
+{
+	FAnimInstanceProxy::PreUpdate(InAnimInstance, DeltaSeconds);
+	if (UWHCharAnimInstance* I = Cast<UWHCharAnimInstance>(InAnimInstance)) Layers = I->GameLayers;
+}
+
+bool FWHCharAnimProxy::Evaluate(FPoseContext& Output)
+{
+	float Acc = 0.f;
+	bool bFirst = true;
+	for (const FWHAnimLayer& L : Layers)
+	{
+		if (!L.Seq || L.Weight <= 0.f) continue;
+		if (bFirst)
+		{
+			FAnimationPoseData Out(Output);
+			L.Seq->GetAnimationPose(Out, FAnimExtractContext(double(L.Time), false, FDeltaTimeRecord(), L.bLoop));
+			Acc = L.Weight; bFirst = false;
+			continue;
+		}
+		FPoseContext Tmp(Output), Res(Output);
+		FAnimationPoseData TmpData(Tmp);
+		L.Seq->GetAnimationPose(TmpData, FAnimExtractContext(double(L.Time), false, FDeltaTimeRecord(), L.bLoop));
+		FAnimationPoseData OutData(Output), ResData(Res);
+		FAnimationRuntime::BlendTwoPosesTogether(OutData, TmpData, Acc / (Acc + L.Weight), ResData);
+		Acc += L.Weight;
+		Output = Res;
+	}
+	if (bFirst) Output.ResetToRefPose();
+	return true;
+}

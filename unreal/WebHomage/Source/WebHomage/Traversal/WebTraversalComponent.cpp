@@ -14,7 +14,7 @@ namespace
 	WT_NAME(pointLaunch) WT_NAME(wallJump) WT_NAME(zipPull)
 	WT_NAME(swingLow) WT_NAME(swingBottom) WT_NAME(swingHigh) WT_NAME(wallKick)
 	WT_NAME(zipFire) WT_NAME(zipFlight) WT_NAME(zipCatch) WT_NAME(perchLand) WT_NAME(perchIdle)
-	WT_NAME(crawl) WT_NAME(wallRun) WT_NAME(wallRunSide) WT_NAME(cornerWrap) WT_NAME(wallZip)
+	WT_NAME(crawl) WT_NAME(wallRun) WT_NAME(wallRunSide) WT_NAME(cornerWrap) WT_NAME(wallZip) WT_NAME(topOut) WT_NAME(landTopOut)
 	WT_NAME(tuckFlip) WT_NAME(layout) WT_NAME(corkscrew) WT_NAME(scissor)
 	WT_NAME(low) WT_NAME(fire) WT_NAME(flight) WT_NAME(catch)
 	// events
@@ -53,7 +53,7 @@ namespace
 	// quick web boost (Q / L1, air only)
 	struct { double Dv = 12, HCap = 40, Cd = 0.55, MinD = 25, MaxD = 80, NearD = 12, Web = 0.26, Dur = 0.62; } QUICK;
 
-	bool IsLand(FName S) { return S == N_landLight || S == N_landMedium || S == N_landHard || S == N_landRoll; }
+	bool IsLand(FName S) { return S == N_landLight || S == N_landMedium || S == N_landHard || S == N_landRoll || S == N_landTopOut; }
 }
 
 UWebTraversalComponent::UWebTraversalComponent()
@@ -129,6 +129,7 @@ void UWebTraversalComponent::SetMode(EWebTravMode M, FName Sub)
 		UE_LOG(LogWebHomage, Error, TEXT("[traversal] BUG: left 'swing' -> '%d/%s' while the swing button is held (web must stay attached)"), int32(M), *Sub.ToString());
 	}
 	if (S.Mode != M) S.ModeT = 0;
+	if (M != EWebTravMode::Air) S.bTopOut = false;
 	S.Mode = M;
 	SetSub(Sub);
 }
@@ -185,7 +186,7 @@ void UWebTraversalComponent::StepGround(double Hs, FWebTravInput& I)
 		if (S.Sub == N_landRoll) S.Speed = FMath::Max(S.Speed - 6 * Hs, FMath::Min(S.Speed, 6.0));
 		else if (S.LandLock > 0) S.Speed = FMath::Max(0.0, S.Speed - 40 * Hs);
 		const bool bCancel = S.LandLock <= 0 && (Mag > 0.2 || I.bJumpPressed || I.bJump);
-		const double Lim = S.Sub == N_landHard ? 0.75 : S.Sub == N_landRoll ? 0.6 : S.Sub == N_landMedium ? 0.35 : 0.18;
+		const double Lim = S.Sub == N_landHard ? 0.75 : S.Sub == N_landRoll ? 0.6 : S.Sub == N_landTopOut ? 0.62 : S.Sub == N_landMedium ? 0.35 : 0.18;
 		if (S.SubT > Lim || bCancel) SetSub(N_idle);
 	}
 	const bool bLocked = bLanding && S.LandLock > 0;
@@ -484,7 +485,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	// sub-state
 	double Timed = -1;
 	if (S.Sub == N_jumpLaunch) Timed = 0.16; else if (S.Sub == N_release) Timed = 0.4; else if (S.Sub == N_trick) Timed = S.TrickDur > 0 ? S.TrickDur : 0.85;
-	else if (S.Sub == N_pointLaunch) Timed = 0.45; else if (S.Sub == N_wallJump) Timed = 0.3; else if (S.Sub == N_zipPull) Timed = 0.28; else if (S.Sub == N_vault) Timed = 0.3;
+	else if (S.Sub == N_pointLaunch) Timed = 0.45; else if (S.Sub == N_topOut) Timed = 1.6; else if (S.Sub == N_wallJump) Timed = 0.3; else if (S.Sub == N_zipPull) Timed = 0.28; else if (S.Sub == N_vault) Timed = 0.3;
 	if (Timed < 0 || S.SubT > Timed)
 	{
 		if (S.Sub == N_trick) S.Trick = NAME_None;
@@ -500,6 +501,7 @@ void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 	S.bAirTrickUsed = false; S.AirTapT = -9;
 	S.NoAnchorT = 0; S.bGliding = false; S.bGroundSwing = false;
 	const double Impact = -S.Vel.Z, Drop = S.ApexZ - F;
+	const bool bFromTopOut = S.bTopOut; // EnterGround clears it
 	S.Pos.Z = F + H; S.FloorZ = F;
 	FVector InD = InputDir(I);
 	FVector HV;
@@ -514,9 +516,14 @@ void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 	else if (Impact < 13 && Drop < 6) { SetSub(N_landLight); S.LandLock = 0; S.Speed = bHolding ? HS : HS * 0.8; }
 	else if (Impact < 23 && Drop < 16) { SetSub(N_landMedium); S.LandLock = bHolding ? 0.06 : 0.14; S.Speed = HS * (bHolding ? 0.7 : 0.45); }
 	else { SetSub(N_landHard); S.LandLock = 0.42; S.Speed = 0; }
+	if (bFromTopOut)
+	{ // round 06: wall-run top-out lands in a planted crouch (hand down), holds, then settles up into the stand
+		SetSub(N_landTopOut); S.LandLock = 0.34; S.Speed = FMath::Min(HS * 0.3, 2.0); S.LandSeverity = FMath::Max(Sev, 0.3);
+		if (bHV) S.Facing = Yaw(HV);
+	}
 	S.bCharging = false; S.JumpCharge = 0;
 	S.Carry = FVector::ZeroVector;
-	Emit(N_land, S.Sub == N_idle ? 0.f : float(Sev));
+	Emit(N_land, S.Sub == N_idle ? 0.f : float(S.LandSeverity));
 }
 
 // ------------------------------------------------------------------ corridor keeping (swing / air chains stay in the street canyon)
@@ -1355,10 +1362,12 @@ bool UWebTraversalComponent::StartWallHop(const FVector& N, bool bFast)
 	// user r9b: a vertical wall RUN reaching the top launches him into the air — ordinary air gameplay from there
 	if (bRun)
 	{
-		const double VUp = FMath::Clamp(FMath::Max(VY0, 12.0), 12.0, 15.0);
-		S.Vel = Inward * 2.6 + ZUP * VUp;
+		// round 06: a lower, quicker top-out (the flip fills the air time) that carries a bit further onto the roof
+		const double VUp = 11.5; (void)VY0;
+		S.Vel = Inward * 3.0 + ZUP * VUp;
 		S.Facing = Yaw(Inward);
-		SetMode(EWebTravMode::Air, N_jumpLaunch); S.AirT = 0; S.ApexZ = FeetZ(); S.bGrounded = false; S.JumpCharge = 1;
+		// round 06: the top-out is its own air sub (front flip over the roof edge, crouch landing) instead of a jump launch
+		SetMode(EWebTravMode::Air, N_topOut); S.AirT = 0; S.ApexZ = FeetZ(); S.bGrounded = false; S.JumpCharge = 1; S.bTopOut = true;
 		S.WallCooldown = 0.9; S.SwingCooldown = 0.15; S.Kin.Type = EKin::None;
 		Emit(N_wallLaunch); Emit(N_jump, 1.f);
 		return true;
@@ -1939,16 +1948,17 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		break;
 	case EWebTravMode::Wall:
 	{
-		// wall-run = the run cycle rotated onto the wall (body up = wall normal); crawl frame otherwise; runK blends
+		// round 06 (critic r05, ref wall-run): head-up climb-run — body up = along the wall, chest to the wall, torso leaned
+		// back off it while running (runK). The browser's "run cycle rotated onto the wall" frame (body up = normal) is gone.
 		FWall& W = S.W;
 		const FVector N = W.Normal;
-		const bool bRunning = S.Sub == N_wallRun && W.bFast;
+		const bool bRunning = (S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip;
 		W.RunK = Damp(W.RunK, bRunning ? 1 : 0, bRunning ? 9 : 7, Dt);
 		FVector Along = W.Up - N * FVector::DotProduct(W.Up, N);
 		if (Along.SizeSquared() < 1e-4) Along = ZUP;
 		Along.Normalize();
-		if (W.RunK > 0.5) { Fwd = Along; Up = N; }
-		else { Fwd = -N; Up = Along; }
+		Fwd = -N; Up = Along;
+		S.Pitch = -WallRunLean * W.RunK;
 		Rate = 14;
 		break;
 	}
@@ -1963,9 +1973,11 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 			S.BodyQ = FQuat::Slerp(S.BodyQ, Want, 1 - FMath::Exp(-Rate * Dt)).GetNormalized();
 		}
 	}
+	// round 06: roll / pitch leans are springs too — mode changes (swing -> air release) used to pop them in one frame
+	S.RollA = Damp(S.RollA, S.Roll, 14, Dt); S.PitchA = Damp(S.PitchA, S.Pitch, 14, Dt);
 	FQuat Q = S.BodyQ;
-	if (S.Roll != 0) Q = Q * FQuat(FVector(1, 0, 0), -S.Roll);
-	if (S.Pitch != 0) Q = Q * FQuat(FVector(0, 1, 0), S.Pitch);
+	if (S.RollA != 0) Q = Q * FQuat(FVector(1, 0, 0), -S.RollA);
+	if (S.PitchA != 0) Q = Q * FQuat(FVector(0, 1, 0), S.PitchA);
 	// root position = feet (along the body's up axis), with curb step smoothing
 	S.StepOff = Damp(S.StepOff, 0, 16, Dt);
 	const FVector BodyUp = S.BodyQ.GetUpVector();
@@ -1973,9 +1985,8 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 	{
 		const FWall& W = S.W;
 		const double ToPlane = W.Dist;
-		const FVector Crawl = S.Pos + W.Normal * (0.30 - ToPlane) - BodyUp * (H * (1 - W.RunK));
-		const FVector Run = S.Pos + W.Normal * (-ToPlane + 0.02);
-		RootPos = FMath::Lerp(Crawl, Run, W.RunK);
+		// feet 0.30 m off the wall when crawling, WallRunFootOff when running (the striding foot reaches the wall)
+		RootPos = S.Pos + W.Normal * (FMath::Lerp(0.30, WallRunFootOff, W.RunK) - ToPlane) - BodyUp * H;
 	}
 	else RootPos = S.Pos - BodyUp * H;
 	if (S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch) RootPos.Z = S.Pos.Z - H + S.StepOff;

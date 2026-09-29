@@ -8,6 +8,7 @@ IDS=("$@"); [ ${#IDS[@]} -eq 0 ] && IDS=($(python3 -c "import json;print(' '.joi
 mkdir -p "$OUT/raw"
 for id in $IDS; do
   for res in 1920x1080 3840x2160; do
+    /Users/midir/sm2-n1/city/tools/export/ue/wait_slot.sh
     GPU=$(ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1 | grep -o '[0-9]*$')
     Scripts/run_game.sh "$OUT/raw" -map /Game/Tests/City/City_View_$id -res $res -shots 28 -perf 18:28 -name ${id}_${res} -timeout 900 > "$OUT/raw/${id}_${res}.run.txt" 2>&1
     echo "{\"id\":\"$id\",\"res\":\"$res\",\"gpu_util_before_pct\":${GPU:-null}}" > "$OUT/raw/${id}_${res}_gpu.json"

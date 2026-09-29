@@ -78,7 +78,7 @@ def sampler_for(t):
     if isinstance(t, unreal.Texture2DArray) or True:
         return unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if t.get_editor_property('srgb') else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
 
-def make_material(name, include, code, inputs, outputs, blend='opaque', two_sided=False, world_normal=True, domain_hint=None, scalar_defaults=None):
+def make_material(name, include, code, inputs, outputs, blend='opaque', two_sided=False, world_normal=True, domain_hint=None, scalar_defaults=None, shading=None):
     """inputs: list of (name, kind, arg): kind in tex|uv|vc|wpos|wn|cam|scalar|mpc|pcd.  outputs: list of (name, n, property)."""
     path = f'{MAT}/{name}'
     if EAL.does_asset_exist(path):  # reuse (deleting a referenced material pops a dialog): clear its graph
@@ -88,6 +88,7 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     m.set_editor_property('tangent_space_normal', not world_normal)
     if blend == 'masked': m.set_editor_property('blend_mode', unreal.BlendMode.BLEND_MASKED)
     m.set_editor_property('two_sided', two_sided)
+    if shading: m.set_editor_property('shading_model', shading)
     c = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -400, 0)
     c.set_editor_property('code', code)
     c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
@@ -140,6 +141,9 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     for i, (n, k, prop) in enumerate(outputs):
         if prop is None: continue
         mel.connect_material_property(c, '' if i == 0 else n, prop)
+    # usage flags must be saved: in -game an instanced / Nanite mesh whose material lacks the flag renders the default material
+    for u in (unreal.MaterialUsage.MATUSAGE_NANITE, unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES):
+        mel.set_material_usage(m, u)
     mel.recompile_material(m)
     EAL.save_asset(path)
     return m
@@ -148,13 +152,25 @@ MP = unreal.MaterialProperty
 TEXA = lambda n: f'{ROOT}/Textures/{n}'
 WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 
+# (r04) MPC_City scalars. DayEmisK scales the facade's interior / sign emission in daylight (1.0 at night): rooms behind
+# window glass are ~10x darker than sunlit masonry; GlassSpec = UE Specular of dielectric sash glass (0.5 = F0 0.04, real
+# glass; r03 used 0.1375 = F0 0.011, which turned every masonry window into a flat unreflective slab); DebugMode 1 = facade
+# emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
+MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
+                ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0))
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
     if not EAL.does_asset_exist(MAT + '/MPC_City'):
         mpc = at.create_asset('MPC_City', MAT, unreal.MaterialParameterCollection, unreal.MaterialParameterCollectionFactoryNew())
         sp = []
-        for n, v in (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0)):
+        for n, v in MPC_DEFAULTS:
+            p = unreal.CollectionScalarParameter(); p.set_editor_property('parameter_name', n); p.set_editor_property('default_value', v); sp.append(p)
+        mpc.set_editor_property('scalar_parameters', sp); EAL.save_asset(MAT + '/MPC_City')
+    else:  # (r04) existing collection: add the parameters introduced later, keep tuned values of the old ones
+        mpc = load(MAT + '/MPC_City'); sp = list(mpc.get_editor_property('scalar_parameters')); have = {str(q.get_editor_property('parameter_name')) for q in sp}
+        for n, v in MPC_DEFAULTS:
+            if n in have: continue
             p = unreal.CollectionScalarParameter(); p.set_editor_property('parameter_name', n); p.set_editor_property('default_value', v); sp.append(p)
         mpc.set_editor_property('scalar_parameters', sp); EAL.save_asset(MAT + '/MPC_City')
     # facade (facade.js FRAG_DECL port)
@@ -165,12 +181,25 @@ float3 a = CityFacade(tWallC, tWallCSampler, tWallN, tWallNSampler, tWallH, tWal
 // coated curtain glass (F0 0.2-0.6): metallic mirror = F0 x tint. Old sash glass (gSash): dielectric with F0 = 0.011 so
 // that UE's F90 = saturate(50 F0) = 0.55 matches the browser's specularF90 0.55 (no bright grazing mirrors on masonry)
 float gm = g * (1.0 - gSash);
-Rough = r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = e * escale; Spec = lerp(0.5, 0.1375, g * gSash);
-return lerp(a, f, gm);''',
+float ek = lerp(dayemis, 1.0, saturate(nightk));
+float3 col = lerp(a, f, gm); float3 em = e * escale * ek;
+if (dbgmode > 0.5 && dbgmode < 1.5) col = float3(0, 0, 0);
+if (dbgmode > 1.5 && dbgmode < 2.5) em = float3(0, 0, 0);
+if (dbgmode > 2.5 && dbgmode < 3.5) { col = float3(0, 0, 0); em = float3(saturate(g) * 0.05, 0, 0); }  // window (glass) mask for the brightness test
+if (dbgmode > 4.5 && dbgmode < 5.5) { col = float3(0, 0, 0); em = 0.3 * Texture2DSampleLevel(tInterior, tInteriorSampler, frac(uv0 * 0.05), 0.0).rgb; }
+if (dbgmode > 5.5 && dbgmode < 6.5) { col = float3(0, 0, 0); em = 0.3 * interior(TEXPASS, frac(uv0 * 0.3) * 3.0, normalize(float3(0.2, 0.1, -1.0)), 3.0, 3.0, 4.0, 6.0, 1.0, 0.0); }
+if (dbgmode > 6.5 && dbgmode < 7.5) { col = float3(0, 0, 0); em = 0.3 * Texture2DSampleLevel(tInterior, tInteriorSampler, frac(uv0 * 0.05), gLodI).rgb; }
+if (dbgmode > 7.5 && dbgmode < 8.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI > 2.0, gLodI > 4.0, gLodI > 6.0); }
+if (dbgmode > 8.5 && dbgmode < 9.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI > 7.0, gLodI > 8.0, gLodI > 8.9); }
+if (dbgmode > 9.5 && dbgmode < 10.5) { col = float3(0, 0, 0); em = 0.3 * Texture2DSampleLevel(tSigns, tSignsSampler, frac(uv0 * 0.02), 0.0).rgb; }
+if (dbgmode > 3.5 && dbgmode < 4.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI / 9.0, saturate(length(gDx) * 100.0), saturate(vF.y / 16.0)); }
+Rough = (dbgmode > 2.5 && dbgmode < 3.5) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = (dbgmode > 2.5 && dbgmode < 3.5) ? 0.0 : lerp(0.5, glassspec, g * gSash);
+return col;''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
          ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise'))]
         + [(f'uv{i}', 'uv', i) for i in range(8)] + [('vc', 'vc', None)] + WORLD
-        + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale')],
+        + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale'),
+           ('dayemis', 'mpc', 'DayEmisK'), ('glassspec', 'mpc', 'GlassSpec'), ('dbgmode', 'mpc', 'DebugMode')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)])
     make_material('M_CityDetail', '/Project/City/Detail.ush', '''
 float r, m, o; float3 n;
@@ -225,12 +254,122 @@ return c;''',
          ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
     # tree leaves: alpha-tested cards, two-sided, per-vertex / per-instance tint
+    # (r03) ez-tree leaf cards (eztrees.js): leaf-shaped alpha, green albedo from the leaf texture, per-leaf crown exposure
+    # (aLeafE.x in UV1: 0 deep inside .. 1 outer sun-side shell), two-sided foliage shading: light passes through the leaves
     make_material('M_CityLeaves', None, '''
 float4 t = Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y));
-Op = t.a > 0.5 ? 1.0 : 0.0; Sub = t.rgb * float3(0.6, 0.8, 0.3);
-return t.rgb * Tint.rgb;''',
-        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('Tint', 'vector', (0.85, 0.95, 0.7, 1))],
-        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, None)], blend='masked', two_sided=True, world_normal=False)
+float e = saturate(uv1.x);
+float3 c = min(t.rgb * Tint.rgb * lerp(2.1, 3.0, e), 0.6);
+Op = t.a > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2); Rough = 0.7;
+return c;''',
+        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1))],
+        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
+        blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    # (r04) Times Square frame / housing blocks (tsFrames): the exporter paints the big billboard housings vertex-colour black (0.018),
+    # which rendered as untextured black masses (critic r03: S5 top right). Dark gunmetal cladding: 1.5 x 3 m panel seams, per-panel
+    # tone, grime, metallic sheen; lighter frame parts (gold, chrome, white trim) keep their vertex colour.
+    make_material('M_CityFrame', None, r"""
+float3 p = wpos * 0.01; float3 an = abs(normalize(wn));
+float2 q = an.x > max(an.y, an.z) ? p.yz : (an.y > an.z ? p.xz : p.xy);
+float3 nz = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 6.0, 0.0).rgb;
+float3 nz2 = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 1.3, 0.0).rgb;
+float2 pn = floor(q / float2(1.5, 3.0));
+float pv = frac(sin(dot(pn, float2(12.9898, 78.233))) * 43758.5453);
+float2 g = frac(q / float2(1.5, 3.0));
+float seam = 1.0 - smoothstep(0.0, 0.035, min(min(g.x, 1.0 - g.x) * 1.5, min(g.y, 1.0 - g.y) * 3.0));
+float lv = dot(vc.rgb, float3(0.2126, 0.7152, 0.0722));
+float dark = 1.0 - smoothstep(0.03, 0.08, lv);
+float3 steel = float3(0.075, 0.08, 0.092) * (0.7 + 0.35 * pv + 0.3 * nz.g) * (1.0 - 0.5 * seam) * (1.0 - 0.3 * smoothstep(0.55, 0.85, nz2.r));
+Rough = lerp(0.5, 0.42 + 0.3 * nz2.g, dark); Metal = lerp(0.5, 0.65, dark);
+return lerp(vc.rgb, steel, dark);""",
+        [('tNoise', 'tex', TEXA('noise')), ('vc', 'vc', None), ('wpos', 'wpos', None), ('wn', 'wn', None)],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC)], world_normal=False)
+    # (r04) signage.js port (signMaterial): vSig = UV1 (kind, gain), vLoc = UV2, vMapUv = UV0 (u 0..1 ads atlas, +2 ts_signs, +4 city_signart).
+    # Kinds: 0 metal, 1 printed vinyl, 2 painted on brick, 3 LED screen, 4 back-lit box, 6 marquee bulbs, 7 fabric, 8 / 9 letters, else ghost sign.
+    make_material('M_CitySignage', None, r"""
+float2 vMapUv = uv0; float2 vSig = uv1; float2 vLoc = uv2;
+float3 vWPs = float3(wpos.x, wpos.z, wpos.y) * 0.01;
+float2 dx = ddx(vMapUv), dy = ddy(vMapUv);
+int K = (int)(vSig.x + 0.5);
+float2 lp = vMapUv * 1024.0; float2 ledF = frac(lp) - 0.5;
+float ledAA = saturate(1.6 - 2.2 * max(abs(ddx(lp.x)) + abs(ddy(lp.x)), abs(ddx(lp.y)) + abs(ddy(lp.y))));
+float2 uvA = vMapUv; float2 uvS = vMapUv - float2(2.0, 0.0); float2 uvR = vMapUv - float2(4.0, 0.0);
+float2 uvL = lerp(vMapUv, (floor(lp) + 0.5) / 1024.0, ledAA);
+float4 tA = Texture2DSampleGrad(tAds, tAdsSampler, float2(uvA.x, 1.0 - uvA.y), dx, dy);
+float4 tS = Texture2DSampleGrad(tSigns, tSignsSampler, float2(saturate(uvS.x), 1.0 - uvS.y), dx, dy);
+float4 tR = Texture2DSampleGrad(tArt, tArtSampler, float2(saturate(uvR.x), 1.0 - uvR.y), dx, dy);
+float4 tLed = Texture2DSampleGrad(tAds, tAdsSampler, float2(uvL.x, 1.0 - uvL.y), dx, dy);
+float4 bS = Texture2DSampleLevel(tSigns, tSignsSampler, float2(saturate(uvS.x), 1.0 - uvS.y), 5.0);
+float4 bR = Texture2DSampleLevel(tArt, tArtSampler, float2(saturate(uvR.x), 1.0 - uvR.y), 5.0);
+float3 nzA = Texture2DSampleLevel(tNoise, tNoiseSampler, (vWPs.xz + vWPs.yy * float2(0.7, -0.4)) / 9.0, 0.0).rgb;
+float3 nzB = Texture2DSampleLevel(tNoise, tNoiseSampler, (vWPs.xz * 0.6 + vWPs.yy * float2(-0.5, 0.8)) / 1.7, 0.0).rgb;
+float4 tx = float4(1, 1, 1, 1);
+if (K == 3) tx = tLed; else if (K > 0 && K != 6 && K != 7) tx = vMapUv.x > 3.5 ? tR : (vMapUv.x > 1.5 ? tS : tA);
+float lum = dot(tx.rgb, float3(0.2126, 0.7152, 0.0722));
+float3 dc = vc.rgb; float sgR = 0.55; float sgM = 0.0; float3 sgE = float3(0, 0, 0); float opv = 1.0;
+if (K == 0) { sgR = 0.5 + 0.3 * nzB.r; sgM = 0.35; dc *= 0.85 + 0.3 * nzA.g; }
+else if (K == 1) {
+  tx.rgb = lerp(tx.rgb, float3(lum, lum, lum), 0.32) * 0.86 + 0.02;
+  tx.rgb = lerp(tx.rgb, float3(1, 1, 1) * (lum * 0.85 + 0.1), smoothstep(0.35, 0.8, nzA.b) * 0.16 + 0.08 * vLoc.y);
+  float stk = smoothstep(0.55, 0.9, Texture2DSampleLevel(tNoise, tNoiseSampler, float2(vWPs.x + vWPs.z, vWPs.y * 0.08) * 0.35, 0.0).g) * (0.35 + 0.65 * vLoc.y);
+  tx.rgb *= 1.0 - 0.24 * stk;
+  float2 ed = min(vLoc, 1.0 - vLoc);
+  float edg = 1.0 - smoothstep(0.004, 0.035, min(ed.x, ed.y * 0.5) + 0.018 * (nzB.r - 0.5));
+  tx.rgb = lerp(tx.rgb, tx.rgb * 0.5 + float3(0.035, 0.032, 0.028), edg * 0.75);
+  dc *= tx.rgb; sgR = 0.48 + 0.34 * nzB.g;
+} else if (K == 2) {
+  tx.rgb = lerp(tx.rgb, float3(lum, lum, lum), 0.45) * 0.66 + 0.05;
+  tx.rgb = min(tx.rgb, float3(0.6, 0.6, 0.6)) * lerp(float3(1, 1, 1), dc / max(dot(dc, float3(0.333, 0.333, 0.333)), 0.05), 0.18);
+  tx.rgb = lerp(tx.rgb, float3(1, 1, 1) * (dot(tx.rgb, float3(0.333, 0.333, 0.333)) * 1.08 + 0.02), 0.35 * smoothstep(0.3, 1.0, vLoc.y));
+  float course = abs(frac(vWPs.y / 0.0762) - 0.5);
+  tx.rgb *= 1.0 - 0.2 * smoothstep(0.4, 0.5, course);
+  float peel = smoothstep(0.6, 0.76, nzA.r * 0.7 + nzB.g * 0.45 + 0.08 * (vLoc.y - 0.5));
+  dc = lerp(tx.rgb, dc, min(1.0, peel * 0.9 + 0.1)); sgR = 0.88;
+} else if (K == 3) {
+  float dio = 1.0 - smoothstep(0.26, 0.42, max(abs(ledF.x), abs(ledF.y)));
+  float grid = lerp(1.0, dio * 1.55, ledAA);
+  sgE = tx.rgb * vSig.y * grid; dc *= tx.rgb * 0.12; sgR = 0.25;
+} else if (K == 6) {
+  float2 bf = frac(vMapUv) - 0.5; float bw = max(abs(ddx(vMapUv.x)) + abs(ddy(vMapUv.x)), abs(ddx(vMapUv.y)) + abs(ddy(vMapUv.y)));
+  float bulb = 1.0 - smoothstep(0.2, 0.34, length(bf));
+  bulb = lerp(bulb, 0.3, saturate(bw * 1.5 - 0.3));
+  sgE = float3(1.0, 0.78, 0.46) * vSig.y * bulb; dc = lerp(dc, float3(0.9, 0.8, 0.6), bulb); sgR = lerp(0.5, 0.15, bulb);
+} else if (K == 4) {
+  sgE = tx.rgb * vSig.y; dc *= tx.rgb * 0.85; sgR = 0.35;
+} else if (K == 7) {
+  float st = vSig.y > 0.5 ? step(0.5, frac(vLoc.x * vSig.y)) : 0.0;
+  dc = lerp(dc, float3(0.62, 0.58, 0.5), st * 0.85) * (0.82 + 0.3 * nzB.g) * (1.0 - 0.18 * smoothstep(0.5, 0.85, nzA.r));
+  sgR = 0.88;
+} else if (K == 8) {
+  if (smoothstep(0.3, 0.5, lum) < 0.5) opv = 0.0;
+  dc *= 0.8 + 0.3 * nzB.r; sgM = 0.85; sgR = 0.32 + 0.2 * nzA.g;
+} else if (K == 9) {
+  if (smoothstep(0.28, 0.42, lum) < 0.5) opv = 0.0;
+  dc = tx.rgb * (0.78 + 0.25 * nzB.r); sgM = tx.r > tx.b * 1.4 ? 0.6 : 0.0; sgR = 0.38 + 0.2 * nzA.g;
+  sgE = tx.rgb * 0.35 * nightk;
+} else {
+  float3 brd = vMapUv.x > 3.5 ? bR.rgb : bS.rgb;
+  float lumL = smoothstep(0.1, 0.24, abs(lum - dot(brd, float3(0.2126, 0.7152, 0.0722))));
+  tx.rgb = lerp(tx.rgb, float3(lum, lum, lum), 0.5);
+  float bc = vWPs.y / 0.0762, row = floor(bc);
+  float hx = (vWPs.x + vWPs.z) / 0.2032 + 0.5 * fmod(row, 2.0);
+  float bh = frac(sin(dot(float2(floor(hx), row), float2(12.9898, 78.233))) * 43758.5453);
+  float nearB = saturate(1.4 - 3.0 * max(abs(ddx(bc)) + abs(ddy(bc)), (abs(ddx(hx)) + abs(ddy(hx))) * 0.4));
+  float wear = smoothstep(0.3, 0.85, nzA.r * 0.6 + nzB.b * 0.5 + 0.2 * (0.5 - vLoc.y));
+  float cov = lerp(0.04, 0.97, lumL) * (1.0 - 0.7 * wear) * clamp(vSig.y * 1.7, 0.0, 1.2);
+  float val = lerp(nzB.g, 0.5 * nzB.g + 0.5 * bh, nearB);
+  float fb = frac(bc), fh = frac(hx);
+  float mj = max(1.0 - smoothstep(0.035, 0.07, min(fb, 1.0 - fb)), 1.0 - smoothstep(0.012, 0.025, min(fh, 1.0 - fh)));
+  if (val > cov || mj * nearB > 0.6) opv = 0.0;
+  float3 gp = min(tx.rgb * 0.58 + 0.04, float3(0.46, 0.46, 0.46)) * lerp(float3(1, 1, 1), dc / max(dot(dc, float3(0.333, 0.333, 0.333)), 0.05), 0.45);
+  dc = lerp(gp, dc, min(0.94, 0.5 + 0.35 * wear + 0.15 * bh * nearB + 0.2 * (1.0 - nearB))); sgR = 0.92;
+}
+Rough = sgR; Metal = sgM; Op = opv; Emis = sgE * 2.0;
+return dc;""",
+        [('tAds', 'tex', TEXA('Maps/assets_city_tex_ts_ads')), ('tSigns', 'tex', TEXA('Maps/assets_city_tex_ts_signs')), ('tArt', 'tex', TEXA('Maps/assets_city_tex_city_signart')), ('tNoise', 'tex', TEXA('noise')),
+         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
+        blend='masked', world_normal=False)
     EAL.save_directory(MAT, only_if_is_dirty=False, recursive=True)
     # (r02) Manhattan land surface: block interiors dark grey gravel / paving, Central-Park-like rectangle grass
     make_material('M_CityLand', None, '''
@@ -255,14 +394,26 @@ return float3(0.018, 0.028, 0.03);''',
 float3 wall = float3(w0, w1, w2), roof = float3(r0, r1, r2);
 float band = 0.8 + 0.2 * step(0.5, frac(wpos.z * 0.01 / 3.4));
 Rough = 0.9;
-return wn.z > 0.5 ? roof : wall * band;''',
+float3 hp = wpos * 0.01; float fl = frac(hp.z / 3.4), u = frac((hp.x + hp.y) / 2.6);
+float w = step(0.35, fl) * step(fl, 0.85) * step(0.3, u) * step(u, 0.75);
+float2 fw = fwidth(float2(hp.z / 3.4, (hp.x + hp.y) / 2.6)); w = lerp(w, 0.3, saturate(max(fw.x, fw.y) * 1.5));
+float3 wc = lerp(wall, float3(0.08, 0.09, 0.1), w * 0.85) * (0.65 + 0.35 * smoothstep(0.0, 12.0, hp.z));  // horizon.js windows + grime
+return wn.z > 0.5 ? roof : wc;''',
         [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None)],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
+    make_material('M_CityCrown', None, '''
+float3 p = wpos * 0.01;
+float n = Texture2DSample(tNoise, tNoiseSampler, p.xy / 7.0 + p.z / 5.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, p.xy / 1.3).r * 0.4;
+float up = saturate(wn.z * 0.5 + 0.5);
+Rough = 0.8; Sub = float3(0.12, 0.2, 0.04);
+return float3(0.07, 0.11, 0.035) * (0.6 + 0.8 * n) * (0.55 + 0.6 * up);''',
+        [('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None)],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Sub', 3, MP.MP_SUBSURFACE_COLOR)], world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
     log('materials done')
 
 # ------------------------------------------------------------------------------------------------ meshes
 man = json.load(open(os.path.join(EXPORT, 'manifest.json')))
-KIND_MAT = {'land': 'M_CityLand', 'facade': 'M_CityFacade', 'detail': 'M_CityDetail', 'roofs': 'M_CityRoof', 'asphalt': 'M_CityAsphalt', 'sidewalk': 'M_CitySidewalk'}
+KIND_MAT = {'signage': 'M_CitySignage', 'land': 'M_CityLand', 'facade': 'M_CityFacade', 'detail': 'M_CityDetail', 'roofs': 'M_CityRoof', 'asphalt': 'M_CityAsphalt', 'sidewalk': 'M_CitySidewalk'}
 EMIS = ('tsScreens', 'tsTicker', 'tsNeon', 'tsLights', 'tsSigns', 'tsBands', 'signage', 'grandCentralGlow', 'parkPodiumGlow')
 def mesh_pipeline(nanite):
     p = unreal.InterchangeGenericAssetsPipeline()
@@ -281,6 +432,8 @@ def mi_for(rec):
     mi = at.create_asset('MI_' + key, MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
     mel.set_material_instance_parent(mi, load(MAT + ('/M_CityProp' if rec.get('proto') and 'aPart.x' in rec.get('uv', []) else '/M_CityVC')))
     col = mat.get('color') or [1, 1, 1]
+    if key.endswith('_bark'): col = [0.33, 0.29, 0.25]  # ez-tree bark (browser: bark texture + vertex AO)
+    if key.endswith('_bark'): mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(*col, 1))
     if not rec.get('proto'):
         mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(col[0], col[1], col[2], 1))
         mel.set_material_instance_scalar_parameter_value(mi, 'RoughP', float(mat.get('roughness') or 0.7))
@@ -328,16 +481,41 @@ if 'mesh' in STEPS:
         if not EAL.does_asset_exist(src): log('MISSING import', src); continue
         EAL.rename_asset(src, dst)
         sm = load(dst)
-        mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else mi_for(r)
+        mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else mi_for(r))
         finish_mesh(sm, mat, r['kind'] in ('facade', 'roofs', 'asphalt', 'sidewalk', 'detail') and not r.get('lod'), nanite=r['kind'] == 'detail')
         EAL.save_asset(dst); n += 1
     EAL.delete_directory(ROOT + '/Meshes/_in')
     log('meshes', n)
 
+# (r04) 'frames' step: re-import the patched tsFrames meshes (tools/export/patch_export.py) into an already built project WITHOUT deleting the
+# referenced old assets (a delete pops a modal dialog): the new mesh gets the suffix _r04 and the geo level actors are pointed at it.
+# A clean rebuild does not need this step (the normal mesh step imports the patched GLBs).
+if 'frames' in STEPS:
+    only = ARGS.get('only', 'tsFrames__t-1_-1')
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem); les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    recs = [r for r in man['meshes'] if r['name'] == only.split('__')[0] and only.split('__')[-1] in r['file']] if '__' in only else [r for r in man['meshes'] if r['name'].startswith(only)]
+    import_files([os.path.join(EXPORT, r['file']) for r in recs], ROOT + '/Meshes/_in', mesh_pipeline(False))
+    swaps = {}
+    for r in recs:
+        base = os.path.basename(r['file'])[:-4]
+        src = f'{ROOT}/Meshes/_in/{base}/StaticMeshes/{base}'; dst = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        if EAL.does_asset_exist(dst): dst += '_r04'
+        if EAL.does_asset_exist(dst): EAL.rename_asset(dst, dst + '_old')  # a previous _r04 (unreferenced after the swap)
+        EAL.rename_asset(src, dst); sm = load(dst)
+        finish_mesh(sm, load(MAT + '/M_CityFrame'), False); EAL.save_asset(dst); swaps[base] = dst
+    EAL.delete_directory(ROOT + '/Meshes/_in')
+    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
+    for a in eas.get_all_level_actors():
+        if a.get_actor_label() in swaps and isinstance(a, unreal.StaticMeshActor):
+            a.static_mesh_component.set_static_mesh(load(swaps[a.get_actor_label()])); log('swapped', a.get_actor_label())
+    les.save_current_level()
+    log('frames done', list(swaps))
+
 # ------------------------------------------------------------------------------------------------ prototypes (instanced props / trees)
-SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_street_near', 'trees_small_near', 'trees_small_crown_', 'trunks_', '_l1_', 'trees_elm_crown_', 'trees_park_crown_', 'roofplants', 'hvac_', 'vents_', 'dish_', 'antenna_', 'flags')
-protos = [p for p in man['protos'] if not any(s in p['name'] for s in SKIP_POOL) and (not p['name'].endswith('_far') or p['name'] == 'trees_street_far')]
-LEAFY = lambda n: 'leaves' in n or 'crown' in n or n == 'trees_street_far'
+SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'trunks_', 'roofplants', 'hvac_', 'vents_', 'dish_', 'antenna_', 'flags')
+CROWN = ('trees_park_crownfar', 'trees_elm_crownfar', 'trees_conifer_crownfar')  # (r03) opaque canopy mass inside the park LOD1 trees
+protos = [p for p in man['protos'] if p['name'] in CROWN or (not any(s in p['name'] for s in SKIP_POOL) and not p['name'].endswith('_far'))]
+LEAFY = lambda n: 'leaves' in n
 if 'proto' in STEPS:
     import_files([os.path.join(EXPORT, p['file']) for p in protos], ROOT + '/Props/_in', mesh_pipeline(True))
     for p in protos:
@@ -348,13 +526,12 @@ if 'proto' in STEPS:
             mi = at.create_asset('MI_' + p['name'], MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
             mel.set_material_instance_parent(mi, load(MAT + '/M_CityLeaves'))
             u = (p.get('mat') or {}).get('map')
-            if 'leaves' not in p['name']: mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(0.55, 0.68, 0.4, 1))
             if u:
                 rel = u.split('5202/', 1)[-1].replace('/', '_').rsplit('.', 1)[0]
                 if EAL.does_asset_exist(f'{ROOT}/Textures/Maps/{rel}'): mel.set_material_instance_texture_parameter_value(mi, 'Map', load(f'{ROOT}/Textures/Maps/{rel}'))
             EAL.save_asset(mi.get_path_name())
         else:
-            mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else mi_for({**p, 'proto': True})
+            mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else (load(MAT + '/M_CityCrown') if p['name'] in CROWN else mi_for({**p, 'proto': True}))
         finish_mesh(sm, mi, False, nanite=True)
         EAL.save_asset(dst)
     EAL.delete_directory(ROOT + '/Props/_in')
@@ -416,6 +593,7 @@ def build_geo_level(path):
             s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
             # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
             rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+            if p["name"] in CROWN: s *= 1.0
             xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
         ids = c.add_instances(xs, True, True)
         for k, it in enumerate(items):

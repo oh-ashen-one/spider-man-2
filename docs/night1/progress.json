@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 09:35",
+ "updated": "2026-09-29 12:43",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "The change of approach worked: traversal round 4 (real hero + the browser animator ported to C++) raised body animation 2\u21924, arc 3\u21924, moves 2\u21923, and the blind critic preferred it to round 3. Still FAILS; the camera is the biggest gap again, and the critic caught that our framing metric disagrees with the pixels, so round 5 measures framing from rendered pixels.",
+ "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -17,55 +17,55 @@
    "id": "F2",
    "name": "Reference library",
    "branch": "spiderman-learnings \u00b7 night1/refs",
-   "state": "blocked",
+   "state": "done",
    "round": 1,
-   "verdict": "",
-   "gap": "~140 stills + CRITIC_GUIDE pushed; 43 critic clips local-only (LFS budget); INDEX.md unfinished"
+   "verdict": "219 stills + 43 clips indexed; clips regenerable (41/43 frame-identical)",
+   "gap": "Clips local-only (LFS budget); PS Blog article pages not reconstructable"
   },
   {
    "id": "F3",
    "name": "Browser baseline + playtest",
    "branch": "night1/browser-baseline",
-   "state": "queued",
+   "state": "done",
    "round": 1,
-   "verdict": "",
-   "gap": "Paused by usage limit; work-in-progress kept in its worktree"
+   "verdict": "Browser build/tests pass; baseline stills, 9 clips, perf, 10-bug playtest",
+   "gap": "Perf contaminated (GPU 99\u2013100% from other Unreal runs)"
   },
   {
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (facades 5, street 2, skyline 4, Manhattan 4, IQ 3)",
-   "gap": "Foliage: black cards on streets, grey spheres in the park"
+   "round": 5,
+   "verdict": "R4: FAILS (facades 5, street 3, skyline 4, Manhattan 4, IQ 5)",
+   "gap": "Street level unbuilt: no recessed storefronts, awnings, fire escapes, sidewalk detail or street props"
   },
   {
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": "Resumed after the outage"
+   "state": "fixing",
+   "round": 3,
+   "verdict": "R2: FAILS (hero 5, hero anim 4, enemies 2, civilians 3, IQ 4)",
+   "gap": "Thug and brute are prototype-grade; rebuild from the owner's Tripo people"
   },
   {
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 5,
-   "verdict": "R4: FAILS (arc 4, camera 3, web 4, moves 3, body 4)",
-   "gap": "Camera too far and too steep: hero only 4\u20136% of frame height, no sky; framing metric was wrong"
+   "round": 7,
+   "verdict": "R6: FAILS (arc 4, camera 4, web 5, moves 4, body 4)",
+   "gap": "Swing cadence: ~4 s per swing vs ~1.3 s in the reference; long web-less falls"
   },
   {
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "Waits for the first city tiles"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (sun/sky 5, GI 3, atmos 4, refl 3, post 3, night 2)",
+   "gap": "Night streets 85% near-black; no lamp pools or car lights; hero vanishes"
   },
   {
    "id": "P5",
@@ -87,6 +87,78 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "Look round 1 \u2014 three time-of-day presets over the Unreal city",
+   "note": "First lighting pass (Sonnet builder). Critic: golden haze works; night is too dark to read.",
+   "images": [
+    {
+     "label": "Midday S2",
+     "src": "docs/night1/look/round-01/stills/midday_S2_1920x1080.jpg"
+    },
+    {
+     "label": "Golden hour S4",
+     "src": "docs/night1/look/round-01/stills/golden_S4_1920x1080.jpg"
+    },
+    {
+     "label": "Night S1 \u2014 85% near-black",
+     "src": "docs/night1/look/round-01/stills/night_S1_1920x1080.jpg"
+    }
+   ]
+  },
+  {
+   "title": "City round 4 \u2014 real window glass and interiors",
+   "note": "Before: every window an opaque beige slab. After: dark reflective glass with mixed lit/dim/dark rooms.",
+   "images": [
+    {
+     "label": "Round 3 canyon",
+     "src": "docs/night1/city/round-03/S2_avenue_swing_1920x1080.jpg"
+    },
+    {
+     "label": "Round 4 canyon",
+     "src": "docs/night1/city/round-04/S2_avenue_swing_1920x1080.jpg"
+    },
+    {
+     "label": "Round 4 aerial",
+     "src": "docs/night1/city/round-04/S8_aerial_midtown_1920x1080.jpg"
+    }
+   ]
+  },
+  {
+   "title": "Characters round 1 \u2014 first Unreal lineup",
+   "note": "Hero, five AI-logo suits, thug, brute and citizens imported on one skeleton with basic locomotion.",
+   "images": [
+    {
+     "label": "AI suits (1080p)",
+     "src": "docs/night1/characters/round-01/captures/ai_suits_1080.jpg"
+    },
+    {
+     "label": "Brute \u2014 scrambled texture (biggest gap)",
+     "src": "docs/night1/characters/round-01/captures/brute_walk_1080.jpg"
+    },
+    {
+     "label": "Lineup 4K",
+     "src": "docs/night1/characters/round-01/captures/lineup4k_00_t003.jpg"
+    }
+   ]
+  },
+  {
+   "title": "City round 3 \u2014 real ez-tree foliage",
+   "note": "Street trees are leaf clusters now (were black cards); park is green canopy (was grey blobs).",
+   "images": [
+    {
+     "label": "Round 2 street",
+     "src": "docs/night1/city/round-02/S1_avenue_street_1920x1080.jpg"
+    },
+    {
+     "label": "Round 3 street",
+     "src": "docs/night1/city/round-03/S1_avenue_street_1920x1080.jpg"
+    },
+    {
+     "label": "Round 3 perch",
+     "src": "docs/night1/city/round-03/S4_perch_skyline_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "City round 2 \u2014 the city now reaches the horizon",
    "note": "Far-LOD Manhattan, Hudson River, NJ shore, Central Park, haze. Before: grey ground plane at 1 km.",
@@ -154,6 +226,29 @@
  ],
  "clips": [
   {
+   "title": "Look R1 \u2014 golden-hour swing",
+   "src": "docs/night1/look/round-01/swing_golden.mp4"
+  },
+  {
+   "title": "Look R1 \u2014 night swing",
+   "src": "docs/night1/look/round-01/swing_night.mp4"
+  },
+  {
+   "title": "Traversal R6 \u2014 wall-run with climb cycle and top-out",
+   "src": "docs/night1/traversal/round-06/c_wallrun_perch.mp4",
+   "caption": "head-up alternating climb, camera looks up the facade, front-flip top-out"
+  },
+  {
+   "title": "Characters R1 \u2014 citizens walking",
+   "src": "docs/night1/characters/round-01/captures/citizens_walk.mp4",
+   "caption": "critic: slides in a frozen pose at 2\u20135 s"
+  },
+  {
+   "title": "Traversal R5 \u2014 pixel-true chase framing",
+   "src": "docs/night1/traversal/round-05/a_swing_chain.mp4",
+   "caption": "camera ~4 m behind, 1 m above; anchor shown at each attach"
+  },
+  {
    "title": "Traversal R4 \u2014 real hero + ported animator",
    "src": "docs/night1/traversal/round-04/a_swing_chain.mp4",
    "caption": "79 browser clips at 30 fps, hand aimed at the anchor, varied air phase"
@@ -180,6 +275,11 @@
    "title": "UE foundation gray-box",
    "src": "docs/night1/ue-foundation/round-01/foundation_test_1080p60_dumpmovie.mp4",
    "caption": "placeholder capsule running in the test map; 60 fps fixed-step capture"
+  },
+  {
+   "title": "Browser baseline \u2014 carBlock",
+   "src": "docs/night1/baseline/clips/swingChain.mp4",
+   "caption": "the browser build today (before)"
   }
  ],
  "critic": [
@@ -230,31 +330,115 @@
    "verdict": "fails",
    "gap": "Chase camera 4\u20135 m behind and 1\u20131.5 m above, pitched 10\u201320\u00b0 down; hero \u2265160 px tall at 1080p in \u226590% of frames; anchor and sky visible at each attach.",
    "notes": "Up from round 3: body 2\u21924, arc 3\u21924, moves 2\u21923. The builder's telemetry claimed the hero filled 25% of frame height; pixels show 4\u20136%. Secondary: 1.2\u20131.5 s rope-less drifts; wall-run camera faces the wall; no landing crouch; torso flat against the rope at the arc bottom."
+  },
+  {
+   "t": "09:43",
+   "piece": "P3 Traversal",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "Wall-run: camera 3\u20135 m behind/below pitched 20\u201335\u00b0 up the facade with the roof edge in frame; hero head-up with alternating hand/foot cycle at 2\u20133 steps/s; stays in frame through the top-out.",
+   "notes": "Up: arc 4\u21925, web 4\u21925, moves 3\u21924. Down: body 4\u21923 (one-frame pose pops on release, white unshaded suit at clip starts). Hero leaves frame during zip and wall top-out."
+  },
+  {
+   "t": "09:56",
+   "piece": "P1 City",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Dark reflective window glass with recessed frames and varied interiors; storefronts with visible interiors. Test: \u226410% of window pixels above 80% brightness in daylight crops.",
+   "notes": "Foliage fixed: round 3 beat round 2 on both street and park views. Critic flagged that upstream Times Square ads include Marvel/real-game brands (Oscorp, Osborn, Roxxon, Daily Bugle, Frosted Halos, Botanica); the Unreal port now excludes those cells. The browser build's atlas is upstream and unchanged."
+  },
+  {
+   "t": "10:12",
+   "piece": "P2 Characters",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Fix the brute's material/texture assignment so it reads as one heavy-set street criminal: solid clothes, no skin through them, lit readable head.",
+   "notes": "39 assets evaluated individually on moving clips (21 keep, 13 refine, 5 replace). Secondary: civilians slide in a frozen pose; white crack artifacts on two citizens; hero lenses flat decals, web lines painted not raised, weave too coarse; hero run upright with no lean; AI suits walk in lockstep."
+  },
+  {
+   "t": "11:00",
+   "piece": "P3 Traversal",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Swing cadence: attach\u2192release 1.2\u20131.8 s, next web within 0.5 s, no web-less fall >0.6 s; \u22657 attaches in 12 s.",
+   "notes": "Best round yet: every axis 4\u20135; the new wall-run (head-up alternating climb, camera looking up the facade, flip top-out) rated ~2 points better than round 5. Deep drops from round 2 lengthened swings; round 7 keeps depth but adds speed."
+  },
+  {
+   "t": "11:31",
+   "piece": "P1 City",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "Build street level: recessed storefronts with frames and interiors, awnings with original signs, piers and cornices, fire escapes, sidewalk slab joints, a hydrant/trash can/newspaper box/tree pit every ~20 m.",
+   "notes": "Windows fixed (interior atlas was sampled 2\u20134 mips too coarse at 50\u201373% internal resolution); round 4 beat round 3 in both version pairs. Critic flagged that reference HUD/logos made the blind test obvious: packs are now centre-cropped. Two ads (COLTEX/COLEX) too close to a real-game brand are being excluded."
+  },
+  {
+   "t": "12:42",
+   "piece": "P2 Characters",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Rebuild thug and brute to civilian quality: modelled heads/eyes, five-finger hands, folded clothes, real shoes; brute \u22651.3\u00d7 thug shoulder width, upright heavy walk.",
+   "notes": "Brute texture fix confirmed (+~2 on enemies vs round 1). Critic also noted the hero's classic suit (white spider emblem, white cuffs, red leg stripes) closely resembles a licensed game suit design; flagged for the owner, not changed."
+  },
+  {
+   "t": "12:43",
+   "piece": "P4 Look",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Night street lighting and exposure: lamp pools every 25\u201330 m, storefront spill, car lights, lifted ambient; night_S1 mean \u226535/255 with \u22643% of pixels <10/255; hero \u226540/255 in every night-swing frame.",
+   "notes": "Golden-hour haze from above works. Secondary: no warmth at street level at golden hour, a green lens ghost, 4.7% blown pixels at sunset, glass going black mid-swing, midday horizon darker than the sky."
   }
  ],
  "perf": [
   {
-   "what": "UE foundation gray-box, hero auto-run (HW ray tracing on)",
+   "what": "Unreal look R1 \u2014 hero swing route through Midtown, TSR 50%",
    "output": "3840\u00d72160",
-   "internal": "1920\u00d71080 (TSR)",
-   "median": "88 avg",
+   "internal": "1920\u00d71080",
+   "median": "23.9\u201324.4 (best 5 s); 24.9\u201329.9 avg",
    "p95": "\u2013",
-   "notes": "INVALID: GPU 95\u201399 % busy before launch"
+   "notes": "\u224841 fps best block; GPU 40\u2013100% busy from other agents (contaminated)"
   },
   {
-   "what": "same, HW ray tracing off",
+   "what": "Unreal look R1 \u2014 same route, TSR 67%",
    "output": "3840\u00d72160",
-   "internal": "1920\u00d71080 (TSR)",
-   "median": "55 avg",
+   "internal": "2573\u00d71447",
+   "median": "28.5\u201328.8 best; 30.1\u201331.8 avg",
    "p95": "\u2013",
-   "notes": "INVALID: contaminated"
+   "notes": "contaminated"
+  },
+  {
+   "what": "Unreal look R1 \u2014 same route, native",
+   "output": "3840\u00d72160",
+   "internal": "3840\u00d72160",
+   "median": "40.9\u201343.0 best; 43.3\u201345.6 avg",
+   "p95": "\u2013",
+   "notes": "contaminated; top GPU costs: Lumen screen probes, VSM, facade base pass"
+  },
+  {
+   "what": "Browser baseline \u2014 gameplay (rAF)",
+   "output": "3840\u00d72160",
+   "internal": "3840\u00d72160 (DPR 1)",
+   "median": "15.5\u201330.2",
+   "p95": "51\u201367",
+   "hitches": "20\u201335% >33 ms",
+   "notes": "GPU time 38\u201356 ms/frame; 9 of 12 runs contaminated"
+  },
+  {
+   "what": "Browser baseline \u2014 gameplay (rAF)",
+   "output": "1920\u00d71080",
+   "internal": "1920\u00d71080",
+   "median": "10.6\u201317.2",
+   "p95": "\u2013",
+   "notes": "41\u201368 fps; contaminated"
   }
  ],
  "gaps": [
+  "60 fps at 4K is not reached yet: best Unreal run \u224841 fps at TSR 50% (1080p internal); clean numbers need an idle GPU (other agents' Unreal runs hold it at 40\u2013100%).",
   "Unreal port has only a gray-box test map and a capsule character so far.",
-  "No trustworthy 4K/60 numbers yet: the shared GPU is 42\u201399 % busy with other sessions' Chrome/Blender work.",
   "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100.",
-  "GitHub LFS budget exhausted: reference video clips (656 MB) are local-only on the Studio; no Unreal binary snapshots anywhere."
+  "Owner decision: the browser build's upstream ad atlas (ts_ads.webp) shows Marvel-universe brands (Oscorp, Re-Elect Osborn, Roxxon, Daily Bugle) and likely real-game brands; the Unreal port excludes them, the browser build still shows them.",
+  "GitHub LFS budget exhausted: the 43 reference clips are local-only; refs/tools/regenerate_clips.sh rebuilds them anywhere.",
+  "Browser build bugs from the baseline playtest: camera top-down under tree canopy, camera inside hero, suit shader 17/16 texture units (~90 warnings/s), hero blocked by parked cars, Gemini/Qwen back logos, crowd clusters in lockstep, dark night street.",
+  "Owner decision: the default hero suit (upstream spiderman.glb) closely resembles a licensed game suit design (white spider emblem, white cuffs, red leg stripes). The AI-logo suits are original alternatives."
  ],
  "log": [
   {
@@ -316,6 +500,54 @@
   {
    "t": "09:30",
    "text": "Blocker: the GitHub account's Git LFS budget is exhausted, so reference clips and Unreal binary snapshots can't be pushed anywhere. Unreal content is script-generated only; reference clips stay local on the Studio. Agents P1, P2, P3 resumed."
+  },
+  {
+   "t": "09:33",
+   "text": "Owner: Sonnet 5.5 is the default subagent model (extra-high thinking); Opus 5.5 only for critics, deep engineering, integration. Rule landed in global AGENTS.md (main) and memory."
+  },
+  {
+   "t": "09:38",
+   "text": "Started Sonnet 5.5 xhigh builders: P4 Look/lighting/4K perf round 1, F3 browser baseline finish, F2 reference index."
+  },
+  {
+   "t": "09:43",
+   "text": "Traversal R5 merged; critic FAILS with gains on arc/web/moves; next gap = wall-run. Traversal builder hands off to a fresh Opus agent (context limit)."
+  },
+  {
+   "t": "09:56",
+   "text": "City R3 merged (foliage); critic FAILS, next gap = window glass. City round 4 now on a Sonnet 5.5 builder. IP: Marvel/real-game brand ads excluded in the Unreal port."
+  },
+  {
+   "t": "10:02",
+   "text": "F2 reference library done on Sonnet 5.5: INDEX (219 stills, 43 clips, each viewed), SOURCES, tested clip-regeneration script; ~70 manifest labels corrected."
+  },
+  {
+   "t": "10:12",
+   "text": "Characters R1 merged; critic FAILS; round 2 on a Sonnet 5.5 builder (brute texture)."
+  },
+  {
+   "t": "11:00",
+   "text": "Traversal R6 merged: wall-run fixed (critic +2 on that sequence); still FAILS; round 7 targets swing cadence."
+  },
+  {
+   "t": "11:31",
+   "text": "City R4 merged (window glass + IP exclusions); critic FAILS, facades/IQ up to 5; round 5 builds street level. A/B packs now centre-cropped to hide reference HUD."
+  },
+  {
+   "t": "12:41",
+   "text": "F3 browser baseline done (Sonnet): build/tests pass, 32 4K stills, 9 clips, 10-bug playtest. P4 lighting round 1 done: 3 time-of-day presets over the real city; 4K \u224841 fps best at TSR 50% (contaminated); with critic."
+  },
+  {
+   "t": "12:41",
+   "text": "Incidents: a lighting-agent cleanup command targeted the owner's Chrome profile (macOS blocked it; profile intact). The baseline agent misread an owner message and pushed an unrequested AGENTS.md branch + memory note; both removed. Agents now have hard delete/edit limits."
+  },
+  {
+   "t": "12:42",
+   "text": "Characters R2 merged: brute fixed (+2 on enemies); still FAILS; round 3 rebuilds thug/brute from existing Tripo people (no paid generation)."
+  },
+  {
+   "t": "12:43",
+   "text": "Look R1 critic FAILS (night 2/10); round 2 on a fresh Sonnet builder with measurable night targets."
   }
  ]
 }

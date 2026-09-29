@@ -21,14 +21,15 @@ for p in pairs:
     for slot, (who, src) in zip("AB", order):
         ext = os.path.splitext(src)[1].lower()
         dst = os.path.join(d, slot + ext)
-        # Re-encode so the critic can't identify files by hash or metadata.
+        # Re-encode so the critic can't identify files by hash or metadata, and centre-crop 84% on both
+        # sides so HUD/logos at the frame edges of reference footage don't give the answer away.
         if ext in (".mp4", ".mov", ".webm", ".mkv"):
             dst = os.path.join(d, slot + ".mp4")
             subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-map_metadata", "-1", "-an",
-                            "-vf", "scale='min(1920,iw)':-2", "-c:v", "libx264", "-crf", "20", "-preset", "fast", dst], check=True)
+                            "-vf", "crop=iw*0.84:ih*0.84,scale='min(1920,iw)':-2", "-c:v", "libx264", "-crf", "20", "-preset", "fast", dst], check=True)
         else:
             dst = os.path.join(d, slot + ".jpg")
-            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-map_metadata", "-1", "-q:v", "3", dst], check=True)
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-map_metadata", "-1", "-vf", "crop=iw*0.84:ih*0.84", "-q:v", "3", dst], check=True)
         key.setdefault(p["id"], {})[slot] = who
     lines.append(f"- `{p['id']}/` — {p.get('note', '')}")
 open(os.path.join(pack, "PAIRS.md"), "w").write("\n".join(lines) + "\n")
