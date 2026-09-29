@@ -8,7 +8,7 @@ For each pair the two files are copied to <pack_dir>/<id>/A.<ext> and B.<ext> in
 order. The key (which of A/B was x) goes to <pack_dir>.key.json, OUTSIDE the pack, so the
 critic never sees it. <pack_dir>/PAIRS.md lists ids + neutral view notes only.
 """
-import json, os, random, shutil, sys
+import json, os, random, subprocess, sys
 
 pack, pairs = sys.argv[1], json.load(open(sys.argv[2]))
 os.makedirs(pack, exist_ok=True)
@@ -20,7 +20,15 @@ for p in pairs:
     random.shuffle(order)
     for slot, (who, src) in zip("AB", order):
         ext = os.path.splitext(src)[1].lower()
-        shutil.copy2(src, os.path.join(d, slot + ext))
+        dst = os.path.join(d, slot + ext)
+        # Re-encode so the critic can't identify files by hash or metadata.
+        if ext in (".mp4", ".mov", ".webm", ".mkv"):
+            dst = os.path.join(d, slot + ".mp4")
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-map_metadata", "-1", "-an",
+                            "-vf", "scale='min(1920,iw)':-2", "-c:v", "libx264", "-crf", "20", "-preset", "fast", dst], check=True)
+        else:
+            dst = os.path.join(d, slot + ".jpg")
+            subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", src, "-map_metadata", "-1", "-q:v", "3", dst], check=True)
         key.setdefault(p["id"], {})[slot] = who
     lines.append(f"- `{p['id']}/` — {p.get('note', '')}")
 open(os.path.join(pack, "PAIRS.md"), "w").write("\n".join(lines) + "\n")
