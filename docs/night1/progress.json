@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 15:31",
+ "updated": "2026-09-29 15:34",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 9,
-   "verdict": "R8: FAILS (arc 4, camera 4, web 4, moves 3, body 3)",
-   "gap": "Locked symmetric camera + identical swings; needs weave inside a safe corridor"
+   "round": 10,
+   "verdict": "R9: FAILS (arc 5, camera 6, web 4, moves 5, body 5) \u2014 best yet",
+   "gap": "Rhythm/altitude: rope 52\u201367% on screen (spec 25\u201345%), no long trick phase, never reaches rooflines; moving into the real lit city"
   },
   {
    "id": "P4",
@@ -303,6 +303,11 @@
  ],
  "clips": [
   {
+   "title": "Traversal R9 \u2014 spec-driven camera",
+   "src": "docs/night1/traversal/round-09/a_swing_chain.mp4",
+   "caption": "best critic score so far (avg 5.0/10)"
+  },
+  {
    "title": "Look R1 \u2014 golden-hour swing",
    "src": "docs/night1/look/round-01/swing_golden.mp4"
   },
@@ -495,6 +500,14 @@
    "verdict": "fails",
    "gap": "Hero run: 3.2\u20133.8 steps/s, \u226515\u00b0 lean, \u22659-frame takeoff crouch (CH6/7/10).",
    "notes": "Rebuilt thug/brute from the owner's Tripo people beat round 2 by ~2.5 on enemy models; seam cracks (skin-weight bug) fixed. Secondary: paper-card masks, 2 enemies / 0 weapons in frame, sliding civilians, hero lens/weave. Critic again flags the classic hero suit as close to a studio-owned design (owner decision)."
+  },
+  {
+   "t": "15:34",
+   "piece": "P3 Traversal",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "Every 8 s: rope on screen 25\u201345%, \u22651.5 s web-less trick phase, peak at roofline then drop 1\u20134 storeys (T3/T4/T7).",
+   "notes": "Best round yet (avg 5.0, from 3.6): camera passes most spec lines (hero height .217, yaw 7.5\u00b0, hFOV 103\u00b0); round 9 beat round 8 by ~1 pt on camera. Critic used the spec's own measuring tools."
   }
  ],
  "perf": [
@@ -681,6 +694,10 @@
   {
    "t": "15:31",
    "text": "Characters R3 merged (enemies rebuilt); critic FAILS; round 4 = 3 gaps on an Opus 5.5 high builder (ledger comparison vs Sonnet rounds 2\u20133)."
+  },
+  {
+   "t": "15:34",
+   "text": "Traversal R9: best yet (avg 5.0) after the spec correction; round 10 on a fresh Opus-high builder, captures move into the real lit city."
   }
  ]
 }
