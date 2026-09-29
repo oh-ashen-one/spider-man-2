@@ -40,7 +40,8 @@ Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, cri
 
 | Role | Model / effort |
 |---|---|
-| Builders for every piece (P1–P6, incl. P3 traversal from round 10) and loop workers | **Sonnet 5.5, extra-high** (`sm2-sonnet-builder`, or Workflow `{model:'sonnet', effort:'xhigh'}`) |
+| Builders — hard/central engineering: P3 traversal, C Manhattan integration, P5 combat, F perf | **Opus 5.5, high** (`opus-critic` type or Workflow `{model:'opus', effort:'high'}`) |
+| Builders — pipelines/assets/tooling: P1 city, P2 characters, P4 look, P6 city life, A GPU lock | **Sonnet 5.5, extra-high** (`sm2-sonnet-builder`, or Workflow `{model:'sonnet', effort:'xhigh'}`) |
 | Critics every round; integration playtester between waves; any super-important engineering by judgment | **Opus 5.5, high** (`opus-critic`, or Workflow `{model:'opus', effort:'high'}`) |
 | Direction: wave planning, reconciling contradictory critic demands, deciding what runs next and whether a piece is done | **Fable 5.1, medium** (`fable-director`, or Workflow `{model:'fable', effort:'medium'}`) — sparingly (own weekly limit): one pass per wave, stall/oscillation diagnosis, final acceptance |
 
