@@ -2,11 +2,12 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Swing arc test on a telemetry CSV: for every swing, drop = height at the preceding release (or the spawn / take-off
 # height for the first swing) minus the lowest height during that swing; also rope length, duration, release height.
-# PASS rule (critic round 01): drop >= 15 m on every swing, and consecutive swings differ (drop or rope or duration > 5 %).
+# PASS rule (critic round 01; round 07: >= 10 m, relaxed by the orchestrator with the cadence gap): drop >= DROP_MIN m on every swing, and consecutive swings differ (drop or rope or duration > 5 %).
 # usage: drop_test.py <telemetry.csv> [--skip-first]
 import csv, math, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
 skip_first = "--skip-first" in sys.argv
+DROP_MIN = 10.0
 z = lambda r: float(r["height_above_floor_m"]) if float(r["height_above_floor_m"]) < 900 else 0.0
 # horizon (vanishing point) height on screen, fraction of frame height above centre: 0.5 tan(-pitch) / tan(vfov/2)
 vp = lambda r: 0.5 * math.tan(math.radians(-float(r["cam_pitch_deg"]))) / math.tan(math.radians(float(r["cam_vfov_deg"]) / 2))
@@ -37,10 +38,10 @@ for i, s in enumerate(swings):
     s["drop"], s["dur"] = drop, dur
     cyc = [v for t, v in tv if s["t0"] <= t <= s["t1"] + 0.6]
     s["vpr"] = (max(cyc) - min(cyc)) * 100 if cyc else 0
-    res = "ok" if drop >= 15 else "DROP<15"
+    res = "ok" if drop >= DROP_MIN else f"DROP<{DROP_MIN:g}"
     if i == 0 and skip_first:
         res += " (first swing exempt)"
-    elif drop < 15:
+    elif drop < DROP_MIN:
         ok = False
     if prev:
         same = all(abs(a - b) <= 0.05 * max(abs(b), 1e-3) for a, b in ((drop, prev["drop"]), (s["rope"], prev["rope"]), (dur, prev["dur"])))

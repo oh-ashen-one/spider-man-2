@@ -130,6 +130,7 @@ void UWebTraversalComponent::SetMode(EWebTravMode M, FName Sub)
 	}
 	if (S.Mode != M) S.ModeT = 0;
 	if (M != EWebTravMode::Air) S.bTopOut = false;
+	if (M != EWebTravMode::Air && M != EWebTravMode::Swing) S.bWebPending = false;
 	S.Mode = M;
 	SetSub(Sub);
 }
@@ -362,6 +363,17 @@ void UWebTraversalComponent::StartVault(const FTravContact& C, bool bFast)
 void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 {
 	S.AirT += Hs; S.Coyote -= Hs;
+	if (S.bWebPending)
+	{ // round 07: web stuck on the rise; the swing starts at the top of the hop (see TryStartSwing)
+		S.PendingT += Hs;
+		if (!I.bSwing) { S.bWebPending = false; WebRelease(); }
+		else if (S.Vel.Z <= PendingVz || S.PendingT >= PendingMax)
+		{
+			StartSwing(S.PendingA, S.PendingFwd, S.bPendingTurn ? &S.PendingTurn : nullptr, HLen(S.Vel));
+			S.bGroundSwing = false;
+			return;
+		}
+	}
 	if (S.Coyote > 0 && I.bJumpPressed) { S.JumpCharge = 0; LaunchJump(I.bSprint || I.bSwing); return; }
 	// user r4 #12: double-tap Space in the air = an air flip / corkscrew (once per airtime)
 	if (I.bJumpPressed)
@@ -466,10 +478,15 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	}
 	// swing attach (RMB held): search throttled; after a release wait for the apex / trick to play out
 	if (S.bJumpRelHold && (S.Vel.Z <= 0 || S.Mode != EWebTravMode::Air)) S.bJumpRelHold = false;
-	if (I.bSwing && S.SwingCooldown <= 0 && (!S.bJumpRelHold || I.bSwingPressed)) // a fresh RMB press still grabs at once
+	if (I.bSwing && !S.bWebPending && S.SwingCooldown <= 0 && (!S.bJumpRelHold || I.bSwingPressed)) // a fresh RMB press still grabs at once
 	{
 		const bool bTrickBusy = S.Sub == N_trick && S.SubT < FMath::Max(0.62, S.TrickDur - 0.35); // let the flip finish
-		const bool bReady = I.bSwingPressed || (S.bGroundSwing && S.AirT > 0.14) || (S.AirT > 0.1 && S.Vel.Z < 5.5 && !bTrickBusy) || S.Vel.Z < -6;
+		// round 07 (critic r06, swing cadence): after a web release a held button searches again from 0.22 s on, even while
+		// still rising (was: only once vz < 5.5 m/s -> 1-1.7 s web-less falls); a fresh press always searches at once (the
+		// throttle left over from the previous search used to swallow the press)
+		const bool bReady = I.bSwingPressed || (S.bGroundSwing && S.AirT > 0.14) || (S.AirT > 0.1 && S.Vel.Z < 5.5 && !bTrickBusy) || S.Vel.Z < -6
+			|| (S.RelT > ReattachAfter && !bTrickBusy);
+		if (I.bSwingPressed) S.SearchT = 0;
 		S.SearchT -= Hs;
 		if (bReady && S.SearchT <= 0 && !bTrickBusy)
 		{
@@ -631,6 +648,19 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 		return false;
 	}
 	S.NoAnchorT = 0;
+	// round 07 (critic r06 cadence): fired on the rise after a release, the web shoots and sticks at once, but the pendulum
+	// starts at the top of the hop (vz <= PendingVz or PendingMax s later) so every swing still swoops down from its entry;
+	// a taut rope at once flung him up the back of the new arc and stalled him ~1.3 s at its top
+	if (S.Mode == EWebTravMode::Air && S.Vel.Z > PendingVz && !S.bGroundSwing)
+	{
+		S.bWebPending = true; S.PendingT = 0; S.PendingA = A; S.PendingFwd = Fwd; S.bPendingTurn = Turn != nullptr;
+		if (Turn) S.PendingTurn = *Turn;
+		const FVector Dir = Turn ? FMath::Lerp(Fwd, *Turn, 0.6).GetSafeNormal() : Fwd;
+		const double Lat = (A.Point.X - S.Pos.X) * -Dir.Y + (A.Point.Y - S.Pos.Y) * Dir.X;
+		S.bPendingRight = FMath::Abs(Lat) > 2 ? Lat > 0 : !S.Sw.bRightHand;
+		WebAttach(S.bPendingRight, A.Point, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
+		return true;
+	}
 	StartSwing(A, Fwd, Turn, HS);
 	S.bGroundSwing = false;
 	return true;
@@ -659,10 +689,13 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		}
 		const double HEntry = S.Pos.Z - H - FMaxD;
 		double BottomFeet = FMath::Lerp(double(ArcBottomMin), double(ArcBottomMax), double(Rng.FRand()));
-		BottomFeet = FMath::Max(3.0, FMath::Min(BottomFeet, HEntry - MinArcDrop));
+		// round 07: + 0..ArcDropJitter m per swing so consecutive short arcs never repeat
+		BottomFeet = FMath::Max(3.0, FMath::Min(BottomFeet, HEntry - MinArcDrop - double(ArcDropJitter) * Rng.FRand()));
 		const double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
 		const double BottomZ = FMaxD + BottomFeet + H;
-		double L = FMath::Clamp(S.Pos.Z + DZ - BottomZ, DZ + 3.0, FMath::Max(double(MaxArcRope), DZ + 3.0));
+		// round 07: the rope cap varies per swing (up to RopeCapJitter shorter) so a long chain never repeats one arc / tempo
+		const double RopeCap = double(MaxArcRope) * (1.0 - double(RopeCapJitter) * Rng.FRand());
+		double L = FMath::Clamp(S.Pos.Z + DZ - BottomZ, DZ + 3.0, FMath::Max(RopeCap, DZ + 3.0));
 		double DH = FMath::Sqrt(FMath::Max(L * L - DZ * DZ, 16.0));
 		DH = FMath::Min(DH, double(MaxPivotAhead));
 		Sw.Pivot = S.Pos + Fl * DH + Rt * (Lat * PivotLateralKeep) + ZUP * DZ;
@@ -704,8 +737,13 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 	CapSpeed();
 	const FVector Right(-Sw.Dir.Y, Sw.Dir.X, 0);
 	const double Lat = DX * Right.X + DY * Right.Y;
-	Sw.bRightHand = FMath::Abs(Lat) > 2 ? Lat > 0 : !Sw.bRightHand;
-	WebAttach(Sw.bRightHand, Sw.Anchor, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
+	if (S.bWebPending) Sw.bRightHand = S.bPendingRight; // the strand already shot on the rise (round 07)
+	else
+	{
+		Sw.bRightHand = FMath::Abs(Lat) > 2 ? Lat > 0 : !Sw.bRightHand;
+		WebAttach(Sw.bRightHand, Sw.Anchor, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
+	}
+	S.bWebPending = false;
 	SetMode(EWebTravMode::Swing, N_swingLow); S.Trick = NAME_None; S.bDive = false; S.bAirTrickUsed = false; S.AirTapT = -9;
 	Emit(N_swingStart);
 }
@@ -1092,6 +1130,17 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 	FVector HV;
 	if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
 	if (!bJump) S.Vel.Z = FMath::Min(FMath::Max(S.Vel.Z, REL_UP_VY), FMath::Max(S.Vel.Z + REL_UP * K, REL_UP * 0.75 * K));
+	// near the street a release may still climb (16 m/s at <= 12 m, easing to ReleaseVzMax at 24 m): the chain gains the height
+	// its next drop needs
+	const double VzCap = FMath::Lerp(16.0, double(ReleaseVzMax), FMath::Clamp((HeightAboveFloor() - 12.0) / 12.0, 0.0, 1.0));
+	if (!bJump && S.Vel.Z > VzCap)
+	{ // round 07 (critic r06 cadence): a release is a forward pop, not a climb — the climb above ReleaseVzMax goes into forward
+	  // speed (60 %), so the hop tops out ~0.4 s later and the next web's swing starts there (was 1-2 s ballistic arcs)
+		FVector HV0;
+		if (!HDir(S.Vel, HV0)) HV0 = YawDir(S.Facing);
+		const double Extra = S.Vel.Z - VzCap;
+		S.Vel.Z = VzCap; S.Vel.X += HV0.X * Extra * 0.6; S.Vel.Y += HV0.Y * Extra * 0.6;
+	}
 	if (bJump)
 	{ // user r11: Space-release = stronger forward push + a jump-off-the-web pop up
 		S.Vel.X += HV.X * SWING_JUMP * K; S.Vel.Y += HV.Y * SWING_JUMP * K;

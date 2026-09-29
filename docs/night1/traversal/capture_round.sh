@@ -23,10 +23,13 @@ SEQS=(
   "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,6.5,7.6,9.9"
 )
 WANT=("$@")
+# RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
+wait_slot() { while [ "$(pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l)" -ge 3 ]; do echo "waiting: 3+ Unreal instances running"; sleep 60; done; }
 # round 06: shader / texture warm-up render first (a fresh DDC compiles the hero and city materials on first use, which
 # rendered the suit white / unshaded in the first frames of a capture); low-res, not kept
 echo "== warm-up render (not kept)"
 rm -rf "$TMP/warmup"
+wait_slot
 "$UE_DIR/Scripts/run_game.sh" "$TMP/warmup" -map "$MAP" -res 960x540 -quit 16 -name warmup -timeout 2400 \
   -- -benchmark -fps=60 -WHTravScript="$SCR/a_swing_chain.json" | tail -1
 for entry in "${SEQS[@]}"; do
@@ -36,6 +39,7 @@ for entry in "${SEQS[@]}"; do
   # --- 1080p60 movie + telemetry
   rm -rf "$TMP/$NAME"
   QUITP=$(python3 -c "print(round($QUIT + $PRE, 3))")
+  wait_slot
   "$UE_DIR/Scripts/run_game.sh" "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
     -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE | tail -3
   FR="$TMP/$NAME/${NAME}_frames"
@@ -47,7 +51,7 @@ for entry in "${SEQS[@]}"; do
       -movflags +faststart "$ROUND/$NAME.mp4"
     DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$ROUND/$NAME.mp4")
     if [ "$(stat -f %z "$ROUND/$NAME.mp4")" -gt 15000000 ]; then # re-encode at a bitrate that fits 14.5 MB
-      KBPS=$(python3 -c "print(int(14.5e6*8/1000/float('$DUR')))")
+      KBPS=$(python3 -c "print(int(13.5e6*8/1000/float('$DUR')))")
       ffmpeg -loglevel error -y -framerate 60 -start_number $SKIP -i "$FR/MovieFrame%05d.png" -c:v libx264 -preset slow \
         -b:v ${KBPS}k -maxrate ${KBPS}k -bufsize $((KBPS*2))k -pix_fmt yuv420p -movflags +faststart "$ROUND/$NAME.mp4"
     fi
@@ -58,6 +62,7 @@ for entry in "${SEQS[@]}"; do
   rm -rf "$TMP/${NAME}_4k"
   # shot times are world seconds: shift by the pre-roll; files are named by sequence time
   SHOTSP=$(python3 -c "print(','.join(str(round(float(t) + $PRE, 3)) for t in '$SHOTS'.split(',')))")
+  wait_slot
   "$UE_DIR/Scripts/run_game.sh" "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTSP" -name "$NAME" -timeout 1500 \
     -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE \
     -WHTravCsv="$TMP/${NAME}_4k/stills_telemetry.csv" | tail -2
