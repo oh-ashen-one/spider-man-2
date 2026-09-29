@@ -1,7 +1,9 @@
-// OWNER: combat engineer. Environmental throwables spawned around a fight (NYC litter bin, wooden crate, oil drum):
+// OWNER: combat engineer. Environmental throwables spawned around a fight (NYC litter bin, wooden crate, oil drum,
+// traffic drum; the textured Tripo models from props_hq when shipped, else the procedural ones below):
 // webbed with both hands, yanked overhead, hurled at an enemy (R / L1+R1).
 import * as THREE from 'three';
 import { clamp, rnd } from './util.js';
+import { loadHQ, bareGeometry } from '../../world/hqassets.js';
 
 const _v = new THREE.Vector3(), _v2 = new THREE.Vector3();
 
@@ -40,6 +42,17 @@ function makeDrum(mats) {
   return { g, r: 0.3, h: 0.88, mass: 1.3 };
 }
 
+// (3d-assets) throwable kind -> props_hq item, roughness, metalness, mass, breaks on impact
+const HQK = { bin: ['trash', 0.6, 0.35, 1], crate: ['crate', 0.85, 0, 1, true], drum: ['oildrum', 0.42, 0.55, 1.3], barrel: ['drum', 0.5, 0, 0.8] };
+function makeHQ(kind, hq, mats) {
+  const [key, roughness, metalness, mass, breaks] = HQK[kind], it = hq?.items[key];
+  if (!it) return null;
+  const mat = mats['hq_' + key] ||= new THREE.MeshStandardMaterial({ map: hq.atlas, roughness, metalness });
+  const m = new THREE.Mesh(bareGeometry(it.lods[0]), mat); m.castShadow = true; m.receiveShadow = true;
+  const g = new THREE.Group(); g.add(m);
+  return { g, r: Math.max(it.size[0], it.size[2]) / 2, h: it.size[1], mass, breaks: !!breaks };
+}
+
 export function createProps(c) {
   const ctx = c.ctx, scene = ctx.scene;
   const mats = {
@@ -50,6 +63,7 @@ export function createProps(c) {
     drum: new THREE.MeshStandardMaterial({ color: 0x1d4f8f, roughness: 0.45, metalness: 0.55 }),
   };
   const list = [];
+  let hq = null; loadHQ('/assets/city/props/props_hq').then((h) => { hq = h; });
   const P = {
     list,
     spawnAround(center, n = 3) {
@@ -63,8 +77,9 @@ export function createProps(c) {
         const hit = W.raycast(_v.set(center.x, center.y + 0.6, center.z), d, L + 0.6);
         if (hit) continue;
         if (list.some(p => p.pos.distanceTo(_v.set(x, gy, z)) < 1.2)) continue;
-        const kind = ['bin', 'crate', 'drum'][k % 3];
-        const m = kind === 'bin' ? makeBin(mats) : kind === 'crate' ? makeCrate(mats) : makeDrum(mats);
+        const kinds = hq ? ['bin', 'crate', 'drum', 'barrel'] : ['bin', 'crate', 'drum'];
+        const kind = kinds[(k + Math.floor(Math.random() * 4)) % kinds.length];
+        const m = makeHQ(kind, hq, mats) || (kind === 'bin' ? makeBin(mats) : kind === 'crate' ? makeCrate(mats) : makeDrum(mats));
         m.g.position.set(x, gy, z); m.g.rotation.y = Math.random() * 6.28; m.g.name = 'cmb-prop-' + kind; scene.add(m.g);
         list.push({ kind, ...m, pos: m.g.position, vel: new THREE.Vector3(), spin: new THREE.Vector3(), state: 'rest', t: 0 });
         k++;

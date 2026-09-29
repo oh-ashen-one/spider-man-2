@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { G, mulberry32, inPark, shoreX } from '../layout.js';
 import { MB } from '../geom.js';
+import { rigMaterial, RigPool } from './fauna.js';
 
 const R_SIM = 160, MAX = 700;
 
@@ -36,7 +37,37 @@ function birdGeometry() {
   return g;
 }
 
-export function createPigeons({ scene, blocks, parkPaths }) {
+// (3d-assets) textured Tripo birds: standing pigeon / gull (head pecks and looks around) and a flying model (wings flap
+// about the shoulder pivots). iA = (flap phase, flap amount, clock, head pitch).
+const v3 = (a) => `vec3(${a.map((x) => x.toFixed(4)).join(',')})`;
+function birdGLSL(piv) {
+  return `attribute vec2 aRig; attribute vec4 iA;
+  vec3 rigPose(vec3 p) {
+    int part = int(aRig.x + 0.5); float w = aRig.y;
+    ${piv.head ? `if (part == 1) { vec3 pv = ${v3(piv.head)}; vec3 q = p - pv; float b = iA.w * w; float c = cos(b), s = sin(b);
+      q = vec3(q.x, c * q.y - s * q.z, s * q.y + c * q.z);
+      float a = sin(iA.z * 2.3) * 0.4 * w * (1.0 - step(0.01, iA.w)); c = cos(a); s = sin(a);
+      p = pv + vec3(c * q.x + s * q.z, q.y, -s * q.x + c * q.z); }` : ''}
+    ${piv.wingL ? `if (part == 7 || part == 8) { float sg = part == 7 ? 1.0 : -1.0; vec3 pv = part == 7 ? ${v3(piv.wingL)} : ${v3(piv.wingR)};
+      vec2 q = p.xy - pv.xy; float a = sg * (iA.y * sin(iA.z * 17.0 + iA.x * 6.28) + 0.12 * iA.y) * w; float c = cos(a), s = sin(a);
+      p.xy = pv.xy + vec2(c * q.x - s * q.y, s * q.x + c * q.y); }` : ''}
+    return p;
+  }`;
+}
+function birdPools(scene, fauna) {
+  const I = fauna?.items; if (!I?.pigeon || !I.pigeonfly) return null;
+  const mk = (it, max, name) => {
+    const m = rigMaterial(fauna.atlas, birdGLSL(it.pivots), 'bird-hq-' + it.name, { roughness: 0.8, tint: true });
+    return it.lods.map((g, li) => new RigPool(scene, g, m, li ? max : Math.ceil(max / 2), `${name}-L${li}`, li === 0, true));
+  };
+  const out = { pigeon: { ground: mk(I.pigeon, MAX, 'pigeons'), air: mk(I.pigeonfly, 300, 'pigeons-fly') } };
+  out.gull = I.gull && I.gullfly ? { ground: mk(I.gull, 160, 'gulls'), air: mk(I.gullfly, 120, 'gulls-fly') } : out.pigeon;
+  out.all = [...new Set([out.pigeon, out.gull])].flatMap((k) => [...k.ground, ...k.air]);
+  return out;
+}
+
+export function createPigeons({ scene, blocks, parkPaths, fauna = null }) {
+  const HQ = birdPools(scene, fauna);
   const geo = birdGeometry();
   const iF = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 4), 4).setUsage(THREE.DynamicDrawUsage);
   const iT = new THREE.InstancedBufferAttribute(new Float32Array(MAX * 3), 3).setUsage(THREE.DynamicDrawUsage);
@@ -74,12 +105,12 @@ export function createPigeons({ scene, blocks, parkPaths }) {
   const mesh = new THREE.InstancedMesh(geo, mat, MAX);
   mesh.name = 'pigeons'; mesh.count = 0; mesh.frustumCulled = false; mesh.castShadow = true; mesh.receiveShadow = true;
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-  scene.add(mesh);
+  if (!HQ) scene.add(mesh);
 
   // ---- flock sites
   const rnd = mulberry32(3131);
   const flocks = [];
-  const addFlock = (x, z, y, n) => flocks.push({ x, z, y, n, birds: null, state: 'ground', t: 0, seed: flocks.length * 977 + 5 });
+  const addFlock = (x, z, y, n, kind = 'pigeon') => flocks.push({ x, z, y, n, kind, birds: null, state: 'ground', t: 0, seed: flocks.length * 977 + 5 });
   for (const b of blocks) {
     if (rnd() > (b.core ? 0.55 : 0.3)) continue;
     // on the sidewalk, building side of a random frontage
@@ -92,7 +123,7 @@ export function createPigeons({ scene, blocks, parkPaths }) {
     if (p.drive) continue;
     for (let i = 4; i < p.pts.length; i += 14) if (rnd() < 0.6) addFlock(p.pts[i][0] + (rnd() - 0.5) * 3, p.pts[i][1] + (rnd() - 0.5) * 3, G.CURB_H + 0.02, 6 + Math.floor(rnd() * 14));
   }
-  for (let z = -3150; z < 3050; z += 110) { const zz = z + rnd() * 40, [w, e] = shoreX(zz); addFlock(rnd() < 0.5 ? w + 5 + rnd() * 6 : e - 5 - rnd() * 6, zz, G.CURB_H, 5 + Math.floor(rnd() * 10)); }
+  for (let z = -3150; z < 3050; z += 110) { const zz = z + rnd() * 40, [w, e] = shoreX(zz); addFlock(rnd() < 0.5 ? w + 5 + rnd() * 6 : e - 5 - rnd() * 6, zz, G.CURB_H, 5 + Math.floor(rnd() * 10), 'gull'); } // (3d-assets) the waterfront flocks are gulls
 
   const spawnBirds = (F) => {
     const r = mulberry32(F.seed);
@@ -100,7 +131,8 @@ export function createPigeons({ scene, blocks, parkPaths }) {
     for (let i = 0; i < F.n; i++) {
       const a = r() * 6.28, d = Math.sqrt(r()) * 1.6;
       const g = r();
-      const tint = g < 0.12 ? [1.5, 1.45, 1.4] : g < 0.3 ? [0.9, 0.75, 0.62] : [0.85 + r() * 0.3, 0.85 + r() * 0.3, 0.9 + r() * 0.3];
+      const tint = F.kind === 'gull' && HQ ? [0.95 + r() * 0.1, 0.95 + r() * 0.1, 0.95 + r() * 0.1]
+        : g < 0.12 ? [1.5, 1.45, 1.4] : g < 0.3 ? [0.9, 0.75, 0.62] : [0.85 + r() * 0.3, 0.85 + r() * 0.3, 0.9 + r() * 0.3];
       F.birds.push({ x: F.x + Math.cos(a) * d, y: F.y, z: F.z + Math.sin(a) * d, ry: r() * 6.28, tx: 0, tz: 0, wt: r() * 2,
         vx: 0, vy: 0, vz: 0, flap: 0, fold: 1, peck: 0, ph: r(), tint, orbit: 8 + r() * 8, ang: r() * 6.28, alt: 10 + r() * 10, spd: 7 + r() * 3, land: 0 });
     }
@@ -142,6 +174,7 @@ export function createPigeons({ scene, blocks, parkPaths }) {
       camera.updateMatrixWorld();
       pv.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); frustum.setFromProjectionMatrix(pv);
       let n = 0;
+      if (HQ) for (const p of HQ.all) p.begin();
       for (const F of flocks) {
         const dc = Math.hypot(F.x - cp.x, F.z - cp.z);
         if (dc > R_SIM) { F.birds = null; F.state = 'ground'; continue; }
@@ -184,6 +217,12 @@ export function createPigeons({ scene, blocks, parkPaths }) {
           if (n >= MAX) continue;
           sph.center.set(b.x, b.y, b.z); sph.radius = 0.5;
           if (!frustum.intersectsSphere(sph) && dc > 20) continue;
+          if (HQ) { // (3d-assets) standing model on the ground, flying model in the air; near / far LOD
+            const K = HQ[F.kind] || HQ.pigeon, set = b.fold > 0.5 ? K.ground : K.air;
+            const pk = (b.peckNow || 0) * Math.max(0, Math.sin(time * 7 + b.ph * 40)) * 1.1;
+            set[Math.hypot(b.x - cp.x, b.z - cp.z) < 30 || set.length < 2 ? 0 : 1].push(b.x, b.y, b.z, b.ry, 1, b.ph, b.flap, time, pk, b.tint);
+            n++; continue;
+          }
           const k = n++, o = k * 16, c = Math.cos(b.ry), s = Math.sin(b.ry);
           e[o] = c; e[o + 1] = 0; e[o + 2] = -s; e[o + 3] = 0; e[o + 4] = 0; e[o + 5] = 1; e[o + 6] = 0; e[o + 7] = 0;
           e[o + 8] = s; e[o + 9] = 0; e[o + 10] = c; e[o + 11] = 0; e[o + 12] = b.x; e[o + 13] = b.y; e[o + 14] = b.z; e[o + 15] = 1;
@@ -192,6 +231,7 @@ export function createPigeons({ scene, blocks, parkPaths }) {
         }
         if (F.state === 'landing' && landed === F.birds.length) { F.state = 'ground'; for (const b of F.birds) b.land = 0; }
       }
+      if (HQ) { for (const p of HQ.all) p.end(); return; }
       mesh.count = n;
       if (n) for (const [a, w] of [[mesh.instanceMatrix, 16], [iF, 4], [iT, 3]]) { a.clearUpdateRanges(); a.addUpdateRange(0, n * w); a.needsUpdate = true; }
     },

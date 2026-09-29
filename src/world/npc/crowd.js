@@ -18,6 +18,8 @@ import { PLAZA_CROWD_SPOTS } from '../props.js'; // (street r7) forecourt-plaza 
 import { PARK_CROWD_SPOTS } from '../park.js'; // (peds r6) lawn + park-edge people (were box figures in park.js)
 import { GC_CROWD_SPOTS } from '../grandcentral.js'; // (street r7) Park Av podium roof garden + colonnade people
 import { perf2Off } from '../tilebatch.js'; // (perf r2) A/B switch
+import { createDogsHQ } from './fauna.js'; // (3d-assets)
+
 
 const RP = 270;                 // sidewalk population radius around the camera
 const RNEAR = [120, 160]; /* (street r10) 95/135 -> 120/160 (director: 'many more pedestrians') */        // (street r8) 70/110 -> 95/135: denser sidewalks seen from swing height. near tier (extra walkers + crosswalk corner crowds): populate / release block distance
@@ -728,7 +730,7 @@ function createBlobs(scene, animTex, meta) {
 }
 
 // ------------------------------------------------------------------ crowd
-export async function createCrowd({ scene, blocks, parkPaths, props, roads, phase }) {
+export async function createCrowd({ scene, blocks, parkPaths, props, roads, phase, fauna = null }) {
   const [meta, bin, pedTex, bakeTex] = await Promise.all([
     fetch('/assets/city/npc/people.json').then(r => r.json()),
     fetch('/assets/city/npc/people.bin').then(r => r.arrayBuffer()),
@@ -782,7 +784,7 @@ export async function createCrowd({ scene, blocks, parkPaths, props, roads, phas
     return out.length ? out : null;
   };
   const allPools = pools.flat().concat(accPools.flat());
-  const dogs = meta.dog ? createDogs(scene, bin, meta.dog) : null;   // (citylife r1) dog walkers
+  const dogs = (fauna && createDogsHQ(scene, fauna)) || (meta.dog ? createDogs(scene, bin, meta.dog) : null);   // (citylife r1) dog walkers ((3d-assets) textured breeds)
   const blobs = /[?&]noblob/.test(typeof location !== 'undefined' ? location.search : '') ? null : createBlobs(scene, animTex, meta); // (peds r2) contact shadows
   const femaleV = [], maleV = [];
   variants.forEach((v, i) => (v.female ? femaleV : maleV).push(i));

@@ -4,3 +4,4 @@ dist/
 __pycache__/
 *.pyc
 concepts/citizens/_photos/
+concepts/_tripo_next/

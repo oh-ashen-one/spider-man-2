@@ -17,10 +17,10 @@
 | **Thugs** (melee, gunman) | `thug.glb`: 30k verts, 56k tris, same 58-bone skeleton, 3 recoloured textures | 13 thug clips plus the hero's walk, jog and run | About 30–40k tris, 2048² textures | 3 to 4 street-thug looks |
 | **Brute** | Same thug mesh scaled ×1.24, with its own texture | Same as thugs | Its own heavier body, about 40k tris | 1 |
 | **Pedestrians** | `people.json/.bin`: 24 outfits × 3 LODs, faces from a 32-face atlas | 18-bone skeleton, 27 clips baked into a texture and skinned on the GPU, hundreds on screen | **Near LOD about 4–6k tris**, mid about 1.5k, far about 400; one shared texture atlas | **10 done**, four-view sheets plus an 8-item accessory kit in `citizens/` |
-| **Dogs** | Rigid-part mesh with 3 LODs | Legs, tail and head moved in the vertex shader | About 2–3k tris, split into body, legs, tail and head | **2 done** (`creatures/golden_retriever`, `creatures/french_bulldog`) |
-| **Pigeons** | Instanced, up to 700 on screen | Wing flap in the vertex shader | **About 150–300 tris** | **2 done**, standing and flying (`creatures/pigeon*`) |
-| **New: rats, squirrels, gulls, cats** | Not in the game yet | Same vertex-shader part animation as the dogs | About 300–800 tris | **4 done** (`creatures/`) |
-| **Props** | Blender boxes and canvas textures (throwables), plus `props.glb` | Static; throwables are physics objects | About 1–5k tris plus a far LOD | **16 done** (`props/`) |
+| **Dogs** (done: golden retriever + French bulldog, textured) | Rigid-part mesh with 3 LODs | Legs, tail and head moved in the vertex shader | About 2–3k tris, split into body, legs, tail and head | **2 done** (`creatures/golden_retriever`, `creatures/french_bulldog`) |
+| **Pigeons** (done: standing + flying; waterfront flocks are gulls) | Instanced, up to 700 on screen | Wing flap in the vertex shader | **About 150–300 tris** | **2 done**, standing and flying (`creatures/pigeon*`) |
+| **New: rats, squirrels, gulls, cats** (done, `npc/fauna.js`) | In the game | Same vertex-shader part animation as the dogs | About 300–800 tris | **4 done** (`creatures/`) |
+| **Props** (done: 16 textured, `tools/critterfit`) | Blender boxes and canvas textures (throwables), plus `props.glb` | Static; throwables are physics objects | About 1–5k tris plus a far LOD | **16 done** (`props/`) |
 
 **Tripo settings by group:**
 - **Hero, thugs, brute:** export at full detail and skip auto-rig. We reuse the existing 58-bone skeleton, so all current animations keep working.

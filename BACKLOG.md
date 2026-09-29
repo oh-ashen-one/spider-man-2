@@ -29,3 +29,22 @@ See `concepts/CREATURES.md` for the full plan and polygon budgets.
   - accessory sway
 - **Frame time with the full citizen crowd:** measure it in a real desktop session on the Studio. The atlas is 6144 by 4096.
 - Tune accessory probabilities and placement per citizen if anything clips (big hair under hats, and so on).
+
+## Street props and animals (Tripo pack 2, done 2026-09-28)
+
+- Integrated 23 textured Tripo models plus 1 untextured (pigeon in flight, painted in code) through `tools/critterfit`.
+- **Street:** hydrant, litter basket, bench, hot-dog cart, halal cart (about 40% of the cart spots), planter, mailbox, parking meter, a newsbox row (3 cabinets), trash-bag piles and the traffic drum. New: acorn lamps on the park paths and the promenade (they glow at night), sawhorses at the steam work zones, and shopping carts beside about 12% of the trash piles.
+- **Fights:** the throwables are now the trash can, wooden crate, blue oil drum and traffic barrel.
+- **Animals:**
+  - Dog walkers walk a golden retriever or a French bulldog.
+  - Pigeons use a standing model that pecks, and a flying model that flaps.
+  - The waterfront flocks are now gulls.
+  - New (`npc/fauna.js`): rats at the trash piles and dumpsters (they bolt and hide), squirrels on the park paths, and alley cats on the sidewalks. They react to Spider-Man and to `world.alarm`.
+- **Debug switches:** `?nohq` (old models), `?nocritters`.
+- **To do:**
+  - Measure frame time in a real desktop session on the Studio (not over SSH).
+  - Tune the critter density.
+  - The pigeon-in-flight Tripo export has no texture; a textured re-export would replace the painted tile.
+  - The streets still use the old procedural lamp, busstop, kiosk and bike rack.
+  - A jaywalking-rat moment would be fun.
+  - Verification render recipe: export each pack item to PLY with atlas or part colours and render it in Blender workbench (see the session's `/tmp/hqview.py` pattern).

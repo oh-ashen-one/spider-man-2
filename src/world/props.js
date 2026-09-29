@@ -12,7 +12,9 @@ import { createPartMaterial, PART } from './partmat.js';
 import { COAST } from './waterfront.js'; // (coast r1) waterfront lamps / benches / trees
 import { GC_KEEP_OUT, PARK_VIADUCT, GC_TREE_SPOTS, GC_FORECOURTS } from './grandcentral.js';
 import { buildRoadPatches, buildStreetGrime, plazaStrips, buildPlazaPaving, MANHOLES } from './streetdressing.js';
-import { tsNoProp } from './timessq.js'; // timessq r5: no sidewalk sheds / dumpsters inside Times Square
+import { tsNoProp } from './timessq.js';
+import { loadHQ } from './hqassets.js'; // (3d-assets) textured Tripo street props
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'; // timessq r5: no sidewalk sheds / dumpsters inside Times Square
 
 // ------------------------------------------------------------------ geometries
 function lamppost() {
@@ -713,6 +715,18 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   const rnd = mulberry32(4242);
   const rndT = mulberry32(5150);   // (street r2) street-tree species / size stream (keeps the placement stream stable)
   const glb = await loadPropModels();
+  // (3d-assets) textured Tripo props (tools/critterfit): replace the procedural hydrant / litter basket / bench / carts /
+  // planter / mailbox / meter / newsboxes / trash bags / traffic drum, and add park lamps, sawhorses, shopping carts
+  const hq = await loadHQ('/assets/city/props/props_hq'), H = hq?.items || {};
+  if (H.newsbox) { // a row of three coin-op boxes, slightly out of line
+    const rr = mulberry32(21), w = H.newsbox.size[0] + 0.06;
+    H.newsbox.lods = H.newsbox.lods.map((g) => mergeGeometries([0, 1, 2].map((i) => g.clone().applyMatrix4(new THREE.Matrix4()
+      .makeRotationY((rr() - 0.5) * 0.1).setPosition((i - 1) * w, 0, (rr() - 0.5) * 0.05)))));
+  }
+  if (H.parklamp) for (const g of H.parklamp.lods) { // the acorn globe glows at night (partmat LAMP)
+    const pos = g.attributes.position, part = g.attributes.aPart, top = g.boundingBox.max.y;
+    for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / top; if (y > 0.83 && y < 0.95) part.setX(i, PART.LAMP); }
+  }
   // (street r4) critic: 'saturated red lane line down the left looks garish' = the orange plastic jersey-barrier runs.
   // Repaint them as weathered precast concrete (NYC's usual lane-closure barrier): orange -> grey, stripes stay pale.
   if (glb.barrier?.attributes.color) {
@@ -748,6 +762,23 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
     scene.add(P[name].mesh);
     return P[name];
   };
+  // (3d-assets) a textured prop: near pool (LOD0) + far pool (LOD1, P[name + 'Far']) sharing one items array, cross-faded
+  // over the Pool's dither band at HQ_SPLIT m. Falls back to the procedural geometry when the pack is missing.
+  const hqMat = hq ? createPartMaterial({ name: 'propsHQ', instTint: true, instState: true, map: hq.atlas }) : null;
+  const HQ_SPLIT = 45;
+  const mkHQ = (name, key, fallback, opts) => {
+    const it = H[key];
+    if (!it) return mk(name, fallback, opts);
+    const two = it.lods.length > 1 && opts.far > HQ_SPLIT + 15;
+    P[name] = new Pool(it.lods[0], hqMat, { name, extra: { aTint: 3, aState: 1 }, ...opts, far: two ? HQ_SPLIT : opts.far });
+    scene.add(P[name].mesh);
+    if (two) {
+      const f = new Pool(it.lods[1], hqMat, { name: name + 'Far', extra: { aTint: 3, aState: 1 }, ...opts, near: HQ_SPLIT });
+      f.items = P[name].items; P[name + 'Far'] = f; scene.add(f.mesh);
+    }
+    return P[name];
+  };
+  mkHQ('parklamp', 'parklamp', null, { max: 900, far: 400 }); // park paths + promenade (the streets keep the cobra heads)
   mk('lamp', lamppost(), { max: 1200, far: 460 });
   { // (daynight) warm light pool on the sidewalk / road under every street lamp at night: one additive decal pool that
     // shares the lamp items (drawn only while nightK > 0: no draw call by day)
@@ -762,19 +793,25 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
     const pg = new THREE.CircleGeometry(3.8, 20) /* (lighting2 r4) 5.2: smaller pools */.rotateX(-Math.PI / 2).translate(0, 0.06, 2.4);
     P.lampPool = new Pool(pg, pm, { name: 'lampPool', max: 1200, far: 320, castShadow: false, receiveShadow: false });
     P.lampPool.items = P.lamp.items;
+    if (P.parklamp) { // (3d-assets) acorn lamps: the light pool sits right under the globe
+      P.parkLampPool = new Pool(pg.clone().translate(0, 0, -2.4).scale(0.8, 1, 0.8), pm, { name: 'parkLampPool', max: 900, far: 320, castShadow: false, receiveShadow: false });
+      P.parkLampPool.items = P.parklamp.items; P.parkLampPool.mesh.renderOrder = 2;
+      scene.add(nightOnly(P.parkLampPool.mesh));
+    }
     P.lampPool.mesh.renderOrder = 2;
     P.lampPool.mesh.onBeforeRender = () => { pm.opacity = nightK.value; };
     scene.add(nightOnly(P.lampPool.mesh));
   }
   mk('mast', trafficMast(), { max: 500, far: 560 });
   mk('post', trafficPost(), { max: 300, far: 320 });
-  mk('hydrant', hydrant(), { max: 1100, far: 300, castShadow: false });
-  mk('trash', trashCan(), { max: 1400, far: 320 });
-  mk('bench', bench(), { max: 1500, far: 260 }); // (street r8) 500 -> 1500: CPW wall bench runs
+  mkHQ('hydrant', 'hydrant', hydrant(), { max: 1100, far: 300, castShadow: false });
+  mkHQ('trash', 'trash', trashCan(), { max: 1400, far: 320 });
+  mkHQ('bench', 'bench', bench(), { max: 1500, far: 260 }); // (street r8) 500 -> 1500: CPW wall bench runs
   mk('news', newsstand(), { max: 200, far: 380 });
-  mk('cart', hotdogCart(), { max: 160, far: 360 });
-  mk('planter', planter(), { max: 700, far: 260 });
-  mk('mailbox', mailbox(), { max: 250, far: 240, castShadow: false });
+  mkHQ('cart', 'cart', hotdogCart(), { max: 160, far: 360 });
+  mkHQ('cart2', 'cart2', null, { max: 160, far: 360 }); // (3d-assets) halal cart: takes ~40% of the cart spots
+  mkHQ('planter', 'planter', planter(), { max: 700, far: 260 });
+  mkHQ('mailbox', 'mailbox', mailbox(), { max: 250, far: 240, castShadow: false });
   mk('kiosk', linkKiosk(), { max: 250, far: 300 });
   mk('busstop', busStopSign(), { max: 150, far: 180, castShadow: false });
   mk('pit', treePit(), { max: 2200, far: 330, castShadow: false });
@@ -782,14 +819,17 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   mk('shedtop', shedTop(), { max: 1100, far: 420, castShadow: false }); // (street r6) shed deck overlay
   mk('shedjunk', shedJunk(), { max: 400, far: 200 });
   mk('shedsign', shedSign(), { max: 700, far: 260, castShadow: false }); // (street r12)
-  mk('meter', meter(), { max: 900, far: 200, castShadow: false });
-  mk('newsbox', newsboxes(), { max: 500, far: 280, castShadow: false });
+  mkHQ('meter', 'meter', meter(), { max: 900, far: 200, castShadow: false });
+  mkHQ('newsbox', 'newsbox', newsboxes(), { max: 500, far: 280, castShadow: false });
   mk('shelter', busShelter(), { max: 120, far: 260 });
   mk('bikerack', bikeRack(), { max: 300, far: 200, castShadow: false });
   mk('stack', steamStack(), { max: 80, far: 420 });
   mk('doorman', doormanCanopy(), { max: 400, far: 300 }); // (street r5)
   mk('blade', bladeSign(), { max: 1400, far: 300, castShadow: false }); // (street r7)
-  mk('bags', trashBags(), { max: 900, far: 240 }); // (street r9) curbside trash-bag piles
+  mkHQ('bags', 'bags', trashBags(), { max: 900, far: 240 });
+  if (H.bags) { const [w, h, d] = H.bags.size; BAG_BOXES.length = 0; BAG_BOXES.push([-w / 2 + 0.05, 0, -d / 2 + 0.05, w / 2 - 0.05, h * 0.85, d / 2 - 0.05]); }
+  mkHQ('sawhorse', 'sawhorse', null, { max: 300, far: 200, castShadow: false }); // (3d-assets) work zones
+  mkHQ('shopcart', 'shopcart', null, { max: 200, far: 160 }); // (3d-assets) abandoned by the trash piles // (street r9) curbside trash-bag piles
   // Blender models
   mk('subway', glb.subway, { max: 60, far: 240 });
   if (glb.subwaypit) { P.subwaypit = new Pool(glb.subwaypit, subwayPitMaterial(), { name: 'subwaypit', max: 60, far: 160, castShadow: false, extra: { aTint: 3, aState: 1 } }); scene.add(P.subwaypit.mesh); }
@@ -799,7 +839,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   mk('shed', glb.shed, { max: 1100, far: 420 });
   mk('barrier', glb.barrier, { max: 500, far: 220 });
   mk('cone', glb.cone, { max: 1800 /* (street r10) steam work zones */, far: 220, castShadow: false });
-  mk('drum', glb.drum, { max: 700, far: 180 });
+  mkHQ('drum', 'drum', glb.drum, { max: 700, far: 180 });
   mk('dumpster', glb.dumpster, { max: 300, far: 300 });
   mk('rolloff', glb.rolloff, { max: 80, far: 300 });
   mk('payphone', glb.payphone, { max: 200, far: 220, castShadow: false });
@@ -817,6 +857,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   const SIG = 0xd9a514;
   const tintOf = (c) => ({ aTint: hexLin(c), aState: 0 });
   const WHITE = 0xffffff;
+  const rSC = mulberry32(0x5c0a7); // (3d-assets) shopping carts: own stream (the placement streams stay stable)
   const signals = [];
   const treeSpots = [];
   const anchors = [];
@@ -843,6 +884,17 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
     streetAds.push({ x: it.x, y: it.y, z: it.z, ry: it.ry, lx: 0, ly: 1.45, lz: -0.812, fr: Math.PI, w: 2.4, h: 1.25, gain: 0.25 }); };
   const sCyl = (it, lx, lz, y0, y1, r, kind = 'pole') => { if (!S || !it) return; const [x, z] = toW(it, lx, lz); S.cyl(x, z, it.y + y0, it.y + y1, r, r, kind); };
   // zip/perch anchors: pos = exact top of the RENDERED part (world), normal = its surface normal (tops: +Y)
+  // (3d-assets) park path / promenade lamp: the textured acorn lamp when shipped, else the scaled cobra head
+  const parkLamp = (x, y, z, ry, s) => {
+    if (P.parklamp) {
+      const it = P.parklamp.add(x, y, z, ry, 1, null, tintOf(0x1c1c1c)), h = H.parklamp.size[1];
+      sCyl(it, 0, 0, 0, h, 0.12); anchor(it, 0, h, 0, 'lampTop');
+      return it;
+    }
+    const it = P.lamp.add(x, y, z, ry, s, null, tintOf(0x1c1c1c));
+    sCyl(it, 0, 0, 0, 8.3 * s, 0.15 * s); anchor(it, 0, 9.15 * s, 2.9 * s, 'lampTop');
+    return it;
+  };
   const anchor = (it, lx, ly, lz, kind, nrm = null) => {
     if (!it) return;
     const [x, z] = toW(it, lx, lz);
@@ -960,6 +1012,10 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
           if (tsNoProp(x, z)) continue;
           const it = place(P.bags, x, z, ry + Math.PI / 2, 0x3b3e40);
           if (it) for (const q of BAG_BOXES) sBox(it, q[0], q[1], q[2], q[3], q[4], q[5], 'equipment');
+          if (it && P.shopcart && rSC() < 0.12) { // (3d-assets) an abandoned shopping cart beside the pile
+            const [cx, cz] = at(s + (rSC() < 0.5 ? -1.5 : 1.5), 0.9);
+            const c = place(P.shopcart, cx, cz, ry + (rSC() - 0.5) * 1.6, 0x3b3e40); sBox(c, -0.3, 0, -0.5, 0.3, 1.0, 0.5, 'equipment');
+          }
         }
       }
       if (e.kind === 'st' && rnd() < 0.5 * dens + 0.2) for (let s = 12; s < L - 12; s += 18 + rnd() * 10) { if (treeS.some(t => Math.abs(t - s) < 1.2)) continue; const [x, z] = at(s, 0.4); place(P.meter, x, z, ry); }
@@ -1358,6 +1414,10 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
           }
           const it = place(P.drum, x + (rc() - 0.5) * 1.2, z + sd * (7.4 + rc()), rc() * 6, WHITE, {}, 0);
           sCyl(it, 0, 0, 0, 1.0, 0.3, 'equipment');
+          if (P.sawhorse) { // (3d-assets) a police sawhorse across the lane at each end
+            const h = place(P.sawhorse, x + (rc() - 0.5) * 0.6, z + sd * 5.6, (rc() - 0.5) * 0.25, WHITE, {}, 0);
+            sBox(h, -0.75, 0, -0.25, 0.75, 0.8, 0.25, 'equipment');
+          }
         }
       }
     }
@@ -1427,8 +1487,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
           const nx = -(z1 - z0) / L, nz = (x1 - x0) / L;
           const side = rnd() < 0.5 ? 1 : -1;
           const off = p.w / 2 + 0.6;
-          const it = P.lamp.add(x1 + nx * off * side, G.CURB_H, z1 + nz * off * side, Math.atan2(-nx * side, -nz * side), 0.75, null, tintOf(0x1c1c1c));
-          sCyl(it, 0, 0, 0, 8.3 * 0.75, 0.15 * 0.75); anchor(it, 0, 9.15 * 0.75, 2.9 * 0.75, 'lampTop');
+          const it = parkLamp(x1 + nx * off * side, G.CURB_H, z1 + nz * off * side, Math.atan2(-nx * side, -nz * side), 0.75);
           if (rnd() < 0.6) P.bench.add(x0 + nx * off * -side, G.CURB_H, z0 + nz * off * -side, Math.atan2(nx * side, nz * side), 1, null, tintOf(0));
           if (rnd() < 0.3) P.trash.add(x0 + nx * (off + 0.3) * side + (x1 - x0) / L * 2, G.CURB_H, z0 + nz * (off + 0.3) * side + (z1 - z0) / L * 2, rnd() * 6, 1, null, tintOf(0x3b3e40));
         }
@@ -1441,9 +1500,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   // lawns carry their own trees. Falls back to the old straight row-sampled line if the coast was not built.
   if (COAST.built) {
     for (const L of COAST.lamps) {
-      const it = P.lamp.add(L.x, L.y ?? G.CURB_H, L.z, Math.atan2(-L.nx, -L.nz), 0.8, null, tintOf(0x1c1c1c));
-      if (!it) continue;
-      sCyl(it, 0, 0, 0, 8.3 * 0.8, 0.15 * 0.8); anchor(it, 0, 9.15 * 0.8, 2.9 * 0.8, 'lampTop');
+      parkLamp(L.x, L.y ?? G.CURB_H, L.z, Math.atan2(-L.nx, -L.nz), 0.8);
     }
     for (const B of COAST.benches) P.bench.add(B.x, B.y ?? G.CURB_H, B.z, Math.atan2(-B.nx, -B.nz), 1, null, tintOf(0));
     for (const T of COAST.trees) treeSpots.push(T);
@@ -1459,8 +1516,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
       let nx = -tz, nz = tx; if (nx * inv < 0) { nx = -nx; nz = -nz; }
       for (let u = (30 - accL % 30) % 30; u < L; u += 30) {
         const x = ax + tx * u + nx * 1.0, z = az + tz * u + nz * 1.0;
-        const it = P.lamp.add(x, G.CURB_H, z, Math.atan2(-nx, -nz), 0.8, null, tintOf(0x1c1c1c));
-        sCyl(it, 0, 0, 0, 8.3 * 0.8, 0.15 * 0.8); anchor(it, 0, 9.15 * 0.8, 2.9 * 0.8, 'lampTop');
+        parkLamp(x, G.CURB_H, z, Math.atan2(-nx, -nz), 0.8);
       }
       accL += L;
       for (let u = (60 - accB % 60) % 60; u < L; u += 60) {
@@ -1527,7 +1583,12 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   // throwable props: [pool name, mass kg, bounding size m]
   const GRAB = [['trash', 25, [0.62, 0.95, 0.62]], ['newsbox', 30, [2.0, 1.4, 0.5]], ['cone', 3, [0.4, 0.75, 0.4]], ['drum', 40, [0.6, 1.0, 0.6]],
     ['planter', 120, [1.2, 0.6, 0.9]], ['mailbox', 60, [0.52, 1.25, 0.52]], ['bench', 70, [2.0, 0.9, 0.7]]];
-  const grabRef = (id) => { const [k, i] = String(id).split(':'); const pool = P[k]; const it = pool?.items[+i]; return it ? { pool, it } : null; };
+  const grabRef = (id) => { const [k, i] = String(id).split(':'); const pool = P[k]; const it = pool?.items[+i]; return it ? { pool, it, far: P[k + 'Far'] } : null; };
+  if (P.cart2 && P.cart) { // (3d-assets) ~40% of the hot-dog cart spots become halal carts (in place: the far pool shares the arrays)
+    const a = P.cart.items, keep = [], mv = [];
+    a.forEach((it, i) => ((i * 7919 + 3) % 5 < 2 ? mv : keep).push(it));
+    a.length = 0; a.push(...keep); P.cart2.items.push(...mv);
+  }
   { // (contactAO, lighting2 r3) user: 'things in shadow should still make diffuse darker shadows, like under the cars'.
     // One batched soft dark footprint decal pool under every ground-standing street prop (the car decals' look, see
     // contactao.js): 1 draw call, no shadow pass, distance-culled like the props, scene alpha (SSR weight) untouched.
@@ -1543,7 +1604,7 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
     // footprint (x, z) in metres per prop type (a soft ellipse a bit larger than the base)
     const FP = { bench: [2.3, 1.3], planter: [1.7, 1.4], trash: [1.0, 1.0], hydrant: [0.85, 0.85], mailbox: [0.95, 0.95], news: [2.6, 1.8],
       kiosk: [1.2, 0.8], cart: [2.4, 1.5], shelter: [4.4, 2.2], newsbox: [2.3, 1.0], lamp: [0.9, 0.9], mast: [1.0, 1.0], post: [0.65, 0.65],
-      bikerack: [2.0, 0.9], bike: [2.0, 0.9], barrier: [2.3, 1.0], bags: [1.6, 1.2], meter: [0.5, 0.5], bikekiosk: [1.6, 1.0], dock: [2.0, 1.0], cone: [0.6, 0.6] };
+      bikerack: [2.0, 0.9], bike: [2.0, 0.9], barrier: [2.3, 1.0], bags: [1.6, 1.2], meter: [0.5, 0.5], cart2: [2.2, 1.6], shopcart: [0.9, 1.3], sawhorse: [1.8, 0.7], parklamp: [0.8, 0.8], bikekiosk: [1.6, 1.0], dock: [2.0, 1.0], cone: [0.6, 0.6] };
     let n = 0; for (const k in FP) n += P[k]?.items.length ?? 0;
     if (n) {
       const aoP = new Pool(ag, am, { name: 'propContactAO', max: Math.min(n, 6000), far: 200, castShadow: false, receiveShadow: false });
@@ -1558,7 +1619,8 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
   return {
     pools, treeSpots, phase, signals, vents, roads,
     benches: () => itemsOf(P.bench),
-    carts: () => itemsOf(P.cart),
+    carts: () => [...itemsOf(P.cart), ...itemsOf(P.cart2)],
+    bags: () => itemsOf(P.bags), dumpsters: () => itemsOf(P.dumpster), // (3d-assets) rat sites (npc/fauna.js)
     busStops: () => [...itemsOf(P.busstop).map(o => ({ ...o, kind: 'sign' })), ...itemsOf(P.shelter).map(o => ({ ...o, kind: 'shelter' }))], // (peds r4) bus-stop queues (npc/crowd.js)
     // combat throwables from the real street props: grabbables(center, radius) -> [{id, pos, ry, kind, mass, size}];
     // grab(id) hides the rendered instance (combat animates its own thrown copy), release(id) restores it.
@@ -1577,8 +1639,8 @@ export async function buildProps({ scene, blocks, parkPaths, T, solids = null, b
       }
       return out;
     },
-    grab(id) { const g = grabRef(id); if (g) g.pool.hide(g.it); return !!g; },
-    release(id) { const g = grabRef(id); if (g) g.pool.show(g.it); return !!g; },
+    grab(id) { const g = grabRef(id); if (g) { g.pool.hide(g.it); g.far?.hide(g.it); } return !!g; },
+    release(id) { const g = grabRef(id); if (g) { g.pool.show(g.it); g.far?.show(g.it); } return !!g; },
     // zip / perch anchors (consumed by zippoints.addPropAnchors -> world.getZipPoints) — C2
     anchors: () => anchors,
     propAnchors: () => anchors,

@@ -272,7 +272,7 @@ export async function buildCity({ scene, renderer }) {
     },
   };
   { const lim = bridgeLimits(groundHeight); world.bridgeLimit = (x, y, z) => lim.check(x, y, z); world.bridgeLimits = lim.list; } // (bridges r1)
-  attachLife(world, { traffic, crowd: peds.crowd, pigeons: peds.pigeons }); // citylife: C3 hooks + world.life
+  attachLife(world, { traffic, crowd: peds.crowd, pigeons: peds.pigeons, critters: peds.critters }); // citylife: C3 hooks + world.life
   console.log(`[city] built in ${(performance.now() - t0).toFixed(0)} ms: ${gen.boxes.length} boxes, ${grid.n} solids, ${zips.count} zip points, rooftop refit ${fit.nInst} inst/${fit.nBox} fields/${(fit.cells / 1e6).toFixed(2)}M cells/-${fit.nDead} in ${(tFit2 - tFit).toFixed(0)} ms, ${gen.footprints.length} buildings, ${gen.tiles.size} tiles, ${far.count} far-shore boxes (${far.near} near, ${far.trees} trees), ${bridges.spans.length} bridges | ${TT.join(', ')}`);
   return world;
 }

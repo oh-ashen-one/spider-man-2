@@ -9,6 +9,8 @@ from mathutils import Matrix
 argv = sys.argv[sys.argv.index('--') + 1:]
 src, out, targets = argv[0], argv[1], [int(t) for t in argv[2].split(',')]
 orient = argv[3] if len(argv) > 3 else 'auto'
+# optional ':weld' suffix (e.g. -90:weld): weld seams + split non-manifold edges first (fur-card meshes that stall the collapse)
+orient, _, flag = orient.partition(':'); weld = flag == 'weld'
 for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
 bpy.ops.import_scene.gltf(filepath=src)
 meshes = [o for o in bpy.data.objects if o.type == 'MESH']
@@ -18,6 +20,15 @@ bpy.context.view_layer.objects.active = meshes[0]
 if len(meshes) > 1: bpy.ops.object.join()
 base = bpy.context.view_layer.objects.active
 bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+# weld: glTF splits vertices at every uv seam (uvs are per-loop in Blender, so welding keeps the seams); non-manifold
+# fur cards (3+ faces per edge) block the collapse entirely, so they are split into open borders. Only for meshes that
+# need it: on clean meshes the welded collapse is worse at low triangle counts.
+import bmesh
+if weld:
+  _bm = bmesh.new(); _bm.from_mesh(base.data); bmesh.ops.remove_doubles(_bm, verts=_bm.verts, dist=1e-5)
+  _nm = [e for e in _bm.edges if not e.is_manifold and not e.is_boundary]
+  if _nm: bmesh.ops.split_edges(_bm, edges=_nm)
+  _bm.to_mesh(base.data); _bm.free()
 co = np.array([v.co[:] for v in base.data.vertices])
 if orient == 'auto':
     # the A-pose arm span is always sideways: its direction (PCA of the shoulder band, XY plane) is the lateral axis,
