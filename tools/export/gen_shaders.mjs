@@ -55,6 +55,8 @@ float3 CityU2B(float3 v) { return float3(v.x, v.z, v.y); }            // UE fram
   // rooms lit / dim / dark in ~ 10 / 30 / 60 % (browser: 45 % lit, unlit rooms only 0.55x): most windows read as dark glass
   uePatch('float lit = step(0.55f, frac(cellR * 7.13f));', 'float litR = frac(cellR * 7.13f); float lit = step(0.9f, litR) + 0.4f * step(0.6f, litR) * (1.0f - step(0.9f, litR));');
   uePatch('return col * lerp(0.55f, 1.0f, lit);', 'return col * lerp(0.2f, 1.0f, lit);');
+  // storefront sign band: same derivative-mip problem as the interiors (sign lettering smeared into a colour gradient) -> -2 mips
+  uePatch('clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)), 0.0f, 9.0f)', 'clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)) - 2.0f, 0.0f, 9.0f)');
   // blinds / curtains sit behind the glass and the window reveal shades them: they must not out-shine the sunlit masonry
   uePatch('gl.alb = lerp(gl.alb, bc * slats * 0.8f, bl);', 'gl.alb = lerp(gl.alb, bc * slats * 0.5f, bl);');
   // ceilings / floors seen from the street are the brightest surfaces in a room but never sunlit: darker (critic: <= 10 % of window pixels above 80 %)

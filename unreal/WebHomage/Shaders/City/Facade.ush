@@ -479,7 +479,7 @@ Surf facade(TEXDECL) {
     } else if (y > signY0) { // sign band
       float row = floor(fh1(TEXPASS, float2(rnd * 91.0f,seed)) * 16.0f);
       float2 suv = float2((fx2 - pier) / (bw2 - 2.0f * pier),(y - signY0) / (signY1 - signY0));
-      float3 sc = Texture2DSampleLevel(tSigns, tSignsSampler, fl2(float2(suv.x,1.0f - (row + 1.0f - suv.y) / 16.0f)), clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)), 0.0f, 9.0f)).rgb;
+      float3 sc = Texture2DSampleLevel(tSigns, tSignsSampler, fl2(float2(suv.x,1.0f - (row + 1.0f - suv.y) / 16.0f)), clamp(log2(max(aw * 1024.0f / (bw2 - 2.0f * pier), ah * 128.0f / 1.0f)) - 2.0f, 0.0f, 9.0f)).rgb;
       s.alb = sc; s.rough = 0.45f; s.metal = 0.0f; s.n = float3(0.0f,0.0f,1.0f); s.emis = sc * 0.25f * uShopGain;
       if (rnd > 0.8f) { s = base; s.alb *= 0.8f; } // no sign
     } else if (y < glassY0) { // bulkhead

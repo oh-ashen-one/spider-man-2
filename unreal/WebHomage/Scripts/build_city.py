@@ -157,7 +157,7 @@ WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 # glass; r03 used 0.1375 = F0 0.011, which turned every masonry window into a flat unreflective slab); DebugMode 1 = facade
 # emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
-                ('DayEmisK', 0.3), ('GlassSpec', 0.5), ('DebugMode', 0.0))
+                ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0))
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
