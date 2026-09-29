@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 12:41",
+ "updated": "2026-09-29 12:42",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (hero 4, hero anim 4, enemies 2, civilians 2, IQ 3)",
-   "gap": "Brute texture scrambled (skin through clothes, bandana pattern on body)"
+   "round": 3,
+   "verdict": "R2: FAILS (hero 5, hero anim 4, enemies 2, civilians 3, IQ 4)",
+   "gap": "Thug and brute are prototype-grade; rebuild from the owner's Tripo people"
   },
   {
    "id": "P3",
@@ -352,6 +352,14 @@
    "verdict": "fails",
    "gap": "Build street level: recessed storefronts with frames and interiors, awnings with original signs, piers and cornices, fire escapes, sidewalk slab joints, a hydrant/trash can/newspaper box/tree pit every ~20 m.",
    "notes": "Windows fixed (interior atlas was sampled 2\u20134 mips too coarse at 50\u201373% internal resolution); round 4 beat round 3 in both version pairs. Critic flagged that reference HUD/logos made the blind test obvious: packs are now centre-cropped. Two ads (COLTEX/COLEX) too close to a real-game brand are being excluded."
+  },
+  {
+   "t": "12:42",
+   "piece": "P2 Characters",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Rebuild thug and brute to civilian quality: modelled heads/eyes, five-finger hands, folded clothes, real shoes; brute \u22651.3\u00d7 thug shoulder width, upright heavy walk.",
+   "notes": "Brute texture fix confirmed (+~2 on enemies vs round 1). Critic also noted the hero's classic suit (white spider emblem, white cuffs, red leg stripes) closely resembles a licensed game suit design; flagged for the owner, not changed."
   }
  ],
  "perf": [
@@ -403,7 +411,8 @@
   "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100.",
   "Owner decision: the browser build's upstream ad atlas (ts_ads.webp) shows Marvel-universe brands (Oscorp, Re-Elect Osborn, Roxxon, Daily Bugle) and likely real-game brands; the Unreal port excludes them, the browser build still shows them.",
   "GitHub LFS budget exhausted: the 43 reference clips are local-only; refs/tools/regenerate_clips.sh rebuilds them anywhere.",
-  "Browser build bugs from the baseline playtest: camera top-down under tree canopy, camera inside hero, suit shader 17/16 texture units (~90 warnings/s), hero blocked by parked cars, Gemini/Qwen back logos, crowd clusters in lockstep, dark night street."
+  "Browser build bugs from the baseline playtest: camera top-down under tree canopy, camera inside hero, suit shader 17/16 texture units (~90 warnings/s), hero blocked by parked cars, Gemini/Qwen back logos, crowd clusters in lockstep, dark night street.",
+  "Owner decision: the default hero suit (upstream spiderman.glb) closely resembles a licensed game suit design (white spider emblem, white cuffs, red leg stripes). The AI-logo suits are original alternatives."
  ],
  "log": [
   {
@@ -505,6 +514,10 @@
   {
    "t": "12:41",
    "text": "Incidents: a lighting-agent cleanup command targeted the owner's Chrome profile (macOS blocked it; profile intact). The baseline agent misread an owner message and pushed an unrequested AGENTS.md branch + memory note; both removed. Agents now have hard delete/edit limits."
+  },
+  {
+   "t": "12:42",
+   "text": "Characters R2 merged: brute fixed (+2 on enemies); still FAILS; round 3 rebuilds thug/brute from existing Tripo people (no paid generation)."
   }
  ]
 }
