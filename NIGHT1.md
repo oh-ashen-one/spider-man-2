@@ -23,6 +23,7 @@ Each piece has its own branch, worktree, Unreal content folder, MCP port and Ble
 | P6 City life: crowd, traffic, water (wave 2) | `night1/life` | `~/sm2-n1/life` | `/Game/Life`, `/Game/Water` | 8776 | 5207 |
 | C Integrated Manhattan map | `night1/manhattan` | `~/sm2-n1/manhattan` | `/Game/Maps/Manhattan`, `Scripts/build_manhattan.py`, `docs/night1/manhattan/` | 8777 | 5208 |
 | F 4K/60 perf (wave 2) | `night1/perf` | `~/sm2-n1/perf` | `tools/perf_ue/` successors, `docs/night1/perf/` | 8778 | — |
+| Water A/B (same brief, two models) | `night1/water-ab-sonnet` / `night1/water-ab-opus` | `~/sm2-n1/water-ab-sonnet` / `~/sm2-n1/water-ab-opus` | `/Game/Water`, `Scripts/build_water.py`, `docs/night1/water/` (each in its own worktree; the blind-critic winner merges) | 8779 / 8780 | — |
 | Integrator / regression playtester | `Opus-5.5-Loop-Night-1` | `~/spider-man-2-astra6` | `/Game/Maps/Manhattan` (main map), merges | 8765 | 5200 |
 
 Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, critic verdicts). Large videos are committed as mp4 ≤ 15 MB each.

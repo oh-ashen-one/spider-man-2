@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 18:14",
+ "updated": "2026-09-29 18:24",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -71,19 +71,19 @@
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "Wave 2"
+   "gap": "Opus 5.5 high: C++ port of browser combat"
   },
   {
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "Wave 2"
+   "gap": "Sonnet 5.5 xhigh: traffic + crowd (water via A/B)"
   },
   {
    "id": "A",
@@ -129,6 +129,15 @@
    "round": 0,
    "verdict": "",
    "gap": "After C (Opus high)"
+  },
+  {
+   "id": "W",
+   "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
+   "branch": "night1/water-ab-*",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": "Same brief, separate worktrees; blind Opus critic picks the winner"
   }
  ],
  "comparisons": [
@@ -737,6 +746,14 @@
   {
    "t": "18:14",
    "text": "Recovered: all worktree WIP committed and pushed, orphaned crash reporters (100% CPU for 6 h) killed. New hard rule: max 2 Unreal processes of any kind at once through the GPU lock; builds via null-RHI commandlets; no crash-relaunch loops. Resuming at 2 concurrent GPU builders."
+  },
+  {
+   "t": "18:24",
+   "text": "GPU slots now auto-tuned (start 4, +1 per calm 20 min up to 7, back off on WindowServer strain, emergency kill of the newest capture). Six builders running."
+  },
+  {
+   "t": "18:24",
+   "text": "Fable 5.1 (high) director set to decide the 4K/60 strategy from clean perf data. First blind same-gap A/B build started: river water, Sonnet 5.5 xhigh vs Opus 5.5 high."
   }
  ]
 }
