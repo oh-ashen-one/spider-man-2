@@ -42,6 +42,7 @@ Iterate on a look: edit `look_presets.json`, `rebuild_look.sh rigs <preset>` (ab
   Re-run `geo` after `build_city.py`. Duplicating a map asset with `EditorAssetLibrary.duplicate_asset` leaves a leaked UWorld and crashes the next `load_map` (do not).
 - MPC values are applied by a Level Sequence MPC track (`track.set_editor_property('mpc', ...)`, not `material_parameter_collection`). A stale unfinished `.py` in `_scratch/look/uejobs` re-runs when the editor restarts.
 - Engine property names: `aerial_pespective_view_distance_scale` (engine typo), `enable_volumetric_fog`, `reflection_view_sample_count_scale_value`; `rayleigh_scattering_scale` default is 0.0331 (1.0 turns the sky orange).
+- End-of-session scratch (`_scratch/look`) keeps only `export/midtown3x3/*.json` (`collision.json` is what `geo` reads); meshes, textures, captures and the Chrome profile are deleted. `rebuild_city.sh` regenerates them (about 10 min).
 - Headless `-nullrhi` builds the maps and the sequence fine; shaders compile at first game run (first run of a new map is slow, later ones use the project DDC).
 - Any WorldStatic primitive with collision in a rig or map becomes a traversal "building box" by its bounds (the night star dome had to be `NoCollision`: a 600 km sphere pushed the hero out of the city). Check `WebTravWorld: N building boxes indexed` in the log (7067 expected).
 - A one-time `Ensure condition failed: OriginX <= OriginMax` (DoubleFloat.cpp) is logged by the distance field update: the 29k far `hinterland` instances (P1) sit tens of km from the origin. Not fatal.
