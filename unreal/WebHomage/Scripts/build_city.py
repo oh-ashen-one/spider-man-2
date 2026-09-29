@@ -392,8 +392,8 @@ def build_geo_level(path):
             for j, v in enumerate((tint[0], tint[1], tint[2], st if isinstance(st, (int, float)) else 0)): c.set_custom_data_value(k, j, float(v), False)
         ni += len(items)
     # ground under everything (lot interiors / plazas never exported as geometry)
-    g = spawn(unreal.StaticMeshActor, U(128, -0.08, -128), label='GroundPlane', folder='City')
-    g.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Plane')); g.set_actor_scale3d(unreal.Vector(80, 80, 1))
+    g = spawn(unreal.StaticMeshActor, U(0, -0.08, -384), label='GroundPlane', folder='City')  # covers the far ring too
+    g.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Plane')); g.set_actor_scale3d(unreal.Vector(3600, 3600, 1))
     g.static_mesh_component.set_material(0, load(MAT + '/M_CityAsphalt'))
     les.save_current_level()
     log('geo level', path, len(recs), 'meshes', ni, 'instances')
