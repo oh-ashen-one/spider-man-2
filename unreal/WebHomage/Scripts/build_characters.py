@@ -213,6 +213,16 @@ def build_idmask():
     MEL.recompile_material(m)
     return m
 
+def build_maskother():
+    """M_Char_MaskOther: unlit yellow. In the mask map every OTHER character uses it: it occludes the brute exactly as in the beauty run and marks
+    where another character (and its motion blur) may contaminate pixels."""
+    m = new_material(ROOT + '/Shared/Materials', 'M_Char_MaskOther', skeletal=True)
+    m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    z = E(m, unreal.MaterialExpressionConstant3Vector, -400, 0); z.set_editor_property('constant', unreal.LinearColor(1, 1, 0, 1))
+    MEL.connect_material_property(z, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(m)
+    return m
+
 def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None):
     full = path + '/' + name
     if EAL.does_asset_exist(full): EAL.delete_asset(full)
@@ -236,6 +246,7 @@ def build_ground_materials():
         MEL.recompile_material(m); out[n] = m
     return out
 
+BRUTE_TINT = float(ARGS.get('brute_tint', 0.85))
 if 'mat' in STEPS:
     suit = build_suit_master()
     lens = build_simple('M_Char_Lens', emissive=True)
@@ -250,9 +261,14 @@ if 'mat' in STEPS:
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
-        mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal={'Cloth': 0.3, 'DetailStrength': 0.0}, switches={'HasORM': True})
+        sc_ = {'Cloth': 0.3, 'DetailStrength': 0.0}
+        if v == 'Brute': sc_.update({'Cloth': 0.12, 'Specular': 0.15})   # dark cloth in bright daylight: keep spec/sheen from veiling the albedo
+        vc_ = {}
+        if v == 'Brute': vc_['Tint'] = (BRUTE_TINT, BRUTE_TINT, BRUTE_TINT, 1.0)   # test stage renders albedo ~3x brighter (sRGB); UE-only, the browser texture is untouched
+        mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal=sc_, vec=vc_, switches={'HasORM': True})
     if EAL.does_asset_exist(ROOT + '/Thug/Textures/T_Brute_Regions'):
         mi('MI_BruteMask', ROOT + '/Thug/Materials', build_idmask(), tex={'Regions': ROOT + '/Thug/Textures/T_Brute_Regions'})
+        mi('MI_MaskOther', ROOT + '/Shared/Materials', build_maskother())
     for s in SUITS:
         P = ROOT + '/Suits/%s/Textures/T_Suit_%s_' % (s, s)
         tex = {'BaseColor': P + 'BaseColor', 'DetailNormal': ROOT + '/Shared/Textures/T_Fabric_Knit_N'}
@@ -520,8 +536,12 @@ if 'map' in STEPS:
                     act.get_editor_property('mesh').set_material(0, load(T + 'Materials/MI_BruteMask'))
                 elif not ARGS.get('mask_keep_scene') and cls in ('DirectionalLight', 'SkyAtmosphere', 'SkyLight', 'ExponentialHeightFog'):
                     eas.destroy_actor(act)                       # black background: only the unlit mask is visible
-                elif not ARGS.get('mask_keep_scene') and isinstance(act, (unreal.StaticMeshActor, unreal.WHCharLoopWalker)):
-                    act.set_actor_hidden_in_game(True)           # backdrop and the other characters (kept alive: the director targets them)
+                elif not ARGS.get('mask_keep_scene') and isinstance(act, unreal.StaticMeshActor):
+                    act.set_actor_hidden_in_game(True)           # backdrop
+                elif not ARGS.get('mask_keep_scene') and isinstance(act, unreal.WHCharLoopWalker):
+                    m_ = act.get_editor_property('mesh')         # other characters: unlit yellow, so they occlude the brute like in the beauty run
+                    for slot in range(m_.get_num_materials()):
+                        m_.set_material(slot, load(ROOT + '/Shared/Materials/MI_MaskOther'))
                 elif isinstance(act, unreal.PostProcessVolume) and ARGS.get('mask_ev', 'auto') != 'auto':
                     ps = act.get_editor_property('settings')     # fixed exposure so the mask colours do not drift
                     ps.set_editor_property('override_auto_exposure_method', True); ps.set_editor_property('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL)

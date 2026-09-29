@@ -30,6 +30,7 @@ ap = argparse.ArgumentParser()
 ap.add_argument('--geom', default=SCR + '/uvgeom.npz')
 ap.add_argument('--src', default=ART + '/thug_basecolor.png')
 ap.add_argument('--no-webp', action='store_true')
+ap.add_argument('--audit-png', default=None, help='only audit this texture (skin-like / white texels outside hands+face on the thug UVs), then exit')
 ap.add_argument('--out-dir', default=ART)
 ap.add_argument('--webp', default=os.path.join(ROOT, 'public/assets/enemies/brute_basecolor.webp'))
 A = ap.parse_args()
@@ -38,21 +39,21 @@ N = 2048
 rng = np.random.RandomState(20260930)
 
 # ------------------------------------------------------------------ palette (sRGB)
-VEST = np.array([68, 74, 54], np.float32)        # olive work jacket, body
-VEST_DK = np.array([36, 40, 32], np.float32)     # collar, hem, yoke seams
+VEST = np.array([50, 56, 40], np.float32)        # olive work jacket, body
+VEST_DK = np.array([28, 32, 25], np.float32)     # collar, hem, yoke seams
 SLEEVE = VEST * 1.04                              # same garment as the body: the torso/sleeve UV cut is jagged, so no colour step across it
-SLEEVE_DK = np.array([44, 48, 36], np.float32)   # cuffs, elbow patches
-TROUSER = np.array([48, 50, 56], np.float32)     # charcoal work trousers
-TROUSER_WEAR = np.array([70, 72, 78], np.float32)
-BOOT = np.array([52, 47, 43], np.float32)        # near-neutral dark work boots (a saturated brown would read as skin under sun)
-BOOT_SOLE = np.array([26, 24, 23], np.float32)
-LACE = np.array([104, 102, 94], np.float32)
-BEANIE = np.array([96, 86, 60], np.float32)    # khaki knit beanie: readable head silhouette
+SLEEVE_DK = np.array([32, 36, 27], np.float32)   # cuffs, elbow patches
+TROUSER = np.array([42, 44, 52], np.float32)     # charcoal work trousers
+TROUSER_WEAR = np.array([60, 62, 70], np.float32)
+BOOT = np.array([46, 42, 39], np.float32)        # near-neutral dark work boots (a saturated brown would read as skin under sun)
+BOOT_SOLE = np.array([20, 19, 18], np.float32)
+LACE = np.array([84, 82, 76], np.float32)
+BEANIE = np.array([58, 64, 40], np.float32)    # olive-green knit beanie (a khaki/tan one reads as skin-coloured in sun)
 HAIR = np.array([36, 28, 22], np.float32)
-BANDANA = np.array([64, 66, 72], np.float32)     # plain slate bandana (no dot pattern)
-BANDANA_PAT = np.array([88, 90, 98], np.float32)
-STITCH = np.array([104, 104, 84], np.float32)
-ZIP = np.array([128, 128, 118], np.float32)
+BANDANA = np.array([48, 50, 56], np.float32)     # plain slate bandana (no dot pattern)
+BANDANA_PAT = np.array([70, 72, 80], np.float32)
+STITCH = np.array([84, 84, 66], np.float32)
+ZIP = np.array([104, 104, 96], np.float32)
 
 
 def fbm(scale_px, octaves=4, seed=0):
@@ -191,17 +192,18 @@ for role in ('torso_front', 'torso_back'):
         img = mix(img, STITCH, band(Z, 1.397, 1.402) * 0.35)
     out[m] = img[m]
 
-# ------------------------------------------------------------------ waist: one colour profile over height, used by BOTH torso and thigh islands,
-# so the jagged torso/thigh UV cut (z 0.83-0.95) is invisible: jacket hem rib -> black leather belt -> trouser waistband
-BELT = np.array([30, 28, 27], np.float32)
-BUCKLE = np.array([118, 116, 108], np.float32)
-waist = R('torso_front', 'torso_back', 'thigh') & (Z > 0.80) & (Z < 1.02)
+# ------------------------------------------------------------------ waist: jacket hem rib and belt live on the TORSO islands only (the pelvis is rigid with
+# the torso; painting them on the thigh islands showed up as a strap across the swinging thigh). The torso's lowest part, which meets the
+# jagged UV cut against the thigh islands, is trouser coloured so that cut is invisible.
+BELT = np.array([24, 22, 21], np.float32)
+BUCKLE = np.array([96, 94, 88], np.float32)
+waist = R('torso_front', 'torso_back') & (Z > 0.80) & (Z < 1.02)
 wimg = out.copy()
 wimg = mix(wimg, VEST_DK, band(Z, 0.935, 0.985, 0.006) * 0.9)                                      # ribbed jacket hem
-wimg = mix(wimg, BELT, band(Z, 0.885, 0.938, 0.004))                                               # belt
-wimg = mix(wimg, (44, 42, 40), band(Z, 0.885, 0.938, 0.004) * line(Z, 0.9115, 0.0018) * 0.8)       # belt stitching
-wimg = mix(wimg, BUCKLE, band(X, -0.030, 0.030, 0.002) * band(Z, 0.890, 0.934, 0.002) * (Y < -0.05) * (1 - band(X, -0.020, 0.020, 0.002) * band(Z, 0.898, 0.926, 0.002) * 0.7))
-wimg = mix(wimg, TROUSER, band(Z, 0.80, 0.882, 0.004) * (R('torso_front', 'torso_back')))            # trouser colour where the torso cut sits below the belt
+wimg = mix(wimg, BELT, band(Z, 0.90, 0.938, 0.004))                                                # belt
+wimg = mix(wimg, (38, 36, 34), band(Z, 0.90, 0.938, 0.004) * line(Z, 0.919, 0.0018) * 0.8)         # belt stitching
+wimg = mix(wimg, BUCKLE, band(X, -0.030, 0.030, 0.002) * band(Z, 0.902, 0.936, 0.002) * (Y < -0.05) * (1 - band(X, -0.020, 0.020, 0.002) * band(Z, 0.908, 0.930, 0.002) * 0.7))
+wimg = mix(wimg, fabric(TROUSER, 0.05, 0.14), band(Z, 0.0, 0.896, 0.004))                          # trouser colour below the belt
 out[waist] = wimg[waist]
 
 # ------------------------------------------------------------------ sleeves
@@ -282,7 +284,7 @@ beanie_zone |= m & (Z > 1.70)
 hair_zone = cap & ~beanie_zone
 img = out.copy()
 rib = np.clip((L_src - 26.0) / 6.0, -1, 1)                                         # the thug beanie's rib pattern (few levels of luma)
-bean = fabric(BEANIE, 0.05, 0.10) * (1 + 0.12 * rib[..., None])
+bean = fabric(BEANIE, 0.05, 0.10) * (1 + 0.08 * rib[..., None])
 img[beanie_zone] = bean[beanie_zone]
 img[hair_zone] = fabric(HAIR, 0.10, 0.2)[hair_zone]
 pat = np.clip((L_src - 60) / 160.0, 0, 1)
@@ -298,6 +300,29 @@ for ex, ey, ez in eyes:
 face = face * (1 - 0.30 * brow_shadow[..., None])
 img[keep_face] = face[keep_face]
 out[m] = img[m]
+
+def hsv(a):
+    a = a / 255.0
+    mx, mn = a.max(-1), a.min(-1)
+    dlt = mx - mn + 1e-9
+    h = np.where(mx == a[..., 0], ((a[..., 1] - a[..., 2]) / dlt) % 6, np.where(mx == a[..., 1], (a[..., 2] - a[..., 0]) / dlt + 2, (a[..., 0] - a[..., 1]) / dlt + 4)) * 60
+    return h, np.where(mx > 0, (mx - mn) / (mx + 1e-9), 0), mx
+
+
+def audit_texture(tex):
+    h, s_, v = hsv(tex)
+    skin_like = (h >= 8) & (h <= 38) & (s_ >= 0.22) & (s_ <= 0.65) & (v >= 0.42)
+    white_like = (v >= 0.80) & (s_ <= 0.18)
+    allowed = (keep_face & m) | R('hand')
+    return dict(cloth_texels=int((covered & ~allowed).sum()),
+                skin_like_outside=int((skin_like & covered & ~allowed).sum()),
+                white_like_outside=int((white_like & covered & ~allowed).sum()),
+                white_like_in_face_or_hands=int((white_like & covered & allowed).sum())), skin_like, allowed
+
+
+if A.audit_png:
+    print('audit', A.audit_png, audit_texture(np.array(Image.open(A.audit_png).convert('RGB'), np.float32))[0])
+    sys.exit(0)
 
 # ------------------------------------------------------------------ gutters: extend island colours outward (no lavender bleed into mips)
 edt_d, (iy, ix) = ndi.distance_transform_edt(~covered, return_indices=True)
@@ -320,20 +345,9 @@ reg = np.where(covered[..., None], reg, reg[iy, ix])
 Image.fromarray(reg).save(os.path.join(A.out_dir, 'brute_regions.png'))
 
 # texture-level audit: skin-coloured or white texels outside hands/face
-def hsv(a):
-    a = a / 255.0
-    mx, mn = a.max(-1), a.min(-1)
-    dlt = mx - mn + 1e-9
-    h = np.where(mx == a[..., 0], ((a[..., 1] - a[..., 2]) / dlt) % 6, np.where(mx == a[..., 1], (a[..., 2] - a[..., 0]) / dlt + 2, (a[..., 0] - a[..., 1]) / dlt + 4)) * 60
-    return h, np.where(mx > 0, (mx - mn) / (mx + 1e-9), 0), mx
-h, s, v = hsv(res)
-skin_like = (h >= 8) & (h <= 38) & (s >= 0.22) & (s <= 0.65) & (v >= 0.42)
-white_like = (v >= 0.80) & (s <= 0.18)
-allowed = (face_reg | hand_reg)
-audit = dict(cloth_texels=int((covered & ~allowed).sum()),
-             skin_like_outside=int((skin_like & covered & ~allowed).sum()),
-             white_like_outside=int((white_like & covered & ~allowed).sum()),
-             white_like_in_face_or_hands=int((white_like & covered & allowed).sum()))
+audit, skin_like, allowed = audit_texture(res)
+face_reg = keep_face & m
+hand_reg = R('hand')
 print('texture audit', audit)
 json.dump(audit, open(os.path.join(SCR, 'brute_texture_audit.json'), 'w'), indent=1)
 if not A.no_webp:
