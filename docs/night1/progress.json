@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 14:47",
+ "updated": "2026-09-29 15:31",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (hero 5, hero anim 4, enemies 2, civilians 3, IQ 4)",
-   "gap": "Thug and brute are prototype-grade; rebuild from the owner's Tripo people"
+   "round": 4,
+   "verdict": "R3: FAILS (hero 4, anim 3, enemies 3, civilians 2, IQ 4)",
+   "gap": "Hero run (step rate, lean, takeoff), enemy masks + lineup, sliding civilians \u2014 Opus builder"
   },
   {
    "id": "P3",
@@ -132,6 +132,24 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "Characters round 3 \u2014 enemies rebuilt from the owner's Tripo people",
+   "note": "Real faces, five-finger hands, folded cloth; brute 1.36\u00d7 the thug's shoulders.",
+   "images": [
+    {
+     "label": "Round 2 thug",
+     "src": "docs/night1/characters/round-02/captures/thug_walk_1080.jpg"
+    },
+    {
+     "label": "Round 3 thug + brute",
+     "src": "docs/night1/characters/round-03/captures/thug_brute_pair_side_4k.jpg"
+    },
+    {
+     "label": "Round 3 thug face",
+     "src": "docs/night1/characters/round-03/captures/thug_face_4k.jpg"
+    }
+   ]
+  },
   {
    "title": "City round 5 \u2014 street level built",
    "note": "Storefronts with original signs and awnings, fire escapes, street furniture. Before: blank ground floors.",
@@ -469,6 +487,14 @@
    "verdict": "fails",
    "gap": "Camera yaws toward the anchor and rolls with the arc; hero alternates 30\u201370% of frame width; arc low point varies \u22651 storey; keep facade clearance.",
    "notes": "Wall-hugging fixed (nearest facade ~1 m \u2192 \u226513 m); round 8 beat round 7 in both version pairs; camera 3\u21924. Now too centred and repetitive."
+  },
+  {
+   "t": "15:31",
+   "piece": "P2 Characters",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Hero run: 3.2\u20133.8 steps/s, \u226515\u00b0 lean, \u22659-frame takeoff crouch (CH6/7/10).",
+   "notes": "Rebuilt thug/brute from the owner's Tripo people beat round 2 by ~2.5 on enemy models; seam cracks (skin-weight bug) fixed. Secondary: paper-card masks, 2 enemies / 0 weapons in frame, sliding civilians, hero lens/weave. Critic again flags the classic hero suit as close to a studio-owned design (owner decision)."
   }
  ],
  "perf": [
@@ -651,6 +677,10 @@
   {
    "t": "14:47",
    "text": "GPU lock merged (A). Numeric SPECs merged (B): measuring the reference showed the traversal r8 critic's '30\u201370% width weave' and two earlier demands were wrong; traversal round 9 corrected mid-round. Skill repo claude-code-game-builder published (public, credits Matt Shumer's Gauntlet Loop)."
+  },
+  {
+   "t": "15:31",
+   "text": "Characters R3 merged (enemies rebuilt); critic FAILS; round 4 = 3 gaps on an Opus 5.5 high builder (ledger comparison vs Sonnet rounds 2\u20133)."
   }
  ]
 }
