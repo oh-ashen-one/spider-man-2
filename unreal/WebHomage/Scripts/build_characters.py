@@ -466,6 +466,9 @@ if 'abp' in STEPS:
         make_abp('ABP_Citizen_' + wk, ROOT + '/Citizens', CIT_SKEL, CA + 'idle', [(CA + wk, spd)])
     TA = ROOT + '/Thug/Anims/A_Thug_'
     make_abp('ABP_Street_GunAim', ROOT + '/People', HERO_SKEL, TA + 'thugGunAim', [(PA + 'walkStreet', 114.0)])
+    # standing lineup: the hero's standing idles (thugIdle is a deep boxing crouch with the hands at the face)
+    make_abp('ABP_Street_Stand', ROOT + '/People', HERO_SKEL, HA + 'idle', [(PA + 'walkStreet', 114.0)])
+    make_abp('ABP_Street_StandLook', ROOT + '/People', HERO_SKEL, HA + 'idleLook', [(PA + 'walkStreet', 114.0)])
     log('abp ok')
 
 # ------------------------------------------------------------------------------------------------ test map
@@ -559,14 +562,14 @@ if 'map' in STEPS:
         # enemy lineup: 7 enemies, 5 outfits (leather hooded jacket, puffer vest + beanie, hoodie + cargo + shades, tee + cap,
         # tee + chains), 2 tint variants, 3 weapon types (bat, pipe, pistol); two staggered rows facing the road (-Y)
         LX, LY = 2050.0, 1900.0
-        GA, TH = PP + 'ABP_Street_GunAim', PP + 'ABP_Street_Thug'
+        GA, TH, TL = PP + 'ABP_Street_GunAim', PP + 'ABP_Street_Stand', PP + 'ABP_Street_StandLook'
         crew = [('Crew_ThugBat', 'SK_Street_Thug_Bat', TH, 'Thug', 1.0, 1.0),
                 ('Crew_HoodPistol', 'SK_Street_Hood_Pistol', GA, 'Hood', 1.0, 1.0),
-                ('Crew_BrutePipe', 'SK_Street_Brute_Pipe', TH, 'Brute', BRUTE_SCALE, BRUTE_GIRTH),
+                ('Crew_BrutePipe', 'SK_Street_Brute_Pipe', TL, 'Brute', BRUTE_SCALE, BRUTE_GIRTH),
                 ('Crew_TeeBat', 'SK_Street_Tee_Bat', TH, 'Tee', 1.0, 1.0),
                 ('Crew_BeardPipe', 'SK_Street_Beard_Pipe', TH, 'Beard', 1.0, 1.0),
                 ('Crew_ThugPistol', 'SK_Street_Thug_Pistol', GA, 'ThugOxblood', 1.0, 1.0),
-                ('Crew_HoodGrey', 'SK_Street_Hood', TH, 'HoodGrey', 1.0, 1.0)]
+                ('Crew_HoodGrey', 'SK_Street_Hood', TL, 'HoodGrey', 1.0, 1.0)]
         enemies = []
         for i, (lbl, mesh, abp, mat, sc_, g_) in enumerate(crew):
             x = LX + (i - 3) * 105.0
