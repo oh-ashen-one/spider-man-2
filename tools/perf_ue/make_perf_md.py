@@ -19,6 +19,7 @@ HDR = '| run | config | output | internal (pre-TSR) | avg ms (fps) | best 5 s bl
 
 L = ['# P4 perf: 3840x2160 output, real gameplay (round 01)', '',
      '> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.', '',
+     '@@SUMMARY@@', '',
      '## How it was measured', '',
      'Real game (`Scripts/run_game.sh`: standalone `-game`, offscreen, true 3840x2160 back buffer, `t.MaxFPS 0`, no vsync), map `/Game/Tests/Look/Look_Midtown` (midday preset, city + traversal boxes),',
      'the P3 traversal hero (real hero mesh, C++ animation) replaying `tools/perf_ue/scripts/city_swing_avenue.json`: 14 s standing warm-up, then sprint, jump and a continuous swing chain up the avenue.',
@@ -39,6 +40,25 @@ for d in sorted(glob.glob(os.path.join(rnd, 'perf_free_*'))):
     if os.path.exists(os.path.join(d, 'summary.json')):
         for r in load(dn): L.append(row(dn, r))
 L += ['']
+
+# summary of the main table (numbers only), spliced in at the top
+_best = {}
+for d in main:
+    for r in load(d):
+        c = r.get('csv') or {}
+        if c.get('best_5s_block_ms'): _best.setdefault(r['config'], []).append((c['best_5s_block_ms'], c['avg_ms'], (r.get('wh_perf') or {})))
+_sum = []
+if _best:
+    _sum += ['## Summary (numbers only)', '',
+             'Deterministic route, 3840x2160 output, real gameplay, GPU shared with other agents (see below). "Best 5 s block" = the fastest 5 s stretch of the 30 s window (other processes can only add time).', '']
+    for cfg in ('tsr50', 'tsr67', 'native100'):
+        if cfg in _best:
+            v = _best[cfg]; w = v[0][2]
+            _sum.append('- **%s** (internal %sx%s): best 5 s block %.1f to %.1f ms (%.0f to %.0f fps); whole-window average %.1f to %.1f ms over %d runs' % (
+                cfg, w.get('internal_w'), w.get('internal_h'), min(x[0] for x in v), max(x[0] for x in v), 1000.0 / max(x[0] for x in v), 1000.0 / min(x[0] for x in v),
+                min(x[1] for x in v), max(x[1] for x in v), len(v)))
+    _sum += ['- No config reached 16.7 ms (60 fps) in any 5 s block.', '']
+_i = L.index('@@SUMMARY@@'); L[_i:_i + 2] = _sum
 
 # hero telemetry over the perf window (proves the frames are real movement through the city)
 import csv as _csv
@@ -69,7 +89,7 @@ for d in main[:1]:
 # heaviest view
 vd = os.path.join(rnd, 'perf_views')
 if os.path.isdir(vd):
-    L += ['## Heaviest view (static shot cameras S1..S8, midday preset, 3840x2160 output, TSR 50 %, window 14 s to 24 s)', '',
+    L += ['## Heaviest view (static shot cameras S1..S8, midday preset, 3840x2160 output, TSR 50 %, window 14 s to 24 s; measured just before the sky light cloud ambient occlusion was switched off, 2 passes, GPU shared)', '',
           '| view | pass | avg ms (CSV) | GPU ms (avg) | GPU util % before |', '|---|---|---|---|---|']
     best = {}
     for pdir in sorted(glob.glob(vd + '/pass*')):

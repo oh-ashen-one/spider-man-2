@@ -241,7 +241,9 @@ return tint * star * (0.4 + 1.6 * h2) * horizon * 6.0;""")
     dome.static_mesh_component.set_static_mesh(unreal.load_asset('/Engine/BasicShapes/Sphere'))
     dome.static_mesh_component.set_material(0, m)
     dome.set_actor_scale3d(unreal.Vector(6000, 6000, 6000))  # 300 km radius: outside the atmosphere shell, inside the far plane
-    dome.static_mesh_component.set_cast_shadow(False); dome.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+    dome.static_mesh_component.set_cast_shadow(False)
+    dome.static_mesh_component.set_collision_profile_name('NoCollision')  # a 600 km WorldStatic sphere would be one giant traversal "building box"
+    dome.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
     dome.static_mesh_component.set_editor_property('cast_dynamic_shadow', False)
 
 def build_mpc_sequence(name, values, world):

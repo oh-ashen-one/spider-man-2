@@ -43,13 +43,17 @@ Iterate on a look: edit `look_presets.json`, `rebuild_look.sh rigs <preset>` (ab
 - MPC values are applied by a Level Sequence MPC track (`track.set_editor_property('mpc', ...)`, not `material_parameter_collection`). A stale unfinished `.py` in `_scratch/look/uejobs` re-runs when the editor restarts.
 - Engine property names: `aerial_pespective_view_distance_scale` (engine typo), `enable_volumetric_fog`, `reflection_view_sample_count_scale_value`; `rayleigh_scattering_scale` default is 0.0331 (1.0 turns the sky orange).
 - Headless `-nullrhi` builds the maps and the sequence fine; shaders compile at first game run (first run of a new map is slow, later ones use the project DDC).
+- Any WorldStatic primitive with collision in a rig or map becomes a traversal "building box" by its bounds (the night star dome had to be `NoCollision`: a 600 km sphere pushed the hero out of the city). Check `WebTravWorld: N building boxes indexed` in the log (7067 expected).
+- A one-time `Ensure condition failed: OriginX <= OriginMax` (DoubleFloat.cpp) is logged by the distance field update: the 29k far `hinterland` instances (P1) sit tens of km from the origin. Not fatal.
 - `run_game.sh -movie` dumps to `Saved/Screenshots/MacEditor` (shared by every run of this worktree): never run two movie runs at once.
 - Commit only mp4/jpg/json/md: content, DDC and Intermediate stay out (`unreal/WebHomage/{DerivedDataCache,Intermediate}` are deleted at the end of a session).
 - Console-variable overrides that are not in `DefaultEngine.ini` (integrator-owned) go through `run_game.sh -exec "cvar value,..."`.
 
 ## Open issues / next gaps (no self-assessment of quality; these are known facts)
-1. **60 fps at 4K is not reached in any measured config** (see PERF.md); ranking of GPU costs: LumenScreenProbeGather, ShadowDepths (VSM), Basepass (facade material), Nanite passes, post (lens flare, motion blur). The heaviest view is S2 (42 m over the avenue).
-   Untested hypotheses: lower `lumen_final_gather_quality`, screen-probe downsample, VSM cache, cheaper facade far LOD; measure only on an idle GPU.
+1. **60 fps at 4K is not reached in any measured config** (PERF.md, deterministic route, GPU shared): best sustained 5 s block 23.9 to 24.4 ms at TSR 50 % (1920x1080 internal),
+   28.5 to 28.8 ms at 67 %, 40.9 to 43.0 ms native; the budget is 16.7 ms. Top GPU passes: LumenScreenProbeGather (17 to 27 %), ShadowDepths (VSM), Basepass (facade material), then Nanite / lighting.
+   The heaviest view is S2 (42 m over the avenue, about 46 ms GPU vs 24 to 32 ms for the others). Single cvars (HWRT off, volumetric fog off, clouds off, lens flare + motion blur off, probe downsample 32)
+   each save only about 1 to 2 ms (variant table): the frame is broad, not one bad pass. Untested next steps: facade far LOD / Nanite for the facade tiles, VSM cost, Lumen quality via the post volume; measure only on an idle GPU.
 2. The far ring (river, opposite shore) is a blown-out white/violet band in every preset, independent of the lights (P1 far LOD / hinterland material).
 3. Tree leaves render grey and blow out on sun-facing faces (P1 `M_CityLeaves`).
 4. Night: no street-lamp pools (`lampPool` prototypes are skipped by the city build), so street level is dark; stars are a simple procedural dome; no wet asphalt or rain.
