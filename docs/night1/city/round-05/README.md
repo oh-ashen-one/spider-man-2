@@ -47,6 +47,6 @@ Frame times: game seconds 18-28, `t.MaxFPS 0`, no VSync, TSR with automatic scre
 - S1 corridor: ~45 % of the street trees left out (100 % in front of the west deco podium, z 40-152); SkyLight intensity 1.0 -> 1.7 in every view map.
 - IP: ad cells L27, P27, P38 and L35 (COLTEX / COLEXCO) replaced in the Unreal copy; see docs/night1/city/IP_EXCLUSIONS.md. OCR of the eight 4K frames finds
   none of the excluded names.
-- S1 test crop (4K, x 0-1600, y 800-1700): `S1_crop_x0-1600_y800-1700.jpg`; the fire escapes of the far west tower: `S1_crop_fire_escapes_x1100-1900_y450-1000.jpg`.
+- S1 test crop (4K, x 0-1600, y 800-1700): `builder_checks/S1_crop_x0-1600_y800-1700.jpg`; the fire escapes of the far west tower: `builder_checks/S1_crop_fire_escapes_x1100-1900_y450-1000.jpg`.
   Projection census of kit elements into that crop (not depth-tested, trees and buildings ignored): 556 fascia boards, 198 awnings, 101 marquees, 142 fire escapes.
 - Not re-measured this round: the window-glass brightness numbers of round 04.
