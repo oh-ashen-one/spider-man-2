@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 14:13",
- "phase": "Wave 1 \u2014 first builds",
- "headline": "Seven hours in, nothing meets the Marvel's Spider-Man 2 bar yet; every piece is climbing round by round under blind critics. Traversal R8 (camera 4), city R5 (street level built), characters R3 (thugs being rebuilt), lighting R2 (night) in progress. 4K/60 not reached (best \u224841 fps at TSR 50%, contaminated).",
+ "updated": "2026-09-29 14:21",
+ "phase": "Wave 2 \u2014 director plan",
+ "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -84,6 +84,51 @@
    "round": 0,
    "verdict": "",
    "gap": "Wave 2"
+  },
+  {
+   "id": "A",
+   "name": "GPU lock + perf protocol",
+   "branch": "night1/gpulock",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": "Sonnet 5.5"
+  },
+  {
+   "id": "B",
+   "name": "Per-piece numeric SPECs from measured refs",
+   "branch": "(scratch \u2192 integration)",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": "Opus 5.5 high"
+  },
+  {
+   "id": "C",
+   "name": "Integrated Manhattan map",
+   "branch": "night1/manhattan",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "After current rounds merge (Opus high)"
+  },
+  {
+   "id": "F",
+   "name": "4K/60 perf on Manhattan (exclusive GPU)",
+   "branch": "night1/perf",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "After A + C (Opus high)"
+  },
+  {
+   "id": "G",
+   "name": "Regression playtester",
+   "branch": "\u2014",
+   "state": "queued",
+   "round": 0,
+   "verdict": "",
+   "gap": "After C (Opus high)"
   }
  ],
  "comparisons": [
@@ -470,7 +515,7 @@
   }
  ],
  "gaps": [
-  "60 fps at 4K is not reached yet: best Unreal run \u224841 fps at TSR 50% (1080p internal); clean numbers need an idle GPU (other agents' Unreal runs hold it at 40\u2013100%).",
+  "All perf numbers so far are void (up to 3 game instances + other sessions on the GPU). Re-baseline under the exclusive GPU lock. Director: native 4K60 unlikely; honest target is TSR 67% (2573\u00d71447 internal) \u2014 owner to confirm a disclosed internal res counts.",
   "Unreal port has only a gray-box test map and a capsule character so far.",
   "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100.",
   "Owner decision: the browser build's upstream ad atlas (ts_ads.webp) shows Marvel-universe brands (Oscorp, Re-Elect Osborn, Roxxon, Daily Bugle) and likely real-game brands; the Unreal port excludes them, the browser build still shows them.",
@@ -598,6 +643,10 @@
   {
    "t": "14:13",
    "text": "Traversal R8 merged (facade clearance fixed); critic FAILS; round 9 = weave inside a safe corridor + dynamic camera."
+  },
+  {
+   "t": "14:21",
+   "text": "Fable 5.1 director pass: wave-2 plan (docs/night1/director/PLAN-wave2.md). Started A (GPU lock, Sonnet) and B (numeric SPECs, Opus high)."
   }
  ]
 }
