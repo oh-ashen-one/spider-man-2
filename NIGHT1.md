@@ -42,6 +42,6 @@ Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, cri
 |---|---|
 | Builders for every piece (P1–P6, incl. P3 traversal from round 10) and loop workers | **Sonnet 5.5, extra-high** (`sm2-sonnet-builder`, or Workflow `{model:'sonnet', effort:'xhigh'}`) |
 | Critics every round; integration playtester between waves; any super-important engineering by judgment | **Opus 5.5, high** (`opus-critic`, or Workflow `{model:'opus', effort:'high'}`) |
-| Direction: wave planning, reconciling contradictory critic demands, deciding what runs next and whether a piece is done | **Fable 5.1, medium** (`fable-director`, or Workflow `{model:'fable', effort:'medium'}`) — consulted at wave boundaries and whenever a piece stalls or oscillates |
+| Direction: wave planning, reconciling contradictory critic demands, deciding what runs next and whether a piece is done | **Fable 5.1, medium** (`fable-director`, or Workflow `{model:'fable', effort:'medium'}`) — sparingly (own weekly limit): one pass per wave, stall/oscillation diagnosis, final acceptance |
 
 Continuity between fresh builders comes from `docs/night1/<piece>/HANDOFF.md`, rewritten at the end of every round.
