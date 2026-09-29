@@ -6,10 +6,14 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "ReferenceSkeleton.h"
+#include "Components/SceneCaptureComponent2D.h"
+#include "Engine/TextureRenderTarget2D.h"
+#include "TextureResource.h"
 #include "Core/WebHomagePlayerController.h"
 #include "WebHomage.h"
 
 #include "Camera/CameraComponent.h"
+#include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
@@ -347,6 +351,26 @@ void AWebTravCharacter::BeginPlay()
 	if (Script && Script->IsActive()) Traversal->SetVelocityM(Script->SpawnVelM());
 	Cam.Reset(Traversal->PosM(), FMath::DegreesToRadians(YawDeg));
 	Cam.Pitch = CamPitch;
+	if (bHeroMesh && Script && Script->WantsTelemetry())
+	{ // pixel mask of the hero for telemetry: scene depth of the hero meshes only, 480x270, from the view camera
+		MaskRT = NewObject<UTextureRenderTarget2D>(this, TEXT("HeroMaskRT"));
+		MaskRT->RenderTargetFormat = ETextureRenderTargetFormat::RTF_RGBA16f;
+		MaskRT->ClearColor = FLinearColor(65000.f, 65000.f, 65000.f, 1.f);
+		MaskRT->InitAutoFormat(480, 270);
+		MaskRT->UpdateResourceImmediate(true);
+		MaskCapture = NewObject<USceneCaptureComponent2D>(this, TEXT("HeroMaskCapture"));
+		MaskCapture->SetupAttachment(RootComponent);
+		MaskCapture->SetUsingAbsoluteLocation(true);
+		MaskCapture->SetUsingAbsoluteRotation(true);
+		MaskCapture->CaptureSource = ESceneCaptureSource::SCS_SceneDepth;
+		MaskCapture->PrimitiveRenderMode = ESceneCapturePrimitiveRenderMode::PRM_UseShowOnlyList;
+		MaskCapture->ShowOnlyComponents.Add(GetMesh());
+		if (LensMesh) MaskCapture->ShowOnlyComponents.Add(LensMesh);
+		MaskCapture->bCaptureEveryFrame = true;
+		MaskCapture->bCaptureOnMovement = false;
+		MaskCapture->TextureTarget = MaskRT;
+		MaskCapture->RegisterComponent();
+	}
 	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV ready: %d building boxes, spawn %s m yaw %.1f"), Traversal->BuildingCount(), *PosM.ToString(), YawDeg);
 }
 
@@ -358,6 +382,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	if (!bTravStarted) { bTravStarted = true; TravTime = 0.0; }
 	else TravTime += Dt;
 
+	ReadHeroMask(); // previous frame's hero pixel mask (telemetry)
 	// ---- input: live (keyboard / mouse / pad) or scripted playback
 	FWebTravInput I;
 	UWebTravScript* Script = GetGameInstance() ? GetGameInstance()->GetSubsystem<UWebTravScript>() : nullptr;
@@ -428,6 +453,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.Tension = Traversal->SwingTension(); CI.Bank = Traversal->SwingBank();
 	CI.HAbove = Traversal->PosM().Z - UWebTraversalComponent::H - Traversal->FloorBelow();
 	CI.SwingAngle = Traversal->Anim.Swing.Angle;
+	CI.SwingT = Traversal->SwingTime();
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
 	// ---- move the actor (capsule) with the simulated body
@@ -448,6 +474,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	FollowCamera->SetFieldOfView(float(FMath::RadiansToDegrees(HFov)));
 	FollowCamera->PostProcessSettings.MotionBlurAmount = float(FMath::Clamp(0.15 + 0.5 * Cam.MotionBlur, 0.0, 1.0));
 	FollowCamera->PostProcessSettings.MotionBlurMax = float(3.0 + 4.0 * Cam.MotionBlur);
+	if (MaskCapture) { MaskCapture->SetWorldLocationAndRotation(CamCm, Cam.CamRot); MaskCapture->FOVAngle = FollowCamera->FieldOfView; }
 
 	// ---- figure + webs
 	PoseFigure(float(Dt));
@@ -667,6 +694,25 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 	}
 }
 
+void AWebTravCharacter::ReadHeroMask()
+{
+	PxTop = PxBottom = PxLeft = PxRight = -1.f;
+	if (!MaskRT) return;
+	FTextureRenderTargetResource* Res = MaskRT->GameThread_GetRenderTargetResource();
+	if (!Res) return;
+	TArray<FLinearColor> Px;
+	if (!Res->ReadLinearColorPixels(Px) || Px.Num() != 480 * 270) return;
+	int32 Y0 = 9999, Y1 = -1, X0 = 9999, X1 = -1;
+	for (int32 Y = 0; Y < 270; ++Y)
+	{
+		for (int32 X = 0; X < 480; ++X)
+		{
+			if (Px[Y * 480 + X].R < 20000.f) { Y0 = FMath::Min(Y0, Y); Y1 = FMath::Max(Y1, Y); X0 = FMath::Min(X0, X); X1 = FMath::Max(X1, X); }
+		}
+	}
+	if (Y1 >= 0) { PxTop = Y0 * 4.f; PxBottom = (Y1 + 1) * 4.f; PxLeft = X0 * 4.f; PxRight = (X1 + 1) * 4.f; } // 1920x1080 pixels
+}
+
 void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 {
 	UWebTravScript* Script = GetGameInstance()->GetSubsystem<UWebTravScript>();
@@ -674,7 +720,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("rope_m,tension,chain,trick,zip_target,zt_x,zt_y,zt_z,cam_x,cam_y,cam_z,cam_yaw_deg,cam_pitch_deg,cam_vfov_deg,cam_dist_m,motion_blur,")
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
-		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig"));
+		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -738,8 +784,14 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 			Sig += FString::Printf(TEXT("%s%.3f %.3f"), Sig.IsEmpty() ? TEXT("") : TEXT(" "), FVector::DotProduct(D, CR), FVector::DotProduct(D, CU));
 		}
 	}
+	// the camera the engine actually rendered with (player camera manager cache)
+	FVector PcmLoc = FVector::ZeroVector; FRotator PcmRot = FRotator::ZeroRotator; float PcmFov = 0.f;
+	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
+	{
+		if (PC->PlayerCameraManager) { PcmLoc = PC->PlayerCameraManager->GetCameraLocation(); PcmRot = PC->PlayerCameraManager->GetCameraRotation(); PcmFov = PC->PlayerCameraManager->GetFOVAngle(); }
+	}
 	const FString Row = FString::Printf(
-		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f,%d,%s,%s,%.3f,%d,%s"),
+		TEXT("%lld,%.4f,%s,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f,%.3f,%d,%s,%d,%.2f,%.2f,%.2f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.3f,%.3f,%.2f,%.2f,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f,%.4f,%.4f,%.4f,%d,%.3f,%d,%.3f,%d,%s,%s,%.3f,%d,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.0f,%.0f,%.0f,%.0f"),
 		FrameIndex, T, ModeName(A.Mode), *A.Sub.ToString(), P.X, P.Y, P.Z, V.X, V.Y, V.Z, V.Size(), FVector2D(V.X, V.Y).Size(),
 		P.Z - UWebTraversalComponent::H - Traversal->FloorBelow(), An.X, An.Y, An.Z, bSw ? Traversal->SwingRope() : 0.0, bSw ? Traversal->SwingTension() : 0.0,
 		Traversal->Chain(), A.Trick.IsNone() ? TEXT("") : *A.Trick.ToString(), Traversal->HasZipTarget() ? 1 : 0,
@@ -748,7 +800,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		I.Move.X, I.Move.Y, I.bSwing ? 1 : 0, I.bJump ? 1 : 0, I.bSprint ? 1 : 0, I.bZip ? 1 : 0, I.bDrop ? 1 : 0, I.bQuick ? 1 : 0,
 		-FMath::RadiansToDegrees(Cam.Pitch), -FMath::RadiansToDegrees(Cam.DebugAutoPitch()), Cam.DebugOccHold(),
 		bBehind ? 1.0 : MaxY - MinY, bBehind ? 1.0 : MaxX - MinX, bBehind ? -1.0 : 0.5 * (MinY + MaxY), bInFrame ? 1 : 0, Cam.HeroDist,
-		Cam.bCamInGeometry ? 1 : 0, Cam.FrameS, I.bTrick ? 1 : 0, *Node, *ClipN, AW, Flav, *Sig);
+		Cam.bCamInGeometry ? 1 : 0, Cam.FrameS, I.bTrick ? 1 : 0, *Node, *ClipN, AW, Flav, *Sig,
+		PcmLoc.X / 100.0, PcmLoc.Y / 100.0, PcmLoc.Z / 100.0, PcmRot.Pitch, PcmRot.Yaw, PcmFov, PxTop, PxBottom, PxLeft, PxRight);
 	Script->AddTelemetryRow(Row);
 }
 

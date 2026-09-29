@@ -105,6 +105,11 @@ private:
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
 	bool bHeroMesh = false;
+	// round 05: pixel measurement of the hero (depth capture that shows only the hero, same camera as the view)
+	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;
+	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> MaskRT;
+	float PxTop = -1.f, PxBottom = -1.f, PxLeft = -1.f, PxRight = -1.f;
+	void ReadHeroMask();
 	double RunPhase = 0.0;
 	FVector ReleaseHandCm[2];
 	bool bWasReleased[2] = { false, false };

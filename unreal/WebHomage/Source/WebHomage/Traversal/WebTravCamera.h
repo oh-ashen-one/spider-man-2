@@ -30,6 +30,7 @@ struct FTravCamInput
 	double Bank = 0.0;
 	double HAbove = 0.0;   // feet height above the floor below (m)
 	double SwingAngle = 0.0; // rope angle from straight down (rad), swinging only
+	double SwingT = 99.0;    // s since the current web attached
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -45,10 +46,10 @@ public:
 	double KickV = 0.0, KickK = 0.0, MbK = 0.0, MbKV = 0.0;
 
 	// ---- round 03 chase-camera tuning
-	double ChaseDist = 6.0;        // horizontal distance behind the hero (m)
-	double ChaseHeight = 2.4;      // camera height over the hero centre (m)
+	double ChaseDist = 3.8;        // horizontal distance behind the hero (m) — round 05
+	double ChaseHeight = 1.1;      // camera height over the hero centre (m) — round 05
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
-	double FrameLowS = 0.67, FrameHighS = 0.36; // hero screen centre (0 top .. 1 bottom): arc bottom .. top
+	double FrameLowS = 0.48, FrameHighS = 0.40; // hero screen centre (0 top .. 1 bottom): arc bottom .. top
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame
@@ -94,7 +95,7 @@ private:
 	bool bChaseInit = false;
 	FVector CamXY = FVector::ZeroVector, CamXYV = FVector::ZeroVector;
 	double CamZ = 0.0, CamZV = 0.0, FrameSV = 0.0, OccYawOff = 0.0, OccYawOffV = 0.0, OccUp = 0.0, OccUpV = 0.0;
-	double OccYawGoal = 0.0, OccUpGoal = 0.0, UserPitch = 0.0;
+	double OccYawGoal = 0.0, OccUpGoal = 0.0, UserPitch = 0.0, AttachLook = 0.0, AttachLookV = 0.0, AttachFov = 0.0, AttachFovV = 0.0, AttachYaw = 0.0, AttachYawV = 0.0;
 	bool bOccGoal = false;
 	double OccGoalYaw = 0.0, OccGoalPitch = 0.0;
 };
