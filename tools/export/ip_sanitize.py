@@ -25,11 +25,17 @@ ADS = [
     ('L', 33, 46, 'BOTANICA - Now Playing, Majestic Theatre (show ad from the real game)'),
     ('L', 34, 20, 'FROSTED HALOS - Start Bright (brand from the real game)'),
     ('L', 39, 41, "HELL'S KITCHEN BLUES - New Season Streaming (Marvel-universe / Netflix-Marvel reference)"),
-    ('L', 60, 59, "THE DAILY BUGLE - New York's News (Marvel-universe newspaper)"),
+    ('L', 60, 16, "THE DAILY BUGLE - New York's News (Marvel-universe newspaper)"),
     ('L', 27, 4, 'COLTEX SPORT (sneaker brand too close to a real-game brand; round-04 critic)'),
     ('P', 27, 8, 'COLTEX - Own the Court (same brand, portrait cell)'),
     ('P', 38, 15, 'COLEXCO - Run the City (near-copy of the real game\'s COLEXCO brand)'),
     ('L', 35, 47, 'COLEXCO SPORT (red-on-white sneaker ad; it is the "COLEX SPOR..." banner seen in S6; real-game brand)'),
+    ('L', 32, 7, 'HAUTE UNLIMITED - New York / Paris / Milan (fictional brand of the real game; round-05 critic)'),
+    ('L', 59, 29, 'NEW YORK KNIGHTS - Tickets on sale (blue / orange basketball ad, evokes a real NBA club; conservative)'),
+    ('P', 24, 10, 'HAUTE UNLIMITED (portrait cell, blue gown)'),
+    ('P', 32, 44, 'HAUTE UNLIMITED (portrait cell, dark gown); OCR read "TAUTE UNLIMITED"'),
+    ('P', 23, 3, 'LIVE AT MADISON ARENA - One night only (evokes Madison Square Garden)'),
+    ('P', 63, 5, 'NOVA LEE - MADISON ARENA - LIVE (evokes Madison Square Garden)'),
     ('P', 6, 20, 'OSCORP - A Healthier Tomorrow (Marvel-universe company)'),
     ('P', 7, 22, 'DAILY BUGLE - Read All About It (Marvel-universe newspaper)'),
     ('P', 13, 31, 'ROXXON - Fueling Tomorrow (Marvel-universe company)'),
@@ -37,7 +43,9 @@ ADS = [
     ('P', 41, 18, 'HYDRA PRO (Marvel-universe organisation name)'),
 ]
 SIGNS = [
-    (48, 15, 'HOTEL MIRA (brand from the real game); replaced by HOTEL ASTORIA'),
+    (48, 51, 'HOTEL MIRA (brand from the real game); replaced by BAKERY'),
+    (15, 53, 'HOTEL ASTORIA (evokes the real Hotel Astor / Waldorf Astoria; round-05 critic)'),
+    (41, 55, 'BOREAL OUTDOOR (critic read "...REAL OUTDOOR": evokes L\'Oreal / an outdoor brand)'),
 ]
 
 def _box(kind, i):

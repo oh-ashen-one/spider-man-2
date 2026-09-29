@@ -1,4 +1,4 @@
-# P1 City — handoff after round 05 (for the next builder)
+# P1 City — handoff after round 06 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
@@ -7,7 +7,35 @@ Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, p
 `unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
 Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city.
 
-## State (round 05)
+## State (round 06)
+- Critic rounds: r01-r05 FAIL (r05: facades 5, street 4, skyline 3, Manhattan 4, IQ 5; gap: far skyline, S4 and everything past ~1 km).
+  r06 = far field: far-shore blocks with real window grids, coast / far-land materials instead of white slabs, thinner warm-neutral haze, real-water
+  Fresnel, IP exclusions (HAUTE UNLIMITED, Hotel Astoria, Madison Arena, Boreal Outdoor, New York Knights).
+- **What was wrong (root causes, all found by rendering with fog off and by mask captures):**
+  1. `farCityMass` (far-shore blocks, farshore.js) encodes a window flag in vertex colour blue (+10 / +20); the exporter clamped colour to 0..1 and the flag
+     became saturated blue for every block (the "lavender boxes"). `export_city.mjs` now decodes the flag into vertex ALPHA (0 / 0.5 / 1) and restores blue.
+  2. Coast, far-land, cliff and water were imported with the generic white vertex-colour material (`M_CityVC`): the near-white shoreline / "snow" slabs.
+  3. Height fog density 0.006 with blue inscattering + full aerial perspective washed the far field out.
+- **New materials** (build_city.py): `M_CityFarMass` (createMassMaterial port: window grid, spandrels, glass towers, night lights; warm push), `M_CityCoast`
+  (createCoastMaterial port: atlas granite / riprap / planks / bulkhead, lawn, pavers, ribbed metal, picket cards), `M_CityFarLand` (the browser's baked far-land
+  ground map, exported by `export_city.mjs` as `farland_map.png`) and `M_CityCliff`. `far_material(rec)` maps mesh names to them. `M_CityWater` Specular 0.25
+  (real water F0 0.02; 0.5 read as milky glass). New build step **`far`** (re-imports `farCityMass` as `SM_*_r06`, retargets the other far meshes, swaps level
+  actors); `build_geo_level` prefers `_r06` / `_r04` re-imports, so a `map` step no longer reverts them (before this, round-05 map rebuilds silently restored the
+  original tsFrames housing).
+- **Atmosphere of the view maps** (`add_lighting`, args `fog=`, `fogc=`, `aerial=`; variants: `tools/export/ue/atmo_variants.py`): height fog 0.0065, sky-neutral
+  inscattering (0.6, 0.62, 0.64) (r05: blue 0.32, 0.40, 0.52), SkyAtmosphere `aerial_pespective_view_distance_scale` 1.0 (sic, UE spells it "pespective").
+  History: I first thinned the haze (fog 0.001, aerial 0.25) for the best-looking far field, then CITY-SPEC C11-C15 (added mid-round) asked for the opposite
+  (far shore 25-35 luma under the sky, aerial contrast falloff 0.25-0.45): the current values are the spec-driven ones. The sky is blown (Y 229, manual exposure
+  +2 EV in the test maps): P4 owns exposure / sky; the far-shore / sky RATIO is what these values fix, so it should survive an exposure change.
+- Facade far LOD (`gen_shaders.mjs` uePatch): window-cell box filter 1.8x -> 1.15x (grid readable further out) and a warm-neutral albedo push where lod -> 1.
+- **Measurements** (round-06/README.md has the tables; scripts in tools/export): `spec_farfield.py` (CITY-SPEC C11-C15), `far_stats.py` (shore strip vs water, masks =
+  MPC_City.DebugMode 3 captured on `City_View_S4vm` = S4 with fog and aerial off, because haze washes the mask colours out), `facade_c1.py` (C1 / C2, facade mask =
+  DebugMode 11), `ip_ocr_check.py` (denylist OCR). r06 numbers: C11 6.7x sky Laplacian / flat blocks 22 %, C12 +1.9, C13 -32.6, C15 0.25 pass; **C14 fails** (river 13.5
+  brighter than the far shore: the river is veiled by the same haze; fixing it needs a distance-dependent haze model or a lower sky exposure, not more fog tuning);
+  shore strip darker than water by 0.104 luma (crop x 0-2800, y 550-700); C1 fails on S2 (sunlit pale stone 30.7 % above Y 204, mean 134) and S2 right glass tower (3.8 %),
+  passes on S1 / S8; S1 right tower (canyon-shadowed dark glass, mean Y 20) is under C2's 52. Those are lighting-driven (sun 6, sky fill 1.7, exposure +2 EV): for P4.
+
+## Round 05 (street level; still valid)
 - Critic rounds: r01-r03 FAIL; r04 FAILS-improving (facades 5, street 3, skyline 4, Manhattan 4, IQ 5; gap: street level 0-3 storeys unbuilt).
   r05 = street-level kit + crisp shop interiors + supplemental street furniture + sidewalk slabs + two more IP cell exclusions.
 - Detailed block: tiles ix -1..1, iz -2..0 (x -256..512, z -512..256). Far: facade-LOD masses for the whole island, far shores, bridges, hinterland
@@ -39,7 +67,7 @@ Open: S1's right tower may now be too dark (median 0.07); DayEmisK / InteriorGai
 npx vite --port 5202 --host 127.0.0.1 --strictPort &        # browser city (exporter needs it)
 tools/export/ue/launch_editor.sh                            # P1 editor, OFFSCREEN (-RenderOffScreen -NoSound), MCP :8771, job server; waits while 3+ Unreal run
 tools/export/build_city.sh                                  # export -> patch_export -> prep textures (IP sanitiser) -> street signs -> street kit -> street props -> gen shaders -> build_city.py
-SKIP_EXPORT=1 STEPS=mat,map tools/export/build_city.sh      # partial rebuild (steps: clean,tex,mat,mesh,proto,map,frames,kit)
+SKIP_EXPORT=1 STEPS=mat,map tools/export/build_city.sh      # partial rebuild (steps: clean,tex,mat,mesh,proto,map,frames,kit,far)
 tools/export/capture_round.sh <raw_dir> [ids...]            # run_game.sh per view, 1080p + 4K, perf + GPU util (waits for a free Unreal slot)
 python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN   # JPGs + perf.json + README
 python3 tools/export/window_stats_round.py <lit_dir> <mask_dir> out.json [crop_dir]  # window brightness test (mask = DebugMode 3 frames)
@@ -71,8 +99,8 @@ No numpy inside the editor's Python.
 ## MPC_City (Content/City/Materials/MPC_City, defaults in build_city.py MPC_DEFAULTS)
 NightK, DnTime, InteriorGain 0.5, ShopGain 0.7, EmissiveScale 3.0 (r03) plus r04: **DayEmisK 0.22** (facade interior / sign emission scale in
 daylight, 1.0 at night: rooms behind glass are ~10x darker than sunlit masonry), **GlassSpec 0.5** (UE Specular of dielectric sash glass = F0 0.04),
-**DebugMode** (facade only): 1 emissive only, 2 no emissive, 3 window mask (red = glass pixel; used by window_stats), 4/8/9 gLodI, 5/7 raw interior
-atlas, 6 interior(), 10 raw signs atlas. Change values without recompiling: `uejob.py tools/export/ue/set_mpc.py Name=value` (edits
+**DebugMode**: facade: 1 emissive only, 2 no emissive, 3 window mask (red = glass pixel; used by window_stats), 4/8/9 gLodI, 5/7 raw interior
+atlas, 6 interior(), 10 raw signs atlas, 11 facade-only mask (facade_c1.py); r06 far field, mode 3: coast + far land red, water blue, far-shore blocks green; mode 9 (M_CityFarMass): vertex alpha. Change values without recompiling: `uejob.py tools/export/ue/set_mpc.py Name=value` (edits
 the MPC defaults and saves; `tools/export/capture_one.sh <dir> <id> [WxH]` = single frame).
 
 ## Facade patch layer (gen_shaders.mjs, r04) — what made the windows read as glass
@@ -98,10 +126,20 @@ Result: dark glass with Lumen reflections, visible room interiors (desks, painti
 10. GLB coordinates are tile-local: world = local + manifest `center` (x, z).
 11. Handedness: UE is left-handed. A hand-made camera ray needs `right = cross(up, f)` and `up = cross(f, right)` (the first S5 probes were wrong).
 12. GPU is shared: every perf number so far was taken at 50-99 % utilization before the run.
-13. Debug recipe: replace the return of a Custom node by a debug value scaled by 0.05 (emissive 1.0 saturates at the +2 EV manual exposure), capture
+13. Mask captures see haze: fog / aerial perspective add a ~75/255 veil to every pixel, so mask colours are detected by channel differences (far_stats.py),
+    not absolute levels; set Specular 0 + roughness 1 in the mask branch of a material or reflections leak in.
+14. Interchange keeps vertex ALPHA and clamps vertex colour to 0..1 (8-bit): never encode data in colour values > 1 (exporter decodes farshore.js flags into alpha).
+15. Debug recipe: replace the return of a Custom node by a debug value scaled by 0.05 (emissive 1.0 saturates at the +2 EV manual exposure), capture
     1080p in `-game`, read pixel values with PIL.
 
-## Known problems / next rounds
+## Known problems / next rounds (r06 additions first)
+- Far field: the far-shore blocks are grey-warm boxes with a window grid; no brick / trees / parks colour variety like the browser (the browser bakes park
+  greens and lot tones into the far-land map, which is used, but the 2-4 km facade ring stays tone-flat). No bridges texture work, no far water towers.
+  Horizon hinterland (> 5 km) is sub-pixel windows only. Hazy sky band stays bright (sky / exposure belong to P4).
+- Test-map atmosphere (fog 0.0065, aerial 1.0, sky-neutral) is mine; if P4's look pass re-lights the maps, re-run spec_farfield.py / far_stats.py / facade_c1.py.
+- The window-brightness numbers of round 04 (window_stats_round.py) were superseded by CITY-SPEC C1 (facade_c1.py); the r04 script still works with DebugMode 3.
+- CITY-SPEC (docs/night1/city/SPEC.md on Opus-5.5-Loop-Night-1) lists C4-C10 not yet worked: parked cars / traffic (P6), S3 water towers (>= 2 in frame), street-tree count in S1.
+- `frames` / `far` steps leave the previous imports behind as `*_old<ts>` assets; a `clean` rebuild removes them.
 - Fire escapes are in the S1 crop x 0-1600, y 800-1700 only at its top-right corner (the lowest platforms of the far deco tower, x ~1525-1600,
   y 800-1000); nearer escapes start above the 6 m cornice, above that crop. If the critic wants them lower in frame: move the camera or add a
   retracted-ladder variant. Drop ladders end at 2.6 m and are aligned with a pier (behind awnings they are hidden at oblique angles).
