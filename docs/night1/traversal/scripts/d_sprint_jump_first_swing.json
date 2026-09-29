@@ -40,80 +40,28 @@
    "swing": true
   },
   {
-   "t": 3.3283,
+   "t": 4.2783,
    "swing": false
   },
   {
-   "t": 3.8283,
+   "t": 5.1783,
    "swing": true
   },
   {
-   "t": 4.8783,
+   "t": 7.645,
    "swing": false
   },
   {
-   "t": 5.5617,
+   "t": 8.9783,
    "swing": true
   },
   {
-   "t": 6.6617,
+   "t": 11.8783,
    "swing": false
   },
   {
-   "t": 7.245,
+   "t": 13.6617,
    "swing": true
-  },
-  {
-   "t": 8.095,
-   "swing": false
-  },
-  {
-   "t": 8.6783,
-   "swing": true
-  },
-  {
-   "t": 9.345,
-   "swing": false
-  },
-  {
-   "t": 9.9117,
-   "swing": true
-  },
-  {
-   "t": 10.6783,
-   "swing": false
-  },
-  {
-   "t": 11.245,
-   "swing": true
-  },
-  {
-   "t": 11.845,
-   "swing": false
-  },
-  {
-   "t": 12.4283,
-   "swing": true
-  },
-  {
-   "t": 13.0283,
-   "swing": false
-  },
-  {
-   "t": 13.845,
-   "swing": true
-  },
-  {
-   "t": 14.4783,
-   "swing": false
-  },
-  {
-   "t": 15.2117,
-   "swing": true
-  },
-  {
-   "t": 15.7783,
-   "swing": false
   }
  ],
  "baked_from": "d_auto.json"

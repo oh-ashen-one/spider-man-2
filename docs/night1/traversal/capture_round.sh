@@ -15,10 +15,10 @@ MAP=/Game/Tests/Traversal/Trav_Canyon
 mkdir -p "$TMP" "$ROUND/stills"
 # name  script                          quit(s)  still times (game s)
 SEQS=(
-  "a_swing_chain a_swing_chain.json 15.6 2.6,5.0,8.3,12.1"
-  "b_release_trick_dive_zip b_release_trick_dive_zip.json 5.5 1.5,2.6,3.2,4.4"
+  "a_swing_chain a_swing_chain.json 15.6 1.0,3.4,5.5,7.4"
+  "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,2.2,3.6,5.9"
   "c_wallrun_perch c_wallrun_perch.json 10.0 1.5,3.0,4.6,9.0"
-  "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 10.0 1.2,2.3,3.0,6.3"
+  "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,6.5,7.6,9.9"
 )
 WANT=("$@")
 for entry in "${SEQS[@]}"; do

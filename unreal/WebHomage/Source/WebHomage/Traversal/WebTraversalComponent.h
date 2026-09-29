@@ -57,11 +57,11 @@ public:
 	 * arc stays in the direction of travel, and steering turns the whole arc about the body. P3 round-01 default: 0.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
-	float PivotLateralKeep = 0.f;
+	float PivotLateralKeep = 0.1f;
 
 	/** Travel-plane pivot only: the pivot sits at least this high over the body at attach (m)... */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
-	float MinPivotRise = 14.f;
+	float MinPivotRise = 6.f;
 	/** ...and at least this steep (deg) from the body, so an attach never turns forward speed into a vertical climb. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
 	float MinPivotElevDeg = 35.f;
@@ -69,6 +69,19 @@ public:
 	/** Canyon keeping: extra arc dip per metre the swing entry is above the anchor band (0 = browser r10f only). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
 	float CanyonDipK = 0.6f;
+
+	/**
+	 * Round 02 (critic: "swings are flat"): deep vertical pendulum. With PivotLateralKeep < 1 every swing's pivot is built so
+	 * the circle through the body bottoms out ArcBottomMin..ArcBottomMax m above the floor (random per swing, so no two arcs
+	 * are alike) and at least MinArcDrop m below the entry height (never below 3 m: car roofs).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcBottomMin = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcBottomMax = 12.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MinArcDrop = 16.f;
+	/** Max horizontal distance of the virtual pivot ahead of the body (m). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MaxPivotAhead = 55.f;
+	/** Longest virtual rope (m): high entries keep a brisk ~2 s arc and bottom out higher instead of a slow 50 m pendulum. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MaxArcRope = 50.f;
 
 	/** Deterministic trick RNG seed (replays). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal")
@@ -98,6 +111,7 @@ public:
 	int32 Chain() const { return S.Chain; }
 	const FVector& WallNormal() const { return S.W.Normal; }
 	FName TrickName() const { return S.Trick; }
+	double HeightAboveFloor_() const { return HeightAboveFloor(); }
 	double FloorBelow() const { return FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); }
 	bool HasZipTarget() const { return Anchors && Anchors->HasTarget(); }
 	FVector ZipTargetPos() const { return Anchors && Anchors->HasTarget() ? Anchors->Best().Pos : FVector::ZeroVector; }

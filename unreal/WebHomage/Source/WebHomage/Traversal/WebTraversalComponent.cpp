@@ -631,28 +631,48 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 	Emit(N_swingChain, 0.f, 0.f, float(S.Chain));
 	Sw.Anchor = A.Point; Sw.Normal = A.Normal; Sw.Kind = A.Kind; Sw.ModelT = 0.1;
 	Sw.Dir = Turn ? FMath::Lerp(Fwd, *Turn, 0.6).GetSafeNormal() : Fwd;
-	// flight dynamics: the physics pivot is the web's anchor on the model (browser r13) — or, with PivotLateralKeep < 1,
-	// that anchor with its sideways offset removed so the arc runs in the direction of travel (the web still draws to it)
-	Sw.Pivot = PivotFor(A.Point);
 	const double DX = A.Point.X - S.Pos.X, DY = A.Point.Y - S.Pos.Y;
-	const double L = FVector::Dist(S.Pos, Sw.Pivot);
-	// no ground scraping: the bottom of the arc keeps the feet >= 2.4 m over the highest floor under the arc
-	double FMax = -1e9;
-	for (double K : { 0.0, 0.5, 1.0, 1.4 })
+	if (PivotLateralKeep < 1.f)
 	{
-		const double X = S.Pos.X + (Sw.Pivot.X - S.Pos.X) * K, Y = S.Pos.Y + (Sw.Pivot.Y - S.Pos.Y) * K;
-		FMax = FMath::Max(FMax, FloorAt(X, Y, Sw.Pivot.Z - 2));
+		// Round 02 deep pendulum: build the virtual pivot so the arc through the body bottoms out low over the street
+		// (per-swing random depth) — the web still draws to the real anchor A.Point.
+		const FVector Fl = Flat(Sw.Dir).GetSafeNormal(), Rt(-Fl.Y, Fl.X, 0);
+		const double Lat = FVector::DotProduct(A.Point - S.Pos, Rt);
+		const double AheadA = FMath::Max(FVector::DotProduct(A.Point - S.Pos, Fl), 10.0);
+		double FMaxD = -1e9;
+		for (double K : { 0.0, 0.5, 1.0, 1.4 })
+		{
+			const FVector Q = S.Pos + Fl * (AheadA * K);
+			FMaxD = FMath::Max(FMaxD, FloorAt(Q.X, Q.Y, S.Pos.Z));
+		}
+		const double HEntry = S.Pos.Z - H - FMaxD;
+		double BottomFeet = FMath::Lerp(double(ArcBottomMin), double(ArcBottomMax), double(Rng.FRand()));
+		BottomFeet = FMath::Max(3.0, FMath::Min(BottomFeet, HEntry - MinArcDrop));
+		const double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
+		const double BottomZ = FMaxD + BottomFeet + H;
+		double L = FMath::Clamp(S.Pos.Z + DZ - BottomZ, DZ + 3.0, FMath::Max(double(MaxArcRope), DZ + 3.0));
+		double DH = FMath::Sqrt(FMath::Max(L * L - DZ * DZ, 16.0));
+		DH = FMath::Min(DH, double(MaxPivotAhead));
+		Sw.Pivot = S.Pos + Fl * DH + Rt * (Lat * PivotLateralKeep) + ZUP * DZ;
+		const double LN = FVector::Dist(S.Pos, Sw.Pivot);
+		Sw.Rope = LN; Sw.RopeTarget = LN;
 	}
-	// arc depth: dip toward the street (Insomniac look) but keep the feet over bus height; higher entries dip deeper
-	const double HEntry = S.Pos.Z - H - FMax;
-	double BottomFeet = A.Kind == N_low ? 3.0 : FMath::Max(FMax < 1 ? 4.2 : 2.6, FMath::Clamp(8 + HEntry * 0.3, 11.0, 18.0));
-	// user r10f: chained swings climb — the arc dips at most SWING_DIP below the entry. P3 canyon keeping: above the
-	// anchor band (30-40 m over the street, anchors.js) the allowed dip grows so a chain settles back toward the band
-	// instead of climbing over the rooftops (below the band the r10f climb is unchanged).
-	const double BandH = FMath::Clamp(30.0 + HS * 0.25, 30.0, 40.0);
-	const double Dip = SWING_DIP + FMath::Max(0.0, HEntry - BandH) * CanyonDipK;
-	if (A.Kind != N_low) BottomFeet = FMath::Max(BottomFeet, HEntry - Dip);
-	Sw.RopeTarget = FMath::Max(4.0, FMath::Min(L, Sw.Pivot.Z - FMax - H - BottomFeet));
+	else
+	{
+		// browser r13 flight dynamics: the physics pivot IS the web's anchor on the model
+		Sw.Pivot = A.Point;
+		const double L = FVector::Dist(S.Pos, Sw.Pivot);
+		double FMax = -1e9;
+		for (double K : { 0.0, 0.5, 1.0, 1.4 })
+		{
+			const double X = S.Pos.X + (Sw.Pivot.X - S.Pos.X) * K, Y = S.Pos.Y + (Sw.Pivot.Y - S.Pos.Y) * K;
+			FMax = FMath::Max(FMax, FloorAt(X, Y, Sw.Pivot.Z - 2));
+		}
+		const double HEntry = S.Pos.Z - H - FMax;
+		double BottomFeet = A.Kind == N_low ? 3.0 : FMath::Max(FMax < 1 ? 4.2 : 2.6, FMath::Clamp(8 + HEntry * 0.3, 11.0, 18.0));
+		if (A.Kind != N_low) BottomFeet = FMath::Max(BottomFeet, HEntry - SWING_DIP); // user r10f
+		Sw.RopeTarget = FMath::Max(4.0, FMath::Min(L, Sw.Pivot.Z - FMax - H - BottomFeet));
+	}
 	Sw.Rope = FVector::Dist(S.Pos, Sw.Pivot); Sw.T = 0; Sw.Tension = 0; Sw.TautT = 0; Sw.Y0 = S.Pos.Z;
 	Sw.Kick = 0; Sw.KickCd = 0; Sw.bApexed = false; Sw.AngMax = -9;
 	// incoming velocity projection: perpendicular to the web at once (taut from the first frame), momentum conserved
@@ -673,7 +693,7 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 	const FVector Right(-Sw.Dir.Y, Sw.Dir.X, 0);
 	const double Lat = DX * Right.X + DY * Right.Y;
 	Sw.bRightHand = FMath::Abs(Lat) > 2 ? Lat > 0 : !Sw.bRightHand;
-	WebAttach(Sw.bRightHand, Sw.Anchor, FMath::Clamp(L / 380.0, 0.05, 0.16));
+	WebAttach(Sw.bRightHand, Sw.Anchor, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
 	SetMode(EWebTravMode::Swing, N_swingLow); S.Trick = NAME_None; S.bDive = false; S.bAirTrickUsed = false; S.AirTapT = -9;
 	Emit(N_swingStart);
 }
