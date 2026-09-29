@@ -43,7 +43,7 @@ fi
 ARGS+=(-WHQuitAt="$QUIT")
 EXECS="t.MaxFPS 0"; [ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
 ARGS+=(-ExecCmds="$EXECS")
-[ "$MOVIE" = 1 ] && ARGS+=(-benchmark -fps=60 -dumpmovie)
+if [ "$MOVIE" = 1 ]; then rm -f "$PROJ_DIR"/Saved/Screenshots/MacEditor/MovieFrame*.png; ARGS+=(-benchmark -fps=60 -dumpmovie); fi
 ARGS+=("${EXTRA[@]+"${EXTRA[@]}"}")
 echo "run_game: out=$OUT res=$RES quit=$QUIT window=$WINDOW movie=$MOVIE"
 "$UE" "${ARGS[@]}" > "$OUT/$NAME.stdout.txt" 2>&1 &
@@ -55,5 +55,15 @@ while kill -0 $PID 2>/dev/null; do
 done
 wait $PID 2>/dev/null; RC=$?
 grep -E "WH_(PERF|SHOT|QUIT)" "$OUT/$NAME.log" | sed 's/^.*LogWebHomage: Display: //'
-[ "$MOVIE" = 1 ] && echo "movie frames: $(ls "$PROJ_DIR"/Saved/Screenshots/Mac/ 2>/dev/null | wc -l) in $PROJ_DIR/Saved/Screenshots/Mac"
+if [ "$MOVIE" = 1 ]; then
+  # -dumpmovie writes Saved/Screenshots/MacEditor/MovieFrameNNNNN.png (one per rendered frame, game time fixed at 1/60 s)
+  mkdir -p "$OUT/${NAME}_frames"
+  mv "$PROJ_DIR"/Saved/Screenshots/MacEditor/MovieFrame*.png "$OUT/${NAME}_frames/" 2>/dev/null
+  N=$(ls "$OUT/${NAME}_frames" | wc -l | tr -d ' ')
+  echo "movie frames: $N -> $OUT/${NAME}_frames"
+  if [ "$N" -gt 0 ] && command -v ffmpeg >/dev/null; then
+    ffmpeg -loglevel error -y -framerate 60 -i "$OUT/${NAME}_frames/MovieFrame%05d.png" \
+      -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart "$OUT/${NAME}.mp4" && echo "movie: $OUT/${NAME}.mp4"
+  fi
+fi
 exit $RC
