@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 09:30",
+ "updated": "2026-09-29 10:00",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 2 fixed the flat swings (every swing now drops 16\u201357 m), but the blind critic still says FAILS TARGET: it rates round 2 only about one point better than round 1. The camera is now the biggest gap: it stays locked behind the hero and crashes into him on zips and wall-runs. Round 3 rebuilds it as a lagged chase camera with collision.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -35,10 +35,10 @@
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": ""
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (facades 4, street 3, skyline 2, Manhattan 2, IQ 3)",
+   "gap": "City ends ~1 km out on a grey ground plane; no rivers, far shore or haze"
   },
   {
    "id": "P2",
@@ -87,6 +87,28 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "City round 1 \u2014 first Unreal Midtown (3\u00d73 tiles exported from the browser city)",
+   "note": "Facade shader ported from the browser (interior mapping, glass, masonry). Placeholder lighting. Critic: reads as a city but not yet as Manhattan; the world ends at 1 km.",
+   "images": [
+    {
+     "label": "S2 avenue from swing height",
+     "src": "docs/night1/city/round-01/S2_avenue_swing_1920x1080.jpg"
+    },
+    {
+     "label": "S4 perch skyline \u2014 the grey ground plane",
+     "src": "docs/night1/city/round-01/S4_perch_skyline_1920x1080.jpg"
+    },
+    {
+     "label": "S1 avenue street level",
+     "src": "docs/night1/city/round-01/S1_avenue_street_1920x1080.jpg"
+    },
+    {
+     "label": "S5 Times Square \u2014 billboards black",
+     "src": "docs/night1/city/round-01/S5_timessq_south_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "Traversal round 1 \u2014 swing chain (critic contact sheet)",
    "note": "Frames 0\u20133 s of the scripted swing chain. The critic's point is visible here: same height and framing in every frame.",
@@ -157,6 +179,14 @@
    "verdict": "fails",
    "gap": "Replace the fixed-offset camera with a lagged chase camera 4\u20136 m behind and 1\u20132 m above, letting the hero move \u226520% of frame height per swing, never closer than 2 m, never inside the hero or a wall.",
    "notes": "Blind A/B: the reference won all five pairs; round 2 beat round 1 by ~1 point. Secondary: 1.5\u20132 s rope-less glides between swings; anchors never visible; wall-run filmed straight at the wall and ends in a T-pose; hero smear at b 3.2 s."
+  },
+  {
+   "t": "09:55",
+   "piece": "P1 City",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Replace the grey ground plane at the city edge with city to the horizon, the Hudson and East rivers, a far shore and a haze band.",
+   "notes": "Reference won all 8 A/B pairs. Secondary: Times Square billboards black, jagged white artifact on the S3 roof, blank storefronts and an untextured cylinder in S1, long flat walls without cornices or fire escapes."
   }
  ],
  "perf": [
@@ -218,6 +248,10 @@
   {
    "t": "09:25",
    "text": "P3 round 2 merged (drop test passes); critic: FAILS TARGET, camera now the biggest gap."
+  },
+  {
+   "t": "09:55",
+   "text": "P1 city round 1 merged (234 GLBs, 172 tile actors, 11k prop instances, facade shader ported to HLSL); critic FAILS; round 2 on horizon/rivers/haze."
   }
  ]
 }
