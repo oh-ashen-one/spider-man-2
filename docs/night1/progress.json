@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 11:00",
+ "updated": "2026-09-29 11:31",
  "phase": "Wave 1 \u2014 first builds",
  "headline": "Traversal round 5 fixed the camera framing by pixel measurement and climbed on three axes (arc 5, web 5, moves 4) but still FAILS: the wall-run is a frozen pose sliding up the wall and the suit renders unshaded at clip starts. Builders now run on Sonnet 5.5 (extra-high thinking) except traversal/animation, critics and integration, which stay on Opus.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -36,9 +36,9 @@
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "fixing",
-   "round": 4,
-   "verdict": "R3: FAILS (facades 4, street 3, skyline 4, Manhattan 4, IQ 4)",
-   "gap": "Window glass/storefronts render as opaque beige slabs; Marvel/SM2 brand ads must be excluded"
+   "round": 5,
+   "verdict": "R4: FAILS (facades 5, street 3, skyline 4, Manhattan 4, IQ 5)",
+   "gap": "Street level unbuilt: no recessed storefronts, awnings, fire escapes, sidewalk detail or street props"
   },
   {
    "id": "P2",
@@ -87,6 +87,24 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "City round 4 \u2014 real window glass and interiors",
+   "note": "Before: every window an opaque beige slab. After: dark reflective glass with mixed lit/dim/dark rooms.",
+   "images": [
+    {
+     "label": "Round 3 canyon",
+     "src": "docs/night1/city/round-03/S2_avenue_swing_1920x1080.jpg"
+    },
+    {
+     "label": "Round 4 canyon",
+     "src": "docs/night1/city/round-04/S2_avenue_swing_1920x1080.jpg"
+    },
+    {
+     "label": "Round 4 aerial",
+     "src": "docs/night1/city/round-04/S8_aerial_midtown_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "Characters round 1 \u2014 first Unreal lineup",
    "note": "Hero, five AI-logo suits, thug, brute and citizens imported on one skeleton with basic locomotion.",
@@ -313,6 +331,14 @@
    "verdict": "fails",
    "gap": "Swing cadence: attach\u2192release 1.2\u20131.8 s, next web within 0.5 s, no web-less fall >0.6 s; \u22657 attaches in 12 s.",
    "notes": "Best round yet: every axis 4\u20135; the new wall-run (head-up alternating climb, camera looking up the facade, flip top-out) rated ~2 points better than round 5. Deep drops from round 2 lengthened swings; round 7 keeps depth but adds speed."
+  },
+  {
+   "t": "11:31",
+   "piece": "P1 City",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "Build street level: recessed storefronts with frames and interiors, awnings with original signs, piers and cornices, fire escapes, sidewalk slab joints, a hydrant/trash can/newspaper box/tree pit every ~20 m.",
+   "notes": "Windows fixed (interior atlas was sampled 2\u20134 mips too coarse at 50\u201373% internal resolution); round 4 beat round 3 in both version pairs. Critic flagged that reference HUD/logos made the blind test obvious: packs are now centre-cropped. Two ads (COLTEX/COLEX) too close to a real-game brand are being excluded."
   }
  ],
  "perf": [
@@ -428,6 +454,10 @@
   {
    "t": "11:00",
    "text": "Traversal R6 merged: wall-run fixed (critic +2 on that sequence); still FAILS; round 7 targets swing cadence."
+  },
+  {
+   "t": "11:31",
+   "text": "City R4 merged (window glass + IP exclusions); critic FAILS, facades/IQ up to 5; round 5 builds street level. A/B packs now centre-cropped to hide reference HUD."
   }
  ]
 }
