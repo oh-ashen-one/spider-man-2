@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 08:05",
+ "updated": "2026-09-29 09:30",
  "phase": "Wave 1 \u2014 first builds",
- "headline": "Traversal round 1 is in Unreal (C++ port of the browser swing system and camera) and the first harsh critic has judged it: FAILS TARGET. Biggest gap: swings are flat, so the builder is making each swing a real vertical pendulum with a camera that follows height.",
+ "headline": "Traversal round 2 fixed the flat swings (every swing now drops 16\u201357 m), but the blind critic still says FAILS TARGET: it rates round 2 only about one point better than round 1. The camera is now the biggest gap: it stays locked behind the hero and crashes into him on zips and wall-runs. Round 3 rebuilds it as a lagged chase camera with collision.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (arc 3, camera 3, web 3, moves 2, body 2)",
-   "gap": "Swings are flat: no drop to street level and rise; camera rides a rail"
+   "round": 3,
+   "verdict": "R2: FAILS (arc 3, camera 2, web 4, moves 3, body 3)",
+   "gap": "Camera: locked fixed offset, hero dead centre, clips into hero/walls"
   },
   {
    "id": "P4",
@@ -118,6 +118,11 @@
  ],
  "clips": [
   {
+   "title": "Traversal R2 \u2014 swing chain",
+   "src": "docs/night1/traversal/round-02/a_swing_chain.mp4",
+   "caption": "deep pendulum arcs (16\u201357 m drops); camera still locked"
+  },
+  {
    "title": "Traversal R1 \u2014 swing chain",
    "src": "docs/night1/traversal/round-01/a_swing_chain.mp4",
    "caption": "gray-box canyon, placeholder body; 60 fps offline capture"
@@ -144,6 +149,14 @@
    "verdict": "fails",
    "gap": "Swings are flat: the hero holds one height down a rail-like corridor. Each swing must drop 2\u20134 storeys above the street and rise past the anchor, with the camera following height (vanishing point moving \u226515% of frame).",
    "notes": "Reference won all four A/B pairs. Secondary: released web sweeps across the lens; camera clips into the hero during wall-run; wall-run has a frozen pose then a T-pose; tricks fire on every release. Scores: arc 3, camera 3, web 3, moves 2, body 2."
+  },
+  {
+   "t": "09:25",
+   "piece": "P3 Traversal",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Replace the fixed-offset camera with a lagged chase camera 4\u20136 m behind and 1\u20132 m above, letting the hero move \u226520% of frame height per swing, never closer than 2 m, never inside the hero or a wall.",
+   "notes": "Blind A/B: the reference won all five pairs; round 2 beat round 1 by ~1 point. Secondary: 1.5\u20132 s rope-less glides between swings; anchors never visible; wall-run filmed straight at the wall and ends in a T-pose; hero smear at b 3.2 s."
   }
  ],
  "perf": [
@@ -201,6 +214,10 @@
   {
    "t": "08:00",
    "text": "P3 round 1 merged; critic verdict FAILS TARGET; builder sent back on the flat-swing gap."
+  },
+  {
+   "t": "09:25",
+   "text": "P3 round 2 merged (drop test passes); critic: FAILS TARGET, camera now the biggest gap."
   }
  ]
 }
