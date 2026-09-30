@@ -20,17 +20,17 @@ if pgrep -f "$UPROJECT" >/dev/null; then echo "an Unreal process of this worktre
 case "$MODE" in
   logic)
     # r02: through the GPU lock as well (RULES: every Unreal launch), although -nullrhi uses no GPU
-    $G/gpu_slot.sh capture --label combat -- "$UE" "$UPROJECT" "$MAP" -game -nullrhi -NoSound -NoCrashReports -benchmark -fps=60 -unattended -WHNoMouseCapture \
+    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$UE" "$UPROJECT" "$MAP" -game -nullrhi -NoSound -NoCrashReports -benchmark -fps=60 -unattended -WHNoMouseCapture \
       -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight -abslog="$OUT/fight.log" > "$OUT/stdout.txt" 2>&1
     echo "rc $?"
     grep -o 'WH_CMB_SUMMARY.*' "$OUT/fight.log" | head -1 ;;
   movie)
     RES="${ARG4:-1920x1080}"
-    $G/gpu_slot.sh capture --label combat -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "$RES" -quit 400 -name fight -movie -timeout 2400 \
+    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "$RES" -quit 400 -name fight -movie -timeout 2400 \
       -- -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight
     echo "rc $?" ;;
   stills)
-    $G/gpu_slot.sh capture --label combat -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res 3840x2160 -quit 400 -name still -timeout 2400 \
+    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res 3840x2160 -quit 400 -name still -timeout 2400 \
       -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=still -WHCmbShots="$ARG4"
     echo "rc $?" ;;
   *) echo "mode: logic | movie | stills"; exit 1 ;;
