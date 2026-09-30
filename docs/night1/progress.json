@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 18:14",
+ "updated": "2026-09-29 20:10",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "fixing",
-   "round": 4,
-   "verdict": "R3: FAILS (hero 4, anim 3, enemies 3, civilians 2, IQ 4)",
-   "gap": "Hero run (step rate, lean, takeoff), enemy masks + lineup, sliding civilians \u2014 Opus builder"
+   "round": 5,
+   "verdict": "R4: FAILS (hero 4, anim 5, enemies 4, civilians 3, IQ 3) \u2014 best yet",
+   "gap": "Seam cracks (26 slivers), a real fight capture, suit weave/lens quality (Sonnet builder)"
   },
   {
    "id": "P3",
@@ -71,19 +71,19 @@
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "Wave 2"
+   "gap": "Opus 5.5 high: C++ port of browser combat"
   },
   {
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "Wave 2"
+   "gap": "Sonnet 5.5 xhigh: traffic + crowd (water via A/B)"
   },
   {
    "id": "A",
@@ -129,9 +129,36 @@
    "round": 0,
    "verdict": "",
    "gap": "After C (Opus high)"
+  },
+  {
+   "id": "W",
+   "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
+   "branch": "night1/water-ab-*",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": "Same brief, separate worktrees; blind Opus critic picks the winner"
   }
  ],
  "comparisons": [
+  {
+   "title": "Characters round 4 \u2014 armed lineup, walking crowd, leaning run",
+   "note": "Opus builder. 7 thugs, 5 outfits, 3 weapon types; civilians walking; run lean ~30\u00b0.",
+   "images": [
+    {
+     "label": "Enemy lineup",
+     "src": "docs/night1/characters/round-04/captures/enemy_lineup_wide_4k.jpg"
+    },
+    {
+     "label": "Civilians tracking",
+     "src": "docs/night1/characters/round-04/captures/civilians_tracking_4k.jpg"
+    },
+    {
+     "label": "Hero run",
+     "src": "docs/night1/characters/round-04/captures/hero_run_side_4k.jpg"
+    }
+   ]
+  },
   {
    "title": "Characters round 3 \u2014 enemies rebuilt from the owner's Tripo people",
    "note": "Real faces, five-finger hands, folded cloth; brute 1.36\u00d7 the thug's shoulders.",
@@ -521,6 +548,14 @@
    "verdict": "fails",
    "gap": "Far field C11/C13\u2013C15, facade base colours C1, plus IP (transit slogan, game key art, product mural).",
    "notes": "Far-shore bugs fixed (window flag clamped, white generic material, blue haze); round 6 beat round 5 by ~0.5 on skyline. Builder and critic measured the same spec lines differently \u2192 round 7 commits shared crop regions + one check script. Lighting-owned issues (crushed S1/S7, blown S4 sky) routed to P4."
+  },
+  {
+   "t": "20:10",
+   "piece": "P2 Characters",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "CH18 seam cracks to 0; a 5\u20137 enemy fight capture with no craning heads and cloth masks; suit weave/web-line relief/lens quality.",
+   "notes": "Opus builder: lean ~30\u00b0 (was 9\u201313\u00b0), step rate 3.53 Hz, 7 armed thugs, 10\u201311 civilians per frame; beat round 3 in both version pairs. Critic flags the classic suit as copying a studio design (3rd time) \u2014 owner decision; round 5 improves quality only."
   }
  ],
  "perf": [
@@ -737,6 +772,18 @@
   {
    "t": "18:14",
    "text": "Recovered: all worktree WIP committed and pushed, orphaned crash reporters (100% CPU for 6 h) killed. New hard rule: max 2 Unreal processes of any kind at once through the GPU lock; builds via null-RHI commandlets; no crash-relaunch loops. Resuming at 2 concurrent GPU builders."
+  },
+  {
+   "t": "18:24",
+   "text": "GPU slots now auto-tuned (start 4, +1 per calm 20 min up to 7, back off on WindowServer strain, emergency kill of the newest capture). Six builders running."
+  },
+  {
+   "t": "18:24",
+   "text": "Fable 5.1 (high) director set to decide the 4K/60 strategy from clean perf data. First blind same-gap A/B build started: river water, Sonnet 5.5 xhigh vs Opus 5.5 high."
+  },
+  {
+   "t": "20:10",
+   "text": "Characters R4 (Opus) merged: avg 3.8, best yet; round 5 on Sonnet (ledger alternation)."
   }
  ]
 }

@@ -248,6 +248,19 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 4,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    5,
+    4,
+    3,
+    3
+   ]
   }
  ],
  "agents": [
@@ -316,6 +329,12 @@
    "rounds": "4\u20136",
    "model": "Sonnet 5.5",
    "tokens": 769000
+  },
+  {
+   "piece": "P2 Characters",
+   "rounds": "4",
+   "model": "Opus 5.5",
+   "tokens": 326000
   }
  ],
  "caveats": [
