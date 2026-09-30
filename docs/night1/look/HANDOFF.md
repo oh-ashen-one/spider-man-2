@@ -22,7 +22,7 @@ Numbers of the round: `round-03/TESTS.md` (spec tables, 1080p and 4K, clips), `r
   `sweep_report.py` (ranks sweep variants against the spec), `look_spec_check.py` (spec numbers per still), `round_tests.py` (writes `round-NN/TESTS.md`), `clip_check.py` (clip numbers incl. L18), `capture_looks.py --clips --no-stills --no-warmup` (swing clips).
 
 ## Measured (round-03/TESTS.md; luma Y = .2126R + .7152G + .0722B of the 8-bit sRGB, stills resized to 1920 wide)
-All numbers below are from the 3840x2160 native stills (native internal resolution, `r.ScreenPercentage 100`) unless noted; midday / golden 1920x1080 native stills agree within 1 Y. Round 02 for comparison: `round-02/TESTS.md`.
+All numbers below are from the 3840x2160 native stills (native internal resolution, `r.ScreenPercentage 100`) unless noted; midday / golden 1920x1080 native stills agree within 1 Y (there are no night 1080p stills in round 03: the night preset was fine-tuned after the first 1080p pass, so only the final 4K set is kept). Round 02 for comparison: `round-02/TESTS.md`.
 - **Midday (L2 overcast)**: frame means 85.2..94.5 on all eight views (band 83..97; round 02: 1 of 8 in band, means 62..91), near-black 0.00 % everywhere (limit 0.05 %; round 02 up to 7.3 %), B-R -12.0..+2.9 (band -19..+8),
   clipped 0.00 % on six views and 0.04 % on S3 and S7 (limit 0.00 %; round 02 up to 1.24 %). S4 far field: far shore 18.4 Y under the sky with B-R +0.2 from the sky (L10 -32..-15 / +-10 pass), horizon 9.1 Y above the sky (L11 >= +3 pass),
   far shore 9.5 Y above the river (P1 C14 pass). L17 glass p10 26..98 (>= 20 pass).
@@ -46,7 +46,7 @@ tools/perf_ue/round_tests.py --round docs/night1/look/round-NN       # TESTS.md
 tools/perf_ue/run_perf.py --out <dir> --map /Game/Tests/Look/Look_Midtown_night --configs tsr50 --fixed-step    # GPU lock 'perf' (exclusive)
 ```
 Live sweep format: `{"variants": {"name": ["exec showflag.fog 1", "set SkyAtmosphere - MieScatteringScale 0.03", "post AutoExposureBias 0.7", ...]}}`; `set <ActorLabel[*]> <ComponentClassSubstring|-> <Property> <text value>`, `post <CamelCaseProperty> <text>`.
-Scratch generators of the round (not committed): `/Users/midir/sm2-n1/_scratch/look/scripts/gen_*.py`, results `/Users/midir/sm2-n1/_scratch/look/eval/`.
+Generators of the round's sweeps: `tools/perf_ue/sweeps/` (README there); the sweep stills of round 03 stay in `/Users/midir/sm2-n1/_scratch/look/eval/` (not committed).
 
 ## Gotchas learned this round
 - **Live-sweep state is sticky**: a `set` / `post` line stays in force for every later variant of the session. Every variant must set every property that any variant of the file changes (an early golden sweep measured
@@ -61,6 +61,8 @@ Scratch generators of the round (not committed): `/Users/midir/sm2-n1/_scratch/l
 - `unreal.Color` positional order is (B, G, R, A); use keywords. Atmosphere `ground_albedo` still positional (unchanged since round 01).
 
 ## Start of next round
+- First: the two missing swing clips (`capture_looks.py --clips --no-stills --no-warmup --presets golden,night`), then `round_tests.py`; check `pgrep -fl UnrealEditor` / `ps -Ao pid,stat,command | grep '?E'` for engines stuck exiting before queueing anything.
+- `unreal/WebHomage/{DerivedDataCache,Intermediate}` were deleted at the end of round 03 (idle rule): `build_editor.sh` recompiles the C++ and the first game run recompiles shaders (slow once).
 - Merge `Opus-5.5-Loop-Night-1` first (city / traversal keep moving), `build_editor.sh` (editor closed), `rebuild_city.sh` if the city changed (it ends with the look rebuild), then `capture_tour.py` for the three presets.
 
 ## Open issues / next gap (facts, not self-assessment)
