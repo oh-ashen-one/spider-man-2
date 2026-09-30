@@ -116,6 +116,18 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowCatchRise = 3.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMin = 6.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMax = 14.f;
+	/**
+	 * Round 15 (orchestrator reconciliation of critic r11 "sky behind the hero" and critic r14 "do not tilt up into the sun": sky by
+	 * HEIGHT, not by camera pitch): a flow flip's climb is solved so the catch window opens FlowRoofOver m above the LOWER street wall's
+	 * roofline beside the path ahead (RoofBesideAhead, FlowRoofAhead m) whenever that needs a rise between FlowCatchRise and FlowRiseMax m
+	 * (a roofline further up than that is out of reach for a flow flip: the r13 FlowCatchRise rule is kept, no rocket launch).
+	 * FlowRoofOver 0 = off.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofOver = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRiseMax = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofAhead = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofMinH = 16.f;
+	double FlowRoofUsed = -1.0, FlowRiseUsed = 0.0; // telemetry: roofline (m over the street) and rise of the last flow flip
 	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;
 	/** Round 12: gravity scale while a sky launch's flip program plays (from vz 9 m/s: ~5 m more climb, ends near its start height). */

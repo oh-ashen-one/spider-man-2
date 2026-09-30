@@ -152,6 +152,17 @@ if RN >= 4:
           "removed and the camera output is slew-limited per frame (3 deg pitch, 4 deg yaw, 1.2 m position at 60 fps); the flip camera blends out "
           "over >= 0.4 s. A hero-only fill light (5000 cd, 18000 cd in a flip) lifts the backlit silhouette. Camera hold: when the hero himself "
           "overlaps geometry (street-tree canopy at a swing bottom) the view is held RELATIVE to him (the first capture froze it absolutely: 20 m away).")
+    if RN >= 14:
+        w("- Round 14 (critic r13: the flip camera looked up from under the hero, so the rotation did not read, and stayed tilted up into the next swing): during a flip program the camera orbits to a SIDE view -- 70-115 deg off the travel-behind direction, one side for the whole trick, 4-28 deg below the hero, 3.3 m out, a spot with 1.5 m of free space beyond it and a clear path 0.5 s along the travel -- the flip look-up is capped at 27 deg and every non-wall view at 29 deg up; from 0.25 to 0.5 s after each web attach the pitch settles into 5.5-11.5 deg down. Flip rotation is eased: each segment's effective inertia rises toward its ends (tuck entries / exits ~40-60 % of the mid-tuck rate) and the keyed shapes' own hips->head lean is taken out of the root pitch, so the visible body axis follows the eased timeline. backDouble = Tuck 1.20 s + Kickout 0.60 s (<= ~100 deg/s), frontPikeSwan = Pike 0.40 / Swan 0.55 / Tuck 0.38 / Reach 0.26 s (no pencil), corkscrew = Layout 0.31 / Twist 0.42 / Swan 0.36 / Tuck 0.34 / Reach 0.24 s. f4 runs north from y 375 (11.6 s, 4 flips); b fires the zip from the flip's final Reach at 2.88 s.")
+    if RN >= 15:
+        w("- Round 15 (critic r14: the trick camera climbed to 20-27 deg up and looked into the sun, flaring out the flips): the side-on trick "
+          "view is searched at elevations -3..6 deg around the hero's height (preferring 1 deg below), its look-up capped at 8 deg (every other "
+          "non-wall view at 10 deg), and a view whose direction is closer than 100 deg to the sun (the level's atmosphere sun light: 8 deg up, "
+          "due west in this map) is rejected (staged fallbacks keep the sun rule before any clearance rule); the flip camera blends in over 0.30 s. "
+          "Wall-run camera: 1.3 m below and 3.1 m out from the hero, hero at 0.60 of the frame height, look-up capped at 30 deg. When the hero "
+          "is inside a street-tree canopy the camera spot is lifted out of the foliage. A flow flip's rise targets 3 m over the lower street "
+          "wall's roofline (buildings >= 16 m) when that needs <= 14 m of rise, else the round-13 3 m rise. While the trick camera frames a flip "
+          "the zip reticle aims along the chase heading (b: zip fired from the final Reach at 2.88 s).")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")
@@ -168,8 +179,8 @@ w("The video frames are rendered offline at a fixed step; they say nothing about
 if not glob.glob(os.path.join(ROUND, "stills", "*.jpg")):
     w("No 4K stills were captured this round (the stills column above does not apply): only the 1920x1080 movies (internal = output, "
       "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). "
-      "Movies a, b, f3 and f4 were re-captured after the camera-hold fix (build 3b6765f); c, d, f1, f2 and f5 were captured before it (dylib of "
-      "14d0b97) and a -nullrhi probe of the fixed build reproduced their hero and camera telemetry exactly (max difference 0.000 m).")
+      "All nine movies were captured with the final build of this round (see Build above), in two GPU holds (f1-f5, then a-d); warm-up pass skipped "
+      "(shader cache warm).")
 w("")
 if RN >= 5:
     w("Camera (round 05 chase camera): 3.8 m behind the hero along the lagged heading yaw (horizontal spring 0.07 s, held 3.5-5.0 m), "
