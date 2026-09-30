@@ -22,6 +22,13 @@
 #                 passes keep the alpha mask). Measured as r.RayTracing.DebugForceOpaque in round-04 session y; this is the per-asset form of it.
 #                 Env SM2_PERF_OPAQUE_SKIP (default '' = every leaf mesh opaque): leaf meshes whose ISM label contains it stay alpha-masked; '_l0_' keeps the LOD0
 #                 street trees next to the street-level cameras masked (closer S1 canopy, but +0.6 ms p50 / +0.9 ms p95: session z1 ship_a vs ship_op). Not undone by a re-run.
+#   rt_proxy_trees (round 05, round-04 critic: merge the ~42 k leaf / crown ray-tracing instances per city tile into <= 1 k ray-tracing proxies)
+#                 imports the per-tile proxy GLBs of tools/perf_ue2/tree_proxy_build.py (env SM2_PERF_PROXY_DIR, default _scratch/perf/rtproxy) into
+#                 /Game/PerfF/RTProxy (non-Nanite, no distance field: section 'leaf' = M_CityCrown (opaque two-sided foliage), 'bark' = the bark MI of the city),
+#                 one static actor per tile in folder City/RTProxy that is visible ONLY to ray tracing (render_in_main_pass / render_in_depth_pass off,
+#                 no shadow, no distance-field lighting, not in reflection / sky captures) and takes every tree HISM (leaves, crown masses AND bark) out of
+#                 the ray-tracing scene. Raster, shadows and distance fields of the trees are unchanged. Idempotent (old proxy actors + assets are replaced).
+#                 Env SM2_PERF_PROXY_LUMEN_ORIG=0 also takes the original tree HISMs out of the Lumen scene (their surface-cache cards are never hit any more).
 # `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
 import unreal, json, os, time
 
@@ -129,6 +136,110 @@ if 'tree_rt_opaque' in STEPS:
                     rep.setdefault('errors', []).append('force_opaque %s: %s' % (sm.get_name(), str(e)[:120]))
         if changed: EAL.save_asset(sm.get_path_name()); bump('tree_rt_opaque_mesh')
     rep['tree_rt_opaque_meshes'] = sorted(seen)
+
+def is_tree_part(label): return is_leaves(label) or (label.startswith('ISM_ez_') and label.endswith('_bark'))
+
+
+if 'rt_proxy_trees' in STEPS:
+    PDIR = os.environ.get('SM2_PERF_PROXY_DIR', '/Users/midir/sm2-n1/_scratch/perf/rtproxy')
+    PROOT = '/Game/PerfF/RTProxy'
+    tiles = json.load(open(os.path.join(PDIR, 'tiles.json')))
+    # 1. old proxy actors out (their meshes are about to be deleted: a referenced asset would block the delete), then the old assets
+    n_old = 0
+    for a in eas.get_all_level_actors():
+        if str(a.get_folder_path()) == 'City/RTProxy': eas.destroy_actor(a); n_old += 1
+    rep['rt_proxy_old_actors'] = n_old
+    les.save_current_level()
+    reuse = os.environ.get('SM2_PERF_PROXY_REUSE', '0') == '1' and all(EAL.does_asset_exist('%s/SM_%s' % (PROOT, t['name'])) for t in tiles)   # flags-only re-run: keep the imported meshes
+    rep['rt_proxy_reused_meshes'] = reuse
+    if EAL.does_directory_exist(PROOT) and not reuse: EAL.delete_directory(PROOT)
+    # 2. import (Interchange, no Nanite, no materials / textures)
+    p = unreal.InterchangeGenericAssetsPipeline()
+    p.common_meshes_properties.set_editor_properties({'recompute_normals': False, 'recompute_tangents': False, 'remove_degenerates': False})
+    p.mesh_pipeline.set_editor_properties({'generate_lightmap_u_vs': False, 'build_nanite': False})
+    try: p.mesh_pipeline.set_editor_property('combine_static_meshes', False)
+    except Exception as e: rep.setdefault('warnings', []).append('combine_static_meshes: ' + str(e)[:80])
+    p.material_pipeline.set_editor_property('import_materials', False)
+    p.material_pipeline.texture_pipeline.set_editor_property('import_textures', False)
+    tasks = []
+    for f in ([] if reuse else sorted(set(t.get('file', t['name']) for t in tiles))):   # round 05: several tiles per GLB (tree_proxy_build.py packs), one static mesh per glTF mesh
+        tk = unreal.AssetImportTask(); tk.filename = os.path.join(PDIR, 'tiles', f + '.glb'); tk.destination_path = PROOT + '/_in'
+        tk.automated = True; tk.replace_existing = True; tk.save = False; tk.options = p; tasks.append(tk)
+    if tasks: unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
+    crown = unreal.load_asset('/Game/City/Materials/M_CityCrown')
+    bark_mat = None
+    for a, c in comps('City/Props'):
+        if a.get_actor_label().startswith('ISM_ez_street0_l1_bark'): bark_mat = c.get_materials()[0]
+    sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem) or unreal.new_object(unreal.StaticMeshEditorSubsystem)
+    n_new, missing, tris = 0, [], 0
+    found = {}
+    if not reuse and EAL.does_directory_exist(PROOT + '/_in'):
+        for ap_ in EAL.list_assets(PROOT + '/_in', recursive=True):
+            nm_ = ap_.split('.')[0].split('/')[-1]
+            if nm_.startswith('RTP_') and isinstance(unreal.load_asset(ap_.split('.')[0]), unreal.StaticMesh): found[nm_] = ap_.split('.')[0]
+    todo_save = []
+    for t in tiles:   # phase 1: rename, materials, build settings (the async mesh builds run in parallel)
+        dst = '%s/SM_%s' % (PROOT, t['name'])
+        if not reuse:
+            src = found.get(t['name'])
+            if not src: missing.append(t['name']); continue
+            EAL.rename_asset(src, dst)
+        sm = unreal.load_asset(dst)
+        for i, sl in enumerate(sm.get_editor_property('static_materials')):
+            nm = str(sl.get_editor_property('material_slot_name'))
+            sm.set_material(i, bark_mat if (nm.startswith('bark') and bark_mat) else crown)
+        ns = sm.get_editor_property('nanite_settings')
+        if ns.enabled: ns.enabled = False; sm.set_editor_property('nanite_settings', ns)
+        bs = sms.get_lod_build_settings(sm, 0)
+        for k_, v_ in (('recompute_normals', False), ('recompute_tangents', False), ('generate_lightmap_u_vs', False), ('distance_field_resolution_scale', 0.0)):
+            try: bs.set_editor_property(k_, v_)
+            except Exception as e: rep.setdefault('errors', []).append('build settings %s: %s' % (k_, str(e)[:80]))
+        # no collision at all on the proxy meshes (round 05: with the Interchange default complex collision the hidden proxies still blocked the
+        # PlayerStart and the origin: 'NO PLAYERSTART with positive rating', no hero, the perf route ran without the swing)
+        bset = sm.get_editor_property('body_setup')
+        coll_changed = False
+        if bset:
+            if bset.get_editor_property('collision_trace_flag') != unreal.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX:
+                bset.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX); coll_changed = True
+            try: sms.remove_collisions(sm)
+            except Exception as e: rep.setdefault('warnings', []).append('remove_collisions: ' + str(e)[:80])
+        if not reuse:
+            sms.set_lod_build_settings(sm, 0, bs); todo_save.append(dst)
+        elif coll_changed: todo_save.append(dst)
+    for dst in todo_save: EAL.save_asset(dst)   # phase 2: save (waits for each build; most are done by now)
+    for t in tiles:   # phase 3: one hidden, ray-tracing-only actor per tile
+        dst = '%s/SM_%s' % (PROOT, t['name'])
+        if t['name'] in missing: continue
+        sm = unreal.load_asset(dst)
+        c_ = t['center_cm']
+        act = eas.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(c_[0], c_[1], c_[2]), unreal.Rotator(0, 0, 0))
+        act.set_actor_label('RTP_' + t['name']); act.set_folder_path('City/RTProxy')
+        smc = act.static_mesh_component; smc.set_static_mesh(sm); act.set_mobility(unreal.ComponentMobility.STATIC)
+        # ray tracing only = HIDDEN in game + 'affect indirect lighting while hidden' (engine RayTracing.cpp keeps a hidden primitive in the game view's
+        # ray-tracing scene only when it retains while hidden; RayTracingInstanceMask.cpp gives it the indirect (Lumen / reflection) mask bits then).
+        # render_in_main_pass must stay ON: FRayTracingMeshProcessor and the Lumen card capture skip primitives that do not render in the main pass
+        # (round-05 first try: render_in_main_pass off = no occlusion at all, S1 canopy luma 1.93x as found).
+        for k_, v_ in (('hidden_in_game', True), ('affect_indirect_lighting_while_hidden', True), ('cast_hidden_shadow', False), ('cast_shadow', False),
+                       ('render_in_main_pass', True), ('render_in_depth_pass', True), ('visible_in_ray_tracing', True),
+                       ('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', True), ('visible_in_reflection_captures', False),
+                       ('visible_in_real_time_sky_captures', False), ('receives_decals', False), ('generate_overlap_events', False)):
+            prop(smc, k_, v_, 'rt_proxy_flags')
+        smc.set_collision_profile_name('NoCollision'); smc.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        for k_, v_ in (('can_character_step_up_on', unreal.CanBeCharacterBase.ECB_NO), ('can_ever_affect_navigation', False)):
+            try: smc.set_editor_property(k_, v_)
+            except Exception as e: rep.setdefault('warnings', []).append('%s: %s' % (k_, str(e)[:60]))
+        n_new += 1; tris += sum(t['tris'].values())
+    if EAL.does_directory_exist(PROOT + '/_in'): EAL.delete_directory(PROOT + '/_in')
+    # 3. the originals leave the ray-tracing scene (raster / shadows / distance fields unchanged)
+    lum_orig = os.environ.get('SM2_PERF_PROXY_LUMEN_ORIG', '1') != '0'
+    for a, c in comps('City/Props'):
+        if is_tree_part(a.get_actor_label()):
+            prop(c, 'visible_in_ray_tracing', False, 'rt_proxy_orig_out')
+            prop(c, 'affect_dynamic_indirect_lighting', lum_orig, 'rt_proxy_orig_lumen')
+    rep['rt_proxy'] = {'tiles': len(tiles), 'actors': n_new, 'missing': missing[:20], 'tris': tris, 'bark_material': bark_mat.get_path_name() if bark_mat else None,
+                       'orig_in_lumen_scene': lum_orig, 'report': json.load(open(os.path.join(PDIR, 'report.json'))) if os.path.exists(os.path.join(PDIR, 'report.json')) else None}
+    if rep['rt_proxy']['report']: rep['rt_proxy']['report'].pop('meshes', None)
+    if missing: rep.setdefault('errors', []).append('rt_proxy: %d tiles not imported' % len(missing))
 
 ok = les.save_current_level()
 if 'cloud' in STEPS:  # the rigs are separate levels: load, change, save each (the geometry level above is already saved)

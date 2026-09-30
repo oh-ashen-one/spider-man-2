@@ -7,11 +7,12 @@ Differences from running build_manhattan.py directly (both are parameters, not c
 Round 03 additions (F-owned steps appended to C's list; C's steps and files are untouched):
   city_extra   P1's placement tools that build_manhattan.py (round 01) predates and build_city.py r08 / r09 needs: export_vehicles.py, street_cars.py,
                street_trees.py, street_traffic.py, bake_sunmask.py (tools/export/build_city.sh order), paths relocated with SM2_CITY_* env
+  tree_proxy   (round 05) tree_proxy_dump.py (commandlet) + tree_proxy_build.py: one merged ray-tracing proxy GLB per city tile -> <SCR>/rtproxy
   perf_apply   perf_apply.py steps SM2_PERF_APPLY_STEPS (default rt_lite,cloud) on the rebuilt content, in one headless commandlet
   perf_preset  writes the round-02 preset (overrides/perf60_hwrefl.cvars + r.ScreenPercentage) as a marked [ConsoleVariables] block of
                Config/Mac/MacEngine.ini (generated, untracked, never `git add`ed; project platform layer, read by every Mac launch of THIS checkout: editor, -game, commandlets)
   perf_audit   commandlet perf_audit.py: reads the rebuilt content back and writes docs/night1/perf/round-03/content_audit.json
-usage: python3 tools/perf_ue2/build_map.py [--steps cpp,city_export,city_prep,city_extra,city,traversal,characters,look,map,perf_apply,perf_preset,perf_audit]   (editor closed)"""
+usage: python3 tools/perf_ue2/build_map.py [--steps cpp,city_export,city_prep,city_extra,city,traversal,characters,look,map,tree_proxy,perf_apply,perf_preset,perf_audit]   (editor closed)"""
 import os, sys, subprocess, json
 SCR = '/Users/midir/sm2-n1/_scratch/perf'
 PORT = 5209
@@ -55,11 +56,24 @@ def step_city_extra():
         bm.sh(cmd, log_name='city_extra_%s.log' % name)
 
 
+PROXY_DIR = os.path.join(SCR, 'rtproxy')   # round 05: tree ray-tracing proxy GLBs (tree_proxy_build.py output), imported by perf_apply step rt_proxy_trees
+
+
+def step_tree_proxy():
+    """round 05: dump the tree instances of the rebuilt geometry level (commandlet, read-only), then build one merged ray-tracing proxy GLB per
+    city tile (plain python3 + numpy). Must run BEFORE perf_apply; knobs SM2_PERF_PROXY_* (tree_proxy_build.py header)."""
+    dump = os.path.join(SCR, 'tree_dump.json')
+    if os.path.exists(dump): os.remove(dump)
+    bm.ue_python('tree_proxy_dump', bm.exec_wrapper(os.path.join(HERE, 'tree_proxy_dump.py'), ''), {'SM2_PERF_PROXY_DUMP': dump})
+    bm.sh([sys.executable, os.path.join(HERE, 'tree_proxy_build.py'), '--dump', dump, '--export', bm.EXPORT, '--out', PROXY_DIR], log_name='tree_proxy_build.log')
+    bm.log('tree proxies', open(os.path.join(SCR, 'logs', 'tree_proxy_build.log')).read().strip().splitlines()[-1][:400])
+
+
 def step_perf_apply():
-    steps = os.environ.get('SM2_PERF_APPLY_STEPS', 'rt_lite_trees,tree_rt_opaque,cloud')   # round 04 (round 03: rt_lite,cloud); cloud km = env SM2_PERF_CLOUD_KM (perf_apply default 20 since round 04)
+    steps = os.environ.get('SM2_PERF_APPLY_STEPS', 'rt_lite_trees,rt_proxy_trees,cloud')   # round 05 (round 04: rt_lite_trees,tree_rt_opaque,cloud; round 03: rt_lite,cloud); cloud km = env SM2_PERF_CLOUD_KM (perf_apply default 20 since round 04)
     logp = os.path.join(SCR, 'perf_apply.json')
     if os.path.exists(logp): os.remove(logp)
-    bm.ue_python('perf_apply', bm.exec_wrapper(os.path.join(HERE, 'perf_apply.py'), ''), {'SM2_PERF_APPLY': steps, 'SM2_PERF_APPLY_LOG': logp})
+    bm.ue_python('perf_apply', bm.exec_wrapper(os.path.join(HERE, 'perf_apply.py'), ''), {'SM2_PERF_APPLY': steps, 'SM2_PERF_APPLY_LOG': logp, 'SM2_PERF_PROXY_DIR': PROXY_DIR})
     rep = json.load(open(logp))
     bm.log('perf_apply', json.dumps(rep['changed']))
     if rep.get('errors'): raise SystemExit('perf_apply errors: %s' % rep['errors'][:5])
@@ -100,15 +114,15 @@ def step_perf_preset_off():
 
 
 def step_perf_audit():
-    out = os.path.join(WT, 'docs', 'night1', 'perf', os.environ.get('SM2_PERF_ROUND', 'round-04'), os.environ.get('SM2_PERF_AUDIT_NAME', 'content_audit.json'))   # SM2_PERF_AUDIT_NAME=content_audit_asbuilt.json before perf_apply
+    out = os.path.join(WT, 'docs', 'night1', 'perf', os.environ.get('SM2_PERF_ROUND', 'round-05'), os.environ.get('SM2_PERF_AUDIT_NAME', 'content_audit.json'))   # SM2_PERF_AUDIT_NAME=content_audit_asbuilt.json before perf_apply
     os.makedirs(os.path.dirname(out), exist_ok=True)
     bm.ue_python('perf_audit', bm.exec_wrapper(os.path.join(HERE, 'perf_audit.py'), ''), {'SM2_PERF_AUDIT_OUT': out})
     a = json.load(open(out))
     bm.log('audit', json.dumps(a.get('summary')))
 
 
-bm.step_city_extra, bm.step_perf_apply, bm.step_perf_preset, bm.step_perf_audit = step_city_extra, step_perf_apply, step_perf_preset, step_perf_audit
-bm.STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'map', 'perf_apply', 'perf_preset', 'perf_audit']
+bm.step_city_extra, bm.step_tree_proxy, bm.step_perf_apply, bm.step_perf_preset, bm.step_perf_audit = step_city_extra, step_tree_proxy, step_perf_apply, step_perf_preset, step_perf_audit
+bm.STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'map', 'tree_proxy', 'perf_apply', 'perf_preset', 'perf_audit']
 if '--preset-off' in sys.argv:   # take the preset block out of Config/Mac/MacEngine.ini (as-found comparison runs)
     step_perf_preset_off(); sys.exit(0)
 try:

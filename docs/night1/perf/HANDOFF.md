@@ -1,49 +1,51 @@
-# F 4K/60 perf: handoff after round 04
+# F 4K/60 perf: handoff after round 05
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. Owns `tools/perf_ue2/` (imports P4's `tools/perf_ue/run_perf.py`) and `docs/night1/perf/`. Scratch `/Users/midir/sm2-n1/_scratch/perf/` (NOT committed: export / tex staging, logs,
-raw 4K stills `r03/before` (the as-found reference of this build), `r03/final`, `r04/final`, `r04/L3op`, `r04/L1op`, the round-04 clip frames were deleted).
-Spec `SPEC.md` (P1-P11), shot list `SHOTLIST.md`, evidence `round-01` .. `round-04/` (`NOTES.md` = every fact of the round; `TABLE.md` = every run with its lock verdict; `LOOK_GATE.md`; `perf/<session>/`; `stills/`; `cmp/`; `route_30s.mp4`; `content_audit.json`).
-Critics: round 01 FAILS, round 02 APPROACHES, round 03 FAILS (look regression, VSM p95; `critic/`). Round-04 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r04/pack` (key `pack.key.json` next to it, `pairs.json`), not scored yet.
+Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. Owns `tools/perf_ue2/` (imports P4's `tools/perf_ue/run_perf.py`) and `docs/night1/perf/`. Scratch `/Users/midir/sm2-n1/_scratch/perf/` (NOT committed: export, tex, logs, raw 4K stills
+`r03/before` (as-found reference of the round-03 build), `r04/final`, `r05/final` (shipped), `r05/r4ctl` (round-04 content on the round-05 build), `r05/p3`/`p4` (proxy probes), `rtproxy/` (proxy GLBs), `tree_dump.json`, `life/` (P6 derived inputs copy)).
+Spec `SPEC.md` (P1-P11), shot list `SHOTLIST.md` (round-05 update at the end), evidence `round-01` .. `round-05/` (`NOTES.md` = every fact of the round, `TABLE.md`, `LOOK_GATE_raw.md` / `look_gate_final.json`, `perf/<session>/`, `stills/`, `cmp/`, `route_30s.mp4`, `content_audit.json`, `rtproxy_report.json`).
+Critics: r01 FAILS, r02 APPROACHES, r03 FAILS, r04 APPROACHES (`critic/`). Round-05 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r05/pack` (key `pack.key.json` next to it, `pairs.json`), NOT scored yet.
 
-## State at the end of round 04 (all numbers `round-04/NOTES.md`; exclusive `gpu_slot.sh perf`, `perf_valid`, 3840x2160 output, internal 1920x1080, 30 s route, fixed step)
-Shipped path on the rebuilt integrated map (build = integration c4fffda, same as round 03), no per-run cvars (`@ini`):
-preset `tools/perf_ue2/overrides/perf60_hwl2.cvars` (= `perf60_hwl` + far-shadow culling off + conservative clipmap culling + cloud samples spread over 50 km + RT culling angle 3) + `r.ScreenPercentage 50`,
-content = rebuilt + `perf_apply rt_lite_trees,tree_rt_opaque,cloud` (tree leaves back in the RT scene and opaque there, bark / props / hinterland / far ground out, cloud 20 km).
+## State at the end of round 05 (all numbers `round-05/NOTES.md`; valid exclusive session `round-05/perf/g1`, 3840x2160 output, internal 1920x1080, fixed step)
+Build: integration 3aa92ba merged (traversal r14 camera = different route frames than rounds 03/04; characters staged from P2 head 8ab861a = r07 WIP).
+Shipped path: preset `overrides/perf60_hwl2.cvars` + `r.ScreenPercentage 50` in `Config/Mac/MacEngine.ini`; content = rebuilt + `perf_apply rt_lite_trees,rt_proxy_trees,cloud`:
+the tree HISMs (leaves, crowns, bark) are OUT of ray tracing and **402 per-tile merged proxies** (`/Game/PerfF/RTProxy`, actors `City/RTProxy`, hidden in game + affect indirect lighting while hidden, no collision) are IN.
 | line | result | pass |
 |---|---|---|
-| P1 p50 <= 16.67 | 16.08 / 16.03 / 16.11 (`f1/ship_a/b/c`) | yes |
-| P2 p95 <= 18.18, 0 hitches | 18.03 / 18.03 / 18.05, 0 hitches | yes, **margin 0.13-0.15 ms** |
-| P10 ShadowDepths p95 <= 2.5 | 2.44 (round 03 4.22) | yes |
-| P3 static S2 | 14.66 | yes |
-| P11 canopy +-10 %, route saturation 5 %, clouds 20 km | S1 0.912 .. t42 1.042; sat -1.7 .. +2.0 %; t42 sky detail 1.013 | yes |
-| P11 round-02 S1 crop >= 0.97 | **0.9508** (round 03 0.4998) | **no** |
-| P6 cloud last 600 <= 0.7 | 1.05 (superseded by 20 km) | no |
-| P8 frame - GPU <= 1.0 | 1.40 (leaf instances in the RT scene) | no |
-The VSM cause was REVEALED non-Nanite primitives (far-shadow culling + frustum-clipped caster volume re-reveal primitives every frame of a swinging camera; each reveal invalidates all pages of the primitive). Details and every A/B: `round-04/NOTES.md` sections 2-4.
+| tree RT instances <= 1 k | 402 (level total 920; was 42 337 leaf instances) | yes |
+| mean FT - GPU <= 0.9 | ship_a 1.29 / ship_b 0.48 / ship_c 0.39 (Metal per-process GPUTime offset) | **no in 1 of 3** |
+| in-game p95 <= 17.9 x3 | 17.81 / 17.86 / 17.87 (CSV p95 17.79 / 17.76 / 17.75, p50 15.65-15.72) | yes, **margin 0.03-0.09 ms** |
+| S1 round-02 crop >= 0.97 | 0.929 (same-content repeat 0.986; control r4 0.945) | **no** |
+| S1 canopy luma | 0.998 of as found (r4 control 0.908) | yes |
+| same-session control r4 (round-04 content) | p50 15.93 / 16.10, in-game p95 17.80 / 18.21, gap 1.90 / 1.45 | proxies: -0.28 ms p50, -0.15 ms p95 |
+| **traffic + crowd ON** (`/Game/PerfF/Life/Manhattan`) | p50 17.1, CSV p95 19.4-19.6, in-game p95 19.9-20.2, 1 hitch | **FAILS P1 and P2** |
+| P3 static S2 | 14.40 / 15.61 | yes |
 
-## How to reproduce / rebuild (editor and game closed; every game launch through the lock; never run a commandlet while your own perf session runs: it contaminates it, see NOTES 7)
+## How to reproduce / rebuild (editor and game closed; wrap EVERY Unreal launch, commandlets included, in the lock; never run a commandlet while your own perf session runs)
 ```
-python3 tools/perf_ue2/build_map.py                                   # ALL steps (~11 min, no GPU): cpp .. map, then perf_apply (rt_lite_trees,tree_rt_opaque,cloud 20 km), perf_preset (perf60_hwl2), perf_audit (-> round-04/content_audit.json)
-python3 tools/perf_ue2/build_map.py --steps perf_apply,perf_preset,perf_audit      # only the perf state on built content
-python3 tools/perf_ue2/build_map.py --preset-off                      # remove the preset block from Config/Mac/MacEngine.ini (as-found runs; content changes stay: rebuild content for a true as-found)
 G=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
-python3 tools/perf_ue2/perf_queue.py --out <dir> --tag x --configs "warm@ini,a@ini,b@ini,s2@ini+view:S2" -- --budget-s 870
+$G capture --label perf -- python3 tools/perf_ue2/build_map.py        # ALL steps; round 05 ran --steps cpp,characters,map then tree_proxy,perf_apply,perf_preset,perf_audit
+#   tree_proxy = tree_proxy_dump.py (commandlet, 17 s) + tree_proxy_build.py (numpy, 6 s) -> _scratch/perf/rtproxy; knobs SM2_PERF_PROXY_K0 (1) / K1 (16) / COVER (3.5) / BARK_* / TILE_M (200)
+#   perf_apply rt_proxy_trees imports + builds 402 meshes: ~16 min. SM2_PERF_PROXY_REUSE=1 = flags / collision only on the existing meshes (~2.5 min)
+$G capture --label perf -- tools/perf_ue2/build_life_variant.sh      # P6 life content (P6's unchanged build_life.py, F's scratch) + /Game/PerfF/Life/Manhattan (spec name@ini+variant:Life)
+SM2_PERF_RTVARS=R,N SM2_PERF_RTVAR_CLOUD_KM=20 <UE commandlet> make_rtvars.py   # controls RTvRk20 (round-04 content) / RTvNk20 (no trees in RT); re-make after any proxy rebuild (copies of the geo level)
+python3 tools/perf_ue2/perf_queue.py --out <dir> --tag x --configs "warm@ini,ship_a@ini,r4_a@ini+variant:RTvRk20,...,s2@ini+view:S2,lwarm@ini+variant:Life,..." -- --budget-s 870
 $G capture --label perf -- tools/perf_ue2/stills2.sh <out> "ship@ini" "S1 S2 S7 route"     # env SM2_PERF_ROUTE_SHOTS=20,28,38,42
 $G capture --label perf -- tools/perf_ue2/route_movie.sh <out> "movie@100+set:perf60_hwl2"
-python3 tools/perf_ue2/look_gate.py /Users/midir/sm2-n1/_scratch/perf/r03/before <stills dir>      # the P11 gate (round-02 crops, canopy, saturation, sky)
-VSM stats in a perf CSV: add +flag:-csvCategories=VSM to a config (costs ~0.3 ms; diagnostic only)
-Local A/B maps: make_variants.py (Cl<km>), make_rtvars.py (RTvA-F, RTvL = leaves only; env SM2_PERF_RTVAR_CLOUD_KM=20 -> RTv<tag>k20); /Game/PerfF/* is local, never committed
+python3 tools/perf_ue2/look_gate.py /Users/midir/sm2-n1/_scratch/perf/r03/before <stills dir>
+python3 tools/perf_ue2/serial.py <run dirs>                           # FT - GPU gap (P8)
 ```
-- `unreal/WebHomage/Config/Mac/MacEngine.ini` is GENERATED and UNTRACKED: never `git add -A` / `git add unreal`. Content (`Content/`, DDC, Intermediate) is local and was kept (a fresh builder needs it; rebuild = 11 min).
-- Every F launch passes `-notraceserver`. Stop an engine only with `_scratch/gpu/bin/stop_ue.sh "<pattern of your own path>"`. One Unreal process of F at a time. Start every perf session with a throw-away `warm@ini`; deltas need a control in the same session.
-- Csv files are committed gzipped and logs pruned (keep `csv.csv.gz`, `*_perf.json`, `result.json`, `run.txt` per config).
+- **After any content change, check a route still / the run log for `Couldn't spawn Pawn`**: round 05 lost two perf sessions (`round-05/perf/void_nohero/`) because collision on the hidden proxies blocked the PlayerStart and the "route" ran with no hero.
+- `render_in_main_pass = False` removes a primitive from ray tracing AND Lumen card capture; ray-tracing-only = `hidden_in_game` + `affect_indirect_lighting_while_hidden` (engine `RayTracing.cpp` 1368).
+- `unreal/WebHomage/Config/Mac/MacEngine.ini` is GENERATED and UNTRACKED: never `git add -A` / `git add unreal`. Content / DDC / Intermediate are local and kept (the proxies are 717 MB of local .uasset).
+- Every F launch passes `-notraceserver`. Stop an engine only with `_scratch/gpu/bin/stop_ue.sh "<pattern of your own path>"`. One Unreal process of F at a time. Start every perf session with a throw-away `warm@ini`; deltas need a same-session control.
+- CSVs committed gzipped, logs pruned (keep `csv.csv.gz`, `*_perf.json`, `result.json`, `run.txt`); `_scratch/perf/r05/prune.sh <session dir>`.
 
 ## Decisions and open items (facts, ranked)
-1. **P2 margin is 0.13-0.15 ms.** Cheapest measured lever: every RT instance opaque (`r.RayTracing.DebugForceOpaque 1`, debug cvar: `z1/ship_op` 15.82 / 17.73, +0.3 ms margin; the remaining masked RT geometry is the street kit / detail tiles). A per-asset form = `enable_section_force_opaque` on those tile meshes (not tried: masked railings / fire escapes would become solid in reflections).
-2. **Round-02 S1 crop 0.9508 < 0.97**: the crop is street-tree canopy; opaque leaf cards over-darken the crown interior (canopy -8.8 %). Keeping the LOD0 street-tree leaves masked (`SM2_PERF_OPAQUE_SKIP=_l0_`) is closer but costs +0.6 / +0.9 ms (fails P2). Needs ~0.9 ms p95 found elsewhere (P1's shade-fill march, Lumen budgets, TSR 48).
-3. P8 regressed to 1.40 ms: the 42 k leaf instances in the RT scene add CPU work per frame (per-instance RT culling). Fewer tree instances (merge leaves + crown per tree, or a coarser tree set for RT) would cut it.
-4. **Integrator:** adopt `perf60_hwl2` + `r.ScreenPercentage 50` as a `[Mac DeviceProfile]` block, and the content policy (tree leaves in the RT scene + force-opaque sections, hinterland / props / far ground / bark out, cloud 20 km) in `build_city.py` / `look_presets.json` (P1 / P4 files) or run `perf_apply` after the build.
-5. Not merged this round: `origin/Opus-5.5-Loop-Night-1` (traversal camera r13, characters r5-r6). Merge + rebuild + re-measure next round (the camera change moves the route frames). The map still has no life / water / combat content.
-6. Hero and street people remain out of the RT scene (1.5 ms to put the hero back, round 03).
+1. **Traffic + crowd ON fails P1 / P2** (p50 17.1, p95 19.4-20.2). The shipped map has no life content, so the "60 fps" claim only holds without it. Next lever candidates: P6's crowd cost (+1.4 ms p50 / +1.7 ms p95; in g1 GameThread 1.85 -> 4.3 ms and RHI thread 2.7 -> 5.2 ms with life, GPU 14.4 -> 16.9 ms), `r.RayTracing.Culling.Angle` for the vehicles, crowd shadow / RT policy.
+2. P2 margin without life is 0.03-0.09 ms in-game (CSV 0.39-0.43 ms). The gap line fails in 1 of 3 runs (1.29 ms) because Metal's GPUTime has a per-process offset; a trace-free, offset-proof gap measure (e.g. RenderThread idle / critical-path columns) would settle it.
+3. S1 crop 0.929 < 0.97; repeat noise of the same content is 0.964-0.986. Brightness now matches (0.998); the leaf-level GI pattern differs from the as-found masked any-hit. Options: proxies for the near LOD0 trees kept alpha-masked (costs any-hit), card shape instead of shrunk quads.
+4. Route stills vs `r03/before` are no longer like-for-like (P3 r14 camera): a new as-found reference on this build needs a content rebuild without `perf_apply` and `--preset-off`.
+5. Integrator: adopt `perf60_hwl2` + SP 50 as `[Mac DeviceProfile]`, and run `build_map.py` steps `tree_proxy,perf_apply` after the city build (or move the proxy build into `build_city.py`); the proxies must stay collision-free.
+6. Hero and street people remain out of the RT scene (round 03).
