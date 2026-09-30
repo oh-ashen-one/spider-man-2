@@ -2,7 +2,8 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/perf`, worktree `~/sm2-n1/perf` (base = integration `Opus-5.5-Loop-Night-1` as of 1bbd260; the integration has since merged look R2, water, combat, life: NOT merged here, re-measure after merging).
+Branch `night1/perf`, worktree `~/sm2-n1/perf`. All numbers below were measured on the build of integration `Opus-5.5-Loop-Night-1` at 1bbd260 (Manhattan content built 2026-09-29 22:25, binaries built 21:49 with the capture gate). The branch now also merges integration e0ada6c
+(look R2, water, combat, life) at the source level only: NOT rebuilt, NOT re-measured; the only difference to integration's `unreal/` tree is the 5-line capture gate.
 UE MCP port 8778 (unused: everything is `-game` runs plus headless commandlets). Owns `tools/perf_ue2/` (successor of P4's `tools/perf_ue/`, which it imports) and `docs/night1/perf/`.
 Scratch `/Users/midir/sm2-n1/_scratch/perf/` (built export, textures, staged P2 inputs; NOT committed). Content (`unreal/WebHomage/Content`, 885 MB, script-built, never committed) is the untouched
 Manhattan build of 2026-09-29 22:25 (restored from `_scratch/perf/content_backup` after the content experiments; `perf_content.sh restore` re-does it).
