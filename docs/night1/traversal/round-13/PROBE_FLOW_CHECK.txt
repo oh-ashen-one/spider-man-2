@@ -1,3 +1,4 @@
+# SUPERSEDED: -nullrhi probe of ac851f7 (before the FitFlip fix 14d0b97: every program was downgraded to backSingle). See PROBE_FLOW_CHECK_14d0b97.txt and FLOW_CHECK.txt (rendered).
 # P3 round 13 -- flow_check.py on the -nullrhi telemetry probes (real game, /Game/Maps/Manhattan, 60 fps fixed step, NO pixels)
 # Code: commit ac851f7 (before the FitFlip fix 14d0b97: every flow flip here was downgraded to backSingle by the ballistic air test).
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.

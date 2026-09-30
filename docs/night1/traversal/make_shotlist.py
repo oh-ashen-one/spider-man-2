@@ -13,8 +13,8 @@ SEQ = [
      "(autoChain rule: release on the rising front, re-press after 0.8 s; a sky launch = jump-release + trick where the lower street "
      "wall ahead is within reach, at most every 2nd release)."),
     ("b_release_trick_dive_zip", "Release + trick + dive + zip to a rooftop",
-     "Airborne start 30 m over the avenue (26 m/s north), one swing, release with a trick (frontPikeSwan) at 1.4 s, web-zip pressed in the "
-     "program's final reach (2.95 s; round 13: no web-less dive), zip to a roof point, perch."),
+     "Airborne start 30 m over the avenue (26 m/s north), one swing, release with a trick (frontPikeSwan) at 1.4 s, web-zip pressed as soon as the zip target reappears "
+     "after the program (3.08 s, 0.27 s after its Reach; round 13: no web-less dive), zip to a roof point, perch."),
     ("c_wallrun_perch", "Swing into a facade -> wall-run up -> perch",
      "Airborne swing start 22 m over the avenue, the stick turns east into the 45 m loft facade (x 266 m), swing let go at 1.7 s, "
      "wall-run up, top-out onto the roof, camera turn, web-zip to the roof edge over the avenue, perch."),
@@ -144,6 +144,14 @@ if RN >= 4:
           "orbit yaw offsets (-120..120 deg from behind) x look-up elevations (30-60 deg, camera below the hero) by the share of 16 rays around "
           "the hero (the hero box + 40 px at 1080p) that reach open sky within 900 m, preferring a 3/4 side view (55 deg) and the lowest "
           "clear look-up; springs 0.3 s, 3.4 m from the hero. backDouble = tuck 0.55 / layout 0.5 / tuck 0.55 / layout 0.5 / reach 0.2 s.")
+    if RN >= 13:
+        w("- Round 13 (critic r12: tricks were isolated set pieces, 1.7 s rise + trick + 1.3 s dive + a one-frame camera cut): a trick pressed at a web "
+          "release is a *flow flip*: the program starts AT the release (no sky launch), the climb is solved so the catch window (the program's final "
+          "Reach, 1.5 s in) opens ~2 m over the release height inside the canyon, and the next web attaches in that reach; a program keeps its "
+          "shapes (no ballistic downgrade). backDouble = tuck double + a keyed Kickout (2 shapes). The chase camera's `too close: cut` rule is "
+          "removed and the camera output is slew-limited per frame (3 deg pitch, 4 deg yaw, 1.2 m position at 60 fps); the flip camera blends out "
+          "over >= 0.4 s. A hero-only fill light (5000 cd, 18000 cd in a flip) lifts the backlit silhouette. Camera hold: when the hero himself "
+          "overlaps geometry (street-tree canopy at a swing bottom) the view is held RELATIVE to him (the first capture froze it absolutely: 20 m away).")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")
@@ -157,6 +165,11 @@ w("| time step | fixed 1/60 s (`-benchmark -fps=60 -dumpmovie`) | fixed 1/60 s (
 w("| AA / GI | TSR, Lumen (project defaults) | same |")
 w("")
 w("The video frames are rendered offline at a fixed step; they say nothing about real-time frame rate.")
+if not glob.glob(os.path.join(ROUND, "stills", "*.jpg")):
+    w("No 4K stills were captured this round (the stills column above does not apply): only the 1920x1080 movies (internal = output, "
+      "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). "
+      "Movies a, b, f3 and f4 were re-captured after the camera-hold fix (build 3b6765f); c, d, f1, f2 and f5 were captured before it (dylib of "
+      "14d0b97) and a -nullrhi probe of the fixed build reproduced their hero and camera telemetry exactly (max difference 0.000 m).")
 w("")
 if RN >= 5:
     w("Camera (round 05 chase camera): 3.8 m behind the hero along the lagged heading yaw (horizontal spring 0.07 s, held 3.5-5.0 m), "
