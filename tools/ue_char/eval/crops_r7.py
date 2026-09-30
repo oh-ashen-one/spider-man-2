@@ -16,10 +16,10 @@ def load(d, n):
         if os.path.exists(f): return Image.open(f).convert('RGB')
     raise SystemExit('missing ' + n + ' in ' + d)
 ENT = [  # name, (r06 image, box), (r07 image, box)
-    ('jeans-leg', ('crowd_key_c_4k', (3040, 1640, 3760, 2040)), ('crowd_key_c_4k', (800, 1560, 1520, 1960))),
+    ('jeans-leg', ('crowd_key_c_4k', (3040, 1640, 3760, 2040)), ('crowd_key_c_4k', (620, 1580, 1340, 1980))),
     ('overlap-near', ('crowd_key_a_4k', (100, 800, 820, 1520)), ('crowd_key_a_4k', (1240, 800, 1960, 1520))),
-    ('ankle-close', ('crowd_key_tracking_4k', (1475, 1150, 1775, 1350)), ('crowd_key_c_4k', (430, 1100, 730, 1300))),
-    ('floating-shape', ('crowd_key_c_4k', (2090, 1100, 2390, 1300)), ('crowd_key_c_4k', (2090, 1100, 2390, 1300))),
+    ('ankle-close', ('crowd_key_tracking_4k', (1475, 1150, 1775, 1350)), ('crowd_key_c_4k', (1090, 1100, 1390, 1300))),
+    ('floating-shape', ('crowd_key_c_4k', (2090, 1100, 2390, 1300)), ('crowd_key_wide_4k', (2090, 1100, 2390, 1300))),   # same screen box; in the round-07 c / a stills a walker stands there, the wide still leaves it empty
 ]
 for name, (i6, b6), (i7, b7) in ENT:
     a = load(r6d, i6).crop(b6); b = load(r7d, i7).crop(b7)

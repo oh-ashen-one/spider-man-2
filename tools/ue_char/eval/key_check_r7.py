@@ -12,7 +12,7 @@ Per still (all counts in px of the still; PNG, so no chroma bleed):
                        so a green plaid or a teal top can be told apart from a tinted / see-through region)
   enclosed_key         key-coloured pixels enclosed by citizen pixels (holes of the filled person mask), component by component: bbox, px, width (2 x inscribed radius), and `thin`
                        (an opening of 7 px removes it) - a thin enclosed component is a crack, a wide one is the air between limbs / walkers
-  detached             citizen-pixel components of 5 .. 3000 px that do not touch (within --iso px) any other citizen pixel: a polygon floating in the air
+  detached             citizen-pixel components of 5 .. 3000 px that do not touch (within --iso px) any other citizen pixel and not the image edge: a polygon floating in the air
   fringe_px            citizen pixels within 1 px of key with G > R + 40 that are NOT in a >= 50 px cluster: 1-px anti-aliasing / motion fringe (reported, not counted as garment)
 Writes DIR/<name>_check.json and DIR/<name>_check.png (overlay: red = enclosed key, magenta = detached, yellow = G>R+40 person clusters)."""
 import sys, os, json
@@ -56,7 +56,8 @@ for f in a:
         m = lp == i
         grow = ndimage.binary_dilation(m, structure=np.ones((3, 3), bool), iterations=iso)
         others = grow & person & ~m
-        if not others.any():
+        touches_edge = sl[1].start == 0 or sl[0].start == 0 or sl[1].stop == W or sl[0].stop == H        # a person cut by the frame edge is not floating
+        if not others.any() and not touches_edge:
             det.append(dict(bbox=[int(sl[1].start), int(sl[0].start), int(sl[1].stop - sl[1].start), int(sl[0].stop - sl[0].start)], px=int(sz[i])))
     gr = person & (g > r + 40)
     gdom = person & (g > r + 40) & (g > b + 40)          # green-dominant: teal tops and blue-green textures drop out

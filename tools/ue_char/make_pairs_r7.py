@@ -26,8 +26,8 @@ add('citizens-still', c('crowd_tracking_4k.jpg'), R + 'characters/npc-group-dn__
 # previous round vs this round (the target of round 07: crowd separation, key see-through)
 add('progress-crowd-clip', c('crowd_tracking.mp4'), p('crowd_tracking.mp4'), 'two versions of our pedestrians walking past a side camera (clip): judge whether any two people pass through each other or overlap')
 add('progress-crowd-still', c('crowd_tracking_4k.jpg'), p('crowd_tracking_4k.jpg'), 'two versions of our pedestrians (still)')
-add('progress-key-a', c('crowd_key_a_4k.jpg'), p('crowd_key_a_4k.jpg'), 'two versions of the same pedestrians with the street replaced by one flat green colour: judge green showing through or tinting any person, people overlapping, stray floating shapes')
-add('progress-key-c', c('crowd_key_c_4k.jpg'), p('crowd_key_c_4k.jpg'), 'two versions of the same pedestrians with the street replaced by one flat green colour: judge green showing through or tinting any person, people overlapping, stray floating shapes')
+add('progress-key-a', c('crowd_key_a_4k.png'), p('crowd_key_a_4k.jpg'), 'two versions of the same pedestrians with the street replaced by one flat green colour: judge green showing through or tinting any person, people overlapping, stray floating shapes')
+add('progress-key-c', c('crowd_key_c_4k.png'), p('crowd_key_c_4k.jpg'), 'two versions of the same pedestrians with the street replaced by one flat green colour: judge green showing through or tinting any person, people overlapping, stray floating shapes')
 add('progress-avoid', c('crowd_avoidance_demo.mp4'), p('crowd_tracking.mp4'), 'the same crowd lanes in two versions (clip): judge whether people pass through each other or step around each other')
 for n, note in (('jeans-leg', 'lower legs of a walker in light jeans and white shoes, close-up on a flat green backdrop: judge any green showing through or tinting the trousers (two versions of our pedestrian)'),
                 ('overlap-near', 'two pedestrians who cross paths, close-up on a flat green backdrop: judge whether they pass through each other (two versions)'),
