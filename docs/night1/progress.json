@@ -1,6 +1,6 @@
 {
  "updated": "09:39",
- "phase": "Night 1 finished \u2014 loop paused after the 06:55 WindowServer reset",
+ "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
@@ -994,6 +994,10 @@
   {
    "t": "09:52",
    "text": "Morning: the owner found the Studio frozen on a macOS firewall prompt and had to power it off. Cause: at 00:48 a perf agent ran Unreal Insights (opens a network listener), and the prompt sat unanswered for 6 h; at 06:55 four concurrent 4K captures starved WindowServer, which was reset, leaving the screen frozen on that dialog. All WIP was committed and pushed; nothing lost. New rules: hard cap 2, no network-listening tools unattended without owner firewall approval, watchdog flags system dialogs, dead-session protocol (PR oh-ashen-one/agents-md#4). Loop paused."
+  },
+  {
+   "t": "10:07",
+   "text": "Owner merged the safety rules (agents-md#4: hard cap 2, no OS dialogs unattended, dead-session protocol). Firewall already allows every Unreal tool. Usage at 80%: all builders now Sonnet 5.5 xhigh, Opus only for blind critics. Resumed: traversal r13 renders + critic, characters r6 engine check + critic, perf r3 (preset into the shipped map)."
   }
  ]
 }
