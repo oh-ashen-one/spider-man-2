@@ -6,6 +6,12 @@
 //   -WHLookTourStart=<s> first pose is entered after this many game seconds (default 8);  -WHLookTourMinFrames=<n> frames to wait per pose at least (default 90)
 //   -WHLookTourHidePawn   hide the hero (shots that must not show it)
 // px py pz (optional): the pawn is teleported there at every pose (the hero pose of the browser's view definition).  The process quits after the last shot.
+// Live look tuning (one session sweeps many variants): lines starting with '!' are executed right before the NEXT pose is entered (changes stay until changed again):
+//   ! set <ActorLabel[*]> <ComponentClassSubstring|-> <PropertyName> <text value>     reflection set + PostEditChangeProperty on every matching component
+//                                                                                        (e.g. ! set Moon Light Intensity 12   ! set SkyAtmosphere - RayleighScatteringScale 0.02
+//                                                                                              ! set SkyLight - LightColor (B=255,G=240,R=235,A=255))
+//   ! post <PropertyName> <text value>       sets the first PostProcessVolume's setting and its bOverride_ flag (CamelCase C++ names, e.g. AutoExposureBias, ColorContrast (X=1,Y=1,Z=1,W=1))
+//   ! cvar <name> <value>    |   ! exec <console command>
 // Written by tools/perf_ue/capture_tour.py from Scripts/city_shots.json.
 #pragma once
 
@@ -29,7 +35,7 @@ public:
 	virtual bool IsTickableWhenPaused() const override { return true; }
 
 private:
-	struct FPose { FString Name; FVector Loc; FRotator Rot; float Fov = 70.f; float Settle = 4.f; bool bHasPawn = false; FVector Pawn = FVector::ZeroVector; };
+	struct FPose { FString Name; FVector Loc; FRotator Rot; float Fov = 70.f; float Settle = 4.f; bool bHasPawn = false; FVector Pawn = FVector::ZeroVector; TArray<FString> Pre; };
 	TArray<FPose> Poses;
 	FString OutDir;
 	bool bActive = false, bHidePawn = false, bQuit = false;
@@ -39,4 +45,5 @@ private:
 	int32 ShotFrames = 0;
 	TWeakObjectPtr<ACameraActor> Cam;
 	void EnterPose(UWorld* World, int32 I);
+	void RunCommand(UWorld* World, const FString& Line);
 };
