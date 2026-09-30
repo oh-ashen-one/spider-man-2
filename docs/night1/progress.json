@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 22:07",
- "phase": "Pausing \u2014 finishing current rounds",
- "headline": "Fable 5.1 (director) found that every perf number so far rendered the scene three times (two per-frame scene captures from the telemetry mode), that the frame is GPU-bound rather than CPU-bound, and that 60 fps at 4K output is honest at TSR 50% (1080p internal) but not at 67%. The perf piece is executing its ranked plan (\u221212\u2026\u221225 ms).",
+ "updated": "23:47",
+ "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
+ "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -865,6 +865,22 @@
   {
    "t": "22:07",
    "text": "Owner: pause after the current rounds. Every landing round still gets its blind Opus critic (never skip critics). Then build the integrated Manhattan map and open it in the Unreal Editor for the owner."
+  },
+  {
+   "t": "23:08",
+   "text": "Studio kernel panic: a force-killed 4K perf run got stuck exiting inside the GPU driver while stopped agents' capture scripts launched more engines. Fix: GPU lock refuses launches while an engine is stuck exiting; stop_ue.sh (drivers first, SIGTERM, SIGKILL last); rule added to the global AGENTS.md."
+  },
+  {
+   "t": "23:40",
+   "text": "Showcase: integrated Manhattan (city, hero, look, water, crowds + traffic) opened for the owner. Owner: \"the game itself looks like it's coming along\u2026 I approve.\" Mouse look too fast (queued fix)."
+  },
+  {
+   "t": "23:47",
+   "text": "Owner request: flips that look like a gymnast (reference clip supplied). Became traversal round 11 (Opus 5.5 high), judged against the owner clip."
+  },
+  {
+   "t": "23:47",
+   "text": "Overnight resume. Weekly usage at 50%: builders lean on Sonnet 5.5 xhigh, Opus 5.5 high for flips + every critic, Fable 5.1 only if a piece stalls or for final acceptance. Up to 3 rounds per piece (perf 2), engine cap auto-tuned 2\u20134, safety watchdog on."
   }
  ]
 }
