@@ -1,7 +1,7 @@
 #!/bin/bash
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See DISCLAIMER.md.
 # P6 City life capture driver (round 02): the running game (offscreen -game via Scripts/run_game.sh), every run wrapped in the GPU lock.
-#   <round>/stills/S1_street_{1080p,4k}.jpg, S2_avenue_{1080p,4k}.jpg   city_shots.json S1 / S2 cameras in /Game/Tests/Life/Life_View_S1|S2, shot at game t = 28 s
+#   <round>/stills/S1_street_{1080p,4k}.jpg, S2_avenue_{1080p,4k}.jpg   city_shots.json S1 / S2 cameras in /Game/Tests/Life/Life_View_S1|S2, shot at game t = 28 s (-WHLifeClearAhead=12: the S1 camera stands in a lane; no moving car is drawn in a 12 m corridor ahead of it)
 #                                                                       (1080p runs also shoot t = 12, 16, 20, 24 into scratch: the detector series of the spec table)
 #   <round>/street_clip_1080p60.mp4    18 s at 1.5 m/s along the avenue's west curb lane, sidewalk crowd on the left (Life_Street_Clip), fixed 1/60 s steps (-movie)
 #   <round>/swing_clip_1080p60.mp4     10 s at swing height, 30 m over the avenue centre line, 25 m/s (Life_Swing_Clip)
@@ -9,7 +9,7 @@
 #   every clip: the rig holds 2.5 s at the start pose (warm-up: Lumen / TSR / exposure settle) and those frames are trimmed, so frame 0 of the mp4 is lit
 #   <round>/probe_*.txt                WH_LIFE_* lines (frame counts, lane motion, queue, box stops, sim ms);  <round>/detector.json  spec detector numbers
 #   <round>/perf_*.json / perf_gpu_*.json   GPU-locked frame times, life ON vs OFF (perf)
-# usage: docs/night1/life/capture_round.sh <round dir> [warm|stills|clips|detect|perf ...]      (heavy frames: _scratch/life/capture)
+# usage: docs/night1/life/capture_round.sh <round dir> [warm|stills|clips|clip_street|clip_swing|clip_signal|detect|perf ...]      (heavy frames: _scratch/life/capture)
 set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -33,14 +33,14 @@ if has warm; then
 fi
 
 if has stills; then
-  for V in S1 S2; do
+  for V in ${VIEWS:-S1 S2}; do      # VIEWS=S1: only the street view (a crowd-only change does not affect the avenue view)
     for RES in 1920x1080 3840x2160; do
       TAG=$([ "$RES" = 1920x1080 ] && echo 1080p || echo 4k)
       SHOTS=$([ "$TAG" = 1080p ] && echo 12,16,20,24,28 || echo 28)
       echo "== $V $RES  GPU $(util) %"
       rm -rf "$TMP/${V}_$TAG"
       $G capture --label life -- "$UE_DIR/Scripts/run_game.sh" "$TMP/${V}_$TAG" -map /Game/Tests/Life/Life_View_$V -res $RES -shots $SHOTS -name $V -timeout 2400 \
-        -exec "r.ScreenPercentage $SP" -- -WHLifeSample=8:30:1 | tail -2
+        -exec "r.ScreenPercentage $SP" -- -WHLifeSample=8:30:1 -WHLifeClearAhead=12 | tail -2
       for p in "$TMP/${V}_$TAG/${V}_"*.png; do sips -s format jpeg -s formatOptions 92 "$p" --out "${p%.png}.jpg" > /dev/null; done
       p=$(ls "$TMP/${V}_$TAG/${V}_"*_t028.0.jpg 2>/dev/null | head -1)
       NAME=$([ "$V" = S1 ] && echo S1_street || echo S2_avenue)
@@ -71,12 +71,16 @@ movie() {
   ls -la "$OUTMP4"
 }
 
-if has clips; then
-  movie street /Game/Tests/Life/Life_Street_Clip 18 -WHLifeClearParked=238.5:100:243.5:155 -WHLifeFoot=5:17      # the walk is in the curb lane: the parked cars of z 100-155 are left out
-  cp "$UE_DIR/Saved/Logs/life_feet.csv" "$ROUND/feet_clip.csv" 2>/dev/null
-  movie swing /Game/Tests/Life/Life_Swing_Clip 10
-  # signal clip: the pre-roll ends at cycle phase 30.5, so the clip (after the 2.5 s hold) starts at 33 s: avenue red until 40 s, green from 40 s. Links 1201 / 1202 = southbound lanes queueing at street 160
-  movie signal /Game/Tests/Life/Life_Signal_Clip 10 -WHLifeSignalPhase=30.5 -WHLifeQueue=1201,1202
+if has clips || has clip_street || has clip_swing || has clip_signal; then
+  if has clips || has clip_street; then
+    movie street /Game/Tests/Life/Life_Street_Clip 18 -WHLifeClearParked=238.5:100:243.5:155 -WHLifeFoot=5:17      # the walk is in the curb lane: the parked cars of z 100-155 are left out
+    cp "$UE_DIR/Saved/Logs/life_feet.csv" "$ROUND/feet_clip.csv" 2>/dev/null
+  fi
+  if has clips || has clip_swing; then movie swing /Game/Tests/Life/Life_Swing_Clip 10; fi
+  # signal clip: the pre-roll ends at cycle phase 30.5 (a queue of 3 cars in each southbound lane is standing at the line at clip start), the clip (after the 2.5 s hold) starts at 33 s:
+  # avenue red until 40 s (clip t = 7 s), green after; 12.5 s so the queue pulls away and crosses the box on screen. Links 1201 / 1202 = southbound lanes queueing at street 160
+  # (the queue depends on the pre-roll: another start phase gives another arrival pattern, phase 33.5 left 1 car in the queue)
+  if has clips || has clip_signal; then movie signal /Game/Tests/Life/Life_Signal_Clip 12.5 -WHLifeSignalPhase=30.5 -WHLifeQueue=1201,1202; fi
 fi
 
 if has detect; then

@@ -255,6 +255,7 @@ void AWHLifeTraffic::BeginPlay()
 {
 	Super::BeginPlay();
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeStats="), StatsInterval);
+	FParse::Value(FCommandLine::Get(), TEXT("WHLifeClearAhead="), ClearAheadM);
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeRT"))) bVisibleInRayTracing = true;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeNoShadow"))) bCastShadows = false;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeOff")) || FParse::Param(FCommandLine::Get(), TEXT("WHTrafficOff"))) { UE_LOG(LogWHLife, Display, TEXT("[life] traffic disabled by command line")); return; }
@@ -296,7 +297,7 @@ void AWHLifeTraffic::Tick(float Dt)
 	const double T1 = FPlatformTime::Seconds();
 	UpdateSignals();
 	bClearCam = false;
-	if (CameraClearM > 0.f && GetWorld()) if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0)) { const FVector L = CM->GetCameraLocation(); if (L.Z < 450.f && !L.IsNearlyZero(50.f)) { bClearCam = true; ClearM = FVector2D(L.X, L.Y) * 0.01f; } }
+	if (CameraClearM > 0.f && GetWorld()) if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0)) { const FVector L = CM->GetCameraLocation(); if (L.Z < 450.f && !L.IsNearlyZero(50.f)) { bClearCam = true; ClearM = FVector2D(L.X, L.Y) * 0.01f; const FVector F = CM->GetCameraRotation().Vector(); const FVector2D F2(F.X, F.Y); ClearFwd = F2.SizeSquared() > 1e-4f ? F2.GetSafeNormal() : FVector2D(1, 0); } }
 	PushInstances();
 	const double T2 = FPlatformTime::Seconds();
 	LastSimMs = (T1 - T0) * 1000.f; LastPushMs = (T2 - T1) * 1000.f;
@@ -781,6 +782,12 @@ void AWHLifeTraffic::PushInstances()
 		{ // distance from the camera to the car's body rectangle (centre, heading, length x width)
 			const FVector2D Dc = ClearM - Ctr; const float Al = FMath::Abs(FVector2D::DotProduct(Dc, Dir)), La = FMath::Abs(FVector2D::DotProduct(Dc, FVector2D(-Dir.Y, Dir.X)));
 			bHide = FMath::Sqrt(FMath::Square(FMath::Max(Al - C.Len * 0.5f, 0.f)) + FMath::Square(FMath::Max(La - C.Wid * 0.5f, 0.f))) < CameraClearM;
+			if (!bHide && ClearAheadM > 0.f)
+			{ // corridor ahead of the camera (fixed shots): the car's centre, from the camera, along / across the view heading
+				const FVector2D Dv = Ctr - ClearM; const float Ah = FVector2D::DotProduct(Dv, ClearFwd), Cr = FMath::Abs(FVector2D::DotProduct(Dv, FVector2D(-ClearFwd.Y, ClearFwd.X)));
+				const float Reach = FMath::Max(C.Len, C.Wid) * 0.5f;
+				bHide = Ah > -Reach && Ah < ClearAheadM + Reach && Cr < ClearAheadHalfWidthM + C.Wid * 0.5f;
+			}
 		}
 		Xf[C.Type][C.Inst] = bHide ? FTransform(FRotator::ZeroRotator, FVector(0, 0, -5000.f), FVector(0.001f)) : FTransform(FRotator(Pitch, Yaw, 0.f), FVector(Ctr.X * 100.f, Ctr.Y * 100.f, 1.f));
 		// brake-light state changes are rare: only write custom data when it differs from the ISM copy

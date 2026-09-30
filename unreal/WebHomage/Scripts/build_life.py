@@ -58,7 +58,8 @@ def slots():
 
 def wait_slot():
     while True:
-        n = subprocess.run("pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
+        # real engine processes only (comm == UnrealEditor): the gpu_slot.py wrappers of queued jobs carry the same path in their argv
+        n = subprocess.run("pgrep -x UnrealEditor | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
         if int(n or 0) < slots(): return
         log('%s Unreal processes running (cap %d), waiting 60 s' % (n, slots())); time.sleep(60)
 
@@ -348,7 +349,7 @@ return alb;''')
                 if p.rsplit('/', 1)[0] != CD: EAL.rename_asset(p, CD + '/' + p.split('/')[-1])
         if EAL.does_asset_exist(CD + '/SK_Citizen'): EAL.rename_asset(CD + '/SK_Citizen', CD + '/SK_Citizen_' + names[0])
         # textures + materials: one master (skeletal usage), one instance per citizen
-        VARS = ('', '_v1', '_v2')   # outfit variants (tools/life/citizen_variants.py): same mesh, recoloured atlas tile
+        VARS = ('', '_v1', '_v2', '_v3', '_v4')   # outfit / hair / skin variants (tools/life/citizen_variants.py): same mesh, recoloured atlas tile
         for n in names:
             for v in VARS:
                 t = unreal.AssetImportTask(); t.filename = '%s/fbx/%s_basecolor%s.png' % (CIT, n, v); t.destination_path = CD + '/Textures'; t.destination_name = 'T_Cit_%s_BaseColor%s' % (n, v)
@@ -475,21 +476,23 @@ return rgb * lerp(0.02, 0.15, on);''')
                       if p.split('.')[0].split('/')[-1].startswith('SK_Citizen_') and isinstance(load(p.split('.')[0]), unreal.SkeletalMesh))
         cr = spawn(unreal.WHLifeCrowd, unreal.Vector(0, 0, 0), label='LifeCrowd')
         cr.set_editor_property('walk_data', walk)
-        # 20 people x 3 outfits = 60 looks: the same mesh three times, the recoloured material as override (P6 twins fix, tools/life/citizen_variants.py)
-        looks = [(p, '') for p in cits] + [(p, '_v1') for p in cits] + [(p, '_v2') for p in cits]
+        # 20 people x 5 outfits = 100 looks: the same mesh five times, the recoloured material as override (P6 twins fix, tools/life/citizen_variants.py; look = variant * 20 + citizen)
+        looks = [(p, v) for v in ('', '_v1', '_v2', '_v3', '_v4') for p in cits]
         cr.set_editor_property('meshes', [load(p) for p, v in looks])
         cr.set_editor_property('material_overrides', [load('%s/Citizens/Materials/MI_LifeCit_%s%s' % (ROOT, p.split('SK_Citizen_')[-1], v)) if v else None for p, v in looks])
         cr.set_editor_property('anim_class', load(ROOT + '/Citizens/ABP_Life_Citizen').generated_class())
         cr.set_editor_property('traffic', tr)
         cr.set_editor_property('seed', 11)
-        cr.set_editor_property('per_km_avenue', float(os.environ.get('SM2_LIFE_PERKM_AV', '950')))
-        cr.set_editor_property('per_km_street', float(os.environ.get('SM2_LIFE_PERKM_ST', '640')))
+        cr.set_editor_property('per_km_avenue', float(os.environ.get('SM2_LIFE_PERKM_AV', '1300')))     # walkers per km of sidewalk edge (round 02: 1300 / 860; round 01 950 / 640)
+        cr.set_editor_property('per_km_street', float(os.environ.get('SM2_LIFE_PERKM_ST', '860')))
+        cr.set_editor_property('num_variants', 5)
+        cr.set_editor_property('pool_per_model', 6)
         pr = spawn(unreal.WHLifeProbe, unreal.Vector(0, 0, 0), label='LifeProbe')
         pr.set_editor_property('traffic', tr); pr.set_editor_property('crowd', cr)
         pr.set_editor_property('report_at', [8.0, 14.0, 20.0, 28.0])
         pr.set_editor_property('foot_from', 10.0); pr.set_editor_property('foot_to', 22.0)
         unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), ACTORS)
-        L('actors: traffic (%d vehicle meshes), crowd (%d citizen meshes x 3 outfits)' % (len(TYPES), len(cits)))
+        L('actors: traffic (%d vehicle meshes), crowd (%d citizen meshes x 5 outfits)' % (len(TYPES), len(cits)))
 
         def add_sublevels(world):
             have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
@@ -540,7 +543,7 @@ return rgb * lerp(0.02, 0.15, on);''')
         # swing-height clip: 30 m above the avenue centre line, heading north at 25 m/s for 10 s, aimed down the avenue (pitch about 5-8 deg down, wide lens like the swing camera)
         make_map(TESTS + '/Life_Swing_Clip', rig={'start': (250.0, 0.15, 232.0), 'end': (250.0, 0.15, -18.0), 'duration': 10.0, 'eye': 3000.0, 'aim': (250.0, 0.0, -170.0), 'fov': 88.0, 'hold': 2.5})
         # signal clip: fixed camera 7.5 m up on the avenue centre line, 18 m behind the tail of the queue of the southbound lanes (links 1201 / 1202) that stops at the signal of street 160
-        # (z 155-165); the P1 mast at its far corner (238.1, 165.9) has its heads facing the camera. 10 s after the 2.5 s warm-up: cycle phase 33 -> 43 s, red until 40 s, green after
+        # (z 155-165); the P1 mast at its far corner (238.1, 165.9) has its heads facing the camera. 10 s after the 2.5 s warm-up: cycle phase 36 -> 46 s (capture_round.sh -WHLifeSignalPhase=33.5), red until 40 s (clip t = 4 s), green after
         make_map(TESTS + '/Life_Signal_Clip', rig={'start': (248.5, 0.15, 106.0), 'end': (248.5, 0.15, 106.0), 'duration': 10.0, 'eye': 750.0, 'aim': (246.0, 3.0, 165.0), 'fov': 52.0, 'hold': 2.5})
         if MISS:
             L('WARNINGS (%d):' % len(MISS))

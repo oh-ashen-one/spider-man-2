@@ -40,7 +40,7 @@ A = out.append
 A('# P6 City life round 02: spec table\n')
 A('> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.\n')
 A('**Detector numbers are from `tools/life/detect_counts.py`**: the same model, classes (person, car, motorcycle, bus, truck), confidence 0.35 and image size 1920 as the spec instrument '
-  '`docs/night1/specs/tools/count_people_vehicles.py` (YOLO11x-seg, MPS); stills are counted as they are, clips every 0.5 s like the spec tool. Round 01 was measured with the engine probe, which counted tiny distant '
+  '`docs/night1/specs/tools/count_people_vehicles.py` (YOLO11x-seg; this round run on the CPU device, the numbers do not depend on the device up to tie-breaks); stills are counted as they are, clips every 0.5 s like the spec tool. Round 01 was measured with the engine probe, which counted tiny distant '
   'figures that the detector does not; the probe is used below only for what the detector cannot see (distinct looks, lane motion, queue, box stops). Reference numbers: SPEC C4 / CH16 / C6.\n')
 rows = []
 # ---- S1 people / vehicles
@@ -67,9 +67,11 @@ for name, f in (('S1 stills (1080p series + 4K)', None), ('street clip', 'probe_
     else:
         sm = [x for x in samples(f) if x['t'] >= 2.5]
     if not sm: continue
-    rows.append(('CH17 distinct looks per frame, ' + name, '>= 6 distinct; no repeated head in one frame', 'engine probe (people >= 28 px, unoccluded): looks in frame median %g (min-max %s), of them citizen meshes %g; within 60 m repeated LOOKS median %g (max %d), within 30 m repeated looks max %d, repeated citizen meshes within 30 m max %d (60 looks = 20 citizens x 3 outfit / hair / skin variants)' % (
-        med([x['looks'] for x in sm]), rng([x['looks'] for x in sm]), med([x['meshes'] for x in sm]), med([x['rep60'] for x in sm]), max(x['rep60'] for x in sm), max(x['rep30'] for x in sm), max(x['repmesh30'] for x in sm)),
-        ok(min(x['looks'] for x in sm) >= 6)))
+    tw = sum(1 for x in sm if x['rep30'] > 0)
+    rows.append(('CH17 distinct looks per frame, ' + name, '>= 6 distinct; no repeated head in one frame', 'engine probe (people >= 28 px, unoccluded): looks in frame median %g (min-max %s), of them citizen meshes %g; within 60 m repeated LOOKS median %g (max %d; more than 60 people within 60 m cannot all differ with 60 looks), '
+                 '**within 30 m repeated looks: at least one pair in %d of %d samples (max %d pairs)**, repeated citizen meshes within 30 m max %d (60 looks = 20 citizens x 3 outfit / hair / skin variants)' % (
+        med([x['looks'] for x in sm]), rng([x['looks'] for x in sm]), med([x['meshes'] for x in sm]), med([x['rep60'] for x in sm]), max(x['rep60'] for x in sm), tw, len(sm), max(x['rep30'] for x in sm), max(x['repmesh30'] for x in sm)),
+        ('MEETS >= 6 looks; ' + ('NO twin within 30 m' if tw == 0 else 'PARTIAL: a twin pair within 30 m in %d %% of the samples' % round(100 * tw / len(sm))) if min(x['looks'] for x in sm) >= 6 else 'MISSES')))
 sm = [x for x in samples('probe_street.txt') if x['t'] >= 2.5]
 if sm:
     rows.append(('walkers within ~10 m of the camera, street clip', 'some walkers within ~10 m', 'engine probe: nearest visible walker median %.1f m (min %.1f m); two-way flow by construction (each walker picks its direction 50/50 at spawn)' % (med([x['nearest_p'] for x in sm if x['nearest_p'] > 0]), min([x['nearest_p'] for x in sm if x['nearest_p'] > 0])), ok(min([x['nearest_p'] for x in sm if x['nearest_p'] > 0]) <= 10)))

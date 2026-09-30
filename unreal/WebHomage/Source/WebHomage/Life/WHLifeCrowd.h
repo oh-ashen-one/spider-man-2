@@ -58,8 +58,8 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="Life") int32 Seed = 11;
 	/** Walkers per km of sidewalk edge, by road kind (edge axis 0 = avenue sidewalks, 1 = street sidewalks). Two-way flow: half walk each way. */
-	UPROPERTY(EditAnywhere, Category="Life") float PerKmAvenue = 950.f;
-	UPROPERTY(EditAnywhere, Category="Life") float PerKmStreet = 640.f;
+	UPROPERTY(EditAnywhere, Category="Life") float PerKmAvenue = 1300.f;
+	UPROPERTY(EditAnywhere, Category="Life") float PerKmStreet = 860.f;
 	/** Camera-centred population: walkers exist within this distance (cm) of the camera; farther ones are recycled to the far edge of the disc
 	 *  (out of view when possible), so the density around the camera stays high wherever it goes and the cost stays bounded. */
 	UPROPERTY(EditAnywhere, Category="Life") float SpawnRadius = 13000.f;
@@ -70,9 +70,9 @@ public:
 	UPROPERTY(EditAnywhere, Category="Life") float ViewMarginDeg = 30.f;
 	UPROPERTY(EditAnywhere, Category="Life") float NearAllRadius = 2200.f;
 	/** Looks per citizen mesh (the mesh list is variant-major: index = variant * NumCitizens + citizen), used to keep the same head from appearing twice near each other. */
-	UPROPERTY(EditAnywhere, Category="Life") int32 NumVariants = 3;
+	UPROPERTY(EditAnywhere, Category="Life") int32 NumVariants = 5;
 	UPROPERTY(EditAnywhere, Category="Life") int32 MaxAssignPerRefresh = 14;
-	UPROPERTY(EditAnywhere, Category="Life") int32 PoolPerModel = 8;
+	UPROPERTY(EditAnywhere, Category="Life") int32 PoolPerModel = 6;
 	/** Sidewalk walking band, metres from the edge line measured toward the roadway (negative = toward the buildings): P1 puts trees, lamps, hydrants and litter bins
 	 *  in the curb strip, so people keep to the building side of it. Avenue sidewalks are 5 m wide (line 2.2 m from the curb), street sidewalks 4 m. */
 	UPROPERTY(EditAnywhere, Category="Life") float AvenueBandMin = -2.25f;

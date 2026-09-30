@@ -6,7 +6,9 @@
 # Round 02: the HEAD changes too (the critic saw the same bearded head twice): with the head mask of tools/life/citizen_headmask.py (NAME_headmask.json, the UV
 # polygons of the top 14 % of the mesh) the dark hair / beard / brow pixels of the head are re-coloured (v1: silver or blond, v2: black or auburn) and every skin pixel
 # of the atlas (face, hands, arms) gets a lighter (v1) / darker (v2) tone, so a citizen looks like three different people.
-#   python3 tools/life/citizen_variants.py <dir with NAME_basecolor.png [+ NAME_headmask.json]> -> NAME_basecolor_v1.png, NAME_basecolor_v2.png
+# Round 02 (twins, second pass): four variants per citizen (v1 .. v4) = 100 looks; the round-02 critic found the same head twice, and with ~40 people within 30 m of the camera 60 looks
+# could not keep twins apart (twin pairs within 30 m in 71-89 % of the probe samples with 3 looks per citizen).
+#   python3 tools/life/citizen_variants.py <dir with NAME_basecolor.png [+ NAME_headmask.json]> -> NAME_basecolor_v1.png .. NAME_basecolor_v4.png
 import glob, json, os, sys
 import numpy as np
 from PIL import Image, ImageDraw
@@ -50,7 +52,8 @@ for idx, f in enumerate(files):
     move = ~skin & (s > 0.16)
     hm = head_mask(f, (im.shape[1], im.shape[0]))
     # variant k: (clothes hue shift, brightness, tint, skin value x, skin saturation x, hair mode)
-    for k, (dh, vk, tint, skv, sks, hair) in enumerate([(0.33, 0.96, (1.0, 1.0, 1.0), 1.17, 0.85, 'light'), (0.66, 1.04, (0.96, 1.0, 1.06), 0.72, 1.10, 'dark')], start=1):
+    for k, (dh, vk, tint, skv, sks, hair) in enumerate([(0.33, 0.96, (1.0, 1.0, 1.0), 1.17, 0.85, 'light'), (0.66, 1.04, (0.96, 1.0, 1.06), 0.72, 1.10, 'dark'),
+                                                        (0.17, 1.0, (1.05, 1.0, 0.93), 0.90, 1.0, 'warm'), (0.83, 0.98, (0.97, 1.02, 1.03), 1.06, 0.95, 'cool')], start=1):
         h2 = np.where(move, (h + dh) % 1.0, h)
         s2, v2 = s.copy(), v.copy()
         s2 = np.where(skin, np.clip(s * sks, 0, 1), s2); v2 = np.where(skin, np.clip(v * skv, 0, 1), v2)
@@ -59,9 +62,17 @@ for idx, f in enumerate(files):
             if hair == 'light':
                 if idx % 2 == 0: h2 = np.where(hair_px, 0.115, h2); s2 = np.where(hair_px, 0.42, s2); v2 = np.where(hair_px, np.clip(0.30 + v * 1.25, 0, 0.85), v2)   # blond
                 else: h2 = np.where(hair_px, 0.6, h2); s2 = np.where(hair_px, 0.04, s2); v2 = np.where(hair_px, np.clip(0.42 + v * 1.1, 0, 0.88), v2)                   # silver
-            else:
+            elif hair == 'dark':
                 if idx % 2 == 0: v2 = np.where(hair_px, v * 0.45, v2)                                                                                                     # black
                 else: h2 = np.where(hair_px, 0.035, h2); s2 = np.where(hair_px, 0.62, s2); v2 = np.where(hair_px, np.clip(0.16 + v * 0.9, 0, 0.6), v2)                    # auburn
+            elif hair == 'warm':
+                if idx % 3 == 0: h2 = np.where(hair_px, 0.075, h2); s2 = np.where(hair_px, 0.55, s2); v2 = np.where(hair_px, np.clip(0.26 + v * 0.8, 0, 0.7), v2)          # chestnut
+                elif idx % 3 == 1: h2 = np.where(hair_px, 0.045, h2); s2 = np.where(hair_px, 0.78, s2); v2 = np.where(hair_px, np.clip(0.42 + v * 0.6, 0, 0.8), v2)         # ginger
+                else: h2 = np.where(hair_px, 0.6, h2); s2 = np.where(hair_px, 0.06, s2); v2 = np.where(hair_px, np.clip(0.28 + v * 0.7, 0, 0.6), v2)                       # charcoal
+            else:
+                if idx % 3 == 0: h2 = np.where(hair_px, 0.6, h2); s2 = np.where(hair_px, 0.03, s2); v2 = np.where(hair_px, np.clip(0.62 + v * 0.5, 0, 0.95), v2)          # white
+                elif idx % 3 == 1: h2 = np.where(hair_px, 0.12, h2); s2 = np.where(hair_px, 0.5, s2); v2 = np.where(hair_px, np.clip(0.5 + v * 0.7, 0, 0.9), v2)           # dark blond
+                else: v2 = np.where(hair_px, v * 0.6, v2)                                                                                                                 # near black
         out = hsv2rgb(h2, s2, v2) * vk * np.array(tint, np.float32)
         Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)).save(f.replace('_basecolor.png', '_basecolor_v%d.png' % k))
-print('variants written for', len(files), 'citizens (head masks: %d)' % len(glob.glob(os.path.join(d, '*_headmask.json'))))
+print('variants written for', len(files), 'citizens (4 variants, head masks: %d)' % len(glob.glob(os.path.join(d, '*_headmask.json'))))
