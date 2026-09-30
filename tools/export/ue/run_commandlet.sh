@@ -12,7 +12,8 @@ script = sys.argv[1]; args = dict(a.split('=', 1) for a in sys.argv[2:])
 print('JOB_ARGS = ' + json.dumps(args)); print('JOB_SCRIPT_DIR = ' + repr(os.path.dirname(script)))
 print('exec(compile(open(%r).read(), %r, "exec"), globals())' % (script, script))
 PYEOF
-pkill -9 -f "$P" 2>/dev/null; sleep 1
+# (r07-fix) never SIGKILL an engine (2026-09-29 23:08 kernel panic): if an engine of THIS project is still running, refuse instead of killing it (stop it with stop_ue.sh first)
+if pgrep -f "MacOS/UnrealEditor .*${P:gs/./[.]/}" >/dev/null; then echo "run_commandlet: an Unreal process of this project is still running; stop it with /Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh first (never kill -9)"; rm -f $WRAP; exit 3; fi
 $HERE/wait_slot.sh
 ${GPU_SLOT:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh} capture --label city -- "/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor" "$P" \
   -run=pythonscript -script=$WRAP -unattended -nullrhi -NoSound -NoCrashReports -abslog=$WT/unreal/WebHomage/Saved/Logs/city_cmdlet.log
