@@ -198,7 +198,7 @@ float far = boost / 0.55;
 c *= lerp(1.0, 0.55, far);
 Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
 // (r09) crowns inside the canyon shade: a share (0.35) of the wall fill, so the foliage keeps its own lit / shaded contrast
-Emis = CityShadeFill(c, float3(0.0, 0.0, 1.0), wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill * 0.35, nightk, CityShadeW(tSunH, tSunHSampler, wpos, float3(0.0, 0.0, 1.0), ResolvedView.DirectionalLightDirection.xyz));
+Emis = CityShadeFill(c, float3(0.0, 0.0, 1.0), wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill * 0.35, nightk, CityShadeW(tSunH, tSunHSampler, wpos, float3(0.0, 0.0, 1.0), ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 return c;''',
         [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1)), ('wpos', 'wpos', None), ('cam', 'cam', None),
          ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
@@ -251,7 +251,7 @@ float gm = g * (1.0 - gSash);
 float ek = lerp(dayemis, 1.0, saturate(nightk));
 float3 col = lerp(a, f, gm); float3 em = e * escale * ek;
 // (r09) canyon shade fill: the wall's own albedo (before the sun cap) x a sky-bounce irradiance, glass gets a sky-gradient reflection instead (ShadeFill.ush)
-float litS = CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz);
+float litS = CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz, cam, max(shadefill, glasssky));
 float3 fw = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, litS);
 float3 fg = CitySkyRefl(lerp(f, float3(0.1, 0.1, 0.1), gSash), n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, glasssky, nightk, litS);
 float3 fillE = lerp(fw, fg, saturate(g));
@@ -289,7 +289,7 @@ float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 // (r09) canyon shade fill (ShadeFill.ush)
-Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz));
+Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 Rough = r; Metal = m; NormalW = n; Op = o; return a;''',
         [('tNoise', 'tex', TEXA('noise')), ('tDetail', 'tex', TEXA('detail_nrm')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None), ('sunk', 'mpc', 'SunK'),
          ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + WORLD,
@@ -305,7 +305,7 @@ float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 // (r09) canyon shade fill (ShadeFill.ush)
-Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz));
+Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 Rough = r; Metal = m; NormalW = n; return a;''',
         [('tRoofC', 'tex', TEXA('TA_roof_col')), ('tRoofN', 'tex', TEXA('TA_roof_nrm')), ('tNoiseR', 'tex', TEXA('noise')), ('sunk', 'mpc', 'SunK'),
          ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
@@ -335,7 +335,7 @@ if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured 
   float sm = 1.0 - smoothstep(0.012, 0.03, min(min(frac(q.x / 1.8), 1.0 - frac(q.x / 1.8)) * 1.8, min(frac(q.y / 1.2), 1.0 - frac(q.y / 1.2)) * 1.2)); // cast-panel joints
   c *= (0.82 + 0.34 * nA) * (1.0 + 0.16 * (nB - 0.5)) * (1.0 + 0.22 * (nC - 0.5) * gl) * (1.0 - 0.3 * sm * gl);
   float3 nv = normalize(wn);
-  Emis = CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
+  Emis = CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 }
 Rough = RoughP; Metal = MetalP; Op = t.a > AlphaCut ? 1.0 : 0.0;
 return c;''',
@@ -357,7 +357,7 @@ else if (P == 13) { float3 lc = st > 1.5 ? float3(0.9, 0.95, 1.0) : float3(1.0, 
 else if (P == 14) { pR = 0.1; pE = c * 3.0; } else if (P == 15) { pR = 0.3; pE = c * 0.25; } else if (P >= 16 && P <= 22) pR = 0.8;
 if (nightk > 0.0) { if (P == 4) pE += float3(1.0, 0.78, 0.5) * 9.0 * nightk; else if (P == 7) pE += float3(1.0, 0.93, 0.8) * 7.0 * nightk; }
 Rough = pR; Metal = pM; float3 nv = normalize(wn);
-Emis = pE * escale + CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
+Emis = pE * escale + CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None),
          ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'),
@@ -547,7 +547,7 @@ if (K == 0) {
 } else { emis = alb * 4.0; }
 float fillW = (K == 3 && Pm < 0.5) ? 0.0 : 1.0;
 Rough = rough; Metal = metal; Op = op; float3 nv = normalize(wn);
-Emis = emis * escale + fillW * CityShadeFill(alb, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
+Emis = emis * escale + fillW * CityShadeFill(alb, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 return alb;""",
         [('tSigns', 'tex', TEXA('street_signs')), ('tNoise', 'tex', TEXA('noise')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None),
          ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
@@ -664,7 +664,7 @@ else if (K == 1) {
 }
 float fillW = (K == 3 || K == 4 || K == 6) ? 0.0 : 1.0;
 Rough = sgR; Metal = sgM; Op = opv; float3 nv = normalize(wn);
-Emis = sgE * 2.0 + fillW * CityShadeFill(dc, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
+Emis = sgE * 2.0 + fillW * CityShadeFill(dc, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz, cam, shadefill));
 return dc;""",
         [('tAds', 'tex', TEXA('Maps/assets_city_tex_ts_ads')), ('tSigns', 'tex', TEXA('Maps/assets_city_tex_ts_signs')), ('tArt', 'tex', TEXA('Maps/assets_city_tex_city_signart')), ('tNoise', 'tex', TEXA('noise')),
          ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'),
