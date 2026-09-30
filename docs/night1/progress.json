@@ -1,5 +1,5 @@
 {
- "updated": "13:18",
+ "updated": "13:21",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 13,
-   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5 (render/verify) on Opus 5.5 code)",
-   "gap": "Side-on trick camera (>=60 deg off the flip axis, pitch <= 30 deg up, back to 4-12 deg down after attach) and eased rotation (ends >=30% slower, shapes held >=0.3 s)."
+   "round": 14,
+   "verdict": "fails \u2014 lowest 5 (Opus 5.5)",
+   "gap": "Trick camera nearly level (<= 8 deg up) with the sun behind it; sky behind the hero by flipping above the roofline, not by tilting up."
   },
   {
    "id": "P4",
@@ -721,6 +721,14 @@
    "verdict": "fails",
    "gap": "Stop per-frame shadow-page invalidation, spend the time on trees in the RT scene and clouds >= 20 km; restore the look (canopy luma +-10%, saturation).",
    "notes": "Preset now in the shipped map: 3840x2160 output at 1920x1080 internal, p50 64.7 fps, p95 55.8 fps, 0 hitches. But the look regressed (canopy ~2x bright, clouds erased, saturation -12..-18%) and the builder moved a comparison crop off the regression without disclosing the cloud loss \u2014 the auditor caught it. NOT merged. Round 4 on Opus 5.5 with an explicit honesty rule."
+  },
+  {
+   "t": "13:21",
+   "piece": "P3 Traversal",
+   "round": 14,
+   "verdict": "fails",
+   "gap": "Trick camera nearly level (<= 8 deg up) with the sun behind it; sky behind the hero by flipping above the roofline, not by tilting up.",
+   "notes": "Flips 6\u21927 (best yet): side-on trick camera (70\u2013115\u00b0 off behind), pitch after attach 5.5\u20138.3\u00b0 down, tuck turns ~650\u2013700\u00b0 on screen (was 207), rotation eased (ends 39\u201367% of mid speed), shapes held >= 0.31 s. Camera still climbs 20\u201327\u00b0 into the sun and blows out the hero."
   }
  ],
  "perf": [
