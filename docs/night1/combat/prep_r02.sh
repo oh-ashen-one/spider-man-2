@@ -13,4 +13,8 @@ exec $G/gpu_slot.sh capture --label combat --timeout 7200 -- bash -c '
     python3 -c "import json,sys;j=json.load(open(sys.argv[1]));j[\"seed\"]=int(sys.argv[2]);json.dump(j,open(sys.argv[3],\"w\"),indent=1)" "$SCRIPT" "$s" "$OUT/script_seed$s.json"
     "$HERE/run_fight.sh" logic "$OUT/seed$s" "$OUT/script_seed$s.json" > "$OUT/seed$s.out" 2>&1
     echo "seed $s done"
-  done' _ "$HERE" "$WT" "$OUT" "$SCRIPT" "$@"
+  done
+  # look check on the rebuilt map: 4 moments of the current frozen script at 720p (skipped when no frozen script exists)
+  if [ -f "$HERE/scripts/fight30.json" ]; then
+    WHCMB_RES=1280x720 WHCMB_QUIT=21 "$HERE/run_fight.sh" stills "$OUT/lookcheck" "$HERE/scripts/fight30.json" 5.08,13.15,15.4,20.3 > "$OUT/lookcheck.out" 2>&1; echo "lookcheck done"
+  fi' _ "$HERE" "$WT" "$OUT" "$SCRIPT" "$@"

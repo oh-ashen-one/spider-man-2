@@ -168,6 +168,8 @@ public:
 	bool bCamInit = false, bCamLast = false;
 	double CYaw = 0, CYawGoal = 0, CDist = 5.2, CPitch = 20, CFov = 75, CineK = 0, MarginPull = 0;
 	FVector CHero = FVector::ZeroVector, COff = FVector::ZeroVector;
+	FVector BubbleP = FVector::ZeroVector;
+	FVector SunTo = FVector::ZeroVector; bool bSunKnown = false;   // flat unit vector toward the sun (camera avoids looking into it)
 	FVector LastCamPos = FVector::ZeroVector; FRotator LastCamRot = FRotator::ZeroRotator; float LastFov = 75.f;
 	/** Project a world point (m) with a camera (m, rot, horizontal fov deg, 16:9). Returns false behind the lens. */
 	static bool Project(const FVector& CamP, const FRotator& CamR, double FovDeg, const FVector& P, double& Sx, double& Sy);

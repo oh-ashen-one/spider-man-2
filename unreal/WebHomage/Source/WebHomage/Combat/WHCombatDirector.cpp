@@ -82,6 +82,7 @@ void AWHCombatDirector::Init(AWHCombatHero* InHero)
 	if (!FParse::Value(Cmd, TEXT("WHCmbOut="), OutDir)) OutDir = FPaths::ProjectSavedDir() / TEXT("WHCombat");
 	OutDir = FPaths::ConvertRelativePathToFull(OutDir);
 	IFileManager::Get().MakeDirectory(*OutDir, true);
+	{ TActorIterator<ADirectionalLight> It(GetWorld()); if (It) { FVector F = It->GetActorForwardVector(); F.Z = 0; if (F.Normalize()) { SunTo = -F; bSunKnown = true; } } }
 	if (!ScriptPath.IsEmpty()) LoadScript(ScriptPath);
 	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB director ready: script=%s fight=%s beats=%d shots=%d quit=%.1f out=%s"),
 		*ScriptPath, *FightSpec, Beats.Num(), ShotTimes.Num(), QuitAt, *OutDir);
@@ -110,7 +111,7 @@ void AWHCombatDirector::ApplyLook(const FString& Spec)
 		if (UExponentialHeightFogComponent* C = It->GetComponent())
 		{
 			if (Has(TEXT("fogD"))) C->SetFogDensity(float(G(TEXT("fogD"), 0.006)));
-			if (Has(TEXT("fogR")) || Has(TEXT("fogG")) || Has(TEXT("fogB"))) C->SetFogInscatteringColor(FLinearColor(float(G(TEXT("fogR"), 0.08)), float(G(TEXT("fogG"), 0.07)), float(G(TEXT("fogB"), 0.09))));
+			if (Has(TEXT("fogR")) || Has(TEXT("fogG")) || Has(TEXT("fogB"))) { C->FogInscatteringLuminance = FLinearColor(float(G(TEXT("fogR"), 0.08)), float(G(TEXT("fogG"), 0.07)), float(G(TEXT("fogB"), 0.09))); C->MarkRenderStateDirty(); }
 		}
 	for (TActorIterator<APostProcessVolume> It(W); It; ++It)
 	{
@@ -798,8 +799,8 @@ void AWHCombatDirector::Separate()
 		if (D < Mn && D > 1e-4 && FMath::Abs(A->Pos.Z - Pf.Z) < 1) A->MoveXZ(Dx / D * (Mn - D), Dy / D * (Mn - D));
 		if (bCamLast && CamW > 0.5)
 		{ // r02: nobody stands at the lens (a foreground body fills a quarter of the frame): keep a 3.2 m bubble around the camera
-			const double Cx = A->Pos.X - CamPosM.X, Cy = A->Pos.Y - CamPosM.Y, Cd = FMath::Sqrt(Cx * Cx + Cy * Cy);
-			if (Cd < 3.2 && Cd > 1e-3) A->MoveXZ(Cx / Cd * (3.2 - Cd) * 0.35, Cy / Cd * (3.2 - Cd) * 0.35);
+			const double Cx = A->Pos.X - BubbleP.X, Cy = A->Pos.Y - BubbleP.Y, Cd = FMath::Sqrt(Cx * Cx + Cy * Cy);
+			const double Rb = 3.2 + 0.9 * CineK; if (Cd < Rb && Cd > 1e-3) A->MoveXZ(Cx / Cd * (Rb - Cd) * 0.35, Cy / Cd * (Rb - Cd) * 0.35);
 		}
 	}
 }
@@ -938,6 +939,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	{
 		const FVector Cp = CamFor(Yaw, Dist); const FRotator R = RotFor(Yaw);
 		double C = FramePen(Cp, R) + 0.9 * FMath::Abs(AngWrap(Yaw - CYaw));
+		if (bSunKnown) C += 4.0 * FMath::Max(0.0, FVector::DotProduct(FlatNorm(R.Vector()), SunTo) - 0.25);   // r02: do not look straight into the sun (everything turns into black silhouettes)
 		const FVector Dv = Cp - Focus; FTravHit H;
 		if (Raycast(Focus, Dv.GetSafeNormal(), Dv.Size() + 0.3, H)) C += 8 + (Dv.Size() + 0.3 - H.Distance);
 		for (AWHEnemy* E : Enemies)
@@ -1057,6 +1059,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		OutR.Yaw += Tr * 1.3 * FMath::Sin(ShakePh * 0.9 + 1.7);
 		OutR.Roll += Tr * 1.0 * FMath::Sin(ShakePh * 1.1 + 0.4);
 	}
+	BubbleP = OutP;   // the camera bubble (Separate) uses the camera BEFORE the bone-based margin pass: the sim never depends on bone poses (nullrhi vs rendered runs stay identical)
 	{ // hero margin (critic r01: the hero was cut at the frame edge): dolly back along the view axis. A SOFT controller aims at a 10 %
 	  // border (the pull rises at <= 4 m/s and relaxes at 0.8 m/s), and a hard pass (8 cm steps, at once) guarantees 5.5 % even when the
 	  // hero's bones jump (a flip, arms up): a sudden pose change is the only thing that can still pop the camera.

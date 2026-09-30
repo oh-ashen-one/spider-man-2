@@ -415,23 +415,23 @@ return c;
 
     # ---- lighting (r02, look sweep lk1-lk4 in docs/night1/combat/round-02/NOTES.md). r01: white sky + low contrast flattened the
     # silhouettes; the first r02 dusk (sun 7 deg, sky-lit) went the other way: everything blue-black. Sky-lit shade is blue whatever the
-    # sun colour, so the sun has to be the key: a warm afternoon sun 30 deg high, along the street axis (the canyon does not shade the
-    # floor), real cast shadows, a dimmed sky light for the shade, light warm haze. Lamps stay unlit (daylight).
-    sun = spawn(unreal.DirectionalLight, (0, 0, 50000), (0, -30, 185), 'Sun')
+    # sun colour, so the sun has to be the key: a warm afternoon sun 32 deg high, along the street axis (the canyon does not shade the
+    # floor), real cast shadows, a dimmed sky light for the shade, thin dark haze (a bright fog luminance washed everything to pale blue-grey: cap2). Lamps stay unlit (daylight).
+    sun = spawn(unreal.DirectionalLight, (0, 0, 50000), (0, -32, 180), 'Sun')
     sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
     sc.set_editor_property('intensity', 10.0)
-    sc.set_editor_property('light_color', unreal.Color(255, 208, 165, 255))
+    sc.set_editor_property('light_color', unreal.Color(255, 200, 150, 255))
     sc.set_editor_property('atmosphere_sun_light', True)
     sc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
     spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
     sky = spawn(unreal.SkyLight, (0, 0, 1000), label='SkyLight')
     skc = sky.get_component_by_class(unreal.SkyLightComponent)
     skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
-    skc.set_editor_property('intensity', 0.7)
+    skc.set_editor_property('intensity', 0.6)
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='HeightFog')
     fgc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
     fgc.set_editor_property('fog_density', 0.003)
-    try: fgc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(0.35, 0.30, 0.28, 1.0))
+    try: fgc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(0.08, 0.07, 0.09, 1.0))
     except Exception as ex: log('fog colour not set: %s' % ex)
     spawn(unreal.VolumetricCloud, (0, 0, 0), label='VolumetricCloud')
     ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='GlobalPPV'); ppv.set_editor_property('unbound', True)
@@ -439,7 +439,7 @@ return c;
         pps = ppv.get_editor_property('settings')
         for k, v in (('override_auto_exposure_bias', True), ('auto_exposure_bias', -0.3), ('override_vignette_intensity', True), ('vignette_intensity', 0.3),
                      ('override_color_contrast', True), ('color_contrast', unreal.Vector4(1.08, 1.08, 1.08, 1.08)),
-                     ('override_color_saturation', True), ('color_saturation', unreal.Vector4(1.15, 1.15, 1.15, 1.0))):
+                     ('override_color_saturation', True), ('color_saturation', unreal.Vector4(1.1, 1.1, 1.1, 1.0))):
             pps.set_editor_property(k, v)
         ppv.set_editor_property('settings', pps)
     except Exception as ex: log('ppv grade not set: %s' % ex)
