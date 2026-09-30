@@ -1,6 +1,6 @@
 {
  "name": "b_release_trick_dive_zip_city",
- "note": "Round 10, Manhattan: swing north up the avenue from 30 m, SKY LAUNCH at 1.4 s (jump-release + trick: rise over the roofline, silhouetted against the sky, a second trick at the top 2.3 s), dive at 3.3 s, zip to a roof point at 4.0 s, perch.",
+ "note": "Round 13, Manhattan: swing north up the avenue from 30 m, release + trick at 1.4 s (flow flip frontPikeSwan starts at the release, 1.65 s), no re-press: dive at 3.1 s, zip to a roof point at 3.8 s, perch.",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -24,37 +24,28 @@
     1
    ],
    "heading": -90,
-   "swing": true
+   "swing": true,
+   "flip": "frontPikeSwan"
   },
   {
    "t": 1.4,
-   "jump": true,
+   "swing": false,
    "trick": true
   },
   {
    "t": 1.42,
-   "swing": false,
-   "jump": false,
    "trick": false
   },
   {
-   "t": 2.3,
-   "trick": true
-  },
-  {
-   "t": 2.32,
-   "trick": false
-  },
-  {
-   "t": 3.3,
+   "t": 3.1,
    "drop": true
   },
   {
-   "t": 3.9,
+   "t": 3.7,
    "drop": false
   },
   {
-   "t": 4.0,
+   "t": 3.8,
    "zip": true,
    "move": [
     0,
@@ -63,7 +54,7 @@
    "heading": false
   },
   {
-   "t": 4.1,
+   "t": 3.9,
    "zip": false
   }
  ]

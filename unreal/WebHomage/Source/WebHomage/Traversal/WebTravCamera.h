@@ -88,9 +88,17 @@ public:
 	// (first round-12 capture: the chase springs left the camera 4.4 m out at 17 deg, and the far skyline — visual-only towers the
 	// rays cannot hit — filled the ring's lower half at <= 20 deg: the spot is now taken exactly (blended by FlipK) and the look-up
 	// never goes under FlipMinElev)
-	double FlipDist = 2.9, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 55.0, FlipMinElev = 30.0;
+	// (round 13: FlipDist 2.9 -> 3.3 m, critic r12 T8 "Reach .62" / F9 p50 .40-.41 > .36; FlipAimT 0.3 -> 0.4 s, per-frame yaw budget)
+	double FlipDist = 3.3, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.4, FlipPrefYaw = 55.0, FlipMinElev = 30.0;
 	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
 	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
+	// round 13 (critic r12: one-frame cuts at f4 8.58 s / f1 6.30 s -- pitch 43 deg, yaw 54-60 deg, 3.1 m -- from the "too close: cut to
+	// the clear orbit" rule re-arming while the flip camera blended out; test: no frame may change pitch > 3 deg, yaw > 4 deg or position
+	// > 1.2 m): the cut is gone, the flip view search moves at most FlipSearchYawStep deg per search, and the camera OUTPUT is slew-limited
+	// per 1/60 s (position first, the view re-aimed at the hero by the same correction, then pitch / yaw). SlewFlags (telemetry):
+	// 1 = position limited, 2 = pitch, 4 = yaw this frame.
+	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipSearchYawStep = 45.0;
+	int32 SlewFlags = 0;
 	void SearchSkyView(const FTravCamInput& P, const FWebTravWorld& World, const FVector& Back, bool bFirst);
 
 	// ---- outputs
@@ -147,4 +155,7 @@ private:
 	FVector WallHeroXY = FVector::ZeroVector;
 	bool bWallXY = false;
 	double OccGoalYaw = 0.0, OccGoalPitch = 0.0;
+	bool bOutInit = false;
+	FVector LastOutPos = FVector::ZeroVector;
+	FRotator LastOutRot = FRotator::ZeroRotator;
 };

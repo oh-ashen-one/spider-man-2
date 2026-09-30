@@ -21,6 +21,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/PointLightComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -381,6 +382,35 @@ void AWebTravCharacter::BeginPlay()
 	GetCharacterMovement()->SetComponentTickEnabled(false);
 	BuildFigure();
 	bHeroMesh = SetupHeroMesh();
+	{ // round 13: hero-only fill light (see HeroFillCd)
+		FString FillArg;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHHeroFill="), FillArg))
+		{
+			FString A, B;
+			if (FillArg.Split(TEXT(","), &A, &B)) { HeroFillCd = FCString::Atof(*A); HeroFillFlipCd = FCString::Atof(*B); }
+			else HeroFillCd = HeroFillFlipCd = FCString::Atof(*FillArg);
+		}
+		if (bHeroMesh && (HeroFillCd > 0.f || HeroFillFlipCd > 0.f))
+		{
+			HeroFill = NewObject<UPointLightComponent>(this, TEXT("HeroFill"));
+			HeroFill->SetupAttachment(RootComponent);
+			HeroFill->SetUsingAbsoluteLocation(true);
+			HeroFill->SetMobility(EComponentMobility::Movable);
+			HeroFill->RegisterComponent();
+			HeroFill->SetIntensityUnits(ELightUnits::Candelas);
+			HeroFill->SetIntensity(HeroFillCd);
+			HeroFill->SetLightColor(FLinearColor(1.0f, 0.93f, 0.84f));
+			HeroFill->SetCastShadows(false);
+			HeroFill->SetVolumetricScatteringIntensity(0.f);
+			HeroFill->SetIndirectLightingIntensity(0.f);
+			HeroFill->SetAttenuationRadius(600.f);
+			HeroFill->SourceRadius = 20.f;
+			HeroFill->SetLightingChannels(false, true, false); // channel 1 only
+			GetMesh()->SetLightingChannels(true, true, false);
+			if (LensMesh) LensMesh->SetLightingChannels(true, true, false);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero fill light: %.0f cd (flip %.0f cd), %.1f m toward the camera"), HeroFillCd, HeroFillFlipCd, HeroFillDist);
+		}
+	}
 
 	const UWebTravScript* Script = GetGameInstance() ? GetGameInstance()->GetSubsystem<UWebTravScript>() : nullptr;
 	if (Script) Traversal->RandomSeed = Script->Seed();
@@ -539,7 +569,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// round 10 (T1 rope held 0.5-1.6 s): past the low point and 1.45 s into the swing he lets go (the long web after a sky
 			// launch held 2.1-2.2 s)
 			// (the cut varies 1.25-1.55 s by release count so consecutive swings differ in length)
-			const float LongCut = 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
+			// round 13 (T2 attach -> attach <= 3.3 s): a swing that ends in a flip program is let go at 1.05-1.2 s
+			const int32 EveryNext = Script->TrickEveryAt(TravTime);
+			const bool bTrickNext = EveryNext > 0 && (AutoReleases + 1) % EveryNext == 0 && !Traversal->bTrickLaunch;
+			const float LongCut = bTrickNext ? 1.05f + 0.15f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
 			const bool bLong = bSwinging && bAutoSawDescent && A.ModeT > LongCut && Traversal->VelM().Z > 0;
 			if (bAutoHeld && bSwinging && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
@@ -572,7 +605,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 				{
 					float Ft = 0.f;
 					if (const FWebFlipProgram* FP = bTrickNow ? FlipProgramNow(Ft) : nullptr)
-						bInReach = FP->Segs.Num() > 0 && Ft >= FP->Dur() - FP->Segs.Last().Dur - 0.1f;
+						bInReach = FP->Segs.Num() > 0 && Ft >= FP->CatchT() - 0.1f; // round 13: the program's catch window
 				}
 				if (bSkyWasTrick && !bTrickNow && SkyTricksLeft > 0 && Traversal->VelM().Z > -12.0) { I.bTrick = true; --SkyTricksLeft; }
 				bSkyWasTrick = bTrickNow;
@@ -659,6 +692,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	FollowCamera->PostProcessSettings.MotionBlurMax = float(1.0 + 2.0 * Cam.MotionBlur);
 	if (MaskCapture) { MaskCapture->SetWorldLocationAndRotation(CamCm, Cam.CamRot); MaskCapture->FOVAngle = FollowCamera->FieldOfView; }
 	if (SceneCapture) { SceneCapture->SetWorldLocationAndRotation(CamCm, Cam.CamRot); SceneCapture->FOVAngle = FollowCamera->FieldOfView; }
+	UpdateHeroFill();
 
 	// ---- figure + webs
 	PoseFigure(float(Dt));
@@ -680,6 +714,18 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	if (bPre) { Cam = PreCam; return; }
 	if (Script && Script->WantsTelemetry()) PushTelemetry(TravTime, I);
 	++FrameIndex;
+}
+
+void AWebTravCharacter::UpdateHeroFill()
+{
+	if (!HeroFill) return;
+	const FVector Hero = Traversal->PosM() * 100.0 + FVector(0, 0, 20.0);
+	const FVector CamCm = Cam.CamPos * 100.0;
+	FVector To = CamCm - Hero;
+	To = To.SizeSquared() > 1.0 ? To.GetSafeNormal() : FVector(-1, 0, 0);
+	HeroFill->SetWorldLocation(Hero + To * (HeroFillDist * 100.0) + FVector(0, 0, HeroFillUp * 100.0));
+	const double K = FMath::Clamp(Cam.FlipK, 0.0, 1.0);
+	HeroFill->SetIntensity(float(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K)));
 }
 
 const FWebFlipProgram* AWebTravCharacter::FlipProgramNow(float& OutT) const
@@ -974,7 +1020,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1094,10 +1140,11 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		(Traversal->Strands[0].bActive && Traversal->Strands[0].ReleaseT < 0.f) || (Traversal->Strands[1].bActive && Traversal->Strands[1].ReleaseT < 0.f) ? 1 : 0, WallFrac, HeroOccl, bBehind ? -1.0 : 0.5 * (MinX + MaxX), PcmRot.Roll);
 	// round 12: armed apex flip, flip camera view search (yaw offset from behind, elevation below the hero, ring sky share of the
 	// chosen view), tallest roof near the last sky launch's flip and its solved peak (m over the street)
-	const FString Flip12 = FString::Printf(TEXT(",%s,%.3f,%.1f,%.1f,%.2f,%.1f,%.1f"),
+	// round 13: camera output slew-limit flags (1 position, 2 pitch, 4 yaw) and the hero fill light (cd)
+	const FString Flip12 = FString::Printf(TEXT(",%s,%.3f,%.1f,%.1f,%.2f,%.1f,%.1f,%d,%.0f"),
 		Traversal->IsFlipArmed() ? *Traversal->ArmedFlipName().ToString() : TEXT(""), Cam.FlipK,
 		FMath::RadiansToDegrees(Cam.FlipYawOff), FMath::RadiansToDegrees(Cam.FlipElev), Cam.FlipSkyShare,
-		Traversal->SkyTallUsed, Traversal->SkyPeakWant);
+		Traversal->SkyTallUsed, Traversal->SkyPeakWant, Cam.SlewFlags, HeroFill ? HeroFill->Intensity : 0.f);
 	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12);
 }
 

@@ -22,6 +22,7 @@ namespace WebFlips
 			case EWebFlipShape::Throne: return 9.0f;
 			case EWebFlipShape::Twist: return 3.5f;
 			case EWebFlipShape::Reach: return 7.0f;
+			case EWebFlipShape::Kickout: return 5.5f; // round 13: open finish, <= 150 deg/s for ~0.65 s
 			default: return 3.f;
 			}
 		}
@@ -41,18 +42,22 @@ namespace WebFlips
 			{
 				FWebFlipProgram F; F.Name = FName(Name); F.PitchDeg = Pitch; F.Segs = Segs; F.Boost = Boost; F.Up = Up; P.Add(F);
 			};
-			// sky launch / long air: double back in the owner clip's S3 rhythm (3 turns in 2.8 s, short holds): tuck to inverted, inverted
-			// pencil, tuck round, a flash of upright layout, tuck to inverted again, straddle, tuck round, upright "throne" spread, reach
-			// round 12 (critic r11 secondary: "snaps at 640 deg/s through four shapes that last 0.15-0.36 s; hold each shape >= 0.5 s,
-			// at most 2 shapes, blend >= 0.15 s"): two shapes only, tuck and layout, each held 0.5-0.55 s, then the reach
-			// (r11: tuck / pencil / tuck / layout / tuck / straddle / tuck / throne / reach, 2.35 s)
-			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 0.55f}, {S::Layout, 0.5f}, {S::Tuck, 0.55f}, {S::Layout, 0.5f}, {S::Reach, 0.2f} });
-			// front pike into a slow inverted swan that unwinds (critic r10 reference description), tuck up, reach
-			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.36f}, {S::Pencil, 0.36f}, {S::Swan, 0.72f}, {S::Tuck, 0.27f}, {S::Reach, 0.26f} });
-			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach
-			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.22f}, {S::Twist, 0.5f, 360.f}, {S::Swan, 0.6f}, {S::Tuck, 0.28f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
+			// round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): every program starts AT
+			// the web release and is 1.2-1.7 s long, so release -> next attach fits 1.4-1.8 s and attach -> attach <= 3.3 s (TRAVERSAL-SPEC T2/T4)
+			// backDouble: two shapes only (critic r11/r12 secondary): a double tuck that kicks out into an open finish (Kickout: arms sweep
+			// wide, legs scissor behind them, the web arm comes up for the catch) -- the gymnast's double back with a kick-out.
+			// Tuck 1.0 s (peak ~680 deg/s), Kickout 0.7 s (<= 150 deg/s for ~0.65 s), mean ~420 deg/s (FLIPS_SPEC F2 300-500).
+			// (r12: tuck / layout / tuck / layout / reach 2.3 s; r11: nine segments)
+			{
+				FWebFlipProgram F; F.Name = FName(TEXT("backDouble")); F.PitchDeg = -720.f; F.Segs = { {S::Tuck, 1.0f}, {S::Kickout, 0.7f} };
+				F.CatchOpen = 0.2f; P.Add(F);
+			}
+			// front pike into a slow inverted swan that unwinds (critic r10 reference description), tuck up, reach (r12 1.97 s -> 1.65 s)
+			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.30f}, {S::Pencil, 0.34f}, {S::Swan, 0.55f}, {S::Tuck, 0.24f}, {S::Reach, 0.22f} });
+			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach (1.84 -> 1.66 s)
+			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.22f}, {S::Twist, 0.48f, 360.f}, {S::Swan, 0.48f}, {S::Tuck, 0.26f}, {S::Reach, 0.22f} }, 4.0f, 1.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
-			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.31f}, {S::Pencil, 0.46f}, {S::Tuck, 0.31f}, {S::Reach, 0.24f} });
+			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.30f}, {S::Pencil, 0.40f}, {S::Tuck, 0.30f}, {S::Reach, 0.22f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing
 			Add(TEXT("wallFront"), 360.f, { {S::Tuck, 0.27f}, {S::Layout, 0.3f}, {S::Tuck, 0.27f}, {S::Throne, 0.3f} }, 0.f, 0.f);
 			return P;
@@ -123,8 +128,9 @@ namespace WebFlips
 	const TCHAR* ShapeClip(EWebFlipShape S)
 	{
 		static const TCHAR* C[] = { TEXT("flipTuck"), TEXT("flipPike"), TEXT("flipLayout"), TEXT("flipSwan"), TEXT("flipPencil"),
-			TEXT("flipStraddle"), TEXT("flipThrone"), TEXT("flipTwist"), TEXT("flipReach") };
-		return C[FMath::Clamp(int32(S), 0, 8)];
+			TEXT("flipStraddle"), TEXT("flipThrone"), TEXT("flipTwist"), TEXT("flipReach"), TEXT("flipKickout") };
+		static_assert(UE_ARRAY_COUNT(C) == int32(EWebFlipShape::Num), "one clip per shape");
+		return C[FMath::Clamp(int32(S), 0, int32(EWebFlipShape::Num) - 1)];
 	}
 	const TCHAR* ShapeName(EWebFlipShape S) { return ShapeClip(S) + 4; }
 

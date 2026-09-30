@@ -1,0 +1,44 @@
+{
+ "name": "f3_flow_corkscrew",
+ "note": "Round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): a trick pressed at a web release starts its flip program AT the release (flow flip, climb solved so the catch window opens ~2 m over the release height, inside the canyon), and the next web attaches in the program's final reach. West avenue from y 190: a flip on every 2nd release (corkscrew: layout turning over with a full twist, swan, tuck, reach).",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   -250,
+   190,
+   28
+  ],
+  "vel": [
+   0,
+   24,
+   0
+  ],
+  "yaw": 90,
+  "camPitch": 0.12
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": 90,
+   "swing": false,
+   "flip": "corkscrew"
+  },
+  {
+   "t": 0.4,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 2,
+   "skyEvery": 0,
+   "skyTricks": 1,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
+ ]
+}

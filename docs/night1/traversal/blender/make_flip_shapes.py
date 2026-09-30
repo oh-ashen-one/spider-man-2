@@ -91,6 +91,43 @@ SHAPES = {
 # breathing key: how much further out the limbs go at 1 s (blend toward a slightly more open copy)
 BREATH = 0.07
 
+# round 13 (critic r12: "Layout is a rigid, identical plank"; "backDouble uses 5 shapes"): KEYED shapes -- a list of (frame at 30 fps,
+# shape) keys instead of one held pose + breathing. Arms lead, legs follow (their changes are keyed 3-6 frames later), so no two limbs
+# switch on the same frame.
+def _lay(ua, fa, th_l, sh_l, th_r, sh_r, sp=(0.04, 0.02, 0.0)):
+    d = dict(spine=(sp[0], 1, 0), spine1=(sp[1], 1, 0), spine2=(sp[2], 1, 0), neck=(0.02, 1, 0), head=(0.05, 1, 0),
+             upperArm=ua, forearm=fa, hand="follow", foot=POINT, toe=POINT)
+    d["thigh_L"], d["shin_L"], d["thigh_R"], d["shin_R"] = th_l, sh_l, th_r, sh_r
+    return d
+
+
+KEYED = {
+    # layout: the straight line breathes with overlapping limbs -- the arms float out and forward, the legs part a little behind them
+    "flipLayout": [
+        (0, _lay((0.05, -1.0, 0.33), (0.05, -1.0, 0.22), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02))),
+        (12, _lay((0.3, -0.75, 0.55), (0.35, -0.6, 0.45), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02),
+                  sp=(0.0, -0.04, -0.06))),
+        (18, _lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.12, -1.0, 0.04), (0.05, -1.0, 0.02), (-0.08, -1.0, 0.04), (-0.14, -1.0, 0.02),
+                  sp=(-0.02, -0.06, -0.08))),
+        (30, _lay((0.1, -0.9, 0.45), (0.12, -0.85, 0.35), (0.06, -1.0, 0.05), (0.02, -1.0, 0.03), (-0.02, -1.0, 0.05), (-0.05, -1.0, 0.03),
+                  sp=(0.02, 0.0, -0.03))),
+    ],
+    # kick-out (the double's open finish, then the catch): out of the tuck the arms swing up and forward, sweep wide and back while the
+    # body arches and the legs, still piked, straighten and scissor behind them; the web arm (right) comes up for the catch at the end
+    "flipKickout": [
+        (0, _lay((0.45, 0.9, 0.3), (0.4, 1.0, 0.25), (0.35, -0.95, 0.05), (0.15, -1.0, 0.03), (0.35, -0.95, 0.05), (0.15, -1.0, 0.03),
+                 sp=(0.15, 0.12, 0.08))),
+        (8, _lay((0.15, 0.55, 1.0), (0.1, 0.6, 1.0), (0.25, -1.0, 0.05), (0.1, -1.0, 0.03), (0.25, -1.0, 0.05), (0.1, -1.0, 0.03),
+                 sp=(0.0, -0.05, -0.08))),
+        (16, _lay((-0.2, 0.15, 1.0), (-0.2, 0.25, 1.0), (0.05, -1.0, 0.05), (-0.02, -1.0, 0.03), (0.0, -1.0, 0.05), (-0.08, -1.0, 0.03),
+                  sp=(-0.14, -0.22, -0.26))),
+        (22, _lay((-0.05, 0.3, 1.0), (0.0, 0.4, 1.0), (0.22, -1.0, 0.06), (0.08, -1.0, 0.03), (-0.2, -1.0, 0.06), (-0.34, -1.0, 0.03),
+                  sp=(-0.1, -0.16, -0.18))),
+        (30, dict(_lay(None, None, (0.45, -0.9, 0.08), (-0.2, -1.0, 0.05), (0.25, -1.0, 0.07), (-0.3, -1.0, 0.04), sp=(0.05, 0.02, 0.0)),
+                  upperArm_R=(0.45, 1.0, 0.25), forearm_R=(0.45, 1.0, 0.18), upperArm_L=(0.25, 0.1, 1.0), forearm_L=(0.35, 0.2, 1.0))),
+    ],
+}
+
 
 def reset_pose():
     for pb in arm.pose.bones:
@@ -155,7 +192,23 @@ def key_all(frame):
 report = {}
 keep = {"airApex"}
 arm.animation_data_create()
+def _clean(shape):
+    return {k: v for k, v in shape.items() if v is not None}
+
+
+for name, keys in KEYED.items():
+    act = bpy.data.actions.new(name)
+    act.use_fake_user = True
+    arm.animation_data.action = act
+    for fr, shape in keys:
+        apply_shape(_clean(shape))
+        key_all(fr)
+    keep.add(name)
+    print("FLIPSHAPE", name, "keyed", [fr for fr, _ in keys])
+
 for name, shape in SHAPES.items():
+    if name in KEYED:
+        continue
     act = bpy.data.actions.new(name)
     act.use_fake_user = True
     arm.animation_data.action = act

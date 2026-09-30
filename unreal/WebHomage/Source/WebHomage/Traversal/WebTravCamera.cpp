@@ -34,6 +34,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 	LagOff = LagOffV = JumpOff = JumpOffV = FVector::ZeroVector;
 	bHasLastGoal = false; AnchorLean = 0.0; AnchorLeanV = 0.0;
 	bChaseInit = false; UserPitch = 0.0; OccYawGoal = OccUpGoal = 0.0;
+	bOutInit = false; // round 13: a teleport / reset is allowed to move the view at once
 }
 
 void FWebTravCamera::ApplyLook(const FVector2D& Look)
@@ -172,6 +173,29 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	CamRot = R;
 	OutVFov = Fov + Punch + 9.0 * FMath::Max(0.0, KickK) + FMath::RadiansToDegrees(AttachFov);
 	(void)LookAt;
+	// ---- round 13: output slew limit (see the header): never a cut
+	SlewFlags = 0;
+	if (bOutInit && Dt > 0.0)
+	{
+		const double K = Dt * 60.0;
+		const FVector D = CamPos - LastOutPos;
+		const double Lm = MaxStepPosM * K;
+		if (D.Size() > Lm)
+		{
+			const FVector NewPos = LastOutPos + D.GetSafeNormal() * Lm;
+			const FRotator A0 = (P.Pos - CamPos).Rotation(), A1 = (P.Pos - NewPos).Rotation();
+			CamRot.Yaw += FRotator::NormalizeAxis(A1.Yaw - A0.Yaw);
+			CamRot.Pitch += A1.Pitch - A0.Pitch;
+			CamPos = NewPos;
+			SlewFlags |= 1;
+		}
+		const double SlP = CamRot.Pitch - LastOutRot.Pitch, SlY = FRotator::NormalizeAxis(CamRot.Yaw - LastOutRot.Yaw);
+		const double MP = MaxStepPitchDeg * K, MY = MaxStepYawDeg * K;
+		if (FMath::Abs(SlP) > MP) { CamRot.Pitch = LastOutRot.Pitch + FMath::Sign(SlP) * MP; SlewFlags |= 2; }
+		if (FMath::Abs(SlY) > MY) { CamRot.Yaw = LastOutRot.Yaw + FMath::Sign(SlY) * MY; SlewFlags |= 4; }
+		if (SlewFlags) { HeroDist = FVector::Dist(CamPos, P.Pos); bCamInGeometry = World.SphereOverlaps(CamPos, 0.15); }
+	}
+	LastOutPos = CamPos; LastOutRot = CamRot; bOutInit = true;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
 	const bool bGroundish = M == EWebTravMode::Ground || M == EWebTravMode::Land || M == EWebTravMode::Wall;
 	// round 08: blur only at genuinely high speed (0 below 28 m/s, full at 50), none on foot / walls
@@ -347,13 +371,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(OccUp, OccUpV, OccUpGoal, 0.3, Dt);
 	FVector Got;
 	ClearTo(Cam, Got);
-	// (round 12: the flip spot sits FlipDist 2.9 m out by design — the 3 m cut fired every frame and snapped to the chase orbit)
-	if (FVector::Dist(Got, Hero) < FMath::Lerp(3.0, FlipDist - 0.6, FlipKs))
-	{ // too close even after easing: cut to the chosen clear orbit instead of passing through the hero
-		OccYawOff = OccYawGoal; OccUp = OccUpGoal; OccYawOffV = OccUpV = 0;
-		ClearTo(Candidate(OccYawGoal, OccUpGoal), Got);
-		CamXY = FVector(Got.X, Got.Y, 0); CamXYV = FVector::ZeroVector; CamZ = Got.Z; CamZV = 0;
-	}
+	// (round 12: the flip spot sits FlipDist out by design — the 3 m cut fired every frame and snapped to the chase orbit)
+	// round 13 (critic r12: this "too close: cut to the clear orbit" rule re-armed while the flip camera blended out -> one-frame 43 deg /
+	// 60 deg / 3.1 m cuts at f1 6.30 s and f4 8.58 s, then oscillated for 15 frames): no cut. The orbit search above already springs the
+	// camera to a clear spot (OccYawOff / OccUp, 0.3 s); until it gets there the swept position is used, and MinHeroDist below keeps it
+	// off the hero. The output slew limit (Update) bounds every frame.
 	Cam = Got;
 	// never closer than MinHeroDist: if the geometry forces it, rise straight up over the hero instead
 	if (FVector::Dist(Cam, Hero) < MinHeroDist)
@@ -463,10 +485,12 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// round 07: gentler, capped turn toward an off-screen anchor (the 0.035 s spring whipped the view ~45 deg in 0.1 s)
 	YawWant = FMath::Clamp(YawWant, -FMath::DegreesToRadians(25.0), FMath::DegreesToRadians(25.0));
 	if (bFirst) { AttachYaw = YawWant; AttachLook = LookWant; AttachFov = FovWant; AttachYawV = AttachLookV = AttachFovV = 0.0; }
-	SD(AttachYaw, AttachYawV, YawWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
+	// round 13: a web caught out of a flip (flip camera still blending out) turns the view more gently (per-frame yaw budget)
+	const double AttachSt = P.SwingT < 0.5 ? (FlipK > 0.05 ? 0.25 : 0.12) : 0.3;
+	SD(AttachYaw, AttachYawV, YawWant, AttachSt, Dt);
 	// round 10 (critic r09: camera pop at b 0.000-0.017 s, a web attached on the first frame): 0.035 s -> 0.12 s springs
-	SD(AttachLook, AttachLookV, LookWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
-	SD(AttachFov, AttachFovV, FovWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
+	SD(AttachLook, AttachLookV, LookWant, AttachSt, Dt);
+	SD(AttachFov, AttachFovV, FovWant, AttachSt, Dt);
 	PitchDown -= AttachLook;
 	Pitch = PitchDown; // keep the orbit state coherent for Forward()
 	// (round 09: the hero stays centred horizontally — TRAVERSAL-SPEC T9; the off-axis look comes from the sideways slide)
@@ -486,11 +510,14 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 	static const double RingDeg[][2] = { {0, 11}, {0, -11}, {8, 0}, {-8, 0}, {8, 11}, {-8, 11}, {8, -11}, {-8, -11},
 		{8, 5}, {-8, 5}, {8, -5}, {-8, -5}, {4, 11}, {-4, 11}, {4, -11}, {-4, -11} };
 	const double GoalY = FMath::RadiansToDegrees(FlipYawGoal), GoalE = FMath::RadiansToDegrees(FlipElevGoal);
+	const double CurY = FMath::RadiansToDegrees(FlipYawOff);
 	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0;
 	for (double YD : YawsDeg)
 	{
 		const double Yr = FMath::DegreesToRadians(YD);
 		const FVector BF(Back.X * FMath::Cos(Yr) - Back.Y * FMath::Sin(Yr), Back.X * FMath::Sin(Yr) + Back.Y * FMath::Cos(Yr), 0);
+		// round 13: after the first search the goal moves at most FlipSearchYawStep deg per search (per-frame yaw budget)
+		if (!bFirst && FMath::Abs(YD - GoalY) > FlipSearchYawStep + 1e-3) continue;
 		for (double EDOff : ElevsDeg)
 		{
 			const double ED = FlipMinElev + EDOff;
@@ -516,6 +543,8 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 			const double Sky = double(Free) / double(FMath::Max(1, N));
 			double Cost = (1.0 - Sky) * 10.0 + 0.8 * FMath::Abs(FMath::Abs(YD) - FlipPrefYaw) / 90.0 + 0.9 * (ED - FlipMinElev) / 30.0;
 			if (!bFirst) Cost += 0.5 * (FMath::Abs(YD - GoalY) / 60.0 + FMath::Abs(ED - GoalE) / 30.0);
+			// round 13: the flip now starts at the release, from the chase camera: prefer the side the camera is already on
+			else Cost += 0.6 * FMath::Abs(YD - CurY) / 60.0;
 			if (Cost < BestCost) { BestCost = Cost; BY = Yr; BE = Er; BSky = Sky; }
 		}
 	}
