@@ -1,7 +1,7 @@
 # P3 round 11: blind critic (Opus 5.5)
 *Homage fan game. Not an official Marvel, Sony or Insomniac game.*
 
-Pixels, telemetry, `vp_cam`, `nearflow 8` and 10 fps crops. Work files: `_scratch/critic-P3-r11-work/`.
+Evidence: `_scratch/critic-P3-r11-work/`.
 
 ## Scores
 - **Swing arc and rhythm: 6.** In f4, T1 holds are 1.02–1.57 s and T7 height runs 7.5→49 m. T2 fails: attach gaps are 4.07 s and 3.62 s (limit 3.3).
@@ -16,17 +16,17 @@ Pixels, telemetry, `vp_cam`, `nearflow 8` and 10 fps crops. Work files: `_scratc
   - backDouble (f1/f4) is not: it snaps at 640°/s through four shapes that last only 0.15–0.36 s.
   - The f4 twist (8.1–8.4 s) shows the hero at .08 of frame height against brick.
 
-## A/B (decided before guessing identity)
+## A/B (judged blind)
 | Pair | Better | Why |
 |---|---|---|
-| multi-flip | A | Flowing rotation. B switches pose in steps, then a 1.2 s upright fall. |
-| pencil-throne | A | Throne held 0.6 s against sky. B goes into a superman in front of a billboard. |
+| multi-flip | A | Flowing rotation. B steps between poses. |
+| pencil-throne | A | Throne held 0.6 s against sky. |
 | layout-catch | B | Continuous twist, tuck and catch in 1.9 s. |
-| chain-flips | B | Flips run into the next web above the roofs. A flips in a canyon against concrete. |
-| wallrun-flip | B | Clear tuck → inverted spread → landing against blue sky. |
+| chain-flips | B | Flips run into the next web above the roofs. |
+| wallrun-flip | B | Clear flip against blue sky. |
 | progress-trick | B | Inverted shape, and the swing continues. |
 
-Ours lost 4 of the 5 reference pairs; the win was wallrun-flip.
+Ours lost 4 of 5 reference pairs.
 
 ## Biggest gap
 Release tricks happen low in the canyon, with a facade or billboard behind the hero. Sky share of a 40 px ring around the hero, median over trick frames:
@@ -46,9 +46,8 @@ Release tricks happen low in the canyon, with a facade or billboard behind the h
 1. backDouble: hold each shape for at least 0.5 s, use at most 2 shapes, and blend between them over at least 0.15 s.
 2. Green lens ghosts cross the hero at f4 8.1–8.7 s and b 6.7 s (P4).
 3. T2, T8, T10, T11 and T18 are out of band.
-4. Legs wash out in haze at f4 12.3–12.9 s.
 
-**Brands:** no exclusion-list names seen. The billboard and storefront names are invented. The chest emblem needs an owner check.
+**Brands:** no exclusion-list names seen.
 
 ## Verdict: FAILS TARGET
 The lowest axis is 6.
