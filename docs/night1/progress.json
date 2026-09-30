@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 21:48",
+ "updated": "2026-09-29 21:50",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "Fable 5.1 (director) found that every perf number so far rendered the scene three times (two per-frame scene captures from the telemetry mode), that the frame is GPU-bound rather than CPU-bound, and that 60 fps at 4K output is honest at TSR 50% (1080p internal) but not at 67%. The perf piece is executing its ranked plan (\u221212\u2026\u221225 ms).",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -134,10 +134,10 @@
    "id": "W",
    "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
    "branch": "night1/water-ab-*",
-   "state": "critic",
-   "round": 1,
-   "verdict": "",
-   "gap": "Both builds done (Sonnet +1.9 ms, Opus: see report); blind critic comparing"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "A/B: Opus 3.8 vs Sonnet 3.4 (blind) \u2014 Opus merged; FAILS vs reference",
+   "gap": "Fine ripples + sun glints, darker water (C14), take Sonnet's piling foam, remove ring artifact"
   }
  ],
  "comparisons": [
@@ -582,6 +582,14 @@
    "verdict": "fails",
    "gap": "Hit-stop 3\u20135 frames + flinch on every contact; enemies attack at least every 1 s with 0.4 s tells, \u22655 on screen; mid-high combat camera with 5% margins.",
    "notes": "Full C++ port of the browser combat (director, tokens, dodge slow-mo, finishers, 14 enemy states); 40/40 scripted beats fire. Critic measured 0% frozen frames and no finisher on screen although both are implemented \u2014 likely a capture/time-dilation mismatch; round 2 must prove it in pixels."
+  },
+  {
+   "t": "21:50",
+   "piece": "W River water (blind A/B)",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Winner (Opus): add fine ripples with a sharp sun highlight and darken the water (detail \u226512, glints \u22651%, mean \u226480 in the near-water crop; C14 at S4).",
+   "notes": "First same-gap model comparison. Opus 5.5 high 3.8 vs Sonnet 5.5 xhigh 3.4: Opus better colour/reflections; Sonnet better foam and the perch-view luma. Merged the Opus build."
   }
  ],
  "perf": [
@@ -823,6 +831,10 @@
   {
    "t": "21:48",
    "text": "Fable perf strategy delivered (docs/night1/director/PERF-STRATEGY.md). Perf piece F started on it (Opus high). Water A/B builds done; blind Opus critic comparing."
+  },
+  {
+   "t": "21:50",
+   "text": "Water A/B unblinded: Opus 5.5 high beat Sonnet 5.5 xhigh by 0.4 (3.8 vs 3.4); Opus build merged; recorded in the model ledger."
   }
  ]
 }
