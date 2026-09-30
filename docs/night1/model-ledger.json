@@ -632,5 +632,14 @@
    "merged": "night1/water-ab-opus",
    "note": "Both FAIL vs reference. Next water round: Opus build + Sonnet's piling foam."
   }
+ ],
+ "director": [
+  {
+   "when": "2026-09-30",
+   "model": "Fable 5.1",
+   "effort": "high",
+   "why": "Traversal camera axis stuck at 5 for rounds 12-15 (oscillating critic demands)",
+   "output": "docs/night1/traversal/TRICK_CAMERA_SPEC.md (TC1-TC12); reassigned r16 builder to Sonnet 5.5 (mostly deletions)"
+  }
  ]
 }
