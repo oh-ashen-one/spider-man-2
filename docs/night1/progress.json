@@ -1,5 +1,5 @@
 {
- "updated": "15:06",
+ "updated": "15:46",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 14,
+   "round": 15,
    "verdict": "fails \u2014 lowest 5 (Opus 5.5)",
-   "gap": "Trick camera nearly level (<= 8 deg up) with the sun behind it; sky behind the hero by flipping above the roofline, not by tilting up."
+   "gap": "Trick camera orbits freely: pick one side-on yaw at release (clear of trees, >=100 deg from the sun), hold it +-30 deg, frame the hero at .15-.38 height and x .44-.56."
   },
   {
    "id": "P4",
@@ -742,6 +742,14 @@
    "verdict": "approaches",
    "gap": "Merge ~42k tree RT instances into <=1k proxies per tile to remove the CPU/GPU gap; in-game p95 <= 17.9 ms in 3 runs; S1 crop SSIM >= 0.97; re-measure with traffic + crowd.",
    "notes": "3840x2160 output, 1920x1080 internal: p50 62.1\u201362.4 fps, CSV p95 55.4\u201355.5 fps (in-game counter 54.7\u201354.9), 0 hitches, worst second 57 fps. Look restored: clouds 20 km, canopy +6%, saturation back; shadow-page invalidation fixed (ShadowDepths p95 2.44 ms). Honest round: same crop, failing SSIM 0.955 disclosed. Merged (r3+r4)."
+  },
+  {
+   "t": "15:46",
+   "piece": "P3 Traversal",
+   "round": 15,
+   "verdict": "fails",
+   "gap": "Trick camera orbits freely: pick one side-on yaw at release (clear of trees, >=100 deg from the sun), hold it +-30 deg, frame the hero at .15-.38 height and x .44-.56.",
+   "notes": "Camera level and sun-aware (pitch max 1.9 deg down, was 21 deg up; sun >= 109 deg away); hero glare 93% \u2192 26%; wall camera 56 \u2192 30 deg; trees in the f3 camera 43 \u2192 8 frames. Camera axis has scored 5 for four rounds (12\u201315): each fix breaks another demand \u2192 Fable 5.1 director pass for one reconciled camera spec."
   }
  ],
  "perf": [
