@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 20:10",
+ "updated": "2026-09-29 20:56",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -80,10 +80,10 @@
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": "Sonnet 5.5 xhigh: traffic + crowd (water via A/B)"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (traffic 4, motion 3, peds 2, ped motion 4, believability 3)",
+   "gap": "Pedestrians 4/frame (need \u226516), avenue traffic, lit signals + queues"
   },
   {
    "id": "A",
@@ -330,6 +330,11 @@
  ],
  "clips": [
   {
+   "title": "City life R1 \u2014 street clip",
+   "src": "docs/night1/life/round-01/street_clip_1080p60.mp4",
+   "caption": "traffic + pedestrians (sparse); IP-clean liveries"
+  },
+  {
    "title": "Integrated Manhattan \u2014 30 s route",
    "src": "docs/night1/manhattan/round-01/route_30s.mp4",
    "caption": "city + golden-hour look + hero + street people"
@@ -556,6 +561,14 @@
    "verdict": "fails",
    "gap": "CH18 seam cracks to 0; a 5\u20137 enemy fight capture with no craning heads and cloth masks; suit weave/web-line relief/lens quality.",
    "notes": "Opus builder: lean ~30\u00b0 (was 9\u201313\u00b0), step rate 3.53 Hz, 7 armed thugs, 10\u201311 civilians per frame; beat round 3 in both version pairs. Critic flags the classic suit as copying a studio design (3rd time) \u2014 owner decision; round 5 improves quality only."
+  },
+  {
+   "t": "20:56",
+   "piece": "P6 City life",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Detector median \u226516 pedestrians; \u226514 moving vehicles at swing height; lit signals with stop-and-go queues.",
+   "notes": "650\u2013700 moving + 1,197 parked vehicles and 1,458 simulated walkers, but few read on screen (detector 4\u20136 people/frame vs builder probe 15). Round 1 beat the empty street by 7 people and 7 vehicles. IP-clean."
   }
  ],
  "perf": [
@@ -784,6 +797,10 @@
   {
    "t": "20:10",
    "text": "Characters R4 (Opus) merged: avg 3.8, best yet; round 5 on Sonnet (ledger alternation)."
+  },
+  {
+   "t": "20:56",
+   "text": "City life R1 merged + critic FAILS (peds 2); round 2 on Sonnet with the spec detector as the measure. GPU tuner ceiling set to 5 from measurements."
   }
  ]
 }
