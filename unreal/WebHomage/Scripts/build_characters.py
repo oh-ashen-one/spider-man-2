@@ -77,6 +77,7 @@ if 'prep' in STEPS:
     # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
     subprocess.run(['python3', WT + '/tools/ue_char/eval/refit.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     subprocess.run(['python3', WT + '/tools/ue_char/eval/weights_r6.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/eval/shards_r8.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)   # round 08: detached shoe shards
     # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
     subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True, env=_ENV)
     # street thug + brute: raw Tripo people (~/sm2-assets/raw) dressed, fitted to the hero skeleton (cached), textures + stripped GLBs
@@ -343,7 +344,7 @@ if 'mat' in STEPS:
        scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (0.50, 0.62, 0.68, 1)}, switches={'HasORM': True})
     try:   # round 04: glossy lens with a grazing-angle falloff; the old simple lens stays as the fallback
         hlens = build_hero_lens()
-        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.7, 'Emissive': 0.14}, vec={'Color': (0.80, 0.30, 0.03, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.50, 0.13, 0.01, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
         log('hero lens: glossy + fresnel falloff')
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])

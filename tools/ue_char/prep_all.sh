@@ -17,5 +17,6 @@ python3 tools/ue_char/eval/underlayer.py $CITIZENS > /dev/null
 # round 06 (CH18): refit the citizens from the raw Tripo meshes (welded skin weights), 4 in parallel; the pose fits are cached in $P2_SCRATCH/eval/refit
 i=0; for n in $CITIZENS; do echo $n; done | xargs -P 4 -n 1 python3 tools/ue_char/eval/refit.py > /dev/null
 python3 tools/ue_char/eval/weights_r6.py $CITIZENS > /dev/null
+python3 tools/ue_char/eval/shards_r8.py $CITIZENS > /dev/null      # round 08: drop the tiny triangles that float as detached polygons (shoe shards)
 bash tools/ue_char/eval/export_citizens.sh $CITIZENS
 echo "prep_all ok"

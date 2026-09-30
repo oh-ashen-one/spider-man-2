@@ -28,6 +28,7 @@ INK = srgb('#050d11')
 AMBER = srgb('#e0780c')
 AMBER_D = srgb('#ad5c08')
 BONE = srgb('#e6dfc9')
+STITCH = srgb('#9cc0c6')
 SOLE = srgb('#0d1012')
 
 
@@ -44,6 +45,13 @@ def cover(d, aa):
 
 def band(dist, half, aa):
     return cover(np.abs(dist) - half, aa)
+
+
+def stitch(d, along, aa, off=0.0030, period=0.0048, hw=0.00038, duty=0.58):
+    """Two rows of dashed top-stitching at +-off (metres) from a seam line.  d = signed distance to the line, along = coordinate along it (metres)."""
+    ph = np.abs((along / period) % 1.0 - 0.5) * 2.0                                # 0 at the dash centre, 1 at the gap centre
+    on = 1.0 - ss(ph, duty - 0.12, duty + 0.04)
+    return band(np.abs(d) - off, hw, aa) * on
 
 
 def mix(a, b, t):
@@ -222,11 +230,12 @@ def paint(P, N, G, mpt, gi, jp):
     plate_m = np.zeros(x.shape, np.float32)
     def sleeve(A, B, s0, s1, zone):
         nonlocal plate_m
-        s_, _ = seg_coords(P, J(A), J(B))
+        s_, th_ = seg_coords(P, J(A), J(B))
         inside = cover(np.abs(s_ - 0.5 * (s0 + s1)) - 0.5 * (s1 - s0), aa)
         C.lay(inside * zone, DEEP, h=0.35, rough=0.60, ao=0.85)
         for sb in (s0 - 0.0035, s1 + 0.0035):
             C.lay(band(s_ - sb, 0.0017, aa) * zone, AMBER, h=0.55, rough=0.45)
+            C.lay(stitch(s_ - sb, th_ * 0.055, aa, off=0.0042) * zone, STITCH, h=0.12, rough=0.7)
         plate_m = np.maximum(plate_m, inside * zone)
     for side_, nm in ((1.0, 'L'), (-1.0, 'R')):
         sidew = (sgn == side_).astype(np.float32)
@@ -313,6 +322,13 @@ def paint(P, N, G, mpt, gi, jp):
     C.lay(body_w * tors_w * band(y - 1.0305, pip, aa), AMBER, h=0.45, rough=0.45)
     C.lay(body_w * np.clip(tors_w + thigh, 0, 1) * band(cut_d, pip * 1.3, aa) * ss(1.03 - y, -0.002, 0.004), AMBER, h=0.45, rough=0.45)
     C.lay(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12), AMBER_D, h=0.35, rough=0.5)
+    # top-stitching beside the piping (dashed, light teal): belt, hip-wrap cut, sash edges, side wedge
+    STa = 0.85
+    C.lay(body_w * tors_w * np.maximum(stitch(y - 1.0795, x, aa), stitch(y - 1.0305, x, aa)) * STa, STITCH, h=0.12, rough=0.7)
+    C.lay(body_w * np.clip(tors_w + thigh, 0, 1) * stitch(cut_d, (x + 0.62 * y) / 1.176, aa, off=0.0034) * ss(1.03 - y, -0.002, 0.004) * STa, STITCH, h=0.12, rough=0.7)
+    t_s = np.array([0.925, -0.379, 0.0], np.float32)
+    C.lay(zone_s * np.maximum(stitch(d_s - 0.035, P @ t_s, aa, off=0.0030) * (d_s > 0.0), stitch(d_s + 0.035, P @ t_s, aa, off=0.0030) * (d_s < 0.0)) * STa, STITCH, h=0.12, rough=0.7)
+    C.lay(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * STa, STITCH, h=0.12, rough=0.7)
 
     # ------------------------------------------------------------------ mask / hood
     yb = 1.662 + 0.46 * z
