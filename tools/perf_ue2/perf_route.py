@@ -9,7 +9,7 @@ MUST run inside the exclusive GPU lock (RULES.md / docs/night1/gpu/PROTOCOL.md):
   /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh perf --label perf --json <out>/perf_gpu.json -- \
       python3 tools/perf_ue2/perf_route.py --out <out> --configs base@67,tsr50@50,...
 
-Config spec (comma separated list):  name@SP[+set:<override file stem>][+cvar=value]...
+Config spec (comma separated list):  name@SP[+set:<override file stem>][+cvar=value][+flag:-GameFlag][+map:/Game/Path/Map][+variant:Cl15][+view:S2]...
   SP = r.ScreenPercentage (TSR on in every config). 'set:perf60' reads tools/perf_ue2/overrides/perf60.cvars.
   All cvars are applied at startup with -dpcvars (device-profile priority: above scalability / project settings, before
   the first frame), and runtime-safe ones are also re-applied with -ExecCmds. Example: nmpe2@67+r.Nanite.MaxPixelsPerEdge=2
@@ -44,7 +44,8 @@ def parse_cfg(spec):
     cv = []
     for p in parts[1:]:
         if p.startswith('set:'): cv += read_set(p[4:])
-        elif p.startswith('flag:'): cv.append((p, '1'))  # game command-line flag, e.g. flag:-WHTravMask (kept out of the cvar lists in main)
+        elif p.startswith('variant:'): cv.append((p, '1'))  # local map variant /Game/PerfF/<tag>/ (make_variants.py): the run's map (--map) is taken from that folder
+        elif p.startswith('flag:') or p.startswith('map:') or p.startswith('view:'): cv.append((p, '1'))  # game command-line flag (flag:-WHTravMask) / map override (map:/Game/PerfF/Cl15/Manhattan); both kept out of the cvar lists in main
         else:
             k, v = p.split('=', 1); cv.append((k, v))
     d = {}
@@ -92,24 +93,29 @@ def main():
     summary, t_start, last = [], time.time(), 0.0
     for spec in a.configs.split(','):
         name, sp, cv = parse_cfg(spec)
-        flags = [k[5:] for k, v in cv if k.startswith('flag:')]; cv = [(k, v) for k, v in cv if not k.startswith('flag:')]
+        flags = [k[5:] for k, v in cv if k.startswith('flag:')]; maps = [k[4:] for k, v in cv if k.startswith('map:')]
+        var = [k[8:] for k, v in cv if k.startswith('variant:')]; views = [k[5:] for k, v in cv if k.startswith('view:')]
+        cv = [(k, v) for k, v in cv if not k.startswith(('flag:', 'map:', 'variant:', 'view:'))]
+        base_map, cfg_script = a.map, a.script
+        if views: base_map, cfg_script = '/Game/Maps/Manhattan_View_' + views[-1], 'none'   # static view config (P3): no route script
+        cfg_map = maps[-1] if maps else ('/Game/PerfF/%s/%s' % (var[-1], os.path.basename(base_map)) if var else base_map)
         if last and time.time() - t_start + last * 1.1 > a.budget_s:
             print('SKIP (lock budget)', name, flush=True); summary.append({'config': name, 'skipped': 'lock budget'}); continue
         d = os.path.join(out, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
         started = time.time()
         execs = ['r.ScreenPercentage %s' % sp] + ['%s %s' % (k, v) for k, v in cv]
         # no -WHTravMask: the hero-mask / scene-depth telemetry captures stay off (they re-render the scene every frame)
-        extra = (['-WHTravScript=' + a.script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if a.script not in ('', 'none') else []) \
+        extra = (['-WHTravScript=' + cfg_script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if cfg_script not in ('', 'none') else []) \
             + ['-csvGpuStats', '-benchmark', '-fps=60']
         extra += flags
         if cv: extra.append('-dpcvars=' + ','.join('%s=%s' % (k, v) for k, v in cv))
         if a.trace: extra += ['-trace=' + a.trace, '-tracefile=' + os.path.join(d, 'trace.utrace')]
-        cmd = [RUN_GAME, d, '-map', a.map, '-res', a.res, '-perf', a.window, '-name', name, '-timeout', str(a.timeout),
+        cmd = [RUN_GAME, d, '-map', cfg_map, '-res', a.res, '-perf', a.window, '-name', name, '-timeout', str(a.timeout),
                '-exec', ','.join(execs), '--'] + extra
         r = subprocess.run(cmd, capture_output=True, text=True)
         open(os.path.join(d, 'run.txt'), 'w').write(' '.join(cmd) + '\n\n' + r.stdout + '\n' + r.stderr)
-        rec = {'config': name, 'spec': spec, 'screen_percentage': sp, 'cvars': dict(cv), 'flags': flags, 'map': a.map, 'res': a.res, 'window_s': a.window,
-               'script': os.path.relpath(a.script, WT), 'wall_s': round(time.time() - started, 1),
+        rec = {'config': name, 'spec': spec, 'screen_percentage': sp, 'cvars': dict(cv), 'flags': flags, 'map': cfg_map, 'res': a.res, 'window_s': a.window,
+               'script': os.path.relpath(cfg_script, WT) if cfg_script not in ('', 'none') else 'none', 'wall_s': round(time.time() - started, 1),
                'command': ' '.join(x.replace(WT, '<wt>') for x in cmd)}
         pj = os.path.join(d, name + '_perf.json')
         if os.path.exists(pj): rec['wh_perf'] = json.load(open(pj))
