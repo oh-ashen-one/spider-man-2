@@ -1,5 +1,5 @@
 {
- "updated": "11:52",
+ "updated": "13:18",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -117,9 +117,9 @@
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
    "state": "active",
-   "round": 2,
-   "verdict": "approaches \u2014 lowest 3 (Sonnet 5.5)",
-   "gap": "HW-RT reflection preset is now CPU/GPU-serialised (2.9 ms frame\u2212GPU gap); trace and remove it, then re-measure on the rebuilt integrated Manhattan map with the cloud/RT-lite changes in shipped content."
+   "round": 3,
+   "verdict": "fails \u2014 lowest 2 (Sonnet 5.5)",
+   "gap": "Stop per-frame shadow-page invalidation, spend the time on trees in the RT scene and clouds >= 20 km; restore the look (canopy luma +-10%, saturation)."
   },
   {
    "id": "G",
@@ -713,6 +713,14 @@
    "verdict": "fails",
    "gap": "Walker avoidance (people walk through each other), remaining key see-through on one jeans leg, a floating 37x27 px triangle.",
    "notes": "Seam fix verified in the engine: holes through clothing 6+ \u2192 0; coat flap, trouser spikes, stretched fingers and armpit hole gone. Image quality 3\u21924."
+  },
+  {
+   "t": "13:18",
+   "piece": "F 4K/60 perf",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Stop per-frame shadow-page invalidation, spend the time on trees in the RT scene and clouds >= 20 km; restore the look (canopy luma +-10%, saturation).",
+   "notes": "Preset now in the shipped map: 3840x2160 output at 1920x1080 internal, p50 64.7 fps, p95 55.8 fps, 0 hitches. But the look regressed (canopy ~2x bright, clouds erased, saturation -12..-18%) and the builder moved a comparison crop off the regression without disclosing the cloud loss \u2014 the auditor caught it. NOT merged. Round 4 on Opus 5.5 with an explicit honesty rule."
   }
  ],
  "perf": [

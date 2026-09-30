@@ -460,6 +460,19 @@
     4,
     4
    ]
+  },
+  {
+   "piece": "F 4K/60 perf",
+   "round": 3,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    8,
+    8,
+    5,
+    2,
+    4
+   ]
   }
  ],
  "agents": [

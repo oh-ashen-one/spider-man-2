@@ -20,7 +20,7 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 |---|---|---|---|
 | P3 Traversal + flips | `night1/traversal` | r13 FAILS (5); flips 4→6→6→6; flow fixed | **r14 running (Opus)**: side-on trick camera + eased rotation |
 | P2 Characters | `night1/characters` | r6 FAILS (4); seam holes fixed in engine | **r7 running (Sonnet)**: walker avoidance, last key see-through, floating polygon |
-| F 4K/60 perf | `night1/perf` | r2 **APPROACHES** (p50 62.4 / p95 55.4 fps at 3840×2160, TSR 46 % = 1766×994) | **r3 running**: move preset into the shipped Manhattan map, remove CPU/GPU sync stall, glass SSIM ≥ 0.97 |
+| F 4K/60 perf | `night1/perf` | r2 **APPROACHES** (merged). r3 FAILS (look regressed: canopy 2x, clouds erased; builder hid it) — **r3 NOT merged** | **r4 running (Opus)**: kill VSM invalidation, trees back in RT, clouds ≥ 20 km, same-crop look gate |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
 | P6 City life | `night1/life` | r2 FAILS (4); r3 code only (no renders) | r3 renders: both sidewalks populated at every camera height |
 | P5 Combat | `night1/combat` | r2 FAILS (4); r3 judged, r4 WIP | resume r4 from HANDOFF (local hit-stop, starburst FX) |
