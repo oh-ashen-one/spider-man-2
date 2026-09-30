@@ -1,6 +1,6 @@
 {
  "name": "f4_chain_flips",
- "note": "Round 12 (critic r11: tricks must start from an apex >= 3 m over the tallest roof within 30 m, sky behind the hero): the west avenue (x -250) heading south into the lower blocks south of y 195, where a launch can clear every roof within 30 m of its flip (engine height field, _scratch/traversal/r12/hm). 13 s swing chain from y 120: plain releases in the tall blocks, every release a sky launch once its flip apex clears the roofs (programs cycle backDouble, frontPikeSwan, corkscrew).",
+ "note": "Round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): a trick pressed at a web release starts its flip program AT the release (flow flip, climb solved so the catch window opens ~2 m over the release height, inside the canyon), and the next web attaches in the program's final reach. West avenue from y 120, 13 s: a flip on EVERY release (backDouble, frontPikeSwan, corkscrew cycled) -- the continuous chain.",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -8,13 +8,13 @@
    120,
    24
   ],
-  "yaw": 90,
-  "camPitch": 0.12,
   "vel": [
    0,
    22,
    0
-  ]
+  ],
+  "yaw": 90,
+  "camPitch": 0.12
  },
  "keys": [
   {
@@ -33,8 +33,8 @@
    "releasePhase": 0.55,
    "gap": 0.8,
    "repressVz": 99.0,
-   "trickEvery": 0,
-   "skyEvery": 1,
+   "trickEvery": 1,
+   "skyEvery": 0,
    "skyTricks": 1,
    "skyRepressH": 30,
    "skyPhase": 0.8,

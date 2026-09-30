@@ -13,26 +13,26 @@ SEQ = [
      "(autoChain rule: release on the rising front, re-press after 0.8 s; a sky launch = jump-release + trick where the lower street "
      "wall ahead is within reach, at most every 2nd release)."),
     ("b_release_trick_dive_zip", "Release + trick + dive + zip to a rooftop",
-     "Airborne start 30 m over the avenue (26 m/s north), one swing, jump-release with a trick (sky launch), second trick at the top, "
-     "dive, web-zip to a roof point, perch."),
+     "Airborne start 30 m over the avenue (26 m/s north), one swing, release with a trick (frontPikeSwan) at 1.4 s, web-zip pressed as soon as the zip target reappears "
+     "after the program (3.08 s, 0.27 s after its Reach; round 13: no web-less dive), zip to a roof point, perch."),
     ("c_wallrun_perch", "Swing into a facade -> wall-run up -> perch",
      "Airborne swing start 22 m over the avenue, the stick turns east into the 45 m loft facade (x 266 m), swing let go at 1.7 s, "
      "wall-run up, top-out onto the roof, camera turn, web-zip to the roof edge over the avenue, perch."),
     ("d_sprint_jump_first_swing", "Ground sprint -> jump -> first swing",
      "Street start on the avenue; run north, charged jump, first swing, then the round-10 chain rule (as a)."),
-    ("f1_sky_backDouble", "Round 12 flip: apex sky launch with the backDouble program over the rooftops, catch into the next swing",
-     "West avenue (x -250), airborne start 28 m over the street at y 170 heading south (24 m/s); chain rule from 0.4 s; a release is a sky "
-     "launch only where the flip apex clears every roof within 30 m (skyEvery 1); program backDouble armed on the climb, starts at vz <= 9 m/s; "
-     "web re-pressed in the program's final reach."),
-    ("f2_sky_pikeSwan", "Round 12 flip: apex sky launch with the frontPikeSwan program, catch into the next swing",
-     "As f1 from y 180, program frontPikeSwan."),
-    ("f3_sky_corkscrew", "Round 12 flip: apex sky launch with the corkscrew program, catch into the next swing",
-     "As f1 from y 190, program corkscrew."),
-    ("f4_chain_flips", "Round 12 flips: 13 s swing chain; a flip on every release whose apex clears the roofs",
-     "West avenue from y 120 heading south, 24 m over the street; chain rule, skyEvery 1 (only where the apex clears the roofs), skyTricks 1; "
-     "requested programs cycle backDouble, frontPikeSwan, corkscrew."),
-    ("f5_canyon_backDouble", "Round 12 check: the round-11 f1 stretch of the Midtown avenue (no launch can clear its 140-250 m towers)",
-     "Avenue x 250 from y 170 heading north, same rule as f1: every release is checked, none can clear the roofs, so no sky launch and no flip."),
+    ("f1_flow_backDouble", "Round 13 flow flip: swing, web release, backDouble program from the release, next web in its final reach",
+     "West avenue (x -250), airborne start 28 m over the street at y 170 heading south (24 m/s); chain rule from 0.4 s (release phase 0.55); a trick "
+     "pressed at every 2nd release starts the flip program AT the release (flow flip: the climb is solved so the catch window opens ~2 m over the "
+     "release height); program backDouble = tuck + keyed kick-out, the next web is searched in its final reach (catch window 1.5 s)."),
+    ("f2_flow_pikeSwan", "Round 13 flow flip: frontPikeSwan program from the release",
+     "As f1 from y 180, program frontPikeSwan (pike, pencil, swan, tuck, reach)."),
+    ("f3_flow_corkscrew", "Round 13 flow flip: corkscrew program from the release",
+     "As f1 from y 190, program corkscrew (layout with a full twist, swan, tuck, reach); a flip on every release (trickEvery 1): on every 2nd "
+     "release the corkscrew did not fit at the low 2nd release and the 4th landed on a roof 0.3 s in."),
+    ("f4_chain_flips", "Round 13 flows: 13 s swing chain, a flip on every release",
+     "West avenue from y 120 heading south, 24 m over the street; chain rule, trickEvery 1; requested programs cycle backDouble, frontPikeSwan, corkscrew."),
+    ("f5_canyon_backDouble", "Round 13 check: the Midtown avenue (x 250, towers 140-250 m)",
+     "Avenue x 250 from y 170 heading north, same rule as f1: flow flips inside the canyon."),
 ]
 FIELD = {"trick": "F trick", "move": "stick (x right, y fwd)", "swing": "RMB swing", "jump": "Space", "sprint": "Shift", "zip": "E zip",
          "drop": "C drop/dive", "quick": "Q boost", "look": "look (deg/s yaw, pitch-down)", "heading": "heading (world yaw deg)"}
@@ -144,6 +144,14 @@ if RN >= 4:
           "orbit yaw offsets (-120..120 deg from behind) x look-up elevations (30-60 deg, camera below the hero) by the share of 16 rays around "
           "the hero (the hero box + 40 px at 1080p) that reach open sky within 900 m, preferring a 3/4 side view (55 deg) and the lowest "
           "clear look-up; springs 0.3 s, 3.4 m from the hero. backDouble = tuck 0.55 / layout 0.5 / tuck 0.55 / layout 0.5 / reach 0.2 s.")
+    if RN >= 13:
+        w("- Round 13 (critic r12: tricks were isolated set pieces, 1.7 s rise + trick + 1.3 s dive + a one-frame camera cut): a trick pressed at a web "
+          "release is a *flow flip*: the program starts AT the release (no sky launch), the climb is solved so the catch window (the program's final "
+          "Reach, 1.5 s in) opens ~2 m over the release height inside the canyon, and the next web attaches in that reach; a program keeps its "
+          "shapes (no ballistic downgrade). backDouble = tuck double + a keyed Kickout (2 shapes). The chase camera's `too close: cut` rule is "
+          "removed and the camera output is slew-limited per frame (3 deg pitch, 4 deg yaw, 1.2 m position at 60 fps); the flip camera blends out "
+          "over >= 0.4 s. A hero-only fill light (5000 cd, 18000 cd in a flip) lifts the backlit silhouette. Camera hold: when the hero himself "
+          "overlaps geometry (street-tree canopy at a swing bottom) the view is held RELATIVE to him (the first capture froze it absolutely: 20 m away).")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")
@@ -157,6 +165,11 @@ w("| time step | fixed 1/60 s (`-benchmark -fps=60 -dumpmovie`) | fixed 1/60 s (
 w("| AA / GI | TSR, Lumen (project defaults) | same |")
 w("")
 w("The video frames are rendered offline at a fixed step; they say nothing about real-time frame rate.")
+if not glob.glob(os.path.join(ROUND, "stills", "*.jpg")):
+    w("No 4K stills were captured this round (the stills column above does not apply): only the 1920x1080 movies (internal = output, "
+      "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). "
+      "Movies a, b, f3 and f4 were re-captured after the camera-hold fix (build 3b6765f); c, d, f1, f2 and f5 were captured before it (dylib of "
+      "14d0b97) and a -nullrhi probe of the fixed build reproduced their hero and camera telemetry exactly (max difference 0.000 m).")
 w("")
 if RN >= 5:
     w("Camera (round 05 chase camera): 3.8 m behind the hero along the lagged heading yaw (horizontal spring 0.07 s, held 3.5-5.0 m), "

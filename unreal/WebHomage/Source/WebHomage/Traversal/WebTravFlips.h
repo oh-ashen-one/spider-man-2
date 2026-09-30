@@ -12,7 +12,9 @@
 
 #include "CoreMinimal.h"
 
-enum class EWebFlipShape : uint8 { Tuck, Pike, Layout, Swan, Pencil, Straddle, Throne, Twist, Reach, Num };
+// round 13: Kickout = the double's open finish (critic r12: "backDouble uses 5 shapes", "rigid identical plank"): a layout whose arms
+// sweep wide while the legs scissor a little behind them, ending with the web arm up (the catch reach) -- keyed motion, not a held plank
+enum class EWebFlipShape : uint8 { Tuck, Pike, Layout, Swan, Pencil, Straddle, Throne, Twist, Reach, Kickout, Num };
 
 struct FWebFlipSeg
 {
@@ -27,6 +29,10 @@ struct FWebFlipProgram
 	float PitchDeg = 360.f;   // total rotation about the lateral axis; + = front flip (head goes forward), - = back flip
 	TArray<FWebFlipSeg> Segs;
 	float Boost = 3.5f, Up = 1.5f; // traversal release boost (m/s) at 0.3 x the first segment
+	// round 13 (critic r12: "attach a web within 0.3 s of Reach"): the next web may attach from CatchOpen s before the program's end
+	// (inside its final reach, once that pose reads) -- the catch cuts the last few degrees and springs them back in ~0.07 s
+	float CatchOpen = 0.16f;
+	float CatchT() const { return FMath::Max(0.f, Dur() - CatchOpen); }
 	float Dur() const { float D = 0.f; for (const FWebFlipSeg& S : Segs) D += S.Dur; return D; }
 };
 

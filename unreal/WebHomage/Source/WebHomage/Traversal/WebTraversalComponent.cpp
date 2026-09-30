@@ -406,6 +406,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	S.bDive = (I.bDrop || bWDive) && S.AirT > 0.08 && HAF > 3;
 	double Gr = G;
 	if (S.bSky && !S.bDive && S.Sub == N_trick && WebFlips::Find(S.Trick)) Gr *= SkyFlipGK; // round 12: the apex flip floats (stays over the roofs)
+	else if (S.bFlowFlip && !S.bDive && S.Sub == N_trick && WebFlips::Find(S.Trick)) Gr *= FlowFlipGK; // round 13: the release flip floats (solved in ReleaseSwing)
 	else if (!S.bDive && FMath::Abs(S.Vel.Z) < 3.5 && S.Sub != N_zipPull) Gr *= 0.55; // apex hang time
 	else if (S.bSky && !S.bDive && FMath::Abs(S.Vel.Z) < SkyHangVz) Gr *= SkyHangK; // round 10: sky-launch hang time
 	else if (S.bSky && !S.bDive && S.Vel.Z >= SkyHangVz) Gr *= SkyRiseK;              // round 10: sky-launch climb
@@ -498,7 +499,8 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	{
 		// round 11: a flip program only lets the next web in during its final reach (catch continuity); old tricks: last 0.35 s
 		const FWebFlipProgram* FP = S.Sub == N_trick ? WebFlips::Find(S.Trick) : nullptr;
-		const double BusyUntil = FP ? S.TrickDur - FP->Segs.Last().Dur - 0.02 : FMath::Max(0.62, S.TrickDur - 0.35);
+		// round 13: from CatchOpen s before the end (inside the final reach) -- critic r12 "attach a web within 0.3 s of Reach"
+		const double BusyUntil = FP ? double(FP->CatchT()) - 0.02 : FMath::Max(0.62, S.TrickDur - 0.35);
 		const bool bTrickBusy = S.Sub == N_trick && S.SubT < BusyUntil; // let the flip finish
 		// round 07 (critic r06, swing cadence): after a web release a held button searches again from 0.22 s on, even while
 		// still rising (was: only once vz < 5.5 m/s -> 1-1.7 s web-less falls); a fresh press always searches at once (the
@@ -1189,7 +1191,7 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 		// (callers pass the choice through FitFlip: a program that cannot finish before the floor is swapped for one that can)
 		static const FName LowP[] = { FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")), FName(TEXT("backSingle")) };
 		const int32 K = S.AutoFlipK++;
-		if (S.bSky) return FitFlip(SkyP[K % 3]);
+		if (S.bSky || bFlowChoose) return FitFlip(SkyP[K % 3]); // round 13: flow flips have the air for every program
 		return FitFlip(HeightAboveFloor() < 30.0 ? FName(TEXT("backSingle")) : LowP[K % 3]);
 	}
 	const double Sp = S.Vel.Size(), HS = HLen(S.Vel), VY = S.Vel.Z, Steep = Sp > 1 ? VY / Sp : 0;
@@ -1227,8 +1229,12 @@ double UWebTraversalComponent::AirTimeToClear() const
 FName UWebTraversalComponent::FitFlip(FName Want) const
 {
 	if (S.bSky) return Want; // sky launches are solved for their own long air (roofline apex, hang)
+	// round 13: a flow flip's climb is solved so the catch window opens FlowCatchRise m ABOVE the release (the lowest point of the
+	// program is the release itself): it only needs the release to be FlipFloorClear m over the floor (r13 probe: the ballistic test
+	// swapped every program for backSingle at the 9-14 m releases of the chain)
+	if (bFlowChoose) return HeightAboveFloor() >= double(FlipFloorClear) ? Want : NAME_None;
 	const double Air = AirTimeToClear();
-	auto Need = [](const FWebFlipProgram* P) { return P ? double(P->Dur() - P->Segs.Last().Dur) : 1e9; };
+	auto Need = [](const FWebFlipProgram* P) { return P ? double(P->CatchT()) : 1e9; };
 	const FWebFlipProgram* P = WebFlips::Find(Want);
 	if (P && Need(P) + double(FlipCatchRoom) <= Air) return Want;
 	const FName Short(TEXT("backSingle"));
@@ -1419,6 +1425,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 {
 	// round 12 (critic r11): a trick pressed at a web release is a sky launch — the flip plays at an apex above the rooftops
 	if (!bJump && bTrickLaunch && !bLegacyTricks && S.TrickBuf > 0) bJump = true;
+	S.bFlowFlip = false;
 	WebRelease();
 	// release inertia (user feedback #4b): the velocity at release carries over 1:1, plus a small boost along it
 	const double Sp = S.Vel.Size();
@@ -1471,13 +1478,36 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 	const bool bRoom = S.bSky || (HF > 5 && S.Vel.Size() > 9 && (S.Vel.Z > -5 || HF > 14)); // round 12: a sky launch always has room (f4 probe: a launch off a roof skipped the arming and the buffered trick started on the climb)
 	// round 04: tricks only on input (trick pressed up to 0.4 s before the release, or during the air phase below)
 	FName TrickN = NAME_None; // round 11: FitFlip may answer "no room for any flip" -> plain release
-	if (bRoom && S.TrickBuf > 0) { TrickN = ChooseTrick(I); S.TrickBuf = 0; }
+	if (bRoom && S.TrickBuf > 0) { bFlowChoose = bFlowTricks && !bJump && !S.bSky && !bLegacyTricks; TrickN = ChooseTrick(I); bFlowChoose = false; S.TrickBuf = 0; }
 	S.ArmedFlip = NAME_None;
 	if (!TrickN.IsNone() && S.bSky && WebFlips::Find(TrickN))
 	{ // round 12: armed on the climb, started at vz <= SkyTrickVz (StepAir) so the whole program plays in the apex hang
 		S.ArmedFlip = TrickN; S.Trick = NAME_None; S.bLastTrick = true; // (no plain-release push: the program boosts at its snap)
 	}
-	else if (!TrickN.IsNone()) { StartTrick(TrickN); S.bLastTrick = true; }
+	else if (!TrickN.IsNone())
+	{
+		StartTrick(TrickN); S.bLastTrick = true;
+		const FWebFlipProgram* FP = WebFlips::Find(TrickN);
+		if (FP && bFlowTricks && !bJump && !S.bSky)
+		{ // round 13: the program starts now; solve the climb so the catch window opens FlowCatchRise m over the release height
+			const double Tc = FMath::Max(0.5, double(FP->CatchT()));
+			const double GF = G * double(FlowFlipGK);
+			const double Up = FP->Up * ReleaseBoostMul; // TrickBoost adds this at 0.3 x the first segment
+			const double Vz0 = FMath::Clamp((double(FlowCatchRise) + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
+				double(FlowVzMin), double(FlowVzMax));
+			if (S.Vel.Z > Vz0)
+			{ // the rest of the swing's climb goes forward (as the plain-release cap does)
+				FVector HV0;
+				if (!HDir(S.Vel, HV0)) HV0 = YawDir(S.Facing);
+				const double Extra = S.Vel.Z - Vz0;
+				S.Vel.X += HV0.X * Extra * 0.6; S.Vel.Y += HV0.Y * Extra * 0.6;
+			}
+			S.Vel.Z = Vz0;
+			S.bFlowFlip = true;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: vz %.1f m/s, catch window at %.2f s"),
+				*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), Vz0, Tc);
+		}
+	}
 	else { S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K; }
 	S.bTrickNoUp = false; // user r10f: every release gains height again
 	const double HS = HLen(S.Vel), HL = FMath::Max(VmaxC(), Sp);
@@ -2487,7 +2517,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 			}
 		}
 	}
-	if (S.Mode != EWebTravMode::Air) { S.bSky = false; S.ArmedFlip = NAME_None; } // round 10: a sky launch ends at the next web / landing / wall / zip
+	if (S.Mode != EWebTravMode::Air) { S.bSky = false; S.bFlowFlip = false; S.ArmedFlip = NAME_None; } // round 10: a sky launch ends at the next web / landing / wall / zip
 	S.bGrounded = S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch;
 	if (S.Mode == EWebTravMode::Ground) S.DashCount = 0;
 	FinalQ = Orient(Dt);

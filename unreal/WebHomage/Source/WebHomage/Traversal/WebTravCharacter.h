@@ -78,6 +78,17 @@ protected:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
 	FString HeroClipPrefix;
 
+	/**
+	 * Round 13 (critic r12: "the hero is black at f4 8.45 s, V 44/255" -- a flip seen from below against a bright sky): a camera-side
+	 * fill light that lights ONLY the hero (lighting channel 1; the hero meshes are on channels 0 + 1, the city on 0), no shadows, no GI.
+	 * Candela = HeroFillCd + (HeroFillFlipCd - HeroFillCd) x flip-camera weight; placed HeroFillDist m from the hero toward the camera,
+	 * HeroFillUp m above that line. Command line: -WHHeroFill=<base cd>,<flip cd> (0,0 = off).
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillCd = 5000.f;
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFlipCd = 18000.f;
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillDist = 1.8f;
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillUp = 0.4f;
+
 private:
 	void BuildTravInput();
 	void BuildFigure();
@@ -135,6 +146,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> WebSegs;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
+	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
+	void UpdateHeroFill();
 	bool bHeroMesh = false;
 	// round 05: pixel measurement of the hero (depth capture that shows only the hero, same camera as the view)
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;

@@ -103,7 +103,20 @@ public:
 	 * program is armed on the climb and starts once the climb has slowed to SkyTrickVz m/s (it then plays in the apex hang). The
 	 * peak cap SkyPeakMax rose 58 -> 90 m over the street; where even that cannot clear the roofs the flip still plays at the cap.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bTrickLaunch = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bTrickLaunch = false; // round 13: off (see bFlowTricks)
+	/**
+	 * Round 13 (critic r12 single gap: "each trick is an isolated set piece: 1.7 s rise, trick, 1.3 s dive, then a camera cut"): a trick
+	 * pressed at a web release starts its flip program AT the release (no climb first). The release's climb is solved per program so
+	 * that, under FlowFlipGK x gravity while the program plays, he is FlowCatchRise m above the release height, still inside the street
+	 * canyon (facades above him to web onto), when the program's catch window opens (FWebFlipProgram::CatchOpen s before its end,
+	 * inside the final reach): the next web attaches there. Release -> next attach = program length - CatchOpen + one search step.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bFlowTricks = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowFlipGK = 0.45f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowCatchRise = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMin = 6.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMax = 14.f;
+	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;
 	/** Round 12: gravity scale while a sky launch's flip program plays (from vz 9 m/s: ~5 m more climb, ends near its start height). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyFlipGK = 0.32f;
@@ -293,6 +306,7 @@ private:
 		FQuat BodyQ = FQuat::Identity;
 		double Roll = 0, Pitch = 0, Bank = 0, RollA = 0, PitchA = 0;
 		bool bSky = false;      // round 10: sky launch (jump-release + trick) until the next web / landing
+		bool bFlowFlip = false; // round 13: a flip program started at a web release (floats at FlowFlipGK until it ends)
 		FName ArmedFlip;        // round 12: flip program armed at a sky launch, started on the climb's last SkyTrickVz m/s
 		bool bTopOut = false;   // round 06: airborne from a wall-run top-out (crouch landing on touchdown)
 		int32 SwingIdx = 0;     // round 09: swings started (alternating arc depth)
