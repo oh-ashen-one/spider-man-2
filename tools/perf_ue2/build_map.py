@@ -70,7 +70,7 @@ def step_tree_proxy():
 
 
 def step_perf_apply():
-    steps = os.environ.get('SM2_PERF_APPLY_STEPS', 'rt_lite_trees,rt_proxy_trees,cloud')   # round 05 (round 04: rt_lite_trees,tree_rt_opaque,cloud; round 03: rt_lite,cloud); cloud km = env SM2_PERF_CLOUD_KM (perf_apply default 20 since round 04)
+    steps = os.environ.get('SM2_PERF_APPLY_STEPS', 'rt_lite_trees,rt_proxy_trees,rt_occluders,cloud')   # round 06 rt_occluders; round 05 rt_lite_trees,rt_proxy_trees,cloud (round 04: rt_lite_trees,tree_rt_opaque,cloud; round 03: rt_lite,cloud); cloud km = env SM2_PERF_CLOUD_KM (perf_apply default 20 since round 04)
     logp = os.path.join(SCR, 'perf_apply.json')
     if os.path.exists(logp): os.remove(logp)
     bm.ue_python('perf_apply', bm.exec_wrapper(os.path.join(HERE, 'perf_apply.py'), ''), {'SM2_PERF_APPLY': steps, 'SM2_PERF_APPLY_LOG': logp, 'SM2_PERF_PROXY_DIR': PROXY_DIR})

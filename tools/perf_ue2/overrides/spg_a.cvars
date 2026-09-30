@@ -1,0 +1,5 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe (critic r05: LumenScreenProbeGather 2.96 ms is the largest pass): screen-probe density of the engine's "High" GI scalability
+# (BaseScalability.ini sg.GlobalIlluminationQuality=2): one uniform probe per 32x32 px tile instead of 16x16 (Epic), twice the adaptive probes per uniform one.
+r.Lumen.ScreenProbeGather.DownsampleFactor=32
+r.Lumen.ScreenProbeGather.NumAdaptiveProbes=16

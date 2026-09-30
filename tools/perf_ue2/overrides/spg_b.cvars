@@ -1,0 +1,7 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe: spg_a + the rest of the engine "High" GI probe path that does not touch foliage or the radiance cache:
+# octahedral irradiance, stochastic probe interpolation, short-range AO at half resolution.
+set:spg_a
+r.Lumen.ScreenProbeGather.IrradianceFormat=1
+r.Lumen.ScreenProbeGather.StochasticInterpolation=1
+r.Lumen.ScreenProbeGather.ShortRangeAO.DownsampleFactor=2

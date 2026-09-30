@@ -28,6 +28,10 @@
 #                 one static actor per tile in folder City/RTProxy that is visible ONLY to ray tracing (render_in_main_pass / render_in_depth_pass off,
 #                 no shadow, no distance-field lighting, not in reflection / sky captures) and takes every tree HISM (leaves, crown masses AND bark) out of
 #                 the ray-tracing scene. Raster, shadows and distance fields of the trees are unchanged. Idempotent (old proxy actors + assets are replaced).
+#   rt_occluders  (round 06, round-05 critic: the S1 recess under the sidewalk shed read luma 30 vs 17.5 as found) overhead street furniture that shades the
+#                 sidewalk (env SM2_PERF_OCCLUDERS, default ISM_shed / shedtop / shelter / busstop / kiosk / subway / dumpster / rolloff: ~560 instances, <= 132 triangles each)
+#                 goes back INTO the ray-tracing scene, which rt_lite / rt_lite_trees had taken it out of: hardware-RT Lumen GI rays no longer pass through the shed roofs.
+#                 Run after rt_lite_trees (it only switches these components on).
 #                 Env SM2_PERF_PROXY_LUMEN_ORIG=0 also takes the original tree HISMs out of the Lumen scene (their surface-cache cards are never hit any more).
 # `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
 import unreal, json, os, time
@@ -39,6 +43,7 @@ RIGS = [x for x in os.environ.get('SM2_PERF_RIGS', 'golden,midday,night').split(
 LOG = os.environ.get('SM2_PERF_APPLY_LOG', '/Users/midir/sm2-n1/_scratch/perf/apply.json')
 GEO = os.environ.get('SM2_PERF_GEO', '/Game/Tests/City/City_Midtown_Geo')
 DRAW = float(os.environ.get('SM2_PERF_DRAWDIST', '250000'))
+OCCLUDERS = set(x for x in os.environ.get('SM2_PERF_OCCLUDERS', 'ISM_shed,ISM_shedtop,ISM_shelter,ISM_busstop,ISM_kiosk,ISM_subway,ISM_dumpster,ISM_rolloff').split(',') if x)
 OPQ_SKIP = os.environ.get('SM2_PERF_OPAQUE_SKIP', '')   # tree_rt_opaque leaves leaf meshes whose ISM label contains this alpha-masked in ray tracing ('' = none; '_l0_' = the near-LOD street trees: +0.6 / +0.9 ms, session z1)
 EAL = unreal.EditorAssetLibrary
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -117,6 +122,10 @@ if 'rt_lite_trees' in STEPS:
     for a, c in comps('City/Props'):
         want = is_leaves(a.get_actor_label())
         prop(c, 'visible_in_ray_tracing', want, 'rt_lite_trees_in' if want else 'rt_lite_trees_out')
+if 'rt_occluders' in STEPS:   # round 06 (round-05 critic: S1 recess under the sidewalk shed 17.5 -> 30.0 luma): overhead street furniture back IN ray tracing
+    for a, c in comps('City/Props'):
+        if a.get_actor_label() in OCCLUDERS: prop(c, 'visible_in_ray_tracing', True, 'rt_occluders_in')
+    rep['occluders'] = sorted(OCCLUDERS)
 if 'tree_rt_opaque' in STEPS:
     seen = set()
     for a, c in comps('City/Props'):

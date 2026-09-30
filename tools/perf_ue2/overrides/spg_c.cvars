@@ -1,0 +1,3 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe: halfway density, one uniform probe per 24x24 px tile (Epic 16, High 32), adaptive probes unchanged.
+r.Lumen.ScreenProbeGather.DownsampleFactor=24

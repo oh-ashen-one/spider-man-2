@@ -1,0 +1,5 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe: Epic probe density, only the cheaper integration (octahedral irradiance, stochastic interpolation, half-res short-range AO).
+r.Lumen.ScreenProbeGather.IrradianceFormat=1
+r.Lumen.ScreenProbeGather.StochasticInterpolation=1
+r.Lumen.ScreenProbeGather.ShortRangeAO.DownsampleFactor=2
