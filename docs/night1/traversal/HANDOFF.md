@@ -1,15 +1,18 @@
-# P3 Traversal + camera — handoff (after round 11)
+# P3 Traversal + camera — handoff (after round 12)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (end of round 11, 2026-09-30):** round 11 = the owner's **gymnast-quality flips** (`FLIPS_BRIEF.md`). The owner clip was measured
-into `FLIPS_SPEC.md` (F1-F12); flips are now *programs* of held gymnastic shapes keyed in Blender on the hero rig, with a momentum
-(inertia-eased) rotation, leg-lag overlap, corkscrew twist, a flip camera and a catch spring (§3 "Round 11"). Captured in the lit
-`/Game/Maps/Manhattan` (golden): `round-11/` f1-f4 (sky backDouble / frontPikeSwan / corkscrew, chain with a flip on every release),
-c (wall-run top-out = wallFront program) and b (r10 script, for the r10-vs-r11 pair); measured with `flip_check.py` (`round-11/FLIP_CHECK.txt`).
-Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r11/pack` (key `pack.key.json` outside it; builder `make_pairs.sh`; owner-clip cuts in
-`refcuts/`, scratch only, never committed). **Next:** file the r11 critic verdict as `critic/round-11-CRITIC.md` and fix its single biggest gap
-(§8). Mouse look: `MouseRadPerUnit` 0.033 -> 0.011 plus console variable `wh.MouseSensitivity` (multiplier, default 1) — needs Hari's real mouse.
+**Status (end of round 12, 2026-09-30):** round 12 fixed the critic r11 single gap (release tricks low in the canyon, facades behind the
+hero): a trick release is now an **apex sky launch** solved to clear the tallest roof within 30 m of the flip's path, the flip program starts
+at the top of the climb and floats over the rooftops, and the **flip camera searches for a sky background** (below the hero, 30-60 deg look-up,
+3/4 side view). Critic test (`sky_check.py`, same measure as the critic's sky.py) on the rendered 1080p60 captures in the lit
+`/Game/Maps/Manhattan`: trick frames with >= 50 % sky ring AND hero >= .15 of the frame: **f1 100 %, f2 100 %, f3 95 %, f4 100 %, c 77 %**
+(r11: 3 / 5 / 6 / 11 / 77 %; target >= 70 %). Every flip starts +3.3..3.6 m over the solver's tallest roof (`APEX_CHECK.txt`). f1-f4 moved to
+the west avenue (x -250, south of y 195) — the only stretches where a launch can clear every roof; f5 (r11's canyon stretch) shows the rule
+refusing to launch there. Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r12/pack` (key `pack.key.json` outside it; builder
+`make_pairs.sh`; owner-clip cuts in `refcuts/`, scratch only, never committed). **Next:** file the r12 critic verdict as
+`critic/round-12-CRITIC.md` and fix its single biggest gap (§8). Mouse look (r11, unchanged): `MouseRadPerUnit` 0.011 x console variable
+`wh.MouseSensitivity` (default 1) — needs Hari's real mouse.
 
 Branch `night1/traversal`, worktree `~/sm2-n1/traversal`, UE MCP port 8773 (never used; everything runs through commandlets and `-game`).
 Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`,
@@ -162,6 +165,34 @@ Round 06 sub names: air `topOut` (wall-run reached the top), land `landTopOut` (
   - *Telemetry*: `flip_prog, flip_t, flip_pitch_deg, flip_twist_deg, flip_rate_dps, flip_shape, flip_shape_legs` (program state) and
     `body_axis_deg, body_pitch_deg, body_roll_deg` (RENDERED hips->head axis from the bones; one-row shift like every bone column).
   - Mouse: `MouseRadPerUnit` 0.011 (was 0.033) x console variable `wh.MouseSensitivity` (default 1).
+- **Round 12 — apex flips over the rooftops (critic r11 single gap: release tricks low in the canyon, facades behind the hero):**
+  - *Trick release = sky launch* (`bTrickLaunch`, default on): a trick pressed at a web release is converted to a jump-release. The launch
+    (`SolveSkyPeak`) aims the apex `SkyApexOver` 6 m over the TALLEST roof within `SkyTallR` 30 m of the stretch of path the flip program will
+    cover (`TallestRoofAlong`: 5 m down-ray grid over the strip from the predicted program start to +2.4 s of travel, 2 passes), at least the
+    r10 lower-street-wall rule; cap `SkyPeakMax` 58 -> 90 m over the street, `SkyLaunchVzMax` 52 -> 60 m/s, climb gravity `SkyRiseK` 1.4 -> 1.0.
+  - *Armed program*: the flip is not started at the release; it is armed (`S.ArmedFlip`) and starts when the climb slows to `SkyTrickVz` 9 m/s,
+    then floats at `SkyFlipGK` 0.32 g while the program plays (from 9 m/s it climbs ~5 m more and ends near its start height), so the whole
+    program plays 3-10 m over that roof. A sky launch always has room (`bRoom`; a launch off a roof used to skip the arming).
+    **FLIPS_SPEC F10 conflict:** the trick now starts ~1.6-2.1 s after the release (the climb), not <= 0.1 s — the critic's apex rule wins here.
+  - *autoChain*: a release is a sky launch only where `SkyPeakNeeded` (same solver, current velocity, 0.1 s cache, 4 m margin) says the apex
+    clears the roofs; the r10 "forced launch 5.5 s after the last one" is gone (it flipped under the roofline). The web is re-pressed in the
+    program's final reach; the skyMax clock runs only outside the climb / program. A trick-every release with `bTrickLaunch` gets the same
+    sky bookkeeping.
+  - *Flip camera = sky search* (`SearchSkyView`, replaces the r11 fixed 40 deg orbit): every 0.15 s (and at the flip start, from the current
+    camera placement) it scores orbit yaw offsets -120..120 deg from behind x look-up elevations `FlipMinElev` 30 .. 60 deg (camera below
+    the hero) by the share of 16 rays around the hero (the hero box + 40 px at 1080p: +-8 deg horizontal, +-11 deg vertical) that reach
+    open sky within 900 m, cast from the camera spot; cost = no-sky x10 + distance from a 55 deg 3/4 side view + elevation above the floor +
+    hysteresis. Springs 0.3 s; the camera sits `FlipDist` 2.9 m from the hero ON that line (taken exactly, blended by FlipK: the 0.07 s chase
+    spring trailed ~3 m at 25 m/s), starts ~0.35 s before an armed flip (`bFlipSoon`), look-up limit = elevation + 20 deg. First capture
+    (min elevation 8 deg, 3.4 m, spring-placed) measured f1 24 %: far skyline towers (visual only, no collision) filled the ring's lower half
+    at 12-20 deg — hence the 30 deg floor.
+  - *backDouble* (critic r11 secondary): tuck 0.55 / layout 0.5 / tuck 0.55 / layout 0.5 / reach 0.2 s (was nine segments of 0.14-0.36 s).
+  - Telemetry adds `flip_armed, flipcam_k, flipcam_yaw_deg, flipcam_elev_deg, flipcam_sky` (ray-predicted ring sky of the chosen view),
+    `sky_tall_m, sky_peak_want_m`. Planning dump: `-WHTravHeightmap=<csv>` (5 m grid of the traversal world's tops, x -320..680, y -620..380;
+    `_scratch/traversal/r12/hm/heightmap.csv`, feasibility maps `hm_feas.txt` via `hm_need.py` / `hm_feas.py`).
+  - *Where launches can clear the roofs* (engine height field): almost nowhere in Midtown's avenues (towers 100-320 m); the west avenue
+    x -250 heading south from y ~195 (roofs 60-75 m), the avenue x ~335 south of y 285, and the southern edge (y > 310). f1-f4 moved to
+    x -250 heading south; f5 = the r11 f1 stretch (x 250 north), where no release is a sky launch.
 - Other: terrain boxes are always a floor (thin ground slab bug); swing anchor lean is horizontal only.
 
 ## 4. Commands
@@ -191,6 +222,9 @@ python3 docs/night1/traversal/spec_cam_check.py <telemetry.csv> <label> [t0 t1] 
 # spec video instruments (venv: uv venv specv --python 3.12; uv pip install opencv-python-headless numpy scipy):
 #   python ~/sm2-n1/_scratch/director/specs/tools/vp_cam.py <mp4> <out prefix> 6 ; .../nearflow.py 8 <mp4>
 python3 docs/night1/traversal/flip_check.py <telemetry.csv> <label>   # round 11: FLIPS_SPEC F1-F5, F7-F11 per trick (rendered body axis, px height)
+python3 docs/night1/traversal/sky_check.py <round dir> <clip> ...   # round 12: critic r11 sky-ring test (10 fps trick frames: >= 50 % sky in a 40 px ring AND hero >= .15 in >= 70 %)
+python3 docs/night1/traversal/apex_check.py <telemetry.csv> <label>   # round 12: per flip program: height over the solver's tallest roof, release -> start, flip camera view, next web
+GPU_OUTER=1 docs/night1/traversal/capture_round.sh ...   # round 12: inside ONE outer `gpu_slot.sh capture --label traversal -- <batch script>` hold (max 40 min): no per-run queueing
 python3 docs/night1/traversal/wall_check.py <telemetry.csv> <label>   # wall-run: limb phases @6 fps, head>hips, steps/s, px in frame through top-out
 python3 docs/night1/traversal/scripts/bake_keys.py <auto.json> <telemetry.csv> <out.json> <name>  # rule → plain timed keys
 python3 docs/night1/traversal/make_shotlist.py <round dir> "round NN" <commit>   # neutral SHOTLIST.md
@@ -226,8 +260,28 @@ turn → zip to roof edge → perch; round 06: the turn key looks UP, `look [-15
 Round 11: f1/f2/f3 (swing from 30 m at x 250, sky launch = jump + trick at 1.4 s with `flip` forced, web re-pressed 0.28 s before the program's
 end, then autoChain without tricks), f4 (a-style chain, `trickEvery` 1, `skyEvery` 2, `skyTricks` 1, program list cycled). `capture_round.sh`
 knows them; `NO_STILLS=1` skips the 4K stills run, `SKIP_WARM=1` the warm-up (the shared GPU queue is ~2-10 min per acquisition).
+Round 12: f1/f2/f3 = west avenue x -250 from y 170 / 180 / 190 heading south (yaw 90, 28 m, 24 m/s), autoChain from 0.4 s with `skyEvery` 1
+(a release is a sky launch only where `SkyPeakNeeded` clears the roofs; the first reachable one is the 2nd release at y ~210), `flip` forced;
+f4 = same avenue from y 120, 13 s, `skyEvery` 1 (one launch fits in 13 s); f5 = r11's f1 stretch (x 250 north) under the same rule (no launch).
+The GPU queue was 4-30 min per acquisition this round: batch several runs in one hold (`GPU_OUTER=1`, `_scratch/traversal/r12/cap_batch2.sh`).
 
 ## 6. Known bugs / open issues
+- **Round 12 (apex flips):**
+  - *Catch after an apex flip*: over the rooftops there is nothing above him to web onto (`AnchorMinAbove` 3 m), so the catch waits until he
+    has fallen to where a facade is above him: f1-f3 catch 1.1-1.5 s after the program (FLIPS_SPEC F8 <= 0.25 s FAIL); f4's catch came 0.07 s
+    after (a taller block ahead). Fix idea: a long "sky web" to the next taller tower ahead (<= 60-80 m), or end apex programs in a dive shape.
+  - *F10 conflict*: the program starts at the top of the climb (1.6-2.1 s after the release), FLIPS_SPEC F10 says <= 0.1 s.
+  - *Reachability*: only the lower southern / western blocks let a launch clear every roof within 30 m (SkyPeakMax 90). In Midtown's avenues a
+    trick release by the PLAYER still launches (capped at 90 m) and flips under the rooftops; the camera search then finds the best sky it can.
+    f5 (r11's f1 stretch) shows the script rule: no launch, no flip there.
+  - *Far skyline*: towers beyond the collision world (visual only) are invisible to the camera's sky rays; the 30 deg look-up floor keeps them
+    under the ring. A different city / time of day may need `FlipMinElev` retuned.
+  - *T-lines during flips*: the flip camera looks up 30-60 deg from below (TRAVERSAL-SPEC T11 pitch, T12 yaw off-axis and T8 size bands are
+    violated inside trick windows by design; FLIPS_SPEC F9 asks for exactly this view).
+  - Air time: rise ~1.6-2.1 s + program ~2-2.4 s + fall to the catch: T2 (attaches per 8 s) fails around every launch.
+  - `b_release_trick_dive_zip` not re-captured (its r10 timing was already broken in r11; a trick release is now an apex launch, so the drop /
+    zip keys at 3.3 / 4.0 s fall inside the climb). a / d were not re-captured (no tricks on their plain releases; their sky launches — skyEvery
+    2 — now only fire where the apex clears the roofs, i.e. never on their Midtown avenue, so their T7 roofline rise is gone).
 - **Round 11 (flips):**
   - *Sky-launch catches come out of a dive, not the reach* (F8 FAIL on f1 0.43 s / 51 deg, f4 0.45 s and 0.77 s): at the 50-59 m apex the
     anchor search (`FindAnchor`: desired point 30-40 m over the street, or 2.5 m over the body when higher, faces 22-46 m ahead) finds no
@@ -399,6 +453,28 @@ flip camera); a / d were not re-captured this round (their scripts have no trick
 `FitFlip` change: it only alters plain-release tricks, which those scripts do not have (f3 and f4 were captured after it).
 Owner reference numbers (`FLIPS_SPEC.md`): S3 three turns in 2.8 s (385 deg/s), tuck peaks 600-750 deg/s, holds 0.12-0.64 s, catch 0.2 s out of a tuck.
 
+## 6i. Round-12 checks (captures in `round-12/`: SKY_CHECK.txt, APEX_CHECK.txt, FLIP_CHECK.txt, ANIM_CAM_CHECK.txt, SHOTLIST.md; lit Manhattan golden)
+Movies 1920x1080 internal = output (`r.ScreenPercentage 100`, TSR + Lumen defaults), fixed 1/60 s step, 0.8 s pre-roll trimmed, 13.6-14.2 MB. No 4K
+stills this round (the first batch's stills were taken with the discarded v1 camera and deleted). GPU shared (every run `contaminated`: no perf claim).
+f1-f4 are the final code; c and f5 come from the first batch (same code outside the flip camera, which neither uses).
+| Line | f1 backDouble | f2 frontPikeSwan | f3 corkscrew | f4 chain | c wallFront | f5 canyon |
+|---|---|---|---|---|---|---|
+| **Critic r11 test: trick frames sky >= .5 AND hero >= .15 (need >= 70 %)** | **100 %** (ring p50 .83) | **100 %** (.76) | **95 %** (.92) | **100 %** (.89) | 77 % (.99) | no trick (no launch can clear 140-250 m towers) |
+| Flip start over the tallest roof within 30 m (solver) | +3.3 m (roof 68 m) | +3.5 (67.8) | +3.6 (61.7) | +3.6 (62.4) | — | — |
+| Flip camera (searched) | yaw -50, look-up 30 deg | -50 / 30 | -65 / 30 | -79 / 30-39 | wall camera | — |
+| Hero px height p10 / p50 | .18 / .29 | .25 / .41 | .23 / .40 | .20 / .27 | .17 / .24 | — |
+| F1 rotations (program / rendered) | 2.00 / 1.89 | 1.00 / 1.09 | 1.00 / 1.05 + 360 twist | 2.00 / 2.01 | 0.97 / 0.87 | — |
+| F2 mean / F3 peak deg/s | 298 FAIL (300-500) / 680 | 199 / 877 FAIL | 201 / 707 | 318 / 680 | 347 / 643 | — |
+| F4 longest hold / F5 ease | 0.46 s / PASS | 1.06 / PASS | 0.61 / PASS | 0.46 / PASS | 0.12 FAIL / PASS | — |
+| F8 catch after the program | 1.13 s FAIL | 1.53 s FAIL | 1.08 s FAIL | 0.07 s / 27 deg PASS | landing | — |
+| F9 hero 0.18-0.36 | PASS | p50 .41 FAIL | .40 FAIL | PASS | PASS | — |
+| F10 release -> trick (<= 0.1 s) | 1.68 s FAIL (by design: apex start) | 1.65 FAIL | 1.55 FAIL | 1.85 FAIL | 0.00 | — |
+Safety: 0 T-pose frames, camera in geometry 0 frames, hero fully in frame 100 % (c 608/629: roof camera turn, as r10/r11). Same-silhouette air
+pairs only inside the held final reach of backDouble (f1 5.5-5.8 s, f4 7.8-8.2 s) and f2's reach -> dive.
+Iterations this round (evidence `_scratch/traversal/r12/`): camera v1 (look-up 8-56 deg, 3.4 m, spring-placed) f1 24 % / f2 76 % / f3 75 % /
+f4 28 % (far visual-only skyline in the ring, camera trailing 4.4 m at 17 deg; `v1/`, `look/f1_sheet.jpg`); v2 (30 deg floor, 2.9 m) snapped to
+the chase orbit every frame (the 3 m "too close" cut, `look/f1v2_sheet.jpg`); v3 = final (cut threshold follows FlipDist).
+
 ## 7. Critic history (blind critic vs Marvel's Spider-Man 2 refs; arc / camera / web / moves / body)
 | Round | Scores | Biggest gap | What changed next |
 |---|---|---|---|
@@ -412,20 +488,23 @@ Owner reference numbers (`FLIPS_SPEC.md`): S3 three turns in 2.8 s (385 deg/s), 
 | r08 | 4/4/4/3/3 | Locked symmetric camera + identical swings (critic asked 30-70 % screen weave — voided by TRAVERSAL-SPEC T9); orchestrator/spec: lively weave inside the safe corridor, camera 2-25 deg off axis, near facade in a side third 40-80 % of frames, pitch median 4-12 down, hFOV 100-110, arc low points vary | r09 alternating arc depth, alternating anchor sides + bounded weave, camera side slide + arc-end roll, lower camera, dark 2 px rope, crouch-first landings |
 | r09 | 5/6/4/5/5 | T3/T4/T7: four identical 2 s swings, rope on screen 52-67 %, never at roofline height | r10 Manhattan captures, roofline-solved sky launch + long web back to the street, rope 25-45 %, swing-to-wall-run turns, configurable hero paths |
 | r10 | 6/6/6/5/5, flips 4 — FAILS TARGET | Flips: two 180 deg flips in 0.2 s each (~900 deg/s), no shape held > 0.3 s, seen foreshortened from behind; build each web-less trick as 180 deg in <= 0.35 s, one extended shape held >= 0.6 s at <= 150 deg/s, <= 0.4 s ease into the next attach; side-on, hero >= 0.20 of frame height against sky | r11 flips (owner brief = same gap): shape programs, momentum easing, flip camera |
-| r11 | (critic pending; pack `_scratch/critic-P3-r11/pack`, 5 owner-clip pairs + r10-vs-r11 progress pair) | expected: sky-launch catches via a dive (F8), facade backgrounds in f1, wallFront too short to hold, no edge vault | — |
+| r11 | 6/6/7/6/6, flips 6 — FAILS TARGET (lost 4 of 5 owner pairs) | Release tricks low in the canyon, facade / billboard behind the hero: ring sky p50 f1 .16 f2 .26 f3 .28 f4 .05; start every release trick from an apex >= 3 m over the tallest roof within 30 m, camera biased so the sky is behind him; test >= 70 % of trick frames >= 50 % sky ring with hero >= .15. Secondary: backDouble <= 2 shapes held >= 0.5 s; green lens ghosts (P4); T2/T8/T10/T11/T18 | r12 apex sky launch over the tallest roof, armed program at the top of the climb, sky-searching flip camera, backDouble tuck/layout |
+| r12 | (critic pending; pack `_scratch/critic-P3-r12/pack`, 5 owner-clip pairs + r11-vs-r12 f1 progress pair) | expected: catch 1.1-1.5 s after the apex flips (F8), long airtime (T2), F10 start delay, hero large in f2/f3 | — |
 
 Round folders `docs/night1/traversal/round-0N/` hold videos, stills, telemetry, SHOTLIST, CRITIC and the check outputs.
 
 ## 8. Queue for the next session
-1. **Critic r11 verdict** -> `critic/round-11-CRITIC.md` (pack `/Users/midir/sm2-n1/_scratch/critic-P3-r11/pack`, key `pack.key.json`, pairs
-   `pairs.json`: multi-flip f1 vs owner S3, pencil-throne f2 vs S6, layout-catch f3 vs S1, chain-flips f4 vs S4-5, wallrun-flip c vs S3 wall-run,
-   progress-trick r11 f1 vs r10 b). Ours are hero-window crops (1186x1080 centre crop of 1080p scaled to 610x556, the owner clip's framing).
-   Fix only its single biggest gap first.
-2. Likely next flip gaps (§6 Round 11): sky-web catch from the reach (search high tower faces), wallFront length, edge vault (owner S2),
-   flips on the web (inverted pencil while swinging, S2), b script re-timing.
+1. **Critic r12 verdict** -> `critic/round-12-CRITIC.md` (pack `/Users/midir/sm2-n1/_scratch/critic-P3-r12/pack`, key `pack.key.json`, pairs
+   `pairs.json`: multi-flip f1 vs owner S3, pencil-throne f2 vs S6, layout-catch f3 vs S1, chain-flips f4 vs S4-5, wallrun-flip c vs S3
+   wall-run, progress-trick r12 f1 vs r11 f1). Ours are hero-window crops (1186x1080 centre crop of 1080p scaled to 610x556, the owner clip's
+   framing) from 0.3 s before the release (f4: 2.5 s) to 0.9 s after the flip. Fix only its single biggest gap first.
+2. Likely next gaps (§6 Round 12): the catch after an apex flip (a long web to a taller tower ahead, or a dive-shaped program end), air time /
+   T2, `FlipDist` 2.9 -> ~3.2 m for f2/f3 hero size (F9 <= .36), F10 vs the apex rule (director call), wallFront hold, edge vault (owner S2),
+   flips on the web.
 3. **Mouse**: Hari tests `MouseRadPerUnit` 0.011 x `wh.MouseSensitivity` with a real mouse (set it in the console: `wh.MouseSensitivity 1.5`).
 4. Combat hooks requested by P5 (`docs/night1/manhattan/INTEGRATION_BUGS.md`): control-override hook, public `ToAir` / `LaunchJump`, input
    consumption in combat mode, writable camera yaw + shake API, anim proxy kept virtual.
-5. Open engineering from round 10 (§6): awning-safe street wall-run, T7 peaks under the roofline, T18 side third, d/b camera lines, hero P2 swap.
-6. Teardown (AGENTS.md): the PNG frames of every capture are deleted at the end of each round (`_scratch/traversal/capture/*/..._frames`);
-   the critic pack and `refcuts/` (owner footage, never committed) stay until the critic has run.
+5. Open engineering from round 10 (§6): awning-safe street wall-run, T18 side third, d/b camera lines (re-capture a / b / d under the r12 rule),
+   hero P2 swap.
+6. Teardown (AGENTS.md): capture PNG frames (`_scratch/traversal/capture/*/..._frames`) are deleted at the end of each round; the critic pack
+   and `refcuts/` (owner footage, never committed) stay until the critic has run.

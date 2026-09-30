@@ -20,16 +20,19 @@ SEQ = [
      "wall-run up, top-out onto the roof, camera turn, web-zip to the roof edge over the avenue, perch."),
     ("d_sprint_jump_first_swing", "Ground sprint -> jump -> first swing",
      "Street start on the avenue; run north, charged jump, first swing, then the round-10 chain rule (as a)."),
-    ("f1_sky_backDouble", "Round 11 flip: sky launch with the backDouble program, catch into the next swing",
-     "Airborne start 30 m over the avenue (x 250, y 170, 26 m/s north), one swing, jump-release with the trick input at 1.4 s (sky launch), "
-     "program backDouble requested; swing button pressed again at 3.49 s; then the chain rule without tricks."),
-    ("f2_sky_pikeSwan", "Round 11 flip: sky launch with the frontPikeSwan program, catch into the next swing",
-     "As f1 from y 60, program frontPikeSwan; swing button pressed again at 3.11 s."),
-    ("f3_sky_corkscrew", "Round 11 flip: sky launch with the corkscrew program, catch into the next swing",
-     "As f1 from y 60, program corkscrew; swing button pressed again at 2.98 s."),
-    ("f4_chain_flips", "Round 11 flips: swing chain with a flip requested on every release",
-     "As a (24 m, y 240); chain rule with trickEvery 1, skyEvery 2, skyTricks 1; requested programs cycle backDouble, frontPikeSwan, "
-     "corkscrew; a plain release only flips when the predicted fall leaves room."),
+    ("f1_sky_backDouble", "Round 12 flip: apex sky launch with the backDouble program over the rooftops, catch into the next swing",
+     "West avenue (x -250), airborne start 28 m over the street at y 170 heading south (24 m/s); chain rule from 0.4 s; a release is a sky "
+     "launch only where the flip apex clears every roof within 30 m (skyEvery 1); program backDouble armed on the climb, starts at vz <= 9 m/s; "
+     "web re-pressed in the program's final reach."),
+    ("f2_sky_pikeSwan", "Round 12 flip: apex sky launch with the frontPikeSwan program, catch into the next swing",
+     "As f1 from y 180, program frontPikeSwan."),
+    ("f3_sky_corkscrew", "Round 12 flip: apex sky launch with the corkscrew program, catch into the next swing",
+     "As f1 from y 190, program corkscrew."),
+    ("f4_chain_flips", "Round 12 flips: 13 s swing chain; a flip on every release whose apex clears the roofs",
+     "West avenue from y 120 heading south, 24 m over the street; chain rule, skyEvery 1 (only where the apex clears the roofs), skyTricks 1; "
+     "requested programs cycle backDouble, frontPikeSwan, corkscrew."),
+    ("f5_canyon_backDouble", "Round 12 check: the round-11 f1 stretch of the Midtown avenue (no launch can clear its 140-250 m towers)",
+     "Avenue x 250 from y 170 heading north, same rule as f1: every release is checked, none can clear the roofs, so no sky launch and no flip."),
 ]
 FIELD = {"trick": "F trick", "move": "stick (x right, y fwd)", "swing": "RMB swing", "jump": "Space", "sprint": "Shift", "zip": "E zip",
          "drop": "C drop/dive", "quick": "Q boost", "look": "look (deg/s yaw, pitch-down)", "heading": "heading (world yaw deg)"}
@@ -133,6 +136,14 @@ if RN >= 4:
           "the long axis; the upper body samples the timeline 0.04 s ahead and the legs 0.07 s behind; a cut program springs back to the body "
           "frame in ~0.07 s. The next web is searched only in the program's final reach (held up to 0.2 s). Wall-run top-out = program wallFront. "
           "Flip camera: orbit 40 deg off the travel axis toward the side with more space, 1.6 m under the hero, framing 0.42, look-up <= 18 deg.")
+    if RN >= 12:
+        w("- Round 12 (critic r11: tricks low in the canyon, facades behind the hero): a trick pressed at a web release is a sky launch; its "
+          "speed is solved so the apex sits 6 m over the tallest roof within 30 m of the stretch of path the flip will cover (down-ray grid), "
+          "peak <= 90 m over the street, launch <= 60 m/s; the program is armed on the climb, starts when the climb slows to 9 m/s and plays at "
+          "0.32 g (it stays over the roofs). The chain rule only launches where that apex is reachable. Flip camera: every 0.15 s it scores "
+          "orbit yaw offsets (-120..120 deg from behind) x look-up elevations (30-60 deg, camera below the hero) by the share of 16 rays around "
+          "the hero (the hero box + 40 px at 1080p) that reach open sky within 900 m, preferring a 3/4 side view (55 deg) and the lowest "
+          "clear look-up; springs 0.3 s, 3.4 m from the hero. backDouble = tuck 0.55 / layout 0.5 / tuck 0.55 / layout 0.5 / reach 0.2 s.")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")

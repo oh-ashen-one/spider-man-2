@@ -85,7 +85,10 @@ public:
 	// direction) x look-up elevations (camera below the hero) by the share of a ring of rays past the hero (the hero bbox + 40 px
 	// in angle) that reach open sky (no hit within FlipSkyRay m), preferring a 3/4 side view and the lowest look-up that is clear;
 	// the chosen yaw offset / elevation are springs (FlipAimT s), the camera sits FlipDist m from the hero along that line.
-	double FlipDist = 3.4, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 55.0;
+	// (first round-12 capture: the chase springs left the camera 4.4 m out at 17 deg, and the far skyline — visual-only towers the
+	// rays cannot hit — filled the ring's lower half at <= 20 deg: the spot is now taken exactly (blended by FlipK) and the look-up
+	// never goes under FlipMinElev)
+	double FlipDist = 2.9, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 55.0, FlipMinElev = 30.0;
 	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
 	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
 	void SearchSkyView(const FTravCamInput& P, const FWebTravWorld& World, const FVector& Back, bool bFirst);
