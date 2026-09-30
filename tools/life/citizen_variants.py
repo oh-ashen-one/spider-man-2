@@ -42,6 +42,8 @@ def head_mask(f, size):
     for poly in json.load(open(j)): dr.polygon([(u * size[0], v * size[1]) for u, v in poly], fill=255)
     return np.asarray(img) > 0
 
+# variant -> (hue, saturation x, value x) of pink head coverings: teal, navy, mustard, grey
+PINK_MAP = {1: (0.50, 0.85, 0.90), 2: (0.62, 0.90, 0.60), 3: (0.12, 0.95, 0.95), 4: (0.60, 0.10, 0.80)}
 d = sys.argv[1]
 files = sorted(glob.glob(os.path.join(d, '*_basecolor.png')))
 for idx, f in enumerate(files):
@@ -73,6 +75,13 @@ for idx, f in enumerate(files):
                 if idx % 3 == 0: h2 = np.where(hair_px, 0.6, h2); s2 = np.where(hair_px, 0.03, s2); v2 = np.where(hair_px, np.clip(0.62 + v * 0.5, 0, 0.95), v2)          # white
                 elif idx % 3 == 1: h2 = np.where(hair_px, 0.12, h2); s2 = np.where(hair_px, 0.5, s2); v2 = np.where(hair_px, np.clip(0.5 + v * 0.7, 0, 0.9), v2)           # dark blond
                 else: v2 = np.where(hair_px, v * 0.6, v2)                                                                                                                 # near black
+        # pink head coverings (17 hijabi_student: scarf, 20 punk_artist: hair) would repeat as a pink dot in every variant of these two citizens: recolour them per variant
+        # (the skin hue range is 8-50 deg, pink is > 320 / < 8 deg; only citizens with > 20000 such pixels in the head UV region)
+        if hm is not None:
+            pink = hm & ((hd > 320) | (hd < 8)) & (s > 0.15) & (v > 0.35)
+            if pink.sum() > 20000:
+                ph, ps, pv = PINK_MAP[k]
+                h2 = np.where(pink, ph, h2); s2 = np.where(pink, np.clip(s * ps, 0, 1), s2); v2 = np.where(pink, np.clip(v * pv, 0, 1), v2)
         out = hsv2rgb(h2, s2, v2) * vk * np.array(tint, np.float32)
         Image.fromarray((np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)).save(f.replace('_basecolor.png', '_basecolor_v%d.png' % k))
 print('variants written for', len(files), 'citizens (4 variants, head masks: %d)' % len(glob.glob(os.path.join(d, '*_headmask.json'))))

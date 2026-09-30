@@ -57,6 +57,12 @@ if st:
 sw, swrows = clip('swing_clip_1080p60.mp4')
 if sw:
     rows.append(('C6 vehicles at swing height (10 s clip, 30 m over the avenue, 25 m/s)', '>= 14 median (brief); SPEC 14-22 (ref swing-avenue-traffic 14, p90 24)', 'detector: p10 %g / **median %g** / p90 %g / max %d vehicles; n = %d' % (sw['veh_p10'], sw['veh_med'], sw['veh_p90'], sw['veh_max'], sw['n']), ok(sw['veh_med'] >= 14)))
+s2 = series('S2'); pub2 = {k: v for k, v in det.items() if k.startswith('S2_avenue_')}
+if s2:
+    V2 = [d['vehicles'] for t, d in s2]
+    rows.append(('C6 vehicles, S2 avenue view (still, swing height)', 'median 14-22', 'detector, 1080p, game t = %s s: %s; **median %g** (min-max %s); published stills: %s' % (
+        '/'.join('%g' % t for t, d in s2), ', '.join(str(x) for x in V2), med(V2), rng(V2), '; '.join('%s: %d vehicles' % (k.replace('S2_avenue_', '').replace('.jpg', ''), v['vehicles']) for k, v in sorted(pub2.items()))),
+        ok(med(V2) >= 14) + ' (still series; the swing clip above is the fuller C6 test)'))
 sg, sgrows = clip('signal_clip_1080p60.mp4')
 if sg:
     rows.append(('vehicles, signal clip (fixed camera, 10 s)', 'context', 'detector: p10 %g / median %g / p90 %g vehicles; people median %g' % (sg['veh_p10'], sg['veh_med'], sg['veh_p90'], sg['people_med']), ''))
@@ -68,8 +74,8 @@ for name, f in (('S1 stills (1080p series + 4K)', None), ('street clip', 'probe_
         sm = [x for x in samples(f) if x['t'] >= 2.5]
     if not sm: continue
     tw = sum(1 for x in sm if x['rep30'] > 0)
-    rows.append(('CH17 distinct looks per frame, ' + name, '>= 6 distinct; no repeated head in one frame', 'engine probe (people >= 28 px, unoccluded): looks in frame median %g (min-max %s), of them citizen meshes %g; within 60 m repeated LOOKS median %g (max %d; more than 60 people within 60 m cannot all differ with 60 looks), '
-                 '**within 30 m repeated looks: at least one pair in %d of %d samples (max %d pairs)**, repeated citizen meshes within 30 m max %d (60 looks = 20 citizens x 3 outfit / hair / skin variants)' % (
+    rows.append(('CH17 distinct looks per frame, ' + name, '>= 6 distinct; no repeated head in one frame', 'engine probe (people >= 28 px, unoccluded): looks in frame median %g (min-max %s), of them citizen meshes %g; within 60 m repeated LOOKS median %g (max %d; more than 100 people within 60 m cannot all differ with 100 looks), '
+                 '**within 30 m repeated looks: at least one pair in %d of %d samples (max %d pairs)**, repeated citizen meshes within 30 m max %d (100 looks = 20 citizens x 5 outfit / hair / skin / head-cover variants)' % (
         med([x['looks'] for x in sm]), rng([x['looks'] for x in sm]), med([x['meshes'] for x in sm]), med([x['rep60'] for x in sm]), max(x['rep60'] for x in sm), tw, len(sm), max(x['rep30'] for x in sm), max(x['repmesh30'] for x in sm)),
         ('MEETS >= 6 looks; ' + ('NO twin within 30 m' if tw == 0 else 'PARTIAL: a twin pair within 30 m in %d %% of the samples' % round(100 * tw / len(sm))) if min(x['looks'] for x in sm) >= 6 else 'MISSES')))
 sm = [x for x in samples('probe_street.txt') if x['t'] >= 2.5]
