@@ -50,7 +50,7 @@ echo "run_game: out=$OUT res=$RES quit=$QUIT window=$WINDOW movie=$MOVIE"
 PID=$!
 START=$(date +%s)
 while kill -0 $PID 2>/dev/null; do
-  if [ $(( $(date +%s) - START )) -gt "$TIMEOUT" ]; then echo "timeout: killing $PID"; kill -9 $PID; break; fi
+  if [ $(( $(date +%s) - START )) -gt "$TIMEOUT" ]; then echo "timeout: stopping $PID (SIGTERM, wait 60 s, SIGKILL last; RULES.md 2026-09-29 panic)"; kill -TERM $PID; for _ in $(seq 1 60); do kill -0 $PID 2>/dev/null || break; sleep 1; done; kill -0 $PID 2>/dev/null && kill -9 $PID; break; fi
   sleep 2
 done
 wait $PID 2>/dev/null; RC=$?
