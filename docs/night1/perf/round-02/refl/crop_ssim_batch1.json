@@ -56,6 +56,198 @@
    },
    "_pass": false
   },
+  "refl1/hyb": {
+   "S1_glass": {
+    "ssim": 0.9582,
+    "ssim_full": 0.9567,
+    "psnr_db": 34.27,
+    "warm_ref_pct": 0.83,
+    "warm_test_pct": 0.84,
+    "meanY_ref": 91.6,
+    "meanY_test": 90.0
+   },
+   "S2_windows": {
+    "ssim": 0.9917,
+    "ssim_full": 0.9885,
+    "psnr_db": 35.78,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 4.66,
+    "meanY_ref": 88.6,
+    "meanY_test": 85.7
+   },
+   "S2_gold": {
+    "ssim": 0.967,
+    "ssim_full": 0.9705,
+    "psnr_db": 32.23,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.76,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.0
+   },
+   "_pass": false
+  },
+  "refl1/hybrt": {
+   "S1_glass": {
+    "ssim": 0.9604,
+    "ssim_full": 0.9585,
+    "psnr_db": 34.7,
+    "warm_ref_pct": 0.83,
+    "warm_test_pct": 0.82,
+    "meanY_ref": 91.6,
+    "meanY_test": 90.3
+   },
+   "S2_windows": {
+    "ssim": 0.9907,
+    "ssim_full": 0.9868,
+    "psnr_db": 36.07,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 4.6,
+    "meanY_ref": 88.6,
+    "meanY_test": 86.1
+   },
+   "S2_gold": {
+    "ssim": 0.9658,
+    "ssim_full": 0.9695,
+    "psnr_db": 32.26,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.46,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.2
+   },
+   "_pass": false
+  },
+  "refl1/hybrt2": {
+   "S1_glass": {
+    "ssim": 0.9609,
+    "ssim_full": 0.9584,
+    "psnr_db": 34.84,
+    "warm_ref_pct": 0.83,
+    "warm_test_pct": 0.81,
+    "meanY_ref": 91.6,
+    "meanY_test": 90.4
+   },
+   "S2_windows": {
+    "ssim": 0.9908,
+    "ssim_full": 0.9871,
+    "psnr_db": 35.8,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 4.56,
+    "meanY_ref": 88.6,
+    "meanY_test": 86.0
+   },
+   "S2_gold": {
+    "ssim": 0.963,
+    "ssim_full": 0.9676,
+    "psnr_db": 31.86,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.53,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.3
+   },
+   "_pass": false
+  },
+  "refl1/hybrt3": {
+   "S1_glass": {
+    "ssim": 0.9615,
+    "ssim_full": 0.9596,
+    "psnr_db": 34.88,
+    "warm_ref_pct": 0.83,
+    "warm_test_pct": 0.85,
+    "meanY_ref": 91.6,
+    "meanY_test": 90.9
+   },
+   "S2_windows": {
+    "ssim": 0.9902,
+    "ssim_full": 0.9868,
+    "psnr_db": 35.62,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 4.56,
+    "meanY_ref": 88.6,
+    "meanY_test": 86.0
+   },
+   "S2_gold": {
+    "ssim": 0.9059,
+    "ssim_full": 0.9287,
+    "psnr_db": 27.2,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.51,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.2
+   },
+   "_pass": false
+  },
+  "refl1/hybrt_ff0": {
+   "S2_windows": {
+    "ssim": 0.9908,
+    "ssim_full": 0.9871,
+    "psnr_db": 36.17,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 4.61,
+    "meanY_ref": 88.6,
+    "meanY_test": 86.2
+   },
+   "S2_gold": {
+    "ssim": 0.9665,
+    "ssim_full": 0.9702,
+    "psnr_db": 32.09,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.13,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.0
+   },
+   "_pass": false
+  },
+  "refl1/hybrt_ds2": {
+   "S1_glass": {
+    "ssim": 0.9388,
+    "ssim_full": 0.9385,
+    "psnr_db": 30.57,
+    "warm_ref_pct": 0.83,
+    "warm_test_pct": 0.5,
+    "meanY_ref": 91.6,
+    "meanY_test": 89.7
+   },
+   "S2_windows": {
+    "ssim": 0.9758,
+    "ssim_full": 0.9766,
+    "psnr_db": 26.89,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 2.23,
+    "meanY_ref": 88.6,
+    "meanY_test": 85.0
+   },
+   "S2_gold": {
+    "ssim": 0.9567,
+    "ssim_full": 0.9589,
+    "psnr_db": 32.08,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.35,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.5
+   },
+   "_pass": false
+  },
+  "refl1/hybrt_r25": {
+   "S2_windows": {
+    "ssim": 0.9905,
+    "ssim_full": 0.9867,
+    "psnr_db": 35.76,
+    "warm_ref_pct": 4.77,
+    "warm_test_pct": 4.53,
+    "meanY_ref": 88.6,
+    "meanY_test": 86.2
+   },
+   "S2_gold": {
+    "ssim": 0.9503,
+    "ssim_full": 0.9484,
+    "psnr_db": 31.46,
+    "warm_ref_pct": 41.64,
+    "warm_test_pct": 37.24,
+    "meanY_ref": 80.8,
+    "meanY_test": 79.5
+   },
+   "_pass": false
+  },
   "refl1/t1_bias100": {
    "S2_windows": {
     "ssim": 0.9697,
@@ -146,138 +338,6 @@
     "warm_test_pct": 25.4,
     "meanY_ref": 80.8,
     "meanY_test": 71.0
-   },
-   "_pass": false
-  },
-  "refl1/hyb": {
-   "S1_glass": {
-    "ssim": 0.9582,
-    "ssim_full": 0.9567,
-    "psnr_db": 34.27,
-    "warm_ref_pct": 0.83,
-    "warm_test_pct": 0.84,
-    "meanY_ref": 91.6,
-    "meanY_test": 90.0
-   },
-   "S2_windows": {
-    "ssim": 0.9917,
-    "ssim_full": 0.9885,
-    "psnr_db": 35.78,
-    "warm_ref_pct": 4.77,
-    "warm_test_pct": 4.66,
-    "meanY_ref": 88.6,
-    "meanY_test": 85.7
-   },
-   "S2_gold": {
-    "ssim": 0.967,
-    "ssim_full": 0.9705,
-    "psnr_db": 32.23,
-    "warm_ref_pct": 41.64,
-    "warm_test_pct": 37.76,
-    "meanY_ref": 80.8,
-    "meanY_test": 79.0
-   },
-   "_pass": false
-  },
-  "refl1/hybrt": {
-   "S1_glass": {
-    "ssim": 0.9604,
-    "ssim_full": 0.9585,
-    "psnr_db": 34.7,
-    "warm_ref_pct": 0.83,
-    "warm_test_pct": 0.82,
-    "meanY_ref": 91.6,
-    "meanY_test": 90.3
-   },
-   "S2_windows": {
-    "ssim": 0.9907,
-    "ssim_full": 0.9868,
-    "psnr_db": 36.07,
-    "warm_ref_pct": 4.77,
-    "warm_test_pct": 4.6,
-    "meanY_ref": 88.6,
-    "meanY_test": 86.1
-   },
-   "S2_gold": {
-    "ssim": 0.9658,
-    "ssim_full": 0.9695,
-    "psnr_db": 32.26,
-    "warm_ref_pct": 41.64,
-    "warm_test_pct": 37.46,
-    "meanY_ref": 80.8,
-    "meanY_test": 79.2
-   },
-   "_pass": false
-  },
-  "refl1/hybrt_ff0": {
-   "S2_windows": {
-    "ssim": 0.9908,
-    "ssim_full": 0.9871,
-    "psnr_db": 36.17,
-    "warm_ref_pct": 4.77,
-    "warm_test_pct": 4.61,
-    "meanY_ref": 88.6,
-    "meanY_test": 86.2
-   },
-   "S2_gold": {
-    "ssim": 0.9665,
-    "ssim_full": 0.9702,
-    "psnr_db": 32.09,
-    "warm_ref_pct": 41.64,
-    "warm_test_pct": 37.13,
-    "meanY_ref": 80.8,
-    "meanY_test": 79.0
-   },
-   "_pass": false
-  },
-  "refl1/hybrt_ds2": {
-   "S1_glass": {
-    "ssim": 0.9388,
-    "ssim_full": 0.9385,
-    "psnr_db": 30.57,
-    "warm_ref_pct": 0.83,
-    "warm_test_pct": 0.5,
-    "meanY_ref": 91.6,
-    "meanY_test": 89.7
-   },
-   "S2_windows": {
-    "ssim": 0.9758,
-    "ssim_full": 0.9766,
-    "psnr_db": 26.89,
-    "warm_ref_pct": 4.77,
-    "warm_test_pct": 2.23,
-    "meanY_ref": 88.6,
-    "meanY_test": 85.0
-   },
-   "S2_gold": {
-    "ssim": 0.9567,
-    "ssim_full": 0.9589,
-    "psnr_db": 32.08,
-    "warm_ref_pct": 41.64,
-    "warm_test_pct": 37.35,
-    "meanY_ref": 80.8,
-    "meanY_test": 79.5
-   },
-   "_pass": false
-  },
-  "refl1/hybrt_r25": {
-   "S2_windows": {
-    "ssim": 0.9905,
-    "ssim_full": 0.9867,
-    "psnr_db": 35.76,
-    "warm_ref_pct": 4.77,
-    "warm_test_pct": 4.53,
-    "meanY_ref": 88.6,
-    "meanY_test": 86.2
-   },
-   "S2_gold": {
-    "ssim": 0.9503,
-    "ssim_full": 0.9484,
-    "psnr_db": 31.46,
-    "warm_ref_pct": 41.64,
-    "warm_test_pct": 37.24,
-    "meanY_ref": 80.8,
-    "meanY_test": 79.5
    },
    "_pass": false
   }

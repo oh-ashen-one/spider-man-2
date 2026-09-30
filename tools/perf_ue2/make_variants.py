@@ -5,6 +5,7 @@
 #
 #   Cl<N>    /Game/PerfF/Cl<N>/  = golden rig copy whose VolumetricCloud component has TracingMaxDistance = N km (2p5 = 2.5)
 #            (look_presets.json golden: 50 km) + the maps Manhattan, Manhattan_View_S1, Manhattan_View_S2, PerfF/View_S7 with that rig swapped in.
+#   Cl<N>RT[1-3]P the trailing P also removes the street people (skeletal meshes of /Game/Maps/Manhattan_Actors) from the ray-tracing scene; the hero is spawned by code and stays.
 #   Cl<N>RT[1-3] the same, plus a copy of /Game/Tests/City/City_Midtown_Geo in which the hinterland (City/Far), the trees (City/Props) and the far
 #            ground (City/far) are removed from the hardware ray-tracing scene (visible_in_ray_tracing = False; nothing else changes), for the
 #            "hardware-RT reflections, small ray-tracing scene" cost probe.
@@ -34,11 +35,11 @@ def fresh_copy(src, dst):
 
 import re
 for spec in KMS:
-    m = re.match(r'^(\d+(?:p\d+)?)(RT[123]?)?(?:D(\d+))?$', spec)
-    if not m: raise RuntimeError('bad variant spec %s (km[RT[1-3]][D<metres>])' % spec)
-    km, rt, dist = m.group(1), bool(m.group(2)), int(m.group(3) or 0)
+    m = re.match(r'^(\d+(?:p\d+)?)(RT[123]?)?(P)?(?:D(\d+))?$', spec)
+    if not m: raise RuntimeError('bad variant spec %s (km[RT[1-3]][P][D<metres>])' % spec)
+    km, rt, dist, peds = m.group(1), bool(m.group(2)), int(m.group(4) or 0), bool(m.group(3))
     rtlevel = int((m.group(2) or 'RT')[2:] or 1)
-    tag = 'Cl' + km + (m.group(2) or '') + ('D%d' % dist if dist else '')
+    tag = 'Cl' + km + (m.group(2) or '') + ('P' if peds else '') + ('D%d' % dist if dist else '')
     km = km.replace('p', '.')
     base = '/Game/PerfF/' + tag
     v = rep['variants'][tag] = {'km': float(km), 'rt_lite': rt, 'tree_draw_distance_m': dist, 'maps': {}}
@@ -83,6 +84,17 @@ for spec in KMS:
                         if c.get_editor_property('visible_in_ray_tracing'): c.set_editor_property('visible_in_ray_tracing', False); cnt += 1
         v['rt_removed_components'] = cnt; v['draw_distance_components'] = dcnt; v['rt_level'] = rtlevel if rt else 0
         v['geo_saved'] = bool(unreal.EditorLoadingAndSavingUtils.save_map(world, geo_dst))
+    actors_dst = None
+    if peds:  # street-people sublevel copy: their skeletal meshes out of the ray-tracing scene (the hero stays in)
+        actors_dst = base + '/Manhattan_Actors'
+        fresh_copy('/Game/Maps/Manhattan_Actors', actors_dst)
+        unreal.EditorLoadingAndSavingUtils.load_map(actors_dst)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        n = 0
+        for a in eas.get_all_level_actors():
+            for c in a.get_components_by_class(unreal.SkeletalMeshComponent):
+                if c.get_editor_property('visible_in_ray_tracing'): c.set_editor_property('visible_in_ray_tracing', False); n += 1
+        v['peds_rt_removed'] = n; v['actors_saved'] = bool(unreal.EditorLoadingAndSavingUtils.save_map(world, actors_dst))
     # 2) map copies whose golden-rig sublevel is the copy
     for m in MAPS:
         name = m.split('/')[-1]
@@ -97,6 +109,11 @@ for spec in KMS:
             if 'Look_Rig_' + RIG in pn and tag not in pn:
                 if unreal.EditorLevelUtils.remove_level_from_world(lvl): removed += 1
         unreal.EditorLevelUtils.add_level_to_world(world, rig_dst, unreal.LevelStreamingAlwaysLoaded)
+        if actors_dst:
+            for lvl in list(unreal.EditorLevelUtils.get_levels(world)):
+                if 'Manhattan_Actors' in lvl.get_path_name() and tag not in lvl.get_path_name():
+                    unreal.EditorLevelUtils.remove_level_from_world(lvl)
+            unreal.EditorLevelUtils.add_level_to_world(world, actors_dst, unreal.LevelStreamingAlwaysLoaded)
         if geo_dst:
             for lvl in list(unreal.EditorLevelUtils.get_levels(world)):
                 if 'City_Midtown_Geo' in lvl.get_path_name() and tag not in lvl.get_path_name():

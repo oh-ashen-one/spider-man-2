@@ -25,8 +25,26 @@ PY
 )"
 EX="r.ScreenPercentage 100,$(echo "$CV" | tr '=' ' ')"
 echo "{\"output\": \"1920x1080\", \"internal\": \"1920x1080\", \"screen_percentage\": 100, \"cvars\": \"$CV\", \"spec\": \"$SPEC\", \"map\": \"$MAP\"}" > "$OUT/route_30s_settings.json"
-"$WT/unreal/WebHomage/Scripts/run_game.sh" "$TMP" -map "$MAP" -res 1920x1080 -quit 30.8 -name route_30s -movie -timeout 3600 \
-  -exec "$EX" -- -WHTravScript="$WT/docs/night1/manhattan/scripts/route_30s.json" -WHTravPreroll=0.8 -dpcvars="$CV" "${FLAGS[@]+"${FLAGS[@]}"}" | tail -3
+# watchdog (2026-09-30: a 1080p movie launch hung for 15 min on a macOS ViewBridge XPC wait, 0.1 % CPU, no log line after start): if the game log has not
+# grown for 360 s the engine is SIGTERMed (SIGKILLed only if it is still alive AND idle, i.e. not rendering) and the run is retried once.
+run_once() {
+  rm -rf "$TMP"/route_30s_frames "$TMP"/route_30s.log
+  "$WT/unreal/WebHomage/Scripts/run_game.sh" "$TMP" -map "$MAP" -res 1920x1080 -quit 30.8 -name route_30s -movie -timeout 1800 \
+    -exec "$EX" -- -WHTravScript="$WT/docs/night1/manhattan/scripts/route_30s.json" -WHTravPreroll=0.8 -dpcvars="$CV" "${FLAGS[@]+"${FLAGS[@]}"}" | tail -3 &
+  RG=$!
+  while kill -0 $RG 2>/dev/null; do
+    sleep 20
+    L="$TMP/route_30s.log"; age=0; [ -f "$L" ] && age=$(( $(date +%s) - $(stat -f %m "$L") ))
+    if [ "$age" -gt 360 ]; then
+      E=$(pgrep -f "abslog=$TMP/route_30s.log"); echo "watchdog: log idle ${age} s, stopping engine $E"
+      for p in $E; do kill -TERM $p 2>/dev/null; done; sleep 30
+      for p in $E; do if kill -0 $p 2>/dev/null; then c=$(ps -o %cpu= -p $p | tr -d ' ' | cut -d. -f1); [ "${c:-0}" -lt 2 ] && kill -9 $p 2>/dev/null; fi; done
+    fi
+  done
+  wait $RG 2>/dev/null
+}
+run_once
+if [ ! -d "$TMP/route_30s_frames" ] || [ "$(ls "$TMP/route_30s_frames" 2>/dev/null | wc -l)" -lt 1500 ]; then echo "movie attempt 1 incomplete: retrying once"; run_once; fi
 FR="$TMP/route_30s_frames"
 if [ -d "$FR" ]; then
   # trim the 0.8 s P3 pre-roll (exposure / Lumen settle), keep <= 15 MB
