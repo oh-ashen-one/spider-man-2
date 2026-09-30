@@ -20,4 +20,23 @@
 
 ## Files
 
-See the file table in `SPEC_CHECK.md` (every file named there is in `captures/`); `crops_3x/` holds the 3x Lanczos crops, round 07 (left) | round 08 (right).
+| File | Shot | Content |
+|---|---|---|
+| `hero_turntable_4k.jpg` | Char_Hero shot 0, 4.5 s | hero moving turntable, whole body (round 07: same shot, old suit) |
+| `hero_run_side.mp4` (trimmed), `hero_run_34.mp4`, `hero_run_leap_side.mp4`, `hero_run_chase.mp4` (trimmed), `hero_run_toward.mp4` | Char_Hero shots 1-3, 6, 7 | hero run side / 3/4 / run -> leap / chase (behind) / toward the camera |
+| `hero_run_side_4k.jpg`, `hero_jump_4k_t1.85.jpg`, `hero_jump_4k_t1.95.jpg` | | 4K stills of the run and the leap apex |
+| `suit_closeup_4k.jpg` | Char_Hero shot 4, 3.0 s | suit fabric close-up (chest, shoulder cap, badge, net, stitching) |
+| `hero_face_lens_4k.jpg` (+ `_a`, `_b`) | Char_Hero shot 5, 10.0 s (+ 8.0 s, 11.5 s) | hero face + eye close-up, three turntable angles |
+| `hero_key_face_4k.png` (+ `_a`, `_b`), `hero_key_suit_4k.png` | Char_HeroKey shots 5 / 4 | the same shots on the stencil key with flat class colours (lens magenta, bezel yellow, suit blue, key green); read by `lens_check_r8.py` |
+| `street_fight_wide.mp4` (trimmed), `street_fight_34.mp4`, `street_fight_orbit.mp4`, `street_fight_*_4k.jpg`, `street_fight_1080.jpg` | Char_Fight | the staged fight, hero + 6 enemies |
+| `thug_face_4k.jpg`, `brute_face_4k.jpg`, `hood_face_4k.jpg`, `tee_face_4k.jpg`, `beard_face_4k.jpg` | Char_Lineup 10-14 | enemy faces (tee mask and thug collar changed) |
+| `crowd_tracking.mp4` (trimmed), `crowd_wide.mp4`, `crowd_tracking_1080.jpg`, `crowd_wide_1080.jpg` | Char_Crowd shots 0 / 1 | the crowd (layout, avoidance, citizens unchanged except the skater, punk artist and chrome-shades triangles) |
+| `crowd_tracking_4k.jpg` | frame 342 of a fixed-step 4K movie of Char_Crowd (shot 0, game 5.70 s) | crowd close-up tracking still, picked where no head touches another walker (`crowd/head_overlap.py`, `pick_frames.py`) |
+| `crops_3x/` | | 3x Lanczos crops, round 07 (left) | round 08 (right): `hero-eye` (far eye, `hero_face_lens_4k` r07 x3000-3700 y740-1400 vs r08 x2780-3400 y960-1520), `hero-lines` (web lines vs piping + stitching), `thug-collar`, `tee-mouth`, `crowd-heads` |
+
+## Evidence (`evidence/`)
+
+- `lenscheck/`: `lens_check_r8.py --flat --auto` on the three face key stills (`*_lenscheck.json`, class overlays `*_classes.png`: magenta lens, yellow bezel, blue suit, green exterior, red = background enclosed near an eye).
+- `suit_distinct.json` / `suit_distinct_atlas.jpg` / `suit_side_by_side.jpg` / `suit_design_sheet_cpu_preview.jpg`: palette and structure comparison of the old and the new suit (the last one is a CPU render of the rest pose from the real textures, four views).
+- `head_overlap_crowd_tracking.json`, `id_overlap_crowd_tracking.json` (+ summaries): per-frame head contacts and silhouette contacts of the id movie; `telemetry/`: per-frame walker separation of this round's crowd run (smallest centre distance 130.0 cm).
+- `count_videos_*.txt`, `yolo_*.json`, `leap_track.json`, `offline_ch18_gate_round08_changed.json`, `small_components_*.json`, `*_perf.json` (resolution of every 4K run).
