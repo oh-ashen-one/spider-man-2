@@ -337,7 +337,7 @@ if 'mat' in STEPS:
        scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.55, 'Specular': 0.6}, switches={'HasORM': True})
     try:   # round 04: glossy lens with a grazing-angle falloff; the old simple lens stays as the fallback
         hlens = build_hero_lens()
-        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.07, 'Specular': 1.0, 'EdgeDarken': 0.55, 'Emissive': 0.03}, vec={'Color': (0.82, 0.84, 0.86, 1)})
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.6, 'Emissive': 0.02}, vec={'Color': (0.64, 0.66, 0.70, 1)})   # round 05: domed lens (hero_lens_r5.py) - darker base so the sky / sun reflections read as highlights
         log('hero lens: glossy + fresnel falloff')
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
@@ -646,7 +646,7 @@ if 'map' in STEPS:
         # enemy lanes (side-tracking at 4.2 m and 3 m): thug with a bat, brute with a pipe, each at its walk clip's foot speed
         def lane(label, mesh, abp, mat, start, speed, scale=1.0, girth=1.0):
             return line(label, mesh, abp, (LANE[0], LANE[1], 0), speed, 3000.0, start, scale=scale, girth=girth, mat=mat)
-        thug_l = lane('Thug_Lane', PP + 'SK_Street_Thug_Bat', PP + 'ABP_Street_Thug', PP + 'Materials/MI_Street_Thug', 1500.0 + 40.0, 114.0)
+        thug_l = lane('Thug_Lane', PP + 'SK_Street_Thug_Bat', PP + 'ABP_Street_Thug', PP + 'Materials/MI_Street_Thug', 1500.0 + 640.0, 114.0)   # round 05: 6 m ahead of the brute (the face close-ups no longer share a frame)
         brute_l = lane('Brute_Lane', PP + 'SK_Street_Brute_Pipe', PP + 'ABP_Street_Brute', PP + 'Materials/MI_Street_Brute', 1500.0 - 40.0, 110.0, scale=BRUTE_SCALE, girth=BRUTE_GIRTH)
         track = spawn(unreal.WHCharLoopWalker, (LANE[0], LANE[1], 0), (0, 0, 0), 'Lane_Track')
         track.set_editor_property('mode', W.LINE); track.set_editor_property('speed', 112.0)
@@ -863,9 +863,9 @@ if 'maps5' in STEPS:
     both_channels(fight_actors)
     fc_ = spawn(unreal.TargetPoint, (FX, FY, 0), label='FightCenter')
     fight_shots = [
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-120, -1000, 170), label='street fight wide (hero + 6 enemies)'),                           # 0 @0
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-760, -760, 175), label='street fight 3/4'),                                               # 1 @8
-        mkshot(fc_, K5.ORBIT, 8, 950, 95, 55, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-120, -1050, 330), label='street fight wide (hero + 6 enemies)'),                           # 0 @0
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-760, -800, 330), label='street fight 3/4'),                                               # 1 @8
+        mkshot(fc_, K5.ORBIT, 8, 1000, 95, 230, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
     save_map(TESTS + '/Char_Fight', fight_shots)
 
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================

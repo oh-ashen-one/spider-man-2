@@ -62,6 +62,9 @@ def posed(name, clip, frame, use_hull, expand=0.0):
     for k in range(4): np.add.at(dense, (np.arange(nv), si[:, k]), w[:, k])
     key = np.round(pos / 1e-5).astype(np.int64); _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
     acc = np.zeros((inv.max() + 1, nb)); np.add.at(acc, inv, dense); dense = acc[inv] / np.bincount(inv)[inv][:, None]
+    if os.environ.get('SMOOTHW', '1') != '0':
+        nrm = np.frombuffer(b, np.float32, nv * 3, L['nrm']).reshape(-1, 3).astype(float)
+        dense = U.smooth_weights(pos, nrm, dense)
     Mf = A[p['clips'][clip]['row'] + frame]
     def skin(P, D):
         out = np.zeros_like(P); Ph = np.c_[P, np.ones(len(P))]

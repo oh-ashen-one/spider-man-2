@@ -44,7 +44,7 @@ CFG = {
                  tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
-                  mask=(66, 24, 22), seed=23),
+                  mask=(66, 24, 22), seed=23, bot_drop=0.004),
     # round 04: three more raw Tripo people (owner's assets), landmarks from mask.auto_landmarks
     # hood: auto landmarks pick the sunglasses as the nose -> measured with ortho.py (side view, 2 cm grid)
     'hood': dict(src='human+figure+3d+model.glb', name='StreetHood', eye=1.630, nose=1.603, ear_lobe=1.582, chin=1.527, axis_z=-0.02,

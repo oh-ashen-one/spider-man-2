@@ -40,7 +40,8 @@ def mask_bounds(phi, cfg):
     a = np.abs(phi)
     ang = np.radians([0, 35, 70, 90, 105, 125, 150, 180])
     top = np.interp(a, ang, [eye - .016, eye - .026, ear + .012, ear + .020, ear + .030, ear + .038, ear + .040, ear + .040])
-    bot = np.interp(a, ang, [chin - .040, chin - .036, chin - .016, ear - .012, ear + .004, ear + .010, ear + .010, ear + .010])
+    bd = cfg.get('bot_drop', 0.040)     # how far below the chin the front hem hangs (round 05b: brute 0.004 - its vest collar reaches the chin)
+    bot = np.interp(a, ang, [chin - bd, chin - bd + .004, chin - bd * 0.4, ear - .012, ear + .004, ear + .010, ear + .010, ear + .010])
     if not cfg.get('tie_band', True):          # long / voluminous hair at the back: the mask ends behind the ears (no painted tie)
         cut = smoothstep(np.radians(108), np.radians(116), a)
         top = top * (1 - cut) + (bot - 0.01) * cut
@@ -180,6 +181,27 @@ def drape(P, F, cfg, seed=0, thick=0.0035):
     return P, moved
 
 
+def _ray_hits_any(O, D, P, F, tmax, skip_verts=None):
+    """True per ray if some triangle (not touching vertex skip_verts[i]) is hit within (2 mm, tmax] (Moller-Trumbore, chunked)."""
+    P0 = P[F[:, 0]]; E1 = P[F[:, 1]] - P0; E2 = P[F[:, 2]] - P0
+    hit_any = np.zeros(len(O), bool)
+    wid = weld_ids(P)
+    Fw = wid[F]
+    for s0 in range(0, len(O), 128):
+        o = O[s0:s0 + 128, None, :]; d = D[s0:s0 + 128, None, :]
+        h = np.cross(d, E2[None]); a = (E1[None] * h).sum(-1)
+        ok = np.abs(a) > 1e-12
+        f = 1.0 / np.where(ok, a, 1); sv = o - P0[None]; u = f * (sv * h).sum(-1)
+        q = np.cross(sv, E1[None]); v = f * (d * q).sum(-1); t = f * (E2[None] * q).sum(-1)
+        hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0.002) & (t < tmax)
+        if skip_verts is not None:
+            sv_ids = wid[skip_verts[s0:s0 + 128]]
+            touch = (Fw[None, :, :] == sv_ids[:, None, None]).any(-1)
+            hit &= ~touch
+        hit_any[s0:s0 + 128] = hit.any(1)
+    return hit_any
+
+
 def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, sigma=0.011, relax=8):
     """Round 05: the mask as CLOTH, not as a skin-tight shell (critic r04: 'shrink-wrapped, lips and chin show through the cloth').
     Every vertex of the mask region takes the cloth radius
@@ -224,11 +246,19 @@ def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, si
         wt = np.exp(-d2 / (2 * sigma * sigma))
         sm[i] = (env[tgt[nb]] * wt).sum() / wt.sum()
     side = 1 - smoothstep(np.radians(85), np.radians(112), np.abs(phi))          # sides of the head: cloth follows the cheek / ear line
+    _, botb = mask_bounds(phi, cfg)
+    taper = smoothstep(botb + 0.002, botb + 0.035, y)                            # round 05b: the hem returns to the neck surface (no skirt over the collar)
+    # round 05b: only the OUTERMOST shell is draped.  A vertex with another shell (hoodie collar, vest collar, hair) within 5 cm straight out is
+    # under it (neck skin under a collar): moving it would push it through / tear it away from the outer shell (the tears at the mask hem).
+    Dv = np.stack([np.sin(phi[tgt]), np.zeros(len(tgt)), np.cos(phi[tgt])], 1)
+    covered = np.zeros(len(P), bool)
+    covered[tgt] = _ray_hits_any(P[tgt] + Dv * 0.0005, Dv, P, F, 0.05, skip_verts=tgt)
     moved = np.zeros(len(P))
     for i in tgt:
+        if covered[i]: continue
         fold = (0.0011 * np.sin(phi[i] * 8 + y[i] * 55) + 0.0007 * np.sin(-phi[i] * 5 + y[i] * 95 + 1.1)) * smoothstep(cfg['nose'] - 0.01, cfg['chin'], y[i])
         target = max(r[i] + thick, sm[i] + thick * 0.6 + fold)
-        rn = r[i] + (target - r[i]) * w[i] * (0.25 + 0.75 * side[i])
+        rn = r[i] + (target - r[i]) * w[i] * (0.25 + 0.75 * side[i]) * taper[i]
         moved[i] = rn - r[i]
         P[i, 0] = np.sin(phi[i]) * rn; P[i, 2] = cfg['axis_z'] + np.cos(phi[i]) * rn
     # relax: a few Laplacian passes over the lower face (welded neighbours) close the last hairline of the lip crease
@@ -307,13 +337,18 @@ def fill_face_holes(P, N, UV, F, cfg, max_extent=0.075):
         edges = [k for k in bnd if k[0] in comp and k[1] in comp]
         c = pp.mean(0)
         nn = np.mean([N[np.where(wid == v)[0][0]] for v in comp], axis=0); nn /= np.linalg.norm(nn) + 1e-12
-        cuv = np.array([UV[np.where(wid == v)[0][0]] for v in comp])
-        if (cuv.max(0) - cuv.min(0)).max() > 0.03: continue     # loop spans several UV islands: the fan would paint over other atlas areas
-        uvs = cuv.mean(0)
-        ci = len(P); P.append(c); N.append(nn); UV.append(uvs)
+        c = pp.mean(0)
+        nn = np.mean([N[np.where(wid == v)[0][0]] for v in comp], axis=0); nn /= np.linalg.norm(nn) + 1e-12
+        # round 05b: one centroid vertex PER boundary edge, its uv = the mean of that edge's own two uvs, so a loop that spans several UV islands
+        # (the hood's neck hole) is closed edge by edge without any triangle stretching across the atlas; edges whose endpoints sit in different
+        # islands (uv distance > 0.04) are left open
+        nfan = 0
         for k in edges:
             u, v = dirn[k]
-            Fl.append((v, u, ci))
+            if np.abs(UV[u] - UV[v]).max() > 0.04: continue
+            ci = len(P); P.append(c); N.append(nn); UV.append((UV[u] + UV[v]) / 2)
+            Fl.append((v, u, ci)); nfan += 1
+        if nfan == 0: continue
         filled += 1
     return np.array(P), np.array(N), np.array(UV), np.array(Fl, np.int64), filled
 

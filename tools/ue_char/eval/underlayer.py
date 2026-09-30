@@ -20,8 +20,11 @@ collapses the mesh), so the mesh gets a backing hull:
 """
 import json, os, sys
 import numpy as np
-from scipy import ndimage
-from scipy.spatial import cKDTree
+try:
+    from scipy import ndimage
+    from scipy.spatial import cKDTree
+except ImportError:   # inside Blender (numpy only) only smooth_weights() is used
+    ndimage = cKDTree = None
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 from p2paths import WT, scr  # noqa: E402
@@ -32,7 +35,7 @@ SAMPLE = 0.003 # surface sample spacing (m)
 RB = 0.06      # band: distances beyond this are not resolved (sign only)
 INSET = 0.005  # hull depth under the cloth (m)
 STEP = 4       # hull grid = STEP * H (24 mm): ~7-10k hull triangles
-PURITY = 0.55  # a hull vertex needs >= 55 % of its skin weight in one limb group (torso+head / arm L / arm R / leg L / leg R)
+PURITY = float(os.environ.get('HULL_PURITY', '0.45'))  # a hull vertex needs >= 85 % of its skin weight in one limb group (torso+head / arm L / arm R / leg L / leg R)
 CULL = 0.05    # a hull triangle with no garment within 5 cm along its outward normal is dropped
 
 
@@ -66,6 +69,25 @@ def dense_weights(pos, si, sw, nb=18):
     _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
     acc = np.zeros((inv.max() + 1, nb)); np.add.at(acc, inv, dense)
     return acc[inv] / np.bincount(inv).astype(float)[inv][:, None]
+
+
+def smooth_weights(pos, nrm, dense, radius=0.014, sigma=0.006, iters=2, gate0=0.3):
+    """Round 05 (CH18, weights level): shells that abut (sleeve | torso, pocket | jacket) are separate pieces with their own skin weights, so
+    a seam opens as soon as the limbs move (the sleeve tears away from the shirt at the armpit).  Each vertex takes the distance- and
+    normal-weighted average of the weights of every vertex within `radius` whose normal agrees (dot > gate0; the arm's inner side, which
+    faces the torso, is excluded): abutting shells then move together.  numpy only (runs inside Blender)."""
+    n = len(pos); w = dense.copy()
+    for _ in range(iters):
+        out = np.zeros_like(w)
+        for s0 in range(0, n, 400):
+            d = pos[s0:s0 + 400, None, :] - pos[None, :, :]
+            d2 = (d * d).sum(-1)
+            gate = np.clip((nrm[s0:s0 + 400] @ nrm.T - gate0) / (1 - gate0), 0, 1)
+            k = np.exp(-d2 / (2 * sigma * sigma)) * (d2 < radius * radius) * gate
+            k[np.arange(len(k)), np.arange(s0, s0 + len(k))] += 1e-6
+            out[s0:s0 + 400] = (k @ w) / k.sum(1, keepdims=True)
+        w = out
+    return w / w.sum(1, keepdims=True)
 
 
 def surface_samples(pos, idx, nrm, sp=SAMPLE):
@@ -164,10 +186,11 @@ def surface_nets(f, origin, sp):
     return verts, np.array(out, int)
 
 
-def ray_first_hit(O, D, pos, idx, tmax):
-    """Distance of the first triangle hit along each ray (Moller-Trumbore, chunked), inf when none within tmax."""
+def ray_first_hit(O, D, pos, idx, tmax, want_tri=False):
+    """Distance of the first triangle hit along each ray (Moller-Trumbore, chunked), inf when none within tmax.
+    want_tri=True also returns the hit triangle index and its barycentric (u, v)."""
     P0 = pos[idx[:, 0]]; E1 = pos[idx[:, 1]] - P0; E2 = pos[idx[:, 2]] - P0
-    best = np.full(len(O), np.inf)
+    best = np.full(len(O), np.inf); bt = np.zeros(len(O), int); bu = np.zeros(len(O)); bv = np.zeros(len(O))
     for s in range(0, len(O), 256):
         o = O[s:s + 256, None, :]; d = D[s:s + 256, None, :]
         h = np.cross(d, E2[None]); a = (E1[None] * h).sum(-1)
@@ -175,8 +198,10 @@ def ray_first_hit(O, D, pos, idx, tmax):
         f = 1.0 / np.where(ok, a, 1); sv = o - P0[None]; u = f * (sv * h).sum(-1)
         q = np.cross(sv, E1[None]); v = f * (d * q).sum(-1); t = f * (E2[None] * q).sum(-1)
         hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 1e-4) & (t < tmax)
-        best[s:s + 256] = np.where(hit, t, np.inf).min(1)
-    return best
+        tt = np.where(hit, t, np.inf)
+        j = tt.argmin(1); rows = np.arange(len(j))
+        best[s:s + 256] = tt[rows, j]; bt[s:s + 256] = j; bu[s:s + 256] = u[rows, j]; bv[s:s + 256] = v[rows, j]
+    return (best, bt, bu, bv) if want_tri else best
 
 
 def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
@@ -204,7 +229,7 @@ def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
     used = np.unique(T); remap = -np.ones(len(V), int); remap[used] = np.arange(len(used)); V = V[used]; T = remap[T]
     # cull triangles that lie under no cloth (hull pieces the field produced where the garment has a big hole)
     fn0 = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]]); fn0 /= np.linalg.norm(fn0, axis=1, keepdims=True) + 1e-12
-    hit = ray_first_hit(V[T].mean(1) + fn0 * 0.001, fn0, pos, idx, cull)
+    hit = ray_first_hit(V[T].mean(1) + fn0 * 0.001, fn0, pos, idx, min(cull, 2.0 * inset + 0.012))   # webs / shards: nothing within ~2 x depth + 12 mm above them
     n_before = len(T)
     T = T[np.isfinite(hit)]
     used = np.unique(T); remap = -np.ones(len(V), int); remap[used] = np.arange(len(used)); V = V[used]; T = remap[T]
@@ -240,8 +265,16 @@ def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
     d4, i4 = tree.query(V, k=4)
     w4 = 1.0 / (d4 + 5e-3); w4 /= w4.sum(1, keepdims=True)
     cen = V[T].mean(1); cn = N[T].mean(1)
-    _, near = tree.query(cen + cn * (inset + 0.004))                        # pushed out to about the garment surface
-    tri_uv = tuv[near]                                                       # (nt, 2): the same uv for all three corners
+    # colour: the OUTERMOST cloth above the hull triangle (first garment hit along the outward normal), not the nearest vertex (which can be
+    # the arm's skin under a T-shirt sleeve): uv interpolated at the hit point (one uv per hull triangle)
+    fnT = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]]); fnT /= np.linalg.norm(fnT, axis=1, keepdims=True) + 1e-12
+    th, ti, hu, hv = ray_first_hit(cen + fnT * 0.001, fnT, pos, idx, 0.1, want_tri=True)
+    tri_uv = np.zeros((len(T), 2))
+    okh = np.isfinite(th)
+    ci = idx[ti]
+    tri_uv[okh] = (tuv[ci[:, 0]] * (1 - hu - hv)[:, None] + tuv[ci[:, 1]] * hu[:, None] + tuv[ci[:, 2]] * hv[:, None])[okh]
+    _, near = tree.query(cen + cn * (inset + 0.004))
+    tri_uv[~okh] = tuv[near][~okh]
     dd, _ = tree.query(V)
     stats = dict(name=name, garment_verts=len(pos), garment_tris=len(idx), hull_verts=len(V), hull_tris=len(T), hull_tris_raw=n_raw,
                  hull_tris_before_cull=n_before, hull_tris_before_purity=n_pure, hull_to_garment_vertex_mm_median=float(np.median(dd) * 1000),
@@ -274,12 +307,11 @@ def build_layers(name, insets=None):
     """Three hulls (4, 12 and 30 mm under the cloth) merged into one: the deeper ones are smoother (a crack narrower than twice their depth does not
     break them), so they back the places where the shallow one has holes (joint bands, thin double layers).  Measured with crack_render.py + the
     critic's cracks.py on 9 dark walkers: wall-coloured slivers 35 (garment only) -> 13 (2 layers) -> 9 (3 layers)."""
-    if insets is None: insets = tuple(float(x) for x in os.environ.get('HULL_LAYERS', '0.004,0.012,0.030').split(','))
+    if insets is None: insets = tuple(float(x) for x in os.environ.get('HULL_LAYERS', '0.004,0.012').split(','))
     parts, stats = [], []
     for k, ins in enumerate(insets):
         global PURITY
         keep = PURITY
-        if k > 0: PURITY = min(PURITY, 0.35)
         try:
             H_, st = build_hull(name, inset=ins)
         finally:

@@ -64,8 +64,11 @@ def raster(scene_items, W, H, px_per_m, wall=(196, 132, 100), floor_y=0.0, groun
 
 
 def main():
-    out = sys.argv[1]; specs = [a for a in sys.argv[2:] if not a.startswith('--')]
-    ppm = float(sys.argv[sys.argv.index('--px-per-m') + 1]) if '--px-per-m' in sys.argv else 234.0
+    av = sys.argv[1:]
+    ppm = 234.0
+    if '--px-per-m' in av:
+        k = av.index('--px-per-m'); ppm = float(av[k + 1]); av = av[:k] + av[k + 2:]
+    out = av[0]; specs = [a for a in av[1:] if not a.startswith('--')]
     EXP = float(os.environ.get('EXPAND', '0'))
     os.makedirs(out, exist_ok=True)
     res = {}
