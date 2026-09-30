@@ -2,7 +2,7 @@
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation.
 
-**Status: no engine capture exists for round 06.** Every Unreal launch of the loop was frozen behind two `UnrealEditor` processes of other agents that stayed stuck in the GPU driver (`?E`, exiting, from 06:22; still there at 08:30, 1 h 32 min): `gpu_slot.sh` refuses all launches while an engine is stuck exiting (RULES.md, 23:08 kernel panic), the GPU read 100 % with no engine running, and this session's queued content build never got a slot. The lock was not bypassed and no process of another agent was touched. `captures/` is therefore empty; nothing here is an engine result.
+**Status: no engine capture exists for round 06.** At 06:55 a WindowServer watchdog reset killed the desktop session; the orchestrator paused the GPU lock at 07:56 ("desktop session dead until the owner logs in") and two `UnrealEditor` processes of other agents stayed stuck in the GPU driver (`?E`, exiting, from 06:22, still there at 09:40; GPU 100 % with no engine running). `gpu_slot.sh` refuses all launches in that state (RULES.md, 23:08 kernel panic), so this session's content build waited 2 x 60 min and was never run. The lock was not bypassed and no process of another agent was touched. `captures/` is therefore empty; nothing here is an engine result.
 
 What exists instead (all OFFLINE, no GPU, clearly not the game):
 
