@@ -261,6 +261,46 @@
     3,
     3
    ]
+  },
+  {
+   "piece": "P6 City life",
+   "round": 1,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    3,
+    2,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 1,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    3,
+    4,
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "piece": "P4 Look",
+   "round": 2,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    5,
+    5
+   ]
   }
  ],
  "agents": [
@@ -339,5 +379,45 @@
  ],
  "caveats": [
   "Round difficulty differs (each round targets a different gap), so per-round averages compare pieces' trajectories, not models directly. Direct comparisons need same-gap A/B builds."
+ ],
+ "ab_builds": [
+  {
+   "gap": "River water (identical brief, separate worktrees, blind Opus critic)",
+   "date": "2026-09-29",
+   "sonnet_xhigh": {
+    "mean": 3.4,
+    "scores": [
+     4,
+     4,
+     1,
+     5,
+     3
+    ],
+    "gpu_ms": 1.9,
+    "won": [
+     "S4 perch view (C14 closer: 4.3 darker vs 3.0 brighter)",
+     "shore/piling foam"
+    ]
+   },
+   "opus_high": {
+    "mean": 3.8,
+    "scores": [
+     4,
+     5,
+     5,
+     1,
+     4
+    ],
+    "won": [
+     "river-low view",
+     "dolly",
+     "colour",
+     "reflections"
+    ]
+   },
+   "winner": "Opus 5.5 high by 0.4",
+   "merged": "night1/water-ab-opus",
+   "note": "Both FAIL vs reference. Next water round: Opus build + Sonnet's piling foam."
+  }
  ]
 }
