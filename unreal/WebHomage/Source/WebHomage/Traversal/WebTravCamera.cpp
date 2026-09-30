@@ -391,7 +391,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
 	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
 	// (round 06: on the wall the lower clamp opens up to an 80 deg look UP the facade)
-	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, FMath::Max(SkyK, FlipK)), -80.0, Smooth(WallK, 0.0, 1.0))),
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(PitchDownMin, -(SkyPitchUp + (FlipPitchUp - SkyPitchUp) * FlipK), FMath::Max(SkyK, FlipK)), -80.0, Smooth(WallK, 0.0, 1.0))),
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));

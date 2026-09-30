@@ -20,6 +20,16 @@ SEQ = [
      "wall-run up, top-out onto the roof, camera turn, web-zip to the roof edge over the avenue, perch."),
     ("d_sprint_jump_first_swing", "Ground sprint -> jump -> first swing",
      "Street start on the avenue; run north, charged jump, first swing, then the round-10 chain rule (as a)."),
+    ("f1_sky_backDouble", "Round 11 flip: sky launch with the backDouble program, catch into the next swing",
+     "Airborne start 30 m over the avenue (x 250, y 170, 26 m/s north), one swing, jump-release with the trick input at 1.4 s (sky launch), "
+     "program backDouble requested; swing button pressed again at 3.49 s; then the chain rule without tricks."),
+    ("f2_sky_pikeSwan", "Round 11 flip: sky launch with the frontPikeSwan program, catch into the next swing",
+     "As f1 from y 60, program frontPikeSwan; swing button pressed again at 3.11 s."),
+    ("f3_sky_corkscrew", "Round 11 flip: sky launch with the corkscrew program, catch into the next swing",
+     "As f1 from y 60, program corkscrew; swing button pressed again at 2.98 s."),
+    ("f4_chain_flips", "Round 11 flips: swing chain with a flip requested on every release",
+     "As a (24 m, y 240); chain rule with trickEvery 1, skyEvery 2, skyTricks 1; requested programs cycle backDouble, frontPikeSwan, "
+     "corkscrew; a plain release only flips when the predicted fall leaves room."),
 ]
 FIELD = {"trick": "F trick", "move": "stick (x right, y fwd)", "swing": "RMB swing", "jump": "Space", "sprint": "Shift", "zip": "E zip",
          "drop": "C drop/dive", "quick": "Q boost", "look": "look (deg/s yaw, pitch-down)", "heading": "heading (world yaw deg)"}
@@ -116,6 +126,13 @@ if RN >= 4:
           "releases have passed and the lower wall ahead is reachable (or 5.5 s after the last one); plain releases at phase 0.55; any swing is let go "
           "1.25-1.55 s in, a stale swing after 2.4 s. While swinging, touching a wide facade with the stick held into it lets go of the web and "
           "wall-runs up it. A new web never anchors below 3 m over the body or behind it. Hero mesh / clip paths are data (`HeroMeshPath`, `HeroClipRoot`, ...).")
+    if RN >= 11:
+        w("- Round 11 flips: a trick is a *flip program* = a timeline of held shapes (tuck, pike, layout, swan, pencil, straddle, throne, twist, "
+          "reach) keyed in Blender on the hero rig (`docs/night1/traversal/blender/`); body rotation about the body centre follows one angular "
+          "momentum per program with per-shape effective inertia (tuck 1 .. pencil / throne 9), solved to end upright; twist segments turn about "
+          "the long axis; the upper body samples the timeline 0.04 s ahead and the legs 0.07 s behind; a cut program springs back to the body "
+          "frame in ~0.07 s. The next web is searched only in the program's final reach (held up to 0.2 s). Wall-run top-out = program wallFront. "
+          "Flip camera: orbit 40 deg off the travel axis toward the side with more space, 1.6 m under the hero, framing 0.42, look-up <= 18 deg.")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")
@@ -238,6 +255,8 @@ w("Telemetry CSV columns (one row per rendered frame): frame, t, mode, sub, body
   + ("; round 09 adds hero_cx (projected bone box centre x) and pcm_roll." if RN >= 9 else "."))
 w("")
 for name, title, desc in SEQ:
+    if not os.path.exists(os.path.join(ROUND, name + ".mp4")):
+        continue  # round 11: only the sequences captured in this round
     SCRDIR = os.path.join(HERE, "scripts", "city") if RN >= 10 else os.path.join(HERE, "scripts")
     js = json.load(open(os.path.join(SCRDIR, name + ".json")))
     st = stats(os.path.join(ROUND, name + "_telemetry.csv"))

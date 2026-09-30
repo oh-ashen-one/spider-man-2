@@ -1,6 +1,6 @@
 {
  "name": "f4_chain_flips",
- "note": "Round 11 flips: a-style airborne swing chain; every release carries a flip (trickEvery 1): plain releases backSingle, every 2nd release a sky launch; programs cycled backSingle, frontPikeSwan, backSingle, corkscrew, backSingle, backDouble. Shows flips released from and caught into consecutive swings.",
+ "note": "Round 11 flips: a-style airborne swing chain; every release asks for a flip (trickEvery 1), every 2nd release is a sky launch; requested programs cycle backDouble, frontPikeSwan, corkscrew. A plain release only flips when the predicted fall leaves room (FitFlip: else backSingle, else no flip), so low releases stay plain.",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -25,7 +25,7 @@
    ],
    "heading": -90,
    "swing": false,
-   "flip": "backSingle,frontPikeSwan,backSingle,corkscrew,backSingle,backDouble"
+   "flip": "backDouble,frontPikeSwan,corkscrew"
   },
   {
    "t": 0.4,

@@ -53,7 +53,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReattachAfter = 0.22f;
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f; // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipFloorClear = 6.f;  // round 11: a flip must be done this high over the floor
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipCatchRoom = 0.35f; // round 11: s left after the program's reach for the catch // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingVz = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
@@ -322,6 +324,8 @@ private:
 	void RopeWrap(double H);
 	// ---- tricks / release
 	FName ChooseTrick(const FWebTravInput& I);
+	FName FitFlip(FName Want) const;
+	double AirTimeToClear() const;
 	void StartTrick(FName Name);
 	void TrickBoost(const FWebTravInput& I);
 	void ReleaseSwing(bool bJump, const FWebTravInput& I);

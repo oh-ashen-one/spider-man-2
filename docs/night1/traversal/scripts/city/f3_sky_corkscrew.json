@@ -1,11 +1,11 @@
 {
  "name": "f3_sky_corkscrew",
- "note": "Round 11 flips: sky launch at 1.4 s with the corkscrew program (layout turning over while twisting a full turn arms-in, swan, tuck up, reach: 360 deg pitch + 360 deg twist in 1.84 s), catch into the next swing.",
+ "note": "Round 11 flips: sky launch at 1.4 s with the corkscrew program (layout turning over while twisting a full turn arms-in, swan, tuck up, reach: 360 deg pitch + 360 deg twist in 1.84 s), catch into the next swing. Spawn y 60 (same stretch as f2: the y -60 take framed the corkscrew against a dark glass tower and the next web caught only after a 1.2 s dive).",
  "seed": 1234,
  "spawn": {
   "pos": [
    250,
-   -60,
+   60,
    30
   ],
   "yaw": -90,

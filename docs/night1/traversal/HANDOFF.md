@@ -1,14 +1,15 @@
-# P3 Traversal + camera — handoff (after round 10)
+# P3 Traversal + camera — handoff (after round 11)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (end of round 10, 2026-09-30):** round 10 is CLOSED on the engine side: code committed and built (dylib 21:57), the four sequences a/b/c/d
-captured in the lit `/Game/Maps/Manhattan` (golden) at 1080p60 with 4K stills, measured (`round-10/SPEC_CHECK.txt` + the check files), and the blind
-critic pack is built at `/Users/midir/sm2-n1/_scratch/critic-P3-r10/pack` (key outside the pack: `pack.key.json`; pairs in `pairs.json`) — the
-orchestrator runs the critic. **Next:** (1) file the r10 critic verdict as `critic/round-10-CRITIC.md` and fix its single biggest gap; (2) the owner's
-queued **round 11 = gymnast-quality flips** (`FLIPS_BRIEF.md`, includes measuring the owner clip first); (3) mouse look too fast (see §8).
-The interrupted r10 loop left the d 4K stills from an older build; they were re-shot at the end (the fresh 4K run's telemetry matched the committed
-d movie telemetry bit for bit over all 719 rows: position, velocity and camera identical, so the committed movies are the current build).
+**Status (end of round 11, 2026-09-30):** round 11 = the owner's **gymnast-quality flips** (`FLIPS_BRIEF.md`). The owner clip was measured
+into `FLIPS_SPEC.md` (F1-F12); flips are now *programs* of held gymnastic shapes keyed in Blender on the hero rig, with a momentum
+(inertia-eased) rotation, leg-lag overlap, corkscrew twist, a flip camera and a catch spring (§3 "Round 11"). Captured in the lit
+`/Game/Maps/Manhattan` (golden): `round-11/` f1-f4 (sky backDouble / frontPikeSwan / corkscrew, chain with a flip on every release),
+c (wall-run top-out = wallFront program) and b (r10 script, for the r10-vs-r11 pair); measured with `flip_check.py` (`round-11/FLIP_CHECK.txt`).
+Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r11/pack` (key `pack.key.json` outside it; builder `make_pairs.sh`; owner-clip cuts in
+`refcuts/`, scratch only, never committed). **Next:** file the r11 critic verdict as `critic/round-11-CRITIC.md` and fix its single biggest gap
+(§8). Mouse look: `MouseRadPerUnit` 0.033 -> 0.011 plus console variable `wh.MouseSensitivity` (multiplier, default 1) — needs Hari's real mouse.
 
 Branch `night1/traversal`, worktree `~/sm2-n1/traversal`, UE MCP port 8773 (never used; everything runs through commandlets and `-game`).
 Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`,
@@ -24,6 +25,7 @@ Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`
 | `WebTraversalComponent.*` `UWebTraversalComponent` | Port of traversal.js: 120 Hz substeps; modes ground/air/swing/wall/zip/perch; kin moves vault/cornerWrap/wallHop; jump charge, landing tiers, glide, dive, corridor, facade avoid, side peel, rope wrap/reanchor, pump/climb assist/first-arc motor, drag, release boosts, momentum chain, tricks (TRICK_DEF, boost at snap), wall run/zip/corner/hop, zip bezier with speed profile, perch, point/anchor launch, web dash, quick boost. Writes `Anim` (C1), `Events`, `Strands[2]`. Browser function order kept. |
 | `WebTravCamera.*` `FWebTravCamera` | Yaw auto-recenter + FOV/kick/punch/shake/roll/motion-blur from camera.js; composition replaced in round 03/05 by `ComposeChase` (see §3). Outputs `CamPos` (m), `CamRot`, `OutVFov` (VERTICAL deg), `MotionBlur`, `HeroDist`, `bCamInGeometry`. |
 | `WebTravCharacter.*` `AWebTravCharacter` (+ `AWebTravGameMode`) | Pawn: Enhanced Input built at runtime (RMB/R2 swing, Space/A jump, Shift/R2 sprint, E/MMB/Y/L2+R2 zip, C/Ctrl/B drop, Q/L1 quick, F/X trick, WASD/LS, mouse/RS look). Tick: input (live or script) → camera look → traversal → events→camera → camera → actor + FollowCamera (absolute; vertical→horizontal FOV) → figure root (BodyQ + trick spin + air sway) → anim drive → webs → telemetry. Hero mesh `SetupHeroMesh` (axis correction from ref pose), placeholder block figure fallback, web strands = 2×12 cylinder segments (min ~1.6 px width, retract on release, culled within 3 m of lens), hero pixel-mask capture (telemetry only). |
+| `WebTravFlips.*` (round 11) | Pure flip-program module: `EWebFlipShape` (Tuck, Pike, Layout, Swan, Pencil, Straddle, Throne, Twist, Reach -> clips `flip<Shape>`), programs `backDouble`, `frontPikeSwan`, `corkscrew`, `backSingle`, `wallFront` (segments of shape + duration + twist), `WebFlips::Sample(P, t)` -> pitch / twist / rate + upper-body shape blend (sampled `FlipLead` 0.04 s ahead) and legs blend (`FlipLag` 0.07 s behind). Used by the traversal (durations), the character (root rotation) and the anim instance (shapes). |
 | `WebTravScript.*` `UWebTravScript` | GameInstance subsystem: `-WHTravScript=<json>` playback, `-WHTravCsv`, `-WHTravSeed`; mini JSON parser (the Json module is not a direct Build.cs dependency — Build.cs is integrator-owned). |
 | `Anim/WebTravAnimInstance.*` `UWebTravAnimInstance` + `FWebTravAnimProxy` | No AnimBP: game thread picks a node from C1 (ground loco blend walk/jog/run/sprint by speed; land_*; swing 3-way low/bottom/high + L variants + corner bank; zip_*; perch_*; wall crawl/run/side/corner/zip; air cycle timelines; trick_*), crossfades with browser TRANS times; proxy `Evaluate` samples/blends `UAnimSequence`s, spine bank, web-arm aim (upper arm → anchor, elbow eased straight). Clips from `/Game/Traversal/HeroDev/<clip>`. Round 06: wall-run node = the `sprint` clip at 1.8-2.6 steps/s by wall speed (own phase `WallRunPhase`); `topOut` node = `releaseFlip` (T x 0.72, held at 0.78 s + 0.45 `fallCalm`); `land_landTopOut` = `perchLand` from 0.12 s; trick→air blend 0.22 s. |
 
@@ -135,6 +137,31 @@ Round 06 sub names: air `topOut` (wall-run reached the top), land `landTopOut` (
 - **Pop fixes** (round 06): body roll / pitch leans are springs (`RollA/PitchA`, rate 14); the character's air-sway weight
   `SwayW` ramps 0.2 s (was full amplitude the frame a trick ended); chase pitch may pass 22 deg down when collision lifts the
   camera (hero centre kept <= 0.62 of the frame).
+- **Round 11 — gymnast flips (owner FLIPS_BRIEF, spec FLIPS_SPEC.md measured from the owner clip):**
+  - *Shapes* are Blender-keyed clips on the hero rig: `docs/night1/traversal/blender/make_flip_shapes.py` (headless, CPU) aims every spine / limb
+    bone at a body-frame direction per shape (parent first; pointed toes follow the shin), keys 0 s = shape and 1 s = the same shape ~7 % more
+    open ("breathing" over a hold), exports only those actions + `airApex`. `splice_flips.py` appends them (rotation channels, matched by
+    bone name) to `Saved/HeroDev.glb`, but only after the untouched `airApex` survives the Blender round trip (max quaternion error 1e-5;
+    the scene fps must be set to 30 BEFORE the import or every clip comes back time-scaled 24/30). `build_traversal.py` runs both, then the
+    Interchange import makes `/Game/Traversal/HeroDev/flip<Shape>` (89 clips). Stick-figure check of the shapes: `_scratch/traversal/r11/blender/shapes.png`.
+  - *Rotation* is not keyed: one angular momentum per program, rate = L x env(t) / I(shape(t)), L solved so the program ends exactly on its
+    total angle (upright). Effective inertia per shape (tuck 1, pike 1.35, layout 3.2, twist 3.5, straddle 6, reach 7, swan 7.5, pencil 9,
+    throne 9) was tuned to the owner clip: tucks spin ~520-620 deg/s, the open holds turn 60-120 deg/s, so the ease comes from the shapes.
+    Set-in 0.12 s / settle 0.22 s envelopes at the ends. Shape changes blend over 0.06 s before + 0.11 s after a boundary.
+  - *Overlap*: upper body samples the program 0.04 s ahead, legs 0.07 s behind (`Frame.LegLayers`, blended onto the leg bones in the proxy).
+  - *Character*: `FlipOffQ` = pitch about the lateral axis x twist about the long axis (twist sign = `TrickSide`, toward the stick) about the
+    body centre; when a program is cut (web catch / landing / wall) the last rotation springs back to the body frame in ~0.07 s (no pop).
+    The wall-run top-out plays `wallFront` when the flip clips exist (the old `releaseFlip` clip spun by itself, so it is the fallback).
+  - *Traversal*: `ChooseTrick` returns a program: script / caller request `FWebTravInput::FlipReq` (script key `"flip": "a,b,c"`, cycled per
+    trick), else sky launch cycles backDouble / frontPikeSwan / corkscrew, plain release backSingle when < 30 m over the floor. The next web
+    is searched only during the program's final reach; the reach is held up to `FlipReachHold` 0.2 s while the swing button is held.
+    `bLegacyTricks` = the old browser tricks. Program boost 3.5 m/s forward + 1.5 up at 30 % of the first shape.
+  - *Camera* (`FlipK`, 0.3 s in / 0.45 s out): orbits `FlipOrbitDeg` 40 deg off the travel axis toward the side with more open space
+    (raycasts at the flip start), sinks `FlipCamBelow` 1.6 m under the hero, frames him at 0.42, look-up limit `FlipPitchUp` 18 deg (the first
+    capture with 1.0 m / 10 deg framed the flips against facades), 0.2 m closer; never rolls with the body.
+  - *Telemetry*: `flip_prog, flip_t, flip_pitch_deg, flip_twist_deg, flip_rate_dps, flip_shape, flip_shape_legs` (program state) and
+    `body_axis_deg, body_pitch_deg, body_roll_deg` (RENDERED hips->head axis from the bones; one-row shift like every bone column).
+  - Mouse: `MouseRadPerUnit` 0.011 (was 0.033) x console variable `wh.MouseSensitivity` (default 1).
 - Other: terrain boxes are always a floor (thin ground slab bug); swing anchor lean is horizontal only.
 
 ## 4. Commands
@@ -163,6 +190,7 @@ python3 docs/night1/traversal/facade_check.py <telemetry.csv> <label> t0:t1 ... 
 python3 docs/night1/traversal/spec_cam_check.py <telemetry.csv> <label> [t0 t1]   # TRAVERSAL-SPEC T8-T14, T16, T19 (rendered)
 # spec video instruments (venv: uv venv specv --python 3.12; uv pip install opencv-python-headless numpy scipy):
 #   python ~/sm2-n1/_scratch/director/specs/tools/vp_cam.py <mp4> <out prefix> 6 ; .../nearflow.py 8 <mp4>
+python3 docs/night1/traversal/flip_check.py <telemetry.csv> <label>   # round 11: FLIPS_SPEC F1-F5, F7-F11 per trick (rendered body axis, px height)
 python3 docs/night1/traversal/wall_check.py <telemetry.csv> <label>   # wall-run: limb phases @6 fps, head>hips, steps/s, px in frame through top-out
 python3 docs/night1/traversal/scripts/bake_keys.py <auto.json> <telemetry.csv> <out.json> <name>  # rule → plain timed keys
 python3 docs/night1/traversal/make_shotlist.py <round dir> "round NN" <commit>   # neutral SHOTLIST.md
@@ -184,7 +212,7 @@ manager caches / capture renders after the actor tick); the checkers shift them 
 { "name": "...", "seed": 1234,
   "spawn": { "pos": [x,y,z], "yaw": 0, "camPitch": 0.12, "vel": [vx,vy,vz] },
   "keys": [ { "t": 0.0, "move": [0,1], "heading": 0, "swing": true, "jump": false, "sprint": false, "zip": false,
-              "drop": false, "quick": false, "trick": false, "look": [yawDegPerS, pitchDownDegPerS],
+              "drop": false, "quick": false, "trick": false, "look": [yawDegPerS, pitchDownDegPerS], "flip": "backDouble,corkscrew",
               "autoChain": true, "releasePhase": 0.95, "gap": 0.3, "repressVz": 0.0, "trickEvery": 2 } ] }
 ```
 Keys hold until the next key; omitted fields keep their value. `heading` = stick set each frame to that world yaw relative to the
@@ -195,8 +223,32 @@ capture scripts `a_swing_chain`, `d_sprint_jump_first_swing` are baked (bit-iden
 (zip timings depend on camera pose — re-verify b/c after any camera change). Sequences: a (spawn 22 m, first press 0.4 s, 15.6 s),
 b (spawn 58 m, swing → release+trick 3.2 s → dive → zip 4.8 s → perch), c (street → wall-run up B04_N0 podium → roof → camera
 turn → zip to roof edge → perch; round 06: the turn key looks UP, `look [-150, -10]`, or the zip finds no target), d (street sprint → charged jump → first swing → chain, 12 s).
+Round 11: f1/f2/f3 (swing from 30 m at x 250, sky launch = jump + trick at 1.4 s with `flip` forced, web re-pressed 0.28 s before the program's
+end, then autoChain without tricks), f4 (a-style chain, `trickEvery` 1, `skyEvery` 2, `skyTricks` 1, program list cycled). `capture_round.sh`
+knows them; `NO_STILLS=1` skips the 4K stills run, `SKIP_WARM=1` the warm-up (the shared GPU queue is ~2-10 min per acquisition).
 
 ## 6. Known bugs / open issues
+- **Round 11 (flips):**
+  - *Sky-launch catches come out of a dive, not the reach* (F8 FAIL on f1 0.43 s / 51 deg, f4 0.45 s and 0.77 s): at the 50-59 m apex the
+    anchor search (`FindAnchor`: desired point 30-40 m over the street, or 2.5 m over the body when higher, faces 22-46 m ahead) finds no
+    facade high enough, so the web only catches once he has fallen to ~45 m; the program's reach is held 0.2 s (`FlipReachHold`), then the
+    forward stick tips him into the dive (the owner clip's S6 also ends in a forward pitch). A plain-release or mid-height program (f2, f3)
+    catches 0.02 s after the reach with the body 12 deg from upright. Fix idea: a sky-web search for tower faces above the apex (longer reach,
+    looking up), or end sky programs with a dive shape.
+  - *TRAVERSAL-SPEC conflicts:* the flip camera's 40 deg orbit makes T12 yaw p90 ~35 deg in f1 / f2 (limit 25) and the larger hero makes T8
+    p50 0.24-0.26 (limit 0.23); FLIPS_SPEC F9 asks for side-on rotation and hero 0.18-0.36. The director should say which wins during tricks.
+  - *Backgrounds:* in the Midtown avenue the 50-59 m apex is below most tower roofs, so f1 flips read against facades (the owner's S3 is too);
+    f2 / f3 / c read against sky. The first f1 take (flip camera 1.0 m under the hero, look-up <= 10 deg) was worse
+    (`_scratch/traversal/r11/camv1/`).
+  - *b regression:* the r10 script `b_release_trick_dive_zip` presses drop at 3.3 s and zip at 4.0 s; the backDouble program runs to 3.75 s, so
+    no zip target is taken and he falls to the street (6.4 s). Re-time b (or give it `"flip": "backSingle"`) next round.
+  - *wallFront* (top-out): the top-out air is ~0.9 s, the program 1.14 s, so the landing cuts it at 0.97 turns (0.87 rendered) and the layout
+    is not a hold (F4 FAIL, 0.12 s); shorten it or add hang to the top-out.
+  - Not built: edge vault / edge grab into a flip (owner S2, F12), flips while still on the web (owner S2 inverted pencil on the rope),
+    chaining a second program when the first ends early (`skyTricks` > 1 is disabled in the flip scripts).
+  - P2's hero (`-WHHeroClips=...`) has no `flip<Shape>` clips: the anim instance then falls back to the old trick clips, but the root still
+    rotates on the program timeline (wall top-out falls back to `releaseFlip` entirely). Splicing the same actions into P2's GLB is a
+    path change in `build_traversal.py` + a matching prefix.
 - **Round 10 (Manhattan):** a street-level sprint into the avenue facades hits the P1 storefront awnings / canopies at 3-5 m: the
   wall-run starts, is capped by the awning and falls back (hops in place; c had to start airborne). Needs a wall-run that climbs
   around thin overhangs (or P1 awning collision off).
@@ -325,6 +377,28 @@ Old critic checks (cadence / drop / facade files) still print PASS/FAIL against 
 Lit-city observations for other pieces: a soft green-white glow around the hero's leg at d 2.3 s (a bloom / reflection artefact on the street); a painted
 ghost-ad on a roof block at c 3.4 s reads "IRON ..." (city ad texture; P1: check it against `IP_EXCLUSIONS`).
 
+## 6g. Round-11 checks (captures in `round-11/`; FLIP_CHECK.txt = FLIPS_SPEC lines, ANIM_CAM_CHECK.txt, SHOTLIST.md; lit Manhattan golden)
+Movies 1920x1080 internal = output (`r.ScreenPercentage 100`, TSR + Lumen defaults), fixed 1/60 s step, 0.8 s pre-roll trimmed; stills (f1, f2)
+3840x2160 internal = output. GPU shared (every gpu_slot run logged `contaminated`: no perf claim). All numbers from the rendered telemetry
+(program state + the rendered hips->head axis from the bones + the hero pixel mask).
+| Line (FLIPS_SPEC) | f1 backDouble | f2 frontPikeSwan | f3 corkscrew | f4 chain (backDouble / corkscrew / backSingle) | c wallFront |
+|---|---|---|---|---|---|
+| F1 rotations (program / rendered) | 2.00 / 1.99 | 0.94 / 0.96 (caught in the reach) | 0.91 / 0.95 + 360 twist | 2.00/1.95, 1.00/1.06, 0.84/0.70 (clip end) | 0.97 / 0.87 (landing) |
+| F2 mean deg/s (multi-flip 300-500) | 309 PASS | 202 (single) | 218 | 302 PASS / 209 / 253 | 347 |
+| F3 peak deg/s (450-800, rendered) | 772 PASS | 619 PASS | 709 PASS | 772 / 712 / 722 PASS | 643 PASS |
+| F4 longest hold <= 150 deg/s (>= 0.3 s) | 0.56 s PASS | 1.06 s PASS | 0.61 s PASS | 0.36 / 0.61 / 0.39 PASS | 0.12 s FAIL |
+| F5 ease (peak / slowest per turn >= 3) | 29-39 PASS | 31 PASS | 35 PASS | PASS | 12.6 PASS |
+| F7 twist + tilt | — | — | 360 deg at 82 deg tilt PASS | corkscrew 360 at 81 PASS | — |
+| F8 catch (<= 0.25 s, <= 30 deg) | 0.43 s / 51 deg FAIL (dive) | 0.02 s / 12 deg PASS | 0.02 s / 12 deg PASS | 0.45 / 60 FAIL, 0.77 / 82 FAIL | landing |
+| F9 roll max / hero px height p50 (0.18-0.36) | 2.0 deg / 0.296 PASS | 2.0 / 0.244 PASS | 2.0 / 0.307 PASS | <= 0.9 / 0.22-0.27 PASS | 0.0 / 0.241 PASS |
+| F10 release -> trick | 0.00 s | 0.00 s | 0.00 s | 0.00 s | 0.00 s (off the wall) |
+| F11 leg lag at shape changes (0.05-0.12 s) | 0.110 PASS | 0.111 PASS | 0.100 PASS | 0.100-0.111 PASS | 0.100 PASS |
+Safety: 0 T-pose frames (f1-f4, b, c), camera in geometry 0 frames, hero fully in frame 100 % (c 608/629: roof camera turn, as r10).
+TRAVERSAL-SPEC camera lines on the flip clips (engine side, `AVENUE_YAW=90`): f1 5/9, f2 3/9 (T8 p50 .24-.26, T12 p90 ~35 deg, T10/T11 during the
+flip camera); a / d were not re-captured this round (their scripts have no tricks; round-10 numbers stand). f1/f2/b/c were captured before the
+`FitFlip` change: it only alters plain-release tricks, which those scripts do not have (f3 and f4 were captured after it).
+Owner reference numbers (`FLIPS_SPEC.md`): S3 three turns in 2.8 s (385 deg/s), tuck peaks 600-750 deg/s, holds 0.12-0.64 s, catch 0.2 s out of a tuck.
+
 ## 7. Critic history (blind critic vs Marvel's Spider-Man 2 refs; arc / camera / web / moves / body)
 | Round | Scores | Biggest gap | What changed next |
 |---|---|---|---|
@@ -337,20 +411,21 @@ ghost-ad on a roof block at c 3.4 s reads "IRON ..." (city ad texture; P1: check
 | r07 | 4/3/4/4/4 | Facade clearance + occlusion during swings (a 14.3-14.8 s, d 6.8-7.3 s): path >= 3 m from walls, camera >= 1.5 m, no facade > 30 % of frame, hero never occluded; also blur on everything, thick blooming rope (orchestrator: the critic's "hero 6-8 % of frame" was wrong, ~17 %) | r08 wall-frame canyon keeping, camera wall clearance, wall_frac / hero_occl capture, blur only at speed, thin matte web |
 | r08 | 4/4/4/3/3 | Locked symmetric camera + identical swings (critic asked 30-70 % screen weave — voided by TRAVERSAL-SPEC T9); orchestrator/spec: lively weave inside the safe corridor, camera 2-25 deg off axis, near facade in a side third 40-80 % of frames, pitch median 4-12 down, hFOV 100-110, arc low points vary | r09 alternating arc depth, alternating anchor sides + bounded weave, camera side slide + arc-end roll, lower camera, dark 2 px rope, crouch-first landings |
 | r09 | 5/6/4/5/5 | T3/T4/T7: four identical 2 s swings, rope on screen 52-67 %, never at roofline height | r10 Manhattan captures, roofline-solved sky launch + long web back to the street, rope 25-45 %, swing-to-wall-run turns, configurable hero paths |
-| r10 | (critic pending; pack `_scratch/critic-P3-r10/pack`, 6 pairs incl. r09-vs-r10) | expected gaps: T7 peaks stay under the roofline (58 m cap vs 68-300 m walls), T18 side third .68, T10 marginal, b/d camera lines | r11 = flips (owner brief) after the critic's verdict is fixed |
+| r10 | 6/6/6/5/5, flips 4 — FAILS TARGET | Flips: two 180 deg flips in 0.2 s each (~900 deg/s), no shape held > 0.3 s, seen foreshortened from behind; build each web-less trick as 180 deg in <= 0.35 s, one extended shape held >= 0.6 s at <= 150 deg/s, <= 0.4 s ease into the next attach; side-on, hero >= 0.20 of frame height against sky | r11 flips (owner brief = same gap): shape programs, momentum easing, flip camera |
+| r11 | (critic pending; pack `_scratch/critic-P3-r11/pack`, 5 owner-clip pairs + r10-vs-r11 progress pair) | expected: sky-launch catches via a dive (F8), facade backgrounds in f1, wallFront too short to hold, no edge vault | — |
 
 Round folders `docs/night1/traversal/round-0N/` hold videos, stills, telemetry, SHOTLIST, CRITIC and the check outputs.
 
 ## 8. Queue for the next session
-1. **Critic r10 verdict** -> `critic/round-10-CRITIC.md`; the `critic/` folder gets one file per round; fix only its single biggest gap first.
-2. **Round 11 flips (owner request 2026-09-29 23:45)** — `FLIPS_BRIEF.md`: gymnast-quality flips (tuck / pike / layout / swan, eased rotation, chained 2-3 per release,
-   corkscrews, continuous into the next web catch). Measure the owner's clip first (rotation deg/s, rotations per release, hold time, camera behaviour) into a numeric
-   SPEC, then build (Blender keyed trick clips retargeted onto the hero rig + procedural blending in `UWebTravAnimInstance`); judged by a blind Opus critic on moving
-   A/B vs the owner clip. Today's tricks are the browser clips (`trick_scissor`, `layout`, `corkscrew`, `tuckFlip`) with a figure-root spin: the sky launch already
-   chains 2 tricks per release, so the hooks (`TrickDur`, `TrickSide`, `BodyQ`) exist.
-3. **Mouse look too fast** (owner, same session): `MouseRadPerUnit` 0.033 was tuned for the browser; start at ~0.011 and expose a sensitivity setting
-   (`AWebTravCharacter` input setup); needs a real mouse to judge (Hari tests gameplay).
-4. Open engineering (from §6): awning-safe street wall-run, T7 peaks under the roofline (raise `SkyPeakMax` / add a roof-hop), T18 side third, d/b camera lines,
-   hero P2 swap capture (`-WHHeroMesh=...`), zip perch framing.
-5. Teardown (AGENTS.md): after the branch is pushed, `_scratch/traversal/capture` (~10 GB of PNG frames) and `specwork` are disposable; delete when the round is merged.
-
+1. **Critic r11 verdict** -> `critic/round-11-CRITIC.md` (pack `/Users/midir/sm2-n1/_scratch/critic-P3-r11/pack`, key `pack.key.json`, pairs
+   `pairs.json`: multi-flip f1 vs owner S3, pencil-throne f2 vs S6, layout-catch f3 vs S1, chain-flips f4 vs S4-5, wallrun-flip c vs S3 wall-run,
+   progress-trick r11 f1 vs r10 b). Ours are hero-window crops (1186x1080 centre crop of 1080p scaled to 610x556, the owner clip's framing).
+   Fix only its single biggest gap first.
+2. Likely next flip gaps (§6 Round 11): sky-web catch from the reach (search high tower faces), wallFront length, edge vault (owner S2),
+   flips on the web (inverted pencil while swinging, S2), b script re-timing.
+3. **Mouse**: Hari tests `MouseRadPerUnit` 0.011 x `wh.MouseSensitivity` with a real mouse (set it in the console: `wh.MouseSensitivity 1.5`).
+4. Combat hooks requested by P5 (`docs/night1/manhattan/INTEGRATION_BUGS.md`): control-override hook, public `ToAir` / `LaunchJump`, input
+   consumption in combat mode, writable camera yaw + shake API, anim proxy kept virtual.
+5. Open engineering from round 10 (§6): awning-safe street wall-run, T7 peaks under the roofline, T18 side third, d/b camera lines, hero P2 swap.
+6. Teardown (AGENTS.md): the PNG frames of every capture are deleted at the end of each round (`_scratch/traversal/capture/*/..._frames`);
+   the critic pack and `refcuts/` (owner footage, never committed) stay until the critic has run.

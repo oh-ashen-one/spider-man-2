@@ -1174,14 +1174,15 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 			{
 				const FName N(*L[S.FlipCycle % L.Num()].TrimStartAndEnd());
 				++S.FlipCycle;
-				if (WebFlips::Find(N)) return N;
+				if (WebFlips::Find(N)) return FitFlip(N);
 			}
 		}
 		static const FName SkyP[] = { FName(TEXT("backDouble")), FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")) };
+		// (callers pass the choice through FitFlip: a program that cannot finish before the floor is swapped for one that can)
 		static const FName LowP[] = { FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")), FName(TEXT("backSingle")) };
 		const int32 K = S.AutoFlipK++;
-		if (S.bSky) return SkyP[K % 3];
-		return HeightAboveFloor() < 30.0 ? FName(TEXT("backSingle")) : LowP[K % 3];
+		if (S.bSky) return FitFlip(SkyP[K % 3]);
+		return FitFlip(HeightAboveFloor() < 30.0 ? FName(TEXT("backSingle")) : LowP[K % 3]);
 	}
 	const double Sp = S.Vel.Size(), HS = HLen(S.Vel), VY = S.Vel.Z, Steep = Sp > 1 ? VY / Sp : 0;
 	FVector HV;
@@ -1205,8 +1206,31 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 	return Name;
 }
 
+// round 11 (f4 capture: a 2 s program from a low plain release landed him on the street mid-flip): a program only starts when
+// the predicted fall to FlipFloorClear m over the floor (ballistic, G) leaves room for it up to its reach + FlipCatchRoom s;
+// otherwise the longest program that fits (backSingle, then nothing: NAME_None = plain release)
+double UWebTraversalComponent::AirTimeToClear() const
+{
+	const double H0 = HeightAboveFloor() - double(FlipFloorClear), Vz = S.Vel.Z;
+	if (H0 <= 0.0) return 0.0;
+	return (Vz + FMath::Sqrt(FMath::Max(0.0, Vz * Vz + 2.0 * G * H0))) / G;
+}
+
+FName UWebTraversalComponent::FitFlip(FName Want) const
+{
+	if (S.bSky) return Want; // sky launches are solved for their own long air (roofline apex, hang)
+	const double Air = AirTimeToClear();
+	auto Need = [](const FWebFlipProgram* P) { return P ? double(P->Dur() - P->Segs.Last().Dur) : 1e9; };
+	const FWebFlipProgram* P = WebFlips::Find(Want);
+	if (P && Need(P) + double(FlipCatchRoom) <= Air) return Want;
+	const FName Short(TEXT("backSingle"));
+	if (Need(WebFlips::Find(Short)) + double(FlipCatchRoom) <= Air) return Short;
+	return NAME_None;
+}
+
 void UWebTraversalComponent::StartTrick(FName Name)
 {
+	if (Name.IsNone()) return;
 	if (const FWebFlipProgram* FP = WebFlips::Find(Name))
 	{ // round 11: flip program — its length is the trick; boost at 30 % of the first shape
 		S.Trick = Name; S.LastTrickName = Name;
@@ -1365,7 +1389,9 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 	const double HF = HeightAboveFloor();
 	const bool bRoom = HF > 5 && S.Vel.Size() > 9 && (S.Vel.Z > -5 || HF > 14);
 	// round 04: tricks only on input (trick pressed up to 0.4 s before the release, or during the air phase below)
-	if (bRoom && S.TrickBuf > 0) { StartTrick(ChooseTrick(I)); S.bLastTrick = true; S.TrickBuf = 0; }
+	FName TrickN = NAME_None; // round 11: FitFlip may answer "no room for any flip" -> plain release
+	if (bRoom && S.TrickBuf > 0) { TrickN = ChooseTrick(I); S.TrickBuf = 0; }
+	if (!TrickN.IsNone()) { StartTrick(TrickN); S.bLastTrick = true; }
 	else { S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K; }
 	S.bTrickNoUp = false; // user r10f: every release gains height again
 	const double HS = HLen(S.Vel), HL = FMath::Max(VmaxC(), Sp);

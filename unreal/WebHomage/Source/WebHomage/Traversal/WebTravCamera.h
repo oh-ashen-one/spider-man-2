@@ -76,7 +76,7 @@ public:
 	// round 11 (FLIPS_SPEC F9, critic r10 "flips foreshortened from behind"): while a flip program plays the camera orbits
 	// FlipOrbitDeg off the travel axis toward the side with more open space (the rotation plane reads side-on), sinks under the
 	// hero like the sky camera (silhouette against the sky) and never rolls with the body
-	double FlipOrbitDeg = 50.0, FlipSFrame = 0.42, FlipCamBelow = 1.0, FlipCloser = 0.2;
+	double FlipOrbitDeg = 40.0, FlipSFrame = 0.42, FlipCamBelow = 1.6, FlipCloser = 0.2, FlipPitchUp = 18.0; // r11 capture 1: 10 deg look-up clamp framed the flips against facades
 	double FlipK = 0.0, FlipKV = 0.0, FlipSide = 1.0;
 	bool bFlipWas = false;
 
