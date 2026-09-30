@@ -126,8 +126,8 @@ def build():
          'Fight_Hood':     ((188, 270), (178, 110), 1.0, 1.0, 'hero:idle', 114.0, 2.1),
          'Fight_Tee':      ((358, 275), (0, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 2.5),
          'Fight_Beard':    ((128, 290), (118, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 2.8),
-         'Fight_Oxblood':  ((58, 300), (55, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 3.2),
-         'Fight_Brute':    ((312, 285), (300, 125), bxy, BRUTE['scale'], 'hero:idle', 110.0, 3.4)}
+         'Fight_Oxblood':  ((312, 285), (300, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 3.2),     # round 09: the brute stands on the far side from the wide camera (south), the lighter Oxblood in front
+         'Fight_Brute':    ((58, 300), (55, 125), bxy, BRUTE['scale'], 'hero:idle', 110.0, 3.4)}
     act = {'Fight_Hero': hero}
     eng = {}
     HOME_ANG.clear()
@@ -203,38 +203,41 @@ def script():
 
     Th, Hd, Te, Be, Ox, Br = ['Fight_' + k for k in ('Thug', 'Hood', 'Tee', 'Beard', 'Oxblood', 'Brute')]
 
+    # The hero works round the ring in one direction (angles 240 Thug, 178 Hood, 118 Beard, 55 Brute, 0 Tee, 300 Oxblood, 240 ...): no turn is larger than ~62 degrees.
     # ------------------------------------------------------------------ shot 0 (0-8 s): they close in, first exchanges
     enemy_hit(2.05, Th, 'thug:thugPunch2')                                   # the thug lands a blow -> hero flinches at 2.4
     feint(2.9, Hd, 'thug:thugPunch1')
     strike(3.15, 'hero:punch1', Th, 'fight:hitBack')                           # hero counters: thug staggers back
-    strike(4.20, 'hero:punch2', Br, 'hero:hitReact', react_kw=dict(weight=0.55, blend_in=0.05, rate=1.15))   # the brute only flinches
+    feint(3.4, Be, 'thug:thugPunch2')
+    strike(4.20, 'hero:punch2', Hd, 'fight:hitLeft')
     feint(4.6, Ox, 'thug:thugPunch2')
-    strike(5.55, 'hero:kick', Te, 'fight:hitLeft')                             # kick: the tee reels sideways
-    feint(5.4, Be, 'thug:thugPunch1')
-    strike(6.85, 'hero:punch3', Ox, 'fight:hitRight', react_kw=dict(rate=1.1))
+    strike(5.55, 'hero:kick', Be, 'fight:hitRight')                            # kick: the beard reels sideways
+    feint(5.3, Te, 'thug:thugPunch1')
+    strike(6.85, 'hero:punch3', Br, 'hero:hitReact', react_kw=dict(weight=0.55, blend_in=0.05, rate=1.15))   # the brute only flinches
+    feint(6.5, Ox, 'thug:thugKick')
     # ------------------------------------------------------------------ shot 1 (8-16 s): the main melee
-    strike(8.15, 'hero:uppercut', Hd, 'down', react_kw=dict(getup_at=11.6))    # uppercut: knockdown, on the ground 9.2 s ... 11.9 s
-    feint(8.6, Br, 'thug:thugPunch2')
-    enemy_hit(9.25, Be, 'thug:thugPunch2')                                    # the beard hits back
-    strike(10.35, 'hero:punch1', Be, 'fight:hitBack')
-    feint(10.7, Te, 'thug:thugKick')
-    strike(11.85, 'hero:punch2', Th, 'fight:hitLeft')                           # (the hood gets up meanwhile)
-    feint(12.4, Ox, 'thug:thugPunch1')
-    strike(13.15, 'hero:kick', Te, 'fight:hitBack')
-    feint(13.6, Br, 'thug:thugPunch1')
-    strike(14.45, 'hero:punch3', Ox, 'fight:hitRight')
+    strike(8.15, 'hero:uppercut', Te, 'down', react_kw=dict(getup_at=11.6))    # uppercut: knockdown, on the ground 9.2 s ... 11.9 s
+    feint(8.6, Hd, 'thug:thugPunch2')
+    enemy_hit(9.25, Br, 'thug:thugPunch2')                                    # the brute hits back with the pipe
+    strike(10.35, 'hero:punch1', Ox, 'fight:hitLeft')
+    feint(10.7, Be, 'thug:thugPunch1')
+    strike(11.85, 'hero:punch2', Th, 'down', react_kw=dict(getup_at=15.3))     # the thug (near the 3/4 camera) goes down too
+    feint(12.4, Hd, 'thug:thugPunch1')
+    strike(13.15, 'hero:kick', Hd, 'fight:hitRight')
+    feint(13.6, Te, 'thug:thugPunch1')
+    strike(14.45, 'hero:punch3', Be, 'fight:hitBack')
     # ------------------------------------------------------------------ shot 2 (16-24 s): orbit camera, the hero finishes it
     strike(16.0, 'hero:uppercut', Br, 'down', react_kw=dict(getup_at=20.4))    # the brute goes down
     enemy_hit(16.9, Hd, 'thug:thugPunch1')
-    strike(17.95, 'hero:punch1', Hd, 'fight:hitBack')
+    strike(17.95, 'hero:punch1', Te, 'fight:hitBack')
     feint(18.3, Th, 'thug:thugPunch2')
-    strike(19.25, 'hero:kick', Th, 'down', react_kw=dict(getup_at=22.6))
+    strike(19.25, 'hero:kick', Ox, 'down', react_kw=dict(getup_at=22.6))
     feint(19.9, Be, 'thug:thugPunch1')
-    strike(20.55, 'hero:punch2', Be, 'fight:hitLeft')
-    feint(21.3, Te, 'thug:thugKick')
-    strike(21.8, 'hero:punch3', Te, 'fight:hitRight')
-    feint(22.4, Ox, 'thug:thugPunch2')
-    strike(23.05, 'hero:uppercut', Ox, 'fight:hitBack')
+    strike(20.55, 'hero:punch2', Th, 'fight:hitLeft')
+    feint(21.3, Hd, 'thug:thugKick')
+    strike(21.8, 'hero:punch3', Hd, 'fight:hitRight')
+    feint(22.4, Te, 'thug:thugPunch2')
+    strike(23.05, 'hero:uppercut', Be, 'fight:hitBack')
     return hero, act, hero_slots
 
 
@@ -382,7 +385,7 @@ if __name__ == '__main__':
     a = sys.argv[1:]
     hero, act, slots = script()
     js = to_json(act)
-    json.dump(js, open(os.path.join(HERE, 'fight_script.json'), 'w'), indent=1)
+    tmp = os.path.join(HERE, 'fight_script.json.tmp'); json.dump(js, open(tmp, 'w'), indent=1); os.replace(tmp, os.path.join(HERE, 'fight_script.json'))   # atomic: a build that reads it meanwhile never sees half a file
     n_beats = sum(len(v['beats']) for v in js['actors'].values()); n_keys = sum(len(v['path']) for v in js['actors'].values())
     print('fight_script.json: %d beats, %d path keys, %d actors, %.0f s' % (n_beats, n_keys, len(act), js['duration']))
     if '--check' in a or '--preview' in a:

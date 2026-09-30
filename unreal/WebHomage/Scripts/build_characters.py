@@ -945,9 +945,9 @@ if 'maps5' in STEPS:
     both_channels(fight_actors)
     fc_ = spawn(unreal.TargetPoint, (FX, FY, 0), label='FightCenter')
     fight_shots = [
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-80, -800, 240), label='street fight wide (hero + 6 enemies)'),                             # 0 @0
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-560, -560, 230), label='street fight 3/4'),                                               # 1 @8
-        mkshot(fc_, K5.ORBIT, 8, 820, 95, 160, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-30, -900, 500), label='street fight wide (hero + 6 enemies)'),                             # 0 @0
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-660, -335, 410), label='street fight 3/4'),                                               # 1 @8
+        mkshot(fc_, K5.ORBIT, 8, 830, 95, 280, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
     save_map(TESTS + '/Char_Fight', fight_shots)
 
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================
