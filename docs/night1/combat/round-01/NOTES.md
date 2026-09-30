@@ -12,7 +12,7 @@ Builder: Claude Opus 5.5. Branch `night1/combat` (merged `Opus-5.5-Loop-Night-1`
 | fight | `scripts/fight25.json`: spec `mgbmgm` (e1 melee, e2 gunman, e3 brute, e4 melee, e5 gunman, e6 melee) at 7 m (gunmen 11 m), 40 beats, 1.0 s pre-roll, 27 s total | 40 / 40 beats fired (`ue/fight_beats.jsonl`) |
 | logic replay | `run_fight.sh logic` (`-game -nullrhi -benchmark -fps=60`) | event log identical to the record run (140 / 140 events) |
 | video | `run_fight.sh movie` through `gpu_slot.sh capture` (1920x1080, `-dumpmovie`, fixed 1/60 s) | `fight25_1080p60.mp4` (1622 frames, re-encoded crf 27 to 10.8 MB); same summary as the nullrhi replay |
-| 4K stills | `run_fight.sh stills` through `gpu_slot.sh capture`, 3840x2160, `r.ScreenPercentage 100` | `stills/` (see the list there; missing if the capture had not finished at commit time) |
+| 4K stills | `run_fight.sh stills` through `gpu_slot.sh capture`, 3840x2160, `r.ScreenPercentage 100` | `stills/still_NN_tSS.SS.jpg` ×10 (true 3840x2160, native, JPEG q92 from the PNGs) + `stills_sheet.jpg`; lock sidecar `wait_s 150.5, hold_s 104.8, util_before 0, util_after 75, contaminated true (no-exclusive-lock)`; same summary as the other runs (28 hits, 4 KO) |
 | browser reference | `node browser_fight.mjs scripts/fight25.json <out>` on dev port 5206, headless Chrome on SwiftShader | `browser/` (40 / 40 beats fired, no console errors) |
 | comparison | `compare_logs.py ue browser COMPARE.md compare.json` | `COMPARE.md` |
 
