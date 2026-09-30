@@ -931,47 +931,52 @@ if 'maps5' in STEPS:
 # green scene) tinted every garment green, so a `G > R + 40` test flagged whole legs and coats that were perfectly solid (round-06 critic: the rear jeans leg of
 # `crowd_key_c_4k`, 19.5k px of "key green" was jeans in shade lit only by the green bounce).  Round 07 keys the PICTURE, not the world: Char_CrowdKey is a
 # copy of Char_Crowd (same sun, sky, fog, street: identical lighting) whose citizens write custom-depth STENCIL, and a post-process material
-# (after tonemapping) replaces every pixel that is not a citizen by the key colour (0, 230, 0) exactly.  A citizen pixel is never modified, so a green pixel
+# (before bloom, with the material's own stencil test == 0) replaces every pixel that is not a citizen by the key colour.  A citizen pixel is never modified, so a green pixel
 # inside a citizen silhouette is a real hole in the mesh and a garment is never tinted.  Char_CrowdID writes the per-walker stencil id (R = 12 x id) instead
 # of the picture: exact per-walker masks (who is in front of whom, a floating polygon's owner).  Needs `r.CustomDepth 3` (capture_r5.sh passes it).
 if 'mapkey' in STEPS:
-    KEY_RGB = (0.0, 230.0 / 255.0, 0.0)
-
-    def enum_pick(cls, *needles):
-        """the member of a Python-exposed UE enum whose name holds every needle (the exact spelling of the prefixes differs between engine versions)"""
-        names = [n for n in dir(cls) if n.isupper() and all(k in n.replace('_', '') for k in needles)]
-        log('enum', cls.__name__, needles, '->', names, 'of', [n for n in dir(cls) if n.isupper()][:40])
+    # UE 5.8 (PostProcessMaterial.cpp): custom stencil cannot be read AFTER tonemapping ("target size differences": the first attempt, SceneTexture lookups at
+    # BL_SCENE_COLOR_AFTER_TONEMAPPING, came out with a 90 px smeared border and no key).  So the key material sits BEFORE bloom and uses the material's own stencil test
+    # (enable_stencil_test, compare Equal, ref 0): it draws the key colour ONLY where no citizen wrote stencil and never touches a citizen pixel.  Bloom and vignette are
+    # switched off in the map's post-process volume so the key colour cannot spill onto a garment; the key level is whatever the tonemapper makes of (0, 1, 0).
+    def pick(cls, pred):
+        names = [n for n in dir(cls) if n.isupper() and pred(n)]
+        log('enum', cls.__name__, '->', names, 'of', [n for n in dir(cls) if n.isupper()][:30])
         return getattr(cls, names[0])
 
     def build_pp_key(name, ids):
         m = new_material(TESTS + '/Materials', name)
-        m.set_editor_property('material_domain', enum_pick(unreal.MaterialDomain, 'POSTPROCESS'))
-        m.set_editor_property('blendable_location', enum_pick(unreal.BlendableLocation, 'AFTER', 'TONEMAPP'))
-        sten = E(m, unreal.MaterialExpressionSceneTexture, -900, 0); sten.set_editor_property('scene_texture_id', enum_pick(unreal.SceneTextureId, 'CUSTOM', 'STENCIL'))
-        sten.set_editor_property('filtered', False)
-        col = E(m, unreal.MaterialExpressionSceneTexture, -900, 250); col.set_editor_property('scene_texture_id', enum_pick(unreal.SceneTextureId, 'POSTPROCESSINPUT0'))
-        col.set_editor_property('filtered', False)
-        sr = E(m, unreal.MaterialExpressionComponentMask, -650, 0)
-        sr.set_editor_property('r', True); sr.set_editor_property('g', False); sr.set_editor_property('b', False); sr.set_editor_property('a', False)
-        MEL.connect_material_expressions(sten, 'Color', sr, '')
-        key = E(m, unreal.MaterialExpressionConstant3Vector, -650, 400); key.set_editor_property('constant', unreal.LinearColor(*KEY_RGB, 1.0))
-        half = E(m, unreal.MaterialExpressionConstant, -650, 120); half.set_editor_property('r', 0.5)
-        iff = E(m, unreal.MaterialExpressionIf, -300, 200)
-        MEL.connect_material_expressions(sr, '', iff, 'A'); MEL.connect_material_expressions(half, '', iff, 'B')
-        MEL.connect_material_expressions(key, '', iff, 'A < B'); MEL.connect_material_expressions(key, '', iff, 'A == B')
-        if ids:     # id colour: R = 12 x stencil / 255 (decode: round(R * 255 / 12)), G = B = 0
-            k12 = E(m, unreal.MaterialExpressionConstant, -650, 280); k12.set_editor_property('r', 12.0 / 255.0)
-            mul = E(m, unreal.MaterialExpressionMultiply, -450, 40)
-            MEL.connect_material_expressions(sr, '', mul, 'A'); MEL.connect_material_expressions(k12, '', mul, 'B')
-            zero = E(m, unreal.MaterialExpressionConstant, -450, 120); zero.set_editor_property('r', 0.0)
-            app = E(m, unreal.MaterialExpressionAppendVector, -300, 60)
-            MEL.connect_material_expressions(mul, '', app, 'A'); MEL.connect_material_expressions(zero, '', app, 'B')
-            app2 = E(m, unreal.MaterialExpressionAppendVector, -150, 60)
-            MEL.connect_material_expressions(app, '', app2, 'A'); MEL.connect_material_expressions(zero, '', app2, 'B')
-            MEL.connect_material_expressions(app2, '', iff, 'A > B')
-        else:
-            MEL.connect_material_expressions(col, 'Color', iff, 'A > B')
-        MEL.connect_material_property(iff, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        m.set_editor_property('material_domain', pick(unreal.MaterialDomain, lambda n: 'POST_PROCESS' in n))
+        m.set_editor_property('blendable_location', pick(unreal.BlendableLocation, lambda n: n.endswith('BEFORE_BLOOM')))
+        if not ids:
+            m.set_editor_property('enable_stencil_test', True)
+            m.set_editor_property('stencil_compare', pick(unreal.MaterialStencilCompare, lambda n: n.endswith('EQUAL') and not any(k in n for k in ('NOT', 'LESS', 'GREATER'))))
+            m.set_editor_property('stencil_ref_value', 0)
+            key = E(m, unreal.MaterialExpressionConstant3Vector, -400, 0); key.set_editor_property('constant', unreal.LinearColor(0.0, 1.0, 0.0, 1.0))
+            MEL.connect_material_property(key, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        else:       # id colours: id = r + 3 g + 9 b with r, g, b in {0, 1, 2}; output (r, g, b) / 2 (levels 0, .5, 1); background (id 0) black
+            sten = E(m, unreal.MaterialExpressionSceneTexture, -1000, 0); sten.set_editor_property('scene_texture_id', pick(unreal.SceneTextureId, lambda n: n == 'PPI_CUSTOM_STENCIL'))
+            sten.set_editor_property('filtered', False)
+            idn = E(m, unreal.MaterialExpressionComponentMask, -800, 0)
+            idn.set_editor_property('r', True); idn.set_editor_property('g', False); idn.set_editor_property('b', False); idn.set_editor_property('a', False)
+            MEL.connect_material_expressions(sten, 'Color', idn, '')
+            def const(v, x, y):
+                c = E(m, unreal.MaterialExpressionConstant, x, y); c.set_editor_property('r', v); return c
+            def binop(cls, a_, b_, x, y):
+                e = E(m, cls, x, y); MEL.connect_material_expressions(a_, '', e, 'A'); MEL.connect_material_expressions(b_, '', e, 'B'); return e
+            def un(cls, a_, x, y):
+                e = E(m, cls, x, y); MEL.connect_material_expressions(a_, '', e, ''); return e
+            three = const(3.0, -800, 120); nine = const(9.0, -800, 200); half = const(0.5, -800, 280)
+            r_ = binop(unreal.MaterialExpressionFmod, idn, three, -600, 0)
+            d3 = un(unreal.MaterialExpressionFloor, binop(unreal.MaterialExpressionDivide, idn, three, -700, 100), -500, 100)
+            g_ = binop(unreal.MaterialExpressionFmod, d3, three, -400, 100)
+            b_ = un(unreal.MaterialExpressionFloor, binop(unreal.MaterialExpressionDivide, idn, nine, -600, 200), -400, 200)
+            rgb = []
+            for ch, yy in ((r_, 0), (g_, 100), (b_, 200)):
+                rgb.append(binop(unreal.MaterialExpressionMultiply, ch, half, -200, yy))
+            a1 = E(m, unreal.MaterialExpressionAppendVector, -50, 40); MEL.connect_material_expressions(rgb[0], '', a1, 'A'); MEL.connect_material_expressions(rgb[1], '', a1, 'B')
+            a2 = E(m, unreal.MaterialExpressionAppendVector, 100, 80); MEL.connect_material_expressions(a1, '', a2, 'A'); MEL.connect_material_expressions(rgb[2], '', a2, 'B')
+            MEL.connect_material_property(a2, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
         MEL.recompile_material(m)
         return m
 
@@ -986,12 +991,16 @@ if 'mapkey' in STEPS:
                 n_st += 1
                 mc = a.get_editor_property('mesh')
                 mc.set_editor_property('render_custom_depth', True)
-                mc.set_editor_property('custom_depth_stencil_value', n_st)     # unique id per walker (1..18); the key material only tests > 0
+                mc.set_editor_property('custom_depth_stencil_value', n_st)     # unique id per walker (1..18); the key material only tests == 0
             elif lab == 'Post':
                 st = a.get_editor_property('settings')
                 wb = unreal.WeightedBlendable(); wb.set_editor_property('weight', 1.0); wb.set_editor_property('object', mat)
                 wbs = unreal.WeightedBlendables(); wbs.set_editor_property('array', [wb])
                 st.set_editor_property('weighted_blendables', wbs)
+                for ov, val in (('bloom_intensity', 0.0), ('vignette_intensity', 0.0), ('film_grain_intensity', 0.0)):
+                    try:
+                        st.set_editor_property('override_' + ov, True); st.set_editor_property(ov, val)
+                    except Exception as e: log('post setting', ov, 'not set:', str(e)[:80])
                 a.set_editor_property('settings', st)
         log(map_name, 'saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), n_st, 'walkers write stencil')
 

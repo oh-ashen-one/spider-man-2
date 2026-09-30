@@ -4,7 +4,7 @@
 # Fan homage project; not official Marvel/Sony/Insomniac; no affiliation.
 #
 #   tools/ue_char/capture_r5.sh <out_dir> [MOVIES] [STILLS] [JUMP]      (default: everything; e.g.  ... out "" "gF" "")
-#     MOVIES  space list of  H (hero) G (hero chase / toward cameras) F (fight) C (crowd)   -> 1080p60 -movie runs (fixed 1/60 s step) cut into clips
+#     MOVIES  space list of  H (hero) G (hero chase / toward cameras) F (fight) C (crowd) A (avoidance demo: round-06 layout, avoidance on)   -> 1080p60 -movie runs (fixed 1/60 s step) cut into clips
 #     STILLS  space list of  gH gF gC gE gK gI (gK = chroma-key crowd, gI = per-walker id masks; both need the 'mapkey' build step)                    -> native 3840x2160 real-time stills (r.ScreenPercentage 100, motion blur off)
 #     JUMP    "1"                                            -> 4K -movie run of the leap, frames around the apex kept as hero_jump_4k
 #
@@ -47,6 +47,8 @@ for m in $MOVIES; do
     F) seg_run F /Game/Tests/Characters/Char_Fight 0 24.5
        cut_clip F street_fight_wide $D 8; cut_clip F street_fight_34 $(python3 -c "print($D+8)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16)") 8
        cut_still F street_fight_1080 $(python3 -c "print($D+3)") ;;
+    A) WLOG="$OUT/avoid_demo_walkers.csv" seg_run A /Game/Tests/Characters/Char_CrowdAvoid 0 9.5     # round 07: the OLD (colliding) layout with avoidance on: the A/B of the avoidance alone
+       cut_clip A crowd_avoidance_demo $D 8 ;;
     C) WLOG="$OUT/crowd_walkers.csv" seg_run C /Game/Tests/Characters/Char_Crowd 0 15     # round 07: walker telemetry of the very run the clips are cut from
        cut_clip C crowd_tracking $D 8; cut_clip C crowd_wide $(python3 -c "print($D+8)") 6
        cut_still C crowd_tracking_1080 $(python3 -c "print($D+4)"); cut_still C crowd_wide_1080 $(python3 -c "print($D+11)") ;;

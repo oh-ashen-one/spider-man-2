@@ -1,6 +1,6 @@
 #!/bin/bash
 # Round-07 capture driver (Fan homage project; not official Marvel/Sony/Insomniac; no affiliation).
-#   tools/ue_char/run_r7_captures.sh <out_dir> [GROUPS]       GROUPS default: T K I C S E H F
+#   tools/ue_char/run_r7_captures.sh <out_dir> [GROUPS]       GROUPS default: T K I C A S E H F
 #     T = walker telemetry (no renderer): old layout with avoidance OFF (baseline), old layout avoidance ON, the round-07 crowd
 #     K = chroma-key crowd stills (stencil keyer), I = per-walker id stills, C = crowd 1080p60 movie (+ telemetry of the same run), S = crowd 4K stills,
 #     E = enemy faces, H = hero movies + stills + leap, F = fight movies + stills
@@ -19,6 +19,7 @@ for g in $GROUPS_; do
     K) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "" "gK" "" ;;
     I) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "" "gI" "" ;;
     C) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "C" "" "" ;;
+    A) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "A" "" "" ;;
     S) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "" "gC" "" ;;
     E) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "" "gE" "" ;;
     H) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "H G" "gH" "1" ;;

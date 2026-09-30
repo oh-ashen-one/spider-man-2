@@ -1,12 +1,13 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-"""Round 07 chroma-key check on the stencil-keyed crowd stills (Char_CrowdKey: every pixel that is not a citizen is EXACTLY the key colour (0, 230, 0);
+"""Round 07 chroma-key check on the stencil-keyed crowd stills (Char_CrowdKey: every pixel that is not a citizen is one flat key colour, the most frequent colour of the still, about (0, 217, 0) after the tonemapper;
 citizen pixels are the normal, identically lit picture).
 
-  python3 tools/ue_char/eval/key_check_r7.py STILL.png [...] --out DIR [--key 0,230,0] [--tol 6] [--iso 8]
+  python3 tools/ue_char/eval/key_check_r7.py STILL.png [...] --out DIR [--key auto|R,G,B] [--tol 6] [--iso 8]
 
 Per still (all counts in px of the still; PNG, so no chroma bleed):
   key_exact_bg_px      pixels within --tol of the key colour (background + gaps)
   person_px            all other pixels = citizen pixels (exact: the keyer never touches them)
+  g_dominant_person_px citizen pixels with G > R + 40 AND G > B + 40 (green dominant; teal / blue-green textures excluded)
   g_gt_r40_person_px   citizen pixels with G > R + 40 (the critic's test on garment silhouettes), and how many of them sit in clusters >= 50 px (`clusters`: bbox, px, mean BGR,
                        so a green plaid or a teal top can be told apart from a tinted / see-through region)
   enclosed_key         key-coloured pixels enclosed by citizen pixels (holes of the filled person mask), component by component: bbox, px, width (2 x inscribed radius), and `thin`
@@ -24,12 +25,15 @@ def opt(k, d):
     if k in a:
         i = a.index(k); v = a[i + 1]; del a[i:i + 2]; return v
     return d
-out = opt('--out', '.'); key = tuple(int(x) for x in opt('--key', '0,230,0').split(',')); tol = int(opt('--tol', '6')); iso = int(opt('--iso', '8'))
+out = opt('--out', '.'); keyarg = opt('--key', 'auto'); tol = int(opt('--tol', '6')); iso = int(opt('--iso', '8'))
 os.makedirs(out, exist_ok=True)
-KB = np.array([key[2], key[1], key[0]])
 tot = {}
 for f in a:
     im = cv2.imread(f, cv2.IMREAD_COLOR); H, W = im.shape[:2]
+    if keyarg == 'auto':      # the key colour = the most frequent exact colour of the still (the keyer paints one flat colour over >50 % of the image)
+        flat = im.reshape(-1, 3)[::7]; u, c = np.unique(flat, axis=0, return_counts=True); KB = u[int(np.argmax(c))].astype(int)
+    else:
+        kk = [int(x) for x in keyarg.split(',')]; KB = np.array([kk[2], kk[1], kk[0]])
     d = im.astype(int); b, g, r = d[..., 0], d[..., 1], d[..., 2]
     keym = (np.abs(d - KB[None, None, :]).max(axis=2) <= tol)
     person = ~keym
@@ -55,6 +59,9 @@ for f in a:
         if not others.any():
             det.append(dict(bbox=[int(sl[1].start), int(sl[0].start), int(sl[1].stop - sl[1].start), int(sl[0].stop - sl[0].start)], px=int(sz[i])))
     gr = person & (g > r + 40)
+    gdom = person & (g > r + 40) & (g > b + 40)          # green-dominant: teal tops and blue-green textures drop out
+    lgd, ngd = ndimage.label(gdom, structure=np.ones((3, 3), bool)); sgd = np.bincount(lgd.ravel())
+    gdom_big = int(sgd[sgd >= 50].sum() - (sgd[0] if sgd.size and sgd[0] >= 50 else 0))
     lg, ng = ndimage.label(gr, structure=np.ones((3, 3), bool)); sg = np.bincount(lg.ravel())
     clusters = []; big = np.zeros_like(gr)
     for i, sl in enumerate(ndimage.find_objects(lg), 1):
@@ -65,7 +72,7 @@ for f in a:
     clusters.sort(key=lambda c: -c['px'])
     res = dict(image=os.path.basename(f), size=[W, H], key_bgr=[int(x) for x in KB], key_exact_bg_px=int(keym.sum()), person_px=int(person.sum()),
                bg_median_bgr=[int(x) for x in np.median(im[keym].reshape(-1, 3), axis=0)] if keym.any() else None,
-               g_gt_r40_person_px=int(gr.sum()), g_gt_r40_in_clusters_px=int(big.sum()), fringe_px=int((gr & ~big).sum()), clusters=clusters[:12],
+               g_gt_r40_person_px=int(gr.sum()), g_gt_r40_in_clusters_px=int(big.sum()), fringe_px=int((gr & ~big).sum()), g_dominant_person_px=int(gdom.sum()), g_dominant_in_clusters_px=gdom_big, clusters=clusters[:12],
                enclosed_key_components=len(comps), enclosed_key_px=int(sum(c['px'] for c in comps)), enclosed_key_thin_components=int(sum(c['thin'] for c in comps)),
                enclosed_key_top=comps[:12], detached_components=len(det), detached=det[:20])
     base = os.path.splitext(os.path.basename(f))[0]
