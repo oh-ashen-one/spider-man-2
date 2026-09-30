@@ -7,7 +7,7 @@ R = sys.argv[1]
 def load(n):
     p = os.path.join(R, n)
     return json.load(open(p)) if os.path.exists(p) else None
-ROWS = [('life off (`-WHLifeOff`: no traffic, no crowd, no signal lenses)', '4k_off'), ('life ON (default: traffic 2.3 x browser density, ~1130 camera-centred walkers, lit signal lenses)', '4k_on'),
+ROWS = [('life off (`-WHLifeOff`: no traffic, no crowd, no signal lenses)', '4k_off'), ('life ON (default: traffic 2.3 x browser density, ~1460 camera-centred walkers of which about 500 are live skinned meshes, 100 looks, lit signal lenses)', '4k_on'),
         ('crowd only (`-WHTrafficOff`)', '4k_crowd_only'), ('traffic only (`-WHCrowdOff`)', '4k_traffic_only')]
 out = ['# P6 City life round 02: GPU-locked perf (S1 street view, Life_View_S1, game t = 22-52 s)\n',
        '> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.\n',

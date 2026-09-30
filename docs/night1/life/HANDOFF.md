@@ -72,7 +72,15 @@ Detector numbers (`round-02/SPEC_TABLE.md`, `detector.txt`). References measured
 
 Sim cost (CPU, game thread): traffic 0.0-0.25 ms + instance push 0.1 ms, crowd 0.2-0.7 ms (1463 walkers, 470-550 live).
 
-GPU-locked perf: PERF_PLACEHOLDER
+GPU-locked perf (`round-02/PERF_TABLE.md`; `gpu_slot.sh perf`, exclusive, GPU 0 % before, `contaminated=false`; S1 view, 3840x2160 output, `r.ScreenPercentage 67` = internal 2573x1447):
+
+| | frame ms (avg / p95) | GPU ms (avg) |
+|---|---|---|
+| life off (`-WHLifeOff`) | 31.86 / 36.95 | 29.76 |
+| life ON (default now) | 34.87 / 40.79 | 32.61 |
+| difference | +3.01 / +3.84 | **+2.85** (budget <= 3 ms: at the edge) |
+
+Round 01 (290 live walkers): +2.0 ms GPU. The extra 0.85 ms is the ~500 live walkers and their shadows; the crowd-only / traffic-only variants were not re-run in round 02. If a later piece needs the headroom: cut `LiveRadius` / `NearAllRadius`, skeletal LOD / URO for far walkers, no shadows beyond 40 m (`ShadowRadius` 65 m now). The scene without life is already 29.8 ms GPU at 4K / 67 %: the 60 fps target is the look / city / perf pieces' job. The WIP runs before the interruption (+1.73 ms with 1130 walkers) are in `round-02/wip_perf_pre_interruption/`.
 
 ## Known gaps / next (round 03 candidates)
 
@@ -84,7 +92,7 @@ GPU-locked perf: PERF_PLACEHOLDER
 6. Foot planting is measured on the ankle bone only; toe-level and IK planting are not done. Seam-crack skinning of the crowd rig (P2 note) not re-checked.
 7. Night (headlights / taillights / lit windows through `MPC_City NightK` are wired, not captured), lane changes, parked-car pull-outs, buses at stops, the Broadway diagonals beyond 2 short links.
 8. The ray-tracing switch (`bVisibleInRayTracing = false`, round 01) means cars / walkers are absent from Lumen HWRT reflections / GI; revisit when P4 decides the final RT settings.
-9. In the S1 view a soft green-white glow smear hangs over the road centre (also in the round-01 stills, before any signal lens existed) and a green tint sits on a P1 litter bin: neither comes from the life actors; report to P1 / P4.
+9. Two soft glows are in the frames whose source is not identified: a green-white smear over the road centre in the S1 view (also in the round-01 S1 stills, before any lens existed) and a green haze on a P1 litter bin at the start of the street clip. Neither is a signal lens (the lens discs sit 3-8 m up, these are at ground level; the smear is a fixed world position); report to P1 / P4 (Look rig lights / P1 street props).
 
 ## Gotchas learned
 

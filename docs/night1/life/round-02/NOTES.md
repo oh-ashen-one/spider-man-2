@@ -11,14 +11,14 @@ The round was interrupted by the 23:08 kernel panic (WIP committed as 713f856 / 
 | B2 (crowd 1300 / 860 per km, 100 looks, corridor clear) | before the pink head-covering recolour of citizens 17 / 20 | `stills/S2_avenue_*.jpg`, `swing_clip_1080p60.mp4`, `probe_S2_*.txt`, `probe_swing.txt`, `feet_S2_*.csv` (the crowd is not visible in these views: detector people 0-3 at S2 and 0 in the swing clip; traffic code and data are identical to B3) |
 | B3 (= committed HEAD of this round) | final | `stills/S1_street_*.jpg`, `street_clip_1080p60.mp4`, `signal_clip_1080p60.mp4`, `probe_S1_*.txt`, `probe_street.txt`, `probe_signal.txt`, `feet_S1_*.csv`, `feet_clip.csv`, perf runs |
 
-Still times: every still view also shoots game t = 12, 16, 20, 24 s (1080p run) into `_scratch/life/capture/S?_1080p/` (not committed: the detector series of the spec table uses them). The published still is t = 28 s.
+Still times: every still view also shoots game t = 12, 16, 20, 24 s (1080p run); those four frames per view are in `series/` (the detector series of the spec table uses them together with the published t = 28 s still). S1 series = B3, S2 series = B2.
 Clips: 1920x1080 at 60 fps, fixed 1/60 s steps (`-movie`), 2.5 s hold at the start pose trimmed, crf 17 (each <= 15 MB). Contact strips: `strip_street.jpg`, `strip_swing.jpg`, `strip_signal.jpg` (1 frame per second).
 S1 stills use `-WHLifeClearAhead=12` (no moving car drawn in a 12 m corridor ahead of the S1 camera, which stands in a traffic lane); the clips do not.
 
 ## Measurement
 
 Detector (`tools/life/detect_counts.py`, YOLO11x-seg, conf 0.35, imgsz 1920, CPU device): `detector.txt`, `detector.json`; tables: `SPEC_TABLE.md`; gait / feet: `feet_analysis.json` (street clip), `feet_analysis_S1_4k.json`, `feet_analysis_*.txt`; IP: `ip_check.txt`.
-The S1 still series (t = 12-28 s) that feeds the median is not committed (scratch); the numbers are in `SPEC_TABLE.md` / `detector.txt`.
+The S1 / S2 still series (t = 12-24 s in `series/`, t = 28 s = the published still) feeds the medians; per-file numbers are in `detector.txt`.
 
 ## Known limits of this evidence
 
@@ -26,4 +26,4 @@ The S1 still series (t = 12-28 s) that feeds the median is not committed (scratc
 * S2 vehicle count (still series median 13) is one below the 14-22 range; the swing clip (median 17) is the fuller C6 test.
 * Twin looks: a pair of identical looks within 30 m occurs in 8 of 41 S1 samples (probe, people >= 28 px, occlusion-tested); none in the street and signal clips.
 * Foot planting: ankle-bone displacement only.
-* The green-white glow over the S1 road centre and the green tint on a litter bin are not produced by the life actors (present in round 01 before any lens existed).
+* Two soft glows of unidentified origin are in the frames (green-white smear over the S1 road centre, present in the round-01 S1 stills too; green haze on a P1 litter bin at the start of the street clip). They are at ground level, not at the 3-8 m of the signal lens discs; not investigated further (P1 / P4 territory).
