@@ -1,32 +1,55 @@
-# P1 City — handoff after round 08 (for the next builder)
+# P1 City — handoff after round 09 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
 Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port 8771 (editor not needed: everything runs as `-nullrhi` commandlets and `-game` captures), browser dev port **5202** (only for a full re-export).
 Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, plus (flagged to the integrator)
-`unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
-Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. This branch was NOT re-merged with `Opus-5.5-Loop-Night-1` in r08 (it is ~48 commits behind; nothing here needed it, the C++ module is unchanged).
+`unreal/WebHomage/Shaders/City/` (now incl. the hand-written `ShadeFill.ush`) and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
+Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. This branch was NOT re-merged with `Opus-5.5-Loop-Night-1` (it is ~48 commits behind; nothing here needed it, the C++ module is unchanged).
 
-## Read this first: state at the end of round 08 (Sonnet 5.5, 2026-09-30 02:00-04:10)
-Critic r07: facades 5, street dressing 3, skyline 4, composition 4, image quality 4, FAILS. Its biggest gap, the same as r06's: **the streets are empty** (no parked cars, no trees on the S1 west sidewalk, 0 cars in S1, <= 1 vehicle in S2).
-**Round 08 fixed that gap by measurement** (`round-08/README.md`, raw checker output `round-08/city_spec_check.md` + `.json`, YOLO evidence `round-08/builder_checks/yolo/`):
-| line | r07 | r08 (1080p; 4K in README) | target |
+## Read this first: state at the end of round 09 (Sonnet 5.5, 2026-09-30 04:10-08:30)
+Critic r08 (facades 5, street 5, skyline 4, composition 5, image quality 4, FAILS) named ONE gap: **shadowed facades are crushed** (S1 crops (0,0,480,300) / (1360,0,1740,400) mean Y 22.5 / 19.7 against the C2 floor of 52; Y < 25 on 72.2 % of S3 and 62.5 % of S7).
+**Round 09 fixed it** (`round-09/README.md`, `round-09/shade_check.md`, `round-09/city_spec_check.md` + `.json`):
+| line | r08 | r09 (1080p, ShadeFill 0.12 / GlassSky 0.11) | target |
 |---|---|---|---|
-| Test 1 S1 YOLO11x conf .30, cars / vehicles | 0 / 0 | 15 / 16 (4K 17 / 17) | >= 5 (C4 band 5-19) |
-| Test 1 S2 YOLO11x conf .30, vehicles | <= 1 | 17 (4K 19) | >= 14 (C6 band 14-22) |
-| Test 2 S1 x 0-900 trees, hand count | 0 | 5 trunks | >= 2 |
-| parked cars per 20 m of parkable curb / trees per 20 m of frontage | 0 / ~1.1 | 2.42 / 2.67 (85 % / 92 % of windows >= 2) | >= 2 |
-| C11-C15 far field, C1 facades | pass, 17/18 | unchanged | pass |
-IP OCR: 0 hits. Captures `round-08/S1..S8_*_{1920x1080,3840x2160}.jpg`, internal resolution 1399x787 / 1920x1080 (TSR), frame times contaminated (shared GPU, README). No movement sequences in `SHOTLIST.md`, so no mp4.
-Critic pack for r08: `/Users/midir/sm2-n1/_scratch/critic-P1-r08/pack` (key outside the pack: `pack.key.json`; pairs `pairs.json`: the 9 reference pairs + `progress-street` = S1 r07 vs r08).
+| Test 1 S1 crop (0,0,480,300) / (1360,0,1740,400) mean Y | 22.5 / 19.7 | **66.6 / 53.8** | >= 52 |
+| Test 2 S3 / S7 share Y < 25 | 72.2 % / 62.5 % | **19.7 % / 3.6 %** | <= 25 % / <= 30 % |
+| C2 facade boxes in range (spec_regions v2, 16 daylight) | 10 / 16 | **15 / 16** (`s2_dark_tower` 47.1) | 16 / 16 |
+| C1 facade boxes | 15 / 16 | 15 / 16 (`s5_grey_tower` 3.70 %, unchanged) | 16 / 16 |
+| C11-C15 far field (S4) | pass | pass, same numbers (but S4 is the first-variant frame, see below) | pass |
+| C4 / C6 YOLO conf .30 S1 / S2 vehicles | 16 / 17 | 17 / 19 | >= 5 / >= 14 |
+**Only 1080p frames exist for r09 (no 4K, no mp4 — `SHOTLIST.md` has no movements — no clean perf).** The GPU driver wedged before the 4K set could be captured, see gotcha 30. `S4_perch_skyline_1920x1080.jpg` is from the FIRST variant of the fill (uniform, no shadow information), not the committed shader. The margin of the S1 right crop is thin (+1.8): one frame of the same shader at ShadeFill 0.17 measured 80.4 / 64.5, i.e. **`set_mpc.py ShadeFill=0.17 GlassSky=0.15` is the first thing to try** (no rebuild), then re-run `shade_check.py` on all views.
+Critic pack for r09: `/Users/midir/sm2-n1/_scratch/critic-P1-r09/pack` (key outside the pack: `pack.key.json`; pairs `pairs.json`: the 9 reference pairs at 1080p + `progress-street` / `progress-rooftop` / `progress-sunset` = r08 vs r09).
 
-### Ranked to-do for round 09 (each item = one rerun of the checker)
-1. **Re-place the CITY-SPEC facade boxes (`spec_regions.json` v2).** The new S1 west crowns overlap `s1_left_glass` / `s1_left_stone` and the S6 right foreground tree covers `s6_right_white`; their C1 / C2 numbers no longer measure facades (C2 "11/18" is really 10/18). Do this first, before quoting C1 / C2 again.
-2. **C2 crush (S1 / S5 / S6 / S7, lighting) and `s5_grey_tower` C1** (P4: sun / sky-fill ratio near 4:1, then `SunK -> 1`; `DayEmisK` 0.22 -> ~0.16 for the lit interior windows) — unchanged since r07, see below.
-3. r07 critic secondary items still open: S4 far band silhouette (top-row std >= 12 px at x 0-1300 y 150-260: replace the flat embankment wall by a seawall + piers), S8 glass crop <= 1.5 % > Y 204, card interiors / flat green sidewalk shed texture / paver joints and litter (S1), S6 red steps saturation >= 0.6 and the 63 white floor squares (Y > 240) in S6 x 1100-1920 y 700-1080.
-4. **Street life still open:** people (C4 people 6-32; P6), traffic lights (C4 >= 1: YOLO finds 0 in S1 although the signal heads are in frame: bigger / brighter heads), cars are static and matte (clearcoat, plates, original taxi toppers, buses / box trucks are exported but not placed), cross streets have neither trees nor cars, Times Square tree guards hold no trees.
-5. Far tree crowns read as solid green masses (hedge-like) after the leaf-alpha fix; a proper crown-clump LOD (the browser's `trees-street-near` / `-far` pools are skipped by `SKIP_POOL`) would look better and cost less than 5 k-15 k triangle leaf cards per tree.
-6. If P4 re-lights the maps, re-run the far-field check (the C13 / C15 window is ~0.01 wide).
+### What round 09 changed and why (details: `docs/night1/city/EXPORT.md` "Canyon shade fill", header of `Shaders/City/ShadeFill.ush`)
+- **Root causes** (found by masks and sweeps, not guessed): (1) Lumen sees a slit of sky inside a 30 m avenue, so shaded walls get almost no indirect light; (2) the r07 albedo cap `SunK` is keyed on N.L, not on shadow: a west wall that faces the sun but sits in canyon shade got the 0.08 luma cap AND no sun. The second one is why the S1 right tower (a west face) was black.
+- **Fix = an emissive fill in every city material** (`M_CityFacade / Detail / Roof / Prop / VC (untextured solids) / Kit / Signage (non-emissive kinds) / Leaves (x 0.35)`): the surface's own albedo (before the sun cap, `^0.65`) x a constant sky-bounce irradiance (MPC `ShadeFill` 0.12), tinted warm and weaker at low sun, faded out 0.9-2.2 km (far field untouched: C11-C15 unchanged) and by `1 - NightK`; coated curtain glass gets a sky-gradient reflection instead (MPC `GlassSky` 0.11, tint = the glass F0).
+- **Where the fill applies comes from a baked building height field** (`tools/export/bake_sunmask.py` -> `sunmask_h.png` -> `/Game/City/Textures/sunmask_h`, imported by build step `sunh`, part of `tex`): rasterised roof / terrace triangles of the exported roof meshes (exact tiers) + facade vertices + footprint boxes outside the detailed block, 1 m texels, height in R/G (0.02 m), B = height / 400 m. `CityShadeW` = enclosure (mean height around the point from mips 5 / 7 vs the point's height: 1 on the canyon floor .. 0 above the local skyline) x (1 - 0.88 x sunlit), `CitySunLit` = 28-step ray march toward the sun. **The first version added the fill everywhere and blew the sunlit facades** (S2 gold glass mean Y 133, S8 pale glass 148, S8 brick C1 3.2 %, C2 upper bound 119): the mask brought them back to their r08 values (`round-09/README.md` table). Facade `DebugMode 12` shows the weight (blue = full fill, red = none) and matched the real VSM shadows (S2 diagonal shadow on the left tower).
+- Trees: the crowns (`M_CityLeaves`) get 0.35 of the wall fill, otherwise the dark shaded leaves kept the S1 left crop under 52.
+- `spec_regions.json` **v2** (r08 to-do 1): four boxes had grown over the street trees (green share 30-82 %); re-placed foliage-free, two dropped (`s1_left_glass`, `s6_right_white`). v1 kept as `spec_regions_v1.json`. C1 / C2 counts are 16 daylight boxes now (was 18): not comparable with r07 / r08.
+- Tools: `bake_sunmask.py`, `shade_check.py` (the critic's two tests), `shade_sweep.sh` (rebuild + sweep MPC pairs + measure inside ONE gpu_slot hold), `capture_round.sh` hardened (see gotcha 30).
+
+### Log to P4 (look / lighting; the part of the problem that is not materials)
+- The shade fill is a stand-in for missing indirect light. The proper fix is in the lighting: sky light in the test maps is 1.7 with Lumen; a canyon wall receives ~2 % of it. Test maps use **manual exposure +2 EV** (+2.3 at sunset), SkyLight 1.7, sun 6 / 4. If P4 raises the sky / bounce contribution (or switches to physical exposure), **lower `ShadeFill` / `GlassSky` (MPC, no recompile: `tools/export/ue/set_mpc.py ShadeFill=.. GlassSky=..`) and re-run `shade_check.py` + `city_spec_check.py`**; the fill must not double-count. `ShadeFill 0` zeroes the fill (the march still runs until the early-out in to-do 2 is added).
+- The sun direction the mask uses is `ResolvedView.DirectionalLightDirection` (toward the sun, world space); the mask is correct for any sun angle, but it knows only the buildings of the export block (x -384..640, z -640..384); taller far buildings outside it do not shadow.
+- The far skyline was not re-lit (fill fades 0.9-2.2 km): if P4 re-lights the maps, re-run the far-field check (the C13 / C15 window is ~0.01 wide).
+
+### Ranked to-do for round 10
+1. **Get the GPU sane again, then re-capture the full set** (`tools/export/capture_round.sh <dir>`: 8 views x 1080p + 4K, now with the zombie guard; needs a free slot lock). Before anything else: `ps -axo pid,stat,etime,comm | grep UnrealEditor | grep -E ' \?E| Z'` must be empty. Set `ShadeFill 0.17 GlassSky 0.15` (or tune), re-run `shade_check.py` + `city_spec_check.py --yolo --ip`, replace `S4` and add the 4K frames. r09 numbers above are 1080p only.
+2. **Measure the cost of the shade march under `gpu_slot.sh perf`** (exclusive; A/B with `ShadeFill=0`: that zeroes the fill but the march still runs, so first add `if (k <= 0.0001) return 0.0;` to `CityShadeW`, then it is a true kill switch). Cheap options that change the picture little: 20 steps with growth 1.3 + `if (vis < 0.02) break`; skip when enclosure < 0.02 or beyond 2.2 km (fill already 0 there); or a max-pyramid cone trace (10-12 steps). I wrote and reverted a 20-step version because it could not be rendered before the wedge: the diff is in `git show 8a017c0` (`ShadeFill.ush`, `CityShadeW` gains `cam, k`).
+3. **Extend the height field beyond the detailed block** (x -384..640, z -640..384): outside it the fill degrades to "no fill above 8 m" (clamped texels = height 0). The integrated Manhattan map needs the whole island (bake from the `facadeLod` masses + footprints of all tiles, bigger texture or two levels).
+4. `s2_dark_tower` (47.1) and dusk `s7_mid_dark` (51.4) under the C2 floor, `s5_grey_tower` C1 (3.70 %, P4 sun / sky ratio: `SunK -> 1`), the first thing K 0.17 should show.
+5. r08 critic secondary items still open: S8 glass crop (1270,0,1640,300) 70 % above Y 204 (the fill does not touch it: it is Lumen's sky reflection at +2 EV; `GlassSpec` / P4 exposure), S4 far band silhouette (seawall + piers, top-row std >= 12 px at x 0-1300 y 150-260), cars matte / no plates (clearcoat, taxi toppers), card interiors, flat green sidewalk shed texture, S6 red steps saturation and the white curb (14.6 % > Y 204 at (1150,760,1920,1080)), people (P6), traffic lights (C4 >= 1, YOLO finds 0).
+6. Far tree crowns read as solid green masses (hedge-like); the crown-clump LOD (browser `trees-street-near / -far` pools) would look better and cost less than 5 k-15 k triangle leaf cards per tree.
+7. If P4 re-lights the maps: lower `ShadeFill` / `GlassSky` accordingly and re-run the far-field check (the C13 / C15 window is ~0.01 wide).
+
+### New gotchas (r09)
+30. **Zombie engines and the nested lock (2026-09-30 06:54).** `gpu_slot.sh` checks for engines stuck exiting (`ps` stat `E` / `Z`, shown as `(UnrealEditor)`) only when a hold is ACQUIRED; my hold ran 16 nested captures and launched the next engine on top of a process that was still exiting. That launch (S2, 1080p) hung 15 min in start-up, and `run_game.sh`'s own `-timeout 900` then did `kill -9` on it (the harness rule the owner set after the 23:08 panic: never SIGKILL a rendering engine). Both processes became `?E` zombies (PPID 1, unkillable, GPU reported 100 % with nothing running) and the lock has refused every launch of every agent since (traversal, look, perf, characters, combat, my own queued hold were all waiting >1 h). One of the two was probably not mine (started 3 s earlier). `capture_round.sh` now: refuses to launch while any UnrealEditor is `?E` (waits 25 min, exit 6), passes `-timeout 7200`, runs a watchdog that calls `stop_ue.sh` after 480 s, aborts (exit 7) if an engine is left stuck after a run, stops launching after `CAPTURE_DEADLINE_S` (default 2100, exit 8; the max hold is 2400 s). It cannot fix a wedge; only a reboot / the driver releasing the contexts does. `run_game.sh` (not P1's file) still has the SIGKILL timeout: always pass `-timeout` large.
+31. **Blanket string replaces in Custom-node code.** Renaming a call site with `str.replace(tail, ...)` also hit three unrelated `dot(n, ...xyz)` lines (`sunf`); caught by grepping the diff. Check `git diff` of `build_city.py` after every scripted edit: a broken Custom node compiles to the default material in `-game` without failing the commandlet.
+32. `rm -rf "$VAR"/...` in a tool call is refused by the sandbox check unless written `"${VAR:?}"/...`; keep scratch cleanups literal.
+33. The height field texture is point-filtered (R/G hold a split integer, filtering would corrupt them); the B channel (height / 400 m) is read at mips 5 / 7 with a manual 4-tap bilinear in `CityMeanH`. Import settings: RGB8 uncompressed, linear, clamp, simple-average mips, never_stream (step `sunh`, also run by `tex`).
+34. Facade `DebugMode 12` = shade-fill weight, needs `set_mpc.py DebugMode=12` and back to `DebugMode=0` (the MPC is saved in the asset: a forgotten 12 turns every later capture into a mask).
+35. A `-game` capture with a MODIFIED material compiles shaders lazily: the first capture after a `mat` step is slow, later ones hit the DDC. `tools/export/shade_sweep.sh` runs rebuild + MPC + captures inside ONE hold so the queue wait is paid once; the queue wait on 2026-09-30 was 10-45 min per hold (perf runs of other agents hold the lock exclusively).
 
 ### What round 08 changed, root causes (details in round-08/README.md; docs/night1/city/EXPORT.md "Street life")
 - **Why the streets were empty:** the browser's parked cars and traffic are runtime simulation (`npc/traffic.js` `parkedFor`, streamed around the camera), not `Pool` instances, so `export_city.mjs` never saw them; and r05's `thin()` had deleted 45-100 % of the S1 / S2 street trees while `street_props.py` added empty iron tree pits (the critic's "empty tree pit").
@@ -150,6 +173,8 @@ tools/export/capture_round.sh <raw_dir> [ids...]            # run_game.sh per vi
 python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN   # JPGs + perf.json + README
 python3 tools/export/window_stats_round.py <lit_dir> <mask_dir> out.json [crop_dir]  # window brightness test (mask = DebugMode 3 frames)
 node tools/export/browser_views.mjs <out> [ids]             # browser captures from the same cameras (A/B)
+python3 tools/export/bake_sunmask.py                          # (r09) height field for the shade fill -> <TEX>/sunmask_h.png (build_city.sh runs it; import = build_city.py step `sunh`)
+python3 tools/export/shade_check.py <round_dir> [--json f]  # (r09) the critic's Test 1 / Test 2 (S1 crops, share Y < 25)
 python3 tools/export/ue/uejob.py file.py [k=v]  |  -c "code" # run editor Python in the P1 editor (JOB_ARGS dict)
 ```
 Stop an engine of yours: `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "[/]Users/midir/sm2-n1/city/unreal/WebHomage"` (drivers first, SIGTERM, wait; NEVER `kill -9` a rendering engine). **Owner rule 2026-09-29: the editor is
