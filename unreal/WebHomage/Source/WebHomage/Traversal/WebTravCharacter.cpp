@@ -1065,7 +1065,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1193,7 +1193,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	// round 15: sun angle of the searched flip view, sun angle of the RENDERED view (camera manager forward vs the direction to the sun;
 	// -1 = no sun found), roofline (m over the street) and rise of the last flow flip
 	const double ViewSun = Cam.bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(PcmRot.Vector(), Cam.SunDir), -1.0, 1.0))) : -1.0;
-	const FString Cols15 = FString::Printf(TEXT(",%.1f,%.1f,%.1f,%.1f"), Cam.FlipSunDeg, ViewSun, Traversal->FlowRoofUsed, Traversal->FlowRiseUsed);
+	const FString Cols15 = FString::Printf(TEXT(",%.1f,%.1f,%.1f,%.1f,%.2f"), Cam.FlipSunDeg, ViewSun, Traversal->FlowRoofUsed, Traversal->FlowRiseUsed, Cam.FlipGlare);
 	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15);
 }
 

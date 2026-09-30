@@ -111,6 +111,8 @@ public:
 	bool bHaveSun = false;
 	double SunMinDeg = 100.0, SunPrefDeg = 140.0, FlipPrefElev = 1.0; // (probe r15: 2.0 -> trick pitch 4.4-4.9 down, b T11 3.9)
 	double FlipSunDeg = -1.0;  // telemetry: sun angle of the chosen flip view at the last search
+	// round 15: a background facade whose mirror direction is within GlareDeg of the sun (sun reflection in glass) costs GlareW x ring share
+	double GlareDeg = 25.0, GlareW = 8.0, FlipGlare = 0.0;
 	double CapUpDeg = 29.0;    // the look-up cap applied this frame (also after the output slew re-aim)
 	/** Round 15: -WHCamTune=Name=Value,... for the named tuning doubles (probes without a rebuild). Returns false if unknown. */
 	bool SetTune(const FString& Name, double V);

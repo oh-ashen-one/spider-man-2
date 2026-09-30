@@ -560,7 +560,7 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 		{8, 5}, {-8, 5}, {8, -5}, {-8, -5}, {4, 11}, {-4, 11}, {4, -11}, {-4, -11} };
 	const double GoalY = FMath::RadiansToDegrees(FlipYawGoal), GoalE = FMath::RadiansToDegrees(FlipElevGoal);
 	const double CurY = FMath::RadiansToDegrees(FlipYawOff);
-	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0, BSun = -1.0;
+	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0, BSun = -1.0, BGlare = 0.0;
 	// round 15: passes, each only if the previous one found nothing: 0 = views >= SunMinDeg from the sun with the r14 clearance
 	// (FlipWallMargin beyond the spot, a clear path FlipAheadT along the travel); 1 = sun rule, 0.5 m margin, half the path; 2 = sun
 	// rule, the spot only has to be reachable; 3 = any view with the r14 clearance (probe r15: with only "0 / any" the first flip of the
@@ -598,7 +598,7 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 			const FVector D = -ToCam;                                   // camera -> hero
 			const FVector Rt = FVector::CrossProduct(FVector::UpVector, D).GetSafeNormal();
 			const FVector Up = FVector::CrossProduct(D, Rt).GetSafeNormal();
-			int32 Free = 0, N = 0;
+			int32 Free = 0, N = 0, Glare = 0;
 			for (const auto& RD : RingDeg)
 			{
 				const FVector Dir = (D + Rt * FMath::Tan(FMath::DegreesToRadians(RD[0])) + Up * FMath::Tan(FMath::DegreesToRadians(RD[1]))).GetSafeNormal();
@@ -606,22 +606,30 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 				++N;
 				// from just past the hero (the pawn is ignored anyway; nothing between camera and hero counts as background)
 				if (!World.Raycast(CamP + Dir * (FlipDist + 0.6), Dir, FlipSkyRay, H)) ++Free;
+				else if (bHaveSun && FMath::Abs(H.Normal.Z) < 0.5)
+				{ // round 15 (rendered f4 9.65-9.85 s: with the sun behind the camera, a glass facade square to the view mirrored the sun
+				  // straight back into the lens -- bloom + flare ghosts over the hero, 37 % of his box clipped): count background facades
+				  // whose mirror direction lies within GlareDeg of the sun
+					const FVector Rf = Dir - 2.0 * FVector::DotProduct(Dir, H.Normal) * H.Normal;
+					if (FVector::DotProduct(Rf.GetSafeNormal(), SunDir) > FMath::Cos(FMath::DegreesToRadians(GlareDeg))) ++Glare;
+				}
 			}
+			const double GlareShare = double(Glare) / double(FMath::Max(1, N));
 			const double Sky = double(Free) / double(FMath::Max(1, N));
 			// round 15: sun angle of this view (camera -> hero vs the direction to the sun)
 			const double SunDeg = bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(D, SunDir), -1.0, 1.0))) : 180.0;
 			if (Pass < 3 && SunDeg < SunMinDeg) continue;
 			// (round 15: elevation term = distance from FlipPrefElev (near level), sun term below SunPrefDeg)
 			double Cost = (1.0 - Sky) * 10.0 + 0.8 * FMath::Abs(FMath::Abs(YD) - FlipPrefYaw) / 90.0 + 0.9 * FMath::Abs(ED - FlipPrefElev) / 10.0
-				+ 2.0 * FMath::Max(0.0, SunPrefDeg - SunDeg) / 40.0;
+				+ 2.0 * FMath::Max(0.0, SunPrefDeg - SunDeg) / 40.0 + GlareW * GlareShare;
 			// (round 14 cost is the r12 cost over the side-view grid; the elevation term still prefers the flattest view that is clear)
 			if (!bFirst) Cost += 0.5 * (FMath::Abs(YD - GoalY) / 60.0 + FMath::Abs(ED - GoalE) / 30.0);
 			// round 13: the flip now starts at the release, from the chase camera: prefer the side the camera is already on
 			else Cost += 0.6 * FMath::Abs(YD - CurY) / 60.0;
-			if (Cost < BestCost) { BestCost = Cost; BY = Yr; BE = Er; BSky = Sky; BSun = SunDeg; }
+			if (Cost < BestCost) { BestCost = Cost; BY = Yr; BE = Er; BSky = Sky; BSun = SunDeg; BGlare = GlareShare; }
 		}
 	}
-	if (BestCost < 1e8) { FlipYawGoal = BY; FlipElevGoal = BE; FlipSkyShare = BSky; FlipSunDeg = BSun; }
+	if (BestCost < 1e8) { FlipYawGoal = BY; FlipElevGoal = BE; FlipSkyShare = BSky; FlipSunDeg = BSun; FlipGlare = BGlare; }
 }
 
 bool FWebTravCamera::SetTune(const FString& Name, double V)
@@ -632,7 +640,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("MaxLookUpDeg"), &MaxLookUpDeg}, {TEXT("FlipSFrame"), &FlipSFrame}, {TEXT("FlipDist"), &FlipDist}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
-		{TEXT("SettleDownMax"), &SettleDownMax} };
+		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }

@@ -70,7 +70,7 @@ line('T11', 4 <= pct(pd, .5) <= 12, 'pitch down from the first attach: p5 %+.1f 
 if video and os.path.exists(video):
     import cv2, numpy as np
     cap = cv2.VideoCapture(video)
-    i = 0; worst = (0.0, 0.0); nbad = 0; vals = []
+    i = 0; worst = (0.0, 0.0); nbad = 0; vals = []; hworst = (0.0, 0.0); hbad = 0; hvals = []
     while True:
         ok, im = cap.read()
         if not ok or i >= len(rows): break
@@ -83,7 +83,20 @@ if video and os.path.exists(video):
                 vals.append(fr)
                 if fr > worst[0]: worst = (fr, f(r, 't'))
                 if fr > 0.05: nbad += 1
+                # L1h: the hero's own pixels -- the saturated suit (S > 90) closed / dilated into a silhouette mask; clipped pixels
+                # inside it (a bright sky / haze behind the hero fills the box but is not the hero)
+                hsv = cv2.cvtColor(im[max(0, t):b, max(0, l):rr], cv2.COLOR_BGR2HSV)
+                m = ((hsv[..., 1] > 90) & (hsv[..., 2] > 35)).astype(np.uint8)
+                m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((21, 21), np.uint8))
+                m = cv2.dilate(m, np.ones((5, 5), np.uint8)) > 0
+                if m.sum() > 50:
+                    fh = float((g[m] >= 245).mean())
+                    hvals.append(fh)
+                    if fh > hworst[0]: hworst = (fh, f(r, 't'))
+                    if fh > 0.05: hbad += 1
         i += 1
     line('L1', nbad == 0, 'hero-box pixels at luma >= 245: p50 %.3f / p99 %.3f / max %.3f at %.2f s; frames > 5 %%: %d of %d'
          % (pct(vals, .5), pct(vals, .99), worst[0], worst[1], nbad, len(vals)))
+    line('L1h', hbad == 0, 'hero-silhouette pixels (suit mask) at luma >= 245: p50 %.3f / p99 %.3f / max %.3f at %.2f s; frames > 5 %%: %d of %d'
+         % (pct(hvals, .5), pct(hvals, .99), hworst[0], hworst[1], hbad, len(hvals)))
 print('  => %s' % ('PASS' if all(res) else 'FAIL (%d lines)' % res.count(False)))
