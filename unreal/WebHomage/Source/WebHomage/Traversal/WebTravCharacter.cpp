@@ -572,7 +572,8 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// round 13 (T2 attach -> attach <= 3.3 s): a swing that ends in a flip program is let go at 1.05-1.2 s
 			const int32 EveryNext = Script->TrickEveryAt(TravTime);
 			const bool bTrickNext = EveryNext > 0 && (AutoReleases + 1) % EveryNext == 0 && !Traversal->bTrickLaunch;
-			const float LongCut = bTrickNext ? 1.05f + 0.15f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
+			// (round 14: 1.05-1.2 -> 0.98-1.12 s: the eased backDouble catches 0.07 s later, T2 kept <= 2.65 s)
+			const float LongCut = bTrickNext ? 0.98f + 0.14f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
 			const bool bLong = bSwinging && bAutoSawDescent && A.ModeT > LongCut && Traversal->VelM().Z > 0;
 			if (bAutoHeld && bSwinging && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
@@ -764,7 +765,10 @@ void AWebTravCharacter::PoseFigure(float Dt)
 	if (FP)
 	{
 		const FWebFlipPose FPo = WebFlips::Sample(*FP, FlipT);
-		FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(FPo.PitchDeg)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
+		// round 14: minus the shape's own hips->head lean (ramped in over the first 0.15 s while the anim crossfades into the first
+		// shape), so the visible body axis turns at the program's eased rate instead of spiking at every shape change
+		const double AxisOff = FPo.AxisOffDeg * Smooth01(FlipT / 0.15);
+		FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(FPo.PitchDeg - AxisOff)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
 		LastFlip = FPo; LastFlipName = FP->Name;
 	}
 	else
