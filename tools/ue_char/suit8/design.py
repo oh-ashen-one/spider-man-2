@@ -1,16 +1,19 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-"""ORIGINAL hero suit design, round 08 ("Tessera" suit).  Procedural, evaluated per texel in rest-pose object space (x = character's left,
+"""ORIGINAL hero suit, round 08 ("Tessera").  Procedural, evaluated per texel in rest-pose object space (x = character's left,
 y up, z forward, metres), so there is no hand-drawn source art and nothing is copied from any existing suit.
 
 Design language (written up in docs/night1/characters/round-08/SUIT_ORIGINALITY.md):
-  * palette: slate TEAL body, DEEP ink-teal panels, AMBER accents, BONE hairline piping.  No red / blue blocking, no white emblem.
-  * asymmetric cross-balance: the character's RIGHT arm and LEFT leg carry the amber "light" side, the other pair the dark side.
+  * palette: slate TEAL body, DEEP ink-teal panels, AMBER accents, STITCH light-teal dashes.  No red / blue blocking, no white emblem.
+  * asymmetric cross-balance: the character's RIGHT arm and right greave carry the amber "light" side, the LEFT thigh an amber net, the other limbs the dark side.
   * a tilted amber bandolier sash (a plane slice of the torso, front and back differ) instead of a symmetric chest graphic.
-  * joint plates: a sphere-cut DEEP plate with an amber ring at both shoulders, elbows and knees (the vocabulary of the suit).
-  * net: a triangular "tessera" net made of three families of plane slices through the body (no radial / orb web, no spider figure);
-    hairline on the TEAL panels, strong on the amber sleeve; honeycomb vents on the jaw.
-  * chest badge: a broken hexagon ring with three kite vanes (a net junction), on the sternum; a plain ring on the back.
-  * the mask: DEEP hood, TEAL crown cap with an amber piping arc, two amber brow flashes, honeycomb jaw vents; original lens shape (hero_lens_r8.py).
+  * joint sleeves: DEEP slabs between two planes perpendicular to the limb axis with amber rings at the shoulders (raglan caps), elbows and knees
+    (plane cuts, not sphere cuts: a sphere cut of the faceted low-poly mesh zig-zags).
+  * net: a diamond net of two opposite helices wound around each body segment (helix_dist), hairline dark on the TEAL panels, amber with raised knots on the
+    right upper arm and the left thigh; no radial / orb web and no spider figure anywhere.  Hexagonal honeycomb on the crown and the jaw vent.
+  * chest badge: a hexagon ring with three gaps and three kite vanes around a hex core (a net junction), on the sternum; a plain broken ring on the back.
+  * dashed top-stitching beside the piping lines, raised piping / grooves in the height map, per-panel roughness.
+  * the mask: DEEP hood (plane cut at the neck, inside the neck cylinder), TEAL_D crown cap with an amber piping arc, two amber brow flashes, honeycomb jaw vent,
+    dorsal seam; the eyes are separate geometry (tools/ue_char/hero_lens_r8.py).
 """
 import numpy as np
 

@@ -34,6 +34,8 @@
 | `crowd_tracking_4k.jpg` | frame 342 of a fixed-step 4K movie of Char_Crowd (shot 0, game 5.70 s) | crowd close-up tracking still, picked where no head touches another walker (`crowd/head_overlap.py`, `pick_frames.py`) |
 | `crops_3x/` | | 3x Lanczos crops, round 07 (left) | round 08 (right): `hero-eye` (far eye, `hero_face_lens_4k` r07 x3000-3700 y740-1400 vs r08 x2780-3400 y960-1520), `hero-lines` (web lines vs piping + stitching), `thug-collar`, `tee-mouth`, `crowd-heads` |
 
+**Not re-captured this round (content unchanged; the round-07 files stand):** `crowd_avoidance_demo.mp4` (the round-06 lanes with avoidance on; no character of this round's changes is in it), `crowd_id_*_4k.png` (per-walker id stills), the walker telemetry of the two baseline runs (`evidence/telemetry` of round 07). The crowd key stills (`crowd_key_*_4k.png`) are listed in the file table when they were captured (see the last section).
+
 ## Evidence (`evidence/`)
 
 - `lenscheck/`: `lens_check_r8.py --flat --auto` on the three face key stills (`*_lenscheck.json`, class overlays `*_classes.png`: magenta lens, yellow bezel, blue suit, green exterior, red = background enclosed near an eye).
