@@ -1074,7 +1074,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1197,12 +1197,14 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	// round 13: camera output slew-limit flags (1 position, 2 pitch, 4 yaw) and the hero fill light (cd)
 	const FString Flip12 = FString::Printf(TEXT(",%s,%.3f,%.1f,%.1f,%.2f,%.1f,%.1f,%d,%.0f"),
 		Traversal->IsFlipArmed() ? *Traversal->ArmedFlipName().ToString() : TEXT(""), Cam.FlipK,
-		FMath::RadiansToDegrees(Cam.FlipYawOff), FMath::RadiansToDegrees(Cam.FlipElev), Cam.FlipSkyShare,
+		Cam.FlipOffDeg, FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Cam.FlipDrop / FMath::Max(1.0, Cam.FlipDistNow), 0.0, 0.6))), Cam.FlipSkyShare,
 		Traversal->SkyTallUsed, Traversal->SkyPeakWant, Cam.SlewFlags, HeroFill ? HeroFill->Intensity : 0.f);
 	// round 15: sun angle of the searched flip view, sun angle of the RENDERED view (camera manager forward vs the direction to the sun;
 	// -1 = no sun found), roofline (m over the street) and rise of the last flow flip
 	const double ViewSun = Cam.bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(PcmRot.Vector(), Cam.SunDir), -1.0, 1.0))) : -1.0;
-	const FString Cols15 = FString::Printf(TEXT(",%.1f,%.1f,%.1f,%.1f,%.2f"), Cam.FlipSunDeg, ViewSun, Traversal->FlowRoofUsed, Traversal->FlowRiseUsed, Cam.FlipGlare);
+	// round 16: trick camera distance after the dolly (m), selection tier (-1 none, 0 obstruction + sun ok, 1 sun rule failed, 2 pulled in, 3 plain chase), abort flag, height weight
+	const FString Cols15 = FString::Printf(TEXT(",%.1f,%.1f,%.1f,%.1f,%.2f,%.2f,%d,%d,%.3f,%d"), Cam.FlipSunDeg, ViewSun, Traversal->FlowRoofUsed, Traversal->FlowRiseUsed, Cam.FlipGlare,
+		Cam.FlipDistNow, Cam.FlipTier, Cam.bFlipAbort ? 1 : 0, Cam.FlipZK, Cam.bLensTouch ? 1 : 0);
 	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15);
 }
 

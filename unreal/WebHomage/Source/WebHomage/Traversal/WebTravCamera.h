@@ -77,63 +77,47 @@ public:
 	// SkyCamBelow m under the hero centre and frames him at SkySFrame (upper centre), look-up limited to SkyPitchUp deg (T11 p5)
 	double SkyCamBelow = 1.2, SkySFrame = 0.40, SkyPitchUp = 10.0;
 	double SkyK = 0.0, SkyKV = 0.0;
-	// round 11 (FLIPS_SPEC F9, critic r10 "flips foreshortened from behind"): while a flip program plays the camera orbits
-	// FlipOrbitDeg off the travel axis toward the side with more open space (the rotation plane reads side-on), sinks under the
-	// hero like the sky camera (silhouette against the sky) and never rolls with the body
-	double FlipOrbitDeg = 40.0, FlipSFrame = 0.42, FlipCamBelow = 1.6, FlipCloser = 0.2, FlipPitchUp = 18.0; // r11 capture 1: 10 deg look-up clamp framed the flips against facades
-	double FlipK = 0.0, FlipKV = 0.0, FlipSide = 1.0;
-	bool bFlipWas = false;
-	// round 12 (critic r11: tricks framed against facades; test = >= 50 % sky in a 40 px ring around the hero in >= 70 % of trick
-	// frames): the flip camera SEARCHES its view. Every FlipSearchDt s it scores orbit yaw offsets (around the travel-behind
-	// direction) x look-up elevations (camera below the hero) by the share of a ring of rays past the hero (the hero bbox + 40 px
-	// in angle) that reach open sky (no hit within FlipSkyRay m), preferring a 3/4 side view and the lowest look-up that is clear;
-	// the chosen yaw offset / elevation are springs (FlipAimT s), the camera sits FlipDist m from the hero along that line.
-	// (first round-12 capture: the chase springs left the camera 4.4 m out at 17 deg, and the far skyline — visual-only towers the
-	// rays cannot hit — filled the ring's lower half at <= 20 deg: the spot is now taken exactly (blended by FlipK) and the look-up
-	// never goes under FlipMinElev)
-	// (round 13: FlipDist 2.9 -> 3.3 m, critic r12 T8 "Reach .62" / F9 p50 .40-.41 > .36; FlipAimT 0.3 -> 0.4 s, per-frame yaw budget)
-	double FlipDist = 3.3, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 85.0, FlipMinElev = -3.0; // round 15: -3 (was 4)
-	// round 14 (critic r13 single gap: "the flip camera looks up from under the hero, so the rotation does not read and the camera
-	// stays tilted up into the next swing"; instruction: orbit side-on to the somersault axis, >= 60 deg from it, pitch <= 30 deg up,
-	// back to 4-12 deg down within 0.5 s of the attach): the searched view is restricted to SIDE views -- yaw FlipSideMin..FlipSideMax
-	// deg off the travel-behind direction, on ONE side for the whole trick (chosen by sky at the first search) -- at elevations
-	// FlipMinElev..FlipElevMax (camera below the hero), the flip look-up is capped at FlipPitchUpMax, every non-wall view at
-	// MaxLookUpDeg, and the flip camera blends in FlipInT / out FlipOutT (spring times, s).
-	double FlipSideMin = 70.0, FlipSideMax = 115.0, FlipElevMax = 6.0, FlipPitchUpMax = 8.0, MaxLookUpDeg = 10.0, /* round 15: 28 / 27 / 29 */  FlipInT = 0.30 /* r15: 0.25 -> the slew-limited yaw turn is past 100 deg from the sun by k 0.5 */, FlipOutT = 0.18;
-	// round 15 (critic r14 single gap: "the trick camera climbs to 20-27 deg up and looks into the sun, which flares out the flips";
-	// instruction: cap it at 8 deg up, orbit to the side that puts the sun behind the camera, >= 100 deg between sun and view;
-	// orchestrator: sky behind the hero by HEIGHT, trick camera near the hero's height and nearly level): the flip view elevations
-	// are FlipMinElev..FlipElevMax = -3..6 deg (camera from slightly above to slightly below the hero, preferring FlipPrefElev),
-	// the look-up is capped at FlipPitchUpMax 8 (and every non-wall view at MaxLookUpDeg 10), and a candidate whose view direction
-	// (camera -> hero) is closer than SunMinDeg to the sun is rejected (cost prefers SunPrefDeg and more). SunDir = unit vector TO
-	// the sun, set by the character from the level's atmosphere sun light (bHaveSun false = no sun term).
+	// ---- round 16: TRICK_CAMERA_SPEC (director, Fable 5.1, after r15; supersedes the r11-r15 sky search / side-on orbit / tilt demands)
+	// While a flip program plays the camera is a HELD 3/4-behind chase: ONE yaw offset of FlipYawMin..FlipYawMax deg from the
+	// travel-behind direction, chosen once at the release frame (ChooseFlipView) and never re-searched (TC1); side order = obstruction
+	// (the spot at FlipDist must be sweep-reachable with FlipWallMargin m free beyond it and a clear path FlipAheadT s along the travel),
+	// then sun (view >= SunMinDeg from the sun), then open space (TC2). The camera sits FlipDist m from the hero (5.0-6.5, TC4) on that
+	// WORLD azimuth (drift is the hero's own motion only, TC3), FlipDrop m under his body centre (TC6), hero framed at FlipSFrame
+	// (TC7) with a FlipLeadDeg lead-room yaw bias toward his travel, pitch within +-8 deg (TC5). An obstruction on the held axis dollies the
+	// camera IN along it (to FlipDistMin; TC11), never yaws or re-picks the side; under FlipDistMin (or with no clear spot at all) the
+	// camera blends to the plain chase over FlipOutT. Blend in FlipInT (vertical FlipZInT), out FlipOutT (spring smooth times, TC10).
+	double FlipK = 0.0, FlipKV = 0.0, FlipZK = 0.0, FlipZKV = 0.0;   // weights: 0 chase .. 1 trick camera (FlipK = telemetry flipcam_k)
+	bool bFlipWas = false, bFlipAbort = false;
+	double FlipDist = 5.0, FlipDistMin = 4.0, FlipDrop = 1.2, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 45.0, FlipLeadDeg = 5.0;
+	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
+	double FlipInT = 0.33, FlipOutT = 0.70, FlipZInT = 0.15, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
+	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
+	double FlipAz = 0.0;        // rad, world azimuth hero -> camera (held for the trick)
+	double FlipOffDeg = 0.0;    // signed offset of that azimuth from the travel-behind direction at the release (deg, + = right of behind)
+	double FlipSide = 1.0;      // sign of FlipOffDeg
+	double FlipDistSel = 5.0, FlipDistNow = 5.0, FlipDistV = 0.0;   // chosen / current (dollied) distance
+	int32 FlipTier = -1;        // selection: 0 obstruction + sun ok, 1 sun rule failed (only side clear), 2 pulled in, 3 plain chase (no clear spot)
+	double FlipSkyShare = -1.0, FlipGlare = 0.0, FlipSunDeg = -1.0;   // telemetry: ring sky share / glare share / sun angle of the chosen view
+	// the sun: SunDir = unit vector TO the sun, set by the character from the level's atmosphere sun light (bHaveSun false = no sun term)
 	FVector SunDir = FVector::UpVector;
 	bool bHaveSun = false;
-	double SunMinDeg = 100.0, SunPrefDeg = 140.0, FlipPrefElev = 1.0; // (probe r15: 2.0 -> trick pitch 4.4-4.9 down, b T11 3.9)
-	double FlipSunDeg = -1.0;  // telemetry: sun angle of the chosen flip view at the last search
-	// round 15: a background facade whose mirror direction is within GlareDeg of the sun (sun reflection in glass) costs GlareW x ring share
-	double GlareDeg = 25.0, GlareW = 8.0, FlipGlare = 0.0;
+	double SunMinDeg = 100.0, SunPrefDeg = 140.0, GlareDeg = 25.0, GlareW = 8.0;
 	double CapUpDeg = 29.0;    // the look-up cap applied this frame (also after the output slew re-aim)
 	/** Round 15: -WHCamTune=Name=Value,... for the named tuning doubles (probes without a rebuild). Returns false if unknown. */
 	bool SetTune(const FString& Name, double V);
 	// round 14: after a web attach (SwingT) the pitch settles into SettleDownMin..SettleDownMax deg DOWN, blended in over
 	// SettleT0..SettleT1 s (the hero is kept inside 0.18..0.82 of the frame height; the band widens if it has to)
 	double SettleDownMin = 5.5, SettleDownMax = 11.5, SettleT0 = 0.25, SettleT1 = 0.5;
-	// round 14: a side spot must have FlipWallMargin m of free space beyond it and a clear path FlipAheadT s along the travel
-	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
-	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
-	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
-	// round 13 (critic r12: one-frame cuts at f4 8.58 s / f1 6.30 s -- pitch 43 deg, yaw 54-60 deg, 3.1 m -- from the "too close: cut to
-	// the clear orbit" rule re-arming while the flip camera blended out; test: no frame may change pitch > 3 deg, yaw > 4 deg or position
-	// > 1.2 m): the cut is gone, the flip view search moves at most FlipSearchYawStep deg per search, and the camera OUTPUT is slew-limited
-	// per 1/60 s (position first, the view re-aimed at the hero by the same correction, then pitch / yaw). SlewFlags (telemetry):
-	// 1 = position limited, 2 = pitch, 4 = yaw this frame.
-	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipSearchYawStep = 45.0;
+	// round 13 (critic r12: one-frame cuts): no cut -- the camera OUTPUT is slew-limited per 1/60 s (position first, the view re-aimed at
+	// the hero by the same correction, then pitch / yaw). SlewFlags (telemetry): 1 = position limited, 2 = pitch, 4 = yaw this frame.
+	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6;
 	int32 SlewFlags = 0;
-	void SearchSkyView(const FTravCamInput& P, const FWebTravWorld& World, const FVector& Back, bool bFirst);
+	/** Round 16: pick the held trick view at the release frame (TC1/TC2). Sets FlipAz / FlipOffDeg / FlipDistSel / FlipTier. */
+	void ChooseFlipView(const FTravCamInput& P, const FWebTravWorld& World);
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame
+	bool bLensTouch = false;               // round 16 (T19 / TC11): the 0.25 m lens sphere at the FINAL camera position touches geometry / foliage
 	double HeroDist = 0.0;                  // camera -> hero centre (m)
 	double FrameS = 0.55;                   // current framing target (hero screen centre Y, 0 top .. 1 bottom)
 	FVector CamPos = FVector::ZeroVector;   // m
