@@ -1,68 +1,50 @@
-# F 4K/60 perf: handoff after round 02
+# F 4K/60 perf: handoff after round 03
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/perf`, worktree `~/sm2-n1/perf`. Owns `tools/perf_ue2/` (imports P4's `tools/perf_ue/run_perf.py`) and `docs/night1/perf/`. Scratch `/Users/midir/sm2-n1/_scratch/perf/` (NOT committed; the raw round-02 PNGs / run folders were deleted after landing in `round-02/`, `r02/` keeps only the config lists and queue logs). Local map copies: `unreal/WebHomage/Content/PerfF/` (170 MB, gitignored, rebuilt by `make_variants.py`).
-UE MCP port 8778 unused (everything is `-game` runs + headless commandlets). Spec `SPEC.md` (P1-P7), shot list `SHOTLIST.md`, evidence `round-01/` and `round-02/` (`NOTES.md` = every fact and probe of the round; `perf/` = raw runs per session
-with CSV.gz and the lock sidecar; `stills/`, `cmp/`, `refl/`, `cloud/`). The round-01 critic (`critic/round-01-CRITIC.md`) said FAILS TARGET; no critic has scored round 02 yet (blind pack:
-`/Users/midir/sm2-n1/_scratch/critic-F-r02/pack`, key outside it).
-**Build under test = the round-01 build** (binaries of integration 1bbd260, Manhattan content of 2026-09-29 22:25, restored untouched). Integration e0ada6c (look R2, water, combat, life) is merged at the source level only and was NOT rebuilt or re-measured:
-re-measure once it is built (`perf_queue.py` with the specs below). The local `Content/` is the untouched round-01 build; all round-02 content changes live in map copies under `/Game/PerfF/` (never committed) and can be rebuilt with `make_variants.py`.
+Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. Owns `tools/perf_ue2/` (imports P4's `tools/perf_ue/run_perf.py`) and `docs/night1/perf/`. Scratch `/Users/midir/sm2-n1/_scratch/perf/` (NOT committed: export / tex / chars staging, logs, `r03/` raw 4K stills, movie frames were deleted).
+Spec `SPEC.md` (P1-P9), shot list `SHOTLIST.md`, evidence `round-01/`, `round-02/`, `round-03/` (`NOTES.md` = every fact of the round; `TABLE.md`, `SERIAL.md`, `perf/<session>/`, `stills/`, `cmp/`, `lookprobe/`, `route_30s.mp4`, `content_audit*.json`).
+Critics so far: round 01 FAILS TARGET, round 02 APPROACHES TARGET (`critic/`). Round 03 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r03/pack` (key `pack.key.json` outside it, `pairs.json`), no critic has scored it yet.
 
-## What round 02 found (numbers: `round-02/NOTES.md`; all `gpu_slot.sh perf`, exclusive, `perf_valid: true`, 3840x2160 output, 30 s route, fixed step)
-1. **Cloud tracing distance: the critic's 15 km does not work, 4 km does.** VolumetricCloud pass over the last 600 route frames: 2.34 ms at 50 km, **1.97 at 15 km**, 1.22 at 10, **0.62 at 6, 0.41 at 4**, 0.31 at 3 (line <= 0.7). Route p95 (software Lumen, TSR 50 %): 19.92 -> 19.55 / 18.41 / 17.81 / **17.62** / 17.39.
-   t20 / t28 SSIM 0.993-0.996 (noise floor 0.997). Price: the distant cloud wisps at the horizon disappear (`round-02/cloud/cmp_cloudhz`); SSIM does not see it. **Adopt: `look_presets.json` `clouds.tracing_max_distance` 50 / 40 / 30 -> 4** (F does not own it; golden only was measured).
-2. **The look loss of round 01 is the software REFLECTIONS.** Hardware-RT reflections with software GI (`r.Lumen.HardwareRayTracing 1`, `ScreenProbeGather.HardwareRayTracing 0`, `Reflections.HardwareRayTracing 1`) restore the lit windows and glass:
-   crop SSIM S1 glass 0.59 -> 0.92-0.96, S2 windows 0.967 -> 0.986-0.992, S2 gold tower 0.766 -> 0.947-0.967. No software cvar helps (five tried). The "crop SSIM >= 0.97 with software Lumen" route of the critic is not reachable.
-3. **Hardware-RT reflections cost +4.1 ms with the whole city in the ray-tracing scene, +1.9 ms with the RT-lite scene** (hinterland `City/Far`, trees `City/Props`, far ground `City/far` set `visible_in_ray_tracing = False`; look unchanged, SSIM 0.99 vs full scene).
-   Static S2 view: only +0.5 ms; the moving route pays 1.56 ms in the `RayTracingScene` pass, and skeletal meshes in the ray-tracing scene are worth 1.5 ms (`r.RayTracing.Geometry.SkeletalMeshes 0`: p50 -1.5, but the hero's reflection goes with it).
-4. **Presets** (route p50 / p95 ms, fps; official session `perf/s4_official`; two repeats where noted):
-| preset | TSR / internal | p50 (fps) | p95 (fps) | P1 / P2 / P3 |
-|---|---|---|---|---|
-| `perf60` + cloud 4 km, software Lumen | 50 % / 1920x1080 | 15.32 (65.3) | 17.48 (57.2) | pass / pass / pass (S2 static 12.8) |
-| **`perf60_hwrefl`** + cloud 4 km + RT-lite scene (hardware-RT reflections, software GI, Nanite error 6) | **46 % / 1766x994** | **16.01 / 16.02 (62.5)** | **18.05 / 18.06 (55.4)** | **pass / pass (margin 0.12 ms) / pass (S2 static 13.20)** |
-| `perf60_hwrefl` same, TSR 44 % | 44 % / 1690x950 | 15.65 (63.9) | 17.69 (56.5) | pass / pass |
-| `perf60_hwrefl` same, TSR 50 % | 50 % / 1920x1080 | 16.75 (59.7) | 18.95 (52.8) | fails by 0.08 / 0.77 ms |
-   Round 01 for reference: as-found defaults 26.45 / 32.09 (TSR 50), perf60 without the cloud fix 16.44 / 19.86.
-   **Decision for the owner / director (not mine to take):** 1080p internal with software Lumen (glass reflections and lit windows lost) vs 994p internal with the round-01 look kept. My recommendation is `perf60_hwrefl` at TSR 46 % (visual check vs as-found: SSIM 0.96-0.98 on S1 / S2 / S7,
-   crops 0.92 / 0.99 / 0.95, luma lines unchanged); its P2 margin is thin, TSR 44 % is the safe value.
+## State at the end of round 03 (numbers: `round-03/NOTES.md`; all exclusive `gpu_slot.sh perf`, `perf_valid: true`, 3840x2160 output, 30 s route, fixed step)
+**Shipped path, on the REBUILT integrated map (integration c4fffda merged + rebuilt by scripts), no per-run cvars:** internal 1920x1080 (TSR 50 %), preset `overrides/perf60_hwl.cvars` = full hardware-RT Lumen (GI + reflections), RT-lite scene (518 of 117 506 instances), cloud 4 km, Nanite error 8, skeletal meshes out of the RT scene.
+| line | result | pass |
+|---|---|---|
+| P1 p50 <= 16.67 | 15.46 / 15.34 ms (`f1/hwl_a`, `hwl_b`) | yes |
+| P2 p95 <= 18.18, 0 hitches | 17.88 / 17.91 ms, 0 hitches (margin 0.27-0.30 ms) | yes |
+| P3 static S2 p50 <= 18.2 | 14.49 (p95 15.45) | yes |
+| P6 cloud pass last 600 frames <= 0.7 ms | 0.49 | yes |
+| P7 crop SSIM >= 0.97 (S1 glass / S2 windows / S2 gold, vs the as-found still of the same map at TSR 50) | 0.9733 / 0.9921 / 0.9773 | yes |
+| P8 mean frame - GPUTime <= 1.0 ms | 0.82 / 0.83 (instrument caveat: it reads 1.2 / 2.7 ms for other processes with identical work; A/B evidence in NOTES section 3) | yes, weak |
+| P9 shipped path (no per-run cvars, internal disclosed) | `@ini` runs report 1920x1080 | yes |
+| P4 look lines | **S1 mean Y 92.1 -> 103.6 (line <= 100), route t20 89.5 -> 101.7, t42 98.7 -> 114.1: canopy / skyline brighter than as-found** (trees are not in the RT scene, hardware GI rays leave through them) | **no (disclosed)** |
+What the serialisation was: the hero (animated skeletal mesh) in the ray-tracing scene = 1.5 ms of `GPU/RayTracingScene` every frame and 1.6 ms of frame time; people 0.1 ms; occlusion-query buffering, an update budget and Metal fast-build change nothing. Out of the RT scene (cvar line in the preset), hardware GI costs nothing measurable.
 
-## What other pieces must adopt (nothing outside `tools/perf_ue2`, `docs/night1/perf` was edited; the capture gate of round 01 is already in this branch)
-1. **P4 look:** cloud tracing distance 4 km in every preset (`look_presets.json`); `overrides/perf60_hwrefl.cvars` as the Mac device-profile / preset step (never DefaultEngine.ini); accept the horizon-wisp loss or find a cheaper horizon cloud (the cost is the marched segment, not the sample cap: `ViewRaySampleMaxCount 96` did nothing).
-2. **P1 city / C manhattan build scripts:** set `visible_in_ray_tracing = False` on the components of `City/Far`, `City/Props`, `City/far` (RT-lite; local reproduction: the map copies of `make_variants.py`, verified; `perf_content.sh apply rt_lite,cloud` is written but untested). Keep the glass towers (`City/generic`) in the ray-tracing scene: removing them loses the gold tower reflections (S2 gold crop 0.906).
-3. **P3 traversal:** `-WHTravMask` gate still required (round 01). The hero + street people are skeletal meshes in the ray-tracing scene: worth 1.5 ms together; a hero-only vs people-only split (`make_variants.py` tag `Cl4RTP`, built, not measured) is the next probe.
-4. **Integrator / gpu lock:** perf tickets time out after 30 min (exit 75 -> re-queued at the back); with 4-5 capture holders each session waited 12-26 min. A stuck-exiting engine (`?E`) blocks every launch; `gpu_slot.sh` handles it, nothing else should.
-
-## Commands (repo root; editor closed; every game launch goes through the lock)
+## How to reproduce / rebuild (editor and game closed; every game launch through the lock)
 ```
+python3 tools/perf_ue2/build_map.py                              # ALL steps: cpp, city_export, city_prep, city_extra, city, traversal, characters, look, map, perf_apply, perf_preset, perf_audit (~11 min, no GPU)
+python3 tools/perf_ue2/build_map.py --steps perf_apply,perf_preset,perf_audit   # only the perf state on already built content (idempotent)
+python3 tools/perf_ue2/build_map.py --preset-off                 # remove the preset block from Config/Mac/MacEngine.ini (as-found comparison runs)
+SM2_PERF_PRESET=perf60_hwrefl_sk0 SM2_PERF_PRESET_SP=48 python3 tools/perf_ue2/build_map.py --steps perf_preset   # the software-GI fallback preset (see below)
 G=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
-python3 tools/perf_ue2/make_variants.py   # commandlet, no GPU: SM2_PERF_CLOUD_KM=4RT,6,4RTP  "<UnrealEditor>" <uproject> -run=pythonscript -script=<abs>/tools/perf_ue2/make_variants.py -unattended -nullrhi -RenderOffScreen -NoSound
-       # tags: Cl<N> (cloud N km) | Cl<N>RT[1-3] (+ RT-lite scene levels) | ...P (street people out of RT) | ...D<m> (tree draw distance); copies in /Game/PerfF/<tag>/ ; count `pgrep -fl "MacOS/UnrealEditor( |$)"` first, wait if >= 3
-python3 tools/perf_ue2/perf_queue.py --out <dir> --configs "warm@46+set:perf60_hwrefl+variant:Cl4RT,a@46+set:perf60_hwrefl+variant:Cl4RT,s2@46+set:perf60_hwrefl+variant:Cl4RT+view:S2" [--tag s] -- --budget-s 870
-       # spec = name@SP[+set:<overrides/stem>][+cvar=value][+flag:-GameFlag][+variant:<tag>][+view:S2]; FIRST config of a session is cold: put a throw-away `warm` first; <= 12 configs per 15 min hold
-python3 tools/perf_ue2/windows.py <session dir> --md WINDOWS.md      # p50 / p95 and passes (cloud, NaniteVisBuffer) over the first / last 600 frames
-python3 tools/perf_ue2/make_table.py <dirs> --md TABLE.md            # every run, p95 of the 2-frame mean, lock verdict
-$G capture --label perf -- tools/perf_ue2/stills2.sh <out> "<spec>" "S1 S2 S7 route"     # 4K stills; env SM2_PERF_ROUTE_SHOTS=38,42 for other route times
-python3 tools/perf_ue2/crop_ssim.py <ref_dir> <test_dir> --sbs <dir>     # S1 glass / S2 windows / S2 gold crops (P7); compare_stills.py for whole stills (P4)
-$G capture --label perf -- tools/perf_ue2/route_movie.sh <out> "<spec>"  # 1080p60 clip (native 1080p internal, Nanite error halved); has a hang watchdog
+python3 tools/perf_ue2/perf_queue.py --out <dir> --tag x --configs "warm@ini,a@ini,b@ini,s2@ini+view:S2" -- --budget-s 870     # spec name@ini = shipped path (no cvar, no r.ScreenPercentage on the command line); name@SP+cvar=value = probes
+$G capture --label perf -- tools/perf_ue2/stills2.sh <out> "ship@ini" "S1 S2 S7 route"     # env SM2_PERF_ROUTE_SHOTS=20,28,38,42
+$G capture --label perf -- tools/perf_ue2/route_movie.sh <out> "movie@100+set:perf60_hwl"  # 1080p60 clip, watchdog = stop_ue.sh
+python3 tools/perf_ue2/crop_ssim.py <ref_dir> <test_dir> [--sbs dir] [--set r03]             # P7 crops; compare_stills.py for whole stills (P4 luma lines); serial.py <run dir> (P8 chain fit)
+python3 tools/perf_ue2/make_variants.py / make_rtvars.py         # local A/B map copies under /Game/PerfF (commandlets; env SM2_PERF_CLOUD_KM=4P, SM2_PERF_RTVARS=A,B,C,D,E,F)
 ```
-Do not edit a shell script while a capture that runs it is queued or running (bash reads it incrementally; appending is the only safe edit).
+- `unreal/WebHomage/Config/Mac/MacEngine.ini` is GENERATED and UNTRACKED: never `git add -A` / `git add unreal`; add explicit paths. Saved/Config ini files do not work for the preset (the engine deletes them at exit).
+- Every launch of F passes `-notraceserver` (the engine otherwise auto-starts `UnrealTraceServer`, a listening process). Stop an engine only with `_scratch/gpu/bin/stop_ue.sh "<pattern matching only your own path>"`. One Unreal process of F at a time.
+- The first config of a session is cold (p95 wrong): start every session with a throw-away `warm@ini`. Every delta needs a control in the SAME session (identical configs differ by +-0.1 ms p50 inside a session, up to 0.3 between sessions).
+- Raw 4K PNG stills of the round are in `_scratch/perf/r03/{before,final}` (the pack holds re-encoded JPEGs). Local content (`Content/`, `Intermediate`, `DerivedDataCache`) was NOT deleted: a fresh builder needs it (rebuild = 11 min).
 
-## Method rules learned (each cost a wrong conclusion once)
-- Every delta needs a control in the SAME session (identical controls were 16.52 / 16.42 / 16.40 / 16.41 ms p50 over four sessions of round 02, so the noise is +-0.1 ms once warm).
-- The first config of a session and any new map / cvar combination is cold: p50 fine, p95 wrong (hitches up to 0.8 s). A p95 verdict needs two warm runs (`fin46_a` / `fin46_b` 18.05 / 18.06).
-- SSIM on stills misses small areas (horizon clouds gone at SSIM 0.997): look at the side-by-side of the changed region.
-- The frame p50 is the truth, not the per-pass table (`RayTracingScene` 1.56 ms moving / 0.03 ms static explains a +1.9 vs +0.5 ms frame delta only after the run of the probes).
-- Nanite / TSR costs depend on the OUTPUT resolution: always 3840x2160 output. Content changes for A/B go into map copies, not into the shipped maps.
-- Never SIGKILL a rendering engine; `stop_ue.sh`. A launch that sits at 0.1 % CPU with no new log line is hung (sample it); the watchdog in `route_movie.sh` does the same.
-
-## What is left (facts, ranked)
-1. Re-measure everything on the built integration HEAD (look R2 lights, water, combat, life add lights / actors / ray-tracing instances; the `-WHTravMask` gate must be on before the perf run for traversal telemetry and off for perf).
-2. Get `perf60_hwrefl` to TSR 50 %: needs -0.8 ms p95. Candidates measured: Nanite error 8 (-0.12 p50, last-window p95 -0.4, look unchecked), `DownsampleFactor 2` (-0.34, look loss), `MaxRoughnessToTrace 0.25` (-0.14, gold tower loss), hero-only ray-tracing budget (skeletal meshes are 1.5 ms).
-   No gain: BuildMode 0, RayTracing.Culling 0 (worse), skeletal LOD bias 3, HiResSurface 0, RT2 (Nanite kit out), tree draw distance 1.5 km, FarField 0.
-3. The horizon cloud: a cheaper way to keep the far wisps (the marched segment is the cost).
-4. The route leaves the detailed block at 22.6 s (C's issue 4): a second route inside the block would separate far-LOD cost from street cost.
-5. **Not delivered in this round:** (a) the 1080p60 route clip (`route_30s.mp4`): the first launch hung on a macOS XPC wait at 06:54 and was killed; the retry (with the new watchdog) waited in the lock queue from 07:12 and never ran, because two engines of other agents
-   (pids 17555 / 17831, `?E` = stuck exiting since ~06:55) made `gpu_slot.sh` refuse every launch and the GPU stayed at 100 %; I cancelled my tickets at 07:55. (b) session 5 (street people out of the ray-tracing scene, `Cl4RTP`; TSR 48 / 50 with it; 12 configs are in
-   `_scratch/perf/r02/perf_s5_configs.txt`): never ran, cancelled. (c) `perf_apply.py` steps `cloud` / `rt_lite` and the per-file backup in `perf_content.sh` are written but NOT run (launching an editor commandlet while an engine was stuck exiting is against the rules): test them
-   on a scratch copy before trusting them; the map copies of `make_variants.py` are the verified route.
+## Decisions and open items (facts, ranked)
+1. **Owner / director decision: brighter canopy (shipped) vs darker software-GI look.** `perf60_hwl` passes every numeric line but the S1 / t20 / t42 luma lines; the fallback `perf60_hwrefl_sk0` at TSR 48 (software GI, hardware reflections) keeps luma within -2 .. -6 of as-found (p50 15.27 / 15.25, p95 17.61 / 17.86, `d1`) but fails the crop gate (0.943 / 0.980 / 0.943) and is 6 % darker on the route (round-02 critic).
+2. **Fix the canopy brightness without the 2.2 ms of trees in the RT scene** (trees in: p50 17.67, p95 20.32; within 100 m 16.77 / 19.40; within 50 m 16.14 / 18.78 but it also culls facades beyond 50 m out of the reflections). Ideas, none tried: a decimated RT-only occluder set for the trees (extra HISM component, `render_in_main_pass False`, `visible_in_ray_tracing True`, every 2nd-3rd tree; expect ~0.5 ms, p95 margin is 0.27 ms) - needs a saving of the same size elsewhere;
+   P1's shade fill march (`ShadeFill.ush` 28 steps, their to-do 2) is part of the 1.2 ms base pass; Lumen surface-cache update budgets; VSM 2.2 ms. Not F-owned files: ask the owner pieces.
+3. **The hero is not in ray-traced reflections.** A cheaper hero instance needs code (a static / low-rate proxy in the RT scene); no cvar reduces it (`MaxUpdatePrimitivesPerFrame 1`, Metal fast build: no change). If the critic wants the hero mirrored, the price is 1.5 ms.
+4. **Integrator:** adopt `overrides/perf60_hwl.cvars` + `r.ScreenPercentage 50` as a `[Mac DeviceProfile]` block (`DefaultDeviceProfiles.ini`, integrator-owned) and run `perf_apply rt_lite,cloud` (or move `visible_in_ray_tracing = False` for `City/Far`, `City/Props`, `City/far` and `tracing_max_distance 4` into `build_city.py` / `look_presets.json` of P1 / P4).
+   `build_manhattan.py` (C) still lacks P1's `city_extra` tools (they are in `build_map.py` here) and does not build life / water / combat content: the map measured here has no moving traffic / crowd.
+5. Re-measure when life / water / combat content is in the map (more lights, actors, skeletal meshes: the `SkeletalMeshes 0` line covers skeletal RT cost, but VSM / Lumen / Nanite will grow) and when P1 lowers the shade march cost.
+6. The route leaves the detailed block at ~22.6 s (C's issue 4); a second route inside the block would separate far-LOD cost from street cost. The horizon cloud wisps are gone at 4 km (round 02); no cheaper horizon cloud found.
+7. Not measured this round: native 2160p internal, TSR 58 / 67 with the new preset (TSR 58 measured with software GI: 19.0 p50), midday / night rigs (only the golden rig was timed; the cloud step covers all three).

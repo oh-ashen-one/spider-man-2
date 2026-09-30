@@ -14,6 +14,6 @@ for CV in "$@"; do
   if [ -n "$CV" ]; then EX="$EX,$(echo "$CV" | tr '=' ' ')"; DP=(-dpcvars="$CV"); fi
   echo "warmup $i: ${CV:-<base>}"
   "$WT/unreal/WebHomage/Scripts/run_game.sh" "$D" -map /Game/Maps/Manhattan -res 960x540 -quit 46 -name warm -timeout 1500 -exec "$EX" \
-    -- -benchmark -fps=60 -WHTravScript="$ROUTE" "${DP[@]+"${DP[@]}"}" | tail -1
+    -- -notraceserver -benchmark -fps=60 -WHTravScript="$ROUTE" "${DP[@]+"${DP[@]}"}" | tail -1
   i=$((i + 1))
 done

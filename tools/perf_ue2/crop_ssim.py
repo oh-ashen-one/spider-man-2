@@ -11,10 +11,13 @@ usage: crop_ssim.py <ref_dir> <test_dir> [<test_dir> ...] [--json out.json] [--t
 import argparse, json, os
 import numpy as np, cv2
 
-CROPS = {
-    'S1': {'S1_glass': (485, 0, 710, 490)},
-    'S2': {'S2_windows': (0, 38, 576, 960), 'S2_gold': (1459, 0, 1920, 1056)},
+CROPSETS = {
+    # round 02 (old city): S1 glass tower left of the vanishing point
+    'r02': {'S1': {'S1_glass': (485, 0, 710, 490)}, 'S2': {'S2_windows': (0, 38, 576, 960), 'S2_gold': (1459, 0, 1920, 1056)}},
+    # round 03 (rebuilt integrated city: street trees now cover the r02 S1 crop; the glass curtain wall + the window tower behind it sit at x 775-900, y 0-215; the street-tree crown enters the frame below y 215)
+    'r03': {'S1': {'S1_glass': (775, 0, 900, 215)}, 'S2': {'S2_windows': (0, 38, 576, 960), 'S2_gold': (1459, 0, 1920, 1056)}},
 }
+CROPS = CROPSETS['r03']
 
 
 def luma(img): return (0.2126 * img[..., 2] + 0.7152 * img[..., 1] + 0.0722 * img[..., 0]).astype(np.float64)
@@ -36,8 +39,9 @@ def warm(img):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('ref'); ap.add_argument('tests', nargs='+'); ap.add_argument('--json'); ap.add_argument('--thr', type=float, default=0.97)
-    ap.add_argument('--views', default='S1,S2'); ap.add_argument('--sbs')
+    ap.add_argument('--views', default='S1,S2'); ap.add_argument('--sbs'); ap.add_argument('--set', default='r03', choices=sorted(CROPSETS))
     a = ap.parse_args()
+    CROPS = CROPSETS[a.set]
     out = {}
     for t in a.tests:
         res = {}

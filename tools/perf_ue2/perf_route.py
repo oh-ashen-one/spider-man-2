@@ -40,7 +40,7 @@ def read_set(stem):
 
 def parse_cfg(spec):
     parts = spec.split('+')
-    name, sp = parts[0].split('@') if '@' in parts[0] else (parts[0], '67')
+    name, sp = parts[0].split('@') if '@' in parts[0] else (parts[0], '67')   # sp may be 'ini' (no r.ScreenPercentage / dpcvars from the command line)
     cv = []
     for p in parts[1:]:
         if p.startswith('set:'): cv += read_set(p[4:])
@@ -103,10 +103,10 @@ def main():
             print('SKIP (lock budget)', name, flush=True); summary.append({'config': name, 'skipped': 'lock budget'}); continue
         d = os.path.join(out, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
         started = time.time()
-        execs = ['r.ScreenPercentage %s' % sp] + ['%s %s' % (k, v) for k, v in cv]
+        execs = ([] if sp == 'ini' else ['r.ScreenPercentage %s' % sp]) + ['%s %s' % (k, v) for k, v in cv]   # SP 'ini' = the shipped path: the preset comes from Config/Mac/MacEngine.ini (build_map.py step perf_preset), nothing on the command line
         # no -WHTravMask: the hero-mask / scene-depth telemetry captures stay off (they re-render the scene every frame)
         extra = (['-WHTravScript=' + cfg_script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if cfg_script not in ('', 'none') else []) \
-            + ['-csvGpuStats', '-benchmark', '-fps=60']
+            + ['-csvGpuStats', '-benchmark', '-fps=60', '-notraceserver']
         extra += flags
         if cv: extra.append('-dpcvars=' + ','.join('%s=%s' % (k, v) for k, v in cv))
         if a.trace: extra += ['-trace=' + a.trace, '-tracefile=' + os.path.join(d, 'trace.utrace')]
