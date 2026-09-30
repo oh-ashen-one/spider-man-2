@@ -2,6 +2,16 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
+**Status (round 15 IN PROGRESS, 2026-09-30, Opus 5.5):** critic r14 verdict FAILS TARGET (camera 5, flips 7; `critic/round-14-CRITIC.md`):
+"the trick camera climbs to 20-27 deg up and looks into the sun, which flares out the flips". Built (commits on night1/traversal): sun-aware,
+near-level trick camera (`WebTravCamera`: elevations -3..6 deg around the hero's height, prefer 2 deg below, look-up cap 8 deg in tricks / 10 deg
+chase / 30 deg wall; views closer than 100 deg to the sun rejected in staged fallback passes; sun = the level's atmosphere sun light, found by
+the character), wall camera 1.3 m below / 3.1 m out / hero at 0.60, canopy lift for the camera when the hero is inside a tree, roofline flow-flip
+rise (`FlowRoofOver` 3 m over the lower street wall when within `FlowRiseMax` 14 m), `-WHCamTune=`, telemetry `flipcam_sun_deg, view_sun_deg,
+flow_roof_m, flow_rise_m`, checker `suncam_check.py` (reproduces the critic's r14 f4 numbers: 21.2 up, 93 % clipped at 10.02 s, T11 2.5 down).
+Sun in /Game/Maps/Manhattan (logged by the game): direction to the sun yaw -178, elevation 8 deg = due WEST, so side views must look east-ish.
+Next: probes -> 1080p60 captures into round-15/ -> checks -> critic pack `_scratch/critic-P3-r15/`.
+
 **Status (end of round 14, 2026-09-30 ~13:30): rendered, measured, critic pack built; the blind critic has NOT run yet.** Round 14 (critic r13
 single gap: "the flip camera looks up from under the hero, so the rotation does not read and the camera stays tilted up into the next swing")
 = side-on trick camera (yaw 70-115 deg off behind, one side per trick, 4-28 deg below, clearance-checked spot, look-up cap 27 / 29 deg), a settle

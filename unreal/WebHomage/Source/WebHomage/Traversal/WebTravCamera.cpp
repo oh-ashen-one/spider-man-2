@@ -561,8 +561,11 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 	const double GoalY = FMath::RadiansToDegrees(FlipYawGoal), GoalE = FMath::RadiansToDegrees(FlipElevGoal);
 	const double CurY = FMath::RadiansToDegrees(FlipYawOff);
 	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0, BSun = -1.0;
-	// round 15: pass 0 rejects views closer than SunMinDeg to the sun; pass 1 (only if pass 0 found nothing) takes any
-	for (int32 Pass = 0; Pass < 2 && BestCost > 1e8; ++Pass)
+	// round 15: passes, each only if the previous one found nothing: 0 = views >= SunMinDeg from the sun with the r14 clearance
+	// (FlipWallMargin beyond the spot, a clear path FlipAheadT along the travel); 1 = sun rule, 0.5 m margin, half the path; 2 = sun
+	// rule, the spot only has to be reachable; 3 = any view with the r14 clearance (probe r15: with only "0 / any" the first flip of the
+	// north-bound f4 fell back to the west side, looking into the sun at 8-31 deg)
+	for (int32 Pass = 0; Pass < 4 && BestCost > 1e8; ++Pass)
 	for (double YD : YawsDeg)
 	{
 		const double Yr = FMath::DegreesToRadians(YD);
@@ -583,10 +586,12 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 			// round 14 (rendered f4 2.55-2.85 s: a side spot 3.3 m from the hero with a facade ~3.5 m away -- a cornice cut the sweep, the
 			// wall push shoved the camera over the hero, hero out of frame for 0.3 s): a side spot needs FlipWallMargin m of clearance
 			// beyond it and a clear path along the travel for the next FlipAheadT s
-			if (World.SphereSweep(CamP, CamP + ToCam * FlipWallMargin, 0.3, HitD)) continue;
+			if (Pass != 2)
 			{
+				const double Mg = Pass == 1 ? 0.5 : FlipWallMargin, At = Pass == 1 ? 0.5 * FlipAheadT : FlipAheadT;
+				if (World.SphereSweep(CamP, CamP + ToCam * Mg, 0.3, HitD)) continue;
 				const FVector VF(P.Vel.X, P.Vel.Y, 0.0);
-				if (VF.SizeSquared() > 1.0 && World.SphereSweep(CamP, CamP + VF * FlipAheadT, 0.3, HitD)) continue;
+				if (VF.SizeSquared() > 1.0 && World.SphereSweep(CamP, CamP + VF * At, 0.3, HitD)) continue;
 			}
 			if (CamP.Z < World.GroundHeight(CamP.X, CamP.Y, CamP.Z + 0.5) + 0.5) continue;
 			// view basis through the hero
@@ -605,7 +610,7 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 			const double Sky = double(Free) / double(FMath::Max(1, N));
 			// round 15: sun angle of this view (camera -> hero vs the direction to the sun)
 			const double SunDeg = bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(D, SunDir), -1.0, 1.0))) : 180.0;
-			if (Pass == 0 && SunDeg < SunMinDeg) continue;
+			if (Pass < 3 && SunDeg < SunMinDeg) continue;
 			// (round 15: elevation term = distance from FlipPrefElev (near level), sun term below SunPrefDeg)
 			double Cost = (1.0 - Sky) * 10.0 + 0.8 * FMath::Abs(FMath::Abs(YD) - FlipPrefYaw) / 90.0 + 0.9 * FMath::Abs(ED - FlipPrefElev) / 10.0
 				+ 2.0 * FMath::Max(0.0, SunPrefDeg - SunDeg) / 40.0;
