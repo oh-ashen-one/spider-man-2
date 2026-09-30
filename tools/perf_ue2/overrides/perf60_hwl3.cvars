@@ -1,0 +1,5 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 preset "perf60_hwl3" = round-04 perf60_hwl2 + the round-06 cuts (overrides/r06cut.cvars: skin cache off, Lumen translucency volume off, probe octahedron 4).
+# Applied by tools/perf_ue2/build_map.py step perf_preset (Config/Mac/MacEngine.ini, SM2_PERF_PRESET_SP = 50).
+set:perf60_hwl2
+set:r06cut

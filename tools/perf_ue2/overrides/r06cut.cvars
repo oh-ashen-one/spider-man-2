@@ -1,0 +1,9 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 cuts on top of perf60_hwl2 (sessions r06/x1, r06/y1; attribution in docs/night1/perf/round-06/NOTES.md):
+# 1. GPU skin cache off (sk0): the life GPU/Unaccounted +1.05 ms of ~600 per-mesh skinning dispatches; life p50 17.12 -> 16.08.
+set:sk0
+# 2. Lumen translucency GI volume off: translucent surfaces (none in the city look; glass is opaque) lose Lumen GI; -0.17 / -0.19 ms (p50 / p95) and GPU/LumenReflections -0.23 ms.
+r.Lumen.TranslucencyVolume.Enable=0
+# 3. Screen-probe tracing octahedron 8x8 -> 4x4 rays per probe (the only probe-gather knob that moved the pass: -0.26 ms; probe density 32 px and the
+#    "High" radiance cache moved nothing, sessions x1 / y1). More temporal accumulation of the diffuse GI instead of more rays per frame.
+r.Lumen.ScreenProbeGather.TracingOctahedronResolution=4
