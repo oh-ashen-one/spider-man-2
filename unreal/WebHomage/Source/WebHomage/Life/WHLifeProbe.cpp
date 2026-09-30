@@ -8,6 +8,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogWHLifeProbe, Log, All);
 
@@ -18,11 +20,34 @@ AWHLifeProbe::AWHLifeProbe()
 	SetRootComponent(CreateDefaultSubobject<USceneComponent>(TEXT("Root")));
 }
 
+void AWHLifeProbe::BeginPlay()
+{
+	Super::BeginPlay();
+	// -WHLifeSample=<from>:<to>:<every>  -WHLifeQueue=<link id>,<link id>...
+	FString S;
+	if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeSample="), S))
+	{
+		TArray<FString> P; S.ParseIntoArray(P, TEXT(":"), true);
+		if (P.Num() >= 3) { SampleFrom = FCString::Atof(*P[0]); SampleTo = FCString::Atof(*P[1]); SampleEvery = FCString::Atof(*P[2]); }
+	}
+	if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeFoot="), S))
+	{
+		TArray<FString> P; S.ParseIntoArray(P, TEXT(":"), true);
+		if (P.Num() >= 2) { FootFrom = FCString::Atof(*P[0]); FootTo = FCString::Atof(*P[1]); }
+	}
+	if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeQueue="), S, false))
+	{
+		TArray<FString> P; S.ParseIntoArray(P, TEXT(","), true);
+		for (const FString& X : P) QueueLinks.Add(FCString::Atoi(*X));
+	}
+}
+
 void AWHLifeProbe::Tick(float Dt)
 {
 	Super::Tick(Dt);
 	T += Dt;
 	for (int32 I = 0; I < ReportAt.Num(); ++I) if (!Done.Contains(I) && T >= ReportAt[I]) { Done.Add(I); Report(I); }
+	if (SampleEvery > 0.f && T >= SampleFrom && T <= SampleTo + 0.001f) { if (NextSample < SampleFrom) NextSample = SampleFrom; if (T >= NextSample) { NextSample += SampleEvery; Sample(); } }
 	if (FootTo > FootFrom && T >= FootFrom && T <= FootTo) FootStep(Dt);
 	else if (bFeetInit && !bFeetDone && T > FootTo) { bFeetDone = true; FootReport(); }
 }
@@ -131,4 +156,68 @@ void AWHLifeProbe::FootReport()
 	const float Med = All.Num() ? All[All.Num() / 2] : 0.f, P95 = All.Num() ? All[FMath::Min(All.Num() - 1, (int32)(All.Num() * 0.95f))] : 0.f, Mx = All.Num() ? All.Last() : 0.f;
 	UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_FOOT walkers=%d stance phases=%d | ankle world displacement during a planted stance (cm; ~20-25 = heel-toe roll, a stride is ~55) median %.1f p95 %.1f max %.1f | stances > 45 cm (sliding) %d (%.1f %%)"),
 		Walkers, All.Num(), Med, P95, Mx, Slid, All.Num() ? 100.f * Slid / All.Num() : 0.f);
+}
+
+void AWHLifeProbe::Sample()
+{
+	APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+	if (!PC) return;
+	int32 W = 0, H = 0; PC->GetViewportSize(W, H);
+	const float Fov = PC->PlayerCameraManager ? PC->PlayerCameraManager->GetFOVAngle() : 90.f;
+	FVector Eye; FRotator Rot; PC->GetPlayerViewPoint(Eye, Rot);
+	const float Aspect = H > 0 ? (float)W / H : 1.78f;
+	const float VFov = 2.f * FMath::Atan(FMath::Tan(FMath::DegreesToRadians(Fov) * 0.5f) / Aspect);
+	const float FocalPx = (H * 0.5f) / FMath::Tan(VFov * 0.5f);
+	FCollisionQueryParams Q(SCENE_QUERY_STAT(LifeSample), true);
+	if (PC->GetPawn()) Q.AddIgnoredActor(PC->GetPawn());
+	auto Vis = [&](const FVector& P, float HeightCm, float MinPx) -> bool
+	{
+		FVector2D Sc; if (!PC->ProjectWorldLocationToScreen(P, Sc, false)) return false;
+		if (Sc.X < 0 || Sc.Y < 0 || Sc.X > W || Sc.Y > H) return false;
+		const float D = FVector::Dist(Eye, P); if (D < 50.f) return false;
+		if (HeightCm * FocalPx / D < MinPx) return false;
+		FHitResult Hit; return !(GetWorld()->LineTraceSingleByChannel(Hit, Eye, P, ECC_Visibility, Q) && Hit.Distance <= D - 60.f);
+	};
+	auto VisP = [&](const FVector& P, float HeightCm, float MinPx) -> bool
+	{
+		FVector2D Sc; if (!PC->ProjectWorldLocationToScreen(P, Sc, false)) return false;
+		if (Sc.X < 0 || Sc.Y < 0 || Sc.X > W || Sc.Y > H) return false;
+		const float D = FVector::Dist(Eye, P); return D >= 50.f && HeightCm * FocalPx / D >= MinPx;
+	};
+	int32 Mov = 0, MovFast = 0, Stopped = 0, Par = 0, Buses = 0; float NearestCar = 1e9f; TMap<int32, TPair<int32, int32>> Lanes;   // lane key -> (moving > 1 m/s, stopped), projected + size test only
+	if (Traffic)
+	{
+		TArray<FVector> P; TArray<float> Sp; TArray<int32> Key; Traffic->GetMovingInfo(P, Sp, Key);
+		for (int32 I = 0; I < P.Num(); ++I)
+		{
+			NearestCar = FMath::Min(NearestCar, FVector::Dist(Eye, P[I]) / 100.f);
+			if (Vis(P[I], 160.f, MinCarPx)) ++Mov;
+			if (VisP(P[I], 160.f, MinCarPx)) { TPair<int32, int32>& L = Lanes.FindOrAdd(Key[I]); if (Sp[I] > 1.f) { ++MovFast; ++L.Key; } else { ++Stopped; ++L.Value; } }
+		}
+		TArray<FVector> M; TArray<int32> MT, PT; TArray<FVector> PP; Traffic->GetPoints(M, MT, PP, PT);
+		for (int32 I = 0; I < PP.Num(); ++I) Par += Vis(PP[I], 160.f, MinCarPx);
+		for (int32 I = 0; I < M.Num(); ++I) if (MT[I] >= 13 && Vis(M[I], 300.f, MinCarPx)) ++Buses;
+	}
+	int32 People = 0, Walking = 0, DupHeads60 = 0, DupHeads30 = 0, DupBase30 = 0, Within60 = 0; TSet<int32> Looks, Heads; int32 Nearest = 0; float NearestM = 1e9f;
+	if (Crowd)
+	{
+		TArray<FVector> Pos; TArray<int32> Mod; TArray<USkeletalMeshComponent*> Comps; TArray<float> Sp; Crowd->GetLive(Pos, Mod, Comps, Sp);
+		const int32 NB = FMath::Max(1, Crowd->Meshes.Num() / FMath::Max(1, Crowd->NumVariants));
+		TMap<int32, int32> HeadCount60; TMap<int32, int32> HeadCount30; TMap<int32, int32> BaseCount30;
+		for (int32 I = 0; I < Pos.Num(); ++I) if (Vis(Pos[I], 175.f, MinPersonPx))
+		{
+			++People; Walking += Sp[I] > 0.3f; Looks.Add(Mod[I]); Heads.Add(Mod[I] % NB);
+			const float Dm = FVector::Dist(Eye, Pos[I]) / 100.f; NearestM = FMath::Min(NearestM, Dm);
+			if (Dm < 60.f) { int32& N = HeadCount60.FindOrAdd(Mod[I]); if (N++ > 0) ++DupHeads60; }
+			if (Dm < 30.f) { int32& N = HeadCount30.FindOrAdd(Mod[I]); if (N++ > 0) ++DupHeads30; int32& B = BaseCount30.FindOrAdd(Mod[I] % NB); if (B++ > 0) ++DupBase30; }
+			if (Dm < 60.f) ++Within60;
+		}
+		(void)Nearest;
+	}
+	FString LaneStr; { TArray<int32> Ks; Lanes.GetKeys(Ks); Ks.Sort(); for (int32 K : Ks) LaneStr += FString::Printf(TEXT(" %d:%d/%d"), K, Lanes[K].Key, Lanes[K].Value); }
+	FString QStr;
+	if (Traffic) for (int32 Id : QueueLinks) { int32 N = 0, S = 0; float F = -1.f; Traffic->GetLinkQueue(Id, N, S, F); QStr += FString::Printf(TEXT(" | link %d cars %d stopped %d front %.1f m"), Id, N, S, F); }
+	UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_SAMPLE t=%.2f cam=(%.1f,%.1f,%.1f)m yaw=%.0f | vehicles unoccluded >=%.0fpx: moving %d (>1 m/s %d, standing %d) parked %d buses %d | nearest moving car %.1f m | lanes in view (projected, >= size) key:moving/standing%s | people >=%.0fpx: %d (walking %d, looks %d, citizen meshes %d, nearest %.1f m; within 60 m %d: repeated looks %d, within 30 m repeated looks %d / repeated citizen meshes %d) | signal av/st %d/%d | junction-box stops now %d worst %d%s"),
+		T, Eye.X / 100.f, Eye.Y / 100.f, Eye.Z / 100.f, Rot.Yaw, MinCarPx, Mov, MovFast, Stopped, Par, Buses, NearestCar > 1e8f ? -1.f : NearestCar, *LaneStr, MinPersonPx, People, Walking, Looks.Num(), Heads.Num(), NearestM > 1e8f ? -1.f : NearestM, Within60, DupHeads60, DupHeads30, DupBase30,
+		Traffic ? Traffic->CurrentPhase(0) : -1, Traffic ? Traffic->CurrentPhase(1) : -1, Traffic ? Traffic->NumBoxStopped : -1, Traffic ? Traffic->MaxBoxStopped : -1, *QStr);
 }

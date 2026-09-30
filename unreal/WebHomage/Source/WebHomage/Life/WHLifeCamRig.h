@@ -25,6 +25,11 @@ public:
 	UPROPERTY(EditAnywhere, Category="Rig") float YawSwayDeg = 6.f;
 	UPROPERTY(EditAnywhere, Category="Rig") bool bLoop = true;
 	UPROPERTY(EditAnywhere, Category="Rig") float FovDegrees = 70.f;
+	/** Aim at a fixed world point (cm) from wherever the rig is (swing-height and fixed signal shots); no sway or head-bob. */
+	UPROPERTY(EditAnywhere, Category="Rig") bool bAimAtTarget = false;
+	UPROPERTY(EditAnywhere, Category="Rig") FVector AimTarget = FVector::ZeroVector;
+	/** The rig waits at Start for this many seconds (warm-up: lighting / TSR settle) before moving; the capture script trims these frames. */
+	UPROPERTY(EditAnywhere, Category="Rig") float HoldSeconds = 0.f;
 private:
 	float T = 0.f;
 	void Place();

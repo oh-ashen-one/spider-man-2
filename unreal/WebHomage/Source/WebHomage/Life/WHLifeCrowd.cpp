@@ -20,7 +20,6 @@ namespace
 	inline float Ff(uint32& S) { return (Xs(S) & 0xFFFFFF) / 16777216.f; }
 	inline float WrapPi(float A) { while (A > PI) A -= 2.f * PI; while (A < -PI) A += 2.f * PI; return A; }
 	constexpr float CrossSpeed = 1.35f;   // m/s on a crosswalk
-	int32 Gcd(int32 A, int32 B) { return B ? Gcd(B, A % B) : A; }
 }
 
 AWHLifeCrowd::AWHLifeCrowd()
@@ -50,7 +49,7 @@ void AWHLifeCrowd::ParseWalk()
 		if (P[0] == TEXT("P") && P.Num() >= 4) Pts.Add(FVector2D(FCString::Atof(*P[2]), FCString::Atof(*P[3])));
 		else if (P[0] == TEXT("E") && P.Num() >= 7)
 		{
-			FEdge E; E.A = FCString::Atoi(*P[2]); E.B = FCString::Atoi(*P[3]); E.Kind = FCString::Atoi(*P[4]); E.Axis = FCString::Atoi(*P[5]); E.Len = FCString::Atof(*P[6]);
+			FEdge E; E.A = FCString::Atoi(*P[2]); E.B = FCString::Atoi(*P[3]); E.Kind = FCString::Atoi(*P[4]); E.Axis = FCString::Atoi(*P[5]); E.Len = FCString::Atof(*P[6]); E.Side = P.Num() > 7 ? FCString::Atoi(*P[7]) : 0;
 			Edges.Add(E);
 		}
 	}
@@ -65,40 +64,102 @@ void AWHLifeCrowd::ParseWalk()
 	UE_LOG(LogWHCrowd, Log, TEXT("[crowd] walk graph: %d corners, %d edges"), Pts.Num(), Edges.Num());
 }
 
-void AWHLifeCrowd::Populate()
+// right-hand offset (m) of a walker on a sidewalk edge: a uniform pick inside the free band (toward the roadway is positive), turned into the walker's own right / left
+float AWHLifeCrowd::LatFor(const FEdge& E, int8 Dir, uint32& R) const
 {
-	Walkers.Reset();
+	const float Lo = E.Axis == 0 ? AvenueBandMin : StreetBandMin, Hi = E.Axis == 0 ? AvenueBandMax : StreetBandMax;
+	const float U = Lo + Ff(R) * (Hi - Lo);
+	return U * (float)Dir * (float)(E.Side == 0 ? 1 : E.Side);
+}
+
+void AWHLifeCrowd::SpawnWalker(FWalker& W, int32 EI, uint32& R, int8 Dir, float S)
+{
+	const FEdge& E = Edges[EI];
 	const int32 M = FMath::Max(1, Meshes.Num());
-	int32 Step = 7; while (Gcd(Step, M) != 1) ++Step;
+	const int32 Keep = W.Comp;
+	W = FWalker(); W.Comp = Keep; W.Rng = R;
+	W.Model = FMath::Min(M - 1, FMath::FloorToInt(Ff(R) * M));
+	W.Edge = EI; W.Dir = Dir; W.S = Dir > 0 ? S : E.Len - S;
+	W.Base = (SpeedMin + Ff(R) * (SpeedMax - SpeedMin)) / 100.f;
+	if (Ff(R) < 0.08f) W.Base = 1.45f; // the odd hurried walker
+	if (Ff(R) < 0.06f) W.Base = 0.85f; // and the dawdler
+	W.Speed = W.Target = W.Base;
+	W.Lat = LatFor(E, Dir, R);
+	W.Scale = 0.95f + Ff(R) * 0.1f;
+	W.Node = Dir > 0 ? E.B : E.A;
+	const FVector2D Dv = E.U * Dir, Rt(-Dv.Y, Dv.X);
+	W.Pos = LinePos(E, Dir, W.S) + Rt * W.Lat;
+	W.Heading = FMath::Atan2(Dv.Y, Dv.X);
+	W.Rng = R;
+}
+
+void AWHLifeCrowd::Populate(const FVector& Cam)
+{
+	Walkers.Reset(); EdgeCum.Reset();
+	float Cum = 0.f;
+	for (int32 EI = 0; EI < Edges.Num(); ++EI)
+	{
+		const FEdge& E = Edges[EI];
+		if (E.Kind == 0 && E.Len >= 3.f) Cum += E.Len * (E.Axis == 0 ? PerKmAvenue : PerKmStreet);
+		EdgeCum.Add(Cum);
+	}
 	uint32 R = 0xC0FFEE ^ (uint32)(Seed * 2654435761u); if (!R) R = 1;
-	int32 Counter = 0;
+	const float R2 = SpawnRadius * SpawnRadius;
+	const FVector2D C2(Cam.X, Cam.Y);
 	for (int32 EI = 0; EI < Edges.Num(); ++EI)
 	{
 		const FEdge& E = Edges[EI]; if (E.Kind != 0 || E.Len < 3.f) continue;
-		const float Dens = PerKmSidewalk * (E.Axis == 0 ? AvenueBoost : 1.f);
+		const float Dens = E.Axis == 0 ? PerKmAvenue : PerKmStreet;
 		const float Target = E.Len / 1000.f * Dens;
 		int32 N = FMath::FloorToInt(Target); if (Ff(R) < Target - N) ++N;
-		TArray<float> Ss; for (int32 I = 0; I < N; ++I) Ss.Add(Ff(R) * E.Len);
-		Ss.Sort();
-		int32 Base = FMath::FloorToInt(Ff(R) * M);
 		for (int32 I = 0; I < N && Walkers.Num() < MaxWalkers; ++I)
 		{
-			FWalker W; W.Rng = Xs(R) | 1u;
-			W.Model = (Base + (Counter++) * Step) % M;
-			W.Edge = EI; W.Dir = Ff(R) < 0.5f ? 1 : -1; W.S = W.Dir > 0 ? Ss[I] : E.Len - Ss[I];
-			W.Base = (SpeedMin + Ff(R) * (SpeedMax - SpeedMin)) / 100.f;
-			if (Ff(R) < 0.08f) W.Base = 1.45f; // the odd hurried walker
-			W.Speed = W.Target = W.Base;
-			W.Lat = 0.35f + Ff(R) * 1.15f;
-			W.Scale = 0.95f + Ff(R) * 0.1f;
-			W.Node = W.Dir > 0 ? E.B : E.A;
-			const FVector2D Dv = E.U * W.Dir, Rt(-Dv.Y, Dv.X);
-			W.Pos = LinePos(E, W.Dir, W.S) + Rt * W.Lat;
-			W.Heading = FMath::Atan2(Dv.Y, Dv.X);
-			Walkers.Add(W);
+			const float S = Ff(R) * E.Len; const int8 Dir = Ff(R) < 0.5f ? 1 : -1;
+			const FVector2D P = LinePos(E, Dir, Dir > 0 ? S : E.Len - S);
+			if ((FVector2D(P.X * 100.f, P.Y * 100.f) - C2).SizeSquared() > R2) continue;
+			FWalker W; SpawnWalker(W, EI, R, Dir, S); Walkers.Add(W);
 		}
 	}
 	NumWalkers = Walkers.Num();
+	Center = Cam;
+}
+
+bool AWHLifeCrowd::Respawn(FWalker& W, const FVector& Cam, bool bPreferOffscreen)
+{
+	if (EdgeCum.Num() == 0 || EdgeCum.Last() <= 0.f) return false;
+	APlayerController* PC = bPreferOffscreen ? UGameplayStatics::GetPlayerController(this, 0) : nullptr;
+	int32 VW = 0, VH = 0; if (PC) PC->GetViewportSize(VW, VH);
+	const FVector2D C2(Cam.X, Cam.Y);
+	for (int32 Try = 0; Try < 40; ++Try)
+	{
+		const float X = Ff(W.Rng) * EdgeCum.Last();
+		int32 Lo = 0, Hi = EdgeCum.Num() - 1; while (Lo < Hi) { const int32 Mid = (Lo + Hi) / 2; if (EdgeCum[Mid] < X) Lo = Mid + 1; else Hi = Mid; }
+		const FEdge& E = Edges[Lo]; if (E.Kind != 0 || E.Len < 3.f) continue;
+		const float S = Ff(W.Rng) * E.Len; const int8 Dir = Ff(W.Rng) < 0.5f ? 1 : -1;
+		const FVector2D P = LinePos(E, Dir, Dir > 0 ? S : E.Len - S);
+		const float D = (FVector2D(P.X * 100.f, P.Y * 100.f) - C2).Size();
+		if (D < SpawnRadius * 0.68f || D > SpawnRadius * 0.98f) continue;
+		if (PC && VW > 0 && Try < 26)
+		{
+			FVector2D Sc; if (PC->ProjectWorldLocationToScreen(FVector(P.X * 100.f, P.Y * 100.f, SidewalkZ + 90.f), Sc, false) && Sc.X > -80 && Sc.Y > -80 && Sc.X < VW + 80 && Sc.Y < VH + 80) continue;
+		}
+		uint32 R = W.Rng; SpawnWalker(W, Lo, R, Dir, S); W.Rng = R;
+		return true;
+	}
+	return false;
+}
+
+bool AWHLifeCrowd::GetView(FVector& Loc, FVector& Fwd, float& HalfDeg) const
+{
+	UWorld* Wd = GetWorld(); if (!Wd) return false;
+	if (!FocusOverride.IsNearlyZero()) { Loc = FocusOverride; Fwd = FVector::ForwardVector; HalfDeg = 181.f; return true; }
+	APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(Wd, 0); if (!CM) return false;
+	Loc = CM->GetCameraLocation(); Fwd = CM->GetCameraRotation().Vector();
+	int32 VW = 0, VH = 0; if (APlayerController* PC = CM->GetOwningPlayerController()) PC->GetViewportSize(VW, VH);
+	const float Aspect = VH > 0 ? (float)VW / VH : 1.78f;
+	const float TanH = FMath::Tan(FMath::DegreesToRadians(CM->GetFOVAngle()) * 0.5f), TanV = TanH / FMath::Max(0.5f, Aspect);
+	HalfDeg = FMath::RadiansToDegrees(FMath::Atan(FMath::Sqrt(TanH * TanH + TanV * TanV))) + ViewMarginDeg;
+	return true;
 }
 
 void AWHLifeCrowd::BeginPlay()
@@ -109,7 +170,7 @@ void AWHLifeCrowd::BeginPlay()
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeNoShadow"))) bCastShadows = false;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeOff")) || FParse::Param(FCommandLine::Get(), TEXT("WHCrowdOff"))) { UE_LOG(LogWHCrowd, Display, TEXT("[crowd] disabled by command line")); return; }
 	if (Meshes.Num() == 0 || !AnimClass) { UE_LOG(LogWHCrowd, Warning, TEXT("[crowd] no citizen meshes / anim class")); return; }
-	ParseWalk(); Populate();
+	ParseWalk();
 	Pool.Reset(); PoolModel.Reset(); SlotOwner.Reset(); FreeSlots.SetNum(Meshes.Num());
 	for (int32 M = 0; M < Meshes.Num(); ++M)
 	{
@@ -132,10 +193,8 @@ void AWHLifeCrowd::BeginPlay()
 		}
 	}
 	uint32 Rc = 0xBEEF1u ^ (uint32)Seed; Clock = 5.0 + Ff(Rc) * 30.0;
-	for (int32 I = 0; I < 40; ++I) { for (FWalker& W : Walkers) StepWalker(W, 0.5f); Clock += 0.5; } // let the crowd mix before the first frame
-	bReady = true;
-	RefreshLive(CameraLocation());
-	UE_LOG(LogWHCrowd, Log, TEXT("[crowd] BeginPlay: %d walkers, %d live, %d models, pool %d"), NumWalkers, NumLive, Meshes.Num(), Pool.Num());
+	bCentered = false; bReady = false; FirstRefreshes = 0;   // the population is created around the camera on the first tick that has one
+	UE_LOG(LogWHCrowd, Log, TEXT("[crowd] BeginPlay: %d citizen looks, pool %d, walk graph %d edges"), Meshes.Num(), Pool.Num(), Edges.Num());
 }
 
 bool AWHLifeCrowd::MayCross(const FEdge& E, float Speed) const
@@ -153,7 +212,7 @@ void AWHLifeCrowd::EnterEdge(FWalker& W, int32 Edge, int32 FromNode, bool)
 {
 	const FEdge& E = Edges[Edge];
 	W.Edge = Edge; W.Dir = (E.A == FromNode) ? 1 : -1; W.State = 0; W.WaitT = 0.f;
-	W.Lat = E.Kind == 1 ? 0.3f + Ff(W.Rng) * 1.0f : 0.35f + Ff(W.Rng) * 1.15f;
+	W.Lat = E.Kind == 1 ? 0.3f + Ff(W.Rng) * 1.0f : LatFor(E, W.Dir, W.Rng);
 	W.Target = E.Kind == 1 ? FMath::Max(W.Base, CrossSpeed) : W.Base; W.bDecided = false;
 	const FVector2D Dv = E.U * W.Dir;
 	W.S = FMath::Clamp(FVector2D::DotProduct(W.Pos - LinePos(E, W.Dir, 0.f), Dv), 0.f, E.Len);
@@ -213,6 +272,11 @@ void AWHLifeCrowd::StepWalker(FWalker& W, float Dt)
 		W.Heading = WrapPi(W.Heading + FMath::Clamp(D, -MaxTurn, MaxTurn));
 	}
 	W.Pos += FVector2D(FMath::Cos(W.Heading), FMath::Sin(W.Heading)) * (W.Speed * Dt);
+	if (bAvoid)
+	{ // personal space around a street-level camera: walkers slide around it instead of through it
+		FVector2D Dc = W.Pos - AvoidM; const float D = Dc.Size();
+		if (D < CameraAvoidRadius) { if (D < 1e-3f) Dc = FVector2D(-Dv.Y, Dv.X); else Dc /= D; W.Pos = AvoidM + Dc * CameraAvoidRadius; }
+	}
 	W.S = FMath::Clamp(FVector2D::DotProduct(W.Pos - LinePos(E, W.Dir, 0.f), Dv), 0.f, E.Len);
 	if (W.S >= E.Len - 0.45f)
 	{
@@ -260,55 +324,88 @@ void AWHLifeCrowd::Apply(FWalker& W)
 
 void AWHLifeCrowd::RefreshLive(const FVector& Cam)
 {
+	FVector Eye, Fwd; float HalfDeg = 181.f; GetView(Eye, Fwd, HalfDeg);
 	const FVector2D C2(Cam.X, Cam.Y);
+	// the population follows the camera: a jump means a teleport -> repopulate; otherwise walkers that fell behind are recycled to the far edge of the disc
+	if (bCentered && FVector2D::Distance(C2, FVector2D(Center.X, Center.Y)) > SpawnRadius * 0.8f)
+	{
+		for (int32 I = 0; I < Walkers.Num(); ++I) Unassign(I);
+		Populate(Cam); FirstRefreshes = 0;
+	}
+	else
+	{
+		const float Rr2 = (SpawnRadius * 1.12f) * (SpawnRadius * 1.12f);
+		for (int32 I = 0; I < Walkers.Num(); ++I)
+			if ((FVector2D(Walkers[I].Pos.X * 100.f, Walkers[I].Pos.Y * 100.f) - C2).SizeSquared() > Rr2) { Unassign(I); Respawn(Walkers[I], Cam, true); }
+	}
+	Center = Cam;
 	const float R2 = LiveRadius * LiveRadius, Rd2 = (LiveRadius * 1.08f) * (LiveRadius * 1.08f);
-	// release far walkers first so their slots can be reused
+	const float CosIn = FMath::Cos(FMath::DegreesToRadians(FMath::Min(HalfDeg, 180.f))), CosOut = FMath::Cos(FMath::DegreesToRadians(FMath::Min(HalfDeg + 8.f, 180.f)));
+	const float NearR2 = NearAllRadius * NearAllRadius, NearRo2 = (NearAllRadius * 1.1f) * (NearAllRadius * 1.1f);
+	auto InView = [&](const FWalker& W, bool bHyst) -> bool
+	{
+		const FVector D(W.Pos.X * 100.f - Eye.X, W.Pos.Y * 100.f - Eye.Y, SidewalkZ + 90.f - Eye.Z);
+		const float D2 = D.SizeSquared();
+		if (D2 < (bHyst ? NearRo2 : NearR2)) return true;
+		if (HalfDeg > 180.f) return true;
+		return FVector::DotProduct(D / FMath::Sqrt(D2), Fwd) > (bHyst ? CosOut : CosIn);
+	};
+	// release walkers that left the live disc / the view cone
 	for (int32 I = 0; I < Walkers.Num(); ++I)
-		if (Walkers[I].Comp >= 0 && (FVector2D(Walkers[I].Pos.X * 100.f, Walkers[I].Pos.Y * 100.f) - C2).SizeSquared() > Rd2) Unassign(I);
-	// nearest-first assignment so a full pool serves the walkers closest to the camera. The model is chosen at assignment time: the model (with a free
-	// slot) that has the fewest live walkers within 45 m of this one, so identical twins do not walk side by side; the walker's default model breaks ties.
-	TArray<TArray<FVector2D>> LiveByModel; LiveByModel.SetNum(Meshes.Num());
-	for (const FWalker& W : Walkers) if (W.Comp >= 0) LiveByModel[W.Model].Add(FVector2D(W.Pos.X * 100.f, W.Pos.Y * 100.f));
+		if (Walkers[I].Comp >= 0 && ((FVector2D(Walkers[I].Pos.X * 100.f, Walkers[I].Pos.Y * 100.f) - C2).SizeSquared() > Rd2 || !InView(Walkers[I], true))) Unassign(I);
+	// The look (mesh + outfit + head colouring) is chosen at assignment time: the look that is not worn by a live walker within 45 m (weight 1000) or 90 m (100), with a
+	// different citizen mesh than the walkers within 30 m where possible (40), the walker's default look breaking ties. Nearest walkers are served first, a few per refresh
+	// so a turning camera cannot hitch (the first refreshes are unlimited). Looks are variant-major: look = variant * NB + citizen.
+	const int32 NB = FMath::Max(1, Meshes.Num() / FMath::Max(1, NumVariants));
+	TArray<TArray<FVector2D>> LiveByBase, LiveByLook; LiveByBase.SetNum(NB); LiveByLook.SetNum(Meshes.Num());
+	for (const FWalker& W : Walkers) if (W.Comp >= 0) { const FVector2D P(W.Pos.X * 100.f, W.Pos.Y * 100.f); LiveByBase[W.Model % NB].Add(P); LiveByLook[W.Model].Add(P); }
 	TArray<TPair<float, int32>, TInlineAllocator<256>> Cand;
 	for (int32 I = 0; I < Walkers.Num(); ++I)
 	{
 		if (Walkers[I].Comp >= 0) continue;
 		const float D2 = (FVector2D(Walkers[I].Pos.X * 100.f, Walkers[I].Pos.Y * 100.f) - C2).SizeSquared();
-		if (D2 < R2) Cand.Add(TPair<float, int32>(D2, I));
+		if (D2 < R2 && InView(Walkers[I], false)) Cand.Add(TPair<float, int32>(D2, I));
 	}
 	Cand.Sort([](const TPair<float, int32>& A, const TPair<float, int32>& B) { return A.Key < B.Key; });
-	constexpr float TwinR2 = 11000.f * 11000.f;
+	constexpr float Look45 = 4500.f * 4500.f, Look90 = 9000.f * 9000.f, Base30 = 3000.f * 3000.f;
+	const int32 Limit = FirstRefreshes < 3 ? INT32_MAX : MaxAssignPerRefresh;
+	int32 Assigned = 0;
 	for (const TPair<float, int32>& P : Cand)
 	{
+		if (Assigned >= Limit) break;
 		FWalker& W = Walkers[P.Value];
 		const FVector2D Me(W.Pos.X * 100.f, W.Pos.Y * 100.f);
 		int32 Best = -1; float BestScore = 1e9f;
 		for (int32 M = 0; M < Meshes.Num(); ++M)
 		{
 			if (FreeSlots[M].Num() == 0) continue;
-			int32 Near = 0; for (const FVector2D& Q : LiveByModel[M]) if ((Q - Me).SizeSquared() < TwinR2) ++Near;
-			const float Score = Near * 100.f + (M == W.Model ? 0.f : 1.f);
+			int32 SameLook45 = 0, SameLook90 = 0, SameBase30 = 0;
+			for (const FVector2D& Q : LiveByLook[M]) { const float D = (Q - Me).SizeSquared(); if (D < Look90) { ++SameLook90; if (D < Look45) ++SameLook45; } }
+			for (const FVector2D& Q : LiveByBase[M % NB]) if ((Q - Me).SizeSquared() < Base30) ++SameBase30;
+			const float Score = SameLook45 * 1000.f + SameLook90 * 100.f + SameBase30 * 40.f + (M == W.Model ? 0.f : 1.f);
 			if (Score < BestScore) { BestScore = Score; Best = M; }
 		}
 		if (Best < 0) continue;
-		W.Model = Best; LiveByModel[Best].Add(Me);
-		Assign(P.Value, FreeSlots[Best].Pop());
+		W.Model = Best; LiveByBase[Best % NB].Add(Me); LiveByLook[Best].Add(Me);
+		Assign(P.Value, FreeSlots[Best].Pop()); ++Assigned;
 	}
-	// identical twins in the CAMERA'S frame: among the walkers that project inside the viewport, a model may appear once. When two on-screen walkers share a model
-	// the farther one (never closer than 30 m, so a swap is a few dozen pixels at most) takes a model that is not on screen; at most 10 swaps per refresh
+	++FirstRefreshes;
+	// identical looks in the CAMERA'S frame: among the walkers that project inside the viewport and are within 60 m, a look may appear once. When two share one, the farther
+	// walker (never closer than 30 m, so a swap is a few dozen pixels at most) takes a look that is not on screen (a different citizen mesh first); at most 10 swaps per refresh
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
 		int32 VW = 0, VH = 0; PC->GetViewportSize(VW, VH);
 		if (VW > 0 && VH > 0)
 		{
-			TArray<int32> OnCount; OnCount.Init(0, Meshes.Num());
+			TArray<int32> OnCount; OnCount.Init(0, Meshes.Num()); TArray<int32> OnBase; OnBase.Init(0, NB);
 			TArray<TPair<float, int32>> On;
 			for (int32 I = 0; I < Walkers.Num(); ++I)
 			{
 				const FWalker& W = Walkers[I]; if (W.Comp < 0) continue;
 				FVector2D Sc; const FVector P(W.Pos.X * 100.f, W.Pos.Y * 100.f, SidewalkZ + 90.f);
-				if (!PC->ProjectWorldLocationToScreen(P, Sc, false) || Sc.X < 0 || Sc.Y < 0 || Sc.X > VW || Sc.Y > VH) continue;
-				On.Add(TPair<float, int32>(FVector::Dist(Cam, P), I)); ++OnCount[W.Model];
+				const float Dist = FVector::Dist(Eye, P);
+				if (Dist > 6000.f || !PC->ProjectWorldLocationToScreen(P, Sc, false) || Sc.X < 0 || Sc.Y < 0 || Sc.X > VW || Sc.Y > VH) continue;
+				On.Add(TPair<float, int32>(Dist, I)); ++OnCount[W.Model]; ++OnBase[W.Model % NB];
 			}
 			On.Sort([](const TPair<float, int32>& A, const TPair<float, int32>& B) { return A.Key > B.Key; }); // farthest first
 			int32 Swaps = 0;
@@ -318,23 +415,49 @@ void AWHLifeCrowd::RefreshLive(const FVector& Cam)
 				FWalker& W = Walkers[E.Value];
 				if (OnCount[W.Model] <= 1 || E.Key < 3000.f) continue;
 				int32 Best = -1;
-				for (int32 M = 0; M < Meshes.Num(); ++M) if (M != W.Model && OnCount[M] == 0 && FreeSlots[M].Num() > 0) { Best = M; break; }
+				for (int32 Pass = 0; Pass < 2 && Best < 0; ++Pass)   // pass 0: a look whose citizen mesh is not on screen either; pass 1: any unused look
+					for (int32 M = 0; M < Meshes.Num(); ++M) if (M != W.Model && OnCount[M] == 0 && (Pass == 1 || OnBase[M % NB] == 0) && FreeSlots[M].Num() > 0) { Best = M; break; }
 				if (Best < 0) continue;
-				--OnCount[W.Model]; Unassign(E.Value); W.Model = Best; ++OnCount[Best]; Assign(E.Value, FreeSlots[Best].Pop()); ++Swaps;
+				--OnCount[W.Model]; --OnBase[W.Model % NB]; Unassign(E.Value); W.Model = Best; ++OnCount[Best]; ++OnBase[Best % NB]; Assign(E.Value, FreeSlots[Best].Pop()); ++Swaps;
 			}
 		}
 	}
 	NumLive = 0; NumWaiting = 0;
-	for (const FWalker& W : Walkers) { NumLive += W.Comp >= 0; NumWaiting += W.State == 1; }
+	for (const FWalker& W : Walkers)
+	{
+		NumLive += W.Comp >= 0; NumWaiting += W.State == 1;
+		if (W.Comp >= 0)
+		{
+			const bool bShadow = bCastShadows && FVector2D::DistSquared(FVector2D(W.Pos.X * 100.f, W.Pos.Y * 100.f), C2) < ShadowRadius * ShadowRadius;
+			USkeletalMeshComponent* Cm = Pool[W.Comp]; if (Cm->CastShadow != bShadow) Cm->SetCastShadow(bShadow);
+		}
+	}
 }
 
 void AWHLifeCrowd::Tick(float Dt)
 {
 	Super::Tick(Dt);
+	if (!bCentered)
+	{
+		// the population is created around the first valid camera (the fixed shot camera / the rig / the player's view)
+		FVector Eye, Fwd; float Half = 0.f;
+		const bool bHave = GetView(Eye, Fwd, Half) && !Eye.IsNearlyZero(50.f);
+		if (!bHave && (!GetWorld() || GetWorld()->GetTimeSeconds() < 2.0)) return;
+		if (Edges.Num() == 0) return;
+		const FVector Cam = bHave ? Eye : GetActorLocation();
+		Populate(Cam);
+		uint32 Rc = 0xBEEF1u ^ (uint32)Seed; Clock = 5.0 + Ff(Rc) * 30.0;
+		for (int32 I = 0; I < 40; ++I) { for (FWalker& W : Walkers) StepWalker(W, 0.5f); Clock += 0.5; } // let the crowd mix before the first frame
+		bCentered = true; bReady = true; FirstRefreshes = 0;
+		RefreshLive(Cam);
+		UE_LOG(LogWHCrowd, Log, TEXT("[crowd] populated around (%.0f, %.0f) m: %d walkers, %d live, %d looks, pool %d"), Cam.X / 100.f, Cam.Y / 100.f, NumWalkers, NumLive, Meshes.Num(), Pool.Num());
+		return;
+	}
 	if (!bReady) return;
 	const double T0 = FPlatformTime::Seconds();
 	Dt = FMath::Min(Dt, 0.1f);
 	if (!Traffic) Clock += Dt;
+	{ FVector Eye, Fwd; float Half = 0.f; bAvoid = GetView(Eye, Fwd, Half) && FocusOverride.IsNearlyZero() && Eye.Z < 450.f; if (bAvoid) AvoidM = FVector2D(Eye.X, Eye.Y) * 0.01f; }
 	for (FWalker& W : Walkers) StepWalker(W, Dt);
 	RefreshT += Dt;
 	if (RefreshT > 0.25f) { RefreshT = 0.f; RefreshLive(CameraLocation()); }

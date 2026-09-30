@@ -57,13 +57,32 @@ public:
 	UPROPERTY(EditAnywhere, Category="Life|Data") TObjectPtr<AWHLifeTraffic> Traffic;
 
 	UPROPERTY(EditAnywhere, Category="Life") int32 Seed = 11;
-	/** Walkers per km of sidewalk (avenue-side edges get AvenueBoost x). */
-	UPROPERTY(EditAnywhere, Category="Life") float PerKmSidewalk = 70.f;
-	UPROPERTY(EditAnywhere, Category="Life") float AvenueBoost = 2.6f;
-	UPROPERTY(EditAnywhere, Category="Life") int32 MaxWalkers = 2600;
+	/** Walkers per km of sidewalk edge, by road kind (edge axis 0 = avenue sidewalks, 1 = street sidewalks). Two-way flow: half walk each way. */
+	UPROPERTY(EditAnywhere, Category="Life") float PerKmAvenue = 950.f;
+	UPROPERTY(EditAnywhere, Category="Life") float PerKmStreet = 640.f;
+	/** Camera-centred population: walkers exist within this distance (cm) of the camera; farther ones are recycled to the far edge of the disc
+	 *  (out of view when possible), so the density around the camera stays high wherever it goes and the cost stays bounded. */
+	UPROPERTY(EditAnywhere, Category="Life") float SpawnRadius = 13000.f;
+	UPROPERTY(EditAnywhere, Category="Life") int32 MaxWalkers = 2000;
 	/** cm: walkers farther than this from the camera are simulated but have no mesh. */
-	UPROPERTY(EditAnywhere, Category="Life") float LiveRadius = 19000.f;
+	UPROPERTY(EditAnywhere, Category="Life") float LiveRadius = 11000.f;
+	/** Live walkers must be inside the camera's view cone widened by this many degrees (or closer than NearAllRadius, in any direction). */
+	UPROPERTY(EditAnywhere, Category="Life") float ViewMarginDeg = 30.f;
+	UPROPERTY(EditAnywhere, Category="Life") float NearAllRadius = 2200.f;
+	/** Looks per citizen mesh (the mesh list is variant-major: index = variant * NumCitizens + citizen), used to keep the same head from appearing twice near each other. */
+	UPROPERTY(EditAnywhere, Category="Life") int32 NumVariants = 3;
+	UPROPERTY(EditAnywhere, Category="Life") int32 MaxAssignPerRefresh = 14;
 	UPROPERTY(EditAnywhere, Category="Life") int32 PoolPerModel = 8;
+	/** Sidewalk walking band, metres from the edge line measured toward the roadway (negative = toward the buildings): P1 puts trees, lamps, hydrants and litter bins
+	 *  in the curb strip, so people keep to the building side of it. Avenue sidewalks are 5 m wide (line 2.2 m from the curb), street sidewalks 4 m. */
+	UPROPERTY(EditAnywhere, Category="Life") float AvenueBandMin = -2.25f;
+	UPROPERTY(EditAnywhere, Category="Life") float AvenueBandMax = 0.25f;
+	UPROPERTY(EditAnywhere, Category="Life") float StreetBandMin = -1.65f;
+	UPROPERTY(EditAnywhere, Category="Life") float StreetBandMax = 0.2f;
+	/** Street-level camera personal space (m): walkers step around the camera instead of walking through it (only when the camera is below 4.5 m). */
+	UPROPERTY(EditAnywhere, Category="Life") float CameraAvoidRadius = 0.85f;
+	/** Walkers farther than this (cm) from the camera do not cast shadows (the virtual shadow map cost of a skinned mesh is high, the shadow is a few pixels). */
+	UPROPERTY(EditAnywhere, Category="Life") float ShadowRadius = 6500.f;
 	/** Clip speed (cm/s) at which the citizen walk cycle plays at rate 1 without foot sliding (P2: stride 1.1543 m / (32/30 s) = 108). */
 	UPROPERTY(EditAnywhere, Category="Life") float ClipSpeed = 108.f;
 	UPROPERTY(EditAnywhere, Category="Life") float SpeedMin = 100.f;
@@ -88,7 +107,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Life") int32 CountInCone(FVector Eye, FVector Forward, float HalfAngleDeg, float Range, int32& OutModels) const;
 
 private:
-	struct FEdge { int32 A = 0, B = 0, Kind = 0, Axis = 0; float Len = 0.f; FVector2D U = FVector2D::ZeroVector; };
+	struct FEdge { int32 A = 0, B = 0, Kind = 0, Axis = 0, Side = 0; float Len = 0.f; FVector2D U = FVector2D::ZeroVector; };
 	TArray<FVector2D> Pts;
 	TArray<FEdge> Edges;
 	TArray<TArray<int32>> Adj; // node -> edge indices
@@ -102,7 +121,16 @@ private:
 	bool bReady = false;
 
 	void ParseWalk();
-	void Populate();
+	void Populate(const FVector& Cam);
+	void SpawnWalker(WHLife::FWalker& W, int32 EI, uint32& R, int8 Dir, float S);
+	bool Respawn(WHLife::FWalker& W, const FVector& Cam, bool bPreferOffscreen);
+	bool GetView(FVector& OutLoc, FVector& OutFwd, float& OutHalfDeg) const;
+	TArray<float> EdgeCum;                   // cumulative length * density over the sidewalk edges (respawn picks)
+	FVector Center = FVector::ZeroVector;
+	FVector2D AvoidM = FVector2D::ZeroVector; bool bAvoid = false;   // camera ground position (m) walkers avoid
+	float LatFor(const FEdge& E, int8 Dir, uint32& R) const;
+	bool bCentered = false;
+	int32 FirstRefreshes = 0;
 	void PickNextEdge(WHLife::FWalker& W);
 	FVector2D LinePos(const FEdge& E, int8 Dir, float S) const { return Dir > 0 ? Pts[E.A] + E.U * S : Pts[E.B] - E.U * S; }
 	void StepWalker(WHLife::FWalker& W, float Dt);

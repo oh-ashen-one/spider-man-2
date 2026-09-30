@@ -48,6 +48,9 @@ namespace WHLife
 		int32 L0 = -1, K = -1, L1 = -1;   // incoming link, connector (chosen / current), outgoing link
 		uint8 Where = 0;                  // front on: 0 = L0, 1 = K, 2 = L1
 		bool bReserved = false;
+		bool bRedHold = false;            // was held by a red / amber signal on the previous step
+		float GoDelay = 0.f;              // driver reaction time after the light turns green (s)
+		float BoxStopT = 0.f;             // seconds stopped with the body inside the junction box
 		uint8 Brake = 0;
 		FLinearColor Color = FLinearColor::White;
 		uint32 Rng = 1;
@@ -71,14 +74,29 @@ public:
 	/** Static meshes in the order taxi, taxi_hy, taxi_mv, taxi_gr, sedan, hatch, sedan2, cross, suv, suv2, pickup, van, truck, bus, tour. */
 	UPROPERTY(EditAnywhere, Category="Life|Data") TArray<TObjectPtr<UStaticMesh>> VehicleMeshes;
 	UPROPERTY(EditAnywhere, Category="Life|Data") TObjectPtr<UMaterialInterface> VehicleMaterial;
+	/** Scripts/life_data/signals.txt: `M|P x z ry` per line (browser metres; M = mast arm with 2 arm heads + 1 pole head, P = post head), the P1 signal props. */
+	UPROPERTY(EditAnywhere, Category="Life|Signals", meta=(MultiLine=true)) FString SignalData;
+	/** Lens overlay: a unit cylinder (axis Z, 100 cm) turned into a flat disc facing the road; the material reads custom data (r, g, b, on). */
+	UPROPERTY(EditAnywhere, Category="Life|Signals") TObjectPtr<UStaticMesh> SignalMesh;
+	UPROPERTY(EditAnywhere, Category="Life|Signals") TObjectPtr<UMaterialInterface> SignalMaterial;
+	UPROPERTY(EditAnywhere, Category="Life|Signals") float LensDiameterCm = 27.f;
+	/** Drivers wait this long (s, uniform between the two) after their light turns green before they pull away. */
+	UPROPERTY(EditAnywhere, Category="Life") float ReactionMin = 0.35f;
+	UPROPERTY(EditAnywhere, Category="Life") float ReactionMax = 1.25f;
+	/** >= 0: the signal clock reads this phase (s in the 40 s cycle) when the pre-roll ends, i.e. game time 0. Fixed-camera signal clips. */
+	UPROPERTY(EditAnywhere, Category="Life") float SignalPhaseAtStart = -1.f;
+	/** Bus / tourist bus share of the curb-side through lane of avenues (0..1). */
+	UPROPERTY(EditAnywhere, Category="Life") float BusShare = 0.07f;
 
 	UPROPERTY(EditAnywhere, Category="Life") bool bSimulate = true;
 	/** 1 = the browser's steady-state density (cars per km of lane by road kind). */
 	UPROPERTY(EditAnywhere, Category="Life") float DensityScale = 1.f;
+	/** Extra factor for the cross-street lanes (kind 1): they are 10 m wide with curb parking, a dense avenue setting would make a solid queue. */
+	UPROPERTY(EditAnywhere, Category="Life") float StreetDensityFactor = 0.6f;
 	UPROPERTY(EditAnywhere, Category="Life") int32 Seed = 7;
 	/** Seconds simulated at BeginPlay so the first frame already shows platoons and queues at the lights. */
 	UPROPERTY(EditAnywhere, Category="Life") float PreRollSeconds = 75.f;
-	UPROPERTY(EditAnywhere, Category="Life") int32 MaxCars = 900;
+	UPROPERTY(EditAnywhere, Category="Life") int32 MaxCars = 2000;
 	/** Cull moving and parked instances beyond this distance (cm). */
 	UPROPERTY(EditAnywhere, Category="Life") float CullDistance = 100000.f;
 	UPROPERTY(EditAnywhere, Category="Life") bool bCastShadows = true;
@@ -93,6 +111,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumParked = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumParkedTaxis = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumStopped = 0;
+	/** Cars stopped (< 0.3 m/s) with any part of the body inside a junction box right now / worst count seen / accumulated car-seconds. */
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumBoxStopped = 0;
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 MaxBoxStopped = 0;
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float BoxStopSeconds = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float LastSimMs = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float LastPushMs = 0.f;
 
@@ -105,6 +127,12 @@ public:
 	double GetSignalClock() const { return SimClock + SignalOffset; }
 	/** Centres of the vehicles (cm, ground level + 0.8 m): moving, then parked, with their type index. */
 	void GetPoints(TArray<FVector>& Moving, TArray<int32>& MovingType, TArray<FVector>& Parked, TArray<int32>& ParkedType) const;
+	/** Moving cars with their world centre (cm), speed (m/s) and a lane key (kind*100 + lane*10 + travel direction 1 N / 2 S / 3 E / 4 W). */
+	void GetMovingInfo(TArray<FVector>& Pos, TArray<float>& Speed, TArray<int32>& LaneKey) const;
+	/** Queue on a lane link (file id): cars whose front is on it, how many are stopped, the front car's distance to the stop line (m, -1 none). */
+	void GetLinkQueue(int32 LinkFileId, int32& Cars, int32& Stopped, float& FrontToLine) const;
+	/** Signal state of an axis (0 avenue, 1 street) now: 2 green, 1 amber, 0 red. */
+	int32 CurrentPhase(int32 Axis) const { return SigPhase(GetSignalClock(), Axis); }
 	/** Moving-car count whose centre is inside a world-space frustum-ish cone (camera location, forward, half-angle deg, range cm). */
 	UFUNCTION(BlueprintCallable, Category="Life") int32 CountInCone(FVector Eye, FVector Forward, float HalfAngleDeg, float Range) const;
 
@@ -117,6 +145,10 @@ private:
 	TArray<int32> FreeCars;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> MovingISM;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ParkedISM;
+	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> LensISM;
+	struct FLens { int32 Axis = 0, Color = 0, Inst = 0; };
+	TArray<FLens> Lenses;
+	int32 LastSig[2] = { -1, -1 };
 	TArray<TArray<int32>> FreeInst;
 	TArray<TArray<FTransform>> Xf;
 	TArray<int32> HighWater;
@@ -128,9 +160,12 @@ private:
 	uint32 GlobalRng = 1;
 	bool bReady = false;
 
+	float KindDensity(int32 Kind) const;
 	void ParseLanes();
 	void BuildComponents();
 	void PlaceParked();
+	void BuildSignals();
+	void UpdateSignals();
 	void PopulateInitial();
 	void StepSim(float Dt);
 	void PushInstances();

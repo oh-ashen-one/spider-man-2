@@ -48,6 +48,12 @@ namespace
 	}
 }
 
+float AWHLifeTraffic::KindDensity(int32 Kind) const
+{
+	const int32 K = FMath::Clamp(Kind, 0, 3);
+	return DensityByKind[K] * DensityScale * (K == 1 ? StreetDensityFactor : 1.f);
+}
+
 AWHLifeTraffic::AWHLifeTraffic()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -188,6 +194,8 @@ void AWHLifeTraffic::BuildComponents()
 
 void AWHLifeTraffic::PlaceParked()
 {
+	FVector4 ClearR(0, 0, 0, 0); bool bClear = false;
+	{ FString S; if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeClearParked="), S)) { TArray<FString> P; S.ParseIntoArray(P, TEXT(":"), true); if (P.Num() >= 4) { bClear = true; ClearR = FVector4(FCString::Atof(*P[0]), FCString::Atof(*P[1]), FCString::Atof(*P[2]), FCString::Atof(*P[3])); } } }
 	NumParked = 0; NumParkedTaxis = 0; ParkedPts.Reset(); ParkedTypes.Reset();
 	TArray<FString> Lines; ParkedData.ParseIntoArrayLines(Lines);
 	TArray<TArray<FTransform>> Tx; Tx.SetNum(NumTypes);
@@ -199,6 +207,7 @@ void AWHLifeTraffic::PlaceParked()
 		if (P.Num() < 7) continue;
 		const int32 T = FCString::Atoi(*P[0]); if (T < 0 || T >= NumTypes) continue;
 		const float X = FCString::Atof(*P[1]) * 100.f, Y = FCString::Atof(*P[2]) * 100.f, Yaw = FCString::Atof(*P[3]);
+		if (bClear && X > ClearR.X * 100.f && X < ClearR.Z * 100.f && Y > ClearR.Y * 100.f && Y < ClearR.W * 100.f) continue;   // -WHLifeClearParked=x0:z0:x1:z1 (browser m): the camera walks through here
 		Tx[T].Add(FTransform(FRotator(0.f, Yaw, 0.f), FVector(X, Y, 1.f)));
 		ParkedPts.Add(FVector(X, Y, 80.f)); ParkedTypes.Add(T);
 		Cd[T].Append({ FCString::Atof(*P[4]), FCString::Atof(*P[5]), FCString::Atof(*P[6]), P.Num() > 7 ? FCString::Atof(*P[7]) : 0.f });
@@ -218,8 +227,8 @@ int32 AWHLifeTraffic::PickType(const FLink& L, uint32& R) const
 {
 	const bool bBig = L.Kind != 1 && L.Lane == 1;
 	float r = Ff(R);
-	if (bBig && r < 0.07f) return T_bus;
-	if (bBig && r < 0.09f) return T_tour;
+	if (bBig && r < BusShare) return T_bus;
+	if (bBig && r < BusShare + 0.02f) return T_tour;
 	r = Ff(R);
 	if (r < 0.13f) return T_truck; if (r < 0.21f) return T_van; if (r < 0.28f) return T_taxi_hy; if (r < 0.34f) return T_taxi_mv;
 	if (r < 0.41f) return T_taxi_gr; if (r < 0.44f) return T_taxi; if (r < 0.52f) return T_sedan; if (r < 0.60f) return T_sedan2;
@@ -255,6 +264,13 @@ void AWHLifeTraffic::BeginPlay()
 	Cars.SetNum(MaxCars + 8);
 	FreeCars.Reset(); for (int32 I = Cars.Num() - 1; I >= 0; --I) FreeCars.Add(I);
 	SimClock = 3.0 + Ff(GlobalRng) * 30.0;
+	FParse::Value(FCommandLine::Get(), TEXT("WHLifeSignalPhase="), SignalPhaseAtStart);
+	if (SignalPhaseAtStart >= 0.f && bSimulate)
+	{ // the signal clock reads SignalPhaseAtStart when the pre-roll ends (= game time 0): fixed-camera signal clips
+		const double Start = FMath::Fmod((double)SignalPhaseAtStart - (double)PreRollSeconds - (double)SignalOffset, 40.0);
+		SimClock = Start + 80.0;
+	}
+	BuildSignals();
 	if (bSimulate)
 	{
 		PopulateInitial();
@@ -276,6 +292,7 @@ void AWHLifeTraffic::Tick(float Dt)
 	int32 Guard = 0;
 	while (Accum >= Step && Guard++ < 4) { StepSim(Step); Accum -= Step; }
 	const double T1 = FPlatformTime::Seconds();
+	UpdateSignals();
 	PushInstances();
 	const double T2 = FPlatformTime::Seconds();
 	LastSimMs = (T1 - T0) * 1000.f; LastPushMs = (T2 - T1) * 1000.f;
@@ -297,7 +314,7 @@ void AWHLifeTraffic::DumpCars(const FString& Path) const
 
 FString AWHLifeTraffic::StatsString() const
 {
-	return FString::Printf(TEXT("[life] moving %d (stopped %d) parked %d (taxis %d) sim %.2f ms push %.2f ms clock %.1f"), NumMoving, NumStopped, NumParked, NumParkedTaxis, LastSimMs, LastPushMs, SimClock);
+	return FString::Printf(TEXT("[life] moving %d (stopped %d, stopped in a junction box now %d, worst %d, box car-seconds %.1f) parked %d (taxis %d) sim %.2f ms push %.2f ms clock %.1f signal av/st %d/%d"), NumMoving, NumStopped, NumBoxStopped, MaxBoxStopped, BoxStopSeconds, NumParked, NumParkedTaxis, LastSimMs, LastPushMs, SimClock, SigPhase(GetSignalClock(), 0), SigPhase(GetSignalClock(), 1));
 }
 
 void AWHLifeTraffic::GetPoints(TArray<FVector>& Moving, TArray<int32>& MovingType, TArray<FVector>& Parked, TArray<int32>& ParkedType) const
@@ -373,7 +390,7 @@ void AWHLifeTraffic::PopulateInitial()
 	{
 		FLink& L = Links[LI];
 		uint32 R = 0x51ED27u ^ (uint32)(L.Id * 2654435761u); if (!R) R = 1;
-		const float Target = L.Len / 1000.f * DensityByKind[FMath::Clamp(L.Kind, 0, 3)] * DensityScale * (0.8f + 0.4f * Ff(R));
+		const float Target = L.Len / 1000.f * KindDensity(L.Kind) * (0.8f + 0.4f * Ff(R));
 		const int32 N = FMath::RoundToInt(Target + Ff(R) - 0.5f);
 		TArray<float> Placed;
 		for (int32 K = 0; K < N; ++K)
@@ -523,7 +540,7 @@ void AWHLifeTraffic::StepSim(float Dt)
 		FCar& C = Cars[I]; if (!C.bActive) continue;
 		float Gap, VL; FindLeader(I, Gap, VL);
 		float V0 = C.V0, Acc;
-		float StopGap = 1e9f;
+		float StopGap = 1e9f; bool bRed = false;
 		if (C.Where == 0)
 		{
 			const FLink& L = Links[C.L0]; const float ToEnd = L.Len - C.S;
@@ -536,7 +553,7 @@ void AWHLifeTraffic::StepSim(float Dt)
 				if (L.bSig && C.S < L.Len - StopBack - 0.25f)
 				{
 					const int32 Ph = SigPhase(Clock, L.Axis);
-					if (Ph == 0 || (Ph == 1 && !CanClear(C, L))) StopGap = (L.Len - StopBack) - C.S;
+					if (Ph == 0 || (Ph == 1 && !CanClear(C, L))) { StopGap = (L.Len - StopBack) - C.S; bRed = true; }
 				}
 				if (StopGap > 1e8f && !C.bReserved)
 				{
@@ -558,6 +575,10 @@ void AWHLifeTraffic::StepSim(float Dt)
 			if (C.V < 0.3f) C.WaitT += Dt;
 		}
 		else if (C.V > 0.5f) C.WaitT = 0.f;
+		// reaction time: a driver held by the red / amber does not pull away in the same instant the light turns green
+		if (bRed) C.bRedHold = true;
+		else if (C.bRedHold) { C.bRedHold = false; if (C.V < 0.6f) C.GoDelay = ReactionMin + Ff(C.Rng) * FMath::Max(0.f, ReactionMax - ReactionMin); }
+		if (C.GoDelay > 0.f) { C.GoDelay -= Dt; if (C.V < 0.6f) Acc = FMath::Min(Acc, 0.f); else C.GoDelay = 0.f; }
 		if (C.V < 0.2f) { NumStopped++; C.StuckT += Dt; } else C.StuckT = 0.f;
 		C.Acc = Acc;
 		C.Brake = (Acc < -0.7f || (C.V < 0.4f && (StopGap < 1e8f || Gap < 8.f))) ? 1 : 0;
@@ -596,6 +617,28 @@ void AWHLifeTraffic::StepSim(float Dt)
 		if (C.StuckT > 120.f) { DespawnCar(I); }
 	}
 
+	// 3b. junction-box watch: a car standing (< 0.3 m/s) with any part of its body inside a junction box
+	{
+		int32 BS = 0;
+		for (int32 I = 0; I < Cars.Num(); ++I)
+		{
+			FCar& C = Cars[I]; if (!C.bActive) continue;
+			const bool bIn = C.Where == 1 || (C.Where == 2 && C.S < C.Len);
+			if (bIn && C.V < 0.3f)
+			{
+				const float Prev = C.BoxStopT; C.BoxStopT += Dt; BoxStopSeconds += Dt;
+				if (C.BoxStopT > 0.8f) ++BS;
+				if (Prev <= 1.5f && C.BoxStopT > 1.5f)
+				{
+					const FVector2D P = PathPoint(C, C.Len * 0.5f);
+					UE_LOG(LogWHLife, Display, TEXT("WH_LIFE_BOXSTOP t=%.1f clock=%.1f car type %d at (%.1f, %.1f) m where=%d S=%.1f/%.1f v=%.2f reserved=%d turn=%d"), SimClock, SimClock + SignalOffset, C.Type, P.X, P.Y, (int32)C.Where, C.S, C.Where == 1 ? Conns[C.K].Len : C.Len, C.V, C.bReserved ? 1 : 0, C.K >= 0 ? Conns[C.K].Turn : -1);
+				}
+			}
+			else C.BoxStopT = 0.f;
+		}
+		NumBoxStopped = BS; MaxBoxStopped = FMath::Max(MaxBoxStopped, BS);
+	}
+
 	// 4. inflow at the region boundary
 	int32 Alive = 0; for (const FCar& C : Cars) Alive += C.bActive;
 	for (int32 LI = 0; LI < Links.Num(); ++LI)
@@ -603,7 +646,7 @@ void AWHLifeTraffic::StepSim(float Dt)
 		FLink& L = Links[LI];
 		if (!L.bEntry || Clock < 0 || (float)SimClock < L.NextSpawn || Alive >= MaxCars) continue;
 		{ // inflow only tops the link up to the browser's steady-state density (traffic.js linkTarget), so cross streets do not fill with standing queues
-			const float Target = L.Len / 1000.f * DensityByKind[FMath::Clamp(L.Kind, 0, 3)] * DensityScale;
+			const float Target = L.Len / 1000.f * KindDensity(L.Kind);
 			if ((float)L.Cars.Num() >= Target) { L.NextSpawn = (float)SimClock + 1.5f; continue; }
 		}
 		float Tail = 1e9f; for (int32 Oi : L.Cars) { const FCar& Q = Cars[Oi]; Tail = FMath::Min(Tail, Q.S - Q.Len); }
@@ -614,10 +657,106 @@ void AWHLifeTraffic::StepSim(float Dt)
 			const int32 CI = SpawnCar(LI, 6.f, 9.f, true);
 			if (CI >= 0) { ++Alive; L.Cars.Add(CI); }
 		}
-		const float Flow = FMath::Max(0.05f, DensityByKind[FMath::Clamp(L.Kind, 0, 3)] * DensityScale * (L.Kind == 1 ? 9.f : 12.f) / 1000.f); // veh/s
+		const float Flow = FMath::Max(0.05f, KindDensity(L.Kind) * (L.Kind == 1 ? 9.f : 12.f) / 1000.f); // veh/s
 		L.NextSpawn = (float)SimClock + (0.5f + Ff(R)) / Flow;
 	}
 	NumMoving = Alive;
+}
+
+// ------------------------------------------------------------------------------------------------ signal lens overlay
+// P1's signal props (mast / post heads) carry a static aState snapshot; this overlay draws the live lenses on top: a flat emissive disc per lens
+// (red / amber / green), lit by the same 40 s clock the cars and pedestrians obey. Head geometry: src/world/props.js signalHeadX (lenses on the
+// +x face at y +0.33 / 0 / -0.33 of the head centre), mast arm heads at (0, 5.3, 4.2 | 7.6), pole head (0.25, 3.3, 0), post head (0.22, 3.5, 0).
+void AWHLifeTraffic::BuildSignals()
+{
+	Lenses.Reset(); LastSig[0] = LastSig[1] = -1; LensISM = nullptr;
+	if (SignalData.IsEmpty() || !SignalMesh || !SignalMaterial) return;
+	LensISM = NewObject<UInstancedStaticMeshComponent>(this, TEXT("SignalLenses"));
+	LensISM->SetupAttachment(GetRootComponent());
+	LensISM->SetStaticMesh(SignalMesh); LensISM->SetMaterial(0, SignalMaterial);
+	LensISM->SetMobility(EComponentMobility::Movable);
+	LensISM->SetCollisionEnabled(ECollisionEnabled::NoCollision); LensISM->SetCanEverAffectNavigation(false); LensISM->SetGenerateOverlapEvents(false);
+	LensISM->SetCastShadow(false); LensISM->SetVisibleInRayTracing(false); LensISM->bAffectDistanceFieldLighting = false;
+	LensISM->NumCustomDataFloats = 4;
+	LensISM->SetCullDistances(30000, 40000);
+	LensISM->RegisterComponent();
+	struct FHead { float Lx, Ly, Lz; };
+	static const FHead MastHeads[3] = { { 0.195f, 5.3f, 4.2f }, { 0.195f, 5.3f, 7.6f }, { 0.445f, 3.3f, 0.f } };
+	static const FHead PostHeads[1] = { { 0.415f, 3.5f, 0.f } };
+	static const float LensY[3] = { 0.33f, 0.f, -0.33f };   // red, amber, green
+	static const float Col[3][3] = { { 1.f, 0.05f, 0.03f }, { 1.f, 0.5f, 0.02f }, { 0.05f, 1.f, 0.45f } };
+	TArray<FTransform> Tx; TArray<float> Cd;
+	TArray<FString> Lines; SignalData.ParseIntoArrayLines(Lines);
+	for (const FString& Ln : Lines)
+	{
+		if (Ln.IsEmpty() || Ln[0] == '#') continue;
+		TArray<FString> P; Ln.ParseIntoArray(P, TEXT(" "), true);
+		if (P.Num() < 4 || (P[0] != TEXT("M") && P[0] != TEXT("P"))) continue;
+		const bool bMast = P[0] == TEXT("M");
+		const float Px = FCString::Atof(*P[1]), Pz = FCString::Atof(*P[2]), Ry = FCString::Atof(*P[3]);
+		const float C = FMath::Cos(Ry), S = FMath::Sin(Ry);
+		const int32 NH = bMast ? 3 : 1;
+		for (int32 H = 0; H < NH; ++H)
+		{
+			const FHead& Hd = bMast ? MastHeads[H] : PostHeads[0];
+			for (int32 K = 0; K < 3; ++K)
+			{
+				const float Lx = Hd.Lx, Ly = Hd.Ly + LensY[K], Lz = Hd.Lz;
+				const float Wx = Px + Lx * C + Lz * S, Wz = Pz - Lx * S + Lz * C, Wy = 0.15f + Ly;
+				Tx.Add(FTransform(FRotator(-90.f, -FMath::RadiansToDegrees(Ry), 0.f), FVector(Wx * 100.f, Wz * 100.f, Wy * 100.f), FVector(LensDiameterCm / 100.f, LensDiameterCm / 100.f, 0.02f)));
+				Cd.Append({ Col[K][0], Col[K][1], Col[K][2], 0.f });
+				FLens L; L.Axis = bMast ? 0 : 1; L.Color = K; L.Inst = Lenses.Num(); Lenses.Add(L);
+			}
+		}
+	}
+	if (Tx.Num() == 0) return;
+	LensISM->AddInstances(Tx, false, true, false);
+	LensISM->SetCustomData(0, Tx.Num() - 1, Cd, false);
+	LensISM->MarkRenderStateDirty();
+	UE_LOG(LogWHLife, Log, TEXT("[life] signals: %d lens instances (%d masts/posts)"), Lenses.Num(), Lines.Num());
+	UpdateSignals();
+}
+
+void AWHLifeTraffic::UpdateSignals()
+{
+	if (!LensISM || Lenses.Num() == 0) return;
+	bool bDirty = false;
+	for (int32 Axis = 0; Axis < 2; ++Axis)
+	{
+		const int32 S = SigPhase(GetSignalClock(), Axis);
+		if (S == LastSig[Axis]) continue;
+		LastSig[Axis] = S; bDirty = true;
+		for (const FLens& L : Lenses) if (L.Axis == Axis) LensISM->SetCustomDataValue(L.Inst, 3, L.Color == S ? 1.f : 0.f, false);
+	}
+	if (bDirty) LensISM->MarkRenderStateDirty();
+}
+
+void AWHLifeTraffic::GetMovingInfo(TArray<FVector>& Pos, TArray<float>& Speed, TArray<int32>& LaneKey) const
+{
+	Pos.Reset(); Speed.Reset(); LaneKey.Reset();
+	for (const FCar& C : Cars)
+	{
+		if (!C.bActive) continue;
+		const FVector2D P = PathPoint(C, C.Len * 0.5f);
+		const FLink& L = Links[C.Where == 2 ? C.L1 : C.L0];
+		const int32 Dir = FMath::Abs(L.D.X) > FMath::Abs(L.D.Y) ? (L.D.X > 0 ? 3 : 4) : (L.D.Y < 0 ? 1 : 2);
+		Pos.Add(FVector(P.X * 100.f, P.Y * 100.f, 80.f)); Speed.Add(C.V); LaneKey.Add(L.Kind * 100 + L.Lane * 10 + Dir);
+	}
+}
+
+void AWHLifeTraffic::GetLinkQueue(int32 LinkFileId, int32& NumCars, int32& Stopped, float& FrontToLine) const
+{
+	NumCars = 0; Stopped = 0; FrontToLine = -1.f;
+	const int32* Ix = LinkIdx.Find(LinkFileId); if (!Ix) return;
+	const FLink& L = Links[*Ix];
+	float Best = 1e9f;
+	for (const FCar& C : Cars)
+	{
+		if (!C.bActive || C.Where != 0 || C.L0 != *Ix) continue;
+		++NumCars; if (C.V < 0.3f) ++Stopped;
+		Best = FMath::Min(Best, (L.Len - StopBack) - C.S);
+	}
+	if (NumCars) FrontToLine = Best;
 }
 
 // ------------------------------------------------------------------------------------------------ render push
