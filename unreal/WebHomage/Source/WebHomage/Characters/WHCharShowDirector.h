@@ -50,7 +50,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") bool bLoop = true;
 	/** Round 05: actors whose visibility the director controls per shot (see FWHShot::ShowActors): a hero shot never shows another hero or a thug in the background. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") TArray<TObjectPtr<AActor>> ManagedActors;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 private:
+	void LogBones(float Ts);
+	FString BoneLogPath, BoneLogBuf;
 	UPROPERTY() TObjectPtr<ACameraActor> Cam;
 	float T = 0.f;
 	int32 LastShot = -1;

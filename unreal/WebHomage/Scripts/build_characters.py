@@ -54,7 +54,7 @@ ART = _cfg('art', 'P2_ART', ART, _LEGACY_ART, lambda: WT + '/art/night1/characte
 GLB = _cfg('inputs', 'P2_INPUTS', GLB, _LEGACY_GLB, lambda: SCRATCH + '/ueimport')
 CIT = ART + '/export/citizens'
 _ENV = dict(os.environ, P2_WT=WT, P2_SCRATCH=SCRATCH)   # the 'prep' tools read these (tools/ue_char/p2paths.py)
-STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,abp,map,maps5,mapkey').split(','))
+STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,mapkey').split(','))
 ROOT, TESTS = '/Game/Characters', '/Game/Tests/Characters'
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
@@ -498,6 +498,19 @@ if 'rename' in STEPS:
     EAL.save_directory(ROOT, only_if_is_dirty=True, recursive=True)
     log('rename ok', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT, recursive=True) if '/Anims/' not in p and 'Textures' not in p and 'Materials' not in p))
 
+# ------------------------------------------------------------------------------------------------ round 09: in-place hit-reaction clips
+# tools/ue_char/fight/make_fight_clips.py writes SK_Street_Fight.glb (the thug mesh + hitBack / hitLeft / hitRight / down / getUp, pelvis travel removed;
+# the travel lives in fight_script.json's actor paths).  Imported onto the hero skeleton like the street walks; the mesh that carries them is deleted.
+if 'fightclips' in STEPS:
+    if os.path.exists(GLB + '/SK_Street_Fight.glb'):
+        do_import(GLB + '/SK_Street_Fight.glb', ROOT + '/People', skeleton=HERO_SKEL, anims=True)
+        rename_anims(ROOT + '/People', 'SK_Street_Fight', 'A_Fight_')
+        if EAL.does_asset_exist(ROOT + '/People/SK_Street_Fight'): EAL.delete_asset(ROOT + '/People/SK_Street_Fight')
+        EAL.save_directory(ROOT + '/People', only_if_is_dirty=True, recursive=True)
+        log('fight clips', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People/Anims', recursive=True) if 'A_Fight_' in p))
+    else:
+        log('fightclips: SK_Street_Fight.glb missing (run tools/ue_char/fight/make_fight_clips.py)')
+
 # ------------------------------------------------------------------------------------------------ AnimBPs (children of UWHCharAnimInstance)
 def make_abp(name, path, skel, idle, loco, jump=None, fall=None, land=None, takeoff=None, seq=None, seq_blend=0.15, jump_variants=None,
              air_blend=None, hold_descent=False, takeoff_hold=None):
@@ -556,17 +569,14 @@ if 'abp' in STEPS:
     # ---- round 05: running leap (takeoff crouch -> open stride -> tuck -> reach, alternating legs), staged fight sequences
     make_abp('ABP_Hero_Leap', ROOT + '/Hero', HERO_SKEL, HA + 'idle', hero_loco, HA + 'runLeap', HA + 'fallCalm', HA + 'landLight', HA + 'runTakeoff',
              jump_variants=[HA + 'runLeap', HA + 'runLeapB'], air_blend=7.0, hold_descent=True, takeoff_hold=0.18)
-    make_abp('ABP_Hero_Fight', ROOT + '/Hero', HERO_SKEL, HA + 'fightIdle', hero_loco, seq_blend=0.12,
-             seq=[HA + 'fightIdle', HA + 'punch1', HA + 'punch2', HA + 'kick', HA + 'fightIdle', HA + 'punch3'])
+    # round 09: the fight is a SCRIPT (tools/ue_char/fight/choreo.py -> fight_script.json, applied to the walkers by the 'maps5' step): timed beats play
+    # over the base idle, so the ABPs only carry the base: the hero's fight stance; the armed enemies (bat, pipe, pistol) stand relaxed with the weapon
+    # hanging (the hero's standing idle) and the unarmed ones keep the boxing guard (thugIdle, chin tucked, head never above the horizon).
+    make_abp('ABP_Hero_Fight', ROOT + '/Hero', HERO_SKEL, HA + 'fightIdle', hero_loco)
     FA_ = ROOT + '/Thug/Anims/A_Thug_'
-    # each enemy: guard (thugIdle: boxing stance, chin tucked, head never above the horizon) between one action; heads stay <= 10 deg up
-    # armed enemies (bat, pipe, pistol) stand relaxed with the weapon hanging (the hero's standing idle, head +6 deg) until they swing; the unarmed ones
-    # keep the boxing guard (thugIdle) between punches / kicks / hit reactions.  'H:' = a hero clip.
-    fights = {'Thug': ['H:idle', 'thugPunch1', 'thugPunch2'], 'Brute': ['H:idle', 'thugPunch2', 'thugPunch1'], 'Hood': ['H:idle', 'thugStumbleBack'],
-              'Tee': ['thugKick', 'thugIdle', 'thugPunch2'], 'Beard': ['thugPunch2', 'thugPunch1', 'thugIdle'], 'Oxblood': ['thugIdle', 'thugStumbleLeft', 'thugPunch1']}
-    for k, clips in fights.items():
-        make_abp('ABP_Fight_' + k, ROOT + '/People', HERO_SKEL, FA_ + 'thugIdle', [(PA + 'walkStreet', 114.0)],
-                 seq=[(HA + c[2:]) if c.startswith('H:') else (FA_ + c) for c in clips], seq_blend=0.14)
+    fight_base = {'Thug': HA + 'idle', 'Brute': HA + 'idle', 'Hood': HA + 'idle', 'Tee': FA_ + 'thugIdle', 'Beard': FA_ + 'thugIdle', 'Oxblood': FA_ + 'thugIdle'}
+    for k, base_ in fight_base.items():
+        make_abp('ABP_Fight_' + k, ROOT + '/People', HERO_SKEL, base_, [(PA + 'walkBrute', 110.0)] if k == 'Brute' else [(PA + 'walkStreet', 114.0)])
     log('abp ok')
 
 # ------------------------------------------------------------------------------------------------ test map
@@ -861,27 +871,50 @@ if 'maps5' in STEPS:
     save_map(TESTS + '/Char_Hero', hero_shots, managed=[hero_tt, hero_run, hero_jump])
 
     # ================= Char_Fight: a staged street fight, hero in the middle of 6 enemies =================
+    # round 09: a SCRIPTED fight (tools/ue_char/fight/choreo.py -> fight_script.json): the enemies walk in, strike, get hit (stumble back / left / right,
+    # flinch), go down and get up; every actor's path and timed clips are pure functions of the stage clock (the capture director's shot clock).
     new_stage('Fight', fills=True)
     FX, FY = 0.0, 0.0
-    hero_f = walker('Fight_Hero', H5 + 'SK_Hero', H5 + 'ABP_Hero_Fight', (FX, FY, 0), W5.STAND, 0.0, yaw=245.0)   # faces the thug at 235 deg
-    ring = [('Fight_Thug', 'SK_Street_Thug_Bat', 'Thug', 'Thug', 235, 265, 1.0, 1.0, 2.4),
-            ('Fight_Brute', 'SK_Street_Brute_Pipe', 'Brute', 'Brute', 312, 285, BRUTE_SCALE, BRUTE_GIRTH, 3.0),
-            ('Fight_Hood', 'SK_Street_Hood_Pistol', 'Hood', 'Hood', 188, 270, 1.0, 1.0, 1.6),
-            ('Fight_Tee', 'SK_Street_Tee', 'Tee', 'Tee', 358, 275, 1.0, 1.0, 0.0),
-            ('Fight_Beard', 'SK_Street_Beard', 'Beard', 'Beard', 128, 290, 1.0, 1.0, 0.7),
-            ('Fight_Oxblood', 'SK_Street_Thug', 'Oxblood', 'ThugOxblood', 58, 300, 1.0, 1.0, 1.3)]
+    FS = _json.load(open(WT + '/tools/ue_char/fight/fight_script.json'))
+    def clip_asset(key):
+        w_, c_ = key.split(':')
+        return {'hero': ROOT + '/Hero/Anims/A_Hero_', 'thug': ROOT + '/Thug/Anims/A_Thug_', 'fight': ROOT + '/People/Anims/A_Fight_'}[w_] + c_
+    def apply_script(actor, label):
+        d_ = FS['actors'][label]
+        keys = []
+        for k in d_['path']:
+            pk = unreal.WHPathKey(); pk.set_editor_property('time', k['t']); pk.set_editor_property('loc', unreal.Vector(k['x'], k['y'], 0.0)); pk.set_editor_property('yaw', k['yaw'])
+            keys.append(pk)
+        actor.set_editor_property('stage_path', keys)
+        beats = []
+        for b_ in d_['beats']:
+            sb = unreal.WHScriptBeat()
+            sb.set_editor_property('clip', load(clip_asset(b_['clip'])))
+            for kk in ('start', 'rate', 'blend_in', 'blend_out', 'hold', 'weight'): sb.set_editor_property(kk, float(b_[kk]))
+            beats.append(sb)
+        actor.set_editor_property('script', beats)
+    p0 = FS['actors']['Fight_Hero']['path'][0]
+    hero_f = walker('Fight_Hero', H5 + 'SK_Hero', H5 + 'ABP_Hero_Fight', (p0['x'], p0['y'], 0), W5.STAND, 0.0, yaw=p0['yaw'])
+    apply_script(hero_f, 'Fight_Hero')
+    ring = [('Fight_Thug', 'SK_Street_Thug_Bat', 'Thug', 'Thug', 1.0, 1.0, 2.4),
+            ('Fight_Brute', 'SK_Street_Brute_Pipe', 'Brute', 'Brute', BRUTE_SCALE, BRUTE_GIRTH, 3.0),
+            ('Fight_Hood', 'SK_Street_Hood_Pistol', 'Hood', 'Hood', 1.0, 1.0, 1.6),
+            ('Fight_Tee', 'SK_Street_Tee', 'Tee', 'Tee', 1.0, 1.0, 0.0),
+            ('Fight_Beard', 'SK_Street_Beard', 'Beard', 'Beard', 1.0, 1.0, 0.7),
+            ('Fight_Oxblood', 'SK_Street_Thug', 'Oxblood', 'ThugOxblood', 1.0, 1.0, 1.3)]
     fight_actors = [hero_f]
-    for lbl, mesh, abpk, mat, ang, rad, sc_, g_, off in ring:
-        x = FX + rad * _m.cos(_m.radians(ang)); y = FY + rad * _m.sin(_m.radians(ang))
-        e = walker(lbl, PP5 + mesh, PP5 + 'ABP_Fight_' + abpk, (x, y, 0), W5.STAND, 0.0, scale=sc_, girth=g_, mat=PP5 + 'Materials/MI_Street_' + mat,
-                   yaw=ang + 180.0, anim_offset=off)
+    for lbl, mesh, abpk, mat, sc_, g_, off in ring:
+        q0 = FS['actors'][lbl]['path'][0]
+        e = walker(lbl, PP5 + mesh, PP5 + 'ABP_Fight_' + abpk, (q0['x'], q0['y'], 0), W5.STAND, 0.0, scale=sc_, girth=g_, mat=PP5 + 'Materials/MI_Street_' + mat,
+                   yaw=q0['yaw'], anim_offset=off)
+        apply_script(e, lbl)
         fight_actors.append(e)
     both_channels(fight_actors)
     fc_ = spawn(unreal.TargetPoint, (FX, FY, 0), label='FightCenter')
     fight_shots = [
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-120, -1050, 330), label='street fight wide (hero + 6 enemies)'),                           # 0 @0
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-760, -800, 330), label='street fight 3/4'),                                               # 1 @8
-        mkshot(fc_, K5.ORBIT, 8, 1000, 95, 230, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-80, -800, 240), label='street fight wide (hero + 6 enemies)'),                             # 0 @0
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-560, -560, 230), label='street fight 3/4'),                                               # 1 @8
+        mkshot(fc_, K5.ORBIT, 8, 820, 95, 160, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
     save_map(TESTS + '/Char_Fight', fight_shots)
 
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================

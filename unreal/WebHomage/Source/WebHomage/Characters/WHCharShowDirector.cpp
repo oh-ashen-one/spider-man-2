@@ -1,6 +1,11 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Characters/WHCharShowDirector.h"
 #include "Characters/WHCharLoopWalker.h"
+#include "Characters/WHCharStage.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "EngineUtils.h"
+#include "Misc/FileHelper.h"
+#include "HAL/FileManager.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -24,6 +29,46 @@ void AWHCharShowDirector::BeginPlay()
 	int32 Start = 0;
 	if (FParse::Value(FCommandLine::Get(), TEXT("WHCharShot="), Start))
 		for (int32 i = 0; i < FMath::Min(Start, Shots.Num()); ++i) T += Shots[i].Duration;
+	WHStage::Offset() = double(T) - GetWorld()->GetTimeSeconds();   // round 09: the stage clock (scripted fights) is this director's shot clock
+	if (FParse::Value(FCommandLine::Get(), TEXT("WHBoneLog="), BoneLogPath) && !BoneLogPath.IsEmpty())
+	{
+		IFileManager::Get().Delete(*BoneLogPath);
+		BoneLogBuf = TEXT("frame,time,label,x,y,yaw,bone,bx,by,bz\n");
+	}
+}
+
+void AWHCharShowDirector::EndPlay(const EEndPlayReason::Type Reason)
+{
+	if (!BoneLogPath.IsEmpty() && !BoneLogBuf.IsEmpty())
+		FFileHelper::SaveStringToFile(BoneLogBuf, *BoneLogPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM, &IFileManager::Get(), FILEWRITE_Append);
+	Super::EndPlay(Reason);
+}
+
+// -WHBoneLog=<csv>: per frame and per walker the world position of a few bones (pelvis, spine, head, hands, feet) for the choreography checks
+void AWHCharShowDirector::LogBones(float Ts)
+{
+	static const TCHAR* Bones[] = {TEXT("hips"), TEXT("spine2"), TEXT("head"), TEXT("hand.L"), TEXT("hand.R"), TEXT("foot.L"), TEXT("foot.R")};
+	for (TActorIterator<AWHCharLoopWalker> It(GetWorld()); It; ++It)
+	{
+		const AWHCharLoopWalker* W = *It;
+		if (!W->Mesh) continue;
+#if WITH_EDITOR
+		const FString Lbl = W->GetActorLabel();
+#else
+		const FString Lbl = W->GetName();
+#endif
+		const FVector P = W->GetActorLocation();
+		for (const TCHAR* B : Bones)
+		{
+			const FVector L = W->Mesh->GetBoneLocation(FName(B), EBoneSpaces::WorldSpace);
+			BoneLogBuf += FString::Printf(TEXT("%llu,%.4f,%s,%.2f,%.2f,%.2f,%s,%.2f,%.2f,%.2f\n"), GFrameCounter, Ts, *Lbl, P.X, P.Y, W->GetActorRotation().Yaw, B, L.X, L.Y, L.Z);
+		}
+	}
+	if (BoneLogBuf.Len() > (1 << 20))
+	{
+		FFileHelper::SaveStringToFile(BoneLogBuf, *BoneLogPath, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM, &IFileManager::Get(), FILEWRITE_Append);
+		BoneLogBuf.Reset();
+	}
 }
 
 void AWHCharShowDirector::Tick(float Dt)
@@ -31,6 +76,7 @@ void AWHCharShowDirector::Tick(float Dt)
 	Super::Tick(Dt);
 	if (!Cam || Shots.Num() == 0) return;
 	T += Dt;
+	if (!BoneLogPath.IsEmpty() && Dt > 0.f) LogBones(T);
 	float Total = 0.f; for (const FWHShot& S : Shots) Total += S.Duration;
 	float Tl = bLoop ? FMath::Fmod(T, FMath::Max(0.1f, Total)) : FMath::Min(T, Total - 1e-3f);
 	int32 Idx = 0; for (; Idx < Shots.Num() - 1 && Tl >= Shots[Idx].Duration; ++Idx) Tl -= Shots[Idx].Duration;
