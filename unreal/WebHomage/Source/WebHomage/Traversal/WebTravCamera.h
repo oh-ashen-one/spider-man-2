@@ -91,8 +91,8 @@ public:
 	bool bFlipWas = false, bFlipAbort = false, bFlipOutRun = false;
 	double FlipObsT = 0.0, FlipSinceObs = 9.0, FlipAbortGrace = 0.20;   // seconds the held axis has been blocked under FlipDistMin / grace before the plain-chase fallback
 	double FlipOutClock = 0.0, FlipOutK0 = 0.0, FlipOutZ0 = 0.0;   // blend-out state (smoothstep over FlipOutT from the weights at its start)
-	double FlipDist = 4.4, FlipDistMin = 4.0, FlipTuckPull = 0.6, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.25, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
-	double FlipSFrame = 0.36, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
+	double FlipDist = 4.4, FlipDistMin = 4.0, FlipTuckPull = 0.6, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
+	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
 	double FlipInT = 0.35, FlipOutT = 0.90, FlipZInT = 0.15, FlipZHold = 0.30, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
 	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
 	double FlipAz = 0.0;        // rad, world azimuth hero -> camera (held for the trick)

@@ -246,7 +246,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	bFlipWas = bFlipCam;
 	if (bFlipCam && !bFlipAbort && bChaseInit)
 	{ // TC11: sweep hero chest -> the held spot; a hit dollies the camera in along the axis, never yaws / re-picks the side
-		const double Ec = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDistSel), 0.0, 0.6));
+		const double Ec = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDist), 0.0, 0.6));
 		const FVector Uc(FMath::Cos(FlipAz) * FMath::Cos(Ec), FMath::Sin(FlipAz) * FMath::Cos(Ec), -FMath::Sin(Ec));
 		// the distance follows the pose: a compact shape (tuck / pike) is pulled in FlipTuckPull m so the tuck-dominated backDouble reads as big as
 		// the open shapes (TC-C p50 >= .18 with p90 <= .36: one constant distance cannot do both -- a tuck is ~.15, a layout ~.30 at the same range)
@@ -326,7 +326,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	const double FlipKs = Smooth(FlipK, 0.0, 1.0);
 	FVector FlipSpot = Hero;
 	{
-		const double FlipElevNow = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDistNow), 0.0, 0.6));
+		const double FlipElevNow = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDist), 0.0, 0.6));
 		FlipSpot = Hero + FVector(FMath::Cos(FlipAz) * FMath::Cos(FlipElevNow), FMath::Sin(FlipAz) * FMath::Cos(FlipElevNow), -FMath::Sin(FlipElevNow)) * FlipDistNow;
 	}
 	if (!bChaseInit)
@@ -608,7 +608,7 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 	{
 		C.Side = Side; C.Off = OffDeg; C.Rad = Rad;
 		C.Az = BackAz + Side * FMath::DegreesToRadians(OffDeg);
-		const double E = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, Rad), 0.0, 0.6));
+		const double E = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDist), 0.0, 0.6));
 		const FVector ToCam(FMath::Cos(C.Az) * FMath::Cos(E), FMath::Sin(C.Az) * FMath::Cos(E), -FMath::Sin(E));
 		const FVector CamP = Hero + ToCam * Rad;
 		double HitD = 0.0;

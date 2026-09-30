@@ -691,10 +691,16 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	{ // round 16: compactness of the flip's upper-body shape (this frame's camera uses the previous frame's pose): the trick camera pulls in during a tuck / pike
 		float Ft = 0.f;
 		CI.FlipCompact = 0.f;
-		if (CI.bFlip && LastFlip.bValid && FlipProgramNow(Ft) != nullptr)
+		const FWebFlipProgram* FPc = CI.bFlip ? FlipProgramNow(Ft) : nullptr;
+		if (FPc && LastFlip.bValid)
 		{
 			auto Cmp = [](EWebFlipShape S) { return S == EWebFlipShape::Tuck ? 1.f : (S == EWebFlipShape::Pike ? 0.6f : 0.f); };
-			CI.FlipCompact = FMath::Lerp(Cmp(LastFlip.A), Cmp(LastFlip.B), LastFlip.W);
+			const float Now = FMath::Lerp(Cmp(LastFlip.A), Cmp(LastFlip.B), LastFlip.W);
+			// anticipation: the camera starts backing out 0.22 s before a tuck / pike ends (min of now and 0.22 s ahead), so the open shape that follows
+			// (kickout / swan) is not seen at the tuck distance; it pulls in only when the compact shape has actually begun
+			const FWebFlipPose Ahead = WebFlips::Sample(*FPc, FMath::Min(Ft + 0.22f, FPc->Dur()));
+			const float Fut = Ahead.bValid ? FMath::Lerp(Cmp(Ahead.A), Cmp(Ahead.B), Ahead.W) : Now;
+			CI.FlipCompact = FMath::Min(Now, Fut);
 		}
 	}
 	// round 15: the direction to the sun for the sun-aware trick camera (the level's atmosphere sun light 0; retried for the first
@@ -1206,7 +1212,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	// round 13: camera output slew-limit flags (1 position, 2 pitch, 4 yaw) and the hero fill light (cd)
 	const FString Flip12 = FString::Printf(TEXT(",%s,%.3f,%.1f,%.1f,%.2f,%.1f,%.1f,%d,%.0f"),
 		Traversal->IsFlipArmed() ? *Traversal->ArmedFlipName().ToString() : TEXT(""), Cam.FlipK,
-		Cam.FlipOffDeg, FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Cam.FlipDrop / FMath::Max(1.0, Cam.FlipDistNow), 0.0, 0.6))), Cam.FlipSkyShare,
+		Cam.FlipOffDeg, FMath::RadiansToDegrees(FMath::Asin(FMath::Clamp(Cam.FlipDrop / FMath::Max(1.0, Cam.FlipDist), 0.0, 0.6))), Cam.FlipSkyShare,
 		Traversal->SkyTallUsed, Traversal->SkyPeakWant, Cam.SlewFlags, HeroFill ? HeroFill->Intensity : 0.f);
 	// round 15: sun angle of the searched flip view, sun angle of the RENDERED view (camera manager forward vs the direction to the sun;
 	// -1 = no sun found), roofline (m over the street) and rise of the last flow flip
