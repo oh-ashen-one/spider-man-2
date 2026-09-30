@@ -137,30 +137,49 @@ void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const 
 
 void FWHCombatFx::Impact(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
 {
-	Hit(P, Dir, Heavy, Color, HoldFrames);
-	// r03 flare: radius from the camera distance so the disc covers ~FlareFrac of the frame (area = pi r^2, frame = W x 9/16 W, W = 2 d tan(fov/2)).
-	const double Dist = bCam ? FMath::Max(1.5, FVector::Dist(CamP, P)) : 5.5;
-	const double Wd = 2.0 * Dist * FMath::Tan(FMath::DegreesToRadians(CamFovH * 0.5));
-	const double Frac = FlareFrac * (1.0 + 0.25 * Heavy) * FlareK;
-	const double R = FMath::Sqrt(Frac * Wd * Wd * (9.0 / 16.0) / PI);
+	(void)Dir;
+	if (bFlareOff) return;
+	// r04 starburst. Unit U = the frame width in metres at the contact's depth; every length below is a share of it, so the picture is the same at any distance.
+	//   N = 6 (7 / 8 for heavier blows) thin streaks, evenly spread around the contact (random phase, +-18 % jitter), each in the camera's image plane, from
+	//   0.018 U to 0.116-0.145 U (length 0.098-0.127 U: always >= 8 % of the frame width, with a margin for the end caps that fade out) and tapering in 4 steps
+	//   (0.011 U -> 0.0035 U wide). Covered share of its bounding circle ~10 %, of the frame ~0.6 %: the victim's body stays readable.
+	const FRotationMatrix CM(CamRot);
+	const FVector Fw = bCam ? CM.GetScaledAxis(EAxis::X) : (P - CamP).GetSafeNormal();
+	const FVector Right = bCam ? CM.GetScaledAxis(EAxis::Y) : FVector::RightVector;
+	const FVector Up = bCam ? CM.GetScaledAxis(EAxis::Z) : FVector::UpVector;
+	const double Depth = bCam ? FMath::Max(1.5, FVector::DotProduct(P - CamP, Fw)) : 5.5;
+	const double U = 2.0 * Depth * FMath::Tan(FMath::DegreesToRadians(CamFovH * 0.5)) * FlareK;
 	const double Hold = (HoldFrames + 1.25) / 60.0, Life = Hold + 2.3 / 60.0;
-	const FLinearColor Base = Color ? *Color : FLinearColor(1, 1, 1);
-	const bool bTint = Color != nullptr && Color->R + Color->G + Color->B > 8.0f && Color->B > 3.0f;   // armoured (white) blow: cooler flare
-	{ // halo: red-orange
+	const bool bTint = Color != nullptr && Color->R + Color->G + Color->B > 8.0f && Color->B > 3.0f;   // armoured (white) blow: cooler, white-hot streaks
+	static const double SegW[4] = { 1.0, 0.75, 0.52, 0.32 };
+	const FLinearColor Seg[4] = { FLinearColor(2.3f, 1.05f, 0.22f), FLinearColor(2.1f, 0.78f, 0.13f), FLinearColor(1.9f, 0.5f, 0.07f), FLinearColor(1.6f, 0.3f, 0.03f) };
+	const FLinearColor SegW4[4] = { FLinearColor(2.2f, 2.0f, 1.7f), FLinearColor(2.0f, 1.8f, 1.5f), FLinearColor(1.8f, 1.6f, 1.3f), FLinearColor(1.5f, 1.3f, 1.05f) };
+	const int32 N = Heavy >= 0.55 ? 8 : Heavy >= 0.25 ? 7 : 6;
+	const double Phase = FlareRng.FRandRange(0.0, 2.0 * PI), Step = 2.0 * PI / N;
+	for (int32 i = 0; i < N; ++i)
+	{
+		const double A = Phase + i * Step + FlareRng.FRandRange(-0.18, 0.18) * Step;
+		const FVector Dv = (Right * FMath::Cos(A) + Up * FMath::Sin(A)).GetSafeNormal();
+		const double L = U * FlareRng.FRandRange(0.098, 0.115) * (1.0 + 0.1 * Heavy);
+		const double R0 = U * 0.018;
+		for (int32 j = 0; j < 4; ++j)
+		{
+			FWHFxItem& S = Alloc(EWHFxMat::Flare, Cyl);
+			const double SegL = L * 0.25, C = R0 + L * (j + 0.5) * 0.25, W = U * 0.011 * SegW[j];
+			S.bReal = true; S.Hold = Hold; S.Life = Life;
+			S.Dir = Dv; S.Pos = P + Dv * C;
+			S.Size0 = FVector(W, W, SegL * 1.12); S.Size1 = FVector(W * 0.45, W * 0.45, SegL);
+			S.Color = bTint ? SegW4[j] : Seg[j]; S.Op0 = FlareI; S.Op1 = 0.0;
+			Place(S, 0);
+		}
+	}
+	{ // hot core: a small bright dot where the blow lands (3.5 % of the frame width)
 		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
 		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
-		F.Size0 = F.Size1 = FVector(R * 2.0);   // the sphere mesh is 1 m in diameter at scale 1
-		F.Color = bTint ? FLinearColor(0.9f, 0.75f, 0.6f) : FLinearColor(1.0f, 0.085f, 0.008f); F.Op0 = FlareI; F.Op1 = 0.0;
+		F.Size0 = FVector(U * 0.035); F.Size1 = FVector(U * 0.015);
+		F.Color = bTint ? FLinearColor(2.4f, 2.2f, 2.0f) : FLinearColor(2.6f, 1.5f, 0.4f); F.Op0 = FlareI; F.Op1 = 0.0;
 		Place(F, 0);
 	}
-	{ // core: hot orange-yellow
-		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
-		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
-		F.Size0 = F.Size1 = FVector(R * 0.85);
-		F.Color = FLinearColor(1.8f, 0.45f, 0.04f); F.Op0 = FlareI; F.Op1 = 0.0;
-		Place(F, 0);
-	}
-	(void)Base;
 }
 
 void FWHCombatFx::Dust(const FVector& P, double Amount)

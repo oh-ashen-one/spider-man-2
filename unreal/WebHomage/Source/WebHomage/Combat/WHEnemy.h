@@ -46,6 +46,7 @@ struct FWHHitIn
 	FName Kind;            // light ender launch air slam strike throw finisher
 	bool bStunBrute = false;
 	int32 Side = 0;        // +1 = the blow lands on his left, -1 his right
+	FVector CamRight = FVector::ZeroVector;   // r04: the camera's right axis (world): biases the recoil lean sideways on the screen so the tilt reads from any camera
 };
 
 UCLASS(NotPlaceable)
@@ -116,12 +117,28 @@ public:
 	// r03 hit twist: the whole body yaws about the vertical axis through the pelvis on every blow (rad, signed): 72 % of TwistAmp in the contact
 	// frame, peak at 0.09 s, back to 0 by 0.6 s. Visual only (the actor yaw / hit box are untouched).
 	double TwistAmp = 0, TwistT = 9, TwistNow = 0;
-	/** start a twist. A blow that lands while a twist is still > 10 deg reverses it (so the change from the pre-blow pose is always >= 30 deg). */
+	/** start a twist. A blow that lands while a twist is still > 10 deg reverses it (so the change from the pre-blow pose is always >= 30 deg).
+	 *  r04: the same call starts the recoil lean (RecAmp = max(0.62, 0.7 x twist) rad = 35-50 deg) in the direction of the blow (BlowDir, set by Hit()). */
 	void StartTwist(double AmpRad, int32 Sign)
 	{
 		if (FMath::Abs(TwistNow) > 0.17) Sign = TwistNow > 0 ? -1 : 1;
 		TwistAmp = AmpRad * Sign; TwistT = 0;
+		RecAmp = FMath::Max(0.62, 0.7 * AmpRad); RecT = 0;
+		FVector L = BlowDir; L.Z = 0;
+		if (!L.Normalize()) L = FVector::ForwardVector;
+		FVector Rt = BlowCamRt; Rt.Z = 0;
+		if (Rt.Normalize())
+		{ // lean 45 deg to the blow axis, towards the side of the screen the blow already points to (or the twist's side when it points along the view axis)
+			const double D = FVector::DotProduct(L, Rt);
+			const double Sg = FMath::Abs(D) > 0.15 ? (D > 0 ? 1.0 : -1.0) : double(Sign);
+			L = (L + Rt * (Sg * 0.95)).GetSafeNormal();
+		}
+		RecDirW = L;
 	}
+	/** r04 hit recoil: the whole body tilts about the knees (0.45 m) towards RecDirW: 65 % of RecAmp in the contact frame, peak at 0.1 s, upright again by 0.56 s.
+	 *  Visual only. TiltNow = the angle between the body's up axis and the vertical (recoil + tumble), deg, for the frame record. */
+	double RecAmp = 0, RecT = 9, RecNow = 0, TiltNow = 0;
+	FVector RecDirW = FVector::ForwardVector, BlowDir = FVector::ZeroVector, BlowCamRt = FVector::ZeroVector;
 	/** total visual yaw (rad) = actor yaw + twist */
 	double VisYaw() const { return Yaw + TwistNow; }
 	/** r02: attack warning visible (melee / brute wind-up until the blow, gun aim + burst). */

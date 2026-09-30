@@ -46,12 +46,15 @@ public:
 
 	/** Small spark burst + core flash (wall bumps, web hits, bullets). P, Dir in metres; Dir = direction the sparks fly. HoldFrames > 0: static for that many frames first. */
 	void Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color = nullptr, int32 HoldFrames = 0);
-	/** r03 blow impact: an additive red-orange flare covering FlareFrac (~2 %) of the frame, static through the local hit-stop (HoldFrames) and gone 2.3 frames later
-	 *  (frame 8 for a 5-frame hold), plus the spark burst of Hit(). The flare radius follows the camera distance, so its on-screen area is constant. */
+	/** r04 blow impact: an additive STARBURST (4-8 thin tapered radial streaks lying in the camera's image plane, each >= 8 % of the frame width long,
+	 *  bounding circle < 35 % filled, plus a tiny hot core), static through the local hit-stop (HoldFrames) and gone 2.3 frames later (frame 8 for a 5-frame
+	 *  hold). r03's opaque orange disc (2 % of the frame) hid the victim for the whole hold; the streaks leave the victim's body readable. The size follows the
+	 *  camera depth at the contact, so the on-screen length is constant. */
 	void Impact(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames);
-	/** the framing camera of the last frame (m, horizontal fov deg): sizes the flare */
-	void SetCam(const FVector& P, double FovH) { CamP = P; CamFovH = FovH; bCam = true; }
-	double FlareFrac = 0.022, FlareK = 1.0, FlareI = 1.0;   // area (share of the frame), size factor, intensity factor (-WHCmbFlareK= / -WHCmbFlareI=)
+	/** the framing camera of the last frame (m, horizontal fov deg, rotation): orients and sizes the starburst */
+	void SetCam(const FVector& P, double FovH, const FRotator& R) { CamP = P; CamFovH = FovH; CamRot = R; bCam = true; }
+	double FlareK = 1.0, FlareI = 1.0;   // size factor, intensity factor (-WHCmbFlareK= / -WHCmbFlareI=)
+	bool bFlareOff = false;              // -WHCmbFlare=0: no blow starburst (A/B capture: the pixel difference to a normal run is exactly the flare)
 	void Dust(const FVector& P, double Amount);
 	/** Web line between two moving points for Life s (fades over the last Fade s). Returns a handle (tag). */
 	int32 Strand(TFunction<FVector()> A, TFunction<FVector()> B, double Life, double Sag = 0.05, double Fade = 0.1);
@@ -78,10 +81,11 @@ private:
 	UMaterialInterface* MTrans = nullptr;
 	UMaterialInterface* MSolid = nullptr;
 	UMaterialInterface* MFlare = nullptr;
-	FVector CamP = FVector::ZeroVector; double CamFovH = 75; bool bCam = false;
+	FVector CamP = FVector::ZeroVector; double CamFovH = 75; FRotator CamRot = FRotator::ZeroRotator; bool bCam = false;
 	TArray<FWHFxItem> Items;
 	int32 NextTag = 1;
 	FRandomStream Rng = FRandomStream(4711);
+	FRandomStream FlareRng = FRandomStream(9001);   // r04: the starburst has its own stream, so -WHCmbFlare=0 leaves every other effect exactly as it was
 	double SenseT = 0;
 	TArray<int32> SenseIdx;
 };

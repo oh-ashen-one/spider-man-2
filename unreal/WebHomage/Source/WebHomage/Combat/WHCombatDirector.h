@@ -211,6 +211,7 @@ private:
 	void RunBeats();
 	void WriteTelemetry();
 	void WriteSummary();
+	void LogRenderRes() const;   // r04: WH_CMB_RES log line (output size, r.ScreenPercentage, internal resolution)
 	FString StateString() const;
 
 	struct FTimeReq { double Until = 0, Start = 0, Scale = 1, Ease = 0.25; bool bSlow = false; };
