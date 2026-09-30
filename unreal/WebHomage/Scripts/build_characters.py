@@ -1027,6 +1027,7 @@ if 'mapkey' in STEPS:
         MEL.recompile_material(flat)
         cols = {'Lens': (1.0, 0.0, 1.0, 1), 'LensFrame': (1.0, 1.0, 0.0, 1), 'SpiderSuit': (0.0, 0.0, 1.0, 1)}
         mis = {k: mi('MI_Flat_' + k, TESTS + '/Materials', flat, vec={'Color': v}) for k, v in cols.items()}
+        EAL.save_directory(TESTS + '/Materials', only_if_is_dirty=True, recursive=True)      # the class materials must be ON DISK: -WHFlatClasses loads them by path in the running game
         if EAL.does_asset_exist(TESTS + '/' + map_name): EAL.delete_asset(TESTS + '/' + map_name)
         EAL.duplicate_asset(TESTS + '/Char_Hero', TESTS + '/' + map_name)
         unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/' + map_name)

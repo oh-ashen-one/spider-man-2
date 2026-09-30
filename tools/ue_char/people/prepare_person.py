@@ -40,7 +40,7 @@ CFG = {
     'thug': dict(src='leather+jacket+man+3d+model.glb', name='StreetThug',
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
-                 mask=(38, 42, 60), seed=11, sink_neck=True, soften_neck=True,
+                 mask=(38, 42, 60), seed=11, sink_neck=True, soften_neck=True,   # collar_dark=(42, 40, 42) was tried (offline): no visible effect, not built into the round-08 content
                  tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
@@ -500,6 +500,17 @@ def main():
         zf = ndi.gaussian_filter(zone.astype(np.float32), 5.0)[..., None]
         bl = np.stack([ndi.gaussian_filter(im4[..., k].astype(np.float32), 3.0) for k in range(3)], -1)
         im4 = np.clip(im4.astype(np.float32) * (1 - zf) + bl * zf, 0, 255).astype(np.uint8); info['neck_soften_px'] = int(zone.sum())
+    if cfg.get('collar_dark'):
+        # round 08: the pale 'collar shard' of the thug is neck skin seen through a gap of the hood collar at the sides / nape (round 08 captures: identical with and without the neck slack).
+        # Skin-coloured texels of the neck below the ear line on the sides and the back (|azimuth| > 55 deg) take the collar's own dark colour, so a gap shows the inside of the hood.
+        hh, ss_, vv = rgb2hsv(im4)
+        skin_t = (hh > 5) & (hh < 40) & (ss_ > 0.15) & (ss_ < 0.65) & (vv > 0.40)
+        az = np.degrees(np.arctan2(pos[..., 0], pos[..., 2] - cfg['axis_z']))
+        rr = np.hypot(pos[..., 0], pos[..., 2] - cfg['axis_z'])
+        zone = cov & skin_t & (np.abs(az) > 55) & (pos[..., 1] > 1.30) & (pos[..., 1] < 1.505) & (rr < 0.085)
+        zf = ndi.gaussian_filter(zone.astype(np.float32), 1.5)[..., None]
+        dark = np.array(cfg['collar_dark'], np.float32)[None, None, :]
+        im4 = np.clip(im4.astype(np.float32) * (1 - zf) + dark * zf, 0, 255).astype(np.uint8); info['collar_dark_px'] = int(zone.sum())
     if cfg.get('clear_graphic'):
         im4, ng = clear_graphic(im4, pos, cov); info['graphic_px'] = ng
     if cfg.get('clear_temple_text'):

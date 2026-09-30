@@ -74,7 +74,7 @@ def head_bob(path, t0, t1):
         ys, _ = np.nonzero(m); top = ys.min(); H = ys.max() - top
         red = _red(f, 100, 50)[:int(top + 0.3 * H)].astype(np.uint8)
         n, lab, st, _ = cv2.connectedComponentsWithStats(red)
-        c = [st[i, 1] for i in range(1, n) if st[i, 4] > 800 and 0.6 < st[i, 2] / max(st[i, 3], 1) < 1.6]
+        c = [st[i, 1] for i in range(1, n) if st[i, 4] > 250 and 0.6 < st[i, 2] / max(st[i, 3], 1) < 1.6]      # round 08: 250 px (the Tessera crown is a smaller teal blob than the old red head)
         Y.append(min(c) if c else np.nan)
     Y = np.array(Y, float); ok = ~np.isnan(Y)
     Yi = np.interp(np.arange(len(Y)), np.nonzero(ok)[0], Y[ok])

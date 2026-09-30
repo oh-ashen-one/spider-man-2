@@ -36,7 +36,7 @@ H, W = rgb.shape[:2]
 corners = np.concatenate([rgb[:20, :20].reshape(-1, 3), rgb[-20:, :20].reshape(-1, 3), rgb[:20, -20:].reshape(-1, 3), rgb[-20:, -20:].reshape(-1, 3)])
 vals, cnt = np.unique(corners, axis=0, return_counts=True)
 keyc = vals[np.argmax(cnt)]
-KEY = (rgb == keyc).all(-1)
+KEY = (np.abs(rgb - keyc[None, None, :]) <= 3).all(-1)       # the key dithers between neighbouring levels (187 / 188): tolerance 3
 lab, nl = ndi.label(KEY)
 border = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
 EXT = np.isin(lab, list(border))
@@ -53,6 +53,17 @@ if FLAT:
     F_LENS = (nrm[..., 0] > 0.8) & (nrm[..., 2] > 0.7) & (nrm[..., 1] < 0.5) & ~dark & ~KEY
     F_BEZ = (nrm[..., 0] > 0.8) & (nrm[..., 1] > 0.8) & (nrm[..., 2] < 0.5) & ~dark & ~KEY
     F_SUIT = (nrm[..., 2] > 0.85) & (nrm[..., 0] < 0.45) & (nrm[..., 1] < 0.6) & ~dark & ~KEY
+if '--auto' in a and FLAT:       # one ROI per magenta component (the two eyes), bbox + 140 px
+    lab_m, nm = ndi.label(F_LENS)
+    szs = ndi.sum(F_LENS, lab_m, range(1, nm + 1))
+    boxes = []
+    objs = ndi.find_objects(lab_m)
+    for i in range(nm):
+        if szs[i] < 3000: continue
+        sl = objs[i]
+        boxes.append((sl[1].start, sl[0].start, sl[1].stop, sl[0].stop))
+    boxes.sort()
+    eyes = [(('L', 'R')[k] if len(boxes) == 2 else 'eye%d' % k, [max(b[0] - 140, 0), max(b[1] - 140, 0), min(b[2] + 140, W), min(b[3] + 140, H)]) for k, b in enumerate(boxes)]
 res = dict(image=os.path.basename(img), size=[W, H], key_rgb=[int(v) for v in keyc], exterior_key_px=int(EXT.sum()), mode='flat' if FLAT else 'beauty', eyes={})
 ov = np.zeros((H, W, 3), np.uint8); ov[EXT] = (0, 140, 0)
 st4 = ndi.generate_binary_structure(2, 1)
@@ -72,7 +83,14 @@ for name, (x0, y0, x1, y1) in eyes:
                                  background_between_rim_and_lens_px=int(enc_eye.sum()), enclosed_key_px_in_roi=int(enclosed.sum()),
                                  lens_touch_key_px=int((LENS & ndi.binary_dilation(EXT, iterations=2)).sum()), lens_min_dist_exterior_px=round(float(dist_ext[LENS].min()), 1),
                                  lens_outline_px=int(outline.sum()), lens_outline_bezel_neighbours=int((nb4 & F_BEZ).sum()), lens_outline_suit_or_key_neighbours=int((nb4 & (F_SUIT | KEY)).sum()),
-                                 lens_outline_unclassified_neighbours=int((nb4 & ~F_BEZ & ~F_SUIT & ~KEY & ~F_LENS).sum()))
+                                 lens_outline_unclassified_neighbours=int((nb4 & ~F_BEZ & ~F_SUIT & ~KEY & ~F_LENS).sum()),
+                                 ring3_px=int((ndi.binary_dilation(LENS, iterations=3) & ~LENS).sum()),
+                                 ring3_bezel_px=int((ndi.binary_dilation(LENS, iterations=3) & ~LENS & F_BEZ).sum()),
+                                 ring3_suit_px=int((ndi.binary_dilation(LENS, iterations=3) & ~LENS & F_SUIT).sum()),
+                                 ring3_key_px=int((ndi.binary_dilation(LENS, iterations=3) & ~LENS & KEY).sum()),
+                                 ring3_blend_px=int((ndi.binary_dilation(LENS, iterations=3) & ~LENS & ~F_BEZ & ~F_SUIT & ~KEY & ~F_LENS).sum()),
+                                 bezel_touch_key_px=int((F_BEZ & roi & ndi.binary_dilation(EXT, iterations=1)).sum()),
+                                 bezel_min_dist_exterior_px=round(float(dist_ext[F_BEZ & roi].min()), 1) if (F_BEZ & roi).any() else None)
         ov[LENS] = (255, 0, 255); ov[F_BEZ & roi] = (255, 255, 0); ov[F_SUIT & roi] = (40, 60, 200); ov[enc_eye] = (255, 0, 0)
         continue
     la, na = ndi.label(AMB & roi)
