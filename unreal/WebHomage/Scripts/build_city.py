@@ -179,7 +179,7 @@ WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 # emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
-                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 3.4), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.0))  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 7.6), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3))  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -973,9 +973,10 @@ def build_geo_level(path):
 
 # (r06) view-map atmosphere, tuned against CITY-SPEC C11-C15 (far shore takes the sky's tint, sits 25-35 luma below the sky band, river darker than the far shore).
 # The sky is blown out (Y ~ 229) because the test maps use manual exposure +2 EV: P4 owns exposure; the far-shore / sky RATIO is what these values fix.
-# (r07) far field: fog 0.0010 / inscattering (0.76, 0.78, 0.80) (~ the horizon luma of the blown sky) / aerial scale 0.34 (r06: 0.0065, (0.6, 0.62, 0.64), 1.0). S4 numbers per fog value: see docs/night1/city/round-07/README.md.
+# (r07) far field: fog 0.0008 / inscattering (0.76, 0.78, 0.80) (~ the horizon luma of the blown sky) / aerial scale 0.34 (r06: 0.0065, (0.6, 0.62, 0.64), 1.0), MPC FarGain 7.6 / FarJit 1.3.
+# Fog and FarGain move along one trade line (fog -1e-4 = C13 -1.7 Y / C15 +0.011; FarGain +1 = C13 +1.7..0.7 Y / C15 -0.004): S4 sweep table in docs/night1/city/round-07/README.md.
 # The previous values veiled the far shore to ~12 % contrast transmission (C13 / C15 could not both pass); P4 owns the final haze, these are the City test maps'.
-FOG_DENSITY = float(ARGS.get('fog', 0.0010)); FOG_COLOR = [float(v) for v in ARGS.get('fogc', '0.76,0.78,0.80').split(',')]; AERIAL_SCALE = float(ARGS.get('aerial', 0.34))
+FOG_DENSITY = float(ARGS.get('fog', 0.0008)); FOG_COLOR = [float(v) for v in ARGS.get('fogc', '0.76,0.78,0.80').split(',')]; AERIAL_SCALE = float(ARGS.get('aerial', 0.34))
 def add_lighting(sun_pitch, sun_yaw, sunset=False):
     sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), unreal.Rotator(roll=0, pitch=sun_pitch, yaw=sun_yaw), 'Sun', 'Lighting')
     lc = sun.light_component

@@ -2,55 +2,75 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port **8771**, browser dev port **5202**.
+Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port 8771 (editor not needed any more), browser dev port **5202**.
 Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, plus (flagged to the integrator)
 `unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
 Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city.
 
-## Round 07 (this round; builder Sonnet 5.5) — read this first
-Critic r06: facades 5, street 4, skyline 4, Manhattan 5, IQ 5, FAILS (improving). r07 = shared measurement + far field + facade base colours + IP / defect list + build-script fixes.
-**Numbers: `round-07/city_spec_check.md` (`tools/export/city_spec_check.py`, regions `docs/night1/city/spec_regions.json`); run it on any round folder, builder and critic both.**
+## Read this first: state at the end of round 07 (finished by Sonnet 5.5 on 2026-09-30 after the 23:08 kernel panic)
+Critic r06: facades 5, street 4, skyline 4, Manhattan 5, image quality 5, FAILS. Its gaps: (1) far field C11/C13-C15, (2) parked cars / props C4/C6, (3) facade albedo C1.
+**Round 07 fixed (1) and (3) by measurement, not (2).** Numbers, before / after, sweep table and change log: `round-07/README.md`; raw checker output: `round-07/city_spec_check.md` + `.json`
+(`python3 tools/export/city_spec_check.py <round_dir> [--yolo] [--ip]`, regions `docs/night1/city/spec_regions.json`, ONE measurement for builder and critic).
+| line | r06 | r07 final (1080p / 4K) | target |
+|---|---|---|---|
+| C11 far-shore Laplacian / sky | 4.76 | 27.3 / 23.4 | >= 6 |
+| C13 far-shore Y - sky Y | -14.0 | -33.7 / -33.9 | -35..-25 |
+| C14 far shore - river | -3.4 | +23.5 | 5..35 |
+| C15 RMS far / near | 0.08 | 0.257 / 0.258 | >= 0.25 |
+| C1 facade crops pass | 10/18 | 17/18 / 17/18 | 18/18 |
+| C2 facade crops pass | 9/18 | 10/18 / 10/18 | 18/18 |
+| C4 / C6 cars, people (YOLO) | 0 / 0 | 0 / 0 (S1, S2, S6) | 5-19 cars, 14-22 vehicles |
+IP OCR: 0 hits. Captures: `round-07/S1..S8_*_{1920x1080,3840x2160}.jpg`, internal resolution 1399x787 / 1920x1080 (TSR), frame times contaminated (shared GPU, see README).
+Critic pack for r07: `/Users/midir/sm2-n1/_scratch/critic-P1-r07/pack` (key outside the pack: `pack.key.json`).
 
-### 1. One measurement (builder and critic disagreed on S4)
-r06 builder boxes (far_shore 0-900 x 215-300, river 450-1250 x 330-400) contained near-city and pier pixels; the critic's boxes were right. `spec_regions.json` holds ONE box per view per
-spec line (1080p and 4K, hand-placed, drawn in `city_spec_check.py --overlay`); texture statistics use the 1080p-normalised frame, mean-type statistics the native frame. Same
-r06 frames with the new script: C11 4.76x, C13 -14.0, C14 -3.3, C15 0.08 (see `round-07/city_spec_check_r06_baseline.md`; critic 4.8x / -10.9 / +2 / 0.09). C4 / C6 (YOLO) and the IP OCR are
-`--yolo` / `--ip`. The r06 "C13 pass" was a wrong box.
+### Ranked to-do for round 08 (each item = one rerun of the checker)
+1. **C4 / C6 empty streets** (critic gap 2, unchanged since r06, and the loudest thing in S1 / S2 / S6 now): the browser has `src/world/vehicles.js`, `vehinst.js`, `npc/traffic.js`; the export has no vehicle protos. Either export a parked-car prototype set
+   (yellow taxis + ~6 body types, no livery IP: see `IP_EXCLUSIONS.md`, `vehicles_atlas2.webp` liveries are excluded) and place 5-19 at the S1 curbs / 14-22 along the S2 avenue (P1 owns parked cars per SPEC), or coordinate with P6 (`/Game/Life`) and have the integrated map carry them.
+   S1 also lacks street trees on the left and any crowd (P6).
+2. **C2 crush (S1 / S6 / S7, lighting):** sun 6 vs sky fill 1.7 at +2 EV is ~30:1; the SunK cap fixed C1 but darkened canyon-shadowed sun-facing walls (S1 left stone 33.5 -> 23.8). The material cannot see shadows.
+   P4 fix: a sun / sky-fill ratio near 4:1 (and a gentler exposure); then `SunK -> 1` (MPC, no recompile) and re-run the checker. If P4 re-lights the maps, ALSO re-run the far-field check: the C13 / C15 window is only ~0.01 wide (below).
+3. `s5_grey_tower` C1 (3.7 % > Y 204 = lit interior windows in daylight): `DayEmisK` 0.22 -> ~0.16 (MPC) but it dims S7's lit windows too; test S5 + S7 + S8 together.
+4. S3 foreground is near black (lighting), roof plane sparse; S5 red steps are flat pink; Times Square tree guards hold no trees; C3 window depth is judged, not measured.
+5. Far field is at the edge of its window because the sky is blown (Y 229): C13 margin 1.3 Y, C15 margin 0.007. Lowering the sky band ~10 Y (P4) widens it; fog / FarGain / FarJit are then free.
 
-### 2. Far field (C11, C13-C15) — root causes and what passes
-- **M_CityFarMass never compiled in r06** (`vc.a`: the custom-node vertex-colour input is RGB only; UE: "vector swizzle 'a' is out of bounds", log `Failed to compile Material`, default material in game).
-  Every far-shore block of r03-r06 was the default grey material. New input kind `vca` (alpha output) in `make_material`. **Always grep the -game log for `Failed to compile Material` after a material change.**
-- M_CityFarMass v2: MPC `FarGain` (3.4) albedo, per-24 m-cell tone jitter (0.35..1.65), floor-group banding, ~1 block in 6 dark glass / dark brick, warm brick blocks, window grid never fades below 18 %.
-  M_CityFarLand: canopy clumps on the green parts, per-lot tone + street lines (MPC `FarLandGain`). M_CityCliff: basalt columns, ledges, talus, wooded top band (was one flat plane). M_CityWater Specular from MPC `WaterSpec` (0.035).
-- **Haze**: with fog 0.0065 the far shore kept ~12 % of its contrast (measured: raw far Y 150 -> 216 in the frame), so C13 (-25..-35 under the sky) and C15 (contrast >= 0.25 x near) cannot both pass
-  by any material change (a black far shore would already sit at C13's edge). Test-map atmosphere is now fog 0.0010, inscattering (0.76, 0.78, 0.80) (~ the horizon luma), aerial scale 0.34 (`FOG_DENSITY` etc. in build_city.py).
-  Sweep (1080p, same material): fog .0018/.45 -> C13 -31 / C15 .20; .0015 -> -34.5 / .228; .0013 -> -37 / .245; .0011 -> -37.6 / .254; brighter inscattering +1.2..+2.9 Y and -0.008..-0.018 rms.
-  All levers ride one trade line: at sky Y 229 (blown, P4) the pass window is ~0.005 wide. **P4: lowering the sky band by ~10 Y (exposure or sky brightness) widens it to a comfortable margin; fog / inscattering are then free.**
+### What round 07 changed, root causes (details in round-07/README.md)
+- **CITY-SPEC measured once**: `spec_regions.json` (hand-placed boxes, 1080p + 4K per line), `city_spec_check.py` (texture statistics on the 1080p-normalised frame, mean-type statistics on the native frame; `--overlay <dir>` draws the boxes). r06's builder / critic disagreement was different boxes.
+- **`M_CityFarMass` never compiled in r06** (`vc.a` on an RGB-only custom-node input): every far-shore block of r03-r06 was the default grey material. New input kind `vca` in `make_material`. Then: per-24 m tone jitter `FarJit` (1.3), floor banding, ~1 block in 6 dark glass,
+  window grid never below 18 %; `M_CityFarLand` canopy / lots / street lines; `M_CityCliff` basalt columns; water Fresnel (`WaterSpec` 0.035).
+- **Atmosphere of the view maps** (`add_lighting`; `FOG_DENSITY` etc.): fog 0.0008, inscattering (0.76, 0.78, 0.80), aerial scale 0.34. **Trade line** (S4, sweep table in README): fog -1e-4 = C13 -1.7 Y and C15 +0.011; FarGain +1 = C13 +1.8 Y (only +0.8 above ~6) and C15 -0.004; FarJit +0.3 = C13 -1.5 Y, C15 +0.005.
+  MPC values (saved asset and script defaults agree): FarGain 7.6, FarJit 1.3, FarLandGain 1.6, WaterSpec 0.035, SunK 0.08.
+- **Facade albedo cap `SunK`**: sun-facing base colour luma limited to SunK via `ResolvedView.DirectionalLightDirection` (N.L ramp 0..0.4), faded out over 0.9-2.2 km so the far skyline keeps its albedo; in M_CityFacade / M_CityDetail / M_CityRoof; `AlbKnee/AlbSlope/F0Scale` in the facade.
+  C1 10/18 -> 17/18. **Do not put code after a `//` on the same line inside a Custom-node string**: the interrupted WIP did that (the whole cap commented out; the committed 20:20 frames had no cap).
+- IP: MTA slogan, racing-franchise key art, sneaker photography replaced by original art (`ip_original_art.py`); 0 OCR hits. Sign atlases `never_stream`; `tsFrames` panelled cladding; 7 shop-interior types.
+- Scripts: `run_commandlet.sh` (headless `-nullrhi` commandlet through the GPU slot) is the way to run any editor script; `launch_editor.sh` (`open -n`, not slot-wrapped) should not be used while the lock is in force. Neither `pkill -9`s an engine any more.
 
-### 3. Facade base colours (C1) — the albedo alone does not move it
-Light stone in sun is Y > 204 at albedo ~0.16-0.3: sun 6 vs sky fill 1.7 at +2 EV (test lighting) gives ~4x irradiance on sun-facing faces (albedo 0.02 still leaves a white tower at mean Y 110: glass reflection + emission).
-r07 caps the BASE colour luma of **sun-facing** surfaces (N.L via `ResolvedView.DirectionalLightDirection`, ramp 0..0.4) at MPC `SunK` (0.08; dark stone / glass and shaded faces untouched) in M_CityFacade, M_CityDetail, M_CityRoof, plus the generic
-soft knee `AlbKnee`/`AlbSlope` and `F0Scale` (0.8) in M_CityFacade. Tunable without recompiling: `tools/export/ue/run_commandlet.sh tools/export/ue/set_mpc.py SunK=..`.
-Cost: shaded facades that face the sun by orientation lose brightness (S1 crops 33.5 -> 24.0, 20.7 -> 17.1 mean Y; they already failed C2 because of the same lighting). **P4: a sun / sky-fill ratio near 4:1 instead of 30:1 fixes C1 and C2 together; then set SunK back to 1.**
-
-### 4. IP + defects
-- Removed with original art (`tools/export/ip_original_art.py`, table rows in `IP_EXCLUSIONS.md`): "SEE SOMETHING? SAY SOMETHING." (ts_ads L23), "NEON RACERS - OUT NOW" (L39 / L41) and "STAR RAIDERS 3 - OUT NOW" (L61), the Kinetix sneaker photo (P8, and P27 whose donor it was). IP OCR: 0 hits.
-- S1 blurry fascia: the shared 1 GB texture-streaming pool dropped mips of the sign atlases; `never_stream` on street_signs / signs / ts_ads / city_signart / interiors (the pool itself is a `Config/` setting for the integrator / P4).
-- S5 flat stair wall and block = `tsFrames` (M_CityFrame): rebuilt as panelled cladding with seams, rivets, brushed streaks and rain streaks; M_CityVC (every untextured vertex-colour mesh) got 3-scale tone variation + speckle + cast-panel joints.
-- Shop windows: `fh1` samples the smooth noise texture, so neighbouring bays drew the same type; real hash + 3 new interior types (restaurant, bookstore, gallery / electronics) -> 7 types.
-
-### 5. Build-script integration fixes (orchestrator request)
-`build_city.py`: loads `StaticMeshEditor` itself; `kit` is a default step (one pass: `clean,tex,mat,mesh,proto,kit,map`; on a clean project it only imports the kit meshes, `map` spawns them); paths from `SM2_CITY_SCRATCH`, `SM2_CITY_EXPORT`,
-`SM2_CITY_TEX`, `SM2_CITY_JOBS`, dev port from `SM2_CITY_PORT` (manifest map URLs are reduced to `/assets/...`, `tools/export/citypaths.py`); shell scripts derive the worktree from their own location; `launch_editor.sh` takes `SM2_CITY_MCP_PORT`.
-New `tools/export/ue/run_commandlet.sh <script.py> [k=v]` = headless `-nullrhi` run of any editor script through the GPU lock (materials, MPC, maps need no window; used for every step of r07).
-**Detailed city block = 768 m long (tiles ix -1..1 -> x -256..512); the 30 s route leaves it at ~22.6 s. Not extended in r07, recorded only.**
+### How a round runs now (measured wall times; the queue for the shared GPU took 5-15 min per wait on 2026-09-30)
+ONE slot hold for the whole sequence (nested `gpu_slot.sh` calls pass through, so wrapping the driver script once is legal and avoids a queue wait per capture; max hold 40 min, the r07 final was 14 min):
+```
+cat > final.sh <<'X'   # zsh; strictly sequential, one Unreal process at a time
+WT=/Users/midir/sm2-n1/city
+$WT/tools/export/ue/run_commandlet.sh $WT/unreal/WebHomage/Scripts/build_city.py steps=mat,map
+$WT/tools/export/ue/run_commandlet.sh $WT/tools/export/ue/set_mpc.py FarGain=7.6 FarJit=1.3 SunK=0.08 DebugMode=0
+$WT/tools/export/capture_round.sh <raw_dir>            # 8 views x (1080p, 4K), perf window 18-28 s
+X
+/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label city -- zsh final.sh
+python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN
+python3 tools/export/city_spec_check.py docs/night1/city/round-NN --yolo --ip --json docs/night1/city/round-NN/city_spec_check.json --md docs/night1/city/round-NN/city_spec_check.md
+python3 tools/export/builder_crops.py docs/night1/city/round-NN
+```
+Parameter sweeps: build variant maps with `tools/export/ue/atmo_variants.py` (`src=S4_perch_skyline names=d,e fog_d=.. aerial_d=.. fogc_d=..` -> `City_View_S4vd`) and capture them with `capture_one.sh <dir> S4vd 1920x1080`; MPC values with `set_mpc.py` (no recompile).
+Never run two of your own captures at once (one Unreal process per agent: do not queue a second hold while one is waiting; kill the waiting wrapper first). There is no `timeout` command on macOS; poll with a `for` loop.
 
 ### New gotchas (r07)
-16. Custom-node vertex colour input is RGB; alpha needs the `A` output (`kind 'vca'`). A failed compile = default material in -game, silently.
-17. Editor Python / materials / MPC / maps run fine in a `-nullrhi` commandlet; shaders compile lazily in the -game process. The fresh -game start is where errors show (`grep "Failed to compile" <capture>.log`).
-18. Sun direction in a material: `ResolvedView.DirectionalLightDirection.xyz` (direction TOWARD the atmosphere sun) compiles in Custom nodes.
-19. After the 2026-09-29 16:43 GPU incident: <= 1 Unreal process per agent, everything through `gpu_slot.sh capture`, `wait_slot.sh` cap 4 (`SM2_MAX_UNREAL`).
-20. The `S4v?` variant maps (`atmo_variants.py`, names a..p) are scratch in Content/ (not committed); `S4vm` was overwritten (it was the fog-off mask map).
+16. Custom-node vertex colour input is RGB; alpha needs the `A` output (`kind 'vca'`). A failed compile = default material in -game, silently: `grep "Failed to compile" <capture>.log`.
+17. Editor Python / materials / MPC / maps run fine in a `-nullrhi` commandlet; shaders compile lazily in the -game process.
+18. Sun direction in a material: `ResolvedView.DirectionalLightDirection.xyz` (toward the atmosphere sun) compiles in Custom nodes. The material cannot know shadows.
+19. After the 2026-09-29 16:43 GPU incident: <= 1 Unreal process per agent, everything through `gpu_slot.sh capture`, `wait_slot.sh` cap 4 (`SM2_MAX_UNREAL`). After the 23:08 kernel panic: never SIGKILL an engine (`stop_ue.sh`), never launch while an UnrealEditor is stuck exiting (the lock refuses). `Scripts/run_game.sh` still `kill -9`s after its `-timeout` (900 s; not P1's file): a normal capture takes ~50 s, so watch and use `stop_ue.sh` first.
+20. `S4v?` variant maps (a..r) are scratch in Content/ (not committed, regenerable with atmo_variants.py); the last sweep left S4va..S4ve there.
+21. `set_mpc.py` prints the parameter dict to `Saved/Logs/city_cmdlet.log`, not to stdout: `grep -a "'FarGain'" .../city_cmdlet.log | tail -1`.
+22. Comment lines in a Custom-node string swallow the rest of their physical line: one statement per line.
+23. Lumen bounce: capping near albedo also lowers the far shore Y by ~1 (S4 -1.2) and river by ~0.8: re-measure S4 after any near-field albedo change.
+Detailed block = 768 m long (tiles ix -1..1 -> x -256..512); the 30 s route leaves it at ~22.6 s. Not extended.
 
 ## State (round 06, still valid)
 - Critic rounds: r01-r05 FAIL (r05: facades 5, street 4, skyline 3, Manhattan 4, IQ 5; gap: far skyline, S4 and everything past ~1 km).
@@ -67,7 +87,7 @@ New `tools/export/ue/run_commandlet.sh <script.py> [k=v]` = headless `-nullrhi` 
   (real water F0 0.02; 0.5 read as milky glass). New build step **`far`** (re-imports `farCityMass` as `SM_*_r06`, retargets the other far meshes, swaps level
   actors); `build_geo_level` prefers `_r06` / `_r04` re-imports, so a `map` step no longer reverts them (before this, round-05 map rebuilds silently restored the
   original tsFrames housing).
-- **Atmosphere of the view maps** (`add_lighting`, args `fog=`, `fogc=`, `aerial=`; variants: `tools/export/ue/atmo_variants.py`): height fog 0.0065, sky-neutral
+- (SUPERSEDED by r07: fog 0.0008, aerial 0.34, inscattering 0.76,0.78,0.80) **Atmosphere of the view maps** (`add_lighting`, args `fog=`, `fogc=`, `aerial=`; variants: `tools/export/ue/atmo_variants.py`): height fog 0.0065, sky-neutral
   inscattering (0.6, 0.62, 0.64) (r05: blue 0.32, 0.40, 0.52), SkyAtmosphere `aerial_pespective_view_distance_scale` 1.0 (sic, UE spells it "pespective").
   History: I first thinned the haze (fog 0.001, aerial 0.25) for the best-looking far field, then CITY-SPEC C11-C15 (added mid-round) asked for the opposite
   (far shore 25-35 luma under the sky, aerial contrast falloff 0.25-0.45): the current values are the spec-driven ones. The sky is blown (Y 229, manual exposure
@@ -109,22 +129,23 @@ Open: S1's right tower may now be too dark (median 0.07); DayEmisK / InteriorGai
 
 ## Commands (all from the worktree root)
 ```
-npx vite --port 5202 --host 127.0.0.1 --strictPort &        # browser city (exporter needs it)
-tools/export/ue/launch_editor.sh                            # P1 editor, OFFSCREEN (-RenderOffScreen -NoSound), MCP :8771, job server; waits while 3+ Unreal run
-tools/export/build_city.sh                                  # export -> patch_export -> prep textures (IP sanitiser) -> street signs -> street kit -> street props -> gen shaders -> build_city.py
-SKIP_EXPORT=1 STEPS=mat,map tools/export/build_city.sh      # partial rebuild (steps: clean,tex,mat,mesh,proto,map,frames,kit,far)
+npx vite --port 5202 --host 127.0.0.1 --strictPort &        # browser city (exporter needs it; only for a full rebuild with export)
+tools/export/build_city.sh                                  # FULL: export -> patch_export -> prep textures (IP sanitiser) -> street signs -> street kit -> street props -> gen shaders -> build_city.py (this last step goes through uejob.py = a P1 EDITOR
+                                                            # with the job server; on a clean checkout run the last line of that script through tools/export/ue/run_commandlet.sh instead: `run_commandlet.sh unreal/WebHomage/Scripts/build_city.py steps=clean,tex,mat,mesh,proto,kit,map`)
+tools/export/ue/run_commandlet.sh <script.py> [k=v ...]     # ANY editor script (build_city.py steps=mat,map | set_mpc.py FarGain=.. | atmo_variants.py ...) headless -nullrhi, through gpu_slot; needs the P1 editor closed
+tools/export/ue/launch_editor.sh                            # legacy: `open -n` editor with MCP :8771 + job server; NOT slot-wrapped, do not use while the GPU lock is in force
 tools/export/capture_round.sh <raw_dir> [ids...]            # run_game.sh per view, 1080p + 4K, perf + GPU util (waits for a free Unreal slot)
 python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN   # JPGs + perf.json + README
 python3 tools/export/window_stats_round.py <lit_dir> <mask_dir> out.json [crop_dir]  # window brightness test (mask = DebugMode 3 frames)
 node tools/export/browser_views.mjs <out> [ids]             # browser captures from the same cameras (A/B)
 python3 tools/export/ue/uejob.py file.py [k=v]  |  -c "code" # run editor Python in the P1 editor (JOB_ARGS dict)
 ```
-Stop editor: `pkill -9 -f "/Users/midir/sm2-n1/city/unreal/WebHomage/WebHomage.uproject"` (only yours). **Owner rule 2026-09-29: the editor is
+Stop an engine of yours: `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "[/]Users/midir/sm2-n1/city/unreal/WebHomage"` (drivers first, SIGTERM, wait; NEVER `kill -9` a rendering engine). **Owner rule 2026-09-29: the editor is
 closed whenever it is not needed** (captures use `run_game.sh`, they do not need it) and no Unreal process is started while 3+ are running
 (`tools/export/ue/wait_slot.sh`). Typical r04 loop: launch editor -> `uejob.py build_city.py steps=mat` / set MPC -> stop editor -> capture.
 Full build ~9 min, export ~2 min, mat step ~15 s (the shader compiles lazily in the game process), one view capture ~70-120 s.
 
-## Job runner
+## Job runner (legacy editor route; r07 uses run_commandlet.sh instead)
 The official MCP has no Python exec, and `-ExecutePythonScript` QUITS the editor. The editor runs `job_server.py` (slate tick, polls
 `_scratch/city/uejobs/*.py`, writes `.out` / `.done`). Jobs run on the game thread; a modal dialog blocks it (deleting referenced maps /
 materials / meshes did that) -> build_city.py never deletes referenced assets: maps are opened + emptied, materials reused, and the
@@ -143,9 +164,9 @@ No numpy inside the editor's Python.
 
 ## MPC_City (Content/City/Materials/MPC_City, defaults in build_city.py MPC_DEFAULTS)
 NightK, DnTime, InteriorGain 0.5, ShopGain 0.7, EmissiveScale 3.0 (r03) plus r04: **DayEmisK 0.22** (facade interior / sign emission scale in
-daylight, 1.0 at night: rooms behind glass are ~10x darker than sunlit masonry), **GlassSpec 0.5** (UE Specular of dielectric sash glass = F0 0.04),
+daylight, 1.0 at night: rooms behind glass are ~10x darker than sunlit masonry), **GlassSpec 0.5** (UE Specular of dielectric sash glass = F0 0.04), r06-r07: **FarGain 7.6, FarJit 1.3, FarLandGain 1.6, WaterSpec 0.035** (far field), **AlbKnee 0.30, AlbSlope 0.48, F0Scale 0.8, SunK 0.08** (facade albedo cap, C1),
 **DebugMode**: facade: 1 emissive only, 2 no emissive, 3 window mask (red = glass pixel; used by window_stats), 4/8/9 gLodI, 5/7 raw interior
-atlas, 6 interior(), 10 raw signs atlas, 11 facade-only mask (facade_c1.py); r06 far field, mode 3: coast + far land red, water blue, far-shore blocks green; mode 9 (M_CityFarMass): vertex alpha. Change values without recompiling: `uejob.py tools/export/ue/set_mpc.py Name=value` (edits
+atlas, 6 interior(), 10 raw signs atlas, 11 facade-only mask (facade_c1.py); r06 far field, mode 3: coast + far land red, water blue, far-shore blocks green; mode 9 (M_CityFarMass): vertex alpha. Change values without recompiling: `run_commandlet.sh tools/export/ue/set_mpc.py Name=value` (or `uejob.py` in an editor) (edits
 the MPC defaults and saves; `tools/export/capture_one.sh <dir> <id> [WxH]` = single frame).
 
 ## Facade patch layer (gen_shaders.mjs, r04) — what made the windows read as glass
@@ -177,11 +198,11 @@ Result: dark glass with Lumen reflections, visible room interiors (desks, painti
 15. Debug recipe: replace the return of a Custom node by a debug value scaled by 0.05 (emissive 1.0 saturates at the +2 EV manual exposure), capture
     1080p in `-game`, read pixel values with PIL.
 
-## Known problems / next rounds (r06 additions first)
-- Far field: the far-shore blocks are grey-warm boxes with a window grid; no brick / trees / parks colour variety like the browser (the browser bakes park
+## Known problems / next rounds (round-08 to-do list is at the top; this list is older and partly fixed: items marked FIXED r07)
+- Far field (r06 text; r07 added tone jitter, banding, dark-glass blocks, canopy clumps, basalt cliff, see top): the far-shore blocks are boxes with a window grid; no brick / trees / parks colour variety like the browser (the browser bakes park
   greens and lot tones into the far-land map, which is used, but the 2-4 km facade ring stays tone-flat). No bridges texture work, no far water towers.
   Horizon hinterland (> 5 km) is sub-pixel windows only. Hazy sky band stays bright (sky / exposure belong to P4).
-- Test-map atmosphere (fog 0.0065, aerial 1.0, sky-neutral) is mine; if P4's look pass re-lights the maps, re-run spec_farfield.py / far_stats.py / facade_c1.py.
+- Test-map atmosphere (r07: fog 0.0008, aerial 0.34, inscattering 0.76,0.78,0.80) is mine; if P4's look pass re-lights the maps, re-run `city_spec_check.py` (it supersedes spec_farfield.py / far_stats.py / facade_c1.py, which stay for mask captures).
 - The window-brightness numbers of round 04 (window_stats_round.py) were superseded by CITY-SPEC C1 (facade_c1.py); the r04 script still works with DebugMode 3.
 - CITY-SPEC (docs/night1/city/SPEC.md on Opus-5.5-Loop-Night-1) lists C4-C10 not yet worked: parked cars / traffic (P6), S3 water towers (>= 2 in frame), street-tree count in S1.
 - `frames` / `far` steps leave the previous imports behind as `*_old<ts>` assets; a `clean` rebuild removes them.
@@ -194,7 +215,7 @@ Result: dark glass with Lumen reflections, visible room interiors (desks, painti
   is a dark band; the glass reflects the sky (white panes at grazing angles).
 - S5 / S6 (Times Square): the kit also dresses those podiums; tree guards there still hold no trees; red steps flat; white clipping on the curb.
 - Sunset (S7) and night: interior emission only follows NightK; a dusk ramp belongs to P4.
-- Far shore / coast (S4): lavender untextured boxes and a white shoreline band; bridges and piers missing (critic secondary issue).
+- FIXED r07 (lavender boxes, white shoreline slabs); bridges and piers on the far shore still missing (critic secondary issue).
 - No traffic or pedestrians (P6); sidewalk joints are visible in sun only (the avenue sidewalks sit in canyon shade).
 - Perf r05: see round-05 README; captures ran with other Unreal sessions active, numbers are contaminated (GPU util column).
 - Window brightness test (r04 numbers in the section above) was not re-measured in r05 (upper-floor glass unchanged; SkyLight 1.0 -> 1.7 brightens
