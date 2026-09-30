@@ -5,7 +5,7 @@
 # (Same mechanism as tools/export/ue/job_server.py of P1, with its own job directory.)
 import unreal, os, sys, io, time, traceback, glob
 
-JOBS = os.environ.get('SM2_LOOK_JOBS', '/Users/midir/sm2-n1/_scratch/look/uejobs')
+JOBS = os.environ.get('SM2_LOOK_JOBS', os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'uejobs'))
 os.makedirs(JOBS, exist_ok=True)
 _last = [0.0]
 

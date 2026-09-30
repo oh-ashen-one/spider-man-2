@@ -1,62 +1,78 @@
-# P4 Look, lighting, post, perf: handoff (round 01)
+# P4 Look, lighting, post, perf: handoff (round 02)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Branch `night1/look`, worktree `~/sm2-n1/look`, UE MCP 8774, dev port 5205. Owns `/Game/Look`, `/Game/Tests/Look`, `tools/perf_ue/`,
-`Scripts/build_look.py`, `Scripts/look_presets.json`, `docs/night1/look/`. Nothing in `Content/` is committed: scripts rebuild everything.
+Branch `night1/look`, worktree `~/sm2-n1/look`, UE MCP 8774, dev port 5205. Owns `/Game/Look`, `/Game/Tests/Look`, `tools/perf_ue/`, `Scripts/build_look.py`, `Scripts/look_presets.json`,
+`Scripts/look_ts_screens.json`, `Source/WebHomage/Look/` (new in round 02), `docs/night1/look/`. Nothing in `Content/` is committed: scripts rebuild everything.
+Numbers of the round: `round-02/NOTES.md` (capture facts + test numbers), `round-02/TESTS.md` (spec table), `round-02/PERF.md`. Targets: `docs/night1/look/SPEC.md` (LOOK-SPEC L1..L20).
 
-## State (end of round 01)
-- **City rebuilt in this worktree** with P1's untouched pipeline on P4's own port / scratch (`tools/perf_ue/rebuild_city.sh`): export 507 tile meshes + 102 prototypes
-  (about 40 s of Chrome), import into `/Game/City` + `/Game/Tests/City` about 9 min in the editor.
-- **`Scripts/build_look.py`** (idempotent, runs headless in about 25 s, no editor needed) builds:
-  - `/Game/Look/Rigs/Look_Rig_<midday|golden|night>`: ALL lighting per preset, as a sublevel: SkyAtmosphere (aerial perspective), sun (physical lux, temperature, 0.54 deg disc)
-    + moon (night, atmosphere light 1), real-time-capture SkyLight, VolumetricCloud, ExponentialHeightFog + volumetric fog + second high haze layer,
-    unbound PostProcessVolume (Lumen GI + reflections, histogram exposure range per preset, bloom, lens flare, vignette, fringe, filmic slope/toe/shoulder, grade, motion blur, AO),
-    night star dome (`M_LookStars`), and a Level Sequence `LS_Look_<preset>` (auto-play, looping) that holds the `MPC_City` values (NightK, DnTime, InteriorGain, ShopGain, EmissiveScale)
-    so a map is self-contained (the MPC asset itself is never edited). All numbers live in `Scripts/look_presets.json` (data, not code).
-  - `/Game/Look/Look_Boxes`: 6683 invisible WorldStatic boxes from the export's `collision.json` (wall, glass, hero, spire, bulkhead, watertower) = the traversal's "building boxes".
-  - `/Game/Tests/Look/Look_Midtown` (midday), `Look_Midtown_golden`, `Look_Midtown_night`: city geometry + Look_Boxes + rig + PlayerStart, `WebTravGameMode`
-    (the P3 hero with the real HeroDev mesh runs through the city); and `Look_View_<preset>_<S1..S8>`: the P1 shot cameras under each preset (24 maps).
-- **Traversal in the city works**: `-WHTravScript=tools/perf_ue/scripts/city_swing_avenue.json` gives a 30+ s swing chain up the avenue, 7067 boxes indexed, telemetry in `perf*/**/trav_telemetry.csv`.
-- **Tools**: `run_perf.py` (3840x2160 real-gameplay perf, CSV profiler + WH_PERF, GPU util before/during, contamination flag), `sweep_views.sh`, `capture_looks.py` (stills, clips, NOTES.md),
-  `make_perf_md.py`, `launch_editor.sh` + `job_server.py` + `uejob.py` (file job server for the P4 editor; run any .py in it), `rebuild_city.sh`, `rebuild_look.sh`.
-- Evidence: `docs/night1/look/round-01/` (stills, 3 clips, NOTES.md neutral facts, PERF.md, perf run folders).
+## State (end of round 02)
+- Round-01 critic (`round-01/CRITIC.md`): FAILS, biggest gap = night street lighting and exposure. Round 02 is that gap plus the golden numbers of the new spec. Merged `Opus-5.5-Loop-Night-1` at the start
+  (P1 city round 4: new facade emission, signage, leaves, props; C++ traversal / characters). The city was re-exported and re-imported (`rebuild_city.sh`: 29 min in an editor without DDC).
+  midday / golden differ from round 01 mostly because of that city update, not because of look settings.
+- **Night** (`look_presets.json` presets.night, `build_look.py` step `night` -> `/Game/Look/Look_NightLights`, an always-loaded sublevel of the night maps):
+  - auto exposure limited to EV 1.0 .. 4.3 with bias -0.3 (dark rooftop / aerial views get the gain, the lamp-lit street views stay dark enough for distinct pools; a fixed EV 3.7 gave S3 mean 17 and S7 25),
+    white balance 6100 K, contrast 1.35, `color_offset` black lift (0.004 / 0.005 / 0.009), lens flare 0.25, bloom 0.85; moon 30 lux (6500 K); sky light 5 (tint 0.85 / 0.9 / 1.0); Rayleigh scale 0.012;
+    four unshadowed low-elevation horizon "city glow" directional fills (`fills`; they light facades by cos(incidence) but streets only by sin(8 deg), so the road pools stay distinct).
+  - 634 street lamps (layout.json `instances.lamp`, the browser's own positions, head = base + 2.9 m arm, 9.15 m up): spot pool (7000 cd, 46 deg outer) + small halo point light + emissive head,
+    temperatures 3500 / 4300 / 5500 K, volumetric scattering on.
+  - about 900 storefront spot lights on the street-facing ground-floor faces of the footprints (sidewalk spill), 160 coloured spot lights in front of the Times-Square-like LED screens
+    (`look_ts_screens.json`, positions from `tools/perf_ue/extract_ts_screens.py`; the screens' own ad content is IP-excluded, their emission is black, so this restores the district's colour spill),
+  - STAND-IN TRAFFIC (P6 owns real traffic): about 1300 box-and-cylinder car proxies in the avenue / street lanes (NoCollision, no livery / brand, generic paint palette), head lights (spot on the road) and tail lights (red point),
+    emissive light bars. Replace with P6's vehicles when they exist; keep the light setup (`lights.cars`).
+  - damp streets: one big deferred decal (`M_LookWet`, roads + sidewalks by reconstructed normal, world-noise puddles) so pools and lights read as reflections.
+  - `AWHLookHeroLight` (C++, `Source/WebHomage/Look`, placed in the night level): rim + fill + top light that follow the player's pawn on lighting channel 1 only (the pawn's meshes are on 0 + 1),
+    so the hero stays readable in dark canyons without lighting the world.
+- **Golden** retuned to the spec (L1 / L5 / L6): sun 9 deg elevation, az 238 (behind the buildings at the end of the avenue views), 4200 K, warm sky-light tint, white balance 7300 K, lens flare 0 (no sourceless ghost),
+  three low fills, colour offset black lift, exposure bias 0.95, less aerial haze (distance scale 3), Mie 0.01. **Midday unchanged** (`look_presets.json` midday block untouched).
+- **Tools** (all under `tools/perf_ue/`): `night_tests.py` (round-1 critic tests: mean luma / share < 10, pools in the bottom third, hero pixel-box luma per frame from the P3 hero-only depth mask),
+  `look_lum_check.py` (LOOK-SPEC L1..L8, L13, L14 numbers per still), `extract_ts_screens.py`, `ensure_boxes.py`, `capture_looks.py` (now: GPU slot, shader warm-up render, 0.8 s pre-roll trimmed, hero-luma test,
+  tests of night S1 / S6), `run_perf.py` (GPU lock `perf`, sidecar `perf_gpu.json`), `launch_editor.sh` (`-RenderOffScreen -NoSound`, waits while 3+ editors run).
 
-## Commands (from the worktree root; UE 5.8.3 at /Users/Shared/Epic Games/UE_5.8)
+## Commands (from the worktree root; UE 5.8.3 at /Users/Shared/Epic Games/UE_5.8; scratch root env `SM2_LOOK_SCRATCH`, default `/Users/midir/sm2-n1/_scratch/look`)
 ```
-unreal/WebHomage/Scripts/build_editor.sh                   # C++ once (about 35 s), editor closed
-tools/perf_ue/launch_editor.sh                             # only for the city import / interactive work (MCP 8774, job server)
-tools/perf_ue/rebuild_city.sh                              # ~10 min; then: pkill -9 -f "$PWD/unreal/WebHomage/WebHomage.uproject"
-"/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor" $PWD/unreal/WebHomage/WebHomage.uproject \
-  -run=pythonscript -script=$PWD/unreal/WebHomage/Scripts/build_traversal.py -unattended -nullrhi   # hero + Trav_Canyon, once (about 30 s)
-tools/perf_ue/rebuild_look.sh [geo,rigs,maps] [midday,golden,night]   # headless, editor closed; geo must re-run after every city rebuild
-tools/perf_ue/capture_looks.py --round docs/night1/look/round-NN --shot-times 12,20 --clips
-tools/perf_ue/run_perf.py --out docs/night1/look/round-NN/perf_a --window 22:52 --wait-idle 60
-tools/perf_ue/make_perf_md.py docs/night1/look/round-NN
+unreal/WebHomage/Scripts/build_editor.sh                      # C++ (Traversal, Characters, Look), editor closed
+tools/perf_ue/launch_editor.sh                                # only for the city import / interactive work (MCP 8774 or $SM2_LOOK_MCP_PORT, job server); pkill -9 -f "$PWD/unreal/WebHomage/WebHomage.uproject"
+tools/perf_ue/rebuild_city.sh                                 # export + import (10-30 min) and, automatically, the box / look rebuild below
+tools/perf_ue/rebuild_look.sh [geo,rigs,night,maps] [midday,golden,night]     # headless, editor closed (about 1 min for everything)
+tools/perf_ue/ensure_boxes.py [--check]                       # re-runs `geo` when the traversal boxes are older than the city geometry level
+tools/perf_ue/capture_looks.py --round docs/night1/look/round-NN --clips  # stills S1..S8 x presets x 4K/1080p + 3 swing clips; GPU slot 'capture'
+tools/perf_ue/run_perf.py --out <dir> --map /Game/Tests/Look/Look_Midtown_night --configs tsr50 --fixed-step     # GPU lock 'perf' (exclusive), sidecar perf_gpu.json
+tools/perf_ue/look_lum_check.py --dir docs/night1/look/round-NN/stills     # spec table
+tools/perf_ue/night_tests.py all --still <night_S1.png> [--clip-frames <dir> --csv <telemetry.csv> --skip N]
 ```
-Iterate on a look: edit `look_presets.json`, `rebuild_look.sh rigs <preset>` (about 20 s), `Scripts/run_game.sh <dir> -map /Game/Tests/Look/Look_View_<preset>_<S#> -res 1920x1080 -shots 14 -exec "r.ScreenPercentage 100"`.
+Iterate on a look: edit `look_presets.json`, `rebuild_look.sh rigs <preset>` (rig) or `night night` (night level; about 20 s), then
+`/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label look -- unreal/WebHomage/Scripts/run_game.sh <dir> -map /Game/Tests/Look/Look_View_<preset>_<S#> -res 1920x1080 -shots 14,20 -exec "r.ScreenPercentage 100"`.
 
-## Gotchas
-- **GPU contention makes frame times meaningless.** Device utilisation was 40 to 100 % from other agents' editors on every run; identical builds vary 2x. PERF.md flags it. Re-measure on an idle GPU (`run_perf.py --wait-idle`).
-- `build_look.py` patches P1's `City_Midtown_Geo` in place (component object type WorldDynamic, ground actors tagged `WHGround`): the traversal indexes WorldStatic primitives by bounds as building boxes and one merged 256 m facade tile would be one giant solid.
-  Re-run `geo` after `build_city.py`. Duplicating a map asset with `EditorAssetLibrary.duplicate_asset` leaves a leaked UWorld and crashes the next `load_map` (do not).
-- MPC values are applied by a Level Sequence MPC track (`track.set_editor_property('mpc', ...)`, not `material_parameter_collection`). A stale unfinished `.py` in `_scratch/look/uejobs` re-runs when the editor restarts.
-- Engine property names: `aerial_pespective_view_distance_scale` (engine typo), `enable_volumetric_fog`, `reflection_view_sample_count_scale_value`; `rayleigh_scattering_scale` default is 0.0331 (1.0 turns the sky orange).
-- End-of-session scratch (`_scratch/look`) keeps only `export/midtown3x3/*.json` (`collision.json` is what `geo` reads); meshes, textures, captures and the Chrome profile are deleted. `rebuild_city.sh` regenerates them (about 10 min).
-- Headless `-nullrhi` builds the maps and the sequence fine; shaders compile at first game run (first run of a new map is slow, later ones use the project DDC).
-- Any WorldStatic primitive with collision in a rig or map becomes a traversal "building box" by its bounds (the night star dome had to be `NoCollision`: a 600 km sphere pushed the hero out of the city). Check `WebTravWorld: N building boxes indexed` in the log (7067 expected).
-- A one-time `Ensure condition failed: OriginX <= OriginMax` (DoubleFloat.cpp) is logged by the distance field update: the 29k far `hinterland` instances (P1) sit tens of km from the origin. Not fatal.
-- `run_game.sh -movie` dumps to `Saved/Screenshots/MacEditor` (shared by every run of this worktree): never run two movie runs at once.
-- Commit only mp4/jpg/json/md: content, DDC and Intermediate stay out (`unreal/WebHomage/{DerivedDataCache,Intermediate}` are deleted at the end of a session).
-- Console-variable overrides that are not in `DefaultEngine.ini` (integrator-owned) go through `run_game.sh -exec "cvar value,..."`.
+## Dependencies and gotchas
+- **Traversal boxes depend on the city build.** `build_look.py` step `geo` patches P1's `City_Midtown_Geo` in place (every component WorldDynamic, ground actors tagged `WHGround`) and rebuilds `/Game/Look/Look_Boxes`
+  (6683 invisible WorldStatic boxes from `collision.json`: the hero's building boxes; log check `WebTravWorld: N building boxes indexed`, 7067 expected). It MUST re-run after every `build_city.py`.
+  Automated now: `rebuild_city.sh` ends by closing the editor and running `rebuild_look.sh geo,rigs,night,maps`; `capture_looks.py` and `run_perf.py` call `ensure_boxes.py` first (mtime check, re-runs `geo` when stale).
+  Any other builder that rebuilds the city (integrated map, `Scripts/build_city.py`) has to run `tools/perf_ue/rebuild_look.sh geo` (or `ensure_boxes.py`) afterwards.
+- Scratch is one root, `SM2_LOOK_SCRATCH` (default `/Users/midir/sm2-n1/_scratch/look`): city export (`export/midtown3x3`, `collision.json` and `layout.json` are what `build_look.py` reads; override with `SM2_CITY_EXPORT`),
+  job dir, capture frames. `SM2_LOOK_WORKTREE` (default `/Users/midir/sm2-n1/look`) is only the fallback for `build_look.py` when `__file__` is unset. Dev port `SM2_LOOK_DEV_PORT`, MCP port `SM2_LOOK_MCP_PORT`.
+- **`unreal.Color(...)` positional order is (B, G, R, A)**: use keyword arguments (`unreal.Color(r=, g=, b=, a=)`). The atmosphere `ground_albedo` (and `fix_type`) still use the positional form: midday / golden values are kept exactly as
+  round 01 (R and B swapped, near-grey), night's is nearly grey too. Do not "fix" it without recapturing midday / golden.
+- Post: `color_offset` is a black lift (pre-tonemap, works as a floor), `color_contrast` above 1 pivots around mid grey and darkens the road valleys (this is what separates the light pools).
+  `white_temp` above 6500 warms the image, below cools it. Fog inscattering luminance values are physical (cd/m2) and invisible at daylight EV: the visible haze is the SkyAtmosphere aerial perspective.
+- Lighting channels: the hero lights only work because `AWHLookHeroLight` sets the pawn's skeletal / static meshes to channels 0 + 1 at runtime; do not replace the hero pawn class without keeping that.
+- `Light max_draw_distance` is what keeps 4000+ unshadowed lights affordable (lamps 200 m, halo 80 m, storefront 80 m, car heads 80 m, tails 45 m, screens 300 m).
+- A deferred decal's `decal_blend_mode` property is deprecated in 5.8 (`translucent` is the default; the build logs a note, not an error).
+- GPU: every capture goes through `gpu_slot.sh capture` (max 2 at once, others wait), every perf run through `gpu_slot.sh perf` (exclusive, waits for < 15 % for 10 s). A perf number not taken that way is contaminated.
+- Headless `-nullrhi` builds the maps fine; shaders compile at the first game run (the first run after a DDC delete is slow). The first `-game` run of a map after `night` rebuilt is not slower than later ones (project DDC).
+- Commit only mp4 / jpg / json / md: content, DDC and Intermediate stay out (`unreal/WebHomage/{DerivedDataCache,Intermediate}` are deleted at the end of a session).
 
-## Open issues / next gaps (no self-assessment of quality; these are known facts)
-1. **60 fps at 4K is not reached in any measured config** (PERF.md, deterministic route, GPU shared): best sustained 5 s block 23.9 to 24.4 ms at TSR 50 % (1920x1080 internal),
-   28.5 to 28.8 ms at 67 %, 40.9 to 43.0 ms native; the budget is 16.7 ms. Top GPU passes: LumenScreenProbeGather (17 to 27 %), ShadowDepths (VSM), Basepass (facade material), then Nanite / lighting.
-   The heaviest view is S2 (42 m over the avenue, about 46 ms GPU vs 24 to 32 ms for the others). Single cvars (HWRT off, volumetric fog off, clouds off, lens flare + motion blur off, probe downsample 32)
-   each save only about 1 to 2 ms (variant table): the frame is broad, not one bad pass. Untested next steps: facade far LOD / Nanite for the facade tiles, VSM cost, Lumen quality via the post volume; measure only on an idle GPU.
-2. The far ring (river, opposite shore) is a blown-out white/violet band in every preset, independent of the lights (P1 far LOD / hinterland material).
-3. Tree leaves render grey and blow out on sun-facing faces (P1 `M_CityLeaves`).
-4. Night: no street-lamp pools (`lampPool` prototypes are skipped by the city build), so street level is dark; stars are a simple procedural dome; no wet asphalt or rain.
-5. No depth of field, no lens dirt, no sun shafts other than volumetric fog; cloud layer shows banding at low sample counts.
-6. Presets are a fixed set of three; a runtime time-of-day blend (one rig, animated sun + MPC) is not built.
+## Start of next round
+- `Opus-5.5-Loop-Night-1` has moved on (city round 6, traversal round 9, C++ changes, Manhattan integration): merge it first, `unreal/WebHomage/Scripts/build_editor.sh` (editor closed), then `tools/perf_ue/rebuild_city.sh`
+  (city re-import; it ends with the box / look rebuild), then `tools/perf_ue/capture_looks.py`. Round 02's stills / clips are against the round-4 city of the previous merge.
+- Hard GPU cap (RULES.md, 2026-09-29 16:43): at most 2 Unreal processes of any kind across all agents; every Unreal launch goes through `gpu_slot.sh capture` (`rebuild_look.sh`, `capture_looks.py`, `run_perf.py`, `launch_editor.sh` do it);
+  builds are `-nullrhi` commandlets; `capture_looks.py` stops after 2 consecutive failed game runs and resumes (skips stills that exist; `--redo` recaptures).
+
+## Open issues / next gap (facts, not self-assessment)
+1. Perf: 60 fps at 4K is not reached: clean (GPU lock, exclusive) TSR 50 % runs are 41.0 ms midday / 47.5 ms night average (`round-02/PERF.md`); the perf piece F profiles the integrated map and will send exact lighting changes. Night adds a `Lights` pass of about 2.5 ms GPU and +6.5 ms frame time.
+2. Night stand-in cars are boxes; the LED screens of the Times-Square-like district are black (IP exclusion); the far ring (river, opposite shore) is still a blown white / violet band in every preset (P1 far LOD).
+3. Numbers not met (`round-02/TESTS.md`, 1080p stills): night S6 bottom-third p90 94 (L14 wants >= 100); night S4 / S8 B-R +26.9 / +19.8 (L8 -13..13: the blue river and the violet far ring, P1); night S1 pools by `night_tests.py` = 4 with peaks 253 / 214 / 181 / 156 (target >= 4, no margin; L13 blob count 9 >= 5);
+   golden S3 mean 57.6 (L1 >= 61), S4 mean 104.8 (<= 100), S2 / S4 B-R -66.7 / -57.1 (> -55 too warm), S7 clipped 2.58 % (L5 <= 0.7 %: the sky column at the end of the street), S8 clipped 2.05 % (<= 1.8 %); midday S4 / S8 B-R +25.8 / +13.2 (blue aerial views) and S3 / S7 clipped 0.65 / 1.24 % (L4 <= 0.3 %), midday S4 mean 90.7 (> 89).
+4. From the integrated-map measurements (orchestrator note): S2 sunlit stone tower has 30.7 % of pixels above Y204 (spec C1/C2 <= 1.5 %), S1 shadowed tower too dark (mean 20, target 52), the river reads 13.5 luma brighter than
+   the far shore (C14: needs distance-dependent haze or lower sky exposure), sky blown (Y 229) under the city test maps' manual exposure. These are Look items for the next round.
+5. No depth of field, no lens dirt, no sun shafts other than volumetric fog; cloud layer banding at low sample counts; no runtime time-of-day blend (three fixed presets).

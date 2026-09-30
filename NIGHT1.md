@@ -49,3 +49,7 @@ Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, cri
 | Direction: wave planning, reconciling contradictory critic demands, deciding what runs next and whether a piece is done | **Fable 5.1, high** (`fable-director`, or Workflow `{model:'fable', effort:'high'}`) — sparingly (own weekly limit): one pass per wave, stall/oscillation diagnosis, final acceptance |
 
 Continuity between fresh builders comes from `docs/night1/<piece>/HANDOFF.md`, rewritten at the end of every round.
+
+## Overnight resume (owner, 2026-09-29 23:55)
+
+Weekly usage was at 50 %. Builders lean on **Sonnet 5.5 xhigh** for every piece; **Opus 5.5 high** builds the traversal flips (owner priority, from round 11) and runs every critic (never skipped); **Fable 5.1** only for a stalled/oscillating piece or final acceptance. Up to 3 rounds per piece tonight (perf 2).
