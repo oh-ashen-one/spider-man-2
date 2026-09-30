@@ -32,6 +32,8 @@ rel, att = [], []
 for i in range(1, len(R)):
     if mode[i - 1] == 'swing' and mode[i] != 'swing': rel.append(i)
     if mode[i] in ('swing', 'zip') and mode[i - 1] not in ('swing', 'zip'): att.append(i)
+# end of a web-less air phase (T4): a web / zip, or the air ends on a wall, a perch or the ground
+ends = [i for i in range(1, len(R)) if mode[i - 1] == 'air' and mode[i] != 'air']
 # flip programs: contiguous runs of flip_prog
 progs = []
 i = 0
@@ -70,7 +72,7 @@ for (a, b, name) in progs:
 worst4, worst2 = 0.0, 0.0
 bad4, bad2 = [], []
 for x in rel:
-    nxt = next((y for y in att if y > x), None)
+    nxt = next((y for y in ends if y > x), None)
     if nxt is None: continue
     g = T[nxt] - T[x]; worst4 = max(worst4, g)
     if g > 3.1: bad4.append((T[x], g))
@@ -78,7 +80,7 @@ for p, q in zip(att, att[1:]):
     g = T[q] - T[p]; worst2 = max(worst2, g)
     if g > 3.3: bad2.append((T[p], g))
 fails += len(bad4) + len(bad2)
-P('  T4 release -> next attach: max %.2f s (<= 3.1) %s%s' % (worst4, 'PASS' if not bad4 else 'FAIL', ''.join(' [%.2f s: %.2f]' % b for b in bad4)))
+P('  T4 release -> end of the web-less air (web / zip / wall / perch / ground): max %.2f s (<= 3.1) %s%s' % (worst4, 'PASS' if not bad4 else 'FAIL', ''.join(' [%.2f s: %.2f]' % b for b in bad4)))
 P('  T2 attach -> attach: max %.2f s (<= 3.3) %s%s   (attaches at %s)' % (worst2, 'PASS' if not bad2 else 'FAIL', ''.join(' [%.2f s: %.2f]' % b for b in bad2),
   ', '.join('%.2f' % T[a] for a in att)))
 # ---- C1 camera continuity (pcm = the rendered view; rows are one frame late, which does not change a per-frame delta)
@@ -105,6 +107,7 @@ cig = sum(1 for r in R if r.get('cam_in_geometry', '0') == '1')
 P('     camera in geometry: %d frames' % cig)
 # ---- C2 blend-out
 for (a, b, name) in progs:
+    if name == 'wallFront': continue  # the top-out uses the wall camera, not the flip camera
     k0 = f(R[b], 'flipcam_k')
     e = next((k for k in range(b, len(R)) if f(R[k], 'flipcam_k') < 0.02), None)
     if e is None: P('  C2 %.2f s %s: flip camera still blending at the clip end' % (T[b], name)); continue

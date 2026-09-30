@@ -113,9 +113,10 @@ public:
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bFlowTricks = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowFlipGK = 0.45f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowCatchRise = 2.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowCatchRise = 3.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMin = 6.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMax = 14.f;
+	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;
 	/** Round 12: gravity scale while a sky launch's flip program plays (from vz 9 m/s: ~5 m more climb, ends near its start height). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyFlipGK = 0.32f;

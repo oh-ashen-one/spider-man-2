@@ -1191,7 +1191,7 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 		// (callers pass the choice through FitFlip: a program that cannot finish before the floor is swapped for one that can)
 		static const FName LowP[] = { FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")), FName(TEXT("backSingle")) };
 		const int32 K = S.AutoFlipK++;
-		if (S.bSky) return FitFlip(SkyP[K % 3]);
+		if (S.bSky || bFlowChoose) return FitFlip(SkyP[K % 3]); // round 13: flow flips have the air for every program
 		return FitFlip(HeightAboveFloor() < 30.0 ? FName(TEXT("backSingle")) : LowP[K % 3]);
 	}
 	const double Sp = S.Vel.Size(), HS = HLen(S.Vel), VY = S.Vel.Z, Steep = Sp > 1 ? VY / Sp : 0;
@@ -1229,6 +1229,10 @@ double UWebTraversalComponent::AirTimeToClear() const
 FName UWebTraversalComponent::FitFlip(FName Want) const
 {
 	if (S.bSky) return Want; // sky launches are solved for their own long air (roofline apex, hang)
+	// round 13: a flow flip's climb is solved so the catch window opens FlowCatchRise m ABOVE the release (the lowest point of the
+	// program is the release itself): it only needs the release to be FlipFloorClear m over the floor (r13 probe: the ballistic test
+	// swapped every program for backSingle at the 9-14 m releases of the chain)
+	if (bFlowChoose) return HeightAboveFloor() >= double(FlipFloorClear) ? Want : NAME_None;
 	const double Air = AirTimeToClear();
 	auto Need = [](const FWebFlipProgram* P) { return P ? double(P->CatchT()) : 1e9; };
 	const FWebFlipProgram* P = WebFlips::Find(Want);
@@ -1474,7 +1478,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 	const bool bRoom = S.bSky || (HF > 5 && S.Vel.Size() > 9 && (S.Vel.Z > -5 || HF > 14)); // round 12: a sky launch always has room (f4 probe: a launch off a roof skipped the arming and the buffered trick started on the climb)
 	// round 04: tricks only on input (trick pressed up to 0.4 s before the release, or during the air phase below)
 	FName TrickN = NAME_None; // round 11: FitFlip may answer "no room for any flip" -> plain release
-	if (bRoom && S.TrickBuf > 0) { TrickN = ChooseTrick(I); S.TrickBuf = 0; }
+	if (bRoom && S.TrickBuf > 0) { bFlowChoose = bFlowTricks && !bJump && !S.bSky && !bLegacyTricks; TrickN = ChooseTrick(I); bFlowChoose = false; S.TrickBuf = 0; }
 	S.ArmedFlip = NAME_None;
 	if (!TrickN.IsNone() && S.bSky && WebFlips::Find(TrickN))
 	{ // round 12: armed on the climb, started at vz <= SkyTrickVz (StepAir) so the whole program plays in the apex hang
