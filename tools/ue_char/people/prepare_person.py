@@ -41,7 +41,7 @@ CFG = {
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
                  mask=(38, 42, 60), seed=11,
-                 tints={'Oxblood': dict(region='jacket', color=(58, 26, 24))}),
+                 tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
                   mask=(66, 24, 22), seed=23),
@@ -357,11 +357,16 @@ def tint_region(img, pos, cov, region, color):
 
 
 # ------------------------------------------------------------------------------------------------------ weapon tiles
+WEAPON_TEXTURED = True
 WEAPON_X0 = 3584            # strip columns [3584, 4096): solid material tiles for tools/ue_char/weapons/add_weapon.py
 WEAPON_TILES = [('wood', (150, 108, 66)), ('steel', (104, 108, 114)), ('polymer', (30, 30, 33)), ('grip', (44, 40, 38)), ('tape', (24, 24, 26))]
 
 
 def weapon_tiles():
+    if WEAPON_TEXTURED:   # round 05: procedural wood / steel / polymer / wrap / tape tiles (tools/ue_char/weapons/weapon_textures.py)
+        sys.path.insert(0, os.path.join(HERE, '..', 'weapons'))
+        import weapon_textures
+        return weapon_textures.strip(ATLAS, CONTENT_H, WEAPON_X0)
     h = ATLAS - CONTENT_H
     out = np.zeros((h, ATLAS - WEAPON_X0, 3), np.float32)
     rng = np.random.RandomState(5)
@@ -464,11 +469,17 @@ def main():
     tri = (wv[F].max(1) > 0) & (np.hypot(P[F][:, :, 0], P[F][:, :, 2] - cfg['axis_z']).max(1) < 0.14)
     nt0 = len(F)
     P, N, UV, F = M.subdivide_region(P, N, UV, F, tri)
-    P, moved = M.drape(P, F, cfg, cfg['seed'])
+    P, moved = (M.drape if cfg.get('drape') == 'hull' else M.hang)(P, F, cfg, cfg['seed'])   # round 05: hanging cloth (mask.hang); 'hull' = the round-04 convex-hull drape
+    nP0 = len(P)
+    F, ndrop = M.drop_cavity(P, F, cfg)                           # round 05: mouth / nostril cavity walls removed, their loops closed below
+    P, N, UV, F, nfill = M.fill_face_holes(P, N, UV, F, cfg)   # round 05: mouth slit / chin tears closed
+    moved = np.concatenate([moved, np.zeros(len(P) - nP0)])
+    F, nflip = M.fix_flips(P, F, cfg)                            # round 05: back-faced slivers at lips / nostrils
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
-    info.update(mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
+    N = M.cloth_normals(P, F, N, cfg)                            # round 05: smoothed cloth normals over the mask region
+    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
                 drape_max_cm=round(float(moved.max() * 100), 2))
     # ---- texture
     im4 = np.asarray(im.resize((ATLAS, ATLAS), Image.LANCZOS))
@@ -490,6 +501,11 @@ def main():
     variants = {}
     for tn, tc in (cfg.get('tints') or {}).items():
         variants[tn], npx = tint_region(im4, pos, cov, tc['region'], tc['color']); info['tint_%s_px' % tn] = npx
+        if tc.get('mask_color'):   # round 05: re-tint the cloth mask (per-channel ratio keeps the weave, folds and stitching)
+            ratio = np.asarray(tc['mask_color'], np.float32) / np.asarray(cfg['mask'], np.float32)
+            sel = mw > 0.05
+            v_ = variants[tn].astype(np.float32); v_[sel] = np.clip(v_[sel] * ratio[None, :], 0, 255)
+            variants[tn] = v_.astype(np.uint8); info['tint_%s_mask_px' % tn] = int(sel.sum())
     if a.which == 'brute':
         # the actor is widened by `girth` in X/Y at run time: shrink the head (and the top of the neck) by 1/girth so it keeps natural proportions
         f = 1.0 / SIZES['brute']['girth']

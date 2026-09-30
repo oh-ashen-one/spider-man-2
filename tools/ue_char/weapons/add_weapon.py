@@ -14,12 +14,25 @@ import skinfit  # noqa
 
 TILES = ['wood', 'steel', 'polymer', 'grip', 'tape']          # order of the tiles in prepare_person.WEAPON_TILES
 ATLAS, CONTENT_H, TILE_X0 = 4096, 3584, 3584
+TEXTURED = True        # round 05: procedural weapon textures (weapon_textures.py) instead of one solid colour per material
 
 
 def tile_uv(k):
     h = (ATLAS - CONTENT_H) / len(TILES)
     u = (TILE_X0 + 256) / ATLAS; v = (CONTENT_H + h * (k + 0.5)) / ATLAS
     return np.array([u, v])
+
+
+def part_uv(P, k):
+    """Round 05: real uvs into tile k (weapon_textures.py): u along the part's long axis, v = |angle around it| / pi (triangle wave: no seam)."""
+    h = (ATLAS - CONTENT_H) / len(TILES)
+    lo, hi = P.min(0), P.max(0)
+    a = int(np.argmax(hi - lo)); b1, b2 = [i for i in range(3) if i != a]
+    u = (P[:, a] - lo[a]) / max(hi[a] - lo[a], 1e-6)
+    ang = np.arctan2(P[:, b2] - (lo[b2] + hi[b2]) / 2, P[:, b1] - (lo[b1] + hi[b1]) / 2)
+    vt = np.abs(ang) / np.pi
+    mx = 6.0; w = ATLAS - TILE_X0 - 2 * mx
+    return np.stack([(TILE_X0 + mx + u * w) / ATLAS, (CONTENT_H + h * (k + 0.05 + 0.90 * vt)) / ATLAS], 1)
 
 
 def weapon_mesh(path):
@@ -35,7 +48,7 @@ def weapon_mesh(path):
             P = np.stack([P[:, 0], -P[:, 2], P[:, 1]], 1); N = np.stack([N[:, 0], -N[:, 2], N[:, 1]], 1)   # glTF -> Blender (weapon frame)
             F = skinfit.accessor(j, b, p['indices']).reshape(-1, 3).astype(np.int64)
             mn = j['materials'][p['material']]['name'].split('.')[0]
-            P_.append(P); N_.append(N); UV_.append(np.tile(tile_uv(TILES.index(mn)), (len(P), 1))); F_.append(F + n); n += len(P)
+            P_.append(P); N_.append(N); UV_.append(part_uv(P, TILES.index(mn)) if TEXTURED else np.tile(tile_uv(TILES.index(mn)), (len(P), 1))); F_.append(F + n); n += len(P)
     return np.concatenate(P_), np.concatenate(N_), np.concatenate(UV_), np.concatenate(F_)
 
 

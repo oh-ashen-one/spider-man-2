@@ -57,7 +57,21 @@ def lbs(g, Mf):
     return out
 
 
-def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
+def load_hull(name):
+    """Round 05 (CH18): the closed under-layer hull made by underlayer.py (None when it has not been generated)."""
+    try:
+        from p2paths import scr
+    except ImportError:
+        import sys; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import scr
+    f = os.path.join(scr('eval', 'hull'), name + '.npz')
+    if not os.path.exists(f):
+        print('citizen_rig: no under-layer hull for', name, '(run tools/ue_char/eval/underlayer.py)')
+        return None
+    z = np.load(f)
+    return {k: z[k] for k in z.files}
+
+
+def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hull=True):
     p, M = load_people()
     meta, var, g = load_citizen(name)
     bones = p['bones']
@@ -99,15 +113,25 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
     # mesh
     vb = (C[:3, :3] @ g['pos'].T).T
     nb_ = (C[:3, :3] @ g['nrm'].T).T
-    me = bpy.data.meshes.new(name)
-    me.from_pydata(vb.tolist(), [], g['idx'].tolist())
-    uvl = me.uv_layers.new(name='UVMap')
+    nv0 = len(vb)
+    H_ = load_hull(name) if hull else None
+    faces = g['idx']
     gx, gy = meta['grid']
     c, r = var['tile']
     tuv = np.c_[g['uv'][:, 0] * gx - c, 1.0 - (g['uv'][:, 1] * gy - r)]   # tile-local, Blender v up
+    loop_uv = tuv[faces.ravel()]
+    if H_ is not None:   # round 05: closed backing hull (one flat uv per triangle = the local garment texel), appended as extra vertices / faces
+        vb = np.vstack([vb, (C[:3, :3] @ H_['V'].T).T])
+        nb_ = np.vstack([nb_, (C[:3, :3] @ H_['N'].T).T])
+        faces = np.vstack([faces, H_['T'] + nv0])
+        loop_uv = np.vstack([loop_uv, np.repeat(H_['tri_uv'], 3, axis=0)])
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(vb.tolist(), [], faces.tolist())
+    uvl = me.uv_layers.new(name='UVMap')
     li = np.zeros(len(me.loops), int)
     me.loops.foreach_get('vertex_index', li)
-    uvl.data.foreach_set('uv', tuv[li].ravel())
+    assert len(li) == len(loop_uv)
+    uvl.data.foreach_set('uv', loop_uv.ravel())   # loops are in face order: 3 per triangle
     me.update()
     try:
         me.normals_split_custom_set_from_vertices([tuple(n / max(1e-9, np.linalg.norm(n))) for n in nb_])
@@ -131,9 +155,14 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
     top = np.argsort(-dense, 1)[:, :4]
     wt = np.take_along_axis(dense, top, 1); wt /= wt.sum(1, keepdims=True)
     g['si'], g['sw'], w = top, wt, wt
+    if H_ is not None:   # hull vertices skin like their 4 nearest garment vertices (weighted by 1 / distance)
+        dh = np.einsum('nk,nkb->nb', H_['nw'], dense[H_['nn']])
+        toph = np.argsort(-dh, 1)[:, :4]
+        wh = np.take_along_axis(dh, toph, 1); wh /= wh.sum(1, keepdims=True)
+        top, wt = np.vstack([top, toph]), np.vstack([wt, wh]); w = wt   # garment rows first, hull rows after (g['si'] / g['sw'] stay garment-only)
     for k in range(4):
         for bi in range(len(bones)):
-            sel = np.where((g['si'][:, k] == bi) & (w[:, k] > 0))[0]
+            sel = np.where((top[:, k] == bi) & (w[:, k] > 0))[0]
             vg = ob.vertex_groups[bi]
             for vi in sel:
                 vg.add([int(vi)], float(w[vi, k]), 'ADD')
@@ -221,6 +250,6 @@ def recon_error(R, clip='walk', frames=(0, 5, 11, 17, 23)):
         em.vertices.foreach_get('co', co)
         eo.to_mesh_clear()
         ref = (C[:3, :3] @ lbs(g, M[p['clips'][clip]['row'] + f]).T).T
-        worst = max(worst, float(np.abs(co.reshape(-1, 3) - ref).max()))
+        worst = max(worst, float(np.abs(co.reshape(-1, 3)[:len(ref)] - ref).max()))   # garment vertices only (a hull may follow)
     arm.animation_data.action = None
     return worst

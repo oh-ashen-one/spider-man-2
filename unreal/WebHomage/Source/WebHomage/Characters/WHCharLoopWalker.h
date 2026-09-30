@@ -47,6 +47,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float LineLength = 3000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float LineStart = 0.f;
 
+	/** Seconds added to this actor's idle / sequence clock (AnimInstance IdleOffset): identical AnimBPs are not in lockstep. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float AnimOffset = 0.f;
+
 	/** World-space centre of the loop (set from the actor location at BeginPlay). */
 	UPROPERTY(BlueprintReadOnly, Category="Walker") FVector Center = FVector::ZeroVector;
 
