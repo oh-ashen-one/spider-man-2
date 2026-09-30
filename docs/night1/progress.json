@@ -1,6 +1,6 @@
 {
- "updated": "2026-09-29 22:03",
- "phase": "Wave 2 \u2014 director plan",
+ "updated": "2026-09-29 22:07",
+ "phase": "Pausing \u2014 finishing current rounds",
  "headline": "Fable 5.1 (director) found that every perf number so far rendered the scene three times (two per-frame scene captures from the telemetry mode), that the frame is GPU-bound rather than CPU-bound, and that 60 fps at 4K output is honest at TSR 50% (1080p internal) but not at 67%. The perf piece is executing its ranked plan (\u221212\u2026\u221225 ms).",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
@@ -861,6 +861,10 @@
   {
    "t": "22:03",
    "text": "Look R2 merged (night fixed, avg 3.3\u21924.3); round 3 on a fresh Sonnet builder, adopting the perf preset when ready."
+  },
+  {
+   "t": "22:07",
+   "text": "Owner: pause after the current rounds (44% of the week used). No new rounds or critics; merge what lands, then build the integrated Manhattan map and open it in the Unreal Editor for the owner."
   }
  ]
 }
