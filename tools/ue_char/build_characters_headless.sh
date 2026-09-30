@@ -7,7 +7,7 @@ WT=$(pwd)
 case "$1" in ""|*clean*) rm -rf "$WT/unreal/WebHomage/Content/Characters" "$WT/unreal/WebHomage/Content/Tests/Characters";; esac
 A="$1"; [ -z "$A" ] && A="{}"; export CHAR_BUILD_ARGS="$A"
 # the key / id maps are duplicated from Char_Crowd: an existing copy cannot be deleted from inside the commandlet (DuplicateAsset fails), so remove the files first
-case "$A" in *mapkey*) rm -f "$WT/unreal/WebHomage/Content/Tests/Characters/Char_CrowdKey.umap" "$WT/unreal/WebHomage/Content/Tests/Characters/Char_CrowdID.umap";; esac
+case "$A" in *mapkey*) rm -f "$WT/unreal/WebHomage/Content/Tests/Characters/Char_CrowdKey.umap" "$WT/unreal/WebHomage/Content/Tests/Characters/Char_CrowdID.umap" "$WT/unreal/WebHomage/Content/Tests/Characters/Char_HeroKey.umap";; esac
 export P2_SCRATCH="${P2_SCRATCH:-$WT/unreal/WebHomage/Saved/P2Build}"   # derived inputs + caches (tools/ue_char/p2paths.py)
 GPU_SLOT="${GPU_SLOT:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"
 "$WT/tools/ue_char/ue_wait.sh"   # owner rule: never a 3rd+ Unreal instance

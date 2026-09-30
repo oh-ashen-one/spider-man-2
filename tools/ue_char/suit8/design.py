@@ -21,12 +21,12 @@ def srgb(h):
     return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], np.float32) / 255.0
 
 
-TEAL = srgb('#1f6273')
-TEAL_D = srgb('#174e5d')
-DEEP = srgb('#0c2a33')
+TEAL = srgb('#0f4452')
+TEAL_D = srgb('#0b3441')
+DEEP = srgb('#071a21')
 INK = srgb('#050d11')
-AMBER = srgb('#ee9f1c')
-AMBER_D = srgb('#c47d10')
+AMBER = srgb('#e0780c')
+AMBER_D = srgb('#ad5c08')
 BONE = srgb('#e6dfc9')
 SOLE = srgb('#0d1012')
 

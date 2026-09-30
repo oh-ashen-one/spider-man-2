@@ -69,6 +69,7 @@ run_group() { # map start_shot "still times" quit tag names...
   done
 }
 HERO=/Game/Tests/Characters/Char_Hero; FIGHT=/Game/Tests/Characters/Char_Fight; CROWD=/Game/Tests/Characters/Char_Crowd; LINE=/Game/Tests/Characters/Char_Lineup
+HEROKEY=/Game/Tests/Characters/Char_HeroKey   # round 08: hero on the key (flat class colours: lens / bezel / suit), build step mapkey
 CROWDID=/Game/Tests/Characters/Char_CrowdID   # per-walker stencil id map (build step mapkey)
 KEY=/Game/Tests/Characters/Char_CrowdKey   # chroma-key twin of Char_Crowd (unlit green street, no fog / sky): green inside a person = a crack (eval/key_holes.py)
 for g in $STILLS; do
@@ -80,6 +81,7 @@ for g in $STILLS; do
     gC) run_group $CROWD 0 "5.5,11.5" 13 gC1 crowd_tracking crowd_wide ;;
     gK) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $KEY 0 "3.5,5.5,7.5,11.5" 13 gK1 crowd_key_a crowd_key_tracking crowd_key_c crowd_key_wide ;;
     gI) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $CROWDID 0 "3.5,5.5,7.5,11.5" 13 gI1 crowd_id_a crowd_id_tracking crowd_id_c crowd_id_wide ;;
+    gHK) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $HEROKEY 4 "3.0,10.0" 13 gHK1 hero_key_suit hero_key_face ;;
     gE) run_group $LINE 10 "3.5,7.5" 10 gE1 thug_face brute_face
         run_group $LINE 12 "3.0,9.0,15.0" 17 gE2 hood_face tee_face beard_face ;;
   esac

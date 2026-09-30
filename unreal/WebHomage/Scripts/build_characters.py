@@ -340,15 +340,15 @@ if 'mat' in STEPS:
        tex={'BaseColor': ROOT + '/Hero/Textures/T_Hero_BaseColor', 'ORM': ROOT + '/Hero/Textures/T_Hero_ORM',
             'Normal': ROOT + '/Hero/Textures/T_Hero_Normal',
             'DetailNormal': ROOT + ('/Shared/Textures/T_Fabric_Twill_N' if _fine else '/Shared/Textures/T_Fabric_Knit_N')},
-       scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.55, 'Specular': 0.6}, switches={'HasORM': True})
+       scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (0.50, 0.62, 0.68, 1)}, switches={'HasORM': True})
     try:   # round 04: glossy lens with a grazing-angle falloff; the old simple lens stays as the fallback
         hlens = build_hero_lens()
-        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.86, 0.44, 0.06, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.7, 'Emissive': 0.14}, vec={'Color': (0.80, 0.30, 0.03, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
         log('hero lens: glossy + fresnel falloff')
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.28, 'Specular': 0.6}, vec={'Color': (0.016, 0.026, 0.03, 1)})
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.5, 'Specular': 0.25}, vec={'Color': (0.006, 0.011, 0.013, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
@@ -1015,5 +1015,43 @@ if 'mapkey' in STEPS:
     EAL.save_directory(TESTS + '/Materials', only_if_is_dirty=True, recursive=True)
     key_map('Char_CrowdKey', mk)
     key_map('Char_CrowdID', mid_)
+
+    # ---- round 08: hero key map.  Char_Hero copy: the hero writes stencil 1 and every slot is an unlit FLAT colour (lens magenta, bezel yellow, suit blue); everything that
+    # is not the hero becomes the key green (M_PP_Key).  Exact per-pixel classes for the eye checks (tools/ue_char/eval/lens_check_r8.py): background pixels between bezel and
+    # lens (green inside the eye), lens pixels touching the background (a lens at the silhouette).  Needs r.CustomDepth 3.
+    def hero_key_map(map_name):
+        flat = new_material(TESTS + '/Materials', 'M_Char_FlatID', skeletal=True)
+        flat.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+        MEL.connect_material_property(vector(flat, 'Color', (1, 0, 1, 1), -400, 0), 'RGB', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        MEL.recompile_material(flat)
+        cols = {'Lens': (1.0, 0.0, 1.0, 1), 'LensFrame': (1.0, 1.0, 0.0, 1), 'SpiderSuit': (0.0, 0.0, 1.0, 1)}
+        mis = {k: mi('MI_Flat_' + k, TESTS + '/Materials', flat, vec={'Color': v}) for k, v in cols.items()}
+        if EAL.does_asset_exist(TESTS + '/' + map_name): EAL.delete_asset(TESTS + '/' + map_name)
+        EAL.duplicate_asset(TESTS + '/Char_Hero', TESTS + '/' + map_name)
+        unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/' + map_name)
+        nh = 0
+        for a in unreal.EditorLevelLibrary.get_all_level_actors():
+            lab = a.get_actor_label()
+            if isinstance(a, unreal.WHCharLoopWalker) and lab.startswith('Hero_'):
+                nh += 1
+                mc = a.get_editor_property('mesh')
+                mc.set_editor_property('render_custom_depth', True)
+                mc.set_editor_property('custom_depth_stencil_value', 1)
+                names = [str(n) for n in mc.get_material_slot_names()]
+                log('hero key', lab, 'slots', names)
+                for i, n in enumerate(names):
+                    if n in mis: mc.set_material(i, mis[n])
+            elif lab == 'Post':
+                st = a.get_editor_property('settings')
+                wb = unreal.WeightedBlendable(); wb.set_editor_property('weight', 1.0); wb.set_editor_property('object', mk)
+                wbs = unreal.WeightedBlendables(); wbs.set_editor_property('array', [wb])
+                st.set_editor_property('weighted_blendables', wbs)
+                for ov, val in (('bloom_intensity', 0.0), ('vignette_intensity', 0.0), ('film_grain_intensity', 0.0)):
+                    try:
+                        st.set_editor_property('override_' + ov, True); st.set_editor_property(ov, val)
+                    except Exception as e: log('post setting', ov, 'not set:', str(e)[:80])
+                a.set_editor_property('settings', st)
+        log(map_name, 'saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), nh, 'hero actors flat-coloured + stencil')
+    hero_key_map('Char_HeroKey')
 
 log('done')

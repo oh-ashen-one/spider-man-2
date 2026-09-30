@@ -22,9 +22,9 @@ sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, 'suit8')); sys.p
 import glbedit  # noqa: E402
 
 # ---- eye design (metres, local frame of one eye: +u toward the OUTER end, +v up)
-KEY = np.array([(21.0, 3.2), (11.5, 9.6), (-2.0, 11.0), (-14.0, 8.4), (-19.5, 0.8), (-14.0, -6.2), (-2.0, -7.6), (11.0, -3.6)]) * 1.10e-3
+KEY = np.array([(21.0, 3.2), (11.5, 9.6), (-2.0, 11.0), (-14.0, 8.4), (-19.5, 0.8), (-14.0, -6.2), (-2.0, -7.6), (11.0, -3.6)]) * 1.0e-3
 TILT = np.radians(12.0)                      # outer tip lifted
-CENTER_X, CENTER_Y = 0.0305, 1.6775          # left eye centre on the mask (mirrored for the right eye)
+CENTER_X, CENTER_Y = 0.0295, 1.6775          # left eye centre on the mask (mirrored for the right eye)
 N_OUT = 72                                   # outline samples
 RINGS = 9
 BEZEL = [(0.0, 0.6), (0.0, 1.9), (0.9, 2.3), (1.9, 2.3), (3.3, 0.5), (4.3, -0.7)]     # (outward offset mm, height above the mask mm); first = lens edge

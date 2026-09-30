@@ -72,7 +72,7 @@ def normal_from_height(h_mm, mpt, strength=1.0, sigma=0.9):
 
 
 def main():
-    n = int(arg('--n', 4096))
+    n = int(arg('--n', 8192))
     out = arg('--out', WT + '/art/night1/characters/hero/tex')
     os.makedirs(out, exist_ok=True)
     r = build(n)

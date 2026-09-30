@@ -202,7 +202,7 @@ def _ray_hits_any(O, D, P, F, tmax, skip_verts=None):
     return hit_any
 
 
-def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, sigma=0.011, relax=8):
+def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, sigma=0.011, relax=8, uncover_mouth=False):
     """Round 05: the mask as CLOTH, not as a skin-tight shell (critic r04: 'shrink-wrapped, lips and chin show through the cloth').
     Every vertex of the mask region takes the cloth radius
         r_cloth(s, y) = max over the head surface within `grow` sideways and from y up to y + `reach` of ( r - slope * (y' - y) )
@@ -253,6 +253,9 @@ def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, si
     Dv = np.stack([np.sin(phi[tgt]), np.zeros(len(tgt)), np.cos(phi[tgt])], 1)
     covered = np.zeros(len(P), bool)
     covered[tgt] = _ray_hits_any(P[tgt] + Dv * 0.0005, Dv, P, F, 0.05, skip_verts=tgt)
+    if uncover_mouth:   # round 08: the lips of a parted mouth are 'covered' by the other lip (the slit then stays as a ledge under the cloth): let them hang too
+        mb = (np.abs(phi[tgt]) < np.radians(62)) & (y[tgt] > cfg['chin'] + 0.006) & (y[tgt] < cfg['nose'] - 0.004)
+        covered[tgt[mb]] = False
     moved = np.zeros(len(P))
     for i in tgt:
         if covered[i]: continue
@@ -281,6 +284,55 @@ def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, si
     P[chg] = Pw[wid[chg]]
     moved = np.where(chg, np.hypot(P[:, 0], P[:, 2] - cfg['axis_z']) - r, moved)
     return P, moved
+
+
+def flatten_mouth(P, cfg, reach=0.011, sigma=0.007, margin=0.0008):
+    """Round 08 (critic r07: 'lips show through the tee mask'): the mouth slit of a Tripo face survives the drape as a ledge because the vertices
+    inside it have another shell in front of them (the lips), so hang() leaves them where they are.  Every vertex of the mouth band is raised to the
+    cloth envelope: the maximum radius of any band vertex within `reach` (closing of the dents), Gaussian-smoothed over `sigma`, minus `margin`.
+    Only ever moves vertices OUTWARD along their own radial direction; the lips / nose tip keep their place.  Returns P."""
+    from scipy.spatial import cKDTree
+    P = P.copy()
+    phi, r = cyl(P, cfg)
+    y = P[:, 1]
+    band = (np.abs(phi) < np.radians(62)) & (y > cfg['chin'] + 0.006) & (y < cfg['nose'] - 0.004) & (r < 0.17)
+    idx = np.where(band)[0]
+    if len(idx) == 0: return P
+    s_ = phi * 0.11
+    pts = np.c_[s_[idx], y[idx]]
+    tree = cKDTree(pts)
+    env = r[idx].copy()
+    for k, nb in enumerate(tree.query_ball_point(pts, reach)):
+        env[k] = r[idx][nb].max()
+    sm = env.copy()
+    for k, nb in enumerate(tree.query_ball_point(pts, 3 * sigma)):
+        nb = np.asarray(nb, int)
+        w = np.exp(-((pts[nb] - pts[k]) ** 2).sum(1) / (2 * sigma * sigma))
+        sm[k] = (env[nb] * w).sum() / w.sum()
+    fade = smoothstep(np.radians(62), np.radians(48), np.abs(phi[idx])) * smoothstep(cfg['chin'] + 0.006, cfg['chin'] + 0.016, y[idx]) * smoothstep(cfg['nose'] - 0.004, cfg['nose'] - 0.012, y[idx])
+    rn = np.maximum(r[idx], r[idx] + (sm - margin - r[idx]) * fade)
+    P[idx, 0] = np.sin(phi[idx]) * rn
+    P[idx, 2] = cfg['axis_z'] + np.cos(phi[idx]) * rn
+    return P
+
+
+def sink_neck(P, F, cfg, depth=0.012, top=0.475, bottom=0.44):
+    """Round 08 (critic r07: 'thug collar shards'): in the running game the neck skin under a hood / jacket collar pokes through the collar as jagged
+    skin-coloured wedges when the head turns (the collar and the neck are skinned to different bone mixes).  Every vertex that has another shell
+    within 5 cm straight out (= the neck skin UNDER the collar) is pulled toward the head axis by up to `depth` metres, growing from 0 at y = top to
+    `depth` at y = bottom, so there is slack under the cloth.  The visible neck (above the collar) is untouched.  Returns P."""
+    P = P.copy()
+    phi, r = cyl(P, cfg)
+    y = P[:, 1]
+    sel = np.where((r < 0.075) & (r > 0.02) & (y > 1.30) & (y < top + 0.02))[0]
+    if len(sel) == 0: return P
+    Dv = np.stack([np.sin(phi[sel]), np.zeros(len(sel)), np.cos(phi[sel])], 1)
+    cov = _ray_hits_any(P[sel] + Dv * 0.0005, Dv, P, F, 0.05, skip_verts=sel)
+    f = smoothstep(top, bottom, y[sel]) * cov
+    rn = r[sel] - depth * f
+    P[sel, 0] = np.sin(phi[sel]) * rn
+    P[sel, 2] = cfg['axis_z'] + np.cos(phi[sel]) * rn
+    return P
 
 
 def drop_cavity(P, F, cfg, max_area=6e-5, dot=-0.3):

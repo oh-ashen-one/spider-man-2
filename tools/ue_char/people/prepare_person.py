@@ -40,7 +40,7 @@ CFG = {
     'thug': dict(src='leather+jacket+man+3d+model.glb', name='StreetThug',
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
-                 mask=(38, 42, 60), seed=11,
+                 mask=(38, 42, 60), seed=11, sink_neck=True,
                  tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
@@ -51,7 +51,8 @@ CFG = {
                  mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True,
                  tints={'Grey': dict(region='top', color=(104, 104, 108))}),
     'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
-                mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70))),
+                mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70)),
+                hang=dict(uncover_mouth=True)),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
     'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
                   mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True),
 }
@@ -469,12 +470,14 @@ def main():
     tri = (wv[F].max(1) > 0) & (np.hypot(P[F][:, :, 0], P[F][:, :, 2] - cfg['axis_z']).max(1) < 0.14)
     nt0 = len(F)
     P, N, UV, F = M.subdivide_region(P, N, UV, F, tri)
-    P, moved = (M.drape if cfg.get('drape') == 'hull' else M.hang)(P, F, cfg, cfg['seed'])   # round 05: hanging cloth (mask.hang); 'hull' = the round-04 convex-hull drape
+    P, moved = (M.drape if cfg.get('drape') == 'hull' else M.hang)(P, F, cfg, cfg['seed'], **(cfg.get('hang') or {}) if cfg.get('drape') != 'hull' else {})   # round 05: hanging cloth (mask.hang); 'hull' = the round-04 convex-hull drape
     nP0 = len(P)
     F, ndrop = M.drop_cavity(P, F, cfg)                           # round 05: mouth / nostril cavity walls removed, their loops closed below
     P, N, UV, F, nfill = M.fill_face_holes(P, N, UV, F, cfg)   # round 05: mouth slit / chin tears closed
     moved = np.concatenate([moved, np.zeros(len(P) - nP0)])
     F, nflip = M.fix_flips(P, F, cfg)                            # round 05: back-faced slivers at lips / nostrils
+    if cfg.get('flatten_mouth'): P = M.flatten_mouth(P, cfg); F, nflip2 = M.fix_flips(P, F, cfg); nflip += nflip2           # round 08: the mouth slit ledge (lips showing through the cloth)
+    if cfg.get('sink_neck'): P = M.sink_neck(P, F, cfg)             # round 08: slack for the neck skin under the collar (collar shards)
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
