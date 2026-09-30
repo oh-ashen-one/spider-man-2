@@ -3,8 +3,10 @@
 //   node tools/ue_char/brute/browser_check.mjs [OUT_DIR]
 import { chromium } from 'playwright-core';
 import { createServer } from 'vite';
-const OUT = process.argv[2] || '/Users/midir/sm2-n1/_scratch/characters/r2/browser';
-const server = await createServer({ root: '/Users/midir/sm2-n1/characters', server: { port: 5203, strictPort: true, host: '127.0.0.1' }, logLevel: 'error' });
+const ROOT = new URL('../../..', import.meta.url).pathname.replace(/\/$/, '');
+const SCR = process.env.P2_SCRATCH || ROOT + '/unreal/WebHomage/Saved/P2Build';
+const OUT = process.argv[2] || SCR + '/r2/browser';
+const server = await createServer({ root: ROOT, server: { port: 5203, strictPort: true, host: '127.0.0.1' }, logLevel: 'error' });
 await server.listen();
 const ctxB = await chromium.launchPersistentContext(OUT + '/profile', { channel: 'chrome', headless: true, viewport: { width: 1280, height: 720 },
   args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });

@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 18:14",
- "phase": "Wave 2 \u2014 director plan",
- "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
+ "updated": "23:47",
+ "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
+ "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "fixing",
-   "round": 4,
-   "verdict": "R3: FAILS (hero 4, anim 3, enemies 3, civilians 2, IQ 4)",
-   "gap": "Hero run (step rate, lean, takeoff), enemy masks + lineup, sliding civilians \u2014 Opus builder"
+   "round": 5,
+   "verdict": "R4: FAILS (hero 4, anim 5, enemies 4, civilians 3, IQ 3) \u2014 best yet",
+   "gap": "Seam cracks (26 slivers), a real fight capture, suit weave/lens quality (Sonnet builder)"
   },
   {
    "id": "P3",
@@ -63,27 +63,27 @@
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
    "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (sun/sky 5, GI 3, atmos 4, refl 3, post 3, night 2)",
-   "gap": "Night streets 85% near-black; no lamp pools or car lights; hero vanishes"
+   "round": 3,
+   "verdict": "R2: FAILS (sun 4, GI 4, atmos 4, refl 4, post 5, night 5)",
+   "gap": "Midday not per spec, far-field purple/white band, night swing is day-for-night"
   },
   {
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "Wave 2"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (impact 3, moves 4, enemies 3, camera 3, spectacle 3)",
+   "gap": "No visible hit-stop (0% frozen frames), passive enemies without tells, camera crops the hero"
   },
   {
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "Wave 2"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (traffic 4, motion 3, peds 2, ped motion 4, believability 3)",
+   "gap": "Pedestrians 4/frame (need \u226516), avenue traffic, lit signals + queues"
   },
   {
    "id": "A",
@@ -119,7 +119,7 @@
    "state": "building",
    "round": 1,
    "verdict": "",
-   "gap": "Opus 5.5 high: profile + overrides + owner change list"
+   "gap": "Executing the Fable strategy: capture gate, clean baseline, one-variable probes under the exclusive lock"
   },
   {
    "id": "G",
@@ -129,9 +129,50 @@
    "round": 0,
    "verdict": "",
    "gap": "After C (Opus high)"
+  },
+  {
+   "id": "W",
+   "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
+   "branch": "night1/water-ab-*",
+   "state": "fixing",
+   "round": 2,
+   "verdict": "A/B: Opus 3.8 vs Sonnet 3.4 (blind) \u2014 Opus merged; FAILS vs reference",
+   "gap": "Fine ripples + sun glints, darker water (C14), take Sonnet's piling foam, remove ring artifact"
   }
  ],
  "comparisons": [
+  {
+   "title": "Look round 2 \u2014 night streets that read",
+   "note": "Round 1: 84% near-black. Round 2: lamp pools, wet asphalt, 0.15% near-black.",
+   "images": [
+    {
+     "label": "Round 1 night S1",
+     "src": "docs/night1/look/round-01/stills/night_S1_1920x1080.jpg"
+    },
+    {
+     "label": "Round 2 night S1",
+     "src": "docs/night1/look/round-02/stills/night_S1_1920x1080.jpg"
+    }
+   ]
+  },
+  {
+   "title": "Characters round 4 \u2014 armed lineup, walking crowd, leaning run",
+   "note": "Opus builder. 7 thugs, 5 outfits, 3 weapon types; civilians walking; run lean ~30\u00b0.",
+   "images": [
+    {
+     "label": "Enemy lineup",
+     "src": "docs/night1/characters/round-04/captures/enemy_lineup_wide_4k.jpg"
+    },
+    {
+     "label": "Civilians tracking",
+     "src": "docs/night1/characters/round-04/captures/civilians_tracking_4k.jpg"
+    },
+    {
+     "label": "Hero run",
+     "src": "docs/night1/characters/round-04/captures/hero_run_side_4k.jpg"
+    }
+   ]
+  },
   {
    "title": "Characters round 3 \u2014 enemies rebuilt from the owner's Tripo people",
    "note": "Real faces, five-finger hands, folded cloth; brute 1.36\u00d7 the thug's shoulders.",
@@ -302,6 +343,16 @@
   }
  ],
  "clips": [
+  {
+   "title": "Combat R1 \u2014 25 s scripted fight",
+   "src": "docs/night1/combat/round-01/fight25_1080p60.mp4",
+   "caption": "first C++ combat port, lit test street"
+  },
+  {
+   "title": "City life R1 \u2014 street clip",
+   "src": "docs/night1/life/round-01/street_clip_1080p60.mp4",
+   "caption": "traffic + pedestrians (sparse); IP-clean liveries"
+  },
   {
    "title": "Integrated Manhattan \u2014 30 s route",
    "src": "docs/night1/manhattan/round-01/route_30s.mp4",
@@ -521,6 +572,46 @@
    "verdict": "fails",
    "gap": "Far field C11/C13\u2013C15, facade base colours C1, plus IP (transit slogan, game key art, product mural).",
    "notes": "Far-shore bugs fixed (window flag clamped, white generic material, blue haze); round 6 beat round 5 by ~0.5 on skyline. Builder and critic measured the same spec lines differently \u2192 round 7 commits shared crop regions + one check script. Lighting-owned issues (crushed S1/S7, blown S4 sky) routed to P4."
+  },
+  {
+   "t": "20:10",
+   "piece": "P2 Characters",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "CH18 seam cracks to 0; a 5\u20137 enemy fight capture with no craning heads and cloth masks; suit weave/web-line relief/lens quality.",
+   "notes": "Opus builder: lean ~30\u00b0 (was 9\u201313\u00b0), step rate 3.53 Hz, 7 armed thugs, 10\u201311 civilians per frame; beat round 3 in both version pairs. Critic flags the classic suit as copying a studio design (3rd time) \u2014 owner decision; round 5 improves quality only."
+  },
+  {
+   "t": "20:56",
+   "piece": "P6 City life",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Detector median \u226516 pedestrians; \u226514 moving vehicles at swing height; lit signals with stop-and-go queues.",
+   "notes": "650\u2013700 moving + 1,197 parked vehicles and 1,458 simulated walkers, but few read on screen (detector 4\u20136 people/frame vs builder probe 15). Round 1 beat the empty street by 7 people and 7 vehicles. IP-clean."
+  },
+  {
+   "t": "21:43",
+   "piece": "P5 Combat",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Hit-stop 3\u20135 frames + flinch on every contact; enemies attack at least every 1 s with 0.4 s tells, \u22655 on screen; mid-high combat camera with 5% margins.",
+   "notes": "Full C++ port of the browser combat (director, tokens, dodge slow-mo, finishers, 14 enemy states); 40/40 scripted beats fire. Critic measured 0% frozen frames and no finisher on screen although both are implemented \u2014 likely a capture/time-dilation mismatch; round 2 must prove it in pixels."
+  },
+  {
+   "t": "21:50",
+   "piece": "W River water (blind A/B)",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Winner (Opus): add fine ripples with a sharp sun highlight and darken the water (detail \u226512, glints \u22651%, mean \u226480 in the near-water crop; C14 at S4).",
+   "notes": "First same-gap model comparison. Opus 5.5 high 3.8 vs Sonnet 5.5 xhigh 3.4: Opus better colour/reflections; Sonnet better foam and the perch-view luma. Merged the Opus build."
+  },
+  {
+   "t": "22:03",
+   "piece": "P4 Look",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Midday per spec (mean 83\u201397, no clipping), far city takes the sky hue 15\u201332 luma below it, real night (no uniform facade fill).",
+   "notes": "Night street fixed: mean 10\u219255, near-black 84%\u21920.15%, 12 lit pools; round 2 far better than round 1. Night costs ~6.5 ms (Lights pass)."
   }
  ],
  "perf": [
@@ -532,7 +623,7 @@
    "p95": "59.0",
    "p99": "62.8",
    "hitches": "0",
-   "notes": "exclusive GPU lock, GPU 0% before/after; 19.2 fps; GPU 42.2 ms, render thread 50.6 ms. Earlier rows below are contaminated."
+   "notes": "exclusive GPU lock, GPU 0% before/after; 19.2 fps; GPU 42.2 ms, render thread 50.6 ms. Earlier rows below are contaminated. \u2014 NOTE (Fable): this run also rendered two per-frame scene captures from the telemetry mode, so it overstates the real cost."
   },
   {
    "what": "Unreal look R1 \u2014 hero swing route through Midtown, TSR 50%",
@@ -577,6 +668,7 @@
   }
  ],
  "gaps": [
+  "Owner decisions (Fable perf strategy): (1) accept '60 fps at 4K' = 4K output at TSR 50\u201358% internal, disclosed; (2) approve Lumen High tier + VSM bias if the look/city spec lines still pass; (3) approve a city round spent on the street-kit/leaves/hinterland restructure.",
   "All perf numbers so far are void (up to 3 game instances + other sessions on the GPU). Re-baseline under the exclusive GPU lock. Director: native 4K60 unlikely; honest target is TSR 67% (2573\u00d71447 internal) \u2014 owner to confirm a disclosed internal res counts.",
   "Unreal port has only a gray-box test map and a capsule character so far.",
   "Default 4K output renders internally at 1920\u00d71080 (50 %, TSR upscale); native 100 % is available via r.ScreenPercentage 100.",
@@ -737,6 +829,58 @@
   {
    "t": "18:14",
    "text": "Recovered: all worktree WIP committed and pushed, orphaned crash reporters (100% CPU for 6 h) killed. New hard rule: max 2 Unreal processes of any kind at once through the GPU lock; builds via null-RHI commandlets; no crash-relaunch loops. Resuming at 2 concurrent GPU builders."
+  },
+  {
+   "t": "18:24",
+   "text": "GPU slots now auto-tuned (start 4, +1 per calm 20 min up to 7, back off on WindowServer strain, emergency kill of the newest capture). Six builders running."
+  },
+  {
+   "t": "18:24",
+   "text": "Fable 5.1 (high) director set to decide the 4K/60 strategy from clean perf data. First blind same-gap A/B build started: river water, Sonnet 5.5 xhigh vs Opus 5.5 high."
+  },
+  {
+   "t": "20:10",
+   "text": "Characters R4 (Opus) merged: avg 3.8, best yet; round 5 on Sonnet (ledger alternation)."
+  },
+  {
+   "t": "20:56",
+   "text": "City life R1 merged + critic FAILS (peds 2); round 2 on Sonnet with the spec detector as the measure. GPU tuner ceiling set to 5 from measurements."
+  },
+  {
+   "t": "21:43",
+   "text": "Combat R1 merged + critic FAILS; round 2 on Opus (resolve hit-stop visibility, enemy aggression, combat camera)."
+  },
+  {
+   "t": "21:48",
+   "text": "Fable perf strategy delivered (docs/night1/director/PERF-STRATEGY.md). Perf piece F started on it (Opus high). Water A/B builds done; blind Opus critic comparing."
+  },
+  {
+   "t": "21:50",
+   "text": "Water A/B unblinded: Opus 5.5 high beat Sonnet 5.5 xhigh by 0.4 (3.8 vs 3.4); Opus build merged; recorded in the model ledger."
+  },
+  {
+   "t": "22:03",
+   "text": "Look R2 merged (night fixed, avg 3.3\u21924.3); round 3 on a fresh Sonnet builder, adopting the perf preset when ready."
+  },
+  {
+   "t": "22:07",
+   "text": "Owner: pause after the current rounds. Every landing round still gets its blind Opus critic (never skip critics). Then build the integrated Manhattan map and open it in the Unreal Editor for the owner."
+  },
+  {
+   "t": "23:08",
+   "text": "Studio kernel panic: a force-killed 4K perf run got stuck exiting inside the GPU driver while stopped agents' capture scripts launched more engines. Fix: GPU lock refuses launches while an engine is stuck exiting; stop_ue.sh (drivers first, SIGTERM, SIGKILL last); rule added to the global AGENTS.md."
+  },
+  {
+   "t": "23:40",
+   "text": "Showcase: integrated Manhattan (city, hero, look, water, crowds + traffic) opened for the owner. Owner: \"the game itself looks like it's coming along\u2026 I approve.\" Mouse look too fast (queued fix)."
+  },
+  {
+   "t": "23:47",
+   "text": "Owner request: flips that look like a gymnast (reference clip supplied). Became traversal round 11 (Opus 5.5 high), judged against the owner clip."
+  },
+  {
+   "t": "23:47",
+   "text": "Overnight resume. Weekly usage at 50%: builders lean on Sonnet 5.5 xhigh, Opus 5.5 high for flips + every critic, Fable 5.1 only if a piece stalls or for final acceptance. Up to 3 rounds per piece (perf 2), engine cap auto-tuned 2\u20134, safety watchdog on."
   }
  ]
 }

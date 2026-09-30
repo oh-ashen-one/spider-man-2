@@ -1,19 +1,22 @@
 #!/bin/bash
-# Street thug + brute for Unreal: raw Tripo people (~/sm2-assets/raw, the owner's assets, never committed) -> dress -> fit to the hero's
+# Street enemies (thug, brute, hood, tee, beard) for Unreal: raw Tripo people (~/sm2-assets/raw, the owner's assets, never committed) -> dress -> fit to the hero's
 # 58-bone skeleton -> texture-free GLB for Interchange + 4096^2 base colour PNG. Idempotent; the (slow) skinfit step is cached on the
 # SHA of the prepared mesh.   Fan homage project; not official Marvel/Sony/Insomniac.
 #   tools/ue_char/people/build_people.sh [--force]
 set -e
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
-SCR=/Users/midir/sm2-n1/_scratch/characters/r3
-GLB=/Users/midir/sm2-n1/_scratch/characters/ueimport
+P2_SCRATCH="${P2_SCRATCH:-$WT/unreal/WebHomage/Saved/P2Build}"; export P2_SCRATCH   # tools/ue_char/p2paths.py
+SCR="$P2_SCRATCH/r3"
+GLB="$P2_SCRATCH/ueimport"
+RAW="${P2_RAW:-$HOME/sm2-assets/raw}"
 ART="$WT/art/night1/characters/people"
 mkdir -p "$SCR/people" "$SCR/fit" "$GLB" "$ART"
-for src in "leather+jacket+man+3d+model.glb" "human+character+3d+model.glb"; do
-  [ -f "$HOME/sm2-assets/raw/$src" ] || { echo "missing raw Tripo person: ~/sm2-assets/raw/$src" >&2; exit 1; }
+for src in "leather+jacket+man+3d+model.glb" "human+character+3d+model.glb" "human+figure+3d+model.glb" "adult+male+3d+model.glb" "human+character+3d+model (3).glb" "baseball+cap+3d+model.glb"; do
+  [ -f "$RAW/$src" ] || { echo "missing raw Tripo person: $RAW/$src" >&2; exit 1; }
 done
 pids=()
-for c in thug brute; do
+PEOPLE="thug brute hood tee beard"
+for c in $PEOPLE; do
   C="Street$(python3 -c "print('$c'.capitalize())")"
   python3 "$WT/tools/ue_char/people/prepare_person.py" $c --out "$SCR/people" > "$SCR/people/$C.prep.log"
   sha=$(shasum "$SCR/people/${C}_prepared.glb" | cut -d' ' -f1)
@@ -23,12 +26,27 @@ for c in thug brute; do
   fi
 done
 for p in "${pids[@]}"; do wait "$p"; done
-for c in thug brute; do
+for c in $PEOPLE; do
   C="Street$(python3 -c "print('$c'.capitalize())")"
   N="$(python3 -c "print('$c'.capitalize())")"
   [ -f "$SCR/fit/$C.glb" ] || { echo "skinfit failed for $C (see $SCR/fit/$C.log)" >&2; exit 1; }
   python3 "$WT/tools/ue_char/strip_glb.py" "$SCR/fit/$C.glb" "$GLB/SK_Street_$N.glb" > /dev/null
   cp "$SCR/people/${C}_atlas.png" "$ART/${c}_basecolor.png"
+  for v in "$SCR/people/${C}"_*_atlas.png; do            # tint variants (same mesh): <c>_<Variant>_basecolor.png
+    [ -f "$v" ] || continue
+    t=$(basename "$v" _atlas.png); t=${t#${C}_}
+    cp "$v" "$ART/${c}_${t}_basecolor.png"
+  done
+done
+# hand weapons (Blender headless, generic shapes) rigidly skinned into the right hand: SK_Street_<Person>_<Weapon>.glb
+W="$SCR/weapons"; mkdir -p "$W"
+if [ ! -f "$W/pistol.glb" ] || [ "$WT/tools/ue_char/weapons/make_weapons.py" -nt "$W/pistol.glb" ]; then
+  /Applications/Blender.app/Contents/MacOS/Blender -b -P "$WT/tools/ue_char/weapons/make_weapons.py" -- "$W" > "$W/make.log" 2>&1
+fi
+for pw in Thug:bat Thug:pistol Brute:pipe Hood:pistol Tee:bat Beard:pipe; do
+  N=${pw%%:*}; K=${pw##*:}; KC="$(python3 -c "print('$K'.capitalize())")"
+  python3 "$WT/tools/ue_char/weapons/add_weapon.py" "$SCR/fit/Street$N.glb" "$W/$K.glb" "$SCR/fit/Street${N}_$KC.glb" > /dev/null
+  python3 "$WT/tools/ue_char/strip_glb.py" "$SCR/fit/Street${N}_$KC.glb" "$GLB/SK_Street_${N}_$KC.glb" > /dev/null
 done
 # upright / heavy walk clips (numpy IK on the hero walk), appended to a copy of the thug fit; UE imports only the animations from it
 python3 "$WT/tools/ue_char/people/make_walk.py" "$SCR/fit/StreetThug.glb" "$SCR/fit/walks.glb" > "$SCR/fit/walks.log"
