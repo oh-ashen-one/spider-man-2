@@ -16,6 +16,7 @@ class USkeletalMeshComponent;
 class UAnimInstance;
 class AWHLifeTraffic;
 class UMaterialInterface;
+class UDirectionalLightComponent;
 
 namespace WHLife
 {
@@ -33,6 +34,8 @@ namespace WHLife
 		int32 Comp = -1;                          // pool slot while live
 		uint32 Rng = 1;
 		float Tint = 1.f;
+		uint8 Shade = 0; float ShadeT = 0.f;      // 1 = the sun is blocked at this walker (fill light on), next sun-visibility test time (game s)
+		float LatAdj = 0.f, AdjTarget = 0.f;      // sidestep around walkers ahead (metres, right-hand positive); AdjTarget from UpdateAvoidance, LatAdj follows it
 	};
 }
 
@@ -58,17 +61,21 @@ public:
 
 	UPROPERTY(EditAnywhere, Category="Life") int32 Seed = 11;
 	/** Walkers per km of sidewalk edge, by road kind (edge axis 0 = avenue sidewalks, 1 = street sidewalks). Two-way flow: half walk each way. */
-	UPROPERTY(EditAnywhere, Category="Life") float PerKmAvenue = 1300.f;
-	UPROPERTY(EditAnywhere, Category="Life") float PerKmStreet = 860.f;
+	UPROPERTY(EditAnywhere, Category="Life") float PerKmAvenue = 1600.f;
+	UPROPERTY(EditAnywhere, Category="Life") float PerKmStreet = 1100.f;
 	/** Camera-centred population: walkers exist within this distance (cm) of the camera; farther ones are recycled to the far edge of the disc
 	 *  (out of view when possible), so the density around the camera stays high wherever it goes and the cost stays bounded. */
-	UPROPERTY(EditAnywhere, Category="Life") float SpawnRadius = 13000.f;
-	UPROPERTY(EditAnywhere, Category="Life") int32 MaxWalkers = 2000;
-	/** cm: walkers farther than this from the camera are simulated but have no mesh. */
+	UPROPERTY(EditAnywhere, Category="Life") float SpawnRadius = 19000.f;
+	UPROPERTY(EditAnywhere, Category="Life") int32 MaxWalkers = 6000;
+	/** cm: walkers farther than this from the camera are simulated but have no mesh. A camera above HighCamFromCm (a swing, a rooftop, the S2 view) sees people much farther down the
+	 *  avenue: the live radius grows linearly to LiveRadiusHigh at HighCamToCm. */
 	UPROPERTY(EditAnywhere, Category="Life") float LiveRadius = 11000.f;
+	UPROPERTY(EditAnywhere, Category="Life") float LiveRadiusHigh = 18000.f;
+	UPROPERTY(EditAnywhere, Category="Life") float HighCamFromCm = 1200.f;
+	UPROPERTY(EditAnywhere, Category="Life") float HighCamToCm = 3200.f;
 	/** Live walkers must be inside the camera's view cone widened by this many degrees (or closer than NearAllRadius, in any direction). */
 	UPROPERTY(EditAnywhere, Category="Life") float ViewMarginDeg = 30.f;
-	UPROPERTY(EditAnywhere, Category="Life") float NearAllRadius = 2200.f;
+	UPROPERTY(EditAnywhere, Category="Life") float NearAllRadius = 1000.f;
 	/** Looks per citizen mesh (the mesh list is variant-major: index = variant * NumCitizens + citizen), used to keep the same head from appearing twice near each other. */
 	UPROPERTY(EditAnywhere, Category="Life") int32 NumVariants = 5;
 	UPROPERTY(EditAnywhere, Category="Life") int32 MaxAssignPerRefresh = 14;
@@ -92,12 +99,25 @@ public:
 	/** Ray tracing (Lumen hardware RT) sees the walkers. Off by default: skinned meshes need a BLAS refit per frame. */
 	UPROPERTY(EditAnywhere, Category="Life") bool bVisibleInRayTracing = false;
 	UPROPERTY(EditAnywhere, Category="Life") float StatsInterval = 0.f;
+	/** Character fill light (round 03): one unshadowed directional light on lighting channel 1 that only the walkers use (no GI contribution), aimed along the camera
+	 *  view and pitched down FillPitchDeg. It lifts walkers standing in deep shade (sidewalk sheds, canyon floors) so they read as people instead of black cut-outs.
+	 *  Lux; 0 = off. Command line: -WHLifeFill=<lux>, -WHLifeFillSteps=<t>:<lux>,<t>:<lux>... (game seconds, for sweeps), -WHLifeFillPitch=<deg>. */
+	UPROPERTY(EditAnywhere, Category="Life|Fill") float FillLux = 2300.f;
+	/** The fill applies only to walkers the sun does not reach (a line trace towards the atmosphere sun light, every ~1 s per live walker): people in the sun keep their natural light. -WHLifeFillAll turns it off (everyone gets the fill). */
+	UPROPERTY(EditAnywhere, Category="Life|Fill") bool bFillShadeOnly = true;
+	UPROPERTY(EditAnywhere, Category="Life|Fill") float FillPitchDeg = 38.f;
+	UPROPERTY(EditAnywhere, Category="Life|Fill") float FillTemperature = 5200.f;
+	/** Share of walkers that keep to the right half of the sidewalk band (in their own direction of travel): opposite flows use opposite halves instead of walking through each other. */
+	UPROPERTY(EditAnywhere, Category="Life") float KeepRight = 0.78f;
+	/** Camera faster than this (cm/s): walkers recycled from behind reappear AHEAD of the camera's motion (a fast swing keeps a full sidewalk in front of it), not off-screen anywhere. */
+	UPROPERTY(EditAnywhere, Category="Life") float AheadSpeedCms = 500.f;
 	/** Fixed camera for the live set (test rigs); ignored if zero. */
 	UPROPERTY(EditAnywhere, Category="Life") FVector FocusOverride = FVector::ZeroVector;
 
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumWalkers = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumLive = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumWaiting = 0;
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumShade = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float LastSimMs = 0.f;
 
 	UFUNCTION(BlueprintCallable, Category="Life") FString StatsString() const;
@@ -130,12 +150,25 @@ private:
 	FVector2D AvoidM = FVector2D::ZeroVector; bool bAvoid = false;   // camera ground position (m) walkers avoid
 	float LatFor(const FEdge& E, int8 Dir, uint32& R) const;
 	bool bCentered = false;
-	int32 FirstRefreshes = 0;
+	int32 FirstRefreshes = 0, TickCount = 0;
+	UPROPERTY(Transient) TObjectPtr<UDirectionalLightComponent> FillLight;
+	TArray<TPair<float, float>> FillSteps;   // (game s, lux) sweep from -WHLifeFillSteps
+	TArray<int32> RespIdx; TArray<float> RespCum;   // sidewalk edges that reach the recycle ring around the camera (rebuilt at every refresh), cumulative length * density
+	void BuildRespawnEdges(const FVector& Cam);
+	FVector PrevCam = FVector::ZeroVector, CamVel = FVector::ZeroVector; bool bHavePrevCam = false;   // camera velocity (cm/s), smoothed
+	void UpdateFill();
+	void UpdateShade();
+	void TestShade(WHLife::FWalker& W, struct FCollisionQueryParams& Q, double Now);
+	FVector SunDir = FVector::ZeroVector; bool bHaveSun = false; double NextSunSearch = 0.0; int32 ShadeCursor = 0;
+	void UpdateAvoidance();
 	void PickNextEdge(WHLife::FWalker& W);
 	FVector2D LinePos(const FEdge& E, int8 Dir, float S) const { return Dir > 0 ? Pts[E.A] + E.U * S : Pts[E.B] - E.U * S; }
 	void StepWalker(WHLife::FWalker& W, float Dt);
 	void EnterEdge(WHLife::FWalker& W, int32 Edge, int32 FromNode, bool bKeepPos);
 	bool MayCross(const FEdge& E, float Speed) const;
+	/** No car body is on / next to the crosswalk edge right now (cached 0.25 s per edge): people wait for the crosswalk to clear as well as for the walk signal. */
+	bool CrosswalkClear(int32 EdgeIdx);
+	TMap<int32, TPair<double, bool>> XClear;
 	void RefreshLive(const FVector& Cam);
 	void Assign(int32 WalkerI, int32 Slot);
 	void Unassign(int32 WalkerI);

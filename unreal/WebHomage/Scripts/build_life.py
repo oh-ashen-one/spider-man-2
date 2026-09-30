@@ -86,6 +86,7 @@ def ue_python(name, steps, timeout=7200):
 
 
 def step_prep():
+    os.environ.setdefault('SM2_LIFE_CIT', CIT)   # citizens_fbx.py writes where this build reads
     os.makedirs(VEH, exist_ok=True); os.makedirs(CIT, exist_ok=True)
     sh(['python3', 'tools/life/prep_vehicles.py', '--out', VEH], log_name='prep_vehicles.log')
     lay = os.path.join(EXPORT, 'layout.json')
@@ -483,8 +484,8 @@ return rgb * lerp(0.02, 0.15, on);''')
         cr.set_editor_property('anim_class', load(ROOT + '/Citizens/ABP_Life_Citizen').generated_class())
         cr.set_editor_property('traffic', tr)
         cr.set_editor_property('seed', 11)
-        cr.set_editor_property('per_km_avenue', float(os.environ.get('SM2_LIFE_PERKM_AV', '1300')))     # walkers per km of sidewalk edge (round 02: 1300 / 860; round 01 950 / 640)
-        cr.set_editor_property('per_km_street', float(os.environ.get('SM2_LIFE_PERKM_ST', '860')))
+        cr.set_editor_property('per_km_avenue', float(os.environ.get('SM2_LIFE_PERKM_AV', '1600')))     # walkers per km of sidewalk edge (round 03: 1600 / 1100; round 02 1300 / 860; round 01 950 / 640). Keep equal to the C++ default (a value equal to the default is not serialised)
+        cr.set_editor_property('per_km_street', float(os.environ.get('SM2_LIFE_PERKM_ST', '1100')))
         cr.set_editor_property('num_variants', 5)
         cr.set_editor_property('pool_per_model', 6)
         pr = spawn(unreal.WHLifeProbe, unreal.Vector(0, 0, 0), label='LifeProbe')
@@ -530,6 +531,8 @@ return rgb * lerp(0.02, 0.15, on);''')
                     r.set_editor_property(k, v)
                 if 'aim' in rig:
                     r.set_editor_property('aim_at_target', True); r.set_editor_property('aim_target', sv(rig['aim']))
+                if 'aim_ahead' in rig:
+                    r.set_editor_property('aim_ahead_cm', rig['aim_ahead'][0] * 100.0); r.set_editor_property('aim_ahead_height_cm', rig['aim_ahead'][1] * 100.0)
             ok = unreal.EditorLoadingAndSavingUtils.save_map(world, path)
             L('map', path, 'saved' if ok else 'SAVE FAILED', 'levels', len(unreal.EditorLevelUtils.get_levels(world)))
 
@@ -540,8 +543,9 @@ return rgb * lerp(0.02, 0.15, on);''')
         # capture_round.sh), z 150.5 -> 123.5 (1.5 m/s), eye 1.8 m, aimed 10 deg to the left of north. This is the S1 storefront stretch (P1 thins its street trees out there, so the
         # west sidewalk, 3.5-6.5 m to the left, is open): two-way flow seen obliquely with parallax. The rig holds still for 2.5 s (warm-up, trimmed by the capture script), then walks 18 s.
         make_map(TESTS + '/Life_Street_Clip', rig={'start': (241.0, 0.15, 150.5), 'end': (241.0, 0.15, 123.5), 'duration': 18.0, 'eye': 180.0, 'aim': (223.0, 1.6, 50.0), 'fov': 75.0, 'hold': 2.5})
-        # swing-height clip: 30 m above the avenue centre line, heading north at 25 m/s for 10 s, aimed down the avenue (pitch about 5-8 deg down, wide lens like the swing camera)
-        make_map(TESTS + '/Life_Swing_Clip', rig={'start': (250.0, 0.15, 232.0), 'end': (250.0, 0.15, -18.0), 'duration': 10.0, 'eye': 3000.0, 'aim': (250.0, 0.0, -170.0), 'fov': 88.0, 'hold': 2.5})
+        # swing-height clip (round 03): 22 m above the avenue centre line, heading north at 25 m/s for 10 s, the camera always aimed at the ground 70 m ahead of itself (constant pitch about 17 deg down,
+        # 88 deg lens like the swing camera): both sidewalks and the lanes of the nearest blocks fill the lower half of the frame (round 02: 30 m up, aimed at a fixed point 150-400 m away, the street was a sliver)
+        make_map(TESTS + '/Life_Swing_Clip', rig={'start': (250.0, 0.15, 232.0), 'end': (250.0, 0.15, -18.0), 'duration': 10.0, 'eye': 2200.0, 'aim_ahead': (70.0, 0.0), 'fov': 88.0, 'hold': 2.5})
         # signal clip: fixed camera 7.5 m up on the avenue centre line, 18 m behind the tail of the queue of the southbound lanes (links 1201 / 1202) that stops at the signal of street 160
         # (z 155-165); the P1 mast at its far corner (238.1, 165.9) has its heads facing the camera. 10 s after the 2.5 s warm-up: cycle phase 36 -> 46 s (capture_round.sh -WHLifeSignalPhase=33.5), red until 40 s (clip t = 4 s), green after
         make_map(TESTS + '/Life_Signal_Clip', rig={'start': (248.5, 0.15, 106.0), 'end': (248.5, 0.15, 106.0), 'duration': 10.0, 'eye': 750.0, 'aim': (246.0, 3.0, 165.0), 'fov': 52.0, 'hold': 2.5})

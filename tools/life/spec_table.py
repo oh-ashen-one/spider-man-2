@@ -18,8 +18,10 @@ def series(prefix):
     return sorted(out)
 def clip(name): return det.get(name, {}).get('summary'), det.get(name, {}).get('rows', [])
 def ok(c): return 'MEETS' if c else 'MISSES'
+HAND = re.compile(r'people >=20px: (\d+) \(left (\d+) right (\d+); within 80 m (\d+): left (\d+) right (\d+)\)')
+FRAME = re.compile(r'WH_LIFE_FRAME t=([\d.]+) res=(\d+)x(\d+).*people >=20px unoccluded: (\d+) \(left of view axis (\d+), right (\d+); within 80 m (\d+): left (\d+) right (\d+)\)')
 SAMPLE = re.compile(r'WH_LIFE_SAMPLE t=([\d.]+) .*?vehicles unoccluded >=(\d+)px: moving (\d+) \(>1 m/s (\d+), standing (\d+)\) parked (\d+) buses (\d+) \| nearest moving car ([-\d.]+) m \| lanes in view \(projected, >= size\) key:moving/standing([^|]*)\| '
-                    r'people >=(\d+)px: (\d+) \(walking (\d+), looks (\d+), citizen meshes (\d+), nearest ([-\d.]+) m; within 60 m (\d+): repeated looks (\d+), within 30 m repeated looks (\d+) / repeated citizen meshes (\d+)\) \| signal av/st (-?\d+)/(-?\d+) \| junction-box stops now (-?\d+) worst (-?\d+)(.*)')
+                    r'people >=(\d+)px: (\d+) \(walking (\d+), looks (\d+), citizen meshes (\d+), nearest ([-\d.]+) m; within 60 m (\d+): repeated looks (\d+), within 30 m repeated looks (\d+) / repeated citizen meshes (\d+)\)(?: \| people >=20px: [^|]*)? \| signal av/st (-?\d+)/(-?\d+) \| junction-box stops now (-?\d+) worst (-?\d+)(.*)')
 def samples(f):
     out = []
     p = os.path.join(R, f)
@@ -31,13 +33,15 @@ def samples(f):
         lanes = {}
         for t in g[8].split():
             k, v = t.split(':'); mv, st = v.split('/'); lanes[int(k)] = (int(mv), int(st))
-        out.append(dict(t=float(g[0]), veh_occ=int(g[2]), mov_fast=int(g[3]), standing=int(g[4]), parked=int(g[5]), buses=int(g[6]), nearest_car=float(g[7]), lanes=lanes,
+        h = HAND.search(l); hd = dict(hand=int(h.group(1)), hand_l=int(h.group(2)), hand_r=int(h.group(3)), hand80=int(h.group(4)), hand80_l=int(h.group(5)), hand80_r=int(h.group(6))) if h else {}
+        out.append(dict(**hd, t=float(g[0]), veh_occ=int(g[2]), mov_fast=int(g[3]), standing=int(g[4]), parked=int(g[5]), buses=int(g[6]), nearest_car=float(g[7]), lanes=lanes,
                         people=int(g[10]), walking=int(g[11]), looks=int(g[12]), meshes=int(g[13]), nearest_p=float(g[14]), within60=int(g[15]), rep60=int(g[16]), rep30=int(g[17]),
                         repmesh30=int(g[18]), sig_av=int(g[19]), sig_st=int(g[20]), box_now=int(g[21]), box_worst=int(g[22]), tail=g[23]))
     return out
 out = []
 A = out.append
-A('# P6 City life round 02: spec table\n')
+RN = os.path.basename(os.path.normpath(R)).replace('round-', '')
+A('# P6 City life round %s: spec table\n' % RN)
 A('> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.\n')
 A('**Detector numbers are from `tools/life/detect_counts.py`**: the same model, classes (person, car, motorcycle, bus, truck), confidence 0.35 and image size 1920 as the spec instrument '
   '`docs/night1/specs/tools/count_people_vehicles.py` (YOLO11x-seg; this round run on the CPU device, the numbers do not depend on the device up to tie-breaks); stills are counted as they are, clips every 0.5 s like the spec tool. Round 01 was measured with the engine probe, which counted tiny distant '
@@ -101,6 +105,48 @@ if sm:
             maxq, '/'.join(str(q[2]) for q in red[:1] + red[-1:]), '/'.join(str(q[3]) for q in grn[:1] + grn[-1:]) if grn else 'n/a', '/'.join('%.1f' % q[4] for q in grn[:1] + grn[-1:]) if grn else 'n/a', len(red), len(qs), len(grn), max(x['box_worst'] for x in sm)),
             ok(maxq >= 3 and grn and max(x['box_worst'] for x in sm) == 0)))
 rows.append(('C4 traffic lights >= 1, lit', '>= 1 lit signal head', 'the lens overlay (`AWHLifeTraffic::BuildSignals`, %s lens instances on the P1 masts / posts) lights red / amber / green from the shared 40 s clock; see `signal_clip_1080p60.mp4` and the S1 / S2 stills' % ('246'), 'see stills'))
+# ---- round 03 target rows: pedestrians on BOTH sidewalks at every camera height
+def load_json(name):
+    p = os.path.join(R, name)
+    return json.load(open(p)) if os.path.exists(p) else {}
+det84 = load_json('detector_crop84.json'); hand = load_json('hand_counts.json')
+def side_rows(dd, prefix, tag):
+    out_ = []
+    for k, d in sorted(dd.items()):
+        if k.startswith(prefix) and 'people_right' in d and (k.endswith('.jpg')):
+            out_.append((k, d['people'], d['people_left'], d['people_right']))
+    return out_
+for tag, dd in (('full frame', det), ('critic 84 % centre crop', det84)):
+    ss = [x for x in side_rows(dd, 'S1_', tag)]
+    if ss:
+        sh = [100.0 * r / max(1, t) for k, t, l, r in ss]
+        rows.append(('R03 right-hand sidewalk share of YOLO people, S1 stills + t12-t28 series (%s)' % tag, '>= 35 % of the YOLO people count on the right half (was 0-17 %)',
+                     'detector: right / total per still: %s; **median %.0f %%**, min %.0f %%, max %.0f %%; people total median %g' % (', '.join('%d/%d' % (r, t) for k, t, l, r in ss), med(sh), min(sh), max(sh), med([t for k, t, l, r in ss])),
+                     ok(med(sh) >= 35) + ('' if min(sh) >= 35 else ' on the median; min %.0f %%' % min(sh))))
+    stc, strows_ = None, []
+    for nm in ('street_clip_1080p60.mp4',):
+        c = dd.get(nm, {}).get('summary')
+        if c and 'right_share_med' in c:
+            rows.append(('R03 right-half share of people, street clip (%s)' % tag, 'context (the walk hugs the west curb, the crowd is on the left by construction)', 'detector: left median %g, right median %g, right share median %.0f %%' % (c['people_left_med'], c['people_right_med'], 100 * c['right_share_med']), ''))
+sw_ = samples('probe_swing.txt')
+sw_ = [x for x in sw_ if x['t'] >= 2.5 and 'hand80' in x]
+if sw_:
+    h80 = [x['hand80'] for x in sw_]; hl = [x['hand80_l'] for x in sw_]; hr = [x['hand80_r'] for x in sw_]
+    rows.append(('R03 swing clip: pedestrians on the sidewalks of the nearest block, every 0.5 s sample', '>= 15 hand-countable in EVERY sample (was 0 in 20 of 20)',
+                 'engine probe (unoccluded, >= 20 px tall at 1080p, within 80 m on the ground): min %d / median %g / max %d over %d samples (left of the view axis median %g, right median %g; samples with both sides >= 5: %d)' % (
+                     min(h80), med(h80), max(h80), len(h80), med(hl), med(hr), sum(1 for x in sw_ if x['hand80_l'] >= 5 and x['hand80_r'] >= 5)), ok(min(h80) >= 15)))
+if 'swing_clip_1080p60.mp4' in det and 'people_min' in det['swing_clip_1080p60.mp4'].get('summary', {}):
+    c = det['swing_clip_1080p60.mp4']['summary']
+    rows.append(('R03 swing clip: YOLO people per 0.5 s sample', 'context (YOLO sees people >= ~30 px only; the swing camera sees smaller ones)', 'detector: min %d / median %g / p90 %g (left median %g, right median %g)' % (c['people_min'], c['people_med'], c['people_p90'], c['people_left_med'], c['people_right_med']), ''))
+for f_, lab in (('probe_S2_4k.txt', '4K'), ('probe_S2_1080p.txt', '1080p')):
+    p_ = os.path.join(R, f_)
+    if os.path.exists(p_):
+        fr = [FRAME.search(l) for l in open(p_)]; fr = [m for m in fr if m]
+        if fr:
+            g_ = fr[-1].groups()
+            rows.append(('R03 S2 still (%s): pedestrians visible, engine count' % lab, '>= 15 on the nearest block (hand count below)', 'engine probe, still at t = %s s: %s people >= 20 px unoccluded (left of the view axis %s, right %s)' % (g_[0], g_[3], g_[4], g_[5]), ''))
+for k, v in sorted(hand.items()):
+    rows.append(('R03 hand count: %s' % k, v.get('target', '>= 15 on the nearest block\'s sidewalks'), '%s (left %s, right %s; counted by eye on the 4K frame / crop: %s)' % (v['total'], v.get('left', '?'), v.get('right', '?'), v.get('note', '')), ok(v['total'] >= v.get('min', 15))))
 fj = os.path.join(R, 'feet_analysis.json')
 if os.path.exists(fj):
     g = json.load(open(fj))['gait']

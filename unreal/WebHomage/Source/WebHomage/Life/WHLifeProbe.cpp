@@ -6,6 +6,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Math/RotationMatrix.h"
 #include "Misc/Paths.h"
 #include "Misc/FileHelper.h"
 #include "Misc/CommandLine.h"
@@ -85,13 +86,20 @@ void AWHLifeProbe::Report(int32 Idx)
 		for (int32 I = 0; I < P.Num(); ++I) { ParProj += Vis(P[I], 160.f, 0.f, false); for (int32 K = 0; K < 2; ++K) if (Vis(P[I], 160.f, CarPx[K], true)) { ++Par[K]; ParTaxi[K] += PT[I] <= 3; } }
 	}
 	int32 People[2] = {0, 0}, PplProj = 0; TSet<int32> Models[2];
+	int32 HandL = 0, HandR = 0, HandNear = 0, HandNearL = 0, HandNearR = 0;   // people >= 20 px (a size a person can count by eye), unoccluded, left / right of the view axis; Near = within 80 m on the ground
 	if (Crowd)
 	{
+		const FVector Rgt = FRotationMatrix(Rot).GetScaledAxis(EAxis::Y);
 		TArray<FVector> Pos; TArray<int32> Mod; TArray<USkeletalMeshComponent*> Comps; TArray<float> Sp; Crowd->GetLive(Pos, Mod, Comps, Sp);
 		for (int32 I = 0; I < Pos.Num(); ++I)
 		{
 			PplProj += Vis(Pos[I], 175.f, 0.f, false);
 			for (int32 K = 0; K < 2; ++K) if (Vis(Pos[I], 175.f, PplPx[K], true)) { ++People[K]; Models[K].Add(Mod[I]); }
+			if (Vis(Pos[I], 175.f, 20.f, true))
+			{
+				const bool bR = FVector::DotProduct(Pos[I] - Eye, Rgt) > 0.f; (bR ? HandR : HandL)++;
+				if (FVector2D::Distance(FVector2D(Pos[I].X, Pos[I].Y), FVector2D(Eye.X, Eye.Y)) < 8000.f) { ++HandNear; (bR ? HandNearR : HandNearL)++; }
+			}
 		}
 	}
 	TMap<int32, int32> TwinMap; int32 Twins = 0;
@@ -100,9 +108,9 @@ void AWHLifeProbe::Report(int32 Idx)
 		TArray<FVector> Pos; TArray<int32> Mod; TArray<USkeletalMeshComponent*> Comps; TArray<float> Sp; Crowd->GetLive(Pos, Mod, Comps, Sp);
 		for (int32 I = 0; I < Pos.Num(); ++I) if (Vis(Pos[I], 175.f, PplPx[0], true)) { int32& N = TwinMap.FindOrAdd(Mod[I]); if (N++ > 0) ++Twins; }
 	}
-	UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_FRAME t=%.1f res=%dx%d fov=%.0f cam=(%.1f,%.1f,%.1f)m | vehicles unoccluded >=%.0fpx: moving=%d (taxi %d) parked=%d (taxi %d) total=%d | >=%.0fpx: moving=%d parked=%d (taxi %d) total=%d | people unoccluded >=%.0fpx: %d (models %d, identical looks in frame %d) | >=%.0fpx: %d (models %d) | projected only (no size / occlusion test): vehicles moving=%d parked=%d people=%d"),
+	UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_FRAME t=%.1f res=%dx%d fov=%.0f cam=(%.1f,%.1f,%.1f)m | vehicles unoccluded >=%.0fpx: moving=%d (taxi %d) parked=%d (taxi %d) total=%d | >=%.0fpx: moving=%d parked=%d (taxi %d) total=%d | people unoccluded >=%.0fpx: %d (models %d, identical looks in frame %d) | >=%.0fpx: %d (models %d) | projected only (no size / occlusion test): vehicles moving=%d parked=%d people=%d | people >=20px unoccluded: %d (left of view axis %d, right %d; within 80 m %d: left %d right %d)"),
 		T, W, H, Fov, Eye.X / 100.f, Eye.Y / 100.f, Eye.Z / 100.f, CarPx[0], Mov[0], MovTaxi[0], Par[0], ParTaxi[0], Mov[0] + Par[0], CarPx[1], Mov[1], Par[1], ParTaxi[1], Mov[1] + Par[1],
-		PplPx[0], People[0], Models[0].Num(), Twins, PplPx[1], People[1], Models[1].Num(), MovProj, ParProj, PplProj);
+		PplPx[0], People[0], Models[0].Num(), Twins, PplPx[1], People[1], Models[1].Num(), MovProj, ParProj, PplProj, HandL + HandR, HandL, HandR, HandNear, HandNearL, HandNearR);
 	if (Traffic) { UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_TRAFFIC %s"), *Traffic->StatsString()); Traffic->DumpCars(FPaths::ProjectSavedDir() / FString::Printf(TEXT("Logs/life_cars_%d.csv"), Idx)); }
 	if (Crowd) UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_CROWD %s"), *Crowd->StatsString());
 }
@@ -199,8 +207,18 @@ void AWHLifeProbe::Sample()
 		for (int32 I = 0; I < M.Num(); ++I) if (MT[I] >= 13 && Vis(M[I], 300.f, MinCarPx)) ++Buses;
 	}
 	int32 People = 0, Walking = 0, DupHeads60 = 0, DupHeads30 = 0, DupBase30 = 0, Within60 = 0; TSet<int32> Looks, Heads; int32 Nearest = 0; float NearestM = 1e9f;
+	int32 HandL = 0, HandR = 0, HandNear = 0, HandNearL = 0, HandNearR = 0;   // people >= 20 px unoccluded, left / right of the view axis; Near = within 80 m on the ground
 	if (Crowd)
 	{
+		const FVector Rgt = FRotationMatrix(Rot).GetScaledAxis(EAxis::Y);
+		{
+			TArray<FVector> Pos; TArray<int32> Mod; TArray<USkeletalMeshComponent*> Comps; TArray<float> Sp; Crowd->GetLive(Pos, Mod, Comps, Sp);
+			for (int32 I = 0; I < Pos.Num(); ++I) if (Vis(Pos[I], 175.f, 20.f))
+			{
+				const bool bR = FVector::DotProduct(Pos[I] - Eye, Rgt) > 0.f; (bR ? HandR : HandL)++;
+				if (FVector2D::Distance(FVector2D(Pos[I].X, Pos[I].Y), FVector2D(Eye.X, Eye.Y)) < 8000.f) { ++HandNear; (bR ? HandNearR : HandNearL)++; }
+			}
+		}
 		TArray<FVector> Pos; TArray<int32> Mod; TArray<USkeletalMeshComponent*> Comps; TArray<float> Sp; Crowd->GetLive(Pos, Mod, Comps, Sp);
 		const int32 NB = FMath::Max(1, Crowd->Meshes.Num() / FMath::Max(1, Crowd->NumVariants));
 		TMap<int32, int32> HeadCount60; TMap<int32, int32> HeadCount30; TMap<int32, int32> BaseCount30;
@@ -217,7 +235,8 @@ void AWHLifeProbe::Sample()
 	FString LaneStr; { TArray<int32> Ks; Lanes.GetKeys(Ks); Ks.Sort(); for (int32 K : Ks) LaneStr += FString::Printf(TEXT(" %d:%d/%d"), K, Lanes[K].Key, Lanes[K].Value); }
 	FString QStr;
 	if (Traffic) for (int32 Id : QueueLinks) { int32 N = 0, S = 0; float F = -1.f; Traffic->GetLinkQueue(Id, N, S, F); QStr += FString::Printf(TEXT(" | link %d cars %d stopped %d front %.1f m"), Id, N, S, F); }
-	UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_SAMPLE t=%.2f cam=(%.1f,%.1f,%.1f)m yaw=%.0f | vehicles unoccluded >=%.0fpx: moving %d (>1 m/s %d, standing %d) parked %d buses %d | nearest moving car %.1f m | lanes in view (projected, >= size) key:moving/standing%s | people >=%.0fpx: %d (walking %d, looks %d, citizen meshes %d, nearest %.1f m; within 60 m %d: repeated looks %d, within 30 m repeated looks %d / repeated citizen meshes %d) | signal av/st %d/%d | junction-box stops now %d worst %d%s"),
+	UE_LOG(LogWHLifeProbe, Display, TEXT("WH_LIFE_SAMPLE t=%.2f cam=(%.1f,%.1f,%.1f)m yaw=%.0f | vehicles unoccluded >=%.0fpx: moving %d (>1 m/s %d, standing %d) parked %d buses %d | nearest moving car %.1f m | lanes in view (projected, >= size) key:moving/standing%s | people >=%.0fpx: %d (walking %d, looks %d, citizen meshes %d, nearest %.1f m; within 60 m %d: repeated looks %d, within 30 m repeated looks %d / repeated citizen meshes %d) | people >=20px: %d (left %d right %d; within 80 m %d: left %d right %d) | signal av/st %d/%d | junction-box stops now %d worst %d%s"),
 		T, Eye.X / 100.f, Eye.Y / 100.f, Eye.Z / 100.f, Rot.Yaw, MinCarPx, Mov, MovFast, Stopped, Par, Buses, NearestCar > 1e8f ? -1.f : NearestCar, *LaneStr, MinPersonPx, People, Walking, Looks.Num(), Heads.Num(), NearestM > 1e8f ? -1.f : NearestM, Within60, DupHeads60, DupHeads30, DupBase30,
+		HandL + HandR, HandL, HandR, HandNear, HandNearL, HandNearR,
 		Traffic ? Traffic->CurrentPhase(0) : -1, Traffic ? Traffic->CurrentPhase(1) : -1, Traffic ? Traffic->NumBoxStopped : -1, Traffic ? Traffic->MaxBoxStopped : -1, *QStr);
 }

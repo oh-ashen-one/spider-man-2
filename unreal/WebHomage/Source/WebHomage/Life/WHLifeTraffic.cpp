@@ -210,6 +210,16 @@ void AWHLifeTraffic::PlaceParked()
 		const int32 T = FCString::Atoi(*P[0]); if (T < 0 || T >= NumTypes) continue;
 		const float X = FCString::Atof(*P[1]) * 100.f, Y = FCString::Atof(*P[2]) * 100.f, Yaw = FCString::Atof(*P[3]);
 		if (bClear && X > ClearR.X * 100.f && X < ClearR.Z * 100.f && Y > ClearR.Y * 100.f && Y < ClearR.W * 100.f) continue;   // -WHLifeClearParked=x0:z0:x1:z1 (browser m): the camera walks through here
+		if (ParkedGapEveryM > 1.f && FMath::Abs(FMath::Sin(FMath::DegreesToRadians(Yaw))) > 0.7f)
+		{	// avenue curb (cars parked along z): bus stop / loading zone north of the street k (streets at z = 0 mod ParkedGapEveryM), on half of the (curb, street) pairs
+			const float Z = Y * 0.01f; const int32 K = FMath::RoundToInt(Z / ParkedGapEveryM); const float D = Z - K * ParkedGapEveryM;   // < 0: north of the street
+			if (D < -ParkedGapStartM && D > -(ParkedGapStartM + ParkedGapLenM))
+			{
+				const int32 Key = FMath::RoundToInt(X * 0.01f * 0.5f);   // curb line, 2 m steps
+				uint32 H = ((uint32)Key * 2654435761u) ^ ((uint32)K * 40503u) ^ ((uint32)ParkedGapSeed * 9973u); H ^= H >> 15; H *= 2246822519u; H ^= H >> 13;
+				if (H & 1u) continue;
+			}
+		}
 		Tx[T].Add(FTransform(FRotator(0.f, Yaw, 0.f), FVector(X, Y, 1.f)));
 		ParkedPts.Add(FVector(X, Y, 80.f)); ParkedTypes.Add(T);
 		Cd[T].Append({ FCString::Atof(*P[4]), FCString::Atof(*P[5]), FCString::Atof(*P[6]), P.Num() > 7 ? FCString::Atof(*P[7]) : 0.f });
@@ -256,6 +266,8 @@ void AWHLifeTraffic::BeginPlay()
 	Super::BeginPlay();
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeStats="), StatsInterval);
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeClearAhead="), ClearAheadM);
+	FParse::Value(FCommandLine::Get(), TEXT("WHLifeDensity="), DensityScale);
+	{ FString G; if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeParkGap="), G)) { TArray<FString> P; G.ParseIntoArray(P, TEXT(":"), true); if (P.Num() >= 1) ParkedGapEveryM = FCString::Atof(*P[0]); if (P.Num() >= 2) ParkedGapLenM = FCString::Atof(*P[1]); if (P.Num() >= 3) ParkedGapSeed = FCString::Atoi(*P[2]); if (P.Num() >= 4) ParkedGapStartM = FCString::Atof(*P[3]); } }
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeRT"))) bVisibleInRayTracing = true;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeNoShadow"))) bCastShadows = false;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeOff")) || FParse::Param(FCommandLine::Get(), TEXT("WHTrafficOff"))) { UE_LOG(LogWHLife, Display, TEXT("[life] traffic disabled by command line")); return; }
@@ -734,6 +746,22 @@ void AWHLifeTraffic::UpdateSignals()
 		for (const FLens& L : Lenses) if (L.Axis == Axis) LensISM->SetCustomDataValue(L.Inst, 3, L.Color == S ? 1.f : 0.f, false);
 	}
 	if (bDirty) LensISM->MarkRenderStateDirty();
+}
+
+bool AWHLifeTraffic::AnyCarNearSegment(const FVector2D& A, const FVector2D& B, float DistM) const
+{
+	const FVector2D AB = B - A; const float L2 = FMath::Max(1e-3f, AB.SizeSquared()); const float D2 = DistM * DistM;
+	for (const FCar& C : Cars)
+	{
+		if (!C.bActive) continue;
+		for (int32 K = 0; K < 3; ++K)
+		{
+			const FVector2D P = PathPoint(C, C.Len * 0.5f * K);
+			const float T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / L2, 0.f, 1.f);
+			if (FVector2D::DistSquared(P, A + AB * T) < D2) return true;
+		}
+	}
+	return false;
 }
 
 void AWHLifeTraffic::GetMovingInfo(TArray<FVector>& Pos, TArray<float>& Speed, TArray<int32>& LaneKey) const

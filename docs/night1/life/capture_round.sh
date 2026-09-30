@@ -88,7 +88,9 @@ if has detect; then
   ( source "$VENV/bin/activate"
     FILES=("$ROUND"/stills/*.jpg)
     for V in S1 S2; do for TAG in 1080p; do FILES+=("$TMP/${V}_$TAG/${V}_"*_t0[12]*.jpg); done; done
-    $G capture --label life -- python "$WT/tools/life/detect_counts.py" --json "$ROUND/detector.json" "${FILES[@]}" "$ROUND"/*_clip_1080p60.mp4 "$ROUND"/street_clip_1080p60.mp4 2>&1 | grep -v Warning | tee "$ROUND/detector.txt" )
+    # CPU device: no GPU lock needed (round 03). Full frame (detector.json) and the critic pack's 84 % centre crop (detector_crop84.json)
+    python "$WT/tools/life/detect_counts.py" --device cpu --json "$ROUND/detector.json" "${FILES[@]}" "$ROUND"/*_clip_1080p60.mp4 2>&1 | grep -v Warning | tee "$ROUND/detector.txt"
+    python "$WT/tools/life/detect_counts.py" --device cpu --crop 0.84 --json "$ROUND/detector_crop84.json" "${FILES[@]}" "$ROUND"/*_clip_1080p60.mp4 2>&1 | grep -v Warning > "$ROUND/detector_crop84.txt" )
 fi
 
 if has perf; then

@@ -86,13 +86,20 @@ public:
 	/** Fixed street-level shots only (command line -WHLifeClearAhead=<m>, default 0 = off): moving cars whose body lies in a corridor this many metres ahead of the camera (and ClearAheadHalfWidthM to each side)
 	 *  are not drawn, so a stills camera standing in a lane is not filled by a delivery truck that happens to arrive on its frame. Gameplay leaves it off. */
 	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadM = 0.f;
-	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadHalfWidthM = 2.4f;
+	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadHalfWidthM = 14.f;
 	UPROPERTY(EditAnywhere, Category="Life") float ReactionMin = 0.35f;
 	UPROPERTY(EditAnywhere, Category="Life") float ReactionMax = 1.25f;
 	/** >= 0: the signal clock reads this phase (s in the 40 s cycle) when the pre-roll ends, i.e. game time 0. Fixed-camera signal clips. */
 	UPROPERTY(EditAnywhere, Category="Life") float SignalPhaseAtStart = -1.f;
 	/** Bus / tourist bus share of the curb-side through lane of avenues (0..1). */
 	UPROPERTY(EditAnywhere, Category="Life") float BusShare = 0.07f;
+	/** Bus stops / loading zones: on the far (north) side of every ParkedGapEveryM-spaced street of an avenue curb (streets sit at z = 0 mod 80) a curb stretch of ParkedGapLenM, starting ParkedGapStartM
+	 *  past the street centre line, has no parked cars. It applies to a given curb and street with probability 1/2 (hash of the curb line, the street and ParkedGapSeed), so about a quarter of the
+	 *  avenue curb cars are missing and the sidewalk behind them can be seen from the street. 0 = no gaps. Command line: -WHLifeParkGap=<every m>:<len m>:<seed>:<start m>. */
+	UPROPERTY(EditAnywhere, Category="Life") float ParkedGapEveryM = 80.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ParkedGapLenM = 36.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ParkedGapStartM = 9.f;
+	UPROPERTY(EditAnywhere, Category="Life") int32 ParkedGapSeed = 12;
 
 	UPROPERTY(EditAnywhere, Category="Life") bool bSimulate = true;
 	/** 1 = the browser's steady-state density (cars per km of lane by road kind). */
@@ -138,6 +145,8 @@ public:
 	/** Queue on a lane link (file id): cars whose front is on it, how many are stopped, the front car's distance to the stop line (m, -1 none). */
 	void GetLinkQueue(int32 LinkFileId, int32& Cars, int32& Stopped, float& FrontToLine) const;
 	/** Signal state of an axis (0 avenue, 1 street) now: 2 green, 1 amber, 0 red. */
+	/** True if any moving car's body (front, centre, rear points) lies within DistM of the segment A-B (browser metres): the crowd does not step onto a crosswalk a car is still crossing. */
+	bool AnyCarNearSegment(const FVector2D& A, const FVector2D& B, float DistM) const;
 	int32 CurrentPhase(int32 Axis) const { return SigPhase(GetSignalClock(), Axis); }
 	/** Moving-car count whose centre is inside a world-space frustum-ish cone (camera location, forward, half-angle deg, range cm). */
 	UFUNCTION(BlueprintCallable, Category="Life") int32 CountInCone(FVector Eye, FVector Forward, float HalfAngleDeg, float Range) const;
