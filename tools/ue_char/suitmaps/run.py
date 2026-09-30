@@ -9,7 +9,7 @@ Steps per suit: src (8K basecolor from the Tripo source in ~/Downloads) -> base 
 -> geom (seam weld, back-emblem flatten) -> maps (basecolor/height/ORM) -> normal (Blender: tangent-space bake)
 -> glb (public/assets/skins/<suit>.glb + art/night1/characters/suits/<suit>_{basecolor,normal_ogl,orm}.png).
 Inputs: the original skinfit GLBs are read from git history (common.ORIG_COMMIT), the Tripo sources from ~/Downloads
-(names in common.SUITS). Scratch: /Users/midir/sm2-n1/_scratch/characters/suits/.
+(names in common.SUITS). Scratch: $P2_SCRATCH/suits/ (tools/ue_char/p2paths.py).
 
 Homage fan project, not an official Marvel/Sony/Insomniac product.
 """

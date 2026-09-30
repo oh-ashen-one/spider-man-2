@@ -7,12 +7,13 @@ Shoulder width = x extent of the vertices whose dominant joint is a shoulder / d
 y = 1.36 and 1.47 (the deltoid band; hands and forearms hang lower). Chest depth = z extent of spine1/spine2 vertices at y 1.20-1.32.
 """
 import sys, os, json, argparse
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, '..', '..', 'skinfit'))
 import skinfit
-SCR = '/Users/midir/sm2-n1/_scratch/characters/r3'
+SCR = _scr('r3')
 
 def measure(path):
     j, b = skinfit.read_glb(path)

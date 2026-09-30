@@ -119,6 +119,18 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
     for i, b in enumerate(bones):
         vg = ob.vertex_groups.new(name=b['name'])
     w = g['sw'] / g['sw'].sum(1, keepdims=True)
+    # round 04: weld the weights of UV-seam duplicates (same position, different vertex) - unequal quantised weights open hairline
+    # cracks along every texture seam as soon as the pose changes (the white streaks / sparkles the critics saw on citizens)
+    dense = np.zeros((len(w), len(bones)))
+    for k in range(4): np.add.at(dense, (np.arange(len(w)), g['si'][:, k]), w[:, k])
+    key = np.round(g['pos'] / 1e-5).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
+    acc = np.zeros((inv.max() + 1, len(bones))); np.add.at(acc, inv, dense)
+    cnt = np.bincount(inv).astype(float)
+    dense = acc[inv] / cnt[inv][:, None]
+    top = np.argsort(-dense, 1)[:, :4]
+    wt = np.take_along_axis(dense, top, 1); wt /= wt.sum(1, keepdims=True)
+    g['si'], g['sw'], w = top, wt, wt
     for k in range(4):
         for bi in range(len(bones)):
             sel = np.where((g['si'][:, k] == bi) & (w[:, k] > 0))[0]
@@ -154,6 +166,13 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
             arm.animation_data.action_slot = act.slots[0]
         n = cl['len']
         prevq = {}
+        # round 04: walks are re-timed so the planted ankle moves at a constant speed (crowd_gait.warp_times; foot slide
+        # per plant 5-6 cm -> <= 3 cm at the clip's natural speed); other clips keep their frame times
+        kt = list(range(n + 1))
+        if cn.startswith('walk') and cn in ('walk', 'walkF', 'walkBrisk', 'walkStroll', 'walkOld'):
+            import crowd_gait
+            p2, A2 = crowd_gait.load()
+            kt = [float(x) for x in crowd_gait.warp_times(p2, A2, cn)]
         for f in range(n + 1):             # extra key at n == frame 0: seamless loop
             Mf = M[cl['row'] + (f % n)]
             Mb = [C @ Mf[i] @ Ci for i in range(len(bones))]
@@ -171,7 +190,13 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
                 prevq[b['name']] = q.copy()
                 pbn.location, pbn.rotation_quaternion, pbn.scale = loc, q, s
                 for dp in ('location', 'rotation_quaternion', 'scale'):
-                    pbn.keyframe_insert(dp, frame=f)
+                    pbn.keyframe_insert(dp, frame=kt[f])
+        try:
+            fcs = act.fcurves if hasattr(act, 'fcurves') and len(act.fcurves) else [fc for l in act.layers for st in l.strips for cb in st.channelbags for fc in cb.fcurves]
+        except Exception:
+            fcs = []
+        for fc in fcs:
+            for kp in fc.keyframe_points: kp.interpolation = 'LINEAR'
         acts[cn] = act
     arm.animation_data.action = None
     for pb_ in arm.pose.bones:

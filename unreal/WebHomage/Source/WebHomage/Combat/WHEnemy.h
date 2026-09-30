@@ -1,0 +1,132 @@
+// Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+// Piece P5 (combat): one combat enemy — C++ port of src/game/combat/enemy.js.
+// Visual: P2's armed street people (/Game/Characters/People/SK_Street_*_{Bat,Pistol,Pipe}, hero skeleton) driven by
+// UWHEnemyAnim with P2's thug clips (/Game/Characters/Thug/Anims/A_Thug_*) + walk / jog / run for locomotion.
+// Types: melee (hp 50), gunman (hp 38, pistol, keeps distance, fires 3-shot bursts), brute (hp 150, scale 1.24, armoured).
+// States: hold · approach · attack · aim · fire · yanked · stagger · air · knock · down · getup · webbed · stuck · out
+// The actor is ticked by AWHCombatDirector (Update / Late), never on its own. Metres internally (actor location = feet, cm).
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "Combat/WHClipStack.h"
+#include "Combat/WHCombatAnim.h"
+#include "WHEnemy.generated.h"
+
+class AWHCombatDirector;
+class USkeletalMeshComponent;
+class UStaticMeshComponent;
+class UAnimSequence;
+class UMaterialInstanceDynamic;
+
+UENUM()
+enum class EWHEnemyType : uint8 { Melee, Gunman, Brute };
+
+UENUM()
+enum class EWHEnemyState : uint8 { Hold, Approach, Attack, Aim, Fire, Yanked, Stagger, Air, Knock, Down, GetUp, Webbed, Stuck, Out };
+
+struct FWHEnemyType
+{
+	double Hp = 50, Speed = 3.2, Reach = 1.35, Dmg = 9, Scale = 1;
+	TArray<FName> Attacks;
+	static const FWHEnemyType& Get(EWHEnemyType T);
+};
+
+/** Result of a hit (enemy.js hit() return object). */
+struct FWHHitResult
+{
+	bool bValid = false, bArmored = false, bKnocked = false, bAir = false, bLaunched = false, bStagger = false, bSlam = false;
+};
+
+/** A hit dealt to an enemy (enemy.js h). Dir: horizontal unit, attacker -> enemy. */
+struct FWHHitIn
+{
+	double Dmg = 0;
+	FVector Dir = FVector::ForwardVector;
+	FName Kind;            // light ender launch air slam strike throw finisher
+	bool bStunBrute = false;
+	int32 Side = 0;        // +1 = the blow lands on his left, -1 his right
+};
+
+UCLASS(NotPlaceable)
+class WEBHOMAGE_API AWHEnemy : public AActor
+{
+	GENERATED_BODY()
+
+public:
+	AWHEnemy();
+
+	void Setup(AWHCombatDirector* InDir, EWHEnemyType InType, int32 InIndex, const FVector& FeetM, double InYaw, const FString& MeshName);
+
+	// ---- queries (metres)
+	FVector Pos;                        // feet, metres
+	FVector Chest() const;
+	FVector HeadPos() const;
+	FVector Muzzle() const;
+	bool Alive() const { return !bOut && Stuck == 0; }
+	bool Targetable() const { return Alive() && State != EWHEnemyState::Down && State != EWHEnemyState::GetUp; }
+	const TCHAR* StateName() const;
+	const TCHAR* TypeName() const;
+	FString Tag() const { return FString::Printf(TEXT("e%d"), Index); }
+
+	// ---- enemy.js API
+	void Set(EWHEnemyState S);
+	FWHHitResult Hit(const FWHHitIn& H);
+	void Yank(const FVector& To, double Dur);
+	void Launch(const FVector& Dir);
+	void AirHit(const FWHHitIn& H);
+	void Knock(const FVector& Dir, double Speed, double Up, bool bWebbed = false);
+	void AddWeb(double Amount, const FVector& Dir);
+	void Disarm(const FVector& Dir);
+	void StickWall(const FVector& Point, const FVector& Normal);
+	void StickGround();
+	void MoveXZ(double Dx, double Dy, bool* bHit = nullptr, FVector* HitN = nullptr, FVector* HitP = nullptr);
+	double Ground() const;
+	void Update(double Dt);
+	void Late(double Dt);
+	void LandDown();
+	void StartSwing();
+	int32 Play(FName Name, double Fade = 0.18, double Ts = 1.0, int32 Once = -1, double At = -1.0);
+	void Locomote(double Sp, double Fade = 0.25);
+	void RootMotion();
+
+	// ---- state (public: the director reads / writes most of it like the browser)
+	EWHEnemyType Type = EWHEnemyType::Melee;
+	FWHEnemyType T;
+	int32 Index = 0;
+	double Hp = 50, MaxHp = 50;
+	EWHEnemyState State = EWHEnemyState::Hold;
+	double St = 0, Yaw = 0, FaceYaw = 0, TurnRate = 0;
+	bool bHasFace = false;
+	FVector Vel = FVector::ZeroVector;
+	double Web = 0, WebT = 0, Stun = 0, Cd = 1, Flinch = 0, FlinchDir = 1, Pitch = 0, LastHitT = -9, Juggle = 0, AimW = 0, AimP = 0;
+	bool bOut = false, bHasGun = false, bSwung = false, bFalling = false, bKnockWeb = false, bDusted = false, bAirborne = false;
+	int32 Stuck = 0;   // 0 no, 1 wall, 2 ground
+	int32 Shots = 0;
+	double NextShot = 0, AimDur = 0.95, StagT = 0.5, DownT = 1.5, Spd = 0;
+	FName Atk, Loco, LastStumble, ActName;
+	int32 ActUid = 0;
+	struct FYank { FVector From, To; double Dur = 0.3, Prev = 0; } Yk;
+	bool bMoving = false;
+	int32 HitsTaken = 0;
+
+	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Root;
+	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> Mesh;
+
+private:
+	UAnimSequence* Clip(FName Name);
+	void UpdateCocoon(double Dt);
+	void SyncActor();
+	TWeakObjectPtr<AWHCombatDirector> Dir;
+	FWHClipStack Stack;
+	UPROPERTY(Transient) TMap<FName, TObjectPtr<UAnimSequence>> Clips;
+	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Cocoon;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> CocoonMat;
+	FString UnarmedMesh;
+	FQuat MeshCorr = FQuat::Identity;
+	FVector MeshUp = FVector::UpVector;   // hips -> head in the skeleton's component space
+	int32 RmUid = 0;
+	FVector RmPrev = FVector::ZeroVector;
+	FRandomStream Rng;
+	double CocoonLvl = 0;
+};

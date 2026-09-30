@@ -7,13 +7,14 @@ quadrupeds walk (phase ph advancing 1 stride / 20 frames, amp 1) with tail wag; 
 flying birds flap (iA.y = 1, iA.z = time). Per-frame vertex positions are written by a frame_change handler.
 """
 import bpy, sys, os, json, math
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import studio
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 NPC = os.path.join(ROOT, 'public/assets/city/npc')
-SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'
+SCR = _scr('eval')
 DOCS = os.path.join(ROOT, 'docs/night1/characters/round-01/assets')
 C3 = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]], float)   # game Y-up +Z fwd -> Blender Z-up -Y fwd
 BREED = {'golden': 0.5, 'bulldog': 0.6}

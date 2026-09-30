@@ -7,7 +7,7 @@ thug mesh scaled up, so its texture has to use the thug's islands.
 
 Inputs (all regenerable):
   - art/night1/characters/thug/tex/thug_basecolor.png        (tools/ue_char/extract_textures.py)
-  - /Users/midir/sm2-n1/_scratch/characters/r2/uvgeom.npz    (blender -b -P tools/ue_char/brute/uvgeom.py)
+  - $P2_SCRATCH/r2/uvgeom.npz    (blender -b -P tools/ue_char/brute/uvgeom.py)
 Outputs:
   - public/assets/enemies/brute_basecolor.webp               (the browser runs this; committed)
   - art/night1/characters/thug/tex/brute_basecolor.png       (UE import, git-ignored derived copy)
@@ -19,13 +19,14 @@ Islands are found from the mesh (dominant skin bone + rest-pose position), not f
 thug UVs keeps working as long as the bone/zone rules hold. Colour values are sRGB 0-255.
 """
 import os, sys, json, argparse
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 ART = os.path.join(ROOT, 'art/night1/characters/thug/tex')
-SCR = '/Users/midir/sm2-n1/_scratch/characters/r2'
+SCR = _scr('r2')
 ap = argparse.ArgumentParser()
 ap.add_argument('--geom', default=SCR + '/uvgeom.npz')
 ap.add_argument('--src', default=ART + '/thug_basecolor.png')

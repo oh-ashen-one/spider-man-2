@@ -7,7 +7,8 @@ listener, so it can never reach another agent's editor.
 """
 import unreal, os, glob, traceback, io, contextlib, time
 
-BOX = '/Users/midir/sm2-n1/_scratch/characters/uebox'
+# same root as tools/ue_char/p2paths.py (P2_SCRATCH, default <repo>/unreal/WebHomage/Saved/P2Build); the editor's project dir locates the repo
+BOX = os.path.join(os.environ.get('P2_SCRATCH') or os.path.join(os.path.abspath(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir())), 'Saved', 'P2Build'), 'uebox')
 os.makedirs(BOX + '/in', exist_ok=True)
 os.makedirs(BOX + '/out', exist_ok=True)
 _state = {'t': 0.0, 'g': {}}

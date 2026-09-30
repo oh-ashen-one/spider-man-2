@@ -65,7 +65,7 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 	const float MoveW = Idle ? FMath::Clamp((Speed - IdleSpeed) / FMath::Max(1.f, (Loco.Num() ? Loco[0].Speed : 150.f) * 0.5f - IdleSpeed), 0.f, 1.f) : 1.f;
 
 	// ---- air / land
-	if (bAir && !bWasInAir) AirTime = 0.f;
+	if (bAir && !bWasInAir) { AirTime = 0.f; if (JumpUp && Vz >= 50.f) FallAlpha = 0.f; }   // a jump starts on JumpUp, not on a stale fall weight
 	if (!bAir && bWasInAir) LandTime = 0.f;
 	bWasInAir = bAir;
 	AirTime += Dt; LandTime += Dt;
@@ -77,7 +77,16 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 		const float LL = Land->GetPlayLength();
 		if (LandTime < LL) LandW = FMath::Clamp(1.f - LandTime / (0.8f * LL), 0.f, 1.f) * FMath::Clamp(1.f - Speed / 600.f, 0.25f, 1.f);
 	}
-	const float GroundW = (1.f - AirAlpha) * (1.f - LandW);
+	// takeoff anticipation: weight ramps in over TakeoffBlendIn while grounded; after lift-off the clip's last sampled pose is held
+	// under the air blend so the crouch hands over to JumpUp (whose first frame is the same crouch) without a pop
+	float TakeW = 0.f;
+	if (Takeoff)
+	{
+		if (TakeoffTime >= 0.f) { LastTakeoff = TakeoffTime; TakeoffHold = 1.f; TakeW = FMath::Clamp(TakeoffTime / FMath::Max(0.01f, TakeoffBlendIn), 0.f, 1.f); }
+		else if (bAir && TakeoffHold > 0.f) { TakeoffHold = FMath::Max(0.f, TakeoffHold - Dt / 0.12f); TakeW = TakeoffHold; }
+		else TakeoffHold = 0.f;
+	}
+	const float GroundW = (1.f - AirAlpha) * (1.f - LandW) * (1.f - TakeW);
 
 	auto Push = [this](UAnimSequence* S, float T, float W, bool bLoop)
 	{
@@ -92,7 +101,8 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 		if (I1 != I0) Push(Loco[I1].Clip, Phase * Loco[I1].Clip->GetPlayLength(), GroundW * MoveW * A, true);
 	}
 	Push(Land, LandTime, (1.f - AirAlpha) * LandW, false);
-	Push(JumpUp, AirTime, AirAlpha * (1.f - FallAlpha), false);
+	Push(Takeoff, FMath::Max(0.f, LastTakeoff), TakeW * (bAir ? 1.f : (1.f - AirAlpha)), false);
+	Push(JumpUp, AirTime, AirAlpha * (1.f - FallAlpha) * (1.f - (bAir ? TakeW : 0.f)), false);
 	Push(Fall, AirTime, AirAlpha * FallAlpha, true);
 }
 

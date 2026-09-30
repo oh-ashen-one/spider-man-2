@@ -1,7 +1,7 @@
 {
- "updated": "2026-09-29 15:48",
+ "updated": "2026-09-29 21:43",
  "phase": "Wave 2 \u2014 director plan",
- "headline": "Fable 5.1 (director) reviewed the loop: traversal is judged in a gray-box canyon (move it into the real lit city), single-gap rounds oscillate (fixed numeric SPECs per piece, multi-gap rounds), and all perf numbers so far are void (GPU lock + exclusive perf protocol). Wave 2 adds an integrated Manhattan map, combat, city life, a dedicated 4K/60 perf piece and a regression playtester.",
+ "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
   {
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "fixing",
-   "round": 4,
-   "verdict": "R3: FAILS (hero 4, anim 3, enemies 3, civilians 2, IQ 4)",
-   "gap": "Hero run (step rate, lean, takeoff), enemy masks + lineup, sliding civilians \u2014 Opus builder"
+   "round": 5,
+   "verdict": "R4: FAILS (hero 4, anim 5, enemies 4, civilians 3, IQ 3) \u2014 best yet",
+   "gap": "Seam cracks (26 slivers), a real fight capture, suit weave/lens quality (Sonnet builder)"
   },
   {
    "id": "P3",
@@ -71,19 +71,19 @@
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "Wave 2"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (impact 3, moves 4, enemies 3, camera 3, spectacle 3)",
+   "gap": "No visible hit-stop (0% frozen frames), passive enemies without tells, camera crops the hero"
   },
   {
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "Wave 2"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (traffic 4, motion 3, peds 2, ped motion 4, believability 3)",
+   "gap": "Pedestrians 4/frame (need \u226516), avenue traffic, lit signals + queues"
   },
   {
    "id": "A",
@@ -107,19 +107,19 @@
    "id": "C",
    "name": "Integrated Manhattan map",
    "branch": "night1/manhattan",
-   "state": "queued",
-   "round": 0,
-   "verdict": "",
-   "gap": "After current rounds merge (Opus high)"
+   "state": "done",
+   "round": 1,
+   "verdict": "Map builds headless in ~10 min; route clean (0 fall-through/T-pose/stuck)",
+   "gap": "Integration bugs routed to owners; hero swap to /Game/Characters pending P3"
   },
   {
    "id": "F",
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
-   "state": "queued",
-   "round": 0,
+   "state": "building",
+   "round": 1,
    "verdict": "",
-   "gap": "After A + C (Opus high)"
+   "gap": "Opus 5.5 high: profile + overrides + owner change list"
   },
   {
    "id": "G",
@@ -129,9 +129,36 @@
    "round": 0,
    "verdict": "",
    "gap": "After C (Opus high)"
+  },
+  {
+   "id": "W",
+   "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
+   "branch": "night1/water-ab-*",
+   "state": "building",
+   "round": 1,
+   "verdict": "",
+   "gap": "Same brief, separate worktrees; blind Opus critic picks the winner"
   }
  ],
  "comparisons": [
+  {
+   "title": "Characters round 4 \u2014 armed lineup, walking crowd, leaning run",
+   "note": "Opus builder. 7 thugs, 5 outfits, 3 weapon types; civilians walking; run lean ~30\u00b0.",
+   "images": [
+    {
+     "label": "Enemy lineup",
+     "src": "docs/night1/characters/round-04/captures/enemy_lineup_wide_4k.jpg"
+    },
+    {
+     "label": "Civilians tracking",
+     "src": "docs/night1/characters/round-04/captures/civilians_tracking_4k.jpg"
+    },
+    {
+     "label": "Hero run",
+     "src": "docs/night1/characters/round-04/captures/hero_run_side_4k.jpg"
+    }
+   ]
+  },
   {
    "title": "Characters round 3 \u2014 enemies rebuilt from the owner's Tripo people",
    "note": "Real faces, five-finger hands, folded cloth; brute 1.36\u00d7 the thug's shoulders.",
@@ -302,6 +329,21 @@
   }
  ],
  "clips": [
+  {
+   "title": "Combat R1 \u2014 25 s scripted fight",
+   "src": "docs/night1/combat/round-01/fight25_1080p60.mp4",
+   "caption": "first C++ combat port, lit test street"
+  },
+  {
+   "title": "City life R1 \u2014 street clip",
+   "src": "docs/night1/life/round-01/street_clip_1080p60.mp4",
+   "caption": "traffic + pedestrians (sparse); IP-clean liveries"
+  },
+  {
+   "title": "Integrated Manhattan \u2014 30 s route",
+   "src": "docs/night1/manhattan/round-01/route_30s.mp4",
+   "caption": "city + golden-hour look + hero + street people"
+  },
   {
    "title": "Traversal R9 \u2014 spec-driven camera",
    "src": "docs/night1/traversal/round-09/a_swing_chain.mp4",
@@ -516,9 +558,43 @@
    "verdict": "fails",
    "gap": "Far field C11/C13\u2013C15, facade base colours C1, plus IP (transit slogan, game key art, product mural).",
    "notes": "Far-shore bugs fixed (window flag clamped, white generic material, blue haze); round 6 beat round 5 by ~0.5 on skyline. Builder and critic measured the same spec lines differently \u2192 round 7 commits shared crop regions + one check script. Lighting-owned issues (crushed S1/S7, blown S4 sky) routed to P4."
+  },
+  {
+   "t": "20:10",
+   "piece": "P2 Characters",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "CH18 seam cracks to 0; a 5\u20137 enemy fight capture with no craning heads and cloth masks; suit weave/web-line relief/lens quality.",
+   "notes": "Opus builder: lean ~30\u00b0 (was 9\u201313\u00b0), step rate 3.53 Hz, 7 armed thugs, 10\u201311 civilians per frame; beat round 3 in both version pairs. Critic flags the classic suit as copying a studio design (3rd time) \u2014 owner decision; round 5 improves quality only."
+  },
+  {
+   "t": "20:56",
+   "piece": "P6 City life",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Detector median \u226516 pedestrians; \u226514 moving vehicles at swing height; lit signals with stop-and-go queues.",
+   "notes": "650\u2013700 moving + 1,197 parked vehicles and 1,458 simulated walkers, but few read on screen (detector 4\u20136 people/frame vs builder probe 15). Round 1 beat the empty street by 7 people and 7 vehicles. IP-clean."
+  },
+  {
+   "t": "21:43",
+   "piece": "P5 Combat",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Hit-stop 3\u20135 frames + flinch on every contact; enemies attack at least every 1 s with 0.4 s tells, \u22655 on screen; mid-high combat camera with 5% margins.",
+   "notes": "Full C++ port of the browser combat (director, tokens, dodge slow-mo, finishers, 14 enemy states); 40/40 scripted beats fire. Critic measured 0% frozen frames and no finisher on screen although both are implemented \u2014 likely a capture/time-dilation mismatch; round 2 must prove it in pixels."
   }
  ],
  "perf": [
+  {
+   "what": "Manhattan map \u2014 30 s swing route (FIRST CLEAN RUN)",
+   "output": "3840\u00d72160",
+   "internal": "2573\u00d71447 (TSR 67%)",
+   "median": "51.9",
+   "p95": "59.0",
+   "p99": "62.8",
+   "hitches": "0",
+   "notes": "exclusive GPU lock, GPU 0% before/after; 19.2 fps; GPU 42.2 ms, render thread 50.6 ms. Earlier rows below are contaminated."
+  },
   {
    "what": "Unreal look R1 \u2014 hero swing route through Midtown, TSR 50%",
    "output": "3840\u00d72160",
@@ -710,6 +786,38 @@
   {
    "t": "15:48",
    "text": "City R6 merged; critic FAILS (avg 4.6, up from 4.2); round 7 on a fresh Sonnet builder with a shared spec-check script."
+  },
+  {
+   "t": "16:18",
+   "text": "C Manhattan map merged; first clean perf: 19 fps at 4K/TSR 67%. F perf piece started (Opus high). Integration bugs routed to owners (docs/night1/manhattan/INTEGRATION_BUGS.md)."
+  },
+  {
+   "t": "16:43",
+   "text": "INCIDENT: GPU saturation (11 Unreal instances in 13 min + Blender + perf run) made macOS's WindowServer miss its watchdog for 40 s; the system killed it, logging the owner out and killing every agent and the orchestrator. The Studio itself stayed up (uptime unaffected)."
+  },
+  {
+   "t": "18:14",
+   "text": "Recovered: all worktree WIP committed and pushed, orphaned crash reporters (100% CPU for 6 h) killed. New hard rule: max 2 Unreal processes of any kind at once through the GPU lock; builds via null-RHI commandlets; no crash-relaunch loops. Resuming at 2 concurrent GPU builders."
+  },
+  {
+   "t": "18:24",
+   "text": "GPU slots now auto-tuned (start 4, +1 per calm 20 min up to 7, back off on WindowServer strain, emergency kill of the newest capture). Six builders running."
+  },
+  {
+   "t": "18:24",
+   "text": "Fable 5.1 (high) director set to decide the 4K/60 strategy from clean perf data. First blind same-gap A/B build started: river water, Sonnet 5.5 xhigh vs Opus 5.5 high."
+  },
+  {
+   "t": "20:10",
+   "text": "Characters R4 (Opus) merged: avg 3.8, best yet; round 5 on Sonnet (ledger alternation)."
+  },
+  {
+   "t": "20:56",
+   "text": "City life R1 merged + critic FAILS (peds 2); round 2 on Sonnet with the spec detector as the measure. GPU tuner ceiling set to 5 from measurements."
+  },
+  {
+   "t": "21:43",
+   "text": "Combat R1 merged + critic FAILS; round 2 on Opus (resolve hit-stop visibility, enemy aggression, combat camera)."
   }
  ]
 }

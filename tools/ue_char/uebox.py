@@ -3,7 +3,8 @@
 usage: tools/ue_char/uebox.py script.py [--timeout S]   |   tools/ue_char/uebox.py -c "print(1)"
 Scripts may read ARGS (json from --args) from globals."""
 import os, sys, time, json, uuid
-BOX = '/Users/midir/sm2-n1/_scratch/characters/uebox'
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '.')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
+BOX = _scr('uebox')
 a = sys.argv[1:]
 timeout = 900
 if '--timeout' in a:

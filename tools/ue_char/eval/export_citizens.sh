@@ -4,7 +4,8 @@
 #   tools/ue_char/eval/export_citizens.sh [NAME ...]   (default: the 4 lineup citizens)
 set -e
 cd "$(dirname "$0")/../../.."
-S=/Users/midir/sm2-n1/_scratch/characters/eval
+P2_SCRATCH="${P2_SCRATCH:-$(pwd)/unreal/WebHomage/Saved/P2Build}"; export P2_SCRATCH   # tools/ue_char/p2paths.py
+S="$P2_SCRATCH/eval"
 mkdir -p "$S/stats"
 python3 tools/ue_char/eval/tiles.py "$S/tiles" "$S/stats/tiles.json" > /dev/null
 N="${@:-03_white_tee 12_sundress_mom 13_construction_worker 15_executive}"

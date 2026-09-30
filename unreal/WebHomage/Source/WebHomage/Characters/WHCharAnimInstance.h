@@ -51,6 +51,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Air") TObjectPtr<UAnimSequence> JumpUp = nullptr;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Air") TObjectPtr<UAnimSequence> Fall = nullptr;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Air") TObjectPtr<UAnimSequence> Land = nullptr;
+	/** Grounded anticipation crouch played while TakeoffTime >= 0 (set by the owner before it leaves the ground), blended in over TakeoffBlendIn. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Air") TObjectPtr<UAnimSequence> Takeoff = nullptr;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Air") float TakeoffBlendIn = 0.07f;
 	/** Below this speed (cm/s) the idle fully takes over. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Locomotion") float IdleSpeed = 20.f;
 	/** Cadence/stride split: rate = (v/v_clip)^CadenceExp; the rest of the speed ratio is (visually) stride. 1 = pure rate. */
@@ -61,6 +64,8 @@ public:
 	/** Set by non-Character owners (e.g. AWHCharLoopWalker hops). */
 	UPROPERTY(BlueprintReadWrite, Category="State") bool bForceAir = false;
 	UPROPERTY(BlueprintReadWrite, Category="State") float ForcedVerticalSpeed = 0.f;
+	/** >= 0: seconds into a grounded takeoff (anticipation crouch); < 0: none. */
+	UPROPERTY(BlueprintReadWrite, Category="State") float TakeoffTime = -1.f;
 
 	UPROPERTY(BlueprintReadOnly, Category="State") float Speed = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="State") float VerticalSpeed = 0.f;
@@ -78,6 +83,6 @@ protected:
 private:
 	FVector LastPos = FVector::ZeroVector;
 	bool bHasLast = false;
-	float Phase = 0.f, IdleTime = 0.f, AirAlpha = 0.f, AirTime = 0.f, FallAlpha = 0.f, LandTime = 1e3f, SmoothedSpeed = 0.f;
+	float Phase = 0.f, IdleTime = 0.f, AirAlpha = 0.f, AirTime = 0.f, FallAlpha = 0.f, LandTime = 1e3f, SmoothedSpeed = 0.f, TakeoffHold = 0.f, LastTakeoff = -1.f;
 	bool bWasInAir = false;
 };
