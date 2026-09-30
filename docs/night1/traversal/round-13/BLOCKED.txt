@@ -1,0 +1,15 @@
+P3 round 13 -- no rendered captures this round.
+Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+
+Code: ac851f7 (flow flips, catch window, 2-shape backDouble + keyed Kickout/Layout, camera cut removed + output slew limit, hero fill),
+14d0b97 (flow flips keep their program; b re-timed; flow_check T4 end = web/zip/wall/perch/ground). Content rebuilt with build_traversal.py
+(10/10 flip shapes load, flipKickout new). Verified only in -nullrhi game probes on ac851f7: PROBE_FLOW_CHECK.txt.
+
+Why no captures (evidence: /Users/midir/sm2-n1/_scratch/traversal/r13/capA.log capB.log capC.log capD.log):
+- 06:54 a P6 (life) UnrealEditor (pid 17555) went "stuck exiting" (stat ?E) with the GPU at 100 %; gpu_slot refuses every launch while
+  that is true (RULES). Batch B waited 3600 s and timed out (exit 75), batch C likewise.
+- 06:55 WindowServer watchdog reset; the orchestrator set /Users/midir/sm2-n1/_scratch/gpu/PAUSED at 07:56 ("desktop session dead until the
+  owner logs in").
+- Batch A (f1-f5) held a slot but spent it waiting for fewer than 3 UnrealEditor processes; it was then terminated by this session's own
+  over-broad pkill pattern while its warm-up game was running (SIGTERM through gpu_slot; the game exited, not stuck; no frames kept).
+No P3 process was left running.
