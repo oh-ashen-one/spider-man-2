@@ -1,5 +1,5 @@
 {
- "updated": "08:33",
+ "updated": "09:39",
  "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -44,10 +44,10 @@
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "fixing",
+   "state": "active",
    "round": 5,
-   "verdict": "R4: FAILS (hero 4, anim 5, enemies 4, civilians 3, IQ 3) \u2014 best yet",
-   "gap": "Seam cracks (26 slivers), a real fight capture, suit weave/lens quality (Sonnet builder)"
+   "verdict": "fails \u2014 lowest 3 (Sonnet 5.5)",
+   "gap": "Garment integrity: zero see-through seam holes in crowd torsos/sleeves, no vertex spikes or stretched fingers on coats, trousers, hoodie collar."
   },
   {
    "id": "P3",
@@ -689,6 +689,14 @@
    "verdict": "fails",
    "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall.",
    "notes": "Canyon shade fill: dark-pixel share S3 72%\u219220%, S7 63%\u21924%; image quality 4\u21925."
+  },
+  {
+   "t": "09:39",
+   "piece": "P2 Characters",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "Garment integrity: zero see-through seam holes in crowd torsos/sleeves, no vertex spikes or stretched fingers on coats, trousers, hoodie collar.",
+   "notes": "Skirt rig, hull hole-fill, chase cameras; hero bob 3.5 Hz, lean 24.5\u00b0. Round 6 fixed the seam-hole root cause offline (cracks 1035\u2192244, edges >10 cm 915\u21920) but could not render after the 06:55 reset \u2014 engine verification pending, not merged yet."
   }
  ],
  "perf": [
@@ -978,6 +986,10 @@
   {
    "t": "08:33",
    "text": "City rounds 7\u20139 done (3 blind Opus critics, all FAILS, lowest 3\u21924\u21924): streets now have parked cars, taxis, traffic and trees; the canyon crush is fixed. Next: the far-shore skyline band. Merged. Also fixed run_game.sh, which still force-killed engines on timeout."
+  },
+  {
+   "t": "09:39",
+   "text": "Characters r5 critic: FAILS (lowest 3, image quality: see-through seams in crowd clothing). r6 fixed the root cause offline (cracks 1035\u2192244); waits for rendering to verify. Traversal r13 flow-flip code done and passing headless checks; waits for rendering + critic. Two engines stuck half-exited since 06:55 block all launches until the owner logs in (a reboot may be needed if they do not clear)."
   }
  ]
 }
