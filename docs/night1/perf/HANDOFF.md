@@ -7,6 +7,13 @@ Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. 
 Spec `SPEC.md` (P1-P11), shot list `SHOTLIST.md` (round-05 update at the end), evidence `round-01` .. `round-05/` (`NOTES.md` = every fact of the round, `TABLE.md`, `LOOK_GATE_raw.md` / `look_gate_final.json`, `perf/<session>/`, `stills/`, `cmp/`, `route_30s.mp4`, `content_audit.json`, `rtproxy_report.json`).
 Critics: r01 FAILS, r02 APPROACHES, r03 FAILS, r04 APPROACHES (`critic/`). Round-05 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r05/pack` (key `pack.key.json` next to it, `pairs.json`), NOT scored yet.
 
+## ROUND 06 IN PROGRESS (interim note, Opus 5.5; replaced by the full rewrite at the end of the round)
+- Target (task brief / r05 critic): cut `LumenScreenProbeGather` (2.96 ms) by >= 1.3 ms in the preset, attribute + cut the +1.24 ms `GPU/Unaccounted` of traffic + crowd; pass = life-on CSV p95 <= 18.0 and p50 <= 16.67, S1 crop (485,0,710,490) SSIM >= 0.97 vs as found, S1 recess (1920-space x1700-1850 y540-650) luma 17.5 +-10 % (r05: 29.5).
+- Recess cause (found from stills): rt_lite / rt_lite_trees took ALL City/Props out of ray tracing, including the sidewalk sheds (ISM_shed / ISM_shedtop): GI rays pass through the shed roofs (r03 rt_lite 38.4, r04 / r05 ~29, as found 17.3). New perf_apply step `rt_occluders` (default in build_map now) puts the overhead props back; applied to the local content by `_scratch/perf/r06/chain_a.sh` (geo umap backup `_scratch/perf/r06/geo_backup/`).
+- Candidate probe sets `overrides/spg_a..d.cvars` (engine "High" GI probe density 32 px / adaptive 16, octahedral irradiance, stochastic interpolation, half-res short-range AO). Exploration perf session `_scratch/perf/r06/perf/x*` (`chain_b.sh`), S1 stills `_scratch/perf/r06/st/<cand>/`.
+- `make_life_variant.py` takes `SM2_PERF_LIFE_CROWD='shadow_radius=..;live_radius=..'` (F's copy `/Game/PerfF/Life/Life_Actors_F`, P6's level untouched).
+- Build = round-05 build (integration 3aa92ba); traversal r15/r16 + characters r7 NOT merged this round (like-for-like with the r05 numbers).
+
 ## State at the end of round 05 (all numbers `round-05/NOTES.md`; valid exclusive session `round-05/perf/g1`, 3840x2160 output, internal 1920x1080, fixed step)
 Build: integration 3aa92ba merged (traversal r14 camera = different route frames than rounds 03/04; characters staged from P2 head 8ab861a = r07 WIP).
 Shipped path: preset `overrides/perf60_hwl2.cvars` + `r.ScreenPercentage 50` in `Config/Mac/MacEngine.ini`; content = rebuilt + `perf_apply rt_lite_trees,rt_proxy_trees,cloud`:
