@@ -147,7 +147,9 @@ def paint(P, N, G, mpt, gi, jp):
     thigh = sharp(g('thigh')); shin = sharp(g('shin')); foot = sharp(g('foot'))
     nx, ny, nz = N[..., 0], N[..., 1], N[..., 2]
     C = Canvas(x.shape)
-    is_head = cover(1.480 - y, aa) * ss(head, 0.25, 0.40)            # hood: straight plane cut at the neck (the skin-weight ramp is soft and uneven)
+    r_neck = np.hypot(x, z + 0.022)
+    neck_ok = np.where(y < 1.54, cover(r_neck - 0.080, aa), 1.0).astype(np.float32)     # below the ear line only the neck cylinder (not the trapezius) belongs to the hood
+    is_head = cover(1.480 - y, aa) * neck_ok * ss(head, 0.05, 0.15)            # hood: straight plane cut at the neck (the skin-weight ramp is soft and uneven)
     shoulder_arm = shoulder * ss(ax, 0.10, 0.17)
     arm_w = np.clip(armU + armF + hand + shoulder_arm, 0, 1)
     tors_w = sharp(np.clip(torso + shoulder * (1 - ss(ax, 0.10, 0.17)), 0, 1))
@@ -188,13 +190,16 @@ def paint(P, N, G, mpt, gi, jp):
     Rb = (x < 0)
     E_R, W_R = J('forearm.R'), J('hand.R'); E_L, W_L = J('forearm.L'), J('hand.L')
     def arm_t(E, W): d = W - E; return pdot(d / np.linalg.norm(d), E) / float(np.linalg.norm(d))
-    t_fore = np.where(Rb, arm_t(E_R, W_R), arm_t(E_L, W_L))
+    t_fore_R, t_fore_L = arm_t(E_R, W_R), arm_t(E_L, W_L)
+    t_fore = np.where(Rb, t_fore_R, t_fore_L)
     arm_tot = np.maximum(armU + shoulder_arm + armF + hand, 1e-3)
     C.lay(arm_w * R_ * ss(ax, 0.17, 0.22), DEEP, rough=0.80)                      # right upper arm + shoulder: DEEP
     C.lay(arm_w * R_ * (armF / arm_tot) * ss(t_fore, -0.02, 0.02), AMBER, rough=0.55)   # right forearm sleeve: amber
     for tc in (0.66, 0.76, 0.86):                                                  # left forearm: three amber wrist bands (cord wraps)
         C.lay(arm_w * L_ * armF * band(t_fore - tc, 0.0034, aa), AMBER, h=0.40, rough=0.5)
     C.lay(hand * body_w, DEEP, rough=0.68)                                         # gloves
+    for nm_, tw in (('R', t_fore_R), ('L', t_fore_L)):                                # amber wrist ring between sleeve and glove
+        C.lay(band(tw - 1.02, 0.0042, aa) * arm_w * (x < 0 if nm_ == 'R' else x > 0), AMBER, h=0.4, rough=0.5)
     # 6. legs.  Left leg = amber side accents, right leg = dark side
     y_top = 0.40 + 0.5 * z
     m_greaveR = shin * R_ * cover(y - y_top, aa) * cover(0.10 - y, aa)             # right shin: amber greave, slanted top edge
@@ -334,7 +339,7 @@ def paint(P, N, G, mpt, gi, jp):
     vent_zone = is_head * front * cover(ell - 1.0, aa / 0.02)
     C.lay(vent_zone * 0.85 * cover(cell - 0.0009, aa) * 0 + vent_zone * cover(0.0011 - cell, aa), AMBER_D, h=0.3, rough=0.5)
     C.lay(vent_zone * cover(cell - 0.0011, aa) * 0.0, INK)
-    C.lay(ss(head, 0.25, 0.40) * band(y - 1.4765, 0.0013, aa), AMBER, h=0.4, rough=0.45)                                   # collar piping
+    C.lay(neck_ok * ss(head, 0.05, 0.15) * band(y - 1.4765, 0.0013, aa), AMBER, h=0.4, rough=0.45)                                   # collar piping
 
     # ------------------------------------------------------------------ fabric mottling and occlusion in the grooves
     mott = 0.035 * noise3(P, 22.0, 1) + 0.02 * noise3(P, 140.0, 2)

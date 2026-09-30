@@ -40,7 +40,7 @@ CFG = {
     'thug': dict(src='leather+jacket+man+3d+model.glb', name='StreetThug',
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
-                 mask=(38, 42, 60), seed=11, sink_neck=True,
+                 mask=(38, 42, 60), seed=11, sink_neck=True, soften_neck=True,
                  tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
@@ -493,6 +493,13 @@ def main():
         im4, nrem = clear_plaid_remnants(im4, pos, cov); info['plaid_remnant_px'] = nrem
     elif a.which == 'thug':
         im4, nm = recolor_thug(im4, pos, cov); info['metal_px'] = nm
+    if cfg.get('soften_neck'):
+        # round 08 (critic r07: 'thug collar shards'): the raw atlas has coarse, stair-stepped texels where the neck skin meets the dark collar / jacket interior; in the
+        # close-up they read as jagged skin-coloured wedges in the collar.  Inside a ring around the neck / collar (y 1.36-1.50, r < 10 cm) the atlas is blurred (sigma 3 px, feathered)
+        zone = cov & (pos[..., 1] > 1.36) & (pos[..., 1] < 1.50) & (np.hypot(pos[..., 0], pos[..., 2] - cfg['axis_z']) < 0.10)
+        zf = ndi.gaussian_filter(zone.astype(np.float32), 5.0)[..., None]
+        bl = np.stack([ndi.gaussian_filter(im4[..., k].astype(np.float32), 3.0) for k in range(3)], -1)
+        im4 = np.clip(im4.astype(np.float32) * (1 - zf) + bl * zf, 0, 255).astype(np.uint8); info['neck_soften_px'] = int(zone.sum())
     if cfg.get('clear_graphic'):
         im4, ng = clear_graphic(im4, pos, cov); info['graphic_px'] = ng
     if cfg.get('clear_temple_text'):

@@ -76,12 +76,12 @@ for g in $STILLS; do
   case $g in
     gH) run_group $HERO 0 "4.5"  8 gH1 hero_turntable
         run_group $HERO 1 "3.5"  7 gH2 hero_run_side
-        run_group $HERO 4 "3.0,10.0" 13 gH3 suit_closeup hero_face_lens ;;
+        run_group $HERO 4 "3.0,8.0,10.0,11.5" 13 gH3 suit_closeup hero_face_lens_a hero_face_lens hero_face_lens_b ;;   # round 08: two more face angles of the turntable (8.0 / 11.5 s)
     gF) run_group $FIGHT 0 "3.5,13.0,22.0" 24 gF1 street_fight_wide street_fight_34 street_fight_orbit ;;
     gC) run_group $CROWD 0 "5.5,11.5" 13 gC1 crowd_tracking crowd_wide ;;
     gK) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $KEY 0 "3.5,5.5,7.5,11.5" 13 gK1 crowd_key_a crowd_key_tracking crowd_key_c crowd_key_wide ;;
     gI) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $CROWDID 0 "3.5,5.5,7.5,11.5" 13 gI1 crowd_id_a crowd_id_tracking crowd_id_c crowd_id_wide ;;
-    gHK) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $HEROKEY 4 "3.0,10.0" 13 gHK1 hero_key_suit hero_key_face ;;
+    gHK) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $HEROKEY 4 "3.0,8.0,10.0,11.5" 13 gHK1 hero_key_suit hero_key_face_a hero_key_face hero_key_face_b ;;
     gE) run_group $LINE 10 "3.5,7.5" 10 gE1 thug_face brute_face
         run_group $LINE 12 "3.0,9.0,15.0" 17 gE2 hood_face tee_face beard_face ;;
   esac

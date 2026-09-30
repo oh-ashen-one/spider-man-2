@@ -54,6 +54,13 @@ def build(n, log=print):
     return dict(col=col, h=hgt, rough=rough, ao=ao, mpt=mptm, cov=cov, tri=tri)
 
 
+def save_png(arr, path):
+    """Atomic write (a build reading the maps while this runs never sees a half-written PNG)."""
+    tmp = path + '.tmp.png'
+    Image.fromarray(arr).save(tmp)
+    os.replace(tmp, path)
+
+
 def gutters(img, cov, px):
     """Extend the covered texels by `px` pixels (nearest covered value) so mip levels and filtering never see the empty atlas."""
     _, (iy, ix) = ndi.distance_transform_edt(~cov, return_indices=True)
@@ -79,15 +86,15 @@ def main():
     cov = r['cov']
     col8 = (np.clip(r['col'], 0, 1) * 255 + 0.5).astype(np.uint8)
     col8, keep = gutters(col8, cov, 24)
-    Image.fromarray(col8).save(out + '/suit_basecolor_r8.png')
+    save_png(col8, out + '/suit_basecolor_r8.png')
     if '--no-normal' not in sys.argv:
         hh, _ = gutters(r['h'], cov, 24)
         mp, _ = gutters(r['mpt'], cov, 24)
         nn = normal_from_height(hh, mp)
-        Image.fromarray(((nn * 0.5 + 0.5) * 255 + 0.5).astype(np.uint8)).save(out + '/suit_normal_r8.png')
+        save_png(((nn * 0.5 + 0.5) * 255 + 0.5).astype(np.uint8), out + '/suit_normal_r8.png')
         ro, _ = gutters(r['rough'], cov, 24); ao, _ = gutters(r['ao'], cov, 24)
         orm = np.stack([ao, ro, np.zeros_like(ao)], -1)
-        Image.fromarray((np.clip(orm, 0, 1) * 255 + 0.5).astype(np.uint8)).save(out + '/suit_orm_r8.png')
+        save_png((np.clip(orm, 0, 1) * 255 + 0.5).astype(np.uint8), out + '/suit_orm_r8.png')
     # twill detail + tiling from the mesh UV density (same as round 05)
     sys.path.insert(0, HERE)
     from hero_suit_r5 import twill_normal  # noqa: E402
