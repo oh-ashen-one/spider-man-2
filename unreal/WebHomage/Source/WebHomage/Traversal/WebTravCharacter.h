@@ -122,6 +122,7 @@ private:
 	FWebTravInput PrevInput;
 
 	FWebTravCamera Cam;
+	int32 SunTries = 0; // round 15: frames spent looking for the level's sun light
 	double TravTime = 0.0;
 	bool bTravStarted = false;
 	bool bAutoSawDescent = false; // round 07: auto-chain rule, this swing has descended

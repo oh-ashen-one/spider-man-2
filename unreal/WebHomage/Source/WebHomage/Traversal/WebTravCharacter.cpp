@@ -22,6 +22,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Components/DirectionalLightComponent.h"
+#include "UObject/UObjectIterator.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
@@ -375,6 +377,20 @@ void AWebTravCharacter::BeginPlay()
 			}
 		}
 	}
+	{ // round 15: -WHCamTune=Name=Value,... sets the camera's named tuning doubles (FWebTravCamera::SetTune)
+		FString Tune;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHCamTune="), Tune, false))
+		{
+			TArray<FString> Parts;
+			Tune.ParseIntoArray(Parts, TEXT(","));
+			for (const FString& Pr : Parts)
+			{
+				FString K, V;
+				if (Pr.Split(TEXT("="), &K, &V) && Cam.SetTune(K, FCString::Atod(*V))) { UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV cam tune %s = %s"), *K, *V); }
+				else { UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV cam tune: unknown %s"), *Pr); }
+			}
+		}
+	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
 	if (ProxyBody) ProxyBody->SetVisibility(false);
@@ -672,6 +688,29 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	// round 12: the flip camera starts searching for a sky background ~0.35 s before an armed apex flip begins
 	CI.bFlipSoon = Traversal->IsFlipArmed() && Traversal->VelM().Z < double(Traversal->SkyTrickVz) + 5.0;
 	{ float Ft = 0.f; CI.bFlip = Traversal->Anim.Sub == N_trick && FlipProgramNow(Ft) != nullptr; } // round 11: flip camera
+	// round 15: the direction to the sun for the sun-aware trick camera (the level's atmosphere sun light 0; retried for the first
+	// frames in case the look rig streams in after BeginPlay)
+	if (!Cam.bHaveSun && SunTries < 240)
+	{
+		++SunTries;
+		const UDirectionalLightComponent* Best = nullptr;
+		for (TObjectIterator<UDirectionalLightComponent> It; It; ++It)
+		{
+			const UDirectionalLightComponent* L = *It;
+			if (!L || L->GetWorld() != GetWorld() || !L->IsRegistered() || !L->IsVisible()) continue;
+			const bool bSun = L->IsUsedAsAtmosphereSunLight() && L->GetAtmosphereSunLightIndex() == 0;
+			if (bSun) { Best = L; break; }
+			if (!Best || L->Intensity > Best->Intensity) Best = L;
+		}
+		if (Best)
+		{
+			Cam.SunDir = -Best->GetDirection().GetSafeNormal();
+			Cam.bHaveSun = true;
+			const FRotator SR = Cam.SunDir.Rotation();
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV sun: %s (%s), direction to the sun yaw %.1f elevation %.1f deg"), *Best->GetOwner()->GetName(),
+				Best->IsUsedAsAtmosphereSunLight() ? TEXT("atmosphere sun") : TEXT("brightest directional"), SR.Yaw, SR.Pitch);
+		}
+	}
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
 	// ---- move the actor (capsule) with the simulated body
@@ -1026,7 +1065,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1151,7 +1190,11 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		Traversal->IsFlipArmed() ? *Traversal->ArmedFlipName().ToString() : TEXT(""), Cam.FlipK,
 		FMath::RadiansToDegrees(Cam.FlipYawOff), FMath::RadiansToDegrees(Cam.FlipElev), Cam.FlipSkyShare,
 		Traversal->SkyTallUsed, Traversal->SkyPeakWant, Cam.SlewFlags, HeroFill ? HeroFill->Intensity : 0.f);
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12);
+	// round 15: sun angle of the searched flip view, sun angle of the RENDERED view (camera manager forward vs the direction to the sun;
+	// -1 = no sun found), roofline (m over the street) and rise of the last flow flip
+	const double ViewSun = Cam.bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(PcmRot.Vector(), Cam.SunDir), -1.0, 1.0))) : -1.0;
+	const FString Cols15 = FString::Printf(TEXT(",%.1f,%.1f,%.1f,%.1f"), Cam.FlipSunDeg, ViewSun, Traversal->FlowRoofUsed, Traversal->FlowRiseUsed);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15);
 }
 
 // ------------------------------------------------------------------ game mode

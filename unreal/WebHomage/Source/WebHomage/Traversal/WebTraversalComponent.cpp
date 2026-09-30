@@ -1493,7 +1493,22 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			const double Tc = FMath::Max(0.5, double(FP->CatchT()));
 			const double GF = G * double(FlowFlipGK);
 			const double Up = FP->Up * ReleaseBoostMul; // TrickBoost adds this at 0.3 x the first segment
-			const double Vz0 = FMath::Clamp((double(FlowCatchRise) + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
+			// round 15: rise to FlowRoofOver m over the lower street wall's roofline when that is within FlowRiseMax (sky behind by height)
+			double Rise = double(FlowCatchRise);
+			FlowRoofUsed = -1.0;
+			if (FlowRoofOver > 0.f)
+			{
+				const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+				const double Roof = RoofBesideAhead(HV, double(FlowRoofAhead));
+				if (Roof > -0.5)
+				{
+					FlowRoofUsed = Roof - Street;
+					const double Need = Roof + double(FlowRoofOver) - FeetZ();
+					if (Need > Rise && Need <= double(FlowRiseMax)) Rise = Need;
+				}
+			}
+			FlowRiseUsed = Rise;
+			const double Vz0 = FMath::Clamp((Rise + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
 				double(FlowVzMin), double(FlowVzMax));
 			if (S.Vel.Z > Vz0)
 			{ // the rest of the swing's climb goes forward (as the plain-release cap does)
@@ -1504,8 +1519,8 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			}
 			S.Vel.Z = Vz0;
 			S.bFlowFlip = true;
-			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: vz %.1f m/s, catch window at %.2f s"),
-				*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), Vz0, Tc);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: lower roofline %.1f m over the street, rise %.1f m, vz %.1f m/s, catch window at %.2f s"),
+				*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), FlowRoofUsed, Rise, Vz0, Tc);
 		}
 	}
 	else { S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K; }

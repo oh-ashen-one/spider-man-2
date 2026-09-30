@@ -196,7 +196,8 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		if (FMath::Abs(SlY) > MY) { CamRot.Yaw = LastOutRot.Yaw + FMath::Sign(SlY) * MY; SlewFlags |= 4; }
 		if (SlewFlags) { HeroDist = FVector::Dist(CamPos, P.Pos); bCamInGeometry = World.SphereOverlaps(CamPos, 0.15); }
 		// round 14: the position re-aim above may add pitch -- keep the look-up cap (wall-run camera excepted)
-		if (WallK < 0.01 && CamRot.Pitch > MaxLookUpDeg + 0.5) CamRot.Pitch = MaxLookUpDeg + 0.5;
+		// (round 15: CapUpDeg = the cap ComposeChase applied this frame -- flip 8, chase 10, wall 30)
+		if (CamRot.Pitch > CapUpDeg + 0.5) CamRot.Pitch = CapUpDeg + 0.5;
 	}
 	LastOutPos = CamPos; LastOutRot = CamRot; bOutInit = true;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
@@ -376,6 +377,25 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(OccUp, OccUpV, OccUpGoal, 0.3, Dt);
 	FVector Got;
 	ClearTo(Cam, Got);
+	// round 15 (r14 f3 4.6-5.5 s: 43 frames with the lens inside a street-tree canopy while the hero swung through it): with the hero
+	// inside geometry the spot is not swept, so lift it (then pull it toward the hero) until the lens is out of the foliage
+	if (bNoSweep && World.SphereOverlaps(Got, 0.25))
+	{
+		bool bOut = false;
+		for (double Up : { 0.8, 1.6, 2.4, 3.2, 4.0, 5.0 })
+		{
+			const FVector C2 = Got + FVector(0, 0, Up);
+			if (!World.SphereOverlaps(C2, 0.25)) { Got = C2; bOut = true; break; }
+		}
+		if (!bOut)
+		{
+			for (double K2 : { 0.8, 0.6, 1.3, 1.6 })
+			{
+				const FVector C2 = Hero + (Got - Hero) * K2;
+				if (!World.SphereOverlaps(C2, 0.25)) { Got = C2; break; }
+			}
+		}
+	}
 	// (round 12: the flip spot sits FlipDist out by design — the 3 m cut fired every frame and snapped to the chase orbit)
 	// round 13 (critic r12: this "too close: cut to the clear orbit" rule re-armed while the flip camera blended out -> one-frame 43 deg /
 	// 60 deg / 3.1 m cuts at f1 6.30 s and f4 8.58 s, then oscillated for 15 frames): no cut. The orbit search above already springs the
@@ -452,7 +472,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// (round 12: during a flip the look-up limit follows the searched elevation: + 20 deg of framing, <= 75)
 	// (round 14: capped at FlipPitchUpMax -- the r13 look-up reached 53 deg)
 	const double FlipUpDeg = FMath::Min(FlipPitchUpMax, FMath::Max(FlipPitchUp, FMath::RadiansToDegrees(FlipElev) + 20.0));
-	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, SkyK), -FlipUpDeg, FlipK), -80.0, Smooth(WallK, 0.0, 1.0))),
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, SkyK), -FlipUpDeg, FlipK), -WallMaxUpDeg, Smooth(WallK, 0.0, 1.0))),
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
@@ -516,7 +536,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			}
 		}
 		// hard look-up cap for every view but the wall-run camera (critic r13 test: pitch never > 30 deg up)
-		PitchDown = FMath::Max(PitchDown, -FMath::DegreesToRadians(FMath::Lerp(MaxLookUpDeg, 80.0, WallW)));
+		// (round 15: the flip view is capped at FlipPitchUpMax from FlipK 0.3 on -- also while it blends out -- the wall camera at WallMaxUpDeg)
+		CapUpDeg = FMath::Lerp(FMath::Lerp(MaxLookUpDeg, FlipPitchUpMax, Smooth(FlipK, 0.0, 0.3)), WallMaxUpDeg, WallW);
+		PitchDown = FMath::Max(PitchDown, -FMath::DegreesToRadians(CapUpDeg));
 	}
 	Pitch = PitchDown; // keep the orbit state coherent for Forward()
 	// (round 09: the hero stays centred horizontally — TRAVERSAL-SPEC T9; the off-axis look comes from the sideways slide)
@@ -533,12 +555,14 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 	const FVector Hero = P.Pos;
 	// round 14: side views only (yaw off the travel-behind direction FlipSideMin..FlipSideMax on either side), low elevations
 	static const double YawsDeg[] = { -115, -105, -95, -85, -75, 75, 85, 95, 105, 115 };
-	static const double ElevsDeg[] = { 0, 4, 8, 12, 16, 20, 24, 28 }; // + FlipMinElev, <= FlipElevMax
+	static const double ElevsDeg[] = { 0, 1.5, 3, 4.5, 6, 7.5, 9, 12, 16, 20, 24, 28 }; // + FlipMinElev, <= FlipElevMax (round 15: fine steps near level)
 	static const double RingDeg[][2] = { {0, 11}, {0, -11}, {8, 0}, {-8, 0}, {8, 11}, {-8, 11}, {8, -11}, {-8, -11},
 		{8, 5}, {-8, 5}, {8, -5}, {-8, -5}, {4, 11}, {-4, 11}, {4, -11}, {-4, -11} };
 	const double GoalY = FMath::RadiansToDegrees(FlipYawGoal), GoalE = FMath::RadiansToDegrees(FlipElevGoal);
 	const double CurY = FMath::RadiansToDegrees(FlipYawOff);
-	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0;
+	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0, BSun = -1.0;
+	// round 15: pass 0 rejects views closer than SunMinDeg to the sun; pass 1 (only if pass 0 found nothing) takes any
+	for (int32 Pass = 0; Pass < 2 && BestCost > 1e8; ++Pass)
 	for (double YD : YawsDeg)
 	{
 		const double Yr = FMath::DegreesToRadians(YD);
@@ -579,13 +603,31 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 				if (!World.Raycast(CamP + Dir * (FlipDist + 0.6), Dir, FlipSkyRay, H)) ++Free;
 			}
 			const double Sky = double(Free) / double(FMath::Max(1, N));
-			double Cost = (1.0 - Sky) * 10.0 + 0.8 * FMath::Abs(FMath::Abs(YD) - FlipPrefYaw) / 90.0 + 0.9 * (ED - FlipMinElev) / 30.0;
+			// round 15: sun angle of this view (camera -> hero vs the direction to the sun)
+			const double SunDeg = bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(D, SunDir), -1.0, 1.0))) : 180.0;
+			if (Pass == 0 && SunDeg < SunMinDeg) continue;
+			// (round 15: elevation term = distance from FlipPrefElev (near level), sun term below SunPrefDeg)
+			double Cost = (1.0 - Sky) * 10.0 + 0.8 * FMath::Abs(FMath::Abs(YD) - FlipPrefYaw) / 90.0 + 0.9 * FMath::Abs(ED - FlipPrefElev) / 10.0
+				+ 2.0 * FMath::Max(0.0, SunPrefDeg - SunDeg) / 40.0;
 			// (round 14 cost is the r12 cost over the side-view grid; the elevation term still prefers the flattest view that is clear)
 			if (!bFirst) Cost += 0.5 * (FMath::Abs(YD - GoalY) / 60.0 + FMath::Abs(ED - GoalE) / 30.0);
 			// round 13: the flip now starts at the release, from the chase camera: prefer the side the camera is already on
 			else Cost += 0.6 * FMath::Abs(YD - CurY) / 60.0;
-			if (Cost < BestCost) { BestCost = Cost; BY = Yr; BE = Er; BSky = Sky; }
+			if (Cost < BestCost) { BestCost = Cost; BY = Yr; BE = Er; BSky = Sky; BSun = SunDeg; }
 		}
 	}
-	if (BestCost < 1e8) { FlipYawGoal = BY; FlipElevGoal = BE; FlipSkyShare = BSky; }
+	if (BestCost < 1e8) { FlipYawGoal = BY; FlipElevGoal = BE; FlipSkyShare = BSky; FlipSunDeg = BSun; }
+}
+
+bool FWebTravCamera::SetTune(const FString& Name, double V)
+{
+	struct FT { const TCHAR* N; double* P; };
+	const FT Tab[] = { {TEXT("SunMinDeg"), &SunMinDeg}, {TEXT("SunPrefDeg"), &SunPrefDeg}, {TEXT("FlipPrefElev"), &FlipPrefElev},
+		{TEXT("FlipMinElev"), &FlipMinElev}, {TEXT("FlipElevMax"), &FlipElevMax}, {TEXT("FlipPitchUpMax"), &FlipPitchUpMax},
+		{TEXT("MaxLookUpDeg"), &MaxLookUpDeg}, {TEXT("FlipSFrame"), &FlipSFrame}, {TEXT("FlipDist"), &FlipDist}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
+		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
+		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
+		{TEXT("SettleDownMax"), &SettleDownMax} };
+	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
+	return false;
 }
