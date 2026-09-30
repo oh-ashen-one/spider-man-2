@@ -1,0 +1,6 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe: Lumen surface-cache relighting at the engine "High" GI rate (direct lighting 1/64 of the surface-cache texels per frame instead of 1/32,
+# radiosity 1/128 instead of 1/64). The sun and sky are static in every look rig, so the cache converges to the same lighting; only a change of lighting
+# (none at runtime) would take twice as long to settle. Card capture (new surfaces) keeps its Epic rate.
+r.LumenScene.DirectLighting.UpdateFactor=64
+r.LumenScene.Radiosity.UpdateFactor=128
