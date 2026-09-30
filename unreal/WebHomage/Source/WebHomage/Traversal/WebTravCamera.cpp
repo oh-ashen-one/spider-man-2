@@ -202,6 +202,20 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(SkyK, SkyKV, (P.bSky && P.Vel.Z > -9.0) ? 1.0 : 0.0, P.bSky && P.Vel.Z > -9.0 ? 0.25 : 0.35, Dt);
 	SkyK = FMath::Clamp(SkyK, 0.0, 1.0);
 	SWant = FMath::Lerp(SWant, SkySFrame, SkyK);
+	// round 11: flip camera weight (0.3 s in, 0.45 s out) and its side, chosen once per flip: the side with more open space
+	if (P.bFlip && !bFlipWas)
+	{
+		const FVector Rt = RightFlat();
+		double DR = 40.0, DL = 40.0;
+		FTravHit FH;
+		if (World.Raycast(Hero, Rt, 40.0, FH) && FMath::Abs(FH.Normal.Z) < 0.5) DR = FH.Distance;
+		if (World.Raycast(Hero, -Rt, 40.0, FH) && FMath::Abs(FH.Normal.Z) < 0.5) DL = FH.Distance;
+		FlipSide = DR >= DL ? -1.0 : 1.0; // + rotates the camera to the hero's left
+	}
+	bFlipWas = P.bFlip;
+	SD(FlipK, FlipKV, P.bFlip ? 1.0 : 0.0, P.bFlip ? 0.3 : 0.45, Dt);
+	FlipK = FMath::Clamp(FlipK, 0.0, 1.0);
+	SWant = FMath::Lerp(SWant, FlipSFrame, FlipK);
 	SWant = FMath::Clamp(SWant, 0.32, 0.72);
 	// round 10 (critic r09: camera pop at b 0.000-0.017 s): the first composed frame starts AT its framing / attach targets
 	// (FrameS was reset to 0.55 and sprang to ~0.40 over the first frames: 4 deg of pitch per frame)
@@ -212,8 +226,8 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	const FVector Back = -ForwardFlat(), Right = RightFlat();
 	// round 07: 0.4 m closer while swinging / airborne (the higher round-07 camera left the hero < 160 px at the arc ends)
 	const double AirClose = (bSwinging || bAir) ? SwingCloser : 0.0;
-	const double BackDist = ChaseDist - AirClose + 1.3 * FMath::Max(0.0, KickK);
-	const double OY = OccYawOff, OU = OccUp;
+	const double BackDist = ChaseDist - AirClose - FlipCloser * FlipK + 1.3 * FMath::Max(0.0, KickK);
+	const double OY = OccYawOff + FlipSide * FMath::DegreesToRadians(FlipOrbitDeg) * Smooth(FlipK, 0.0, 1.0), OU = OccUp;
 	const FVector BackR(Back.X * FMath::Cos(OY) - Back.Y * FMath::Sin(OY), Back.X * FMath::Sin(OY) + Back.Y * FMath::Cos(OY), 0);
 	// round 09 (TRAVERSAL-SPEC T12/T17/T18): the camera slides AnchorShift m toward the ACTIVE anchor's side (kept through the
 	// swing chain's short air phases) while still looking at the hero: the view runs 2-25 deg off the avenue axis and the near
@@ -229,7 +243,8 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if (P.bDive || ChainAirT > 0.8) bInChain = false;       // a long fall / dive is not the chain rhythm: centred again (aiming)
 	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
 	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
-	const double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -SkyCamBelow, SkyK) + OU;
+	const double LowK = FMath::Max(SkyK, FlipK), LowBelow = SkyK >= FlipK ? SkyCamBelow : FlipCamBelow;
+	const double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -LowBelow, LowK) + OU;
 	if (!bChaseInit)
 	{
 		bChaseInit = true;
@@ -243,7 +258,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if (HL < 1e-3) HD = BackR * MinH; else if (HL < MinH) HD *= MinH / HL; else if (HL > MaxH) HD *= MaxH / HL;
 	CamXY = FVector(Hero.X + HD.X, Hero.Y + HD.Y, 0);
 	SD(CamZ, CamZV, ZWant, 0.05, Dt);
-	CamZ = FMath::Clamp(CamZ, Hero.Z + FMath::Lerp(CamZMin, -SkyCamBelow - 0.3, SkyK) + OU, Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6
+	CamZ = FMath::Clamp(CamZ, Hero.Z + FMath::Lerp(CamZMin, -LowBelow - 0.3, LowK) + OU, Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6
 	FVector Cam(CamXY.X, CamXY.Y, CamZ);
 	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /
 	// rotated positions and move there smoothly (held ~1 s so the camera does not flicker)
@@ -376,7 +391,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
 	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
 	// (round 06: on the wall the lower clamp opens up to an 80 deg look UP the facade)
-	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, SkyK), -80.0, Smooth(WallK, 0.0, 1.0))),
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, FMath::Max(SkyK, FlipK)), -80.0, Smooth(WallK, 0.0, 1.0))),
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));

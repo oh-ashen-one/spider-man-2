@@ -1,5 +1,6 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Traversal/Anim/WebTravAnimInstance.h"
+#include "Traversal/WebTravFlips.h"
 #include "WebHomage.h"
 
 #include "Animation/AnimNodeBase.h"
@@ -40,7 +41,17 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 		UAnimSequence* S = LoadObject<UAnimSequence>(nullptr, *Path);
 		if (S) Clips.Add(FName(N), S); else ++Missing;
 	}
-	UE_LOG(LogWebHomage, Display, TEXT("WebTravAnimInstance: %d clips loaded from %s/%s* (%d missing)"), Clips.Num(), *ClipRoot, *ClipPrefix, Missing);
+	// round 11: gymnast shape clips keyed in Blender (docs/night1/traversal/blender/make_flip_shapes.py), spliced into the hero GLB
+	int32 NFlip = 0;
+	for (int32 K = 0; K < int32(EWebFlipShape::Num); ++K)
+	{
+		const FString Asset = ClipPrefix + WebFlips::ShapeClip(EWebFlipShape(K));
+		const FString Path = FString::Printf(TEXT("%s/%s.%s"), *ClipRoot, *Asset, *Asset);
+		if (UAnimSequence* S = LoadObject<UAnimSequence>(nullptr, *Path)) { Clips.Add(FName(WebFlips::ShapeClip(EWebFlipShape(K))), S); ++NFlip; }
+	}
+	bFlipClips = NFlip == int32(EWebFlipShape::Num);
+	UE_LOG(LogWebHomage, Display, TEXT("WebTravAnimInstance: %d clips loaded from %s/%s* (%d missing), flip shapes %d/%d"), Clips.Num(), *ClipRoot, *ClipPrefix, Missing,
+		NFlip, int32(EWebFlipShape::Num));
 }
 
 UAnimSequence* UWebTravAnimInstance::Clip(FName Name)
@@ -62,7 +73,7 @@ FName UWebTravAnimInstance::Category(FName Node)
 {
 	const FString S = Node.ToString();
 	if (S.StartsWith(TEXT("air_"))) return NA_air;
-	if (S.StartsWith(TEXT("trick_"))) return NA_trick;
+	if (S.StartsWith(TEXT("trick_")) || S.StartsWith(TEXT("flip_"))) return NA_trick;
 	if (S.StartsWith(TEXT("land_"))) return NA_land;
 	if (S.StartsWith(TEXT("zip_"))) return NA_zip;
 	if (S.StartsWith(TEXT("perch_"))) return NA_perch;
@@ -123,8 +134,12 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 		break;
 	}
 	// ---- air
-	if (Sub == TEXT("topOut")) return NA_topOut; // round 06: wall-run top-out flip
-	if (Sub == TEXT("trick") && !A.Trick.IsNone()) return FName(*(TEXT("trick_") + A.Trick.ToString()));
+	if (Sub == TEXT("topOut")) return bFlipClips ? FName(TEXT("flip_wallFront")) : NA_topOut; // round 06: wall-run top-out flip (r11: program)
+	if (Sub == TEXT("trick") && !A.Trick.IsNone())
+	{
+		if (bFlipClips && WebFlips::Find(A.Trick)) return FName(*(TEXT("flip_") + A.Trick.ToString())); // round 11: flip program
+		return FName(*(TEXT("trick_") + A.Trick.ToString()));
+	}
 	if (Sub == TEXT("jumpLaunch")) return NA_jumpLaunch;
 	if (Sub == TEXT("pointLaunch")) return NA_pointLaunch;
 	if (Sub == TEXT("wallJump")) return NA_wallJump;
@@ -212,6 +227,11 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 		Add(bL ? TEXT("swingCornerBankL") : TEXT("swingCornerBank"), T, WBank, true);
 		return;
 	}
+	if (N.StartsWith(TEXT("flip_")))
+	{ // round 11: flip program — shapes on the program timeline (upper body leads, legs lag: Frame.LegLayers)
+		BuildFlipLayers(FName(*N.Mid(5)), T, Out, PendingLegs);
+		return;
+	}
 	if (N.StartsWith(TEXT("trick_")))
 	{ // limb shape per trick (the whole-body spin is applied to the figure root, PTRICK timing)
 		const FString Tr = N.Mid(6);
@@ -283,6 +303,25 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 	Add(TEXT("idle"), T, 1.f, true);
 }
 
+void UWebTravAnimInstance::BuildFlipLayers(FName Program, float T, TArray<FWebTravAnimLayer>& Out, TArray<FWebTravAnimLayer>& OutLegs)
+{
+	OutLegs.Reset();
+	const FWebFlipProgram* P = WebFlips::Find(Program);
+	if (!P) return;
+	const FWebFlipPose Po = WebFlips::Sample(*P, T);
+	// a held shape "breathes": its 1 s clip runs 0 -> 1 s over the hold (limbs open ~7 % by the end of the hold)
+	auto AddShape = [&](TArray<FWebTravAnimLayer>& Dst, EWebFlipShape S, float Hold, float W)
+	{
+		UAnimSequence* Seq = Clip(FName(WebFlips::ShapeClip(S)));
+		if (!Seq || W <= 0.001f) return;
+		Dst.Add({ Seq, FMath::Clamp(Hold, 0.f, 1.f) * Seq->GetPlayLength(), W, false });
+	};
+	AddShape(Out, Po.A, Po.HoldA, 1.f - Po.W);
+	if (Po.B != Po.A || Po.W > 0.f) AddShape(Out, Po.B, Po.HoldB, Po.W);
+	AddShape(OutLegs, Po.LA, Po.LHoldA, 1.f - Po.LW);
+	if (Po.LB != Po.LA || Po.LW > 0.f) AddShape(OutLegs, Po.LB, Po.LHoldB, Po.LW);
+}
+
 void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 {
 	Super::NativeUpdateAnimation(Dt);
@@ -322,6 +361,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		L.Time = L.bLoop ? FMath::Fmod(L.Time + Dt, FMath::Max(Len, 0.01f)) : FMath::Min(L.Time + Dt, Len);
 	}
 	TArray<FWebTravAnimLayer> Cur;
+	PendingLegs.Reset();
 	BuildNode(CurNode, NodeT, Cur);
 	const float Alpha = Smooth01(FadeT / FadeDur);
 	TArray<FWebTravAnimLayer> OutL;
@@ -337,6 +377,9 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	for (FWebTravAnimLayer L : Cur) { L.Weight *= CurScale / FMath::Max(CurSum, 0.001f); OutL.Add(L); }
 	if (Alpha >= 1.f) PrevLayers.Reset();
 	Frame.Layers = OutL;
+	// round 11: leg overlay of a flip program fades with the node blend (Alpha), or out over its prev-fade when the flip ended
+	if (PendingLegs.Num()) { Frame.LegLayers = PendingLegs; Frame.LegW = OutL.Num() && PrevLayers.Num() ? Alpha : 1.f; }
+	else if (Frame.LegW > 0.f) { Frame.LegW = FMath::Max(0.f, Frame.LegW - Dt / FMath::Max(0.05f, FadeDur)); if (Frame.LegW <= 0.f) Frame.LegLayers.Reset(); }
 	TotalWeight = 0.f;
 	float Best = -1.f;
 	Dominant = NAME_None;
@@ -395,6 +438,38 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 
 	FCompactPose& Pose = Output.Pose;
 	const FBoneContainer& BC = Pose.GetBoneContainer();
+	// round 11: flip overlapping action — the legs take their own (lagging) shape pose
+	if (Frame.LegW > 0.001f && Frame.LegLayers.Num())
+	{
+		FPoseContext LegCtx(this);
+		FAnimationPoseData LegData(LegCtx);
+		bool bL0 = true; float LAcc = 0.f;
+		for (const FWebTravAnimLayer& L : Frame.LegLayers)
+		{
+			if (!L.Seq || L.Weight <= 0.001f) continue;
+			if (bL0) { L.Seq->GetAnimationPose(LegData, FAnimExtractContext(double(L.Time), false, {}, L.bLoop)); LAcc = L.Weight; bL0 = false; continue; }
+			FPoseContext Tmp(this);
+			FAnimationPoseData TmpData(Tmp);
+			L.Seq->GetAnimationPose(TmpData, FAnimExtractContext(double(L.Time), false, {}, L.bLoop));
+			FAnimationRuntime::BlendTwoPosesTogetherInPlace(LegData, TmpData, LAcc / (LAcc + L.Weight));
+			LAcc += L.Weight;
+		}
+		if (!bL0)
+		{
+			static const TCHAR* LegBones[] = { TEXT("glute_L"), TEXT("glute_R"), TEXT("thigh_L"), TEXT("thigh_R"), TEXT("shin_L"), TEXT("shin_R"),
+				TEXT("foot_L"), TEXT("foot_R"), TEXT("toe_L"), TEXT("toe_R") };
+			for (const TCHAR* Bn : LegBones)
+			{
+				const int32 MI = BC.GetPoseBoneIndexForBoneName(FName(Bn));
+				if (MI == INDEX_NONE) continue;
+				const FCompactPoseBoneIndex CI = BC.MakeCompactPoseIndex(FMeshPoseBoneIndex(MI));
+				if (!CI.IsValid()) continue;
+				FTransform Tr = Pose[CI];
+				Tr.BlendWith(LegCtx.Pose[CI], Frame.LegW);
+				Pose[CI] = Tr;
+			}
+		}
+	}
 	auto Idx = [&BC](const TCHAR* Name) -> FCompactPoseBoneIndex
 	{
 		const int32 MI = BC.GetPoseBoneIndexForBoneName(FName(Name));

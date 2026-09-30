@@ -1,0 +1,55 @@
+{
+ "name": "f1_sky_backDouble",
+ "note": "Round 11 flips: swing north up the avenue from 30 m, sky launch at 1.4 s with the backDouble program (tuck, held inverted pencil, tuck, layout flash, tuck, straddle, tuck, upright throne, reach: 720 deg back in 2.35 s), web re-pressed for the catch in the reach, then the swing chain continues.",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   250,
+   170,
+   30
+  ],
+  "yaw": -90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -26,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "swing": true,
+   "flip": "backDouble"
+  },
+  {
+   "t": 1.4,
+   "jump": true,
+   "trick": true
+  },
+  {
+   "t": 1.42,
+   "swing": false,
+   "jump": false,
+   "trick": false
+  },
+  {
+   "t": 3.49,
+   "swing": true
+  },
+  {
+   "t": 4.09,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 0,
+   "skyEvery": 0
+  }
+ ]
+}

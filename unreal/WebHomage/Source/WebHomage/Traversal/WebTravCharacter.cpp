@@ -3,6 +3,8 @@
 #include "Traversal/WebTraversalComponent.h"
 #include "Traversal/WebTravScript.h"
 #include "Traversal/Anim/WebTravAnimInstance.h"
+#include "Traversal/WebTravFlips.h"
+#include "HAL/IConsoleManager.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Engine/SkeletalMesh.h"
 #include "ReferenceSkeleton.h"
@@ -35,6 +37,10 @@
 #include "Materials/MaterialInterface.h"
 #include "UnrealClient.h"
 #include "UObject/ConstructorHelpers.h"
+
+// round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable
+static TAutoConsoleVariable<float> CVarWHMouseSensitivity(TEXT("wh.MouseSensitivity"), 1.0f,
+	TEXT("Mouse look sensitivity multiplier for the traversal hero (1 = default, radians per mouse unit = MouseRadPerUnit x this)."), ECVF_Default);
 
 namespace
 {
@@ -545,7 +551,8 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		I.bZip = bZipKey || (bL2 && bR2);
 		I.bJump = bJumpKey; I.bDrop = bDropKey; I.bQuick = bQuickKey; I.bTrick = bTrickKey;
 		// look: mouse (yaw right +, pitch down +) and right stick rate
-		I.Look = FVector2D(MouseAccum.X * MouseRadPerUnit, -MouseAccum.Y * MouseRadPerUnit)
+		const float MSens = MouseRadPerUnit * FMath::Max(0.f, CVarWHMouseSensitivity.GetValueOnGameThread());
+		I.Look = FVector2D(MouseAccum.X * MSens, -MouseAccum.Y * MSens)
 			+ FVector2D(PadLook.X * PadLookRate.X, -PadLook.Y * PadLookRate.Y) * Dt;
 	}
 	MouseAccum = FVector2D::ZeroVector;
@@ -579,6 +586,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.SwingAngle = Traversal->Anim.Swing.Angle;
 	CI.SwingT = Traversal->SwingTime();
 	CI.bSky = Traversal->IsSkyLaunch();
+	{ float Ft = 0.f; CI.bFlip = Traversal->Anim.Sub == N_trick && FlipProgramNow(Ft) != nullptr; } // round 11: flip camera
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
 	// ---- move the actor (capsule) with the simulated body
@@ -625,6 +633,20 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	++FrameIndex;
 }
 
+const FWebFlipProgram* AWebTravCharacter::FlipProgramNow(float& OutT) const
+{
+	const FWebTravAnim& A = Traversal->Anim;
+	OutT = A.T;
+	if (A.Mode != EWebTravMode::Air) return nullptr;
+	if (A.Sub == N_trick && !A.Trick.IsNone()) return WebFlips::Find(A.Trick);
+	if (A.Sub == N_topOut && bHeroMesh)
+	{ // round 11: the wall-run top-out flip is a program too (only with the flip shape clips: the old releaseFlip clip spins by itself)
+		const UWebTravAnimInstance* AI = Cast<UWebTravAnimInstance>(GetMesh()->GetAnimInstance());
+		if (AI && AI->HasFlipClips()) return WebFlips::Find(FName(TEXT("wallFront")));
+	}
+	return nullptr;
+}
+
 FVector AWebTravCharacter::HandWorldCm(bool bRight) const
 {
 	if (bHeroMesh && GetMesh()) return GetMesh()->GetBoneLocation(bRight ? FName(TEXT("hand_R")) : FName(TEXT("hand_L")));
@@ -639,8 +661,29 @@ void AWebTravCharacter::PoseFigure(float Dt)
 	const FQuat Body = A.BodyQ;
 	FVector Root = A.RootPos;
 	FQuat Q = Body;
-	// release / air tricks: the whole body flips / rolls around its centre (placeholder for P2's trick clips)
-	if (A.Sub == N_trick && !A.Trick.IsNone() && A.TrickDur > 0)
+	// round 11 (FLIPS_BRIEF): gymnast flip programs rotate the whole body about its centre — pitch about the lateral axis, twist
+	// about the long axis — on the program's momentum timeline (WebTravFlips); a cut program (web catch / landing) hands its last
+	// rotation to a 0.07 s spring back to the body frame, so a catch never pops
+	float FlipT = 0.f;
+	const FWebFlipProgram* FP = FlipProgramNow(FlipT);
+	if (FP)
+	{
+		const FWebFlipPose FPo = WebFlips::Sample(*FP, FlipT);
+		FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(FPo.PitchDeg)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
+		LastFlip = FPo; LastFlipName = FP->Name;
+	}
+	else
+	{
+		FlipOffQ = FQuat::Slerp(FlipOffQ, FQuat::Identity, 1.0 - FMath::Exp(-Dt / 0.07));
+		LastFlip = FWebFlipPose(); LastFlipName = NAME_None;
+	}
+	if (FP || FlipOffQ.GetAngle() > FMath::DegreesToRadians(0.2))
+	{
+		Q = Body * FlipOffQ;
+		const FVector Centre = Traversal->PosM() * 100.0;
+		Root = Centre - Q.RotateVector(FVector(0, 0, 95));
+	}
+	else if (A.Sub == N_trick && !A.Trick.IsNone() && A.TrickDur > 0)
 	{
 		const double E = Smooth01(A.T / A.TrickDur);
 		double Ang = 0;
@@ -881,7 +924,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("rope_m,tension,chain,trick,zip_target,zt_x,zt_y,zt_z,cam_x,cam_y,cam_z,cam_yaw_deg,cam_pitch_deg,cam_vfov_deg,cam_dist_m,motion_blur,")
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
-		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll"));
+		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -958,6 +1002,27 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 			LimbZ += FString::Printf(TEXT("%s%.3f"), LimbZ.IsEmpty() ? TEXT("") : TEXT(" "), (M->GetBoneLocation(FName(Bn)).Z - Hip.Z) / 100.0);
 		}
 	}
+	// round 11: flip program state + the RENDERED body axis from the bones (hips -> head): angle from world up (0..180), and the
+	// signed pitch of that axis in the facing plane (+ = head forward) and roll in the lateral plane
+	double BodyAxis = -1.0, BodyPitch = 0.0, BodyRoll = 0.0;
+	if (bHeroMesh)
+	{
+		const USkeletalMeshComponent* M = GetMesh();
+		const FVector Ax = (M->GetBoneLocation(TEXT("head")) - M->GetBoneLocation(TEXT("hips"))).GetSafeNormal();
+		const double Fy = FMath::DegreesToRadians(A.FacingDeg);
+		const FVector Fw(FMath::Cos(Fy), FMath::Sin(Fy), 0.0), Rt(-FMath::Sin(Fy), FMath::Cos(Fy), 0.0);
+		BodyAxis = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Ax.Z, -1.0, 1.0)));
+		BodyPitch = FMath::RadiansToDegrees(FMath::Atan2(FVector::DotProduct(Ax, Fw), Ax.Z));
+		BodyRoll = FMath::RadiansToDegrees(FMath::Atan2(FVector::DotProduct(Ax, Rt), Ax.Z));
+	}
+	float FlipTNow = 0.f;
+	const bool bFlipNow = FlipProgramNow(FlipTNow) != nullptr && LastFlip.bValid;
+	const FString FlipCols = FString::Printf(TEXT("%s,%.3f,%.1f,%.1f,%.1f,%s,%s,%.1f,%.1f,%.1f"),
+		bFlipNow ? *LastFlipName.ToString() : TEXT(""), bFlipNow ? FlipTNow : -1.f, bFlipNow ? LastFlip.PitchDeg : 0.f, bFlipNow ? LastFlip.TwistDeg : 0.f,
+		bFlipNow ? LastFlip.PitchRate : 0.f,
+		bFlipNow ? (LastFlip.W < 0.5f ? WebFlips::ShapeName(LastFlip.A) : WebFlips::ShapeName(LastFlip.B)) : TEXT(""),
+		bFlipNow ? (LastFlip.LW < 0.5f ? WebFlips::ShapeName(LastFlip.LA) : WebFlips::ShapeName(LastFlip.LB)) : TEXT(""),
+		BodyAxis, BodyPitch, BodyRoll);
 	// the camera the engine actually rendered with (player camera manager cache)
 	FVector PcmLoc = FVector::ZeroVector; FRotator PcmRot = FRotator::ZeroRotator; float PcmFov = 0.f;
 	if (const APlayerController* PC = Cast<APlayerController>(GetController()))
@@ -978,7 +1043,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		PcmLoc.X / 100.0, PcmLoc.Y / 100.0, PcmLoc.Z / 100.0, PcmRot.Pitch, PcmRot.Yaw, PcmFov, PxTop, PxBottom, PxLeft, PxRight,
 		HeadHipDz, LimbZ.IsEmpty() ? TEXT("-") : *LimbZ, BodyRope,
 		(Traversal->Strands[0].bActive && Traversal->Strands[0].ReleaseT < 0.f) || (Traversal->Strands[1].bActive && Traversal->Strands[1].ReleaseT < 0.f) ? 1 : 0, WallFrac, HeroOccl, bBehind ? -1.0 : 0.5 * (MinX + MaxX), PcmRot.Roll);
-	Script->AddTelemetryRow(Row);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols);
 }
 
 // ------------------------------------------------------------------ game mode

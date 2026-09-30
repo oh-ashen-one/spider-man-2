@@ -26,6 +26,11 @@ SEQS=(
   "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,1.9,2.5,4.4,5.8"
   "c_wallrun_perch c_wallrun_perch.json 10.5 1.0,2.6,3.6,4.9,9.8"
   "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,5.6,7.6,11.8"
+  # round 11 (flips): sky-launch flip programs, a chain with a flip on every release (c = the wall-run top-out flip, b = r10 pair)
+  "f1_sky_backDouble f1_sky_backDouble.json 7.0 1.9,2.9"
+  "f2_sky_pikeSwan f2_sky_pikeSwan.json 6.5 1.9,2.6"
+  "f3_sky_corkscrew f3_sky_corkscrew.json 6.5 1.9,2.4"
+  "f4_chain_flips f4_chain_flips.json 13.0 3.0,6.0"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
@@ -65,7 +70,8 @@ for entry in "${SEQS[@]}"; do
     cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/"
     echo "movie: $ROUND/$NAME.mp4 $(stat -f %z "$ROUND/$NAME.mp4") bytes, ${DUR}s"
   fi
-  # --- 3840x2160 stills (same deterministic replay)
+  # --- 3840x2160 stills (same deterministic replay); NO_STILLS=1 skips them (round 11: long shared GPU queue)
+  if [ -n "${NO_STILLS:-}" ]; then continue; fi
   rm -rf "$TMP/${NAME}_4k"
   # shot times are world seconds: shift by the pre-roll; files are named by sequence time
   SHOTSP=$(python3 -c "print(','.join(str(round(float(t) + $PRE, 3)) for t in '$SHOTS'.split(',')))")

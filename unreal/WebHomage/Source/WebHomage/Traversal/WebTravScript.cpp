@@ -131,6 +131,7 @@ void UWebTravScript::Initialize(FSubsystemCollectionBase& Collection)
 						Bool(TEXT("zip"), K.Zip); Bool(TEXT("drop"), K.Drop); Bool(TEXT("quick"), K.Quick);
 						Bool(TEXT("autoChain"), K.AutoChain);
 						Bool(TEXT("trick"), K.Trick);
+						if (const FVal* FL = O->Get(TEXT("flip"))) { if (FL->Type == FVal::Str) K.Flip = FL->S; else K.Flip = FString(); }
 						if (const FVal* TE = O->Get(TEXT("trickEvery"))) K.TrickEvery = int32(TE->N);
 						if (const FVal* SE = O->Get(TEXT("skyEvery"))) K.SkyEvery = int32(SE->N);
 						if (const FVal* ST = O->Get(TEXT("skyTricks"))) K.SkyTricks = int32(ST->N);
@@ -190,6 +191,7 @@ FWebTravInput UWebTravScript::Sample(double T, FVector2D& OutLookRate) const
 		if (K.Drop) I.bDrop = *K.Drop;
 		if (K.Quick) I.bQuick = *K.Quick;
 		if (K.Trick) I.bTrick = *K.Trick;
+		if (K.Flip) I.FlipReq = *K.Flip;
 	}
 	if (I.Move.Size() > 1.0) I.Move = I.Move.GetSafeNormal();
 	OutLookRate = FVector2D(FMath::DegreesToRadians(Look.X), FMath::DegreesToRadians(Look.Y));

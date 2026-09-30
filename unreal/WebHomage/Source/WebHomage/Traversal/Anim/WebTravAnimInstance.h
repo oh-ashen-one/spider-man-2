@@ -33,6 +33,10 @@ struct FWebTravAnimFrame
 	FVector ArmTargetCS = FVector::ZeroVector;   // component space (cm)
 	float SpineBank = 0.f;                        // rad
 	float BodyAlignW = 0.f;                       // round 07: hips->head turned onto the web (hips->anchor), 0..1
+	// round 11 (flip programs, overlapping action): the legs follow their own shape layers (sampled FlipLag behind the upper
+	// body), blended over the main pose's leg bones by LegW
+	TArray<FWebTravAnimLayer> LegLayers;
+	float LegW = 0.f;
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy
@@ -61,12 +65,14 @@ public:
 	bool InAirCycle() const { return bInAirCycle; }
 	float AirCycleTime() const { return AirCycleT; }
 	int32 AirCycleCount() const { return CycleCount; }
+	/** Round 11: the Blender flip shape clips (flipTuck ...) are loaded -> flip programs drive the air tricks and the top-out. */
+	bool HasFlipClips() const { return bFlipClips; }
 	/** Round 06: capture pre-roll end — back to the freshly initialised state (no blend from the pre-roll pose). */
 	void ResetForSequenceStart()
 	{
 		CurNode = NAME_None; Dominant = NAME_None; NodeT = 0.f; FadeT = 1.f; FadeDur = 0.2f; PrevLayers.Reset(); Frame.Layers.Reset();
 		Frame.ArmAimWeight = 0.f; LocoPhase = 0.f; WallRunPhase = 0.f; bInAirCycle = false; AirCycleT = 0.f; FlavorIdx = -1; CycleCount = 0;
-		bReachRight = true; LastMode = EWebTravMode::Ground;
+		bReachRight = true; LastMode = EWebTravMode::Ground; Frame.LegLayers.Reset(); Frame.LegW = 0.f; PendingLegs.Reset();
 	}
 
 	/** Content folder with the hero clips and the asset-name prefix (set from AWebTravCharacter::HeroClipRoot / HeroClipPrefix). */
@@ -103,4 +109,7 @@ private:
 	int32 FlavorIdx = -1, CycleCount = 0;
 	bool bReachRight = true;
 	EWebTravMode LastMode = EWebTravMode::Ground;
+	bool bFlipClips = false;
+	TArray<FWebTravAnimLayer> PendingLegs;
+	void BuildFlipLayers(FName Program, float T, TArray<FWebTravAnimLayer>& Out, TArray<FWebTravAnimLayer>& OutLegs);
 };

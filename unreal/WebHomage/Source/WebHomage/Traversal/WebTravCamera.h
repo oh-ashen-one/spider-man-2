@@ -32,6 +32,7 @@ struct FTravCamInput
 	double SwingAngle = 0.0; // rope angle from straight down (rad), swinging only
 	double SwingT = 99.0;    // s since the current web attached
 	bool bSky = false;       // round 10: sky launch (jump-release + trick) in progress
+	bool bFlip = false;      // round 11: a gymnast flip program is playing
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -72,6 +73,12 @@ public:
 	// SkyCamBelow m under the hero centre and frames him at SkySFrame (upper centre), look-up limited to SkyPitchUp deg (T11 p5)
 	double SkyCamBelow = 1.2, SkySFrame = 0.40, SkyPitchUp = 10.0;
 	double SkyK = 0.0, SkyKV = 0.0;
+	// round 11 (FLIPS_SPEC F9, critic r10 "flips foreshortened from behind"): while a flip program plays the camera orbits
+	// FlipOrbitDeg off the travel axis toward the side with more open space (the rotation plane reads side-on), sinks under the
+	// hero like the sky camera (silhouette against the sky) and never rolls with the body
+	double FlipOrbitDeg = 50.0, FlipSFrame = 0.42, FlipCamBelow = 1.0, FlipCloser = 0.2;
+	double FlipK = 0.0, FlipKV = 0.0, FlipSide = 1.0;
+	bool bFlipWas = false;
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame

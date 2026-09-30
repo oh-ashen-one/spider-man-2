@@ -1,0 +1,44 @@
+{
+ "name": "f4_chain_flips",
+ "note": "Round 11 flips: a-style airborne swing chain; every release carries a flip (trickEvery 1): plain releases backSingle, every 2nd release a sky launch; programs cycled backSingle, frontPikeSwan, backSingle, corkscrew, backSingle, backDouble. Shows flips released from and caught into consecutive swings.",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   250,
+   240,
+   24
+  ],
+  "yaw": -90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -22,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "swing": false,
+   "flip": "backSingle,frontPikeSwan,backSingle,corkscrew,backSingle,backDouble"
+  },
+  {
+   "t": 0.4,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 1,
+   "skyEvery": 2,
+   "skyTricks": 1,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
+ ]
+}

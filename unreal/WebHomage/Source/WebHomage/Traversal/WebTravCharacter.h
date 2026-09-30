@@ -13,6 +13,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Traversal/WebTravTypes.h"
 #include "Traversal/WebTravCamera.h"
+#include "Traversal/WebTravFlips.h"
 #include "WebTravCharacter.generated.h"
 
 class UWebTraversalComponent;
@@ -55,7 +56,7 @@ protected:
 
 	/** Mouse look: radians per Mouse2D unit (browser 0.0023 rad / px; Mouse2D arrives pre-scaled by 0.07). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
-	float MouseRadPerUnit = 0.033f;
+	float MouseRadPerUnit = 0.011f; // round 11: 0.033 (browser) -> 0.011; scaled at run time by the console variable wh.MouseSensitivity
 
 	/** Right stick look rate (rad/s) at full deflection (browser 900 px/s x 0.0023). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
@@ -83,6 +84,10 @@ private:
 	bool SetupHeroMesh();
 	void PoseFigure(float Dt);
 	float SwayW = 0.f; // round 06: air-sway weight (spring)
+	FQuat FlipOffQ = FQuat::Identity;   // round 11: flip rotation relative to the body frame (springs back when a program is cut)
+	FWebFlipPose LastFlip;              // round 11: telemetry
+	FName LastFlipName;
+	const FWebFlipProgram* FlipProgramNow(float& OutT) const;
 	void UpdateWebs(float Dt, const FVector& CamPosCm);
 	FVector HandWorldCm(bool bRight) const;
 	void PushTelemetry(double T, const FWebTravInput& I);

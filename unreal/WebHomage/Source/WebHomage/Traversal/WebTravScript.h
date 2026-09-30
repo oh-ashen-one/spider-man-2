@@ -70,6 +70,7 @@ private:
 		TOptional<FVector2D> Move, Look;
 		TOptional<double> Heading; // world yaw (deg) the stick steers toward; NaN-free: set "heading": null to clear
 		TOptional<bool> Swing, Jump, Sprint, Zip, Drop, Quick, AutoChain, Trick;
+		TOptional<FString> Flip; // round 11: flip program list for the next tricks ("backDouble,corkscrew"; "" = automatic)
 		int32 TrickEvery = 0;
 		int32 SkyEvery = 0, SkyTricks = 2;
 		double SkyRepressH = 18, SkyMax = 3.0, SkyPhase = 0.8;

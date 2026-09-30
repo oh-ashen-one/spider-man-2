@@ -2,6 +2,7 @@
 // Port of src/player/traversal/traversal.js (browser build). Function order and comments follow the browser file so the
 // two can be diffed by eye; owner feel notes (user rN / feedback #N) are kept where they shaped the code.
 #include "Traversal/WebTraversalComponent.h"
+#include "Traversal/WebTravFlips.h"
 #include "Traversal/WebTravCamera.h"
 #include "WebHomage.h"
 
@@ -487,7 +488,10 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	if (S.bJumpRelHold && (S.Vel.Z <= 0 || S.Mode != EWebTravMode::Air)) S.bJumpRelHold = false;
 	if (I.bSwing && !S.bWebPending && S.SwingCooldown <= 0 && (!S.bJumpRelHold || I.bSwingPressed)) // a fresh RMB press still grabs at once
 	{
-		const bool bTrickBusy = S.Sub == N_trick && S.SubT < FMath::Max(0.62, S.TrickDur - 0.35); // let the flip finish
+		// round 11: a flip program only lets the next web in during its final reach (catch continuity); old tricks: last 0.35 s
+		const FWebFlipProgram* FP = S.Sub == N_trick ? WebFlips::Find(S.Trick) : nullptr;
+		const double BusyUntil = FP ? S.TrickDur - FP->Segs.Last().Dur - 0.02 : FMath::Max(0.62, S.TrickDur - 0.35);
+		const bool bTrickBusy = S.Sub == N_trick && S.SubT < BusyUntil; // let the flip finish
 		// round 07 (critic r06, swing cadence): after a web release a held button searches again from 0.22 s on, even while
 		// still rising (was: only once vz < 5.5 m/s -> 1-1.7 s web-less falls); a fresh press always searches at once (the
 		// throttle left over from the previous search used to swallow the press)
@@ -509,6 +513,9 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	// sub-state
 	double Timed = -1;
 	if (S.Sub == N_jumpLaunch) Timed = 0.16; else if (S.Sub == N_release) Timed = 0.4; else if (S.Sub == N_trick) Timed = S.TrickDur > 0 ? S.TrickDur : 0.85;
+	// round 11: a flip program keeps its final reach while the web button is held and no web has caught yet (<= FlipReachHold s):
+	// the catch comes out of the reach instead of a fall / dive pose in between
+	if (S.Sub == N_trick && I.bSwing && WebFlips::Find(S.Trick)) Timed += FlipReachHold;
 	else if (S.Sub == N_pointLaunch) Timed = 0.45; else if (S.Sub == N_topOut) Timed = 1.6; else if (S.Sub == N_wallJump) Timed = 0.3; else if (S.Sub == N_zipPull) Timed = 0.28; else if (S.Sub == N_vault) Timed = 0.3;
 	if (Timed < 0 || S.SubT > Timed)
 	{
@@ -1149,6 +1156,33 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 // ---- release / air tricks. Selection follows the release trajectory; never the same trick twice in a row.
 FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 {
+	// round 11 (owner brief FLIPS_BRIEF.md): gymnast flip programs. A script / caller may request programs (comma list, cycled);
+	// otherwise: a sky launch (long air) cycles backDouble / frontPikeSwan / corkscrew; a plain trick release picks by the air
+	// time it has (height over the floor): backSingle when low, else frontPikeSwan / corkscrew / backSingle in turn.
+	if (!bLegacyTricks)
+	{
+		FVector HV0;
+		if (!HDir(S.Vel, HV0)) HV0 = YawDir(S.Facing);
+		const FVector InD0 = InputDir(I);
+		S.TrickLat = -InD0.X * HV0.Y + InD0.Y * HV0.X;
+		S.TrickSteep = S.Vel.Size() > 1 ? S.Vel.Z / S.Vel.Size() : 0;
+		if (!I.FlipReq.IsEmpty())
+		{
+			TArray<FString> L;
+			I.FlipReq.ParseIntoArray(L, TEXT(","), true);
+			if (L.Num())
+			{
+				const FName N(*L[S.FlipCycle % L.Num()].TrimStartAndEnd());
+				++S.FlipCycle;
+				if (WebFlips::Find(N)) return N;
+			}
+		}
+		static const FName SkyP[] = { FName(TEXT("backDouble")), FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")) };
+		static const FName LowP[] = { FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")), FName(TEXT("backSingle")) };
+		const int32 K = S.AutoFlipK++;
+		if (S.bSky) return SkyP[K % 3];
+		return HeightAboveFloor() < 30.0 ? FName(TEXT("backSingle")) : LowP[K % 3];
+	}
 	const double Sp = S.Vel.Size(), HS = HLen(S.Vel), VY = S.Vel.Z, Steep = Sp > 1 ? VY / Sp : 0;
 	FVector HV;
 	if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
@@ -1173,6 +1207,14 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 
 void UWebTraversalComponent::StartTrick(FName Name)
 {
+	if (const FWebFlipProgram* FP = WebFlips::Find(Name))
+	{ // round 11: flip program — its length is the trick; boost at 30 % of the first shape
+		S.Trick = Name; S.LastTrickName = Name;
+		S.TrickSide = FMath::Abs(S.TrickLat) > 0.35 ? Sgn(S.TrickLat) : 1.0; // corkscrew twist direction toward the stick
+		S.TrickDur = FP->Dur(); S.TrickSnapT = 0.3 * FP->Segs[0].Dur; S.bTrickBoosted = false; S.bTrickNoUp = false;
+		SetSub(N_trick);
+		return;
+	}
 	const FTrickDef* D = TrickDef(Name);
 	if (!D) return;
 	const double Lat = S.TrickLat;
@@ -1188,6 +1230,18 @@ void UWebTraversalComponent::TrickBoost(const FWebTravInput& I)
 {
 	const FTrickDef* D = TrickDef(S.Trick);
 	S.bTrickBoosted = true;
+	if (const FWebFlipProgram* FP = WebFlips::Find(S.Trick))
+	{ // round 11: flip programs give a small forward push + hang (no steering)
+		const double Sp0 = S.Vel.Size();
+		FVector HV;
+		if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
+		S.Vel.X += HV.X * FP->Boost * ReleaseBoostMul; S.Vel.Y += HV.Y * FP->Boost * ReleaseBoostMul;
+		if (!S.bTrickNoUp) S.Vel.Z += FP->Up * ReleaseBoostMul;
+		const double Lim = FMath::Max(VmaxC(), Sp0), Sp = S.Vel.Size();
+		if (Sp > Lim) S.Vel *= Lim / Sp;
+		Emit(N_trickBoost, 0.f, float(S.Vel.Size() - Sp0));
+		return;
+	}
 	if (!D) return;
 	const double K = ReleaseBoostMul;
 	const double Sp0 = S.Vel.Size();
