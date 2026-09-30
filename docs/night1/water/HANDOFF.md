@@ -68,5 +68,9 @@ No per-pass breakdown was taken: if the budget gets tight, the levers are the Lu
   ("precision loss while converting matrix", `UpdateDistanceFieldObjectBuffers`) that the old 60 km plane already caused in every city capture.
 - Hero swimming / water gameplay height: `waves.js` `waveHeight()` is not exposed to gameplay; the surface height is `WATER_Y (-1.6 m) + Gerstner height` on the same constants (`WAVES` in `build_water.py`).
 
+## Capture scripts
+`docs/night1/water/scripts/`: `cap.sh <name> <map> <res> [run_game args]` (one capture through the GPU lock), `stills.sh name=map ...` (4K + 1080p jpgs into `round-01`), `dolly.sh` (movie; then trim frames 180..779 with ffmpeg as in NOTES),
+`perf.sh name=map ...` (exclusive perf runs, sidecars into `round-01/perf_runs`). They hard-code this piece's scratch and worktree paths.
+
 ## Files
 `unreal/WebHomage/Scripts/build_water.py` (everything), `docs/night1/water/views.json`, `docs/night1/water/round-01/*` (captures, `perf.json`, `NOTES.md`, `frame_stats.json`, `farfield_S4.json`), `docs/night1/water/IP_EXCLUSIONS.md`.
