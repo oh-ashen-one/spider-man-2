@@ -165,3 +165,36 @@ d_sprint_jump_first_swing: 2.60-12.00 s (562 frames)
   arc low points (m over the floor): 3.4, 5.8, 4.6; consecutive differences min 1.2 m
 d_sprint_jump_first_swing: 7/9 camera lines pass
 ---- video instruments (spec tools on the mp4): T3/T5/T6, T8-T10, T11-T14, T17/T18
+r10_d_sprint_jump_first_swing: 94 samples at 10 fps, window 2.6-11.9 s
+ T3 rope on screen, whole window: 0.45  (+ frames with only a near-vertical (<4 deg) line at the hero: 0.39)
+ T3 per 8 s window (start: frac): 2.6:0.44 3.1:0.40 3.6:0.40
+ T3 8 s windows min/max: 0.40/0.44
+ rope-less runs >= 1.0 s: 4.0-6.0 8.0-9.1
+ T6 angle from vertical p10/50/90 4.7/31.2/43.5  width px p50 4.0 | T5 rope reaches the top edge (<= 15 px) 0.50
+ hero found 86/94 (T16)
+ T8 hero h p10/50/90 0.129/0.209/0.285 min 0.043
+ T9 hero cx p5/p95 0.472/0.572
+ T10 hero cy p5/p95 0.331/0.633 spread 0.302
+r10_d_sprint_jump_first_swing_cam.csv n 94
+ T11 pitch down p5/50/95 1.7/7.0/22.1 (n 47)
+ T12 yaw off p50/90 8.5/39.4
+ T13 |roll| p50/90/max 0.2/1.4/2.8
+ T14 hfov p25/50/75 101/102/103
+d_sprint_jump_first_swing.mp4      cov p50 0.32 p90 0.48 | max-side-third p50 0.61 p90 0.89 | frames with a side third >50% covered: 62%
+---- anim (T-pose, air silhouettes)
+  T-pose / no-clip frames: 0
+  air silhouettes at 6 fps: 29 consecutive air pairs, 0 with the same silhouette (min distance 0.144 m, threshold 0.08 m)
+  air cycles: 3; consecutive identical cycles: 0
+    cycle 1: air_tuck > trick_corkscrew > air_rise > trick_tuckFlip > air_fallCalm > air_fall > air_dive
+    cycle 2: air_fallCalm > air_tuck
+    cycle 3: trick_layout > air_fallCalm > trick_scissor
+
+================ c wall-run (T22)
+c: wall-run 2.08-3.83 s (1.75 s, 11 samples at 6 fps)
+  distinct limb phases at 6 fps: 11 (need >= 4)  PASS
+  head above hips: 11/11 samples  PASS
+  steps (foot L/R height crossings): 5 in 1.75 s = 2.86 steps/s
+  hero fully in frame 2.08-5.12 s (wall-run + top-out + landing): 183/183 frames  PASS
+  camera on the wall: pitch -10.5..55.8 deg (+ = up), below the hero -0.57..2.20 m, distance 2.66..4.34 m
+
+# (d video instruments, anim and the c wall-run lines were completed on resume, 2026-09-30 00:0x, after the loop was interrupted; same tools and commands as spec_check_round.sh)

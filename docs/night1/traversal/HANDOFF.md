@@ -318,7 +318,7 @@ GPU was shared during captures (holders logged in `_scratch/traversal/capture_ro
 | Arc low points | 11.1, 7.0, 4.7, 6.7, 3.2 m (consecutive diff min 2.0 m) | 9.2 ... 3.1 min diff |
 | b (0-7 s) | 6/9 camera lines: T10 p95 .72, T11 p95 32 deg, T14 hFOV 96 (dive + zip) FAIL; T3 .34, T8 med .20, sky launch rise at 1.4-3.3 s | 4/9 |
 | c (wall-run, 0-10.5 s) | 11 limb phases, head above hips 11/11, 2.86 steps/s, hero in frame 183/183 through top-out + landing, wall camera up to 55.8 deg (T22 20-65 PASS) | 14 / 17 / 272 |
-| d (2.6-12 s) | 7/9 camera lines: T9 p95 .565 (edge), T11 p50 +0.7 deg (low pitch in the street run) FAIL | 4/9 |
+| d (2.6-12 s) | engine 7/9 camera lines: T9 p95 .565 (edge), T11 p50 +0.7 deg (low pitch in the street run) FAIL; video: T3 .45 (edge), T8 med .209, T9 .472-.572 (edge), T10 spread .30, T11 1.7 / 7.0 / 22.1 (the two instruments disagree on the median), T12 p90 39 (street-run start), T14 102, side third p50 .61; 3 swings 1.25-1.42 s, 2.5 s trick phase | 4/9 |
 | Anim / camera safety (a, b, c, d) | 0 T-pose frames, 0 same-silhouette air pairs (a: min pair distance 0.090 m vs 0.08 threshold), camera in geometry 0 frames | same |
 Hero pixel share >= 160 px fell to 80-94 % (r09 96-98 %; median 212-272 px, min 80-92): the Manhattan avenue plus the wider fov keep him smaller.
 Old critic checks (cadence / drop / facade files) still print PASS/FAIL against the round-06..08 targets that TRAVERSAL-SPEC voided (see the NOTE in each file).
