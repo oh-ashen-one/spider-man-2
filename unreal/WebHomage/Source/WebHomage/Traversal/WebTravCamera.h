@@ -100,6 +100,8 @@ public:
 	// round 14: after a web attach (SwingT) the pitch settles into SettleDownMin..SettleDownMax deg DOWN, blended in over
 	// SettleT0..SettleT1 s (the hero is kept inside 0.18..0.82 of the frame height; the band widens if it has to)
 	double SettleDownMin = 5.5, SettleDownMax = 11.5, SettleT0 = 0.25, SettleT1 = 0.5;
+	// round 14: a side spot must have FlipWallMargin m of free space beyond it and a clear path FlipAheadT s along the travel
+	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
 	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
 	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
 	// round 13 (critic r12: one-frame cuts at f4 8.58 s / f1 6.30 s -- pitch 43 deg, yaw 54-60 deg, 3.1 m -- from the "too close: cut to

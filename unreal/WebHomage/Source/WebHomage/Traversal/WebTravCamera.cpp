@@ -556,6 +556,14 @@ void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& 
 			const FVector CamP = Hero + ToCam * FlipDist;
 			double HitD = 0.0;
 			if (World.SphereSweep(Hero, CamP, 0.25, HitD)) continue;
+			// round 14 (rendered f4 2.55-2.85 s: a side spot 3.3 m from the hero with a facade ~3.5 m away -- a cornice cut the sweep, the
+			// wall push shoved the camera over the hero, hero out of frame for 0.3 s): a side spot needs FlipWallMargin m of clearance
+			// beyond it and a clear path along the travel for the next FlipAheadT s
+			if (World.SphereSweep(CamP, CamP + ToCam * FlipWallMargin, 0.3, HitD)) continue;
+			{
+				const FVector VF(P.Vel.X, P.Vel.Y, 0.0);
+				if (VF.SizeSquared() > 1.0 && World.SphereSweep(CamP, CamP + VF * FlipAheadT, 0.3, HitD)) continue;
+			}
 			if (CamP.Z < World.GroundHeight(CamP.X, CamP.Y, CamP.Z + 0.5) + 0.5) continue;
 			// view basis through the hero
 			const FVector D = -ToCam;                                   // camera -> hero
