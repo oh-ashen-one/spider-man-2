@@ -1,6 +1,7 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Combat/WHCombatFx.h"
 #include "Combat/WHCombatUtil.h"
+#include "WebHomage.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
@@ -142,7 +143,7 @@ void FWHCombatFx::Impact(const FVector& P, const FVector& Dir, double Heavy, con
 	// r04 starburst. Unit U = the frame width in metres at the contact's depth; every length below is a share of it, so the picture is the same at any distance.
 	//   N = 6 (7 / 8 for heavier blows) thin streaks, evenly spread around the contact (random phase, +-18 % jitter), each in the camera's image plane, from
 	//   0.030 U (a hollow centre: only the small hot core sits on the victim's chest) to 0.128-0.16 U (length 0.098-0.127 U: always >= 8 % of the frame width)
-	//   and tapering in 4 steps (0.0095 U -> 0.003 U wide). Covered share of its bounding circle ~8 %, of the frame ~0.5 %: the victim's body stays readable.
+	//   and tapering in 6 steps (0.0094 U -> 0.0036 U wide). Covered share of its bounding circle ~8 %, of the frame ~0.5 %: the victim's body stays readable.
 	const FRotationMatrix CM(CamRot);
 	const FVector Fw = bCam ? CM.GetScaledAxis(EAxis::X) : (P - CamP).GetSafeNormal();
 	const FVector Right = bCam ? CM.GetScaledAxis(EAxis::Y) : FVector::RightVector;
@@ -151,25 +152,26 @@ void FWHCombatFx::Impact(const FVector& P, const FVector& Dir, double Heavy, con
 	const double U = 2.0 * Depth * FMath::Tan(FMath::DegreesToRadians(CamFovH * 0.5)) * FlareK;
 	const double Hold = (HoldFrames + 1.25) / 60.0, Life = Hold + 2.3 / 60.0;
 	const bool bTint = Color != nullptr && Color->R + Color->G + Color->B > 8.0f && Color->B > 3.0f;   // armoured (white) blow: cooler, white-hot streaks
-	static const double SegW[4] = { 1.0, 0.75, 0.52, 0.32 };
-	const FLinearColor Seg[4] = { FLinearColor(2.4f, 0.95f, 0.16f), FLinearColor(2.1f, 0.58f, 0.09f), FLinearColor(1.8f, 0.34f, 0.045f), FLinearColor(1.5f, 0.19f, 0.02f) };   // hot orange at the core, red-orange at the tips
-	const FLinearColor SegW4[4] = { FLinearColor(2.2f, 2.0f, 1.7f), FLinearColor(2.0f, 1.8f, 1.5f), FLinearColor(1.8f, 1.6f, 1.3f), FLinearColor(1.5f, 1.3f, 1.05f) };
 	const int32 N = Heavy >= 0.55 ? 8 : Heavy >= 0.25 ? 7 : 6;
 	const double Phase = FlareRng.FRandRange(0.0, 2.0 * PI), Step = 2.0 * PI / N;
+	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_FLARE streaks %d depth %.2f m frame width %.2f m fov %.1f hold %d frames centre (%.2f, %.2f, %.2f)%s"), N, Depth, U, CamFovH, HoldFrames, P.X, P.Y, P.Z, bTint ? TEXT(" white") : TEXT(""));
 	for (int32 i = 0; i < N; ++i)
 	{
 		const double A = Phase + i * Step + FlareRng.FRandRange(-0.18, 0.18) * Step;
 		const FVector Dv = (Right * FMath::Cos(A) + Up * FMath::Sin(A)).GetSafeNormal();
 		const double L = U * FlareRng.FRandRange(0.098, 0.115) * (1.0 + 0.1 * Heavy);
 		const double R0 = U * 0.030;   // hollow centre: the streaks start beyond the victim's torso, so the body under the burst stays readable
-		for (int32 j = 0; j < 4; ++j)
+		const int32 NS = 6;   // 6 stacked cylinders per streak: a smooth taper (0.94 -> 0.36 of the base width) and a colour that cools from orange to red-orange
+		for (int32 j = 0; j < NS; ++j)
 		{
 			FWHFxItem& S = Alloc(EWHFxMat::Flare, Cyl);
-			const double SegL = L * 0.25, C = R0 + L * (j + 0.5) * 0.25, W = U * 0.0095 * SegW[j];
+			const double T = (j + 0.5) / NS, SegL = L / NS, C = R0 + L * T, W = U * 0.0100 * (1.0 - 0.7 * T);
 			S.bReal = true; S.Hold = Hold; S.Life = Life;
 			S.Dir = Dv; S.Pos = P + Dv * C;
-			S.Size0 = FVector(W, W, SegL * 1.12); S.Size1 = FVector(W * 0.45, W * 0.45, SegL);
-			S.Color = bTint ? SegW4[j] : Seg[j]; S.Op0 = FlareI; S.Op1 = 0.0;
+			S.Size0 = FVector(W, W, SegL * 1.15); S.Size1 = FVector(W * 0.45, W * 0.45, SegL);
+			S.Color = bTint ? FLinearColor(FMath::Lerp(2.2f, 1.5f, float(T)), FMath::Lerp(2.0f, 1.3f, float(T)), FMath::Lerp(1.7f, 1.05f, float(T)))
+			                : FLinearColor(FMath::Lerp(2.4f, 1.5f, float(T)), FMath::Lerp(0.95f, 0.19f, FMath::Pow(float(T), 0.8f)), FMath::Lerp(0.16f, 0.02f, float(T)));
+			S.Op0 = FlareI; S.Op1 = 0.0;
 			Place(S, 0);
 		}
 	}
