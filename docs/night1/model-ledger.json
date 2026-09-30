@@ -343,6 +343,19 @@
     6,
     6
    ]
+  },
+  {
+   "piece": "P6 City life",
+   "round": 2,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    4,
+    4
+   ]
   }
  ],
  "agents": [

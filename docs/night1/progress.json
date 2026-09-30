@@ -1,5 +1,5 @@
 {
- "updated": "06:15",
+ "updated": "07:57",
  "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -80,10 +80,10 @@
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "fixing",
+   "state": "active",
    "round": 2,
-   "verdict": "R1: FAILS (traffic 4, motion 3, peds 2, ped motion 4, believability 3)",
-   "gap": "Pedestrians 4/frame (need \u226516), avenue traffic, lit signals + queues"
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1."
   },
   {
    "id": "A",
@@ -641,6 +641,14 @@
    "verdict": "fails",
    "gap": "Make tricks continuous with the swing chain: flip within 0.25 s of release, next web within 0.3 s, no one-frame camera cuts.",
    "notes": "Apex sky launches: sky behind the hero in 95\u2013100% of trick frames (was 3\u201315%). New problems: 1.7 s posed rise, 1.3 s dive, one-frame camera cut. Rounds 13\u201314 on Opus."
+  },
+  {
+   "t": "07:57",
+   "piece": "P6 City life",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1.",
+   "notes": "Pedestrians 2\u21925, traffic 4\u21925: S1 people 5\u219227, street clip 4\u219219, 100 citizen looks. Round 3 ran code/experiments but could not capture after the 06:55 WindowServer reset."
   }
  ],
  "perf": [
@@ -914,6 +922,14 @@
   {
    "t": "06:15",
    "text": "Traversal rounds 10\u201312 done (3 blind Opus critics). Flips 4\u21926\u21926: clean held shapes and sky-backed apex flips now; next gap is flow (no pause before/after the trick, no camera cut). Rounds 13\u201314 launched on Opus 5.5. Merged into the integration branch."
+  },
+  {
+   "t": "06:55",
+   "text": "WindowServer watchdog reset (no panic): four concurrent 4K captures inside an auto-raised cap of 5 starved WindowServer on the GPU; the owner was logged out and the desktop session died, so no engine can render until the owner logs in. Fix: hard cap 2 (never auto-raised), a PAUSED switch in the GPU lock, rule PR oh-ashen-one/agents-md#4. Builders continue CPU-side work."
+  },
+  {
+   "t": "07:57",
+   "text": "City life rounds 2\u20133 done (critic r2: FAILS, lowest 4; pedestrians 2\u21925). Merged."
   }
  ]
 }
