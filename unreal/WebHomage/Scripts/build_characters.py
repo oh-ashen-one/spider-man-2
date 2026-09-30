@@ -878,58 +878,123 @@ if 'maps5' in STEPS:
     save_map(TESTS + '/Char_Fight', fight_shots)
 
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================
-    new_stage('Crowd')
     CY5 = -1900.0
     L5 = 9000.0
-    civ5 = []
-    # mid lane (row y ~ CY5): 6 walking +X, 6 walking -X, alternating so no two neighbours share a direction
-    # x0 = world x at the start of the tracking shot (the camera tracks x = 0 at 1.1 m/s, mid lane 11.5 m away, 14 m wide): +X walkers stay in frame
-    # (their speed is close to the camera's), -X walkers cross it at ~2.3 m/s and are spread out to +25 m so the flow keeps entering during the 8 s
-    mid = [('03_white_tee', 150, -560, 1), ('12_sundress_mom', -140, -160, 1), ('13_construction_worker', 190, 150, 1), ('15_executive', -220, 420, 1),
-           ('04_blue_sweatshirt', 60, -820, 1), ('19_marathon_runner', -60, 620, 1),
-           ('10_silver_tie', -160, -420, -1), ('14_teen_skater', 200, 20, -1), ('01_retired_gent', -40, 520, -1), ('20_punk_artist', 120, 1050, -1),
-           ('18_dapper_elder', -200, 1600, -1), ('08_black_suit', 40, 2200, -1)]
-    for c, dy, x0, dr in mid:
-        wk = CIT_WALK[c]; start = (x0 + L5 / 2) if dr > 0 else (L5 / 2 - x0)
-        civ5.append(line5('Citizen_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, 0), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0))
-        civ5[-1].set_editor_property('anim_offset', (0.61803 * len(civ5)) % 1.0)   # CH19: gait phases spread by the golden ratio
-    # near lane (4.2 m from the tracking camera): six more distinct people; three pass right to left, three left to right, none overlaps in x
-    near = [('02_leather_jacket', 690, -230, -1), ('06_chrome_shades', 730, 420, -1), ('16_lumberjack_hipster', 700, 1250, -1),
-            ('05_black_tee', 720, -330, 1), ('17_hijabi_student', 680, 160, 1), ('09_kurta_waistcoat', 710, -640, 1)]
-    for c, dy, x0, dr in near:
-        wk = CIT_WALK[c]; start = (x0 + L5 / 2) if dr > 0 else (L5 / 2 - x0)
-        civ5.append(line5('CitizenNear_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, 0), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0))
-        civ5[-1].set_editor_property('anim_offset', (0.61803 * len(civ5)) % 1.0)
-    civ_track5 = spawn(unreal.WHCharLoopWalker, (0, CY5, 0), (0, 0, 0), 'Citizens_Track')
-    civ_track5.set_editor_property('mode', W5.LINE); civ_track5.set_editor_property('speed', 110.0)
-    civ_track5.set_editor_property('line_length', L5); civ_track5.set_editor_property('line_start', L5 / 2)
-    cit_center5 = spawn(unreal.TargetPoint, (500, CY5, 0), label='CitizensCenter')
-    civ_all5 = civ5 + [civ_track5]
-    crowd_shots = [
-        mkshot(civ_track5, K5.SIDE, 8, 1150, 100, 45, 64, restart=civ_all5, label='crowd walking past a tracking camera'),                      # 0 @0
-        mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @8
-    save_map(TESTS + '/Char_Crowd', crowd_shots)
+    # round 07 layout (tools/ue_char/crowd/layout_search.py seed 8): (citizen, lane offset dy in cm from the street centre line, start x0 at the start of the
+    # shot in cm, direction).  The tracking camera follows x = 0 at 1.1 m/s on the +Y side, 11.5 m from the mid lane; the near lane (dy 580-820) is 3.6-5.7 m
+    # from it.  Straight-line paths of every pair stay >= 117 cm apart for 2 s beyond both shots (so the runtime avoidance has nothing to do), the +X
+    # stream keeps to the camera side of the near lane (right-hand traffic), ~12 people in the tracking frame.
+    MID7 = [('03_white_tee', -10, -640, 1), ('12_sundress_mom', -200, 740, 1), ('13_construction_worker', 340, 550, 1), ('15_executive', -260, -330, 1),
+            ('04_blue_sweatshirt', -50, -750, 1), ('19_marathon_runner', -340, -220, 1),
+            ('10_silver_tie', -330, -530, -1), ('14_teen_skater', 230, 510, -1), ('01_retired_gent', 80, 1420, -1), ('20_punk_artist', 220, 1490, -1),
+            ('18_dapper_elder', 110, 700, -1), ('08_black_suit', 210, 1980, -1)]
+    NEAR7 = [('02_leather_jacket', 610, 150, -1), ('06_chrome_shades', 580, 960, -1), ('16_lumberjack_hipster', 620, 840, -1),
+             ('05_black_tee', 820, 320, 1), ('17_hijabi_student', 760, -150, 1), ('09_kurta_waistcoat', 820, 30, 1)]
+    # the round-06 layout (walkers passing through each other): used ONLY by Char_CrowdAvoid, the engine test of the avoidance itself
+    MID6 = [('03_white_tee', 150, -560, 1), ('12_sundress_mom', -140, -160, 1), ('13_construction_worker', 190, 150, 1), ('15_executive', -220, 420, 1),
+            ('04_blue_sweatshirt', 60, -820, 1), ('19_marathon_runner', -60, 620, 1),
+            ('10_silver_tie', -160, -420, -1), ('14_teen_skater', 200, 20, -1), ('01_retired_gent', -40, 520, -1), ('20_punk_artist', 120, 1050, -1),
+            ('18_dapper_elder', -200, 1600, -1), ('08_black_suit', 40, 2200, -1)]
+    NEAR6 = [('02_leather_jacket', 690, -230, -1), ('06_chrome_shades', 730, 420, -1), ('16_lumberjack_hipster', 700, 1250, -1),
+             ('05_black_tee', 720, -330, 1), ('17_hijabi_student', 680, 160, 1), ('09_kurta_waistcoat', 710, -640, 1)]
+
+    def crowd_map(map_name, mid, near, avoid=True):
+        new_stage('Crowd')
+        civ5 = []
+        for grp, pre in ((mid, 'Citizen_'), (near, 'CitizenNear_')):
+            for c, dy, x0, dr in grp:
+                wk = CIT_WALK[c]; start = (x0 + L5 / 2) if dr > 0 else (L5 / 2 - x0)
+                a = line5(pre + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, 0), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0)
+                a.set_editor_property('anim_offset', (0.61803 * (len(civ5) + 1)) % 1.0)   # CH19: gait phases spread by the golden ratio
+                if avoid:   # round 07: capsule avoidance (r = 40 cm >= the 35 cm asked for) with 2 s look-ahead; C++ AWHCharLoopWalker::StepAvoidGroup
+                    a.set_editor_property('avoid', True); a.set_editor_property('avoid_radius', 40.0)
+                civ5.append(a)
+        civ_track5 = spawn(unreal.WHCharLoopWalker, (0, CY5, 0), (0, 0, 0), 'Citizens_Track')
+        civ_track5.set_editor_property('mode', W5.LINE); civ_track5.set_editor_property('speed', 110.0)
+        civ_track5.set_editor_property('line_length', L5); civ_track5.set_editor_property('line_start', L5 / 2)
+        cit_center5 = spawn(unreal.TargetPoint, (500, CY5, 0), label='CitizensCenter')
+        civ_all5 = civ5 + [civ_track5]
+        crowd_shots = [
+            mkshot(civ_track5, K5.SIDE, 8, 1150, 100, 45, 64, restart=civ_all5, label='crowd walking past a tracking camera'),                      # 0 @0
+            mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @8
+        save_map(TESTS + '/' + map_name, crowd_shots)
+    crowd_map('Char_Crowd', MID7, NEAR7)
+    if 'mapavoid' in STEPS:      # only when asked: telemetry test of the avoidance on the OLD (colliding) layout, nullrhi run, no captures
+        crowd_map('Char_CrowdAvoid', MID6, NEAR6)
     log('maps5 ok')
 
-# ------------------------------------------------------------------------------------------------ CH18 chroma-key test map (round 05)
-# Char_CrowdKey = Char_Crowd with the street, facades and windows replaced by an unlit pure-green material and no fog: in a capture of this map every green
-# pixel enclosed by a person is a see-through crack in a character mesh, measured in the real engine (tools/ue_char/eval/key_holes.py).
+# ------------------------------------------------------------------------------------------------ CH18 chroma-key test maps (round 05, keyer replaced in round 07)
+# Round 05/06 keyed the STREET: the street, facades and windows were an unlit pure-green material.  Its bounce light (and the sky light captured from the
+# green scene) tinted every garment green, so a `G > R + 40` test flagged whole legs and coats that were perfectly solid (round-06 critic: the rear jeans leg of
+# `crowd_key_c_4k`, 19.5k px of "key green" was jeans in shade lit only by the green bounce).  Round 07 keys the PICTURE, not the world: Char_CrowdKey is a
+# copy of Char_Crowd (same sun, sky, fog, street: identical lighting) whose citizens write custom-depth STENCIL, and a post-process material
+# (after tonemapping) replaces every pixel that is not a citizen by the key colour (0, 230, 0) exactly.  A citizen pixel is never modified, so a green pixel
+# inside a citizen silhouette is a real hole in the mesh and a garment is never tinted.  Char_CrowdID writes the per-walker stencil id (R = 12 x id) instead
+# of the picture: exact per-walker masks (who is in front of whom, a floating polygon's owner).  Needs `r.CustomDepth 3` (capture_r5.sh passes it).
 if 'mapkey' in STEPS:
-    mk = new_material(TESTS + '/Materials', 'M_Env_Key')
-    mk.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
-    MEL.connect_material_property(vector(mk, 'Color', (0.0, 1.0, 0.0, 1), -400, -100), 'RGB', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
-    MEL.recompile_material(mk)
+    KEY_RGB = (0.0, 230.0 / 255.0, 0.0)
+
+    def enum_pick(cls, *needles):
+        """the member of a Python-exposed UE enum whose name holds every needle (the exact spelling of the prefixes differs between engine versions)"""
+        names = [n for n in dir(cls) if n.isupper() and all(k in n.replace('_', '') for k in needles)]
+        log('enum', cls.__name__, needles, '->', names, 'of', [n for n in dir(cls) if n.isupper()][:40])
+        return getattr(cls, names[0])
+
+    def build_pp_key(name, ids):
+        m = new_material(TESTS + '/Materials', name)
+        m.set_editor_property('material_domain', enum_pick(unreal.MaterialDomain, 'POSTPROCESS'))
+        m.set_editor_property('blendable_location', enum_pick(unreal.BlendableLocation, 'AFTER', 'TONEMAPP'))
+        sten = E(m, unreal.MaterialExpressionSceneTexture, -900, 0); sten.set_editor_property('scene_texture_id', enum_pick(unreal.SceneTextureId, 'CUSTOM', 'STENCIL'))
+        sten.set_editor_property('filtered', False)
+        col = E(m, unreal.MaterialExpressionSceneTexture, -900, 250); col.set_editor_property('scene_texture_id', enum_pick(unreal.SceneTextureId, 'POSTPROCESSINPUT0'))
+        col.set_editor_property('filtered', False)
+        sr = E(m, unreal.MaterialExpressionComponentMask, -650, 0)
+        sr.set_editor_property('r', True); sr.set_editor_property('g', False); sr.set_editor_property('b', False); sr.set_editor_property('a', False)
+        MEL.connect_material_expressions(sten, 'Color', sr, '')
+        key = E(m, unreal.MaterialExpressionConstant3Vector, -650, 400); key.set_editor_property('constant', unreal.LinearColor(*KEY_RGB, 1.0))
+        half = E(m, unreal.MaterialExpressionConstant, -650, 120); half.set_editor_property('r', 0.5)
+        iff = E(m, unreal.MaterialExpressionIf, -300, 200)
+        MEL.connect_material_expressions(sr, '', iff, 'A'); MEL.connect_material_expressions(half, '', iff, 'B')
+        MEL.connect_material_expressions(key, '', iff, 'A < B'); MEL.connect_material_expressions(key, '', iff, 'A == B')
+        if ids:     # id colour: R = 12 x stencil / 255 (decode: round(R * 255 / 12)), G = B = 0
+            k12 = E(m, unreal.MaterialExpressionConstant, -650, 280); k12.set_editor_property('r', 12.0 / 255.0)
+            mul = E(m, unreal.MaterialExpressionMultiply, -450, 40)
+            MEL.connect_material_expressions(sr, '', mul, 'A'); MEL.connect_material_expressions(k12, '', mul, 'B')
+            zero = E(m, unreal.MaterialExpressionConstant, -450, 120); zero.set_editor_property('r', 0.0)
+            app = E(m, unreal.MaterialExpressionAppendVector, -300, 60)
+            MEL.connect_material_expressions(mul, '', app, 'A'); MEL.connect_material_expressions(zero, '', app, 'B')
+            app2 = E(m, unreal.MaterialExpressionAppendVector, -150, 60)
+            MEL.connect_material_expressions(app, '', app2, 'A'); MEL.connect_material_expressions(zero, '', app2, 'B')
+            MEL.connect_material_expressions(app2, '', iff, 'A > B')
+        else:
+            MEL.connect_material_expressions(col, 'Color', iff, 'A > B')
+        MEL.connect_material_property(iff, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        MEL.recompile_material(m)
+        return m
+
+    def key_map(map_name, mat):
+        if EAL.does_asset_exist(TESTS + '/' + map_name): EAL.delete_asset(TESTS + '/' + map_name)
+        EAL.duplicate_asset(TESTS + '/Char_Crowd', TESTS + '/' + map_name)      # a COPY: Char_Crowd itself must stay untouched
+        unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/' + map_name)
+        n_st = 0
+        for a in unreal.EditorLevelLibrary.get_all_level_actors():
+            lab = a.get_actor_label()
+            if isinstance(a, unreal.WHCharLoopWalker) and lab.startswith(('Citizen_', 'CitizenNear_')):
+                n_st += 1
+                mc = a.get_editor_property('mesh')
+                mc.set_editor_property('render_custom_depth', True)
+                mc.set_editor_property('custom_depth_stencil_value', n_st)     # unique id per walker (1..18); the key material only tests > 0
+            elif lab == 'Post':
+                st = a.get_editor_property('settings')
+                wb = unreal.WeightedBlendable(); wb.set_editor_property('weight', 1.0); wb.set_editor_property('object', mat)
+                wbs = unreal.WeightedBlendables(); wbs.set_editor_property('array', [wb])
+                st.set_editor_property('weighted_blendables', wbs)
+                a.set_editor_property('settings', st)
+        log(map_name, 'saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), n_st, 'walkers write stencil')
+
+    mk = build_pp_key('M_PP_Key', False); mid_ = build_pp_key('M_PP_KeyID', True)
     EAL.save_directory(TESTS + '/Materials', only_if_is_dirty=True, recursive=True)
-    if EAL.does_asset_exist(TESTS + '/Char_CrowdKey'): EAL.delete_asset(TESTS + '/Char_CrowdKey')
-    EAL.duplicate_asset(TESTS + '/Char_Crowd', TESTS + '/Char_CrowdKey')      # a COPY: Char_Crowd itself must stay untouched (saving the loaded original keyed it once)
-    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/Char_CrowdKey')
-    n_key = 0
-    for a in unreal.EditorLevelLibrary.get_all_level_actors():
-        lab = a.get_actor_label()
-        if isinstance(a, unreal.StaticMeshActor) and lab.startswith(('Road', 'Sidewalk', 'Facade', 'FacadeS', 'Win_', 'Crosswalk')):
-            a.static_mesh_component.set_material(0, mk); n_key += 1
-        elif lab in ('Fog', 'SkyAtmosphere'):
-            a.destroy_actor()
-    log('mapkey saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), n_key, 'actors keyed')
+    key_map('Char_CrowdKey', mk)
+    key_map('Char_CrowdID', mid_)
 
 log('done')
