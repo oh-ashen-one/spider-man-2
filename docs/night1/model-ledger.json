@@ -553,6 +553,20 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 16,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    7,
+    5,
+    6,
+    6,
+    6,
+    6
+   ]
   }
  ],
  "agents": [

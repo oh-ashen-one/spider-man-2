@@ -18,7 +18,7 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 
 | Piece | Branch | Last judged round → verdict (lowest axis) | Next |
 |---|---|---|---|
-| P3 Traversal + flips | `night1/traversal` | r15 FAILS (5); **flips 7**; camera stuck at 5 for r12–r15 → Fable director wrote `docs/night1/traversal/TRICK_CAMERA_SPEC.md` | **r16 running (Sonnet, per director)**: implement TRICK_CAMERA_SPEC (held 3/4-behind chase), critic scores against it |
+| P3 Traversal + flips | `night1/traversal` | r15 FAILS (5), **flips 7** (merged). r16 (Sonnet) built TRICK_CAMERA_SPEC, most TC tests pass, but flips 7→6 — **r16 NOT merged** | **r17 running (Opus)**: tricks above the roofline (TC8), sun-side yaw at release, faster blend; recover flips ≥ 7 |
 | P2 Characters | `night1/characters` | r8 FAILS (5, all axes 5); original 'Tessera' suit (legal), sealed lenses | **r9 running (Sonnet)**: enemy hit reactions + knockdowns |
 | F 4K/60 perf | `night1/perf` | r5 **APPROACHES**: no-life p95 passes (17.8 ms); **life-on fails** (p50 58.5 fps, p95 ~50 fps); tree RT proxies | **r6 running (Opus)**: Lumen probe gather −1.3 ms, traffic/crowd cost, pass with life on |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
