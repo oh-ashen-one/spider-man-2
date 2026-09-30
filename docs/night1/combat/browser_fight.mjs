@@ -56,7 +56,8 @@ try {
     // ---- instrumentation (wrap the director's API: every call site uses c.<fn>)
     const EV = [], BEATS = [], TEL = [];
     const tag = e => { const i = c.enemies.indexOf(e); return i >= 0 ? 'e' + (i + 1) : '?'; };
-    const log = s => EV.push({ rt: +c.rtime.toFixed(3), gt: +c.time.toFixed(3), ts: +(ctx.timeScale ?? 1).toFixed(3), move: c.spidey.moveName(), ev: s });
+    let t0 = c.rtime;
+    const log = s => EV.push({ rt: +(c.rtime - t0).toFixed(3), gt: +c.time.toFixed(3), ts: +(ctx.timeScale ?? 1).toFixed(3), move: c.spidey.moveName(), ev: s });
     const N = { hits: 0, whiffs: 0, kos: 0, launches: 0, air_hits: 0, finishers: 0, dodges: 0, perfect_dodges: 0, web_hits: 0, enemy_melee_hits: 0, shots: 0, shot_hits: 0, hitstops: 0, slowmos: 0 };
     let dmgTaken = 0;
     const wrap = (name, fn) => { const o = c[name]; c[name] = (...a) => fn(o, ...a); };
@@ -86,7 +87,7 @@ try {
     const KEYS = { web: 'KeyF', strike: 'KeyE', finisher: 'KeyQ', heal: 'KeyZ', throw: 'KeyR', dodge: 'KeyC' };
     const beats = S.beats.map(b => ({ ...b, fired: false }));
     let started = false, webSeen = new WeakMap(), lmbUpAt = -1;
-    const t0 = c.rtime;
+    t0 = c.rtime;
     const quit = S.quit ?? 27;
     for (let f = 0; f < Math.round(quit * 60) + 1; f++) {
       const rt = c.rtime - t0;
