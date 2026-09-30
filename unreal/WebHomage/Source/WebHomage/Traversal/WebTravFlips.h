@@ -21,6 +21,10 @@ struct FWebFlipSeg
 	EWebFlipShape Shape = EWebFlipShape::Tuck;
 	float Dur = 0.3f;     // s
 	float TwistDeg = 0.f; // twist about the long axis inside this segment (deg, eased in/out)
+	// round 14 (critic r13: "the tuck spins at a constant 678 deg/s -- ease the ends >= 30 % slower than mid-flip"): the effective
+	// inertia rises toward the segment's ends by these factors (1 + EaseIn at its start, 1 + EaseOut at its end, smooth over
+	// WebFlips::EaseW of the segment) -- the gymnast grabs the knees tighter mid-tuck and opens a little going in / coming out
+	float EaseIn = 0.f, EaseOut = 0.f;
 };
 
 struct FWebFlipProgram
@@ -43,6 +47,10 @@ struct FWebFlipPose
 	// upper-body shape blend (sampled FlipLead ahead) and legs (FlipLag behind): A -> B by W; HoldA = 0..1 progress through A's hold
 	EWebFlipShape A = EWebFlipShape::Tuck, B = EWebFlipShape::Tuck, LA = EWebFlipShape::Tuck, LB = EWebFlipShape::Tuck;
 	float W = 0.f, LW = 0.f, HoldA = 0.f, HoldB = 0.f, LHoldA = 0.f, LHoldB = 0.f;
+	// round 14: the upper-body shape's own hips->head lean off the body frame (deg, + = head forward), blended A -> B by W. The
+	// character subtracts it from the root pitch so the VISIBLE body axis follows the momentum timeline (r13 rendered: a swan -> tuck
+	// change curled the axis ~55 deg in 0.17 s on top of the program, so every tuck entered at ~460 deg/s and pikeSwan peaked 1045-1090)
+	float AxisOffDeg = 0.f;
 	int32 Seg = 0;
 };
 
@@ -51,6 +59,8 @@ namespace WebFlips
 	/** Blender clip name of a shape (flipTuck ...). */
 	const TCHAR* ShapeClip(EWebFlipShape S);
 	const TCHAR* ShapeName(EWebFlipShape S);
+	/** Round 14: hips->head lean of a keyed shape off the body frame (deg, + = head forward), measured on the rendered r14 probe. */
+	float ShapeAxisDeg(EWebFlipShape S);
 	/** Program by name (backDouble, frontPikeSwan, corkscrew, backSingle, wallFront); nullptr if unknown. */
 	const FWebFlipProgram* Find(FName Name);
 	/** All program names (for cycling). */

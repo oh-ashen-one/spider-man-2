@@ -22,7 +22,8 @@ namespace WebFlips
 			case EWebFlipShape::Throne: return 9.0f;
 			case EWebFlipShape::Twist: return 3.5f;
 			case EWebFlipShape::Reach: return 7.0f;
-			case EWebFlipShape::Kickout: return 5.5f; // round 13: open finish, <= 150 deg/s for ~0.65 s
+			// round 13: open finish; round 14 5.5 -> 10.5 (rendered r13 hold 0.21 s: the keyed arch adds ~40 deg/s to the program's 123)
+			case EWebFlipShape::Kickout: return 10.5f;
 			default: return 3.f;
 			}
 		}
@@ -49,15 +50,21 @@ namespace WebFlips
 			// Tuck 1.0 s (peak ~680 deg/s), Kickout 0.7 s (<= 150 deg/s for ~0.65 s), mean ~420 deg/s (FLIPS_SPEC F2 300-500).
 			// (r12: tuck / layout / tuck / layout / reach 2.3 s; r11: nine segments)
 			{
-				FWebFlipProgram F; F.Name = FName(TEXT("backDouble")); F.PitchDeg = -720.f; F.Segs = { {S::Tuck, 1.0f}, {S::Kickout, 0.7f} };
+				// round 14 (critic r13 "a spinning ball at a constant 678 deg/s"; F4 Kickout hold 0.22 s): Tuck 1.20 s eased (ends ~62 % of the
+				// ~700 deg/s middle, peak ~755), Kickout 0.60 s at <= ~100 deg/s (inertia 10.5); catch 1.60 s after the release (r13 1.50)
+				FWebFlipProgram F; F.Name = FName(TEXT("backDouble")); F.PitchDeg = -720.f;
+				F.Segs = { {S::Tuck, 1.20f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.60f} };
 				F.CatchOpen = 0.2f; P.Add(F);
 			}
 			// front pike into a slow inverted swan that unwinds (critic r10 reference description), tuck up, reach (r12 1.97 s -> 1.65 s)
-			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.30f}, {S::Pencil, 0.34f}, {S::Swan, 0.55f}, {S::Tuck, 0.24f}, {S::Reach, 0.22f} });
+			// round 14 (critic r13: "b uses 5 shapes in 1.7 s", every shape >= 0.3 s, F3 rendered peak 980-1180 deg/s): the pencil is dropped,
+			// pike 0.40 s and tuck 0.38 s eased at both ends, swan 0.55 s (1.65 -> 1.59 s)
+			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.26f} });
 			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach (1.84 -> 1.66 s)
-			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.22f}, {S::Twist, 0.48f, 360.f}, {S::Swan, 0.48f}, {S::Tuck, 0.26f}, {S::Reach, 0.22f} }, 4.0f, 1.2f);
+			// round 14: every shape >= 0.3 s (layout 0.22 -> 0.31, tuck 0.26 -> 0.34 eased), twist 0.42 s, swan 0.36 s (1.66 -> 1.67 s)
+			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Swan, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
-			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.30f}, {S::Pencil, 0.40f}, {S::Tuck, 0.30f}, {S::Reach, 0.22f} });
+			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.24f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing
 			Add(TEXT("wallFront"), 360.f, { {S::Tuck, 0.27f}, {S::Layout, 0.3f}, {S::Tuck, 0.27f}, {S::Throne, 0.3f} }, 0.f, 0.f);
 			return P;
@@ -90,11 +97,25 @@ namespace WebFlips
 			}
 			else { A = B = P.Segs[K].Shape; W = 0.f; HA = HB = Hold(K, T); }
 		}
+		// round 14: segment K's inertia at time T including its end ease (see FWebFlipSeg::EaseIn / EaseOut)
+		constexpr float EaseW = 0.45f;
+		float SegInertia(const FWebFlipProgram& P, int32 K, float T)
+		{
+			const FWebFlipSeg& S = P.Segs[K];
+			const float U = FMath::Clamp((T - SegStart(P, K)) / FMath::Max(0.05f, S.Dur), 0.f, 1.f);
+			return Inertia(S.Shape) * (1.f + S.EaseIn * (1.f - Smooth(U / EaseW)) + S.EaseOut * (1.f - Smooth((1.f - U) / EaseW)));
+		}
 		float InertiaAt(const FWebFlipProgram& P, float T)
 		{
-			EWebFlipShape A, B; float W, HA, HB;
-			ShapeAt(P, T, A, B, W, HA, HB);
-			return FMath::Lerp(Inertia(A), Inertia(B), W);
+			const float Dur = P.Dur();
+			T = FMath::Clamp(T, 0.f, Dur - 1e-4f);
+			const int32 K = SegAt(P, T);
+			const float S0 = SegStart(P, K), S1 = S0 + P.Segs[K].Dur;
+			if (K > 0 && T < S0 + BPost)
+				return FMath::Lerp(SegInertia(P, K - 1, T), SegInertia(P, K, T), Smooth((T - (S0 - BPre)) / (BPre + BPost)));
+			if (K + 1 < P.Segs.Num() && T > S1 - BPre)
+				return FMath::Lerp(SegInertia(P, K, T), SegInertia(P, K + 1, T), Smooth((T - (S1 - BPre)) / (BPre + BPost)));
+			return SegInertia(P, K, T);
 		}
 		float Env(float T, float Dur)
 		{
@@ -133,6 +154,20 @@ namespace WebFlips
 		return C[FMath::Clamp(int32(S), 0, int32(EWebFlipShape::Num) - 1)];
 	}
 	const TCHAR* ShapeName(EWebFlipShape S) { return ShapeClip(S) + 4; }
+
+	// round 14: rendered hips->head axis minus the program pitch while each shape is held (probe f4, 60 fps; + = head forward)
+	float ShapeAxisDeg(EWebFlipShape S)
+	{
+		switch (S)
+		{
+		case EWebFlipShape::Tuck: return 20.f;
+		case EWebFlipShape::Pike: return 22.f;
+		case EWebFlipShape::Swan: return -15.f;
+		case EWebFlipShape::Kickout: return -6.f;
+		case EWebFlipShape::Reach: return 3.f;
+		default: return 0.f;
+		}
+	}
 
 	const FWebFlipProgram* Find(FName Name)
 	{
@@ -174,6 +209,7 @@ namespace WebFlips
 		O.TwistDeg = Tw;
 		O.Seg = SegAt(P, Tc);
 		ShapeAt(P, T + FlipLead, O.A, O.B, O.W, O.HoldA, O.HoldB);
+		O.AxisOffDeg = FMath::Lerp(ShapeAxisDeg(O.A), ShapeAxisDeg(O.B), O.W);
 		ShapeAt(P, T - FlipLag, O.LA, O.LB, O.LW, O.LHoldA, O.LHoldB);
 		return O;
 	}

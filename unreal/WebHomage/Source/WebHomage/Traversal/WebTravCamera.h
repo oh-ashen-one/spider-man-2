@@ -89,7 +89,19 @@ public:
 	// rays cannot hit — filled the ring's lower half at <= 20 deg: the spot is now taken exactly (blended by FlipK) and the look-up
 	// never goes under FlipMinElev)
 	// (round 13: FlipDist 2.9 -> 3.3 m, critic r12 T8 "Reach .62" / F9 p50 .40-.41 > .36; FlipAimT 0.3 -> 0.4 s, per-frame yaw budget)
-	double FlipDist = 3.3, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.4, FlipPrefYaw = 55.0, FlipMinElev = 30.0;
+	double FlipDist = 3.3, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 85.0, FlipMinElev = 4.0;
+	// round 14 (critic r13 single gap: "the flip camera looks up from under the hero, so the rotation does not read and the camera
+	// stays tilted up into the next swing"; instruction: orbit side-on to the somersault axis, >= 60 deg from it, pitch <= 30 deg up,
+	// back to 4-12 deg down within 0.5 s of the attach): the searched view is restricted to SIDE views -- yaw FlipSideMin..FlipSideMax
+	// deg off the travel-behind direction, on ONE side for the whole trick (chosen by sky at the first search) -- at elevations
+	// FlipMinElev..FlipElevMax (camera below the hero), the flip look-up is capped at FlipPitchUpMax, every non-wall view at
+	// MaxLookUpDeg, and the flip camera blends in FlipInT / out FlipOutT (spring times, s).
+	double FlipSideMin = 70.0, FlipSideMax = 115.0, FlipElevMax = 28.0, FlipPitchUpMax = 27.0, MaxLookUpDeg = 29.0, FlipInT = 0.25, FlipOutT = 0.18;
+	// round 14: after a web attach (SwingT) the pitch settles into SettleDownMin..SettleDownMax deg DOWN, blended in over
+	// SettleT0..SettleT1 s (the hero is kept inside 0.18..0.82 of the frame height; the band widens if it has to)
+	double SettleDownMin = 5.5, SettleDownMax = 11.5, SettleT0 = 0.25, SettleT1 = 0.5;
+	// round 14: a side spot must have FlipWallMargin m of free space beyond it and a clear path FlipAheadT s along the travel
+	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
 	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
 	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
 	// round 13 (critic r12: one-frame cuts at f4 8.58 s / f1 6.30 s -- pitch 43 deg, yaw 54-60 deg, 3.1 m -- from the "too close: cut to

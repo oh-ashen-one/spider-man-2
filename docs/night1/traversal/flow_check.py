@@ -44,7 +44,7 @@ while i < len(R):
         progs.append((i, j, R[i]['flip_prog']))
         i = j + 1
     else: i += 1
-DUR = {'backDouble': 1.70, 'frontPikeSwan': 1.65, 'corkscrew': 1.66, 'backSingle': 1.22, 'wallFront': 1.14}
+DUR = {'backDouble': 1.80, 'frontPikeSwan': 1.59, 'corkscrew': 1.67, 'backSingle': 1.24, 'wallFront': 1.14}  # round 14 programs (r13: 1.70 / 1.65 / 1.66 / 1.22)
 CATCH = {'backDouble': 0.2}
 fails = 0
 P('%s: %d releases, %d attaches, %d flip programs (%.1f s)' % (label, len(rel), len(att), len(progs), T[-1]))
