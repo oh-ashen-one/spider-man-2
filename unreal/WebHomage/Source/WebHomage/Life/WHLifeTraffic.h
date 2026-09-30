@@ -81,6 +81,8 @@ public:
 	UPROPERTY(EditAnywhere, Category="Life|Signals") TObjectPtr<UMaterialInterface> SignalMaterial;
 	UPROPERTY(EditAnywhere, Category="Life|Signals") float LensDiameterCm = 27.f;
 	/** Drivers wait this long (s, uniform between the two) after their light turns green before they pull away. */
+	/** A street-level camera (eye below 4.5 m) is not driven through: a moving car whose body comes within this many metres of the camera is not drawn (it keeps simulating). 0 = off. */
+	UPROPERTY(EditAnywhere, Category="Life") float CameraClearM = 1.8f;
 	UPROPERTY(EditAnywhere, Category="Life") float ReactionMin = 0.35f;
 	UPROPERTY(EditAnywhere, Category="Life") float ReactionMax = 1.25f;
 	/** >= 0: the signal clock reads this phase (s in the 40 s cycle) when the pre-roll ends, i.e. game time 0. Fixed-camera signal clips. */
@@ -149,6 +151,7 @@ private:
 	struct FLens { int32 Axis = 0, Color = 0, Inst = 0; };
 	TArray<FLens> Lenses;
 	int32 LastSig[2] = { -1, -1 };
+	FVector2D ClearM = FVector2D::ZeroVector; bool bClearCam = false;   // street-level camera ground position (browser m)
 	TArray<TArray<int32>> FreeInst;
 	TArray<TArray<FTransform>> Xf;
 	TArray<int32> HighWater;

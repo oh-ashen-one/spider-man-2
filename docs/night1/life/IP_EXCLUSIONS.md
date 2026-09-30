@@ -33,7 +33,16 @@ material picks one of tiles 0, 2, 4, 6 per taxi (`M_LifeVehicle`, part 15), so 1
 ## Crowd
 
 The 20 citizens are the browser's own crowd pack (`public/assets/city/npc/citizens.*`, invented people, no lettering); they are exported through P2's exporter
-(`tools/ue_char/eval/citizens.py`, redirected by `tools/life/citizens_fbx.py`). No brand text on the clothing was found in the atlas tiles at review scale. `tools/life/citizen_variants.py` only recolours these tiles (hue / brightness), it adds nothing.
+(`tools/ue_char/eval/citizens.py`, redirected by `tools/life/citizens_fbx.py`). No brand text on the clothing was found in the atlas tiles at review scale. `tools/life/citizen_variants.py` only recolours these tiles (clothes hue / brightness; round 02: hair,
+beard and skin tone through the head masks of `tools/life/citizen_headmask.py`), it adds nothing.
+
+## Round 02 additions (nothing new is drawn or imported from a third party)
+
+| item | what | IP note |
+|---|---|---|
+| signal lenses | `AWHLifeTraffic::BuildSignals`: flat emissive discs (engine cylinder mesh, procedural material `M_LifeSignal`) on P1's signal props | no texture, no lettering |
+| head variants | hair / beard / skin recolour of the 20 crowd citizens (60 looks) | recolour of the existing pack only |
+| buses on screen more often | same bus mesh and atlas cells as round 01 (destination band repainted "CROSSTOWN LOCAL", agency band "CITY TRANSIT"; ad panel = the reviewed "Hudson Injury Law" tile) | unchanged, see the table above |
 
 ## Verification (re-run each round)
 

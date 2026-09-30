@@ -8,6 +8,8 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Misc/FileHelper.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Kismet/GameplayStatics.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogWHLife, Log, All);
 
@@ -293,6 +295,8 @@ void AWHLifeTraffic::Tick(float Dt)
 	while (Accum >= Step && Guard++ < 4) { StepSim(Step); Accum -= Step; }
 	const double T1 = FPlatformTime::Seconds();
 	UpdateSignals();
+	bClearCam = false;
+	if (CameraClearM > 0.f && GetWorld()) if (APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0)) { const FVector L = CM->GetCameraLocation(); if (L.Z < 450.f && !L.IsNearlyZero(50.f)) { bClearCam = true; ClearM = FVector2D(L.X, L.Y) * 0.01f; } }
 	PushInstances();
 	const double T2 = FPlatformTime::Seconds();
 	LastSimMs = (T1 - T0) * 1000.f; LastPushMs = (T2 - T1) * 1000.f;
@@ -772,7 +776,13 @@ void AWHLifeTraffic::PushInstances()
 		if (C.Where == 0) { Ctr += FVector2D(-Dir.Y, Dir.X) * C.Lat; }
 		const float Yaw = FMath::RadiansToDegrees(FMath::Atan2(Dir.Y, Dir.X));
 		const float Pitch = C.Brake && C.V > 1.f ? 0.6f : 0.f;
-		Xf[C.Type][C.Inst] = FTransform(FRotator(Pitch, Yaw, 0.f), FVector(Ctr.X * 100.f, Ctr.Y * 100.f, 1.f));
+		bool bHide = false;
+		if (bClearCam)
+		{ // distance from the camera to the car's body rectangle (centre, heading, length x width)
+			const FVector2D Dc = ClearM - Ctr; const float Al = FMath::Abs(FVector2D::DotProduct(Dc, Dir)), La = FMath::Abs(FVector2D::DotProduct(Dc, FVector2D(-Dir.Y, Dir.X)));
+			bHide = FMath::Sqrt(FMath::Square(FMath::Max(Al - C.Len * 0.5f, 0.f)) + FMath::Square(FMath::Max(La - C.Wid * 0.5f, 0.f))) < CameraClearM;
+		}
+		Xf[C.Type][C.Inst] = bHide ? FTransform(FRotator::ZeroRotator, FVector(0, 0, -5000.f), FVector(0.001f)) : FTransform(FRotator(Pitch, Yaw, 0.f), FVector(Ctr.X * 100.f, Ctr.Y * 100.f, 1.f));
 		// brake-light state changes are rare: only write custom data when it differs from the ISM copy
 		UInstancedStaticMeshComponent* M = MovingISM[C.Type];
 		const int32 Idx = C.Inst * 4 + 3;

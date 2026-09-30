@@ -72,7 +72,7 @@ movie() {
 }
 
 if has clips; then
-  movie street /Game/Tests/Life/Life_Street_Clip 18 -WHLifeClearParked=238.5:100:243.5:155      # the walk is in the curb lane: the parked cars of z 100-155 are left out
+  movie street /Game/Tests/Life/Life_Street_Clip 18 -WHLifeClearParked=238.5:100:243.5:155 -WHLifeFoot=5:17      # the walk is in the curb lane: the parked cars of z 100-155 are left out
   cp "$UE_DIR/Saved/Logs/life_feet.csv" "$ROUND/feet_clip.csv" 2>/dev/null
   movie swing /Game/Tests/Life/Life_Swing_Clip 10
   # signal clip: the pre-roll ends at cycle phase 30.5, so the clip (after the 2.5 s hold) starts at 33 s: avenue red until 40 s, green from 40 s. Links 1201 / 1202 = southbound lanes queueing at street 160

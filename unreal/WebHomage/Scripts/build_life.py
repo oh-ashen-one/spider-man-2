@@ -539,9 +539,9 @@ return rgb * lerp(0.02, 0.15, on);''')
         make_map(TESTS + '/Life_Street_Clip', rig={'start': (241.0, 0.15, 150.5), 'end': (241.0, 0.15, 123.5), 'duration': 18.0, 'eye': 180.0, 'aim': (223.0, 1.6, 50.0), 'fov': 75.0, 'hold': 2.5})
         # swing-height clip: 30 m above the avenue centre line, heading north at 25 m/s for 10 s, aimed down the avenue (pitch about 5-8 deg down, wide lens like the swing camera)
         make_map(TESTS + '/Life_Swing_Clip', rig={'start': (250.0, 0.15, 232.0), 'end': (250.0, 0.15, -18.0), 'duration': 10.0, 'eye': 3000.0, 'aim': (250.0, 0.0, -170.0), 'fov': 88.0, 'hold': 2.5})
-        # signal clip: fixed camera 8 m up on the avenue, north of the queue of the southbound lanes that stops at the signal of street 160 (z 155-165);
-        # the P1 mast at its far corner (238.1, 165.9) has its heads facing the camera. 10 s (after 2.5 s of warm-up): red -> green at phase 40
-        make_map(TESTS + '/Life_Signal_Clip', rig={'start': (251.5, 0.15, 84.0), 'end': (251.5, 0.15, 84.0), 'duration': 10.0, 'eye': 800.0, 'aim': (246.5, 3.0, 164.0), 'fov': 58.0, 'hold': 2.5})
+        # signal clip: fixed camera 7.5 m up on the avenue centre line, 18 m behind the tail of the queue of the southbound lanes (links 1201 / 1202) that stops at the signal of street 160
+        # (z 155-165); the P1 mast at its far corner (238.1, 165.9) has its heads facing the camera. 10 s after the 2.5 s warm-up: cycle phase 33 -> 43 s, red until 40 s, green after
+        make_map(TESTS + '/Life_Signal_Clip', rig={'start': (248.5, 0.15, 106.0), 'end': (248.5, 0.15, 106.0), 'duration': 10.0, 'eye': 750.0, 'aim': (246.0, 3.0, 165.0), 'fov': 52.0, 'hold': 2.5})
         if MISS:
             L('WARNINGS (%d):' % len(MISS))
             for m_ in MISS: print('    ', m_)
