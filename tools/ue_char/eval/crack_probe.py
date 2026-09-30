@@ -43,7 +43,7 @@ def holes(mask):
     return int(thin.sum()), int(n)
 
 
-def posed(name, clip, frame, use_hull):
+def posed(name, clip, frame, use_hull, expand=0.0):
     """LBS in game space with the crowd pack's baked matrices (same maths as citizen_rig.lbs)."""
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     import importlib.util
@@ -69,11 +69,16 @@ def posed(name, clip, frame, use_hull):
         return np.einsum('nb,nbi->ni', D, Mall)
     G = skin(pos, dense)
     T = idx
+    if expand > 0:   # per-triangle expansion in bind space, skinned with the corner vertices' weights
+        P3, _ = U.expand_triangles(pos, idx, np.zeros((len(pos), 2)), expand)
+        Pe = P3.reshape(-1, 3); De = dense[idx.reshape(-1)]
+        G = skin(Pe, De); T = np.arange(len(Pe)).reshape(-1, 3); nv = len(Pe)
     if use_hull:
         Hh = np.load(scr('eval', 'hull', name + '.npz'))
         dh = np.einsum('nk,nkb->nb', Hh['nw'], dense[Hh['nn']])
         HV = skin(Hh['V'], dh)
-        G = np.vstack([G, HV]); T = np.vstack([idx, Hh['T'] + nv])
+        T0 = T
+        G = np.vstack([G, HV]); T = np.vstack([T0, Hh['T'] + len(G) - len(HV)])
     return G, T
 
 

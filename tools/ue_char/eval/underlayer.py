@@ -249,6 +249,51 @@ def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
     return dict(V=V, T=T, N=N, nn=i4, nw=w4, tri_uv=tri_uv), stats
 
 
+EXPAND = 0.0025   # metres: every garment triangle grows by this much on each edge (closes hairline gaps up to twice this wide)
+
+
+def expand_triangles(pos, idx, uv, eps=EXPAND, smax=1.6):
+    """Per-triangle expansion about the incentre: every edge moves out by `eps` in the triangle plane (scale s = 1 + eps / inradius, capped);
+    uv is scaled identically about the same point, so the texture stays put.  Returns corner positions (nt, 3, 3) and uvs (nt, 3, 2)."""
+    A, B, C = pos[idx[:, 0]], pos[idx[:, 1]], pos[idx[:, 2]]
+    a = np.linalg.norm(B - C, axis=1); b = np.linalg.norm(C - A, axis=1); c = np.linalg.norm(A - B, axis=1)
+    per = a + b + c + 1e-15
+    area = np.linalg.norm(np.cross(B - A, C - A), axis=1) / 2
+    r_in = 2 * area / per
+    s = np.minimum(1 + eps / np.maximum(r_in, 1e-6), smax)
+    inc = (a[:, None] * A + b[:, None] * B + c[:, None] * C) / per[:, None]
+    corners = np.stack([A, B, C], 1)
+    P3 = inc[:, None, :] + (corners - inc[:, None, :]) * s[:, None, None]
+    uvc = uv[idx]                                                             # (nt, 3, 2)
+    uinc = (a[:, None] * uvc[:, 0] + b[:, None] * uvc[:, 1] + c[:, None] * uvc[:, 2]) / per[:, None]
+    UV3 = uinc[:, None, :] + (uvc - uinc[:, None, :]) * s[:, None, None]
+    return P3, UV3
+
+
+def build_layers(name, insets=None):
+    """Three hulls (4, 12 and 30 mm under the cloth) merged into one: the deeper ones are smoother (a crack narrower than twice their depth does not
+    break them), so they back the places where the shallow one has holes (joint bands, thin double layers).  Measured with crack_render.py + the
+    critic's cracks.py on 9 dark walkers: wall-coloured slivers 35 (garment only) -> 13 (2 layers) -> 9 (3 layers)."""
+    if insets is None: insets = tuple(float(x) for x in os.environ.get('HULL_LAYERS', '0.004,0.012,0.030').split(','))
+    parts, stats = [], []
+    for k, ins in enumerate(insets):
+        global PURITY
+        keep = PURITY
+        if k > 0: PURITY = min(PURITY, 0.35)
+        try:
+            H_, st = build_hull(name, inset=ins)
+        finally:
+            PURITY = keep
+        parts.append(H_); stats.append(st)
+    out = {}
+    off = 0; Vs, Ts, Ns, NNs, NWs, UVs = [], [], [], [], [], []
+    for H_ in parts:
+        Vs.append(H_['V']); Ts.append(H_['T'] + off); Ns.append(H_['N']); NNs.append(H_['nn']); NWs.append(H_['nw']); UVs.append(H_['tri_uv']); off += len(H_['V'])
+    out = dict(V=np.vstack(Vs), T=np.vstack(Ts), N=np.vstack(Ns), nn=np.vstack(NNs), nw=np.vstack(NWs), tri_uv=np.vstack(UVs))
+    st = dict(stats[0]); st['hull_tris'] = int(sum(x['hull_tris'] for x in stats)); st['hull_verts'] = int(sum(x['hull_verts'] for x in stats)); st['layers_mm'] = [round(i * 1000, 1) for i in insets]
+    return out, st
+
+
 if __name__ == '__main__':
     args = sys.argv[1:]
     js = None
@@ -257,7 +302,7 @@ if __name__ == '__main__':
     outd = scr('eval', 'hull'); os.makedirs(outd, exist_ok=True)
     allst = {}
     for nme in args:
-        H_, st = build_hull(nme)
+        H_, st = build_layers(nme)
         np.savez_compressed(os.path.join(outd, nme + '.npz'), **H_)
         allst[nme] = st
         print(json.dumps(st), flush=True)

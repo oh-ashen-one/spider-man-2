@@ -5,6 +5,7 @@
 #include "Animation/AnimationPoseData.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Characters/WHCharLoopWalker.h"
 
 void UWHCharAnimInstance::NativeInitializeAnimation()
 {
@@ -12,6 +13,9 @@ void UWHCharAnimInstance::NativeInitializeAnimation()
 	Loco.RemoveAll([](const FWHLocoSample& S) { return S.Clip == nullptr || S.Speed <= 0.f; });
 	Loco.Sort([](const FWHLocoSample& A, const FWHLocoSample& B) { return A.Speed < B.Speed; });
 	bHasLast = false;
+	// round 05: a walker's AnimOffset also seeds the locomotion phase (in cycles), so identical clips at identical speeds are not in lockstep (CH19)
+	if (const AWHCharLoopWalker* W = Cast<AWHCharLoopWalker>(GetOwningActor()))
+	{ IdleOffset = W->AnimOffset; Phase = FMath::Frac(W->AnimOffset); }
 }
 
 void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)

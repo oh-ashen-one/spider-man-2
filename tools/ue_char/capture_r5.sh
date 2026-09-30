@@ -9,8 +9,8 @@
 #
 # Maps: /Game/Tests/Characters/Char_Hero (hero only), Char_Fight (staged street fight, 6 enemies around the hero), Char_Crowd (two-way
 # flow with a near lane), Char_Lineup (standing enemies; face close-ups only).  Director shots (build_characters.py, 'maps5'):
-#   Char_Hero  0 turntable 6 s | 1 run side 6 | 2 run 3/4 5 | 3 run -> leap side 6.5 | 4 suit close-up 4 | 5 face + lens close-up 4
-#   Char_Fight 0 wide 7 | 1 3/4 6 | 2 orbit 8
+#   Char_Hero  0 turntable 6 s | 1 run side 6 | 2 run 3/4 5 | 3 run -> leap side 6.5 | 4 suit close-up 6 | 5 face + lens close-up 6
+#   Char_Fight 0 wide 8 s | 1 3/4 8 | 2 orbit 8
 #   Char_Crowd 0 tracking 8 | 1 wide 6
 #   Char_Lineup 10 thug face | 11 brute face | 12 hood face | 13 tee face | 14 beard face
 set -e
@@ -41,8 +41,8 @@ for m in $MOVIES; do
   case $m in
     H) seg_run H /Game/Tests/Characters/Char_Hero 1 18.5
        cut_clip H hero_run_side $D 6; cut_clip H hero_run_34 $(python3 -c "print($D+6)") 5; cut_clip H hero_run_leap_side $(python3 -c "print($D+11)") 6.5 ;;
-    F) seg_run F /Game/Tests/Characters/Char_Fight 0 21.5
-       cut_clip F street_fight_wide $D 7; cut_clip F street_fight_34 $(python3 -c "print($D+7)") 6; cut_clip F street_fight_orbit $(python3 -c "print($D+13)") 8
+    F) seg_run F /Game/Tests/Characters/Char_Fight 0 24.5
+       cut_clip F street_fight_wide $D 8; cut_clip F street_fight_34 $(python3 -c "print($D+8)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16)") 8
        cut_still F street_fight_1080 $(python3 -c "print($D+3)") ;;
     C) seg_run C /Game/Tests/Characters/Char_Crowd 0 15
        cut_clip C crowd_tracking $D 8; cut_clip C crowd_wide $(python3 -c "print($D+8)") 6
@@ -66,18 +66,11 @@ for g in $STILLS; do
   case $g in
     gH) run_group $HERO 0 "4.5"  8 gH1 hero_turntable
         run_group $HERO 1 "3.5"  7 gH2 hero_run_side
-        run_group $HERO 2 "3.0"  6 gH3 hero_run_34
-        run_group $HERO 4 "3.0"  6 gH4 suit_closeup
-        run_group $HERO 5 "3.0"  6 gH5 hero_face_lens ;;
-    gF) run_group $FIGHT 0 "3.5"  7 gF1 street_fight_wide
-        run_group $FIGHT 1 "3.0"  6 gF2 street_fight_34
-        run_group $FIGHT 2 "4.0"  8 gF3 street_fight_orbit ;;
-    gC) run_group $CROWD 0 "5.5"  9 gC1 crowd_tracking
-        run_group $CROWD 1 "3.5"  7 gC2 crowd_wide ;;
+        run_group $HERO 4 "3.0,10.0" 13 gH3 suit_closeup hero_face_lens ;;
+    gF) run_group $FIGHT 0 "3.5,13.0,22.0" 24 gF1 street_fight_wide street_fight_34 street_fight_orbit ;;
+    gC) run_group $CROWD 0 "5.5,11.5" 13 gC1 crowd_tracking crowd_wide ;;
     gE) run_group $LINE 10 "3.5,7.5" 10 gE1 thug_face brute_face
-        run_group $LINE 12 "3.0" 6 gE2 hood_face
-        run_group $LINE 13 "3.0" 6 gE3 tee_face
-        run_group $LINE 14 "3.0" 6 gE4 beard_face ;;
+        run_group $LINE 12 "3.0,9.0,15.0" 17 gE2 hood_face tee_face beard_face ;;
   esac
 done
 

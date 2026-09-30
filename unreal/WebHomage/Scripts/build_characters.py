@@ -553,11 +553,13 @@ if 'abp' in STEPS:
              seq=[HA + 'fightIdle', HA + 'punch1', HA + 'punch2', HA + 'kick', HA + 'fightIdle', HA + 'punch3'])
     FA_ = ROOT + '/Thug/Anims/A_Thug_'
     # each enemy: guard (thugIdle: boxing stance, chin tucked, head never above the horizon) between one action; heads stay <= 10 deg up
-    fights = {'Thug': ['thugIdle', 'thugPunch1', 'thugIdle', 'thugPunch2'], 'Brute': ['thugIdle', 'thugPunch2', 'thugIdle'],
-              'Hood': ['thugIdle', 'thugStumbleBack', 'thugIdle'], 'Tee': ['thugIdle', 'thugKick', 'thugIdle'],
-              'Beard': ['thugIdle', 'thugPunch1', 'thugIdle'], 'Oxblood': ['thugIdle', 'thugIdle', 'thugStumbleLeft']}
+    # armed enemies (bat, pipe, pistol) stand relaxed with the weapon hanging (the hero's standing idle, head +6 deg) until they swing; the unarmed ones
+    # keep the boxing guard (thugIdle) between punches / kicks / hit reactions.  'H:' = a hero clip.
+    fights = {'Thug': ['H:idle', 'thugPunch1', 'thugPunch2'], 'Brute': ['H:idle', 'thugPunch2', 'thugPunch1'], 'Hood': ['H:idle', 'thugStumbleBack'],
+              'Tee': ['thugKick', 'thugIdle', 'thugPunch2'], 'Beard': ['thugPunch2', 'thugPunch1', 'thugIdle'], 'Oxblood': ['thugIdle', 'thugStumbleLeft', 'thugPunch1']}
     for k, clips in fights.items():
-        make_abp('ABP_Fight_' + k, ROOT + '/People', HERO_SKEL, FA_ + 'thugIdle', [(PA + 'walkStreet', 114.0)], seq=[FA_ + c for c in clips], seq_blend=0.14)
+        make_abp('ABP_Fight_' + k, ROOT + '/People', HERO_SKEL, FA_ + 'thugIdle', [(PA + 'walkStreet', 114.0)],
+                 seq=[(HA + c[2:]) if c.startswith('H:') else (FA_ + c) for c in clips], seq_blend=0.14)
     log('abp ok')
 
 # ------------------------------------------------------------------------------------------------ test map
@@ -728,9 +730,9 @@ if 'map' in STEPS:
                  shot(brute_l, K.SIDE, 5, 300, 100, 5, 66, restart=[brute_l], label='brute side tracking 3 m'),                      # 9  @49.5
                  shot(thug_l, K.CLOSEUP, 4, 105, 160, 0, 28, restart=[thug_l], label='thug face close-up'),                          # 10 @54.5
                  shot(brute_l, K.CLOSEUP, 4, 115, 168, 0, 28, restart=[brute_l], label='brute face close-up'),                       # 11 @58.5
-                 shot(enemies[1], K.CLOSEUP, 3, 105, 160, 0, 28, label='hood face close-up'),                                         # 12 @62.5
-                 shot(enemies[3], K.CLOSEUP, 3, 105, 160, 0, 28, label='tee + cap face close-up'),                                    # 13 @65.5
-                 shot(enemies[4], K.CLOSEUP, 3, 105, 160, 0, 28, label='beard face close-up'),                                        # 14 @68.5
+                 shot(enemies[1], K.CLOSEUP, 6, 105, 160, 0, 28, label='hood face close-up'),                                         # 12 @62.5
+                 shot(enemies[3], K.CLOSEUP, 6, 105, 160, 0, 28, label='tee + cap face close-up'),                                    # 13 @65.5
+                 shot(enemies[4], K.CLOSEUP, 6, 105, 160, 0, 28, label='beard face close-up'),                                        # 14 @68.5
                  shot(civ_track, K.SIDE, 8, 1150, 100, 45, 64, restart=civ_all, label='civilians walking past a tracking camera'),      # 15 @71.5
                  shot(cit_center, K.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY + 420, 175), restart=civ_all, label='civilians wide'),      # 16 @79.5
                  shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-2300, 820, 170), label='AI suits walking in place')]                # 17 @85.5 (ends 90.5)
@@ -810,9 +812,12 @@ if 'maps5' in STEPS:
             sh.set_editor_property(k, v)
         return sh
 
-    def save_map(MAP, shots):
+    def save_map(MAP, shots, managed=()):
         d = spawn(unreal.WHCharShowDirector, (0, 0, 0), label='CaptureDirector')
         d.set_editor_property('shots', shots)
+        if managed:   # round 05: per-shot visibility (only the shot's target is shown): no second hero in a hero capture
+            try: d.set_editor_property('managed_actors', list(managed))
+            except Exception as e: log('managed_actors not available (rebuild the editor module):', str(e)[:100])
         world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
         ok = unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
         log('map saved', MAP, ok, len(unreal.EditorLevelLibrary.get_all_level_actors()), 'actors', [(x.get_editor_property('label'), x.get_editor_property('duration')) for x in shots])
@@ -835,20 +840,20 @@ if 'maps5' in STEPS:
         mkshot(hero_run, K5.SIDE, 6, 560, 95, 0, 40, restart=[hero_run], label='hero run side'),                                              # 1  @6
         mkshot(hero_run, K5.THREE_QUARTER, 5, 480, 95, 25, 40, restart=[hero_run], label='hero run 3/4'),                                     # 2  @12
         mkshot(hero_jump, K5.SIDE, 6.5, 820, 115, 0, 42, restart=[hero_jump], label='hero run -> leap side (whole jump in frame)'),            # 3  @17
-        mkshot(hero_tt, K5.CLOSEUP, 4, 95, 135, 5, 30, label='suit fabric close-up (chest)'),                                                 # 4  @23.5
-        mkshot(hero_tt, K5.CLOSEUP, 4, 42, 168, 0, 24, label='hero face + lens close-up')]                                                    # 5  @27.5
-    save_map(TESTS + '/Char_Hero', hero_shots)
+        mkshot(hero_tt, K5.CLOSEUP, 6, 95, 135, 5, 30, label='suit fabric close-up (chest)'),                                                 # 4  @23.5
+        mkshot(hero_tt, K5.CLOSEUP, 6, 72, 160, 0, 26, label='hero face + lens close-up')]                                                    # 5  @27.5
+    save_map(TESTS + '/Char_Hero', hero_shots, managed=[hero_tt, hero_run, hero_jump])
 
     # ================= Char_Fight: a staged street fight, hero in the middle of 6 enemies =================
     new_stage('Fight', fills=True)
     FX, FY = 0.0, 0.0
     hero_f = walker('Fight_Hero', H5 + 'SK_Hero', H5 + 'ABP_Hero_Fight', (FX, FY, 0), W5.STAND, 0.0, yaw=245.0)   # faces the thug at 235 deg
-    ring = [('Fight_Thug', 'SK_Street_Thug_Bat', 'Thug', 'Thug', 235, 265, 1.0, 1.0, 0.00),
-            ('Fight_Brute', 'SK_Street_Brute_Pipe', 'Brute', 'Brute', 312, 285, BRUTE_SCALE, BRUTE_GIRTH, 0.35),
-            ('Fight_Hood', 'SK_Street_Hood_Pistol', 'Hood', 'Hood', 188, 270, 1.0, 1.0, 0.70),
-            ('Fight_Tee', 'SK_Street_Tee_Bat', 'Tee', 'Tee', 358, 275, 1.0, 1.0, 1.05),
-            ('Fight_Beard', 'SK_Street_Beard_Pipe', 'Beard', 'Beard', 128, 290, 1.0, 1.0, 1.40),
-            ('Fight_Oxblood', 'SK_Street_Thug_Pistol', 'Oxblood', 'ThugOxblood', 58, 300, 1.0, 1.0, 1.75)]
+    ring = [('Fight_Thug', 'SK_Street_Thug_Bat', 'Thug', 'Thug', 235, 265, 1.0, 1.0, 2.4),
+            ('Fight_Brute', 'SK_Street_Brute_Pipe', 'Brute', 'Brute', 312, 285, BRUTE_SCALE, BRUTE_GIRTH, 3.0),
+            ('Fight_Hood', 'SK_Street_Hood_Pistol', 'Hood', 'Hood', 188, 270, 1.0, 1.0, 1.6),
+            ('Fight_Tee', 'SK_Street_Tee', 'Tee', 'Tee', 358, 275, 1.0, 1.0, 0.0),
+            ('Fight_Beard', 'SK_Street_Beard', 'Beard', 'Beard', 128, 290, 1.0, 1.0, 0.7),
+            ('Fight_Oxblood', 'SK_Street_Thug', 'Oxblood', 'ThugOxblood', 58, 300, 1.0, 1.0, 1.3)]
     fight_actors = [hero_f]
     for lbl, mesh, abpk, mat, ang, rad, sc_, g_, off in ring:
         x = FX + rad * _m.cos(_m.radians(ang)); y = FY + rad * _m.sin(_m.radians(ang))
@@ -858,9 +863,9 @@ if 'maps5' in STEPS:
     both_channels(fight_actors)
     fc_ = spawn(unreal.TargetPoint, (FX, FY, 0), label='FightCenter')
     fight_shots = [
-        mkshot(fc_, K5.WIDE, 7, 0, 95, 0, 52, wl=(-120, -1000, 170), label='street fight wide (hero + 6 enemies)'),                           # 0 @0
-        mkshot(fc_, K5.WIDE, 6, 0, 95, 0, 48, wl=(-760, -760, 175), label='street fight 3/4'),                                               # 1 @7
-        mkshot(fc_, K5.ORBIT, 8, 950, 95, 55, 48, 16, 250, label='street fight orbit')]                                                      # 2 @13
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-120, -1000, 170), label='street fight wide (hero + 6 enemies)'),                           # 0 @0
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-760, -760, 175), label='street fight 3/4'),                                               # 1 @8
+        mkshot(fc_, K5.ORBIT, 8, 950, 95, 55, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
     save_map(TESTS + '/Char_Fight', fight_shots)
 
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================
@@ -869,18 +874,23 @@ if 'maps5' in STEPS:
     L5 = 9000.0
     civ5 = []
     # mid lane (row y ~ CY5): 6 walking +X, 6 walking -X, alternating so no two neighbours share a direction
-    mid = [('03_white_tee', 150, -260, 1), ('10_silver_tie', -120, -30, -1), ('12_sundress_mom', 180, 180, 1), ('14_teen_skater', -200, 380, -1),
-           ('13_construction_worker', 40, 620, 1), ('01_retired_gent', 220, 820, -1), ('15_executive', -160, -520, 1), ('20_punk_artist', 30, -700, -1),
-           ('04_blue_sweatshirt', 200, -880, 1), ('18_dapper_elder', -220, 1020, -1), ('19_marathon_runner', 90, -1100, 1), ('08_black_suit', -60, 1240, -1)]
+    # x0 = world x at the start of the tracking shot (the camera tracks x = 0 at 1.1 m/s, mid lane 11.5 m away, 14 m wide): +X walkers stay in frame
+    # (their speed is close to the camera's), -X walkers cross it at ~2.3 m/s and are spread out to +25 m so the flow keeps entering during the 8 s
+    mid = [('03_white_tee', 150, -560, 1), ('12_sundress_mom', -140, -160, 1), ('13_construction_worker', 190, 150, 1), ('15_executive', -220, 420, 1),
+           ('04_blue_sweatshirt', 60, -820, 1), ('19_marathon_runner', -60, 620, 1),
+           ('10_silver_tie', -160, -420, -1), ('14_teen_skater', 200, 20, -1), ('01_retired_gent', -40, 520, -1), ('20_punk_artist', 120, 1050, -1),
+           ('18_dapper_elder', -200, 1600, -1), ('08_black_suit', 40, 2200, -1)]
     for c, dy, x0, dr in mid:
         wk = CIT_WALK[c]; start = (x0 + L5 / 2) if dr > 0 else (L5 / 2 - x0)
         civ5.append(line5('Citizen_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, 0), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0))
+        civ5[-1].set_editor_property('anim_offset', (0.61803 * len(civ5)) % 1.0)   # CH19: gait phases spread by the golden ratio
     # near lane (4.2 m from the tracking camera): six more distinct people; three pass right to left, three left to right, none overlaps in x
-    near = [('02_leather_jacket', 700, -420, -1), ('06_chrome_shades', 720, 320, -1), ('16_lumberjack_hipster', 690, 1150, -1),
-            ('05_black_tee', 730, -900, 1), ('17_hijabi_student', 710, 500, 1), ('09_kurta_waistcoat', 700, -1500, 1)]
+    near = [('02_leather_jacket', 690, -230, -1), ('06_chrome_shades', 730, 420, -1), ('16_lumberjack_hipster', 700, 1250, -1),
+            ('05_black_tee', 720, -330, 1), ('17_hijabi_student', 680, 160, 1), ('09_kurta_waistcoat', 710, -640, 1)]
     for c, dy, x0, dr in near:
         wk = CIT_WALK[c]; start = (x0 + L5 / 2) if dr > 0 else (L5 / 2 - x0)
         civ5.append(line5('CitizenNear_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, 0), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0))
+        civ5[-1].set_editor_property('anim_offset', (0.61803 * len(civ5)) % 1.0)
     civ_track5 = spawn(unreal.WHCharLoopWalker, (0, CY5, 0), (0, 0, 0), 'Citizens_Track')
     civ_track5.set_editor_property('mode', W5.LINE); civ_track5.set_editor_property('speed', 110.0)
     civ_track5.set_editor_property('line_length', L5); civ_track5.set_editor_property('line_start', L5 / 2)
