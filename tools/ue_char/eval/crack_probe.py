@@ -64,7 +64,7 @@ def posed(name, clip, frame, use_hull, expand=0.0):
     acc = np.zeros((inv.max() + 1, nb)); np.add.at(acc, inv, dense); dense = acc[inv] / np.bincount(inv)[inv][:, None]
     if os.environ.get('SMOOTHW', '1') != '0':
         nrm = np.frombuffer(b, np.float32, nv * 3, L['nrm']).reshape(-1, 3).astype(float)
-        dense = U.smooth_weights(pos, nrm, dense)
+        dense = U.final_weights(pos, nrm, idx, dense)   # smoothing + skirt-panel blend, the same as citizen_rig.build
     Mf = A[p['clips'][clip]['row'] + frame]
     def skin(P, D):
         out = np.zeros_like(P); Ph = np.c_[P, np.ones(len(P))]

@@ -18,6 +18,8 @@ import numpy as np
 
 ROOT = citizen_rig.ROOT
 SCR = _scr('eval')
+if not os.path.isdir(SCR):   # legacy fallback; tools/life/citizens_fbx.py (P6 city life) redirects exactly this line (and EXP / DOCS below) by string substitution
+    SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'
 DOCS = os.path.join(ROOT, 'docs/night1/characters/round-01/assets')
 EXP = os.path.join(ROOT, 'art/night1/characters/export/citizens')
 

@@ -54,7 +54,7 @@ ART = _cfg('art', 'P2_ART', ART, _LEGACY_ART, lambda: WT + '/art/night1/characte
 GLB = _cfg('inputs', 'P2_INPUTS', GLB, _LEGACY_GLB, lambda: SCRATCH + '/ueimport')
 CIT = ART + '/export/citizens'
 _ENV = dict(os.environ, P2_WT=WT, P2_SCRATCH=SCRATCH)   # the 'prep' tools read these (tools/ue_char/p2paths.py)
-STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,abp,map,maps5').split(','))
+STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,abp,map,maps5,mapkey').split(','))
 ROOT, TESTS = '/Game/Characters', '/Game/Tests/Characters'
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
@@ -836,12 +836,15 @@ if 'maps5' in STEPS:
     for k, v in (('hop_interval', 2.6), ('first_hop_delay', 1.3), ('takeoff_time', 0.25), ('hop_velocity', 470.0)):
         hero_jump.set_editor_property(k, v)
     hero_shots = [
-        mkshot(hero_tt, K5.ORBIT, 6, 340, 100, 20, 40, 45, 0, label='hero moving turntable'),                                                # 0  @0
+        mkshot(hero_tt, K5.ORBIT, 6, 520, 95, 20, 40, 45, 0, label='hero moving turntable (whole body)'),                                      # 0  @0   (r05: 3.4 m cut the legs off)
         mkshot(hero_run, K5.SIDE, 6, 560, 95, 0, 40, restart=[hero_run], label='hero run side'),                                              # 1  @6
         mkshot(hero_run, K5.THREE_QUARTER, 5, 480, 95, 25, 40, restart=[hero_run], label='hero run 3/4'),                                     # 2  @12
         mkshot(hero_jump, K5.SIDE, 6.5, 820, 115, 0, 42, restart=[hero_jump], label='hero run -> leap side (whole jump in frame)'),            # 3  @17
         mkshot(hero_tt, K5.CLOSEUP, 6, 95, 135, 5, 30, label='suit fabric close-up (chest)'),                                                 # 4  @23.5
-        mkshot(hero_tt, K5.CLOSEUP, 6, 72, 160, 0, 26, label='hero face + lens close-up')]                                                    # 5  @27.5
+        mkshot(hero_tt, K5.CLOSEUP, 6, 72, 160, 0, 26, label='hero face + lens close-up'),                                                    # 5  @27.5
+        # round 05: gameplay-style cameras (CH1 / CH2 were unproven: no clip used a chase camera): behind the runner (Front kind, azimuth 180) and toward the camera
+        mkshot(hero_run, K5.FRONT, 6, 500, 95, 65, 62, 0, 180, restart=[hero_run], label='hero run chase camera (3rd person, behind)'),       # 6  @33.5
+        mkshot(hero_run, K5.FRONT, 6, 560, 95, 40, 62, 0, 0, restart=[hero_run], label='hero run toward the camera')]                          # 7  @39.5
     save_map(TESTS + '/Char_Hero', hero_shots, managed=[hero_tt, hero_run, hero_jump])
 
     # ================= Char_Fight: a staged street fight, hero in the middle of 6 enemies =================
@@ -901,5 +904,25 @@ if 'maps5' in STEPS:
         mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @8
     save_map(TESTS + '/Char_Crowd', crowd_shots)
     log('maps5 ok')
+
+# ------------------------------------------------------------------------------------------------ CH18 chroma-key test map (round 05)
+# Char_CrowdKey = Char_Crowd with the street, facades and windows replaced by an unlit pure-green material and no fog: in a capture of this map every green
+# pixel enclosed by a person is a see-through crack in a character mesh, measured in the real engine (tools/ue_char/eval/key_holes.py).
+if 'mapkey' in STEPS:
+    mk = new_material(TESTS + '/Materials', 'M_Env_Key')
+    mk.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    MEL.connect_material_property(vector(mk, 'Color', (0.0, 1.0, 0.0, 1), -400, -100), 'RGB', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(mk)
+    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/Char_Crowd')
+    n_key = 0
+    for a in unreal.EditorLevelLibrary.get_all_level_actors():
+        lab = a.get_actor_label()
+        if isinstance(a, unreal.StaticMeshActor) and lab.startswith(('Road', 'Sidewalk', 'Facade', 'FacadeS', 'Win_', 'Crosswalk')):
+            a.static_mesh_component.set_material(0, mk); n_key += 1
+        elif lab in ('Fog', 'SkyAtmosphere'):
+            a.destroy_actor()
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    log('mapkey saved', unreal.EditorLoadingAndSavingUtils.save_map(world, TESTS + '/Char_CrowdKey'), n_key, 'actors keyed')
+    EAL.save_directory(TESTS, only_if_is_dirty=True, recursive=True)
 
 log('done')

@@ -1,10 +1,11 @@
 #!/bin/bash
+# (movies: motion blur OFF by default, MOVIE_EXEC=... overrides; round 04 clips were smeared)
 # Round-05 captures of the RUNNING game (offscreen, inside the shared GPU lock, every launch waits for the loop's Unreal cap).
 # Fan homage project; not official Marvel/Sony/Insomniac; no affiliation.
 #
 #   tools/ue_char/capture_r5.sh <out_dir> [MOVIES] [STILLS] [JUMP]      (default: everything; e.g.  ... out "" "gF" "")
-#     MOVIES  space list of  H (hero) F (fight) C (crowd)   -> 1080p60 -movie runs (fixed 1/60 s step) cut into clips
-#     STILLS  space list of  gH gF gC gE                    -> native 3840x2160 real-time stills (r.ScreenPercentage 100, motion blur off)
+#     MOVIES  space list of  H (hero) G (hero chase / toward cameras) F (fight) C (crowd)   -> 1080p60 -movie runs (fixed 1/60 s step) cut into clips
+#     STILLS  space list of  gH gF gC gE gK (gK = chroma-key crowd, needs the 'mapkey' build step)                    -> native 3840x2160 real-time stills (r.ScreenPercentage 100, motion blur off)
 #     JUMP    "1"                                            -> 4K -movie run of the leap, frames around the apex kept as hero_jump_4k
 #
 # Maps: /Game/Tests/Characters/Char_Hero (hero only), Char_Fight (staged street fight, 6 enemies around the hero), Char_Crowd (two-way
@@ -27,7 +28,7 @@ seg_run() {   # name map start_shot quit_s [res]
   if [ -d "$FR" ] && [ -n "$(ls "$FR" 2>/dev/null)" ]; then return; fi
   "$WT/tools/ue_char/ue_wait.sh"
   ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' > "$OUT/seg$1_gpu_util_before.txt" || true
-  "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map "$2" -res "${5:-1920x1080}" -quit "$4" -name "seg$1" -movie -timeout 3000 \
+  "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map "$2" -res "${5:-1920x1080}" -quit "$4" -name "seg$1" -movie -exec "${MOVIE_EXEC-r.MotionBlurQuality 0}" -timeout 3000 \
       -- -WHCharShot="$3" < /dev/null | tail -4
 }
 cut_clip() {  # seg name start_s dur_s
@@ -41,6 +42,8 @@ for m in $MOVIES; do
   case $m in
     H) seg_run H /Game/Tests/Characters/Char_Hero 1 18.5
        cut_clip H hero_run_side $D 6; cut_clip H hero_run_34 $(python3 -c "print($D+6)") 5; cut_clip H hero_run_leap_side $(python3 -c "print($D+11)") 6.5 ;;
+    G) seg_run G /Game/Tests/Characters/Char_Hero 6 12.5     # round 05 gameplay cameras: chase (behind) 6 s, then toward the camera 6 s
+       cut_clip G hero_run_chase $D 6; cut_clip G hero_run_toward $(python3 -c "print($D+6)") 6 ;;
     F) seg_run F /Game/Tests/Characters/Char_Fight 0 24.5
        cut_clip F street_fight_wide $D 8; cut_clip F street_fight_34 $(python3 -c "print($D+8)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16)") 8
        cut_still F street_fight_1080 $(python3 -c "print($D+3)") ;;
@@ -62,6 +65,7 @@ run_group() { # map start_shot "still times" quit tag names...
   done
 }
 HERO=/Game/Tests/Characters/Char_Hero; FIGHT=/Game/Tests/Characters/Char_Fight; CROWD=/Game/Tests/Characters/Char_Crowd; LINE=/Game/Tests/Characters/Char_Lineup
+KEY=/Game/Tests/Characters/Char_CrowdKey   # chroma-key twin of Char_Crowd (unlit green street, no fog / sky): green inside a person = a crack (eval/key_holes.py)
 for g in $STILLS; do
   case $g in
     gH) run_group $HERO 0 "4.5"  8 gH1 hero_turntable
@@ -69,6 +73,7 @@ for g in $STILLS; do
         run_group $HERO 4 "3.0,10.0" 13 gH3 suit_closeup hero_face_lens ;;
     gF) run_group $FIGHT 0 "3.5,13.0,22.0" 24 gF1 street_fight_wide street_fight_34 street_fight_orbit ;;
     gC) run_group $CROWD 0 "5.5,11.5" 13 gC1 crowd_tracking crowd_wide ;;
+    gK) run_group $KEY 0 "3.5,5.5,7.5,11.5" 13 gK1 crowd_key_a crowd_key_tracking crowd_key_c crowd_key_wide ;;
     gE) run_group $LINE 10 "3.5,7.5" 10 gE1 thug_face brute_face
         run_group $LINE 12 "3.0,9.0,15.0" 17 gE2 hood_face tee_face beard_face ;;
   esac

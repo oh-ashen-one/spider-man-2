@@ -90,6 +90,115 @@ def smooth_weights(pos, nrm, dense, radius=0.014, sigma=0.006, iters=2, gate0=0.
     return w / w.sum(1, keepdims=True)
 
 
+LEG_R = float(os.environ.get('SKIRT_LEG_R', '0.125'))          # a garment vertex farther than this from the nearest leg axis (thigh + shin segments) hangs free of the legs
+SKIRT_Y = 0.99                                                 # game-space height of the hip line: skirt weights start below it
+SKIRT_AMAX = float(os.environ.get('SKIRT_AMAX', '0.6'))        # at the hem a free-hanging vertex follows the thigh rotation this much (rest goes to the hips)
+ARMS = [5, 6, 7, 8, 9, 10, 17]                                 # bone ids of arms, hands and the prop bone
+
+
+def skirt_flags(pos, dense):
+    """Garment vertices below the hips that hang FREE of the legs (coat tails, dress / skirt, shirt tails, baggy shorts): farther than a trouser's
+    radius from the nearest leg axis (hip joint -> knee -> ankle) and not weighted to an arm.  numpy only (runs inside Blender)."""
+    cand = np.where((pos[:, 1] < SKIRT_Y) & (pos[:, 1] > 0.12) & (dense[:, ARMS].sum(1) < 0.3))[0]
+    flag = np.zeros(len(pos), bool)
+    if not len(cand): return flag
+    P = pos[cand]; d_leg = np.full(len(cand), 9.0)
+    for sx in (1.0, -1.0):
+        j = [np.array([0.09 * sx, 0.91, 0.0]), np.array([0.10 * sx, 0.49, 0.01]), np.array([0.10 * sx, 0.08, -0.03])]
+        for a, b in ((j[0], j[1]), (j[1], j[2])):
+            ab = b - a; u = np.clip(((P - a) @ ab) / (ab @ ab), 0, 1)
+            d_leg = np.minimum(d_leg, np.linalg.norm(P - (a + u[:, None] * ab), axis=1))
+    flag[cand] = d_leg > LEG_R
+    return flag
+
+
+def skirt_weights(pos, nrm, idx, dense):
+    """Round 05b (CH18): a coat / dress skirt is a set of separate panels skinned (by the pack's auto weights) to different legs; when the legs stride
+    the panels pull apart (jagged tears, flaps behind the trailing leg).  Free-hanging vertices below the hips get a position-only rig instead:
+    thigh L / thigh R by side (tanh(x / 8 cm): the centre front stays put, the flanks follow their leg) scaled by depth below the hip line (0 at the
+    hips, `SKIRT_AMAX` at 50 cm below), the rest on the hips bone.  Every panel at the same place gets the same weights, so nothing tears; over the
+    first 8 cm below the hip line the old weights fade out.  Legs may show through the hem (a coat swings less than the legs)."""
+    fl = skirt_flags(pos, dense)
+    if fl.sum() < 8: return dense, fl
+    y = pos[fl, 1]; x = pos[fl, 0]
+    depth = np.clip((SKIRT_Y - y) / 0.50, 0, 1); a = SKIRT_AMAX * depth
+    s = np.tanh(x / 0.08)
+    ws = np.zeros((int(fl.sum()), dense.shape[1]))
+    ws[:, 11] = a * (0.5 + 0.5 * s); ws[:, 14] = a * (0.5 - 0.5 * s); ws[:, 0] = 1.0 - a
+    m = np.clip((SKIRT_Y - y) / 0.08, 0, 1)[:, None]
+    res = dense.copy(); res[fl] = (1 - m) * dense[fl] + m * ws
+    return res / res.sum(1, keepdims=True), fl
+
+
+def final_weights(pos, nrm, idx, dense):
+    """The weights every consumer (Blender FBX export, hull skinning, offline probes) must use: welded copies -> abutting-shell smoothing ->
+    skirt rig for free-hanging garment."""
+    d = smooth_weights(pos, nrm, dense)
+    if os.environ.get('SKIRTW', '1') != '0':
+        d, _ = skirt_weights(pos, nrm, idx, d)
+    return d
+
+
+HOLE_MAX = float(os.environ.get('HULL_HOLE_MAX', '0.12'))   # a patch of hull with no cloth above it is filled when its bounding diagonal is below this (m)
+
+
+def fill_small_holes(V, T, keep, max_diam=None):
+    """Hull triangles with no cloth above them (`keep` False) are normally dropped (webs, shards, real openings).  A small patch of them that is
+    enclosed by kept hull is a hole in the garment (pocket cut-out, missing panel): re-place its interior vertices on a harmonic membrane spanning
+    the patch boundary and keep the triangles, so the hole shows cloth colour instead of the background.  Returns (V', kept mask, n_patches)."""
+    max_diam = HOLE_MAX if max_diam is None else max_diam
+    culled = np.where(~keep)[0]
+    if not len(culled) or max_diam <= 0: return V, keep, 0
+    on_kept = np.zeros(len(V), bool); on_kept[np.unique(T[keep])] = True
+    par = {int(t): int(t) for t in culled}
+    def fnd(x):
+        while par[x] != x:
+            par[x] = par[par[x]]; x = par[x]
+        return x
+    edge = {}
+    for t in culled:
+        a, b, c = T[t]
+        for e in ((a, b), (b, c), (c, a)):
+            k = (min(e), max(e))
+            if k in edge: par[fnd(int(t))] = fnd(edge[k])
+            else: edge[k] = int(t)
+    kept_edges = set()
+    for t in np.where(keep)[0]:
+        a, b, c = T[t]
+        for e in ((a, b), (b, c), (c, a)): kept_edges.add((int(min(e)), int(max(e))))
+    comps = {}
+    for t in culled: comps.setdefault(fnd(int(t)), []).append(int(t))
+    V2 = V.copy(); keep2 = keep.copy(); n = 0
+    for tris in comps.values():
+        tr = T[tris]; vs = np.unique(tr)
+        if np.linalg.norm(V[vs].max(0) - V[vs].min(0)) > max_diam: continue
+        # enclosed = every free edge of the patch (used by one patch triangle) is shared with a kept triangle; a dangling web / shard has open edges
+        cnt = {}
+        for a, b, c in tr:
+            for e in ((a, b), (b, c), (c, a)):
+                k = (int(min(e)), int(max(e))); cnt[k] = cnt.get(k, 0) + 1
+        if any(n_ == 1 and k not in kept_edges for k, n_ in cnt.items()): continue
+        bnd = vs[on_kept[vs]]; inn = vs[~on_kept[vs]]
+        if not len(bnd): continue
+        if len(inn):
+            idx_in = {int(v): i for i, v in enumerate(inn)}
+            L = np.zeros((len(inn), len(inn))); R = np.zeros((len(inn), 3))
+            nbrs = {int(v): set() for v in inn}
+            for a, b, c in tr:
+                for x, y in ((a, b), (b, c), (c, a)):
+                    if int(x) in nbrs: nbrs[int(x)].add(int(y))
+                    if int(y) in nbrs: nbrs[int(y)].add(int(x))
+            for v, ns in nbrs.items():
+                i = idx_in[v]; L[i, i] = len(ns)
+                for u in ns:
+                    if u in idx_in: L[i, idx_in[u]] -= 1
+                    else: R[i] += V[u]
+            try: V2[inn] = np.linalg.solve(L, R)
+            except np.linalg.LinAlgError: continue
+        keep2[tris] = True; n += 1
+    return V2, keep2, n
+
+
 def surface_samples(pos, idx, nrm, sp=SAMPLE):
     """Points on the triangles (spacing ~sp) with the triangle's outward unit normal (oriented by the vertex normals)."""
     P0, P1, P2 = pos[idx[:, 0]], pos[idx[:, 1]], pos[idx[:, 2]]
@@ -231,7 +340,8 @@ def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
     fn0 = np.cross(V[T[:, 1]] - V[T[:, 0]], V[T[:, 2]] - V[T[:, 0]]); fn0 /= np.linalg.norm(fn0, axis=1, keepdims=True) + 1e-12
     hit = ray_first_hit(V[T].mean(1) + fn0 * 0.001, fn0, pos, idx, min(cull, 2.0 * inset + 0.012))   # webs / shards: nothing within ~2 x depth + 12 mm above them
     n_before = len(T)
-    T = T[np.isfinite(hit)]
+    V, keepT, n_filled = fill_small_holes(V, T, np.isfinite(hit))
+    T = T[keepT]
     used = np.unique(T); remap = -np.ones(len(V), int); remap[used] = np.arange(len(used)); V = V[used]; T = remap[T]
     # limb purity: a hull vertex whose nearest garment vertices belong to two limb groups (armpit, hip, wrist) or to a hand would stretch
     # into a web when the limbs move apart; triangles touching such a vertex are dropped (joint bands stay uncovered, hands never get a hull)
@@ -246,6 +356,9 @@ def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
     bad = (purity < PURITY) | (dv[:, list(HANDS)].sum(1) > 0.2)
     n_pure = len(T)
     T = T[~bad[T].any(1)]
+    # a triangle whose corners belong to two limb groups bridges a joint (armpit, hip, shoulder): it stretches into a web as soon as the limb moves
+    gid = gsum.argmax(1)
+    T = T[~((gid[T[:, 0]] != gid[T[:, 1]]) | (gid[T[:, 1]] != gid[T[:, 2]]))]
     used = np.unique(T); remap = -np.ones(len(V), int); remap[used] = np.arange(len(used)); V = V[used]; T = remap[T]
     # light Taubin smoothing (removes residual stair steps, keeps the volume)
     nb = [set() for _ in range(len(V))]
@@ -277,7 +390,7 @@ def build_hull(name, inset=None, step=None, cull=None, min_comp=60):
     tri_uv[~okh] = tuv[near][~okh]
     dd, _ = tree.query(V)
     stats = dict(name=name, garment_verts=len(pos), garment_tris=len(idx), hull_verts=len(V), hull_tris=len(T), hull_tris_raw=n_raw,
-                 hull_tris_before_cull=n_before, hull_tris_before_purity=n_pure, hull_to_garment_vertex_mm_median=float(np.median(dd) * 1000),
+                 hull_tris_before_cull=n_before, hole_patches_filled=int(n_filled), hull_tris_before_purity=n_pure, hull_to_garment_vertex_mm_median=float(np.median(dd) * 1000),
                  hull_to_garment_vertex_mm_max=float(dd.max() * 1000), hull_height_m=float(V[:, 1].max() - V[:, 1].min()))
     return dict(V=V, T=T, N=N, nn=i4, nw=w4, tri_uv=tri_uv), stats
 
@@ -303,6 +416,39 @@ def expand_triangles(pos, idx, uv, eps=EXPAND, smax=1.6):
     return P3, UV3
 
 
+STRETCH = float(os.environ.get('HULL_STRETCH', '2.6'))
+PRUNE_CLIPS = ('walk', 'walkF', 'walkBrisk', 'walkStroll', 'walkOld', 'idle')
+
+
+def prune_stretched(name, H_, ratio=None, slack=0.006, every=3):
+    """Drop hull triangles that stretch into webs in the crowd's own clips: skin the hull with the final weights at every `every`-th frame of the
+    walk / idle clips; a triangle with any edge longer than `ratio` x its rest length + `slack` in any sampled frame is removed.  Returns
+    (hull, n_dropped) with the vertex arrays untouched (unused vertices stay; the exporters only use triangles)."""
+    ratio = STRETCH if ratio is None else ratio
+    if ratio <= 0: return H_, 0
+    pos, tuv, idx, nrm, (si, sw) = load(name)
+    dense = final_weights(pos, nrm, idx, dense_weights(pos, si, sw))
+    dh = np.einsum('nk,nkb->nb', H_['nw'], dense[H_['nn']])
+    p = json.load(open(os.path.join(NPC, 'people.json'))); pb = open(os.path.join(NPC, 'people.bin'), 'rb').read()
+    A = np.frombuffer(pb, np.float32, p['frames'] * p['nb'] * 12, p['anim']).reshape(p['frames'], p['nb'], 3, 4)
+    V, T = H_['V'], H_['T']
+    Vh = np.c_[V, np.ones(len(V))]
+    E = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
+    rest = np.linalg.norm(V[E[:, 0]] - V[E[:, 1]], axis=1)
+    bad = np.zeros(len(T), bool)
+    for cn in PRUNE_CLIPS:
+        if cn not in p['clips']: continue
+        cl = p['clips'][cn]
+        for f in range(0, cl['len'], every):
+            Mf = A[cl['row'] + f]
+            Q = np.einsum('nb,nbi->ni', dh, np.einsum('bij,nj->nbi', Mf, Vh))
+            ln = np.linalg.norm(Q[E[:, 0]] - Q[E[:, 1]], axis=1)
+            over = (ln > ratio * rest + slack).reshape(3, -1).any(0)
+            bad |= over
+    H2 = dict(H_); H2['T'] = T[~bad]; H2['tri_uv'] = H_['tri_uv'][~bad]
+    return H2, int(bad.sum())
+
+
 def build_layers(name, insets=None):
     """Three hulls (4, 12 and 30 mm under the cloth) merged into one: the deeper ones are smoother (a crack narrower than twice their depth does not
     break them), so they back the places where the shallow one has holes (joint bands, thin double layers).  Measured with crack_render.py + the
@@ -322,7 +468,9 @@ def build_layers(name, insets=None):
     for H_ in parts:
         Vs.append(H_['V']); Ts.append(H_['T'] + off); Ns.append(H_['N']); NNs.append(H_['nn']); NWs.append(H_['nw']); UVs.append(H_['tri_uv']); off += len(H_['V'])
     out = dict(V=np.vstack(Vs), T=np.vstack(Ts), N=np.vstack(Ns), nn=np.vstack(NNs), nw=np.vstack(NWs), tri_uv=np.vstack(UVs))
+    out, n_drop = prune_stretched(name, out)
     st = dict(stats[0]); st['hull_tris'] = int(sum(x['hull_tris'] for x in stats)); st['hull_verts'] = int(sum(x['hull_verts'] for x in stats)); st['layers_mm'] = [round(i * 1000, 1) for i in insets]
+    st['hull_tris_stretched_dropped'] = int(n_drop); st['hull_tris'] = int(len(out['T']))
     return out, st
 
 

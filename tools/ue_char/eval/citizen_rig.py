@@ -153,8 +153,8 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hu
     cnt = np.bincount(inv).astype(float)
     dense = acc[inv] / cnt[inv][:, None]
     # round 05 (CH18, weights level): abutting garment shells move together (underlayer.smooth_weights); the hull skins from these weights too
-    from underlayer import smooth_weights
-    dense = smooth_weights(g['pos'], g['nrm'], dense)
+    from underlayer import final_weights   # = smooth_weights + skirt-panel blend (round 05b)
+    dense = final_weights(g['pos'], g['nrm'], g['idx'], dense)
     top = np.argsort(-dense, 1)[:, :4]
     wt = np.take_along_axis(dense, top, 1); wt /= wt.sum(1, keepdims=True)
     g['si'], g['sw'], w = top, wt, wt
