@@ -17,4 +17,14 @@ done
 [ -f "$CAP/hero_run_side.mp4" ] && "$PY" "$VC" head_bob "$CAP/hero_run_side.mp4" 0.5 5.9 > "$EV/video_hero_run_side_headbob.json" 2>&1 || true
 [ -f "$CAP/hero_run_side.mp4" ] && "$PY" "$VC" lean_belt "$CAP/hero_run_side.mp4" 0.5 5.9 > "$EV/video_hero_run_side_leanbelt.json" 2>&1 || true
 [ -f "$CAP/hero_run_leap_side.mp4" ] && "$PY" "$VC" takeoff "$CAP/hero_run_leap_side.mp4" 0.3 3.0 > "$EV/hero_leap_takeoff.json" 2>&1 || true
+# round 05b additions: gameplay (chase / toward) cameras, takeoff window of the leap clip, chroma-key see-through count (CH18 in the real engine)
+for f in hero_run_chase hero_run_toward; do
+  [ -f "$CAP/$f.mp4" ] && "$PY" "$VC" hero_run "$CAP/$f.mp4" 0.5 5.5 > "$EV/video_${f}_heroRun.json" 2>&1 || true
+done
+[ -f "$CAP/hero_run_leap_side.mp4" ] && "$PY" "$VC" takeoff "$CAP/hero_run_leap_side.mp4" 1.0 2.6 > "$EV/hero_leap_takeoff.json" 2>&1 || true
+for f in "$CAP"/crowd_key_*_4k.jpg; do
+  [ -f "$f" ] && "$PY" "$WT/tools/ue_char/eval/key_holes.py" "$f" "$EV/keyholes_$(basename "${f%.jpg}").png" >> "$EV/key_holes_after.jsonl" 2>&1 || true
+done
+[ -f "$CAP/crowd_tracking_4k.jpg" ] && "$PY" "$WT/tools/ue_char/eval/cracks_classify.py" "$CAP/crowd_tracking_4k.jpg" > "$EV/cracks_classify.jsonl" 2>&1 || true
+python3 "$WT/tools/ue_char/eval/gait_phase.py" 0 5.5 11.5 > "$EV/gait_phase.json"
 ls -la "$EV"

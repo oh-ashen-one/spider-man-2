@@ -120,6 +120,16 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hu
     c, r = var['tile']
     tuv = np.c_[g['uv'][:, 0] * gx - c, 1.0 - (g['uv'][:, 1] * gy - r)]   # tile-local, Blender v up
     loop_uv = tuv[faces.ravel()]
+    EXPAND_M = float(os.environ.get('CIT_EXPAND', '0.003'))
+    idx_g = g['idx']
+    if EXPAND_M > 0:   # round 05b (CH18, geometry level): every garment triangle grows by EXPAND_M on each edge (about its incentre, uv scaled identically so the
+        # texture stays put): hairline gaps between the crowd pack's separate shells (up to ~2 x EXPAND_M wide) close (uv NOT scaled: the atlas has gutters); triangles are unwelded (3 corners each,
+        # corner weights / normals / uv copied from the source vertex).  Offline proxy on 9 dark walkers: slivers 31 -> 15 (garment), 17 -> 11 (with hull).
+        from underlayer import expand_triangles
+        P3, UV3 = expand_triangles(vb, idx_g, tuv, EXPAND_M)
+        vb = P3.reshape(-1, 3); nb_ = nb_[idx_g.reshape(-1)]
+        faces = np.arange(len(vb)).reshape(-1, 3); loop_uv = tuv[idx_g.reshape(-1)]   # corners keep their ORIGINAL uv: growing the uv too samples the atlas gutters (white speckles)
+        nv0 = len(vb)
     if H_ is not None:   # round 05: closed backing hull (one flat uv per triangle = the local garment texel), appended as extra vertices / faces
         vb = np.vstack([vb, (C[:3, :3] @ H_['V'].T).T])
         nb_ = np.vstack([nb_, (C[:3, :3] @ H_['N'].T).T])
@@ -158,7 +168,12 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hu
     top = np.argsort(-dense, 1)[:, :4]
     wt = np.take_along_axis(dense, top, 1); wt /= wt.sum(1, keepdims=True)
     g['si'], g['sw'], w = top, wt, wt
-    if H_ is not None:   # hull vertices skin like their 4 nearest garment vertices (weighted by 1 / distance)
+    g_eval = None
+    if EXPAND_M > 0:   # per-corner copies for the expanded, unwelded triangles (g['si'] / g['sw'] stay per source vertex for the hull and the checks)
+        ci = idx_g.reshape(-1)
+        g_eval = dict(pos=(Ci[:3, :3] @ vb[:len(ci)].T).T, si=top[ci], sw=wt[ci])
+        top, wt, w = top[ci], wt[ci], wt[ci]
+    if H_ is not None:   # hull vertices skin like their 4 nearest garment vertices (weighted by 1 / distance; `dense` is still per SOURCE vertex = H_['nn'] indices)
         dh = np.einsum('nk,nkb->nb', H_['nw'], dense[H_['nn']])
         toph = np.argsort(-dh, 1)[:, :4]
         wh = np.take_along_axis(dh, toph, 1); wh /= wh.sum(1, keepdims=True)
@@ -234,12 +249,12 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hu
     for pb_ in arm.pose.bones:
         pb_.location, pb_.scale = (0, 0, 0), (1, 1, 1)
         pb_.rotation_quaternion = (1, 0, 0, 0)
-    return dict(arm=arm, ob=ob, acts=acts, p=p, M=M, g=g, meta=meta, var=var)
+    return dict(arm=arm, ob=ob, acts=acts, p=p, M=M, g=g, meta=meta, var=var, g_eval=g_eval)
 
 
 def recon_error(R, clip='walk', frames=(0, 5, 11, 17, 23)):
     """Max |Blender armature-deformed vertex - direct LBS| in metres over sample frames."""
-    arm, ob, p, M, g = R['arm'], R['ob'], R['p'], R['M'], R['g']
+    arm, ob, p, M, g = R['arm'], R['ob'], R['p'], R['M'], (R.get('g_eval') or R['g'])   # expanded, unwelded corners when CIT_EXPAND > 0
     from studio import assign
     assign(arm, R['acts'][clip])
     sc = bpy.context.scene

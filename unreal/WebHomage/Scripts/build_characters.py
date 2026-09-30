@@ -913,7 +913,10 @@ if 'mapkey' in STEPS:
     mk.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
     MEL.connect_material_property(vector(mk, 'Color', (0.0, 1.0, 0.0, 1), -400, -100), 'RGB', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(mk)
-    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/Char_Crowd')
+    EAL.save_directory(TESTS + '/Materials', only_if_is_dirty=True, recursive=True)
+    if EAL.does_asset_exist(TESTS + '/Char_CrowdKey'): EAL.delete_asset(TESTS + '/Char_CrowdKey')
+    EAL.duplicate_asset(TESTS + '/Char_Crowd', TESTS + '/Char_CrowdKey')      # a COPY: Char_Crowd itself must stay untouched (saving the loaded original keyed it once)
+    unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/Char_CrowdKey')
     n_key = 0
     for a in unreal.EditorLevelLibrary.get_all_level_actors():
         lab = a.get_actor_label()
@@ -921,8 +924,6 @@ if 'mapkey' in STEPS:
             a.static_mesh_component.set_material(0, mk); n_key += 1
         elif lab in ('Fog', 'SkyAtmosphere'):
             a.destroy_actor()
-    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
-    log('mapkey saved', unreal.EditorLoadingAndSavingUtils.save_map(world, TESTS + '/Char_CrowdKey'), n_key, 'actors keyed')
-    EAL.save_directory(TESTS, only_if_is_dirty=True, recursive=True)
+    log('mapkey saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), n_key, 'actors keyed')
 
 log('done')

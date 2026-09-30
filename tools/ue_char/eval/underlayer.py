@@ -91,14 +91,19 @@ def smooth_weights(pos, nrm, dense, radius=0.014, sigma=0.006, iters=2, gate0=0.
 
 
 LEG_R = float(os.environ.get('SKIRT_LEG_R', '0.125'))          # a garment vertex farther than this from the nearest leg axis (thigh + shin segments) hangs free of the legs
+LEG_MIN = 0.085                                                # closer than this to a leg axis = the trouser itself, never skirt
 SKIRT_Y = 0.99                                                 # game-space height of the hip line: skirt weights start below it
 SKIRT_AMAX = float(os.environ.get('SKIRT_AMAX', '0.6'))        # at the hem a free-hanging vertex follows the thigh rotation this much (rest goes to the hips)
 ARMS = [5, 6, 7, 8, 9, 10, 17]                                 # bone ids of arms, hands and the prop bone
 
 
-def skirt_flags(pos, dense):
-    """Garment vertices below the hips that hang FREE of the legs (coat tails, dress / skirt, shirt tails, baggy shorts): farther than a trouser's
-    radius from the nearest leg axis (hip joint -> knee -> ankle) and not weighted to an arm.  numpy only (runs inside Blender)."""
+def skirt_flags(pos, dense, nrm=None, idx=None, reach=0.25):
+    """Garment vertices below the hips that hang FREE of the legs (coat tails, dress / skirt, shirt tails, baggy shorts).  Two tests (either flags):
+      (a) farther than a trouser's radius (LEG_R) from the nearest leg axis (hip joint -> knee -> ankle);
+      (b) closer than that (coat panels right over the thighs, 10-12 cm from the axis, are indistinguishable from trousers by distance) but the ray 3 mm
+          inside the vertex, along -normal, first meets a FRONT-facing garment surface within `reach` = there is another layer under it (a trouser
+          vertex meets the far wall of its own leg from the inside: back-facing).
+    Arm-weighted vertices, the shins / feet (y < 0.12) are never skirt.  numpy only (runs inside Blender)."""
     cand = np.where((pos[:, 1] < SKIRT_Y) & (pos[:, 1] > 0.12) & (dense[:, ARMS].sum(1) < 0.3))[0]
     flag = np.zeros(len(pos), bool)
     if not len(cand): return flag
@@ -108,7 +113,19 @@ def skirt_flags(pos, dense):
         for a, b in ((j[0], j[1]), (j[1], j[2])):
             ab = b - a; u = np.clip(((P - a) @ ab) / (ab @ ab), 0, 1)
             d_leg = np.minimum(d_leg, np.linalg.norm(P - (a + u[:, None] * ab), axis=1))
-    flag[cand] = d_leg > LEG_R
+    free = d_leg > LEG_R
+    if nrm is not None and idx is not None and os.environ.get('SKIRT_RAYTEST', '1') == '1':
+        m = (d_leg > LEG_MIN) & ~free
+        if m.any():
+            n = nrm[cand[m]] / (np.linalg.norm(nrm[cand[m]], axis=1, keepdims=True) + 1e-12)
+            t, ti, _, _ = ray_first_hit(P[m] - n * 0.003, -n, pos, idx, reach, want_tri=True)
+            A, B, C = pos[idx[ti, 0]], pos[idx[ti, 1]], pos[idx[ti, 2]]
+            fn = np.cross(B - A, C - A); fn /= np.linalg.norm(fn, axis=1, keepdims=True) + 1e-12
+            vn = nrm[idx[ti]].mean(1); fn = np.where(((fn * vn).sum(1) < 0)[:, None], -fn, fn)
+            over = np.isfinite(t) & (((fn * (-n)).sum(1)) < -0.2)
+            f2 = np.zeros(len(cand), bool); f2[np.where(m)[0][over]] = True
+            free = free | f2
+    flag[cand] = free
     return flag
 
 
@@ -118,7 +135,7 @@ def skirt_weights(pos, nrm, idx, dense):
     thigh L / thigh R by side (tanh(x / 8 cm): the centre front stays put, the flanks follow their leg) scaled by depth below the hip line (0 at the
     hips, `SKIRT_AMAX` at 50 cm below), the rest on the hips bone.  Every panel at the same place gets the same weights, so nothing tears; over the
     first 8 cm below the hip line the old weights fade out.  Legs may show through the hem (a coat swings less than the legs)."""
-    fl = skirt_flags(pos, dense)
+    fl = skirt_flags(pos, dense, nrm, idx)
     if fl.sum() < 8: return dense, fl
     y = pos[fl, 1]; x = pos[fl, 0]
     depth = np.clip((SKIRT_Y - y) / 0.50, 0, 1); a = SKIRT_AMAX * depth
