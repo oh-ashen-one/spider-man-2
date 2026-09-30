@@ -480,7 +480,7 @@ def main():
     if cfg.get('flatten_mouth'): P = M.flatten_mouth(P, cfg); F, nflip2 = M.fix_flips(P, F, cfg); nflip += nflip2           # round 08: the mouth slit ledge (lips showing through the cloth)
     if cfg.get('sink_neck'): P = M.sink_neck(P, F, cfg)             # round 08: slack for the neck skin under the collar (collar shards)
     nseethrough = 0
-    if cfg.get('seethrough'): F, nseethrough = M.flip_seethrough(P, F, cfg)   # round 09: back-faced slivers of the lip crease = holes through the cloth (tee_face_4k 198 / 91 / 24 px)
+    if cfg.get('seethrough') and not os.environ.get('P2_NO_SEETHROUGH'): F, nseethrough = M.flip_seethrough(P, F, cfg)   # round 09: back-faced slivers of the lip crease = holes through the cloth (tee_face_4k 198 / 91 / 24 px)
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]

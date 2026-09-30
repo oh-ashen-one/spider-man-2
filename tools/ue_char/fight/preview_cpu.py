@@ -125,6 +125,24 @@ class Actor:
         self.zs = BRUTE['scale'] if label == 'Fight_Brute' else 1.0
         self._trk = {}
 
+    def world_bones(self, t, names=('hips', 'spine2', 'head', 'hand.L', 'hand.R', 'foot.L', 'foot.R')):
+        """World position (UE cm, left-handed like the engine's bone log) of a few joints at stage time t: the EXPECTED bone log of the script."""
+        p, yaw = path_at(self.label, t); prev, _ = path_at(self.label, t - 1 / 30.0)
+        speed = float(np.linalg.norm(p - prev)) * 30.0
+        lay = layers_at(self.label, t, speed); Ls = []
+        for key, tl, w in lay:
+            ck = (key, self.label)
+            if ck not in self._trk: self._trk[ck] = tracks_for(key, self.doc)
+            Ls.append(self.doc.sample(self._trk[ck], tl))
+        L = blend_locals(Ls, [w for _, _, w in lay]) if len(Ls) > 1 else Ls[0]
+        Wm = self.doc.world(L); r = math.radians(yaw); f = np.array([math.cos(r), math.sin(r)]); l_ = np.array([math.sin(r), -math.cos(r)])
+        out = {}
+        for n in names:
+            m = Wm[self.doc.idx[n]][:3, 3]
+            xy = p + (f * m[2] + l_ * m[0]) * 100.0 * self.xy
+            out[n] = (xy[0], xy[1], m[1] * 100.0 * self.zs)
+        return p, yaw, out
+
     def world_mesh(self, t):
         p, yaw = path_at(self.label, t)
         prev, _ = path_at(self.label, t - 1 / 30.0)
@@ -148,8 +166,21 @@ class Actor:
         return tr(Pp, False), tr(Np, True)
 
 
+def bone_log(path, t1=24.5, fps=60):
+    actors = [Actor(l) for l in MESHES]
+    with open(path, 'w') as fo:
+        fo.write('frame,time,label,x,y,yaw,bone,bx,by,bz\n')
+        for k in range(int(t1 * fps)):
+            t = k / fps
+            for ac in actors:
+                p, yaw, bs = ac.world_bones(t)
+                for n, (bx, by, bz) in bs.items(): fo.write('%d,%.4f,%s,%.2f,%.2f,%.2f,%s,%.2f,%.2f,%.2f\n' % (k, t, ac.label, p[0], p[1], yaw, n, bx, by, bz))
+    print('wrote', path)
+
+
 def main():
     a = sys.argv[1:]
+    if a[0] == '--bones': return bone_log(a[1])
     out, ts = a[0], [float(x) for x in a[1].split(',')]
     cam_name = a[a.index('--cam') + 1] if '--cam' in a else '34'
     W_, H_ = [int(x) for x in (a[a.index('--size') + 1] if '--size' in a else '1280x720').split('x')]

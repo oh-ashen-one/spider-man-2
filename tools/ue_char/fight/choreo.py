@@ -28,7 +28,7 @@ MOT = json.load(open(os.path.join(HERE, 'clip_motion.json')))
 BRUTE = json.load(open(os.path.join(HERE, '..', 'people', 'people.json')))['brute']
 
 # clip key -> (asset, contact time s)   asset prefixes are resolved in build_characters.py
-REACH = {'hero:punch1': 80, 'hero:punch2': 92, 'hero:punch3': 68, 'hero:kick': 94, 'hero:uppercut': 72}   # hero pelvis -> victim pelvis at the contact (cm): fist / foot reach + the victim's face depth
+REACH = {'hero:punch1': 74, 'hero:punch2': 86, 'hero:punch3': 72, 'hero:kick': 92, 'hero:uppercut': 62}   # hero pelvis -> victim pelvis at the contact (cm): fist / foot reach + the victim's face depth
 CONTACT = {'hero:punch1': 0.33, 'hero:punch2': 0.27, 'hero:punch3': 0.33, 'hero:kick': 0.30, 'hero:uppercut': 0.25,
            'thug:thugPunch1': 0.33, 'thug:thugPunch2': 0.30, 'thug:thugKick': 0.33, 'thug:bruteSlam': 0.53}
 _DOCS = {}
@@ -162,7 +162,7 @@ def script():
         """Hero strikes tgt at t0 (clip start); the target steps in to the strike's reach just before, reacts at the contact; react = clip key or 'down'."""
         T = act[tgt]
         contact = t0 + CONTACT[hero_clip] / rate
-        reach = REACH[hero_clip] + (15.0 if tgt == 'Fight_Brute' else 0.0)
+        reach = REACH[hero_clip] + (10.0 if tgt == 'Fight_Brute' else 0.0)
         ang = HOME_ANG[tgt]
         if float(np.linalg.norm(T.pos_at(t0)[0] - P(reach, ang))) > 3.0:
             T.goto(max(T.t_end, contact - 0.6), contact - 0.05, P(reach, ang), None, 'step-in')
@@ -213,7 +213,7 @@ def script():
     feint(4.6, Ox, 'thug:thugPunch2')
     strike(5.55, 'hero:kick', Be, 'fight:hitRight')                            # kick: the beard reels sideways
     feint(5.3, Te, 'thug:thugPunch1')
-    strike(6.85, 'hero:punch3', Br, 'hero:hitReact', react_kw=dict(weight=0.55, blend_in=0.05, rate=1.15))   # the brute only flinches
+    strike(6.85, 'hero:punch2', Br, 'hero:hitReact', react_kw=dict(weight=0.55, blend_in=0.05, rate=1.15))   # the brute only flinches
     feint(6.5, Ox, 'thug:thugKick')
     # ------------------------------------------------------------------ shot 1 (8-16 s): the main melee
     strike(8.15, 'hero:uppercut', Te, 'down', react_kw=dict(getup_at=11.6))    # uppercut: knockdown, on the ground 9.2 s ... 11.9 s
@@ -227,7 +227,7 @@ def script():
     feint(13.6, Te, 'thug:thugPunch1')
     strike(14.45, 'hero:punch3', Be, 'fight:hitBack')
     # ------------------------------------------------------------------ shot 2 (16-24 s): orbit camera, the hero finishes it
-    strike(16.0, 'hero:uppercut', Br, 'down', react_kw=dict(getup_at=20.4))    # the brute goes down
+    strike(16.0, 'hero:kick', Br, 'down', react_kw=dict(getup_at=20.4))    # the brute goes down
     enemy_hit(16.9, Hd, 'thug:thugPunch1')
     strike(17.95, 'hero:punch1', Te, 'fight:hitBack')
     feint(18.3, Th, 'thug:thugPunch2')

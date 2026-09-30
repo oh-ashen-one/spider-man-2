@@ -119,7 +119,7 @@ def main():
     ts = [float(x) for x in opt('--t', '0.5').split(',')]
     clip = opt('--clip', 'walkStreet'); W_, H_ = [int(x) for x in opt('--size', '1920x1080').split('x')]
     dist = float(opt('--dist', '105')) / 100.0; aim_y = float(opt('--aim', '1.60')); az = float(opt('--az', '25'))
-    doc = Doc(os.path.join(SCRATCH, 'ueimport', 'SK_Street_%s.glb' % name)); walks = Doc(os.path.join(SCRATCH, 'ueimport', 'SK_Street_Walks.glb'))
+    doc = Doc(opt('--glb', os.path.join(SCRATCH, 'ueimport', 'SK_Street_%s.glb' % name))); walks = Doc(os.path.join(SCRATCH, 'ueimport', 'SK_Street_Walks.glb'))
     P, N, UV, J, Wt, F, joints, ibm = load_mesh(doc)
     atlas = cv2.imread(opt('--atlas', os.path.join(SCRATCH, 'r3', 'people', 'Street%s_atlas.png' % name)))[..., ::-1].astype(np.float32) / 255
     tex = cv2.resize(atlas, (4096, 4096), interpolation=cv2.INTER_AREA) ** 2.2 if atlas.shape[0] != 4096 else atlas ** 2.2
