@@ -208,7 +208,7 @@ def main():
     rows = load_rows(dA); byf = {r['f']: r for r in rows}
     ev = [json.loads(l) for l in open(os.path.join(dA, 'fight_events.jsonl')) if l.strip()]
     contacts = [c for c in M['contact_rows'] if 'crop_run' in c]
-    K = 8
+    K = 10   # frames 0..9 after the contact frame (the fade is checked at frame 8)
     need = set()
     for c in contacts:
         for k in range(-1, K): need.add(c['frame'] + k)
@@ -255,7 +255,9 @@ def main():
                         ret_ab.append(retained(ga, gb, box)); ret_ab_tot.append(ea / max(1.0, sobel_energy(gb, box)))
                     x0, y0, x1, y1 = box
                     cover.append(float(m[y0:y1, x0:x1].mean()))
-            res.update(area_pct=areas)
+            pk = max(areas[1:6]); a15 = areas[1:6]
+            res.update(area_pct=areas, static_var=round((max(a15) - min(a15)) / pk, 3) if pk > 0 else None, f8_pct_of_peak=round(areas[8] / pk * 100, 1) if pk > 0 else None,
+                       gone_by_8=bool(areas[8] <= max(0.05, 0.2 * pk)))
             if shapes:
                 res.update(n_streaks=int(np.median([s['n_streaks'] for s in shapes])), n_streaks_min=min(s['n_streaks'] for s in shapes), n_streaks_max=max(s['n_streaks'] for s in shapes),
                            tip_share_min=round(min(s['tip_share_min'] for s in shapes), 4), len_share_min=round(min(s['len_share_min'] for s in shapes), 4),
@@ -276,7 +278,7 @@ def main():
     summ = dict(contacts=len(out), hero_blows=len([o for o in out if o['hero_blow']]), flare_measured=len(allc), has_noflare=FB is not None,
                 streaks_4_8=cnt(allc, lambda o: 4 <= o['n_streaks_min'] and o['n_streaks_max'] <= 8), streaks_4_8_median=cnt(allc, lambda o: 4 <= o['n_streaks'] <= 8),
                 len_ge_8pct=cnt(allc, lambda o: o['len_share_min'] >= 0.08), tip_ge_8pct=cnt(allc, lambda o: o['tip_share_min'] >= 0.08),
-                fill_le_35=cnt(allc, lambda o: o['fill_max'] <= 0.35),
+                fill_le_35=cnt(allc, lambda o: o['fill_max'] <= 0.35), gone_by_8=cnt(allc, lambda o: o.get('gone_by_8')), static_max=max((o['static_var'] for o in allc if o.get('static_var') is not None), default=None),
                 ret_pre_ge_60=cnt([o for o in allc if 'ret_pre_min' in o], lambda o: o['ret_pre_min'] >= 0.6), ret_pre_measured=len([o for o in allc if 'ret_pre_min' in o]),
                 ret_pre_ge_60_mean=cnt([o for o in allc if 'ret_pre_mean' in o], lambda o: o['ret_pre_mean'] >= 0.6),
                 ret_ab_ge_60=cnt([o for o in allc if 'ret_ab_min' in o], lambda o: o['ret_ab_min'] >= 0.6), ret_ab_measured=len([o for o in allc if 'ret_ab_min' in o]),
@@ -300,15 +302,16 @@ def main():
           f'| starburst: 4-8 radial streaks (frames 1-5, every frame) | 4-8 | {summ["streaks_4_8"]} / {summ["flare_measured"]} contacts (range {summ["n_streaks_min"]}-{summ["n_streaks_max"]}; by median {summ["streaks_4_8_median"]}) |',
           f'| streak length, tip radius minus core radius, share of the frame width | >= 8 % | {summ["len_ge_8pct"]} / {summ["flare_measured"]} (min {summ["len_share_min"]:.3f}); tip radius alone >= 8 %: {summ["tip_ge_8pct"]} / {summ["flare_measured"]} (min {summ["tip_share_min"]:.3f}) |' if summ['flare_measured'] else '| starburst | - | not measured |',
           f'| fill of the bounding circle (max over frames 1-5) | <= 35 % | {summ["fill_le_35"]} / {summ["flare_measured"]} (max {summ["fill_max"]}) |' if summ['flare_measured'] else None,
+          f'| flare static through the hold (area spread over frames 1-5) and gone by frame 8 (area <= max(0.05 %, 20 % of the peak)) | static, gone | spread max {summ["static_max"]}; gone by frame 8: {summ["gone_by_8"]} / {summ["flare_measured"]} |' if summ['flare_measured'] else None,
           f'| victim Sobel energy in contact frames 1-5 vs the frame before the contact (every frame) | >= 60 % | {summ["ret_pre_ge_60"]} / {summ["ret_pre_measured"]} (min {summ["ret_pre_min"]}); by 5-frame mean {summ["ret_pre_ge_60_mean"]} / {summ["ret_pre_measured"]} |' if summ['flare_measured'] else None,
           f'| ... edges retained, same frame without the flare: sum(min(SA, SB)) / sum(SB) (pure flare effect, cannot be inflated by the flare edges) | >= 60 % | {summ["ret_ab_ge_60"]} / {summ["ret_ab_measured"]} (min {summ["ret_ab_min"]}) |' if summ['has_noflare'] else None,
           f'| flare share of the frame (peak over frames 1-5, median) | (info) | {summ["area_pct_median"]} % |' if summ['flare_measured'] else None,
           f'| CB2: victim moves >= 0.5 m OR rotates >= 30 deg within 0.3 s (hero blows) | every blow | **{summ["move_or_turn"]} / {summ["move_or_turn_of"]}** (moves >= 0.5 m: {summ["push_ge_05"]}, min {summ["push_min"]} m; turns >= 30 deg: {summ["turn_ge_30"]}, min {summ["turn_min"]} deg; body tilt >= 30 deg: {summ["tilt_ge_30"]}) |',
-          '', '## Per contact', '', '| rt s | contact | streaks (min-max) | tip / length min (% W) | fill max | flare % of frame f1..f5 | Sobel vs pre (min / mean) | vs no-flare (min) | victim px covered % | push m | turn deg | tilt deg |', '|---|---|---|---|---|---|---|---|---|---|---|---|']
+          '', '## Per contact', '', '| rt s | contact | streaks (min-max) | tip / length min (% W) | fill max | flare % of frame f1..f5 (f8 % of peak) | Sobel vs pre (min / mean) | vs no-flare (min) | victim px covered % | push m | turn deg | tilt deg |', '|---|---|---|---|---|---|---|---|---|---|---|---|']
     for o in out:
         if 'n_streaks' not in o:
             md.append(f'| {o["rt"]} | {o["label"]} | - | {o.get("note", "no flare measured")} | | | | | | | | |'); continue
-        md.append(f'| {o["rt"]} | {o["label"]} | {o["n_streaks_min"]}-{o["n_streaks_max"]} | {o["tip_share_min"]*100:.1f} / {o["len_share_min"]*100:.1f} | {o["fill_max"]*100:.0f} % | {" ".join(str(x) for x in o["area_pct"][1:6])} | '
+        md.append(f'| {o["rt"]} | {o["label"]} | {o["n_streaks_min"]}-{o["n_streaks_max"]} | {o["tip_share_min"]*100:.1f} / {o["len_share_min"]*100:.1f} | {o["fill_max"]*100:.0f} % | {" ".join(str(x) for x in o["area_pct"][1:6])} ({o.get("f8_pct_of_peak", "-")} %) | '
                   f'{o.get("ret_pre_min", "-")} / {o.get("ret_pre_mean", "-")} | {o.get("ret_ab_min", "-")} | {o.get("victim_covered_pct", "-")} | {o.get("push03", "-")} | {o.get("rot03", "-")} | {o.get("tilt03", "-")} |')
     open(out_md, 'w').write('\n'.join(x for x in md if x is not None) + '\n')
     print(json.dumps(summ, indent=1))
