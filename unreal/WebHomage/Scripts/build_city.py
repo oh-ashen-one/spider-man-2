@@ -810,11 +810,15 @@ SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'tru
 CROWN = ('trees_park_crownfar', 'trees_elm_crownfar', 'trees_conifer_crownfar')  # (r03) opaque canopy mass inside the park LOD1 trees
 protos = [p for p in man['protos'] if p['name'] in CROWN or (not any(s in p['name'] for s in SKIP_POOL) and not p['name'].endswith('_far'))]
 LEAFY = lambda n: 'leaves' in n
-if 'proto' in STEPS:
-    import_files([os.path.join(EXPORT, p['file']) for p in protos], ROOT + '/Props/_in', mesh_pipeline(True))
-    for p in protos:
+# (r08) 'veh' step: only the parked-car prototypes (tools/export/export_vehicles.py: the browser's Blender car models, part colours, no atlas), M_CityProp instances
+VEH_PROTOS = [p for p in protos if p['name'].startswith('veh_')]
+_todo = protos if 'proto' in STEPS else (VEH_PROTOS if 'veh' in STEPS else [])
+if _todo:
+    import_files([os.path.join(EXPORT, p['file']) for p in _todo], ROOT + '/Props/_in', mesh_pipeline(True))
+    for p in _todo:
         src = f'{ROOT}/Props/_in/{p["name"]}/StaticMeshes/{p["name"]}'; dst = f'{ROOT}/Props/SM_{p["name"]}'
         if not EAL.does_asset_exist(src): log('MISSING proto', src); continue
+        if EAL.does_asset_exist(dst): EAL.rename_asset(dst, dst + '_old' + str(int(time.time())))   # (r08) re-import over an existing prop: keep the referenced old asset out of the way
         EAL.rename_asset(src, dst); sm = load(dst)
         if LEAFY(p['name']):
             mi = at.create_asset('MI_' + p['name'], MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
@@ -829,7 +833,7 @@ if 'proto' in STEPS:
         finish_mesh(sm, mi, False, nanite=True)
         EAL.save_asset(dst)
     EAL.delete_directory(ROOT + '/Props/_in')
-    log('protos', len(protos))
+    log('protos', len(_todo))
 
 # ------------------------------------------------------------------------------------------------ maps
 def U(x, y, z): return unreal.Vector(x * 100.0, z * 100.0, y * 100.0)
@@ -925,32 +929,43 @@ def build_geo_level(path):
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
     ni = 0
-    EXTRA_PROPS = json.load(open(os.path.join(EXPORT, 'streetprops.json'))) if os.path.exists(os.path.join(EXPORT, 'streetprops.json')) else {}
-    def thin(it):  # (r05) S1 / S2 avenue corridor: ~45 % of the street trees are left out so the storefronts read (one hash per tree position)
-        x, z = it['x'], it['z']
-        pr = 1.01 if (x < 243.0 and 40.0 < z < 152.0) else (0.78 if (x < 243.0 and 50.0 < z < 150.0) else 0.45)  # the deco podium at z 117-151 carries a fire escape: keep it in view  # west sidewalk in front of the S1 storefronts (deco tower + fire escapes behind): thinner still
-        return 225.0 < x < 276.0 and -350.0 < z < 200.0 and math.modf(abs(math.sin(round(x * 0.5) * 12.9898 + round(z * 0.5) * 78.233) * 43758.5453))[0] < pr
-    for p in protos:
-        pool = p['src']; items = (L['instances'].get(pool) or {}).get('items') or []
-        if p['name'].startswith('ez_street'): items = [it for it in items if not thin(it)]
-        items = list(items) + EXTRA_PROPS.get(pool, [])  # (r05) supplemental street furniture (tools/export/street_props.py)
-        sp = f'{ROOT}/Props/SM_{p["name"]}'
-        if not items or not EAL.does_asset_exist(sp): continue
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + p['name'], folder='City/Props')
+    EXTRA_PROPS = {}
+    for _fn in ('streetprops.json', 'streettrees.json', 'streetcars.json'):   # (r05) street furniture, (r08) trees on every avenue sidewalk + parked cars (tools/export/street_props.py, street_trees.py, street_cars.py)
+        _fp = os.path.join(EXPORT, _fn)
+        if os.path.exists(_fp):
+            for _pool, _its in json.load(open(_fp)).items(): EXTRA_PROPS.setdefault(_pool, []).extend(_its)
+    def make_ism(label, folder, sm_path, items, cast_shadow=True):
+        """one HISM actor with per-instance custom data 0..2 = tint, 3 = state (M_CityProp / M_CityLeaves); items in the layout.json pool-item format"""
+        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label, folder=folder)
         c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-        c.set_static_mesh(load(sp)); c.set_editor_property('num_custom_data_floats', 4)
+        c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
         xs = []
         for it in items:
             s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
             # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
             rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
-            if p["name"] in CROWN: s *= 1.0
             xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
         ids = c.add_instances(xs, True, True)
         for k, it in enumerate(items):
             tint = ((it.get('e') or {}).get('aTint')) or [1, 1, 1]; st = (it.get('e') or {}).get('aState', 0)
             for j, v in enumerate((tint[0], tint[1], tint[2], st if isinstance(st, (int, float)) else 0)): c.set_custom_data_value(k, j, float(v), False)
-        ni += len(items)
+        return len(items)
+    for p in protos:
+        pool = p['src']; items = (L['instances'].get(pool) or {}).get('items') or []
+        # (r08) the r05 thinning of the S1 / S2 corridor's street trees is gone (critic r07: empty tree pits, no tree on the S1 west sidewalk): every browser street tree stays
+        items = list(items) + EXTRA_PROPS.get(pool, [])  # (r05) supplemental street furniture (tools/export/street_props.py); (r08) + street trees + parked cars
+        sp = f'{ROOT}/Props/SM_{p["name"]}'
+        if not items or not EAL.does_asset_exist(sp): continue
+        ni += make_ism('ISM_' + p['name'], 'City/Props', sp, items)
+    # (r08) stopped avenue traffic (tools/export/street_traffic.py) in its OWN actors, folder City/Traffic: P6 owns moving traffic, the integrated map can hide / delete this folder.
+    # steps arg traffic=0 leaves it out.
+    tp = os.path.join(EXPORT, 'streettraffic.json'); nt = 0
+    if os.path.exists(tp) and ARGS.get('traffic', '1') != '0':
+        for pool, items in json.load(open(tp)).items():
+            sp = f'{ROOT}/Props/SM_{pool}'
+            if items and EAL.does_asset_exist(sp): nt += make_ism('ISM_traffic_' + pool, 'City/Traffic', sp, items)
+    log('stopped traffic cars', nt)
+    ni += nt
     # ground under everything (lot interiors / plazas never exported as geometry)
     # (r02) rivers / harbour: one water plane at the browser's G.WATER_Y (-1.6 m), 60 km wide (land meshes sit above it)
     g = spawn(unreal.StaticMeshActor, U(0, -1.6, 0), label='WaterPlane', folder='City')

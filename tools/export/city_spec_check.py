@@ -23,6 +23,8 @@ REGFILE = os.path.join(ROOT, 'docs', 'night1', 'city', 'spec_regions.json')
 RES_NAME = {'1080': '1920x1080', '4k': '3840x2160'}
 YOLO_PY = os.environ.get('CITY_YOLO_PY', '/Users/midir/sm2-n1/_scratch/traversal/specv/bin/python')
 YOLO_W = os.environ.get('CITY_YOLO_WEIGHTS', '/Users/midir/sm2-n1/_scratch/city/yolo/yolo11x-seg.pt')
+YOLO_CONF = float(os.environ.get('CITY_YOLO_CONF', '0.30'))   # (r08) the critic's test is conf .30 (r07 used .35); the worker also reports the count at .35
+YOLO_ANN = os.environ.get('CITY_YOLO_ANN')                    # (r08) directory for annotated detection frames (evidence)
 
 
 def load(view, root, res):
@@ -182,7 +184,7 @@ def render(out, res_list):
         P()
     if isinstance(out['yolo'], str): P('## C4 / C6 (YOLO): ' + out['yolo']); P()
     elif out['yolo']:
-        P('## C4 / C6 vehicle and person counts (YOLO11x-seg, conf 0.35, 1080p frame)'); P()
+        P(f'## C4 / C6 vehicle and person counts (YOLO11x-seg, conf {YOLO_CONF}, 1080p frame; the count at conf 0.35 is in the json as vehicles_c35)'); P()
         P('| view | vehicles | people | traffic lights | line | result |'); P('|---|---|---|---|---|---|')
         for v, c in out['yolo'].items():
             if 'error' in c: P(f'| {v} | error | | | | {c["error"]} |'); continue
@@ -202,9 +204,12 @@ def render(out, res_list):
 def yolo_worker(path):
     from ultralytics import YOLO
     m = YOLO(YOLO_W); im = cv2.imread(path)
-    r = m.predict(im, classes=[0, 2, 3, 5, 7, 9], conf=0.35, verbose=False, device=os.environ.get('CITY_YOLO_DEVICE', 'cpu'), imgsz=1920)[0]
-    cls = r.boxes.cls.cpu().numpy()
-    print(json.dumps(dict(people=int((cls == 0).sum()), vehicles=int(np.isin(cls, [2, 3, 5, 7]).sum()), cars=int((cls == 2).sum()), traffic_lights=int((cls == 9).sum()))))
+    r = m.predict(im, classes=[0, 2, 3, 5, 7, 9], conf=YOLO_CONF, verbose=False, device=os.environ.get('CITY_YOLO_DEVICE', 'cpu'), imgsz=1920)[0]
+    cls = r.boxes.cls.cpu().numpy(); cf = r.boxes.conf.cpu().numpy()
+    if YOLO_ANN:
+        os.makedirs(YOLO_ANN, exist_ok=True); cv2.imwrite(os.path.join(YOLO_ANN, os.path.basename(path).rsplit('.', 1)[0] + '_yolo.jpg'), r.plot(boxes=True, masks=False, labels=True, conf=True))
+    veh = np.isin(cls, [2, 3, 5, 7])
+    print(json.dumps(dict(people=int((cls == 0).sum()), vehicles=int(veh.sum()), cars=int((cls == 2).sum()), traffic_lights=int((cls == 9).sum()), vehicles_c35=int((veh & (cf >= 0.35)).sum()), conf=YOLO_CONF)))
 
 
 def main():
