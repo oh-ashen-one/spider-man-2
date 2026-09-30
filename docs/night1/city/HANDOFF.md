@@ -1,4 +1,4 @@
-# P1 City — handoff after round 06 (for the next builder)
+# P1 City — handoff after round 07 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
@@ -7,7 +7,52 @@ Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, p
 `unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
 Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city.
 
-## State (round 06)
+## Round 07 (this round; builder Sonnet 5.5) — read this first
+Critic r06: facades 5, street 4, skyline 4, Manhattan 5, IQ 5, FAILS (improving). r07 = shared measurement + far field + facade base colours + IP / defect list + build-script fixes.
+**Numbers: `round-07/city_spec_check.md` (`tools/export/city_spec_check.py`, regions `docs/night1/city/spec_regions.json`); run it on any round folder, builder and critic both.**
+
+### 1. One measurement (builder and critic disagreed on S4)
+r06 builder boxes (far_shore 0-900 x 215-300, river 450-1250 x 330-400) contained near-city and pier pixels; the critic's boxes were right. `spec_regions.json` holds ONE box per view per
+spec line (1080p and 4K, hand-placed, drawn in `city_spec_check.py --overlay`); texture statistics use the 1080p-normalised frame, mean-type statistics the native frame. Same
+r06 frames with the new script: C11 4.76x, C13 -14.0, C14 -3.3, C15 0.08 (see `round-07/city_spec_check_r06_baseline.md`; critic 4.8x / -10.9 / +2 / 0.09). C4 / C6 (YOLO) and the IP OCR are
+`--yolo` / `--ip`. The r06 "C13 pass" was a wrong box.
+
+### 2. Far field (C11, C13-C15) — root causes and what passes
+- **M_CityFarMass never compiled in r06** (`vc.a`: the custom-node vertex-colour input is RGB only; UE: "vector swizzle 'a' is out of bounds", log `Failed to compile Material`, default material in game).
+  Every far-shore block of r03-r06 was the default grey material. New input kind `vca` (alpha output) in `make_material`. **Always grep the -game log for `Failed to compile Material` after a material change.**
+- M_CityFarMass v2: MPC `FarGain` (3.4) albedo, per-24 m-cell tone jitter (0.35..1.65), floor-group banding, ~1 block in 6 dark glass / dark brick, warm brick blocks, window grid never fades below 18 %.
+  M_CityFarLand: canopy clumps on the green parts, per-lot tone + street lines (MPC `FarLandGain`). M_CityCliff: basalt columns, ledges, talus, wooded top band (was one flat plane). M_CityWater Specular from MPC `WaterSpec` (0.035).
+- **Haze**: with fog 0.0065 the far shore kept ~12 % of its contrast (measured: raw far Y 150 -> 216 in the frame), so C13 (-25..-35 under the sky) and C15 (contrast >= 0.25 x near) cannot both pass
+  by any material change (a black far shore would already sit at C13's edge). Test-map atmosphere is now fog 0.0010, inscattering (0.76, 0.78, 0.80) (~ the horizon luma), aerial scale 0.34 (`FOG_DENSITY` etc. in build_city.py).
+  Sweep (1080p, same material): fog .0018/.45 -> C13 -31 / C15 .20; .0015 -> -34.5 / .228; .0013 -> -37 / .245; .0011 -> -37.6 / .254; brighter inscattering +1.2..+2.9 Y and -0.008..-0.018 rms.
+  All levers ride one trade line: at sky Y 229 (blown, P4) the pass window is ~0.005 wide. **P4: lowering the sky band by ~10 Y (exposure or sky brightness) widens it to a comfortable margin; fog / inscattering are then free.**
+
+### 3. Facade base colours (C1) — the albedo alone does not move it
+Light stone in sun is Y > 204 at albedo ~0.16-0.3: sun 6 vs sky fill 1.7 at +2 EV (test lighting) gives ~4x irradiance on sun-facing faces (albedo 0.02 still leaves a white tower at mean Y 110: glass reflection + emission).
+r07 caps the BASE colour luma of **sun-facing** surfaces (N.L via `ResolvedView.DirectionalLightDirection`, ramp 0..0.4) at MPC `SunK` (0.08; dark stone / glass and shaded faces untouched) in M_CityFacade, M_CityDetail, M_CityRoof, plus the generic
+soft knee `AlbKnee`/`AlbSlope` and `F0Scale` (0.8) in M_CityFacade. Tunable without recompiling: `tools/export/ue/run_commandlet.sh tools/export/ue/set_mpc.py SunK=..`.
+Cost: shaded facades that face the sun by orientation lose brightness (S1 crops 33.5 -> 24.0, 20.7 -> 17.1 mean Y; they already failed C2 because of the same lighting). **P4: a sun / sky-fill ratio near 4:1 instead of 30:1 fixes C1 and C2 together; then set SunK back to 1.**
+
+### 4. IP + defects
+- Removed with original art (`tools/export/ip_original_art.py`, table rows in `IP_EXCLUSIONS.md`): "SEE SOMETHING? SAY SOMETHING." (ts_ads L23), "NEON RACERS - OUT NOW" (L39 / L41) and "STAR RAIDERS 3 - OUT NOW" (L61), the Kinetix sneaker photo (P8, and P27 whose donor it was). IP OCR: 0 hits.
+- S1 blurry fascia: the shared 1 GB texture-streaming pool dropped mips of the sign atlases; `never_stream` on street_signs / signs / ts_ads / city_signart / interiors (the pool itself is a `Config/` setting for the integrator / P4).
+- S5 flat stair wall and block = `tsFrames` (M_CityFrame): rebuilt as panelled cladding with seams, rivets, brushed streaks and rain streaks; M_CityVC (every untextured vertex-colour mesh) got 3-scale tone variation + speckle + cast-panel joints.
+- Shop windows: `fh1` samples the smooth noise texture, so neighbouring bays drew the same type; real hash + 3 new interior types (restaurant, bookstore, gallery / electronics) -> 7 types.
+
+### 5. Build-script integration fixes (orchestrator request)
+`build_city.py`: loads `StaticMeshEditor` itself; `kit` is a default step (one pass: `clean,tex,mat,mesh,proto,kit,map`; on a clean project it only imports the kit meshes, `map` spawns them); paths from `SM2_CITY_SCRATCH`, `SM2_CITY_EXPORT`,
+`SM2_CITY_TEX`, `SM2_CITY_JOBS`, dev port from `SM2_CITY_PORT` (manifest map URLs are reduced to `/assets/...`, `tools/export/citypaths.py`); shell scripts derive the worktree from their own location; `launch_editor.sh` takes `SM2_CITY_MCP_PORT`.
+New `tools/export/ue/run_commandlet.sh <script.py> [k=v]` = headless `-nullrhi` run of any editor script through the GPU lock (materials, MPC, maps need no window; used for every step of r07).
+**Detailed city block = 768 m long (tiles ix -1..1 -> x -256..512); the 30 s route leaves it at ~22.6 s. Not extended in r07, recorded only.**
+
+### New gotchas (r07)
+16. Custom-node vertex colour input is RGB; alpha needs the `A` output (`kind 'vca'`). A failed compile = default material in -game, silently.
+17. Editor Python / materials / MPC / maps run fine in a `-nullrhi` commandlet; shaders compile lazily in the -game process. The fresh -game start is where errors show (`grep "Failed to compile" <capture>.log`).
+18. Sun direction in a material: `ResolvedView.DirectionalLightDirection.xyz` (direction TOWARD the atmosphere sun) compiles in Custom nodes.
+19. After the 2026-09-29 16:43 GPU incident: <= 1 Unreal process per agent, everything through `gpu_slot.sh capture`, `wait_slot.sh` cap 4 (`SM2_MAX_UNREAL`).
+20. The `S4v?` variant maps (`atmo_variants.py`, names a..p) are scratch in Content/ (not committed); `S4vm` was overwritten (it was the fog-off mask map).
+
+## State (round 06, still valid)
 - Critic rounds: r01-r05 FAIL (r05: facades 5, street 4, skyline 3, Manhattan 4, IQ 5; gap: far skyline, S4 and everything past ~1 km).
   r06 = far field: far-shore blocks with real window grids, coast / far-land materials instead of white slabs, thinner warm-neutral haze, real-water
   Fresnel, IP exclusions (HAUTE UNLIMITED, Hotel Astoria, Madison Arena, Boreal Outdoor, New York Knights).

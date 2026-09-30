@@ -179,7 +179,7 @@ WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 # emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
-                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 1.7), ('WaterSpec', 0.06))  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 1.7), ('WaterSpec', 0.06), ('FarLandGain', 1.0), ('SunK', 0.16))  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -201,6 +201,9 @@ float r, m, g; float3 n, e, f;
 float3 a = CityFacade(tWallC, tWallCSampler, tWallN, tWallNSampler, tWallH, tWallHSampler, tDetail, tDetailSampler, tInterior, tInteriorSampler, tSigns, tSignsSampler, tNoise, tNoiseSampler,
   uv0, float4(uv1, uv2), float4(uv3, uv4), float4(uv5, uv6), uv7, vc.rgb * 2.0, wpos, wn, cam, float4(igain, sgain, nightk, dntime), float2(0.0, 0.0), r, m, n, e, g, f);
 a = CityAlbCap(a, albknee, albslope); f *= f0scale;   // (r07) light stone / pale panel base colours compressed (C1)
+// (r07, C1) test lighting: sun 6 vs sky fill 1.7 (+2 EV) makes every sun-facing surface saturate (Y > 204) while the shaded ones crush; the albedo alone cannot fix that (albedo 0.02 still gives Y 110
+// on a white tower: glass reflection + emission). Sun-facing surfaces (N.L > 0) have their BASE colour luma limited to SunK (MPC): shaded facades (facing away) and dark stone are untouched.
+float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));   // fades out beyond ~1-2 km (far skyline keeps its albedo) float La = dot(a, float3(0.2126, 0.7152, 0.0722)); float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La; a *= lerp(1.0, Lc / max(La, 1e-4), sunf);   // sun-facing base colours are limited to a luma of SunK (MPC, ~0.16): albedo above it saturates under the test lighting; darker ones are untouched
 // coated curtain glass (F0 0.2-0.6): metallic mirror = F0 x tint. Old sash glass (gSash): dielectric with F0 = 0.011 so
 // that UE's F90 = saturate(50 F0) = 0.55 matches the browser's specularF90 0.55 (no bright grazing mirrors on masonry)
 float gm = g * (1.0 - gSash);
@@ -224,19 +227,23 @@ return col;''',
         + [(f'uv{i}', 'uv', i) for i in range(8)] + [('vc', 'vc', None)] + WORLD
         + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale'),
            ('dayemis', 'mpc', 'DayEmisK'), ('glassspec', 'mpc', 'GlassSpec'), ('dbgmode', 'mpc', 'DebugMode'),
-           ('albknee', 'mpc', 'AlbKnee'), ('albslope', 'mpc', 'AlbSlope'), ('f0scale', 'mpc', 'F0Scale')],
+           ('albknee', 'mpc', 'AlbKnee'), ('albslope', 'mpc', 'AlbSlope'), ('f0scale', 'mpc', 'F0Scale'), ('sunk', 'mpc', 'SunK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)])
     make_material('M_CityDetail', '/Project/City/Detail.ush', '''
 float r, m, o; float3 n;
 float3 a = CityDetail(tNoise, tNoiseSampler, tDetail, tDetailSampler, vc.rgb, uv1.x, uv0, wpos, wn, cam, Parameters.SvPosition.xy, r, m, n, o);
+// (r07, C1) cornices / string courses / piers are the light stone of the facade crops too: same sun-facing scale of LIGHT base colours as M_CityFacade
+float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));   // fades out beyond ~1-2 km (far skyline keeps its albedo) float La = dot(a, float3(0.2126, 0.7152, 0.0722)); float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La; a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 Rough = r; Metal = m; NormalW = n; Op = o; return a;''',
-        [('tNoise', 'tex', TEXA('noise')), ('tDetail', 'tex', TEXA('detail_nrm')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None)] + WORLD,
+        [('tNoise', 'tex', TEXA('noise')), ('tDetail', 'tex', TEXA('detail_nrm')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None), ('sunk', 'mpc', 'SunK')] + WORLD,
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Op', 1, MP.MP_OPACITY_MASK)], blend='masked')
     make_material('M_CityRoof', '/Project/City/Roof.ush', '''
 float r, m; float3 n;
 float3 a = CityRoof(tRoofC, tRoofCSampler, tRoofN, tRoofNSampler, tNoiseR, tNoiseRSampler, vc.rgb, uv0, float4(uv1, uv2), float4(uv3, uv4), wpos, wn, cam, r, m, n);
+// (r07, C1) ledges / string courses / roofs are drawn by this material too: same sun-facing base colour luma ceiling as M_CityFacade / M_CityDetail
+float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));   // fades out beyond ~1-2 km (far skyline keeps its albedo) float La = dot(a, float3(0.2126, 0.7152, 0.0722)); float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La; a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 Rough = r; Metal = m; NormalW = n; return a;''',
-        [('tRoofC', 'tex', TEXA('TA_roof_col')), ('tRoofN', 'tex', TEXA('TA_roof_nrm')), ('tNoiseR', 'tex', TEXA('noise'))] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
+        [('tRoofC', 'tex', TEXA('TA_roof_col')), ('tRoofN', 'tex', TEXA('TA_roof_nrm')), ('tNoiseR', 'tex', TEXA('noise')), ('sunk', 'mpc', 'SunK')] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL)])
     make_material('M_CityAsphalt', '/Project/City/Asphalt.ush', '''
 float r; float3 n;
@@ -307,14 +314,16 @@ float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01; float fl = vca;
 // (r07) far-shore blocks read as flat dark grey once the haze veils them (critic r06: 'untextured box extrusions'): raise the albedo (FarGain, MPC) so the
 // aerial haze does not swallow the block-to-block contrast, and jitter the tone per ~24 m footprint cell (brick / buff / grey / dark glass blocks differ)
 float2 bcell = floor(p.xz / 24.0); float hb = HASH(bcell), hb2 = HASH(bcell + 17.3);
-float3 base = min(vc.rgb * float3(1.02, 1.0, 0.95) * fargain * (0.55 + 0.9 * hb), 0.85);
+float3 base = min(vc.rgb * float3(1.02, 1.0, 0.95) * fargain * (0.35 + 1.3 * hb), 0.85);
 base = lerp(base, base * float3(1.08, 0.96, 0.88), step(0.7, hb2) * 0.5);   // some warmer brick blocks
+base *= 0.86 + 0.28 * step(0.5, frac(p.y / 26.0 + hb2 * 3.0));   // floor-group banding (setbacks / spandrel bands stay resolvable at 3 km)
+float hb3 = HASH(bcell + 41.7); base *= lerp(1.0, 0.22, step(hb3, 0.16));   // ~1 block in 6 is a dark glass / dark brick block (contrast against the pale stone and brick ones)
 
 float3 c = base; float3 dnE = float3(0, 0, 0);
 if (fl > 0.25) {
   float along = p.x + p.z;
   float2 fw = fwidth(float2(p.y / 3.3, along / 2.4));
-  float sub = saturate(max(fw.x, fw.y) * 0.85);   // (r06) UE renders 50-73 % internal resolution + TSR: keep the grid readable one step further out
+  float sub = min(saturate(max(fw.x, fw.y) * 0.85), 0.82);   // (r06) UE renders 50-73 % internal resolution + TSR: keep the grid readable one step further out; (r07) never fade fully to the mean: 18 % of the window / wall modulation stays (far-band texture, CITY-SPEC C11 / C15)
   float2 gid = floor(float2(along / 1.6, p.y / 3.9));
   if (fl > 0.75) {
     float mul = frac(along / 1.6), fl2 = frac(p.y / 3.9);
@@ -396,15 +405,35 @@ float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01;
 float3 c = Texture2DSample(tMap, tMapSampler, float2(uv0.x, 1.0 - uv0.y)).rgb;
 float n = Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 61.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 9.0).r * 0.4;
 c *= 0.85 + 0.3 * n;
+// (r07) the baked map is one 6 m texel per pixel at kilometres: a flat grey-green plain between the shore and the far blocks (critic r06 'untextured'). Add clumpy canopy on the
+// green (wooded / lawn) parts and per-lot tone + darker street lines on the rest; the noise samples mip-average with distance.
+float grn = c.g - max(c.r, c.b); float wood = smoothstep(0.015, 0.06, grn);
+float t1 = Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 3.7).g, t2 = Texture2DSample(tNoise, tNoiseSampler, float2(p.x, p.z) / 17.0).r;
+c = lerp(c, c * (0.4 + 1.2 * t1) * (0.65 + 0.7 * t2), wood);
+float2 lc = float2(p.x / 46.0, p.z / 78.0); float hl = frac(sin(dot(floor(lc), float2(127.1, 311.7))) * 43758.5453); float2 lf = frac(lc);
+float road = 1.0 - smoothstep(0.0, 0.07, min(min(lf.x, 1.0 - lf.x), min(lf.y, 1.0 - lf.y)));
+c = lerp(c * (0.7 + 0.6 * hl), c * 0.5, road * 0.65 * (1.0 - wood));
+c *= farlandgain;   // (r07) MPC FarLandGain: the pale plateau between the shore and the far blocks carries the far band's mean luma (C13)
 Rough = 0.95; Emis = float3(0, 0, 0); Spec = 0.5;
 if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0.05, 0, 0); Spec = 0.0; return float3(0, 0, 0); }
 return c;""",
-        [('tMap', 'tex', TEXA('farland_map')), ('tNoise', 'tex', TEXA('noise')), ('uv0', 'uv', 0), ('wpos', 'wpos', None), ('dbgmode', 'mpc', 'DebugMode')],
+        [('tMap', 'tex', TEXA('farland_map')), ('tNoise', 'tex', TEXA('noise')), ('uv0', 'uv', 0), ('wpos', 'wpos', None), ('dbgmode', 'mpc', 'DebugMode'), ('farlandgain', 'mpc', 'FarLandGain')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
     make_material('M_CityCliff', None, r"""
-float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01;
-float n = Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.z, p.y) / 23.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.z, p.y) / 3.1).r * 0.4;
-Rough = 0.9; return float3(0.13, 0.115, 0.095) * (0.6 + 0.8 * n) * (0.7 + 0.3 * smoothstep(-2.0, 60.0, p.y));""",
+float3 p = wpos * 0.01;                                    // UE metres: p.z = height above the water plane, (p.x, p.y) = ground position
+float h = p.z;
+float n = Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.y, h) / 23.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.y, h) / 3.1).r * 0.4;
+// (r07) basalt-like cliff (the browser's Palisades): vertical columnar jointing every ~7 m, horizontal ledges, darker talus at the foot, a mottled wooded band along the top edge
+// (critic r06: the far shore's embankment was one flat plane)
+float col = frac((p.x + p.y) / 7.0 + 0.3 * n), ledge = frac(h / 9.0 + 0.15 * n);
+float joint = 1.0 - smoothstep(0.0, 0.06, min(col, 1.0 - col)), ledgeL = smoothstep(0.86, 0.95, ledge);
+float3 rock = float3(0.2, 0.178, 0.15) * (0.55 + 0.9 * n) * (1.0 - 0.45 * joint) * (1.0 + 0.35 * ledgeL);
+float talus = 1.0 - smoothstep(0.0, 14.0, h);
+rock = lerp(rock, float3(0.08, 0.075, 0.065), talus * 0.7);
+float tf = Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.y, h) / 4.3).g;
+float wood = smoothstep(44.0, 52.0, h) * (0.4 + 0.6 * tf);
+rock = lerp(rock, float3(0.07, 0.11, 0.045) * (0.5 + 1.0 * tf), saturate(wood));
+Rough = 0.9; return rock;""",
         [('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None)], [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
     # (r05) street-level kit (tools/export/street_kit.py): piers, cornices, storefront frames, awnings, sign boards, fire escapes.
     # UV0 = atlas uv (image space, v down) or metres (gratings), UV1 = (kind, param), UV2 = metres along the element, vertex colour = linear base.
@@ -931,7 +960,9 @@ def build_geo_level(path):
 
 # (r06) view-map atmosphere, tuned against CITY-SPEC C11-C15 (far shore takes the sky's tint, sits 25-35 luma below the sky band, river darker than the far shore).
 # The sky is blown out (Y ~ 229) because the test maps use manual exposure +2 EV: P4 owns exposure; the far-shore / sky RATIO is what these values fix.
-FOG_DENSITY = float(ARGS.get('fog', 0.0065)); FOG_COLOR = [float(v) for v in ARGS.get('fogc', '0.6,0.62,0.64').split(',')]; AERIAL_SCALE = float(ARGS.get('aerial', 1.0))
+# (r07) far field: fog 0.0010 / inscattering (0.76, 0.78, 0.80) (~ the horizon luma of the blown sky) / aerial scale 0.34 (r06: 0.0065, (0.6, 0.62, 0.64), 1.0). S4 numbers per fog value: see docs/night1/city/round-07/README.md.
+# The previous values veiled the far shore to ~12 % contrast transmission (C13 / C15 could not both pass); P4 owns the final haze, these are the City test maps'.
+FOG_DENSITY = float(ARGS.get('fog', 0.0010)); FOG_COLOR = [float(v) for v in ARGS.get('fogc', '0.76,0.78,0.80').split(',')]; AERIAL_SCALE = float(ARGS.get('aerial', 0.34))
 def add_lighting(sun_pitch, sun_yaw, sunset=False):
     sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), unreal.Rotator(roll=0, pitch=sun_pitch, yaw=sun_yaw), 'Sun', 'Lighting')
     lc = sun.light_component
