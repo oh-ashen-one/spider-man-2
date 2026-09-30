@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-# P5 combat r02: the video-free half of the spec checks, from a run's fight_frames.jsonl + fight_events.jsonl (any run mode, nullrhi included).
+# P5 combat r02 (r03: enemy rows may have 15 fields; frozen_frames = frames the HERO was held): the video-free half of the spec checks, from a run's fight_frames.jsonl + fight_events.jsonl (any run mode, nullrhi included).
 #   sim_metrics.py <run_dir> [out.json]
 # Screen boxes are computed in C++ by projecting every skeleton bone with the frame's final camera (16:9, horizontal fov), so hero margin,
 # enemies in frame and occluders do not need pixels. measure_r02.py adds the pixel tests (hit-stop freeze, spark area, snaps) on the video.
@@ -19,7 +19,7 @@ for r in rows:
     margin = min(hb[0], hb[1], 1 - hb[2], 1 - hb[3]) if hb[0] > -0.5 else -1
     n5 = 0; occ = 0.0; nwarn = 0; nbig = 0
     for e in r['e']:
-        tag, typ, st, x, y, z, bx0, by0, bx1, by1, dist, warn, alive = e
+        tag, typ, st, x, y, z, bx0, by0, bx1, by1, dist, warn, alive = e[:13]   # (r03 rows carry two more fields: visual yaw, held)
         if bx0 < -0.5: continue
         cw, ch = clipped([bx0, by0, bx1, by1]); cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
         if alive and st in STAND and 0 <= cx <= 1 and 0 <= cy <= 1 and ch >= 0.05: n5 += 1

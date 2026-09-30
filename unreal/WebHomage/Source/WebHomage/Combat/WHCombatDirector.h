@@ -129,11 +129,20 @@ public:
 	void Heal(double N);
 	void Cine(AWHEnemy* Target, double Dur, FName Kind);
 	void FireWebLater(AWHEnemy* T, double Delay) { PendingShot = T; PendingShotAt = Time + Delay; }
-	/** Hit-stop: freeze the world (global time dilation ~0) for N rendered frames at 60 fps (real time: N/60 s). */
-	void HitStop(int32 Frames, double Scale = 0.002);
-	/** True while a hit-stop freeze is active (the combat camera holds still, FX timers pause). */
+	/** r03 LOCAL hit-stop: only the hero and the victim are frozen (dt = 0 for both; the hero's actor time dilation ~0) for N rendered frames at 60 fps (real
+	 *  time), the camera framing state is held and a 2-4 px shake runs on top, everything else in the world keeps moving. */
+	void HitStop(int32 Frames, AWHEnemy* Victim = nullptr);
+	/** True while the hero is held (the camera holds its framing state and shakes). */
 	bool Frozen() const { return bHitStop; }
 	bool bHitStop = false, bDtFrozen = false;
+	double HeroHoldUntil = -1;                      // director real time
+	double ShakeUntil = -1e9, ShakeStart = -1e9, ShakeAx = 1, ShakeAy = 0;   // r03 hit shake (screen-space axis, unit)
+	double HitShakePx = 3.5, HitShakeHz = 5.0;      // px at 1080p (frame edge); overridable with -WHCmbShakePx= / -WHCmbShakeHz= (experiments)
+	double HoldRadius = 2.5;                        // m: enemies this close to the victim are held with it (their bodies and long shadows cross the victim's crop); 0 = only the victim; -WHCmbHoldR=
+	bool bShakeSweep = false; int32 ShakeSweepN = 0; // -WHCmbSweep=1: cycle shake / flare variants per blow (experiment run)
+	FVector BaseCamP = FVector::ZeroVector; FRotator BaseCamR = FRotator::ZeroRotator; double BaseCamFov = 75;   // framing camera before the hit shake
+	FRandomStream ShakeRng = FRandomStream(777);
+	mutable double ShakeOutPx = 0, ShakeOutPx2 = 0; // the shake applied this frame: roll / zoom edge displacement in 1080p px (logged as 'shk')
 	void Slowmo(double Dur, double Scale = 0.3, double Ease = 0.25);
 	void Banner(const FString& S) { LogEvent(TEXT("banner ") + S); }
 
@@ -189,6 +198,8 @@ private:
 	void UpdateTime();
 	void UpdateShots(double Dt);
 	void CombatCamera(double RealDt);
+	void HitShake(FRotator& R, double& Fov) const;
+	void BlowVariant();
 	void SpawnEnemy(TCHAR Ch, const FVector& FeetM);
 	void Reinforce(double Dt);
 	void FrameRecord();

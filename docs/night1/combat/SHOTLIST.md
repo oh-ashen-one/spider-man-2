@@ -1,4 +1,4 @@
-# P5 Combat: shot list (r02)
+# P5 Combat: shot list (r03)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -15,4 +15,4 @@ resolution is disclosed in `NOTES.md` for every run.
 | S4 | web strike / web shot line | 4K still with a strand out | `web-shooter-nm__nm_0244` |
 | S5 | finisher beat (push-in) | 4K still at the cine peak | `symbiote-finisher__nm_0530-0538` (clip) |
 | S6 | gunman aim line + brute silhouette | 4K stills | `street-fight-nm__nm_0501` |
-| X1 | previous round vs this round | r01 `fight25_1080p60.mp4` vs r02 `fight30_1080p60.mp4` | - |
+| X1 | previous round vs this round | r02 `round-02/fight30_1080p60.mp4` vs r03 `round-03/fight30_1080p60.mp4` | - |

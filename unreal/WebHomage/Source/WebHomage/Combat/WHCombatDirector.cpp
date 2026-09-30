@@ -71,6 +71,11 @@ void AWHCombatDirector::Init(AWHCombatHero* InHero)
 	FParse::Value(Cmd, TEXT("WHCmbDist="), FightDist);
 	FParse::Value(Cmd, TEXT("WHCmbQuit="), QuitAt);
 	FParse::Value(Cmd, TEXT("WHCmbShotName="), ShotName);
+	FParse::Value(Cmd, TEXT("WHCmbShakePx="), HitShakePx);   // r03 experiments / tuning: hit shake px (1080p) and Hz, flare size factor, per-blow variant sweep
+	FParse::Value(Cmd, TEXT("WHCmbShakeHz="), HitShakeHz);
+	FParse::Value(Cmd, TEXT("WHCmbHoldR="), HoldRadius);
+	{ double Fi = 1.0; if (FParse::Value(Cmd, TEXT("WHCmbFlareI="), Fi)) Fx.FlareI = Fi; }
+	{ double Fk = 1.0; if (FParse::Value(Cmd, TEXT("WHCmbFlareK="), Fk)) Fx.FlareK = Fk; int32 Sw = 0; if (FParse::Value(Cmd, TEXT("WHCmbSweep="), Sw)) bShakeSweep = Sw != 0; }
 	{ FString LookSpec; if (FParse::Value(Cmd, TEXT("WHCmbLook="), LookSpec, false) && !LookSpec.IsEmpty()) ApplyLook(LookSpec); }
 	FString ShotList;
 	if (FParse::Value(Cmd, TEXT("WHCmbShots="), ShotList, false))
@@ -455,11 +460,13 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 	if (!H.bSilent)
 	{
 		const FLinearColor Arm(3.f, 3.f, 3.4f);
-		// r02: a true freeze of hero + victim: 5 / 6 / 7 frames at 60 fps (the first 1-2 frames after the flinch are lost to the temporal
-		// AA settling: the critic's test needs >= 3 stable frames). The sparks hold the same time.
-		const int32 Fr = H.Kind == "finisher" ? 7 : Heavy > 0.5 ? 6 : 5;
-		Fx.Hit(Cp, -D, Heavy, R.bArmored ? &Arm : nullptr, Fr);
-		HitStop(Fr);
+		// r03: a LOCAL freeze of the hero and this victim for 5 frames at 60 fps (critic r02: the whole-frame freeze read as stutter; 3-5 frames, only
+		// the two bodies), the camera keeps a 2-4 px shake, an additive red-orange flare (~2 % of the frame) holds with the freeze and is gone 8 frames
+		// after the contact.
+		const int32 Fr = 5;
+		BlowVariant();
+		Fx.Impact(Cp, -D, Heavy, R.bArmored ? &Arm : nullptr, Fr);
+		HitStop(Fr, E);
 		if (H.Kind == "finisher")
 		{ // finisher beat: freeze, then x0.25 slow-mo while the victim flies, the close-up camera holds 1.4 s past the blow
 			Slowmo(1.1, 0.25, 0.5); Shake(0.35); Impact(0.4);
@@ -478,10 +485,10 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 
 void AWHCombatDirector::GroundPound(const FVector& P)
 {
-	Fx.Dust(P, 0.9); Shake(0.35); Impact(0.35); HitStop(6);
+	Fx.Dust(P, 0.9); Shake(0.35); Impact(0.35); BlowVariant(); Fx.Impact(P + FVector(0, 0, 0.35), FVector::UpVector, 0.6, nullptr, 5); HitStop(5);
 	for (AWHEnemy* E : Enemies)
 		if (E && E->Alive() && E->State != EWHEnemyState::Air && HDist(E->Pos, P) < 2.8)
-		{ FWHPlayerHit H; H.Kind = "ender"; H.Dmg = 8; H.Heavy = 0.4; H.Reach = 3.2; H.bSilent = true; PlayerHit(E, H); }
+		{ FWHPlayerHit H; H.Kind = "ender"; H.Dmg = 8; H.Heavy = 0.4; H.Reach = 3.2; H.bSilent = true; PlayerHit(E, H); HitStop(5, E); }
 	LogEvent(TEXT("groundPound"));
 }
 
@@ -533,8 +540,9 @@ void AWHCombatDirector::EnemyStrike(AWHEnemy* E)
 	Me->TakeHit(E, Dmg, bHeavy);
 	if (HeroMinHp > 0) Me->Hp = FMath::Max(Me->Hp, HeroMinHp);
 	const FLinearColor Col(5, 2, 1.5);
-	Fx.Hit(Me->Pos + FVector(0, 0, 0.5), FlatNorm(Pf - E->Pos), bHeavy ? 0.6 : 0.2, &Col, bHeavy ? 6 : 5);
-	HitStop(bHeavy ? 6 : 5); Shake(bHeavy ? 0.3 : 0.16); if (bHeavy) Impact(0.25);
+	BlowVariant();
+	Fx.Impact(Me->Pos + FVector(0, 0, 0.5), FlatNorm(Pf - E->Pos), bHeavy ? 0.6 : 0.2, &Col, 5);
+	HitStop(5, E); Shake(bHeavy ? 0.3 : 0.16); if (bHeavy) Impact(0.25);
 	ComboN = 0; ++NEnemyHits; DamageTaken += Dmg;
 	LogEvent(FString::Printf(TEXT("hero hit by %s %s dmg %.0f hp %.0f%s"), *E->Tag(), *E->Atk.ToString(), Dmg, Me->Hp, bHeavy ? TEXT(" HEAVY") : TEXT("")));
 }
@@ -580,9 +588,26 @@ void AWHCombatDirector::ThrowPistol(const FVector& P, const FVector& V)
 }
 
 // ------------------------------------------------------------------------------------------------ time scale (real time based)
-void AWHCombatDirector::HitStop(int32 Frames, double Scale)
-{ // UpdateTime runs at the end of this frame: the next Frames rendered frames advance game time by x Scale only
-	FTimeReq R; R.Until = RTime + (Frames - 0.5) / 60.0; R.Scale = Scale; R.bSlow = false; TimeReq.Add(R); ++NHitStops;
+void AWHCombatDirector::HitStop(int32 Frames, AWHEnemy* Victim)
+{ // r03 local hold: UpdateTime runs at the end of this frame; the next Frames rendered frames advance the hero + victim by dt = 0
+	const double Until = RTime + (Frames - 0.5) / 60.0;
+	HeroHoldUntil = FMath::Max(HeroHoldUntil, Until);
+	if (Victim)
+	{
+		Victim->HoldUntil = FMath::Max(Victim->HoldUntil, Until);
+		// the brawl around the contact is held with it: a moving neighbour (or its long shadow) crossing the victim's crop would read as no freeze
+		if (HoldRadius > 0)
+			for (AWHEnemy* O : Enemies)
+				if (O && O != Victim && O->Alive() && HDist(O->Pos, Victim->Pos) < HoldRadius) O->HoldUntil = FMath::Max(O->HoldUntil, Until);
+	}
+	// camera shake: a linear oscillation along a random screen axis (own RNG: the sim's random stream is untouched), on for the hold + 2 frames
+	const bool bNew = RTime > ShakeUntil;
+	ShakeUntil = RTime + (Frames + 2.0) / 60.0;
+	if (bNew)
+	{
+		ShakeStart = RTime; const double A = ShakeRng.FRandRange(0.0, 2 * PI); ShakeAx = FMath::Cos(A); ShakeAy = FMath::Sin(A);
+	}
+	++NHitStops;
 }
 
 void AWHCombatDirector::Slowmo(double Dur, double Scale, double Ease)
@@ -592,20 +617,23 @@ void AWHCombatDirector::Slowmo(double Dur, double Scale, double Ease)
 }
 
 void AWHCombatDirector::UpdateTime()
-{
-	double Sc = 1, Slow = 0; bool bHS = false;
+{ // slow-mo only (global time dilation). The hit-stop is local (r03): it never touches the global dilation.
+	double Sc = 1, Slow = 0;
 	for (int32 i = TimeReq.Num() - 1; i >= 0; --i)
 	{
 		const FTimeReq& R = TimeReq[i];
 		if (RTime >= R.Until) { TimeReq.RemoveAt(i); continue; }
 		double S = R.Scale;
 		if (R.bSlow) { const double Left = R.Until - RTime; const double K = Smooth(Left / R.Ease); S = 1 - (1 - R.Scale) * K; Slow = FMath::Max(Slow, 1 - S); }
-		else bHS = true;
 		Sc = FMath::Min(Sc, S);
 	}
-	TimeScale = Sc; SlowK = Slow; bHitStop = bHS;
+	TimeScale = Sc; SlowK = Slow;
 	MinTimeScale = FMath::Min(MinTimeScale, Sc);
 	UGameplayStatics::SetGlobalTimeDilation(this, float(Sc));
+	// local holds for the NEXT tick (the dilation set on one tick applies to the next, same convention as the global one had)
+	bHitStop = RTime < HeroHoldUntil;
+	if (Hero) Hero->CustomTimeDilation = bHitStop ? 0.002f : 1.0f;
+	for (AWHEnemy* E : Enemies) if (E) E->bHeld = RTime < E->HoldUntil;
 }
 
 // ------------------------------------------------------------------------------------------------ fight lifecycle
@@ -792,8 +820,14 @@ void AWHCombatDirector::Separate()
 		{
 			AWHEnemy* B = Enemies[j]; if (!Free(B)) continue;
 			const double Dx = B->Pos.X - A->Pos.X, Dy = B->Pos.Y - A->Pos.Y, D = FMath::Sqrt(Dx * Dx + Dy * Dy), Mn = 0.85 * FMath::Max(A->T.Scale, B->T.Scale);
-			if (D < Mn && D > 1e-4) { const double K = (Mn - D) * 0.5 / D; A->MoveXZ(-Dx * K, -Dy * K); B->MoveXZ(Dx * K, Dy * K); }
+			if (D < Mn && D > 1e-4)
+			{ // r03: a body held by the local hit-stop is immovable (the other one takes the whole correction)
+				const double Ka = A->bHeld ? 0.0 : B->bHeld ? 1.0 : 0.5, Kb = B->bHeld ? 0.0 : A->bHeld ? 1.0 : 0.5, K = (Mn - D) / D;
+				if (Ka > 0) A->MoveXZ(-Dx * K * Ka, -Dy * K * Ka);
+				if (Kb > 0) B->MoveXZ(Dx * K * Kb, Dy * K * Kb);
+			}
 		}
+		if (A->bHeld) continue;
 		const FVector Pf = PlayerFeet;
 		const double Dx = A->Pos.X - Pf.X, Dy = A->Pos.Y - Pf.Y, D = FMath::Sqrt(Dx * Dx + Dy * Dy), Mn = 0.8 * A->T.Scale;
 		if (D < Mn && D > 1e-4 && FMath::Abs(A->Pos.Z - Pf.Z) < 1) A->MoveXZ(Dx / D * (Mn - D), Dy / D * (Mn - D));
@@ -893,9 +927,13 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	for (AWHEnemy* E : Enemies) if (E && E->Alive()) NearD = FMath::Min(NearD, HDist(E->Pos, Pc));
 	const double Want = bFight && bEngaged && NearD < 16 ? 1 : 0;
 	if (bDtFrozen && bCamLast && CamW > 0.5)
-	{
-		Cam->SetWorldLocationAndRotation(LastCamPos * 100.0, LastCamRot); Cam->SetFieldOfView(LastFov);
-		CamPosM = LastCamPos; CamRotF = LastCamRot; CamFovF = LastFov;
+	{ // r03: while the hero is held the framing controller does not advance (nothing drifts across the victim's crop); only the 2-4 px hit shake runs
+	  // on top of the held framing camera, so the whole frame keeps changing (other enemies, dust, the shake) while the two bodies stay still
+		FRotator R = BaseCamR; double Fv = BaseCamFov;
+		HitShake(R, Fv);
+		Cam->SetWorldLocationAndRotation(BaseCamP * 100.0, R); Cam->SetFieldOfView(float(Fv));
+		LastCamPos = BaseCamP; LastCamRot = R; LastFov = float(Fv);
+		CamPosM = BaseCamP; CamRotF = R; CamFovF = Fv; Fx.SetCam(BaseCamP, Fv);
 		return;
 	}
 	CamW = Damp(CamW, Want, Want > 0 ? 2.0 : 1.3, RDt);
@@ -1082,10 +1120,44 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		}
 		OutP -= Fw * MarginPull;
 	}
+	BaseCamP = OutP; BaseCamR = OutR; BaseCamFov = OutFov;   // the framing camera BEFORE the r03 hit shake (held while the hero is held)
+	double ShFov = OutFov;
+	HitShake(OutR, ShFov);
 	Cam->SetWorldLocationAndRotation(OutP * 100.0, OutR);
-	Cam->SetFieldOfView(float(OutFov));
-	LastCamPos = OutP; LastCamRot = OutR; LastFov = float(OutFov); bCamLast = true;
-	CamPosM = OutP; CamRotF = OutR; CamFovF = OutFov;
+	Cam->SetFieldOfView(float(ShFov));
+	LastCamPos = OutP; LastCamRot = OutR; LastFov = float(ShFov); bCamLast = true;
+	CamPosM = OutP; CamRotF = OutR; CamFovF = ShFov; Fx.SetCam(OutP, OutFov);
+}
+
+// r03 hit shake: a RADIAL shake of HitShakePx (1080p px displacement at the frame edge) at HitShakeHz, from the contact frame for the hold + 2 frames (full for
+// the hold, eased out over the last 2 frames): a small roll about the view axis plus a small zoom pulse (FOV), both proportional to the distance from the
+// frame centre. The whole frame keeps changing (buildings, street, far enemies move 2-4 px at the edges) while the hero / victim near the middle move well
+// under a pixel, so the victim crop stays still (experiment 1: a plain 2 px translation moved every crop by ~1.4 gray levels per frame, 0.6 px did nothing
+// for the whole-frame diff). Both start at zero displacement, so the contact frame itself does not jump.
+void AWHCombatDirector::HitShake(FRotator& R, double& Fov) const
+{
+	ShakeOutPx = ShakeOutPx2 = 0;
+	const double K = FMath::Clamp((ShakeUntil - RTime) * 30.0, 0.0, 1.0);
+	if (K <= 0.0 || HitShakePx <= 0.0) return;
+	const double T = RTime - ShakeStart;
+	// quadrature: the roll's speed is largest where the zoom's is smallest, so the per-frame motion at the frame edge stays ~constant over the whole hold
+	// (a plain sine has zero speed at its peak, which is where 5-frame holds dipped below a whole-frame diff of 1.0 in experiment 3)
+	const double Om = 2.0 * PI * HitShakeHz * T;
+	ShakeOutPx = HitShakePx * K * FMath::Sin(Om);                          // roll: edge displacement, px
+	ShakeOutPx2 = 0.5 * HitShakePx * K * (1.0 - FMath::Cos(Om));          // zoom: edge displacement, px (0 .. HitShakePx)
+	R.Roll += FMath::RadiansToDegrees(ShakeOutPx / 1000.0) * (ShakeAy >= 0 ? 1.0 : -1.0);
+	Fov = FMath::RadiansToDegrees(2.0 * FMath::Atan(FMath::Tan(FMath::DegreesToRadians(Fov * 0.5)) * (1.0 - ShakeOutPx2 / 960.0)));
+}
+
+// experiment runs (-WHCmbSweep=1): every blow gets the next (shake px, shake Hz, flare size) variant, logged as an event, so ONE movie shows how each
+// setting behaves in the victim-crop / whole-frame tests. Normal runs: no-op.
+void AWHCombatDirector::BlowVariant()
+{
+	if (!bShakeSweep) return;
+	static const double Px[] = { 0, 0, 3, 3 }, Hz[] = { 4, 4, 4, 4 }, Fk[] = { 1.0, 1.0, 1.0, 1.0 }, Hr[] = { 0, 2.5, 2.5, 4.0 };
+	const int32 V = ShakeSweepN++ % 4;
+	HitShakePx = Px[V]; HitShakeHz = Hz[V]; Fx.FlareK = Fk[V]; HoldRadius = Hr[V];
+	LogEvent(FString::Printf(TEXT("variant %d shake %.1f px %.1f Hz flareK %.2f holdR %.1f"), V, Px[V], Hz[V], Fk[V], Hr[V]));
 }
 
 // ------------------------------------------------------------------------------------------------ per frame
@@ -1095,12 +1167,13 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 	if (!Hero || !Me || !Hero->GetTraversal()) return;
 	const double Dt = FMath::Clamp(double(DeltaSeconds), 0.0, 0.1);
 	const double RDt = FMath::Clamp(double(GetWorld()->DeltaRealTimeSeconds), 0.0, 0.1);
-	bDtFrozen = bHitStop;   // the dilation applied to THIS tick's dt was set by the previous tick's UpdateTime
+	bDtFrozen = bHitStop;   // the hold applied to THIS tick was set by the previous tick's UpdateTime
+	const double HDt = bDtFrozen ? 0.0 : Dt;   // r03: the hero's own dt (0 while he is held; the rest of the world runs)
 	Time += Dt; RTime += RDt; ++Frame;
 	if (TimeScale < 0.999) { SlowmoGameT += Dt; SlowmoRealT += RDt; }
 	RunBeats();
 	// hero (spidey.js override): input -> moves -> body placed through the traversal component
-	Me->Override(Dt);
+	Me->Override(HDt);
 	PlayerFeet = Me->Pos - FVector(0, 0, HH);
 	if (bFight)
 	{
@@ -1110,10 +1183,10 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 			if (bEngaged) { DirectorStep(Dt); Reinforce(Dt); }
 		if (!N && Enemies.Num()) { ClearT += Dt; if (ClearT > 1.3 && (Me->IsFree() || ClearT > 3)) EndFight(true); } else ClearT = 0;
 	}
-	for (AWHEnemy* E : Enemies) if (E && (bEngaged || !E->Alive())) E->Update(Dt);
+	for (AWHEnemy* E : Enemies) if (E && (bEngaged || !E->Alive())) E->Update(E->bHeld ? 0.0 : Dt);
 	Separate();
-	for (AWHEnemy* E : Enemies) if (E) E->Late(Dt);
-	Me->Late(Dt);
+	for (AWHEnemy* E : Enemies) if (E) E->Late(E->bHeld ? 0.0 : Dt);
+	Me->Late(HDt);
 	if (PendingShot.IsValid() && Time >= PendingShotAt) { AWHEnemy* T = PendingShot.Get(); PendingShot = nullptr; if (T->Alive()) FireWeb(T); }
 	UpdateShots(Dt);
 	for (FLoose& L : Loose)
@@ -1143,9 +1216,9 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 	Fx.Update(Dt, RDt);
 	ComboT += Dt; if (ComboT > 3.2) ComboN = 0;
 	if (bHitStop) ++NFrozenFrames;
-	UpdateTime();
 	CombatCamera(RDt);
 	FrameRecord();
+	UpdateTime();   // (after the record: the record shows the hold / time scale that was applied to THIS frame)
 	// automation: telemetry row, stills, quit
 	TelemetryRows.Add(FString::Printf(TEXT("%lld,%.4f,%.4f,%.3f,%s,%.3f,%.3f,%.3f,%.0f,%.2f,%d,%.2f,%d,%s,%s,%.2f,%s"),
 		Frame, RTime, Time, TimeScale, *Me->MoveName().ToString(), Me->Pos.X, Me->Pos.Y, Me->Pos.Z, Me->Hp, Me->Focus, ComboN, SenseLvl,
@@ -1176,8 +1249,10 @@ void AWHCombatDirector::FrameRecord()
 	auto Box = [this](const USkeletalMeshComponent* M, double& X0, double& Y0, double& X1, double& Y1, double& Dist) -> bool
 	{ return ScreenBox(M, CamPosM, CamRotF, CamFovF, X0, Y0, X1, Y1, Dist); };
 	double X0, Y0, X1, Y1, D;
-	FString Row = FString::Printf(TEXT("{\"f\":%lld,\"rt\":%.4f,\"ts\":%.3f,\"frz\":%d,\"cine\":%.2f,\"cam\":[%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f],\"move\":\"%s\","),
-		Frame, RTime, TimeScale, bHitStop ? 1 : 0, CineK, CamPosM.X, CamPosM.Y, CamPosM.Z, CamRotF.Pitch, CamRotF.Yaw, CamRotF.Roll, CamFovF, *Me->MoveName().ToString());
+	// r03: frz = the hero was held (dt 0) in THIS frame; shk = the hit shake's screen offset in 1080p px (along yaw, pitch); each enemy row ends with
+	// [.., alive, visual yaw deg (actor yaw + hit twist), held in this frame]
+	FString Row = FString::Printf(TEXT("{\"f\":%lld,\"rt\":%.4f,\"ts\":%.3f,\"frz\":%d,\"shk\":[%.2f,%.2f],\"cine\":%.2f,\"cam\":[%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f],\"move\":\"%s\","),
+		Frame, RTime, TimeScale, bDtFrozen ? 1 : 0, ShakeOutPx, ShakeOutPx2, CineK, CamPosM.X, CamPosM.Y, CamPosM.Z, CamRotF.Pitch, CamRotF.Yaw, CamRotF.Roll, CamFovF, *Me->MoveName().ToString());
 	Box(Hero->GetMesh(), X0, Y0, X1, Y1, D);
 	Row += FString::Printf(TEXT("\"hero\":[%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f],\"e\":["), Me->Pos.X, Me->Pos.Y, Me->Pos.Z - HH, X0, Y0, X1, Y1, D);
 	bool bFirst = true;
@@ -1186,8 +1261,9 @@ void AWHCombatDirector::FrameRecord()
 		if (!E) continue;
 		const bool bOk = Box(E->Mesh, X0, Y0, X1, Y1, D);
 		const bool bWarn = E->WarnOn();
-		Row += FString::Printf(TEXT("%s[\"%s\",\"%s\",\"%s\",%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f,%d,%d]"), bFirst ? TEXT("") : TEXT(","), *E->Tag(), E->TypeName(), E->StateName(),
-			E->Pos.X, E->Pos.Y, E->Pos.Z, bOk ? X0 : -1.0, bOk ? Y0 : -1.0, bOk ? X1 : -1.0, bOk ? Y1 : -1.0, D, bWarn ? 1 : 0, E->Alive() ? 1 : 0);
+		Row += FString::Printf(TEXT("%s[\"%s\",\"%s\",\"%s\",%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f,%d,%d,%.1f,%d]"), bFirst ? TEXT("") : TEXT(","), *E->Tag(), E->TypeName(), E->StateName(),
+			E->Pos.X, E->Pos.Y, E->Pos.Z, bOk ? X0 : -1.0, bOk ? Y0 : -1.0, bOk ? X1 : -1.0, bOk ? Y1 : -1.0, D, bWarn ? 1 : 0, E->Alive() ? 1 : 0,
+			FMath::RadiansToDegrees(E->VisYaw()), E->bHeld ? 1 : 0);
 		bFirst = false;
 	}
 	Row += TEXT("]}");

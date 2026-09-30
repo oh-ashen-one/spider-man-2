@@ -298,17 +298,27 @@ FWHHitResult AWHEnemy::Hit(const FWHHitIn& H)
 	FaceYaw = FMath::Atan2(-H.Dir.Y, -H.Dir.X); bHasFace = true; // toward the attacker
 	const double Rel = AngWrap(FaceYaw - Yaw); // attacker bearing in his frame (UE: + = on his RIGHT)
 	const bool bDead = Hp <= 0;
-	if (State == EWHEnemyState::Webbed && H.Kind != "air") { Knock(H.Dir, 10, 3.4, true); R.bKnocked = true; return R; }
-	if (bArmored && !bDead) { Flinch = 1; FlinchDir = Rng.FRand() < 0.5 ? -1 : 1; Slide = FlatNorm(H.Dir) * 2.4; R.bArmored = true; return R; }
-	if (H.Kind == "slam") { Vel = FVector(H.Dir.X * 2, H.Dir.Y * 2, -18); Set(EWHEnemyState::Air); Juggle = 0; bFalling = false; R.bSlam = true; return R; }
-	if (State == EWHEnemyState::Air && H.Kind != "air") { Juggle = 0; Vel = FVector(H.Dir.X * 4, H.Dir.Y * 4, FMath::Min(Vel.Z, 1.0)); Flinch = 1; R.bAir = true; return R; }
-	if (State == EWHEnemyState::Air || H.Kind == "air") { AirHit(H); if (bDead) Juggle = FMath::Min(Juggle, 0.25); R.bAir = true; return R; }
-	if (H.Kind == "launch") { Launch(H.Dir); R.bLaunched = true; return R; }
-	if (H.Kind == "finisher") { Hp = 0; Knock(H.Dir, 8, 4.5, true); R.bKnocked = true; return R; }
-	if (bDead || H.Kind == "ender" || H.Kind == "strike" || H.Kind == "throw")
+	// r03: every blow twists the victim about the vertical axis (>= 30 deg within 0.3 s); the side follows the blow's side, else a seeded coin flip
+	const int32 TwSide = H.Side != 0 ? (H.Side > 0 ? 1 : -1) : (Rng.FRand() < 0.5 ? -1 : 1);
+	if (State == EWHEnemyState::Webbed && H.Kind != "air") { Knock(H.Dir, 10, 3.4, true); StartTwist(1.0, TwSide); R.bKnocked = true; return R; }
+	if (bArmored && !bDead) { Flinch = 1; FlinchDir = Rng.FRand() < 0.5 ? -1 : 1; Slide = FlatNorm(H.Dir) * 6.2; StartTwist(0.66, TwSide); R.bArmored = true; return R; }
+	if (H.Kind == "slam") { Vel = FVector(H.Dir.X * 2, H.Dir.Y * 2, -18); Set(EWHEnemyState::Air); Juggle = 0; bFalling = false; StartTwist(0.9, TwSide); R.bSlam = true; return R; }
+	if (State == EWHEnemyState::Air && H.Kind != "air")
 	{
-		const double F = H.Kind == "throw" ? 8 : H.Kind == "strike" ? 7.5 : bDead ? 7 : 6.5;
-		Knock(H.Dir, F, H.Kind == "throw" ? 4.5 : 3.8); R.bKnocked = true; return R;
+		if (H.Kind == "ender" || H.Kind == "strike" || H.Kind == "throw")
+		{ // r03: the ender of an air combo throws him away like a grounded heavy blow (>= 2 m)
+			const double F = H.Kind == "ender" ? 8.0 : 9.0;
+			Knock(H.Dir, F, 3.4); StartTwist(1.15, TwSide); R.bKnocked = true; return R;
+		}
+		Juggle = 0; Vel = FVector(H.Dir.X * 4, H.Dir.Y * 4, FMath::Min(Vel.Z, 1.0)); Flinch = 1; StartTwist(0.9, TwSide); R.bAir = true; return R;
+	}
+	if (State == EWHEnemyState::Air || H.Kind == "air") { AirHit(H); StartTwist(0.9, TwSide); if (bDead) Juggle = FMath::Min(Juggle, 0.25); R.bAir = true; return R; }
+	if (H.Kind == "launch") { Launch(H.Dir); StartTwist(1.1, TwSide); R.bLaunched = true; return R; }
+	if (H.Kind == "finisher") { Hp = 0; Knock(H.Dir, 9.5, 4.8, true); StartTwist(1.25, TwSide); R.bKnocked = true; return R; }
+	if (bDead || H.Kind == "ender" || H.Kind == "strike" || H.Kind == "throw")
+	{ // r03: heavy blows throw the victim >= 2 m (ender 8 m/s + 4.2 up: ~2.9 m of flight + the slide)
+		const double F = H.Kind == "throw" ? 9 : H.Kind == "strike" ? 9 : bDead ? 8.5 : 8;
+		Knock(H.Dir, F, H.Kind == "throw" ? 4.8 : 4.2); StartTwist(1.15, TwSide); R.bKnocked = true; return R;
 	}
 	// light hit: directional stumble (root motion carries him with his feet). Browser rel + = his left -> UE sign flipped.
 	FName S = "back";
@@ -318,11 +328,12 @@ FWHHitResult AWHEnemy::Hit(const FWHHitIn& H)
 	LastStumble = S;
 	Set(EWHEnemyState::Stagger); TurnRate = FMath::Abs(Rel) > 2.3 ? 14 : 5;
 	const double Ts = 1.15 + Rng.FRand() * 0.15;
-	// r02: the flinch is already in the contact frame (clip entered at 0.1 s with a 0.02 s fade + procedural head / torso snap),
-	// then the hit-stop holds it and the victim is pushed ~0.4 m along the blow
-	Play(S == "back" ? FName("thugStumbleBack") : S == "left" ? FName("thugStumbleLeft") : FName("thugStumbleRight"), 0.02, Ts, 1, 0.1);
+	// r02: the flinch is already in the contact frame (clip entered at 0.1 s, r03: with NO fade + procedural head / torso snap + a body twist),
+	// then the local hit-stop holds it and the victim is pushed >= 0.5 m along the blow
+	Play(S == "back" ? FName("thugStumbleBack") : S == "left" ? FName("thugStumbleLeft") : FName("thugStumbleRight"), 0.0, Ts, 1, 0.1);
 	Flinch = 1; FlinchDir = S == "left" ? -1 : S == "right" ? 1 : (Rng.FRand() < 0.5 ? -1 : 1);
-	Slide = FlatNorm(H.Dir) * 2.6;
+	// r03: 6.5 m/s decaying at exp(-6 t): 0.75 m in the 0.22 s that follow the 5-frame hold (>= 0.5 m within 0.3 s), 1.1 m in all
+	Slide = FlatNorm(H.Dir) * 6.5; StartTwist(0.85, TwSide);
 	StagT = (S == "back" ? 0.7 : 0.6) / Ts - 0.06;
 	C->OnEnemyInterrupted(this);
 	R.bStagger = true;
@@ -348,7 +359,7 @@ void AWHEnemy::Launch(const FVector& D)
 void AWHEnemy::AirHit(const FWHHitIn& H)
 {
 	Set(EWHEnemyState::Air); Juggle = 1.2; bFalling = false;
-	Vel = FVector(H.Dir.X * 0.8, H.Dir.Y * 0.8, FMath::Max(Vel.Z, 1.4));
+	Vel = FVector(H.Dir.X * 3.0, H.Dir.Y * 3.0, FMath::Max(Vel.Z, 3.0));   // r03: every juggle hit shoves him >= 0.5 m within 0.3 s (r02: 0.8 m/s)
 	Play("thugStumbleBack", 0.05, 1.3, 1);
 	Flinch = 1;
 }
@@ -419,7 +430,7 @@ void AWHEnemy::Update(double Dt)
 {
 	AWHCombatDirector* C = Dir.Get(); if (!C) return;
 	const FVector P = C->PlayerFeet;
-	St += Dt; Cd -= Dt; Stun -= Dt;
+	St += Dt; Cd -= Dt; Stun -= Dt; TwistT += Dt;
 	Flinch = FMath::Max(0.0, Flinch - Dt * 5);
 	if (Slide.SizeSquared() > 1e-4 && State != EWHEnemyState::Air && State != EWHEnemyState::Knock && State != EWHEnemyState::Yanked && Stuck == 0)
 	{ MoveXZ(Slide.X * Dt, Slide.Y * Dt); Slide *= FMath::Exp(-6.0 * Dt); }
@@ -640,8 +651,16 @@ void AWHEnemy::SyncActor()
 	// air / knock tumble about the pelvis (0.95 m): the mesh pitches back around a pivot, the actor stays upright
 	const double Piv = 95.0;
 	const FQuat Tilt = FQuat::FindBetweenNormals(FVector::UpVector, FVector(-FMath::Sin(-Pitch), 0, FMath::Cos(Pitch)).GetSafeNormal());
-	Mesh->SetRelativeRotation(Tilt * MeshCorr);
-	Mesh->SetRelativeLocation(FVector(0, 0, Piv) - Tilt.RotateVector(FVector(0, 0, Piv)));
+	double Tw = 0;
+	if (TwistT < 0.62 && TwistAmp != 0.0)
+	{ // r03 hit twist: 72 % of the amplitude in the contact frame, peak at 0.09 s, gone by 0.6 s
+		const double P = TwistT < 0.09 ? Lerp(0.72, 1.0, Smooth(TwistT / 0.09)) : 1.0 - Smooth((TwistT - 0.09) / 0.51);
+		Tw = TwistAmp * P;
+	}
+	TwistNow = Tw;
+	const FQuat Comb = FQuat(FVector::UpVector, Tw) * Tilt;
+	Mesh->SetRelativeRotation(Comb * MeshCorr);
+	Mesh->SetRelativeLocation(FVector(0, 0, Piv) - Comb.RotateVector(FVector(0, 0, Piv)));
 	SetActorLocationAndRotation(Pos * 100.0, FRotator(0, FMath::RadiansToDegrees(Yaw), 0), false, nullptr, ETeleportType::TeleportPhysics);
 }
 

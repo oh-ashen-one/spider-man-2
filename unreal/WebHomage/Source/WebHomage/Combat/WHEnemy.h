@@ -110,6 +110,20 @@ public:
 	bool bMoving = false;
 	int32 HitsTaken = 0;
 	FVector Slide = FVector::ZeroVector;   // r02: hit push (m/s, decays): every light hit moves the victim >= 0.3 m
+	// r03 local hit-stop: while HoldUntil (director real time) is in the future the director passes this enemy dt = 0 (pose, clip, slide, twist all
+	// held) and the rest of the world keeps running. bHeld = the value the director applied to THIS tick (set at the end of the previous tick).
+	double HoldUntil = -1; bool bHeld = false;
+	// r03 hit twist: the whole body yaws about the vertical axis through the pelvis on every blow (rad, signed): 72 % of TwistAmp in the contact
+	// frame, peak at 0.09 s, back to 0 by 0.6 s. Visual only (the actor yaw / hit box are untouched).
+	double TwistAmp = 0, TwistT = 9, TwistNow = 0;
+	/** start a twist. A blow that lands while a twist is still > 10 deg reverses it (so the change from the pre-blow pose is always >= 30 deg). */
+	void StartTwist(double AmpRad, int32 Sign)
+	{
+		if (FMath::Abs(TwistNow) > 0.17) Sign = TwistNow > 0 ? -1 : 1;
+		TwistAmp = AmpRad * Sign; TwistT = 0;
+	}
+	/** total visual yaw (rad) = actor yaw + twist */
+	double VisYaw() const { return Yaw + TwistNow; }
 	/** r02: attack warning visible (melee / brute wind-up until the blow, gun aim + burst). */
 	bool WarnOn() const;
 

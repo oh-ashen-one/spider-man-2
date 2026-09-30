@@ -15,6 +15,8 @@ G=/Users/midir/sm2-n1/_scratch/gpu/bin
 MAP=/Game/Tests/Combat/Combat_Street
 mkdir -p "$OUT"; OUT="$(cd "$OUT" && pwd)"; SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
 LOOK="${WHCMB_LOOK:-}"; LOOKARG=(); [ -n "$LOOK" ] && LOOKARG=(-WHCmbLook="$LOOK")
+# r03: WHCMB_EXTRA = extra director flags (e.g. "-WHCmbSweep=1 -WHCmbShakePx=3 -WHCmbFlareK=1.2"), word-split on purpose
+if [ -n "${WHCMB_EXTRA:-}" ]; then read -r -a XARG <<< "$WHCMB_EXTRA"; LOOKARG+=("${XARG[@]}"); fi
 QUIT=$(python3 -c "import json;print(json.load(open('$SCRIPT')).get('quit',30))")
 if pgrep -f "$UPROJECT" >/dev/null; then echo "an Unreal process of this worktree is running"; exit 2; fi
 # (r02: no own instance-count wait: gpu_slot.sh enforces the auto-tuned cap and queues FIFO)

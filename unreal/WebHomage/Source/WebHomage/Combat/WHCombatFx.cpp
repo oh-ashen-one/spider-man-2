@@ -18,6 +18,8 @@ void FWHCombatFx::Init(AActor* InOwner)
 	MGlow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFX.M_CmbFX"));
 	MTrans = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbTrans.M_CmbTrans"));
 	MSolid = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbSolid.M_CmbSolid"));
+	MFlare = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFlare.M_CmbFlare"));
+	if (!MFlare) MFlare = MGlow;   // (the map script builds M_CmbFlare; without it the flare falls back to the plain additive glow)
 }
 
 FWHFxItem& FWHCombatFx::Alloc(EWHFxMat Mat, UStaticMesh* Mesh)
@@ -36,7 +38,7 @@ FWHFxItem& FWHCombatFx::Alloc(EWHFxMat Mat, UStaticMesh* Mesh)
 		It.Comp->SetUsingAbsoluteLocation(true); It.Comp->SetUsingAbsoluteRotation(true); It.Comp->SetUsingAbsoluteScale(true);
 		It.Comp->SetupAttachment(O->GetRootComponent());
 		It.Comp->RegisterComponent();
-		UMaterialInterface* Base = Mat == EWHFxMat::Glow ? MGlow : Mat == EWHFxMat::Trans ? MTrans : MSolid;
+		UMaterialInterface* Base = Mat == EWHFxMat::Glow ? MGlow : Mat == EWHFxMat::Trans ? MTrans : Mat == EWHFxMat::Flare ? MFlare : MSolid;
 		if (Base) { It.Mid = UMaterialInstanceDynamic::Create(Base, O); It.Comp->SetMaterial(0, It.Mid); }
 		It.Mat = Mat;
 		Idx = Items.Add(It);
@@ -107,11 +109,10 @@ int32 FWHCombatFx::LiveCount() const
 
 void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
 {
-	// r02: a small additive spark burst (critic r01: the opaque white disc covered the contact). Real-time life of 6 frames at 60 fps:
-	// static for the first 4 (the hit-stop freeze), then the streaks fly out and everything is gone by frame 6. Core <= ~0.2 m.
+	// A spark burst: a small additive core + radial streaks. HoldFrames > 0 keeps everything static for that many frames (the local hit-stop),
+	// then the streaks fly out and fade in ~2.3 frames (r03: everything is gone 8 frames after the contact for a 5-frame hold).
 	const FLinearColor C = Color ? *Color * 0.8f : FLinearColor(4.0f, 2.8f, 1.3f);
-	// static for the whole hit-stop (the spawn tick + HoldFrames frozen ticks + 0.5), then they fly for ~4 more frames
-	const double Hold = (HoldFrames + 1.5) / 60.0, Life = Hold + 0.07;
+	const double Hold = HoldFrames > 0 ? (HoldFrames + 1.25) / 60.0 : 0.0, Life = Hold + (HoldFrames > 0 ? 2.3 / 60.0 : 0.09);
 	{
 		FWHFxItem& F = Alloc(EWHFxMat::Glow, Sphere);
 		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
@@ -119,19 +120,47 @@ void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const 
 		F.Color = C; F.Op0 = 0.9; F.Op1 = 0.0;
 		Place(F, 0);
 	}
-	const int32 N = 6 + int32(6 * Heavy);
+	const int32 N = 8 + int32(8 * Heavy);
 	const FVector D = Dir.GetSafeNormal();
 	for (int32 i = 0; i < N; ++i)
 	{
 		FWHFxItem& S = Alloc(EWHFxMat::Glow, Cyl);
 		const FVector R = (D * 0.9 + Rng.GetUnitVector()).GetSafeNormal();
-		const double Len = Rng.FRandRange(0.1, 0.22 + 0.12 * Heavy);
+		const double Len = Rng.FRandRange(0.16, 0.30 + 0.16 * Heavy) * (HoldFrames > 0 ? 1.5 : 1.0);   // r03: r02's 2-px ticks read as nothing at 5 m
 		S.bReal = true; S.Hold = Hold; S.Life = Life;
-		S.Dir = R; S.Pos = P + R * (0.06 + Len * 0.5); S.Vel = R * Rng.FRandRange(4.0, 7.0); S.Drag = 4.0;
-		S.Size0 = FVector(0.012 + 0.006 * Heavy, 0.012 + 0.006 * Heavy, Len); S.Size1 = FVector(0.004, 0.004, Len * 0.6);
+		S.Dir = R; S.Pos = P + R * (0.08 + Len * 0.5); S.Vel = R * Rng.FRandRange(5.0, 9.0); S.Drag = 3.0;
+		S.Size0 = FVector(0.02 + 0.012 * Heavy, 0.02 + 0.012 * Heavy, Len); S.Size1 = FVector(0.006, 0.006, Len * 0.6);
 		S.Color = FLinearColor(C.R * 1.1f, C.G, C.B * 0.7f); S.Op0 = 1.0; S.Op1 = 0.0;
 		Place(S, 0);
 	}
+}
+
+void FWHCombatFx::Impact(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
+{
+	Hit(P, Dir, Heavy, Color, HoldFrames);
+	// r03 flare: radius from the camera distance so the disc covers ~FlareFrac of the frame (area = pi r^2, frame = W x 9/16 W, W = 2 d tan(fov/2)).
+	const double Dist = bCam ? FMath::Max(1.5, FVector::Dist(CamP, P)) : 5.5;
+	const double Wd = 2.0 * Dist * FMath::Tan(FMath::DegreesToRadians(CamFovH * 0.5));
+	const double Frac = FlareFrac * (1.0 + 0.25 * Heavy) * FlareK;
+	const double R = FMath::Sqrt(Frac * Wd * Wd * (9.0 / 16.0) / PI);
+	const double Hold = (HoldFrames + 1.25) / 60.0, Life = Hold + 2.3 / 60.0;
+	const FLinearColor Base = Color ? *Color : FLinearColor(1, 1, 1);
+	const bool bTint = Color != nullptr && Color->R + Color->G + Color->B > 8.0f && Color->B > 3.0f;   // armoured (white) blow: cooler flare
+	{ // halo: red-orange
+		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = F.Size1 = FVector(R * 2.0);   // the sphere mesh is 1 m in diameter at scale 1
+		F.Color = bTint ? FLinearColor(0.9f, 0.75f, 0.6f) : FLinearColor(1.0f, 0.085f, 0.008f); F.Op0 = FlareI; F.Op1 = 0.0;
+		Place(F, 0);
+	}
+	{ // core: hot orange-yellow
+		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = F.Size1 = FVector(R * 0.85);
+		F.Color = FLinearColor(1.8f, 0.45f, 0.04f); F.Op0 = FlareI; F.Op1 = 0.0;
+		Place(F, 0);
+	}
+	(void)Base;
 }
 
 void FWHCombatFx::Dust(const FVector& P, double Amount)

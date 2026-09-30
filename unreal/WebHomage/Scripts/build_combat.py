@@ -204,6 +204,29 @@ def build_in_unreal():
     MEL.connect_material_property(m2, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(fx)
 
+    # ---- M_CmbFlare (r03): the blow flare. Unlit additive, single-sided; a radial glow on a sphere: 1 - Fresnel(exponent 0.4, base 0) is ~1 at the
+    # centre and falls to 0 at the rim (so the disc has no hard edge and no doubled back face). Color (HDR) x Opacity x falloff.
+    fl = new_material('M_CmbFlare')
+    fl.set_editor_property('blend_mode', unreal.BlendMode.BLEND_ADDITIVE)
+    fl.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    fl.set_editor_property('two_sided', False)
+    try: fl.set_editor_property('disable_depth_test', True)   # a screen-space style flare: the same disc in front of or behind the bodies
+    except Exception as ex: log('M_CmbFlare: disable_depth_test not settable (%s)' % ex)
+    c = vparam(fl, 'Color', (2.0, 0.34, 0.05, 1), -700, 0); o = sparam(fl, 'Opacity', 1.0, -700, 200)
+    fres = MEL.create_material_expression(fl, unreal.MaterialExpressionFresnel, -700, 350)
+    try:
+        fres.set_editor_property('exponent', 0.4); fres.set_editor_property('base_reflect_fraction', 0.0)
+    except Exception as ex:
+        log('M_CmbFlare: fresnel exponent not settable (%s): the flare falls off like M_CmbFX' % ex)
+    inv = MEL.create_material_expression(fl, unreal.MaterialExpressionOneMinus, -500, 350)
+    MEL.connect_material_expressions(fres, '', inv, '')
+    m1 = MEL.create_material_expression(fl, unreal.MaterialExpressionMultiply, -400, 100)
+    MEL.connect_material_expressions(c, '', m1, 'A'); MEL.connect_material_expressions(o, '', m1, 'B')
+    m2 = MEL.create_material_expression(fl, unreal.MaterialExpressionMultiply, -250, 200)
+    MEL.connect_material_expressions(m1, '', m2, 'A'); MEL.connect_material_expressions(inv, '', m2, 'B')
+    MEL.connect_material_property(m2, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(fl)
+
     # ---- M_CmbTrans: lit translucent (web cocoons / splats, dust puffs). Color, Opacity, Emissive.
     tr = new_material('M_CmbTrans')
     tr.set_editor_property('blend_mode', unreal.BlendMode.BLEND_TRANSLUCENT)
