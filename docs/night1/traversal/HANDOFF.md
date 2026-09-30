@@ -232,6 +232,35 @@ Round 06 sub names: air `topOut` (wall-run reached the top), land `landTopOut` (
     geometry (a street-tree canopy at a swing bottom, or a facade at a zip arrival) the view is HELD; it used to hold the absolute position, so the
     camera froze while the hero flew on at 43 m/s (rendered f4 8.75-9.17 s: 20 m away; a 11.43-11.58 s). It now moves with the hero (same offset, same
     rotation; members `LastComposeHero`, `bHaveComposeHero`). Trees are visual-only for the hero's physics, so he still swings THROUGH canopies.
+- **Round 14 — side-on trick camera + eased rotation (critic r13 single gap: "the flip camera looks up from under the hero, so the rotation
+  does not read and the camera stays tilted up into the next swing"; secondary 1: ease the rotation, hold every shape >= 0.3 s):**
+  - *Side-on flip view* (`FWebTravCamera::SearchSkyView`): candidates only at yaw `FlipSideMin..FlipSideMax` 70-115 deg off the travel-behind
+    direction (either side, then LOCKED to that side for the whole trick: no swing across behind him), elevations `FlipMinElev..FlipElevMax`
+    4-28 deg below the hero (was 30-60), preference `FlipPrefYaw` 85; a spot must be sweep-reachable, have `FlipWallMargin` 1.5 m free beyond it
+    and a clear path `FlipAheadT` 0.5 s along the travel (rendered f4 2.55-2.85 s before this: side spot against a facade cornice, the wall
+    push shoved the camera over the hero, hero out of frame 0.3 s). Blend in `FlipInT` 0.25 s, out `FlipOutT` 0.18 s (was 0.3 / 0.45), aim
+    spring `FlipAimT` 0.3 s. Flip look-up capped at `FlipPitchUpMax` 27 deg; every non-wall view capped at `MaxLookUpDeg` 29 (also after the
+    output slew re-aim).
+  - *Settle band after every attach* (`SettleDownMin..Max` 5.5-11.5 deg DOWN, blended in over `SettleT0..T1` 0.25-0.5 s of `SwingT`, widened
+    only as far as needed to keep the hero inside 0.18-0.82 of the frame height; wall camera excluded). r13 f4 medians 0.5-1.0 s after the
+    attaches were 1-9 deg UP (attach look-up beat + arc-bottom framing).
+  - *Hero inside geometry* (street-tree canopy at a swing bottom): the camera no longer holds (r13 kept offset + rotation: probe f3 hero slid to
+    0.90 of the frame, 28 deg down for 0.8 s); it composes normally without collision sweeps (`bNoSweep`). The camera then sits in foliage for
+    those frames (f3 ~0.7 s) -- trees are still the open issue (§6).
+  - *Eased rotation* (`WebTravFlips`): `FWebFlipSeg::EaseIn / EaseOut` raise a segment's inertia toward its ends (x (1 + e), smoothstep over 45 %
+    of the segment), so the rate is lowest going into and out of a tuck / pike and highest mid-tuck. Programs: backDouble Tuck 1.20 s (ease
+    .85 / .8, peak ~766 deg/s program) + Kickout 0.60 s (inertia 5.5 -> 10.5: <= ~100 deg/s), catch 1.60 s after the release (r13 1.50);
+    frontPikeSwan Pike .40 (1.3 / .3) + Swan .55 + Tuck .38 (1.2 / .7) + Reach .26 = 1.59 s (Pencil dropped: critic r13 "5 shapes in 1.7 s");
+    corkscrew Layout .31 + Twist .42 + Swan .36 + Tuck .34 (1.2 / .7) + Reach .24 = 1.67 s; backSingle Tuck .32 / Pencil .36 / Tuck .32 / Reach .24.
+    Offline model: `_scratch/traversal/r14/flipsim14.py` (same table integration as the C++).
+  - *Shape axis compensation* (`WebFlips::ShapeAxisDeg`, `FWebFlipPose::AxisOffDeg`, character `PoseFigure`): each keyed shape leans the
+    hips->head axis off the body frame (measured on the probe: Tuck +20, Pike +22, Swan -15, Kickout -6, Reach +3 deg, + = head forward); the root
+    pitch subtracts the blended lean (ramped in over the first 0.15 s), so the VISIBLE axis turns at the eased program rate (r13: a swan -> tuck
+    change curled the axis ~55 deg in 0.17 s on top of the program; tuck entries ran ~460 deg/s and pikeSwan peaked 1045-1090 rendered).
+  - *autoChain*: a swing that ends in a flip is let go at 0.92-1.06 s (was 1.05-1.2) even before it rises (T2 kept <= ~2.6 s with the longer
+    backDouble). Scripts: f4 now runs NORTH from y 375 (r13 ran south and its 4th flip left the traversal world's south edge at y ~515: hero
+    pinned on the corridor clamp, camera hold), capture 11.6 s = 4 flips + 1 s after the 4th catch; b fires the zip from the program's final
+    Reach at 2.88 s (the zip target is on screen in the side view; r13 dropped at 3.05 and zipped at 3.08 after the program).
 - Other: terrain boxes are always a floor (thin ground slab bug); swing anchor lean is horizontal only.
 
 ## 4. Commands
@@ -403,7 +432,8 @@ finder), `freeze_scan.py` (camera not moving while the hero is), `checks.sh`, `s
 | r10 | 6/6/6/5/5, flips 4 — FAILS TARGET | Flips: two 180 deg flips in 0.2 s each (~900 deg/s), no shape held > 0.3 s, seen foreshortened from behind; build each web-less trick as 180 deg in <= 0.35 s, one extended shape held >= 0.6 s at <= 150 deg/s, <= 0.4 s ease into the next attach; side-on, hero >= 0.20 of frame height against sky | r11 flips (owner brief = same gap): shape programs, momentum easing, flip camera |
 | r11 | 6/6/7/6/6, flips 6 — FAILS TARGET (lost 4 of 5 owner pairs) | Release tricks low in the canyon, facade / billboard behind the hero: ring sky p50 f1 .16 f2 .26 f3 .28 f4 .05; start every release trick from an apex >= 3 m over the tallest roof within 30 m, camera biased so the sky is behind him; test >= 70 % of trick frames >= 50 % sky ring with hero >= .15. Secondary: backDouble <= 2 shapes held >= 0.5 s; green lens ghosts (P4); T2/T8/T10/T11/T18 | r12 apex sky launch over the tallest roof, armed program at the top of the climb, sky-searching flip camera, backDouble tuck/layout |
 | r12 | 5/5/6/7/6, flips 6 — FAILS TARGET (lost 5/5 owner pairs "on flow") | Tricks are isolated set pieces: 1.7 s rise, trick, 1.3 s web-less dive, one-frame camera cut (f4 8.58 s, f1 6.30 s); start the first shape <= .25 s after release, attach <= .3 s after Reach, blend the trick camera back >= .4 s; test T4 <= 3.1 s, T2 <= 3.3 s, per frame pitch <= 3 / yaw <= 4 deg / pos <= 1.2 m. Secondary: backDouble <= 3 shapes, throne >= .3 s, Reach bbox <= .38, hero black against backlight, billboards | r13 flow flips from the release, catch window in the reach, 2-shape backDouble + keyed Kickout / Layout, no camera cut + slew limit, hero fill light (probe-verified only) |
-| r13 | not judged yet -- pack `_scratch/critic-P3-r13/pack` built (6 pairs: multi-flip, pencil-throne, layout-catch, chain-flips, wallrun-flip vs owner-clip cuts + r12-vs-r13 progress) | expected: sky ring 63 % (r11 test), backDouble Kickout hold 0.22 s, pikeSwan peak > 800 deg/s, foliage occlusion at swing bottoms | r13 rendered: flow flips (release 0.00 s, attach <= +0.27 s), camera hold fix 3b6765f, f3 / b scripts |
+| r13 | 6/5/6/7/6, flips 6 -- FAILS TARGET (lowest: camera 5; lost all 5 owner pairs) | The flip camera looks up from under the hero (pitch p5 51-56 deg up, still 53 up after the f4 8.2 s attach): rotation does not read; orbit side-on >= 60 deg from the somersault axis, pitch <= 30 up, back to 4-12 down within 0.5 s of the attach; test on f4: pitch never > 30 up, median pitch 0.5-1.0 s after each attach 4-12 down, tuck axis >= 300 deg on screen. Secondary: ease the rotation (ends >= 30 % slower), every shape >= 0.3 s, asymmetric 90 deg arm shapes (swan / layout read as a mannequin), T8 / T10 / T3, vary rope and gap lengths +-25 %; brand: chest emblem copies the real game's (P2) | r14 side-on trick camera + settle band, eased programs + shape-axis compensation, clearance-checked side spots |
+| r14 | not judged yet -- pack `_scratch/critic-P3-r14/pack` (same 5 owner-clip pairs + r13-vs-r14 f1 progress pair) | expected: sky ring low (f-series 26 %, side-on <= 30 deg up sees facades in canyons), swan / layout arms still symmetric, camera in foliage f3 ~0.7 s | -- |
 
 Round folders `docs/night1/traversal/round-0N/` hold videos, stills, telemetry, SHOTLIST, CRITIC and the check outputs.
 
