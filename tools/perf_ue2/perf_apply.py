@@ -1,0 +1,111 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See DISCLAIMER.md.
+# Piece F: perf transformations of the LOCAL, script-generated city content (never committed; /Content stays out of git). Idempotent.
+# Run in a headless commandlet of THIS worktree, editor and game closed (use tools/perf_ue2/perf_content.sh, which backs the touched files up):
+#   "<UnrealEditor>" <uproject> -run=pythonscript -script=<abs>/tools/perf_ue2/perf_apply.py -unattended -nullrhi -RenderOffScreen -NoSound
+# env SM2_PERF_APPLY = comma list of steps (default: none). Each step is one measured hypothesis (docs/night1/perf/round-01/):
+#   static        City/Props + City/Far instanced components Movable -> Static. Movable HISMs put every instance in the GPU-scene
+#                 "dynamic" set (SceneCulling/NumDynamicInstances 55 644 vs 450 static) and in the VSM dynamic layer: culled / invalidated every frame.
+#   far_rt        hinterland (City/Far, 28 965 instances, 5-30 km out): out of the ray-tracing scene + Lumen scene + distance-field lighting
+#   far_plain     hinterland mesh Nanite off (10 triangles per box: Nanite instance culling of 29k instances costs more than it saves)
+#   kit_plain     City/streetkit + City/detail tiles Nanite off (masked + two-sided => Nanite programmable raster; ~5 k triangles per tile)
+#   tree_lumen    trees (City/Props leaves + bark) out of the Lumen scene / DF lighting (no tree bounce / reflection; keeps direct shadows)
+#   tree_rt       trees out of the ray-tracing scene
+#   props_far_cull  City/Props components get a max draw distance of SM2_PERF_DRAWDIST cm (default 250000 = 2.5 km)
+#   rt_lite       (round 02) City/Far (hinterland), City/Props (trees) and City/far (far ground) out of the hardware ray-tracing scene only
+#                 (visible_in_ray_tracing = False; nothing else changes). Makes hardware-RT Lumen reflections cost ~+1.9 ms instead of ~+4.1 ms.
+#   cloud         (round 02) VolumetricCloud TracingMaxDistance = SM2_PERF_CLOUD_KM km (default 4) in the look rigs SM2_PERF_RIGS (default golden,midday,night):
+#                 /Game/Look/Rigs/Look_Rig_<rig>. The cost is min(TracingMaxDistance, DistanceToSampleMaxCount = 15 km) / 15 km of the full ray-march.
+# `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
+import unreal, json, os, time
+
+STEPS = set(x for x in os.environ.get('SM2_PERF_APPLY', '').split(',') if x)
+if 'all' in STEPS: STEPS |= {'static', 'far_rt', 'far_plain', 'kit_plain'}
+CLOUD_KM = float(os.environ.get('SM2_PERF_CLOUD_KM', '4'))
+RIGS = [x for x in os.environ.get('SM2_PERF_RIGS', 'golden,midday,night').split(',') if x]
+LOG = os.environ.get('SM2_PERF_APPLY_LOG', '/Users/midir/sm2-n1/_scratch/perf/apply.json')
+GEO = os.environ.get('SM2_PERF_GEO', '/Game/Tests/City/City_Midtown_Geo')
+DRAW = float(os.environ.get('SM2_PERF_DRAWDIST', '250000'))
+EAL = unreal.EditorAssetLibrary
+eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+rep = {'steps': sorted(STEPS), 'geo': GEO, 'changed': {}}
+t0 = time.time()
+unreal.EditorLoadingAndSavingUtils.load_map(GEO)
+
+
+def comps(*folders):
+    for a in eas.get_all_level_actors():
+        f = str(a.get_folder_path())
+        if f in folders:
+            for c in a.get_components_by_class(unreal.PrimitiveComponent):
+                if isinstance(c, (unreal.StaticMeshComponent,)): yield a, c
+
+
+def bump(k, n=1): rep['changed'][k] = rep['changed'].get(k, 0) + n
+
+
+def nanite_off(sm, key):
+    ns = sm.get_editor_property('nanite_settings')
+    if ns.enabled:
+        ns.enabled = False; sm.set_editor_property('nanite_settings', ns)
+        EAL.save_asset(sm.get_path_name()); bump(key)
+
+
+def prop(c, name, v, key):
+    try:
+        if c.get_editor_property(name) != v: c.set_editor_property(name, v); bump(key)
+    except Exception as e:
+        rep.setdefault('errors', []).append('%s.%s: %s' % (c.get_class().get_name(), name, str(e)[:100]))
+
+
+if 'static' in STEPS:
+    for a, c in comps('City/Props', 'City/Far'):
+        if str(c.get_editor_property('mobility')).split('.')[-1].split(':')[0] != 'STATIC':
+            c.set_mobility(unreal.ComponentMobility.STATIC); bump('static')
+if 'far_rt' in STEPS:
+    for a, c in comps('City/Far'):
+        prop(c, 'visible_in_ray_tracing', False, 'far_rt_visible_in_ray_tracing')
+        prop(c, 'affect_dynamic_indirect_lighting', False, 'far_rt_lumen')
+        prop(c, 'affect_distance_field_lighting', False, 'far_rt_df')
+        prop(c, 'cast_shadow', False, 'far_rt_cast_shadow')
+if 'far_plain' in STEPS:
+    for a, c in comps('City/Far'):
+        sm = c.get_editor_property('static_mesh')
+        if sm: nanite_off(sm, 'far_plain_mesh')
+if 'kit_plain' in STEPS:
+    for a, c in comps('City/streetkit', 'City/detail'):
+        sm = c.get_editor_property('static_mesh')
+        if sm: nanite_off(sm, 'kit_plain_mesh')
+if 'tree_lumen' in STEPS:
+    for a, c in comps('City/Props'):
+        sm = c.get_editor_property('static_mesh')
+        if sm and ('_leaves' in sm.get_name() or '_bark' in sm.get_name() or 'trees_' in sm.get_name()):
+            prop(c, 'affect_dynamic_indirect_lighting', False, 'tree_lumen'); prop(c, 'affect_distance_field_lighting', False, 'tree_df')
+if 'tree_rt' in STEPS:
+    for a, c in comps('City/Props'):
+        sm = c.get_editor_property('static_mesh')
+        if sm and ('_leaves' in sm.get_name() or '_bark' in sm.get_name() or 'trees_' in sm.get_name()):
+            prop(c, 'visible_in_ray_tracing', False, 'tree_rt')
+if 'props_far_cull' in STEPS:
+    for a, c in comps('City/Props'):
+        prop(c, 'ld_max_draw_distance', DRAW, 'props_far_cull')
+if 'rt_lite' in STEPS:
+    for a, c in comps('City/Far', 'City/Props', 'City/far'):
+        prop(c, 'visible_in_ray_tracing', False, 'rt_lite')
+
+ok = les.save_current_level()
+if 'cloud' in STEPS:  # the rigs are separate levels: load, change, save each (the geometry level above is already saved)
+    for rig in RIGS:
+        path = '/Game/Look/Rigs/Look_Rig_' + rig
+        if not EAL.does_asset_exist(path): rep.setdefault('errors', []).append('rig missing ' + path); continue
+        unreal.EditorLoadingAndSavingUtils.load_map(path)
+        for a in eas.get_all_level_actors():
+            if isinstance(a, unreal.VolumetricCloud):
+                vc = a.get_component_by_class(unreal.VolumetricCloudComponent)
+                rep['changed']['cloud_' + rig + '_old_km'] = float(vc.get_editor_property('tracing_max_distance'))
+                vc.set_editor_property('tracing_max_distance', CLOUD_KM); bump('cloud_' + rig)
+        les.save_current_level()
+rep['saved'] = bool(ok); rep['secs'] = round(time.time() - t0, 1)
+os.makedirs(os.path.dirname(LOG), exist_ok=True)
+json.dump(rep, open(LOG, 'w'), indent=1)
+print('[perf_apply]', json.dumps(rep))
