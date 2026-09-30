@@ -2,7 +2,7 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/perf`, worktree `~/sm2-n1/perf`. Owns `tools/perf_ue2/` (imports P4's `tools/perf_ue/run_perf.py`) and `docs/night1/perf/`. Scratch `/Users/midir/sm2-n1/_scratch/perf/` (NOT committed; round-02 raw runs in `r02/`).
+Branch `night1/perf`, worktree `~/sm2-n1/perf`. Owns `tools/perf_ue2/` (imports P4's `tools/perf_ue/run_perf.py`) and `docs/night1/perf/`. Scratch `/Users/midir/sm2-n1/_scratch/perf/` (NOT committed; the raw round-02 PNGs / run folders were deleted after landing in `round-02/`, `r02/` keeps only the config lists and queue logs). Local map copies: `unreal/WebHomage/Content/PerfF/` (170 MB, gitignored, rebuilt by `make_variants.py`).
 UE MCP port 8778 unused (everything is `-game` runs + headless commandlets). Spec `SPEC.md` (P1-P7), shot list `SHOTLIST.md`, evidence `round-01/` and `round-02/` (`NOTES.md` = every fact and probe of the round; `perf/` = raw runs per session
 with CSV.gz and the lock sidecar; `stills/`, `cmp/`, `refl/`, `cloud/`). The round-01 critic (`critic/round-01-CRITIC.md`) said FAILS TARGET; no critic has scored round 02 yet (blind pack:
 `/Users/midir/sm2-n1/_scratch/critic-F-r02/pack`, key outside it).
@@ -29,8 +29,8 @@ re-measure once it is built (`perf_queue.py` with the specs below). The local `C
 
 ## What other pieces must adopt (nothing outside `tools/perf_ue2`, `docs/night1/perf` was edited; the capture gate of round 01 is already in this branch)
 1. **P4 look:** cloud tracing distance 4 km in every preset (`look_presets.json`); `overrides/perf60_hwrefl.cvars` as the Mac device-profile / preset step (never DefaultEngine.ini); accept the horizon-wisp loss or find a cheaper horizon cloud (the cost is the marched segment, not the sample cap: `ViewRaySampleMaxCount 96` did nothing).
-2. **P1 city / C manhattan build scripts:** set `visible_in_ray_tracing = False` on the components of `City/Far`, `City/Props`, `City/far` (RT-lite; local reproduction: `perf_content.sh apply rt_lite,cloud`, or the map copies of `make_variants.py`). Keep the glass towers (`City/generic`) in the ray-tracing scene: removing them loses the gold tower reflections (S2 gold crop 0.906).
-3. **P3 traversal:** `-WHTravMask` gate still required (round 01). The hero + street people are skeletal meshes in the ray-tracing scene: worth 1.5 ms together; a hero-only vs people-only split was queued (session 5, see "Open" below).
+2. **P1 city / C manhattan build scripts:** set `visible_in_ray_tracing = False` on the components of `City/Far`, `City/Props`, `City/far` (RT-lite; local reproduction: the map copies of `make_variants.py`, verified; `perf_content.sh apply rt_lite,cloud` is written but untested). Keep the glass towers (`City/generic`) in the ray-tracing scene: removing them loses the gold tower reflections (S2 gold crop 0.906).
+3. **P3 traversal:** `-WHTravMask` gate still required (round 01). The hero + street people are skeletal meshes in the ray-tracing scene: worth 1.5 ms together; a hero-only vs people-only split (`make_variants.py` tag `Cl4RTP`, built, not measured) is the next probe.
 4. **Integrator / gpu lock:** perf tickets time out after 30 min (exit 75 -> re-queued at the back); with 4-5 capture holders each session waited 12-26 min. A stuck-exiting engine (`?E`) blocks every launch; `gpu_slot.sh` handles it, nothing else should.
 
 ## Commands (repo root; editor closed; every game launch goes through the lock)
@@ -62,4 +62,7 @@ Do not edit a shell script while a capture that runs it is queued or running (ba
    No gain: BuildMode 0, RayTracing.Culling 0 (worse), skeletal LOD bias 3, HiResSurface 0, RT2 (Nanite kit out), tree draw distance 1.5 km, FarField 0.
 3. The horizon cloud: a cheaper way to keep the far wisps (the marched segment is the cost).
 4. The route leaves the detailed block at 22.6 s (C's issue 4): a second route inside the block would separate far-LOD cost from street cost.
-5. Open in this round (see NOTES section 6): session 5 (street people out of the ray-tracing scene, `Cl4RTP`, 12 configs) and the 1080p60 route clip were queued behind other agents' captures; check `round-02/` for whether they landed.
+5. **Not delivered in this round:** (a) the 1080p60 route clip (`route_30s.mp4`): the first launch hung on a macOS XPC wait at 06:54 and was killed; the retry (with the new watchdog) waited in the lock queue from 07:12 and never ran, because two engines of other agents
+   (pids 17555 / 17831, `?E` = stuck exiting since ~06:55) made `gpu_slot.sh` refuse every launch and the GPU stayed at 100 %; I cancelled my tickets at 07:55. (b) session 5 (street people out of the ray-tracing scene, `Cl4RTP`; TSR 48 / 50 with it; 12 configs are in
+   `_scratch/perf/r02/perf_s5_configs.txt`): never ran, cancelled. (c) `perf_apply.py` steps `cloud` / `rt_lite` and the per-file backup in `perf_content.sh` are written but NOT run (launching an editor commandlet while an engine was stuck exiting is against the rules): test them
+   on a scratch copy before trusting them; the map copies of `make_variants.py` are the verified route.

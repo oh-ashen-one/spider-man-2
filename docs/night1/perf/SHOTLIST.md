@@ -8,6 +8,10 @@ Every capture is the RUNNING game (`Scripts/run_game.sh`, offscreen `-game`, tru
 found (all Epic-tier defaults, HWRT Lumen, `r.Nanite.MaxPixelsPerEdge 1`), "after" = `overrides/perf60.cvars` + the content transformations kept in the round.
 Internal resolution is `r.ScreenPercentage 50` = 1920x1080 unless a row says otherwise; TSR upscales to the output.
 
+**Round 02 update:** "after" = `overrides/perf60_hwrefl.cvars` (hardware-RT reflections, software GI, Nanite error 6) on the RT-lite map copy with the 4 km cloud (`/Game/PerfF/Cl4RT/`) at `r.ScreenPercentage 46` = 1766x994 internal (`stills/after_settings.json`);
+"before" = as found (TSR 50 % = 1920x1080 internal). Extra route stills at game t = 38 / 42 s (late route, horizon). The R2 clip is a 1080p60 fixed-step movie at native 1080p internal with the Nanite error halved (footage only).
+P-R = route frame times at TSR 44 / 46 / 50 (hardware-RT) and 50 / 58 (software), `round-02/perf/s4_official`; P-S2 = static S2 at TSR 46.
+
 | id | view / movement | camera | before / after | reference (private) |
 |---|---|---|---|---|
 | S1 | avenue canyon at street level, looking north (`/Game/Maps/Manhattan_View_S1`) | P1 shot S1_avenue_street | 4K still x2 | `streets/street-avenue-hero-taxis__og_0000` |
