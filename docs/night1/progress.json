@@ -1,6 +1,6 @@
 {
  "updated": "09:39",
- "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
+ "phase": "Night 1 finished \u2014 loop paused after the 06:55 WindowServer reset",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
@@ -990,6 +990,10 @@
   {
    "t": "09:39",
    "text": "Characters r5 critic: FAILS (lowest 3, image quality: see-through seams in crowd clothing). r6 fixed the root cause offline (cracks 1035\u2192244); waits for rendering to verify. Traversal r13 flow-flip code done and passing headless checks; waits for rendering + critic. Two engines stuck half-exited since 06:55 block all launches until the owner logs in (a reboot may be needed if they do not clear)."
+  },
+  {
+   "t": "09:52",
+   "text": "Morning: the owner found the Studio frozen on a macOS firewall prompt and had to power it off. Cause: at 00:48 a perf agent ran Unreal Insights (opens a network listener), and the prompt sat unanswered for 6 h; at 06:55 four concurrent 4K captures starved WindowServer, which was reset, leaving the screen frozen on that dialog. All WIP was committed and pushed; nothing lost. New rules: hard cap 2, no network-listening tools unattended without owner firewall approval, watchdog flags system dialogs, dead-session protocol (PR oh-ashen-one/agents-md#4). Loop paused."
   }
  ]
 }
