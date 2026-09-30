@@ -17,6 +17,8 @@ if '--seed' in a: seed = int(a[a.index('--seed') + 1])
 if '--iters' in a: iters = int(a[a.index('--iters') + 1])
 if '--minsep' in a: MINSEP = float(a[a.index('--minsep') + 1])
 FLIP = '--flip' in a
+DMIN = float(a[a.index('--dmin') + 1]) if '--dmin' in a else 11.0
+OVW = float(a[a.index('--ovw') + 1]) if '--ovw' in a else 1.0
 rng = np.random.default_rng(seed)
 
 NAMES = [c for c, *_ in A.MID_R6 + A.NEAR_R6]
@@ -84,10 +86,10 @@ def cost(dy, x0, dirs):
 def penalty(dy, x0, dirs):
     v, mn, dens, nv, ovf, npair, wc, nn, nm = cost(dy, x0, dirs)
     p = v * 5.0
-    p += max(0.0, 11.0 - dens) * 8.0                                     # want >= 11 people in the tracking frame on average
+    p += max(0.0, DMIN - dens) * 8.0                                     # want >= DMIN people in the tracking frame on average
     p += max(0.0, 3.0 - nv) * 8.0                                        # want >= 3 near-lane walkers in frame
     p += max(0.0, 13.0 - wc) * 4.0                                       # wide shot
-    p += nn * 25.0 + nm * 2.0 + (npair - nn - nm) * 1.0                  # silhouette overlaps: near-near (the big ones) hurt most
+    p += nn * 25.0 * OVW + nm * 2.0 * OVW + (npair - nn - nm) * 1.0 * OVW  # silhouette overlaps: near-near (the big ones) hurt most
     return p, (v, mn, dens, nv, ovf, npair, wc, nn, nm)
 
 

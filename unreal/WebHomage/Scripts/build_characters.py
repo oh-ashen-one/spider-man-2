@@ -907,7 +907,10 @@ if 'maps5' in STEPS:
         for grp, pre in ((mid, 'Citizen_'), (near, 'CitizenNear_')):
             for c, dy, x0, dr in grp:
                 wk = CIT_WALK[c]; start = (x0 + L5 / 2) if dr > 0 else (L5 / 2 - x0)
-                a = line5(pre + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, 0), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0)
+                # the mid lane (|dy| <= 400) walks on the south sidewalk, whose top face is at z = +15 cm (box 30 cm thick centred on z = 0); the near lane walks on the road (top at z = 0).
+                # Round 06 and earlier spawned everybody at z = 0: the mid-lane walkers stood 15 cm INSIDE the pavement (shoes and ankles hidden; the stencil key exposed it as pale foot blobs).
+                zfloor = 15.0 if abs(dy) <= 400 else 0.0
+                a = line5(pre + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY5 + dy, zfloor), CIT_SPEED[wk], L5, start, yaw=0.0 if dr > 0 else 180.0)
                 a.set_editor_property('anim_offset', (0.61803 * (len(civ5) + 1)) % 1.0)   # CH19: gait phases spread by the golden ratio
                 if avoid:   # round 07: capsule avoidance (r = 40 cm >= the 35 cm asked for) with 2 s look-ahead; C++ AWHCharLoopWalker::StepAvoidGroup
                     a.set_editor_property('avoid', True); a.set_editor_property('avoid_radius', 40.0)
@@ -932,7 +935,7 @@ if 'maps5' in STEPS:
 # `crowd_key_c_4k`, 19.5k px of "key green" was jeans in shade lit only by the green bounce).  Round 07 keys the PICTURE, not the world: Char_CrowdKey is a
 # copy of Char_Crowd (same sun, sky, fog, street: identical lighting) whose citizens write custom-depth STENCIL, and a post-process material
 # (before bloom, with the material's own stencil test == 0) replaces every pixel that is not a citizen by the key colour.  A citizen pixel is never modified, so a green pixel
-# inside a citizen silhouette is a real hole in the mesh and a garment is never tinted.  Char_CrowdID writes the per-walker stencil id (R = 12 x id) instead
+# inside a citizen silhouette is a real hole in the mesh and a garment is never tinted.  Char_CrowdID writes the per-walker stencil id (base-3 digits in R, G, B) instead
 # of the picture: exact per-walker masks (who is in front of whom, a floating polygon's owner).  Needs `r.CustomDepth 3` (capture_r5.sh passes it).
 if 'mapkey' in STEPS:
     # UE 5.8 (PostProcessMaterial.cpp): custom stencil cannot be read AFTER tonemapping ("target size differences": the first attempt, SceneTexture lookups at
@@ -989,6 +992,7 @@ if 'mapkey' in STEPS:
             lab = a.get_actor_label()
             if isinstance(a, unreal.WHCharLoopWalker) and lab.startswith(('Citizen_', 'CitizenNear_')):
                 n_st += 1
+                log('stencil id', n_st, '=', lab)      # tools/ue_char/crowd/id_overlap.py decodes these ids
                 mc = a.get_editor_property('mesh')
                 mc.set_editor_property('render_custom_depth', True)
                 mc.set_editor_property('custom_depth_stencil_value', n_st)     # unique id per walker (1..18); the key material only tests == 0
