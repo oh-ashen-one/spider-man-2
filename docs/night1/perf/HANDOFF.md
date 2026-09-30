@@ -6,6 +6,11 @@ Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. 
 Spec `SPEC.md` (P1-P9), shot list `SHOTLIST.md`, evidence `round-01/`, `round-02/`, `round-03/` (`NOTES.md` = every fact of the round; `TABLE.md`, `SERIAL.md`, `perf/<session>/`, `stills/`, `cmp/`, `lookprobe/`, `route_30s.mp4`, `content_audit*.json`).
 Critics so far: round 01 FAILS TARGET, round 02 APPROACHES TARGET (`critic/`). Round 03 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r03/pack` (key `pack.key.json` outside it, `pairs.json`), no critic has scored it yet.
 
+## ROUND 04 IN PROGRESS (WIP note, 2026-09-30 ~13:40; the full rewrite comes at the end of the round)
+- Target (round-03 critic): VSM ShadowDepths p95 <= 2.5 ms, trees within 100 m back in the RT scene, cloud TracingMaxDistance >= 20 km, look re-gated on the ROUND-02 S1 crop + canopy luma +-10 % + route saturation +-5 % vs `_scratch/perf/r03/before`; p95 <= 18.18, p50 <= 16.67 on the shipped path.
+- Found (session `round-04/perf/v1`, VSM CSV stats `-csvCategories=VSM`): the ShadowDepths spikes are REVEALED non-Nanite primitives (CPU-culled -> unculled for the clipmap, `r.Shadow.Virtual.Cache.DebugSkipRevealedPrimitivesInvalidation 1`: ShadowDepths p95 4.19 -> 2.39 ms; skip all dynamic invalidation 2.25). ~54 dynamic pages invalidated per frame.
+- Tools: `tools/perf_ue2/look_gate.py` (the gate), `make_rtvars.py` env `SM2_PERF_RTVAR_CLOUD_KM` (variant RTvCk20 = trees in + cloud 20 km); local variants Cl20, RTvCk20 exist.
+
 ## State at the end of round 03 (numbers: `round-03/NOTES.md`; all exclusive `gpu_slot.sh perf`, `perf_valid: true`, 3840x2160 output, 30 s route, fixed step)
 **Shipped path, on the REBUILT integrated map (integration c4fffda merged + rebuilt by scripts), no per-run cvars:** internal 1920x1080 (TSR 50 %), preset `overrides/perf60_hwl.cvars` = full hardware-RT Lumen (GI + reflections), RT-lite scene (518 of 117 506 instances), cloud 4 km, Nanite error 8, skeletal meshes out of the RT scene.
 | line | result | pass |
