@@ -1,0 +1,5 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06: GPU skin cache off (skinning in the vertex shaders instead of one compute dispatch per skinned mesh per frame).
+# Session r06/x1: with P6's traffic + crowd (~600 live skinned citizens) GPU/Unaccounted -1.05 ms, RHI thread 5.1 -> 2.9 ms, frame p50 17.12 -> 16.08.
+# Nothing in the project needs the cache: skinned meshes are out of ray tracing (r.RayTracing.Geometry.SkeletalMeshes=0), no recompute-tangents or morph targets.
+r.SkinCache.Mode=0

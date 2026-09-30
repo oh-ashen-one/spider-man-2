@@ -1,0 +1,5 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 look probe: the engine Epic directional VSM (as found): resolution LOD bias -1.5 (preset: +1), 8 SMRT rays (preset: 4).
+r.Shadow.Virtual.ResolutionLodBiasDirectional=-1.5
+r.Shadow.Virtual.ResolutionLodBiasDirectionalMoving=-1.5
+r.Shadow.Virtual.SMRT.RayCountDirectional=8

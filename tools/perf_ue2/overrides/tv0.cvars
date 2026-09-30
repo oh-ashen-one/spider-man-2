@@ -1,0 +1,3 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 attribution probe: Lumen translucency GI volume off (inside the LumenScreenProbeGather GPU stat scope).
+r.Lumen.TranslucencyVolume.Enable=0

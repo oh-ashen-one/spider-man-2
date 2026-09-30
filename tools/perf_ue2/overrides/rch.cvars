@@ -1,0 +1,4 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe: Lumen screen-probe radiance cache at the engine "High" GI scalability (probe resolution 16 instead of 32, 100 probes traced per frame instead of 150).
+r.Lumen.ScreenProbeGather.RadianceCache.ProbeResolution=16
+r.Lumen.ScreenProbeGather.RadianceCache.NumProbesToTraceBudget=100
