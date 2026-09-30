@@ -60,7 +60,7 @@ def safe_rmtree(p):
 
 def wait_slot():
     while True:
-        n = subprocess.run("pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
+        n = subprocess.run("pgrep -f '^/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
         if int(n or 0) < 3: return
         log('3+ Unreal instances running, waiting 60 s'); time.sleep(60)
 
@@ -392,6 +392,12 @@ return c;
             box(lx - 0.09, y - 0.09, 0.15, lx + 0.09, y + 0.09, 6.8, 'Lamp%02d_%s_Pole' % (i, 'S' if side < 0 else 'N'), metal, CYL, 'Furniture')
             box(lx - 0.09, y - side * 1.4 - 0.09, 6.7, lx + 0.09, y + 0.09, 6.82, 'Lamp%02d_%s_Arm' % (i, 'S' if side < 0 else 'N'), metal, CUBE, 'Furniture')
             box(lx - 0.25, y - side * 1.4 - 0.18, 6.5, lx + 0.25, y - side * 1.4 + 0.18, 6.7, 'Lamp%02d_%s_Head' % (i, 'S' if side < 0 else 'N'), lamp, CUBE, 'Furniture')
+            if abs(lx) <= 48:   # r02 dusk: the lamps near the fight are lit (warm pools on the asphalt, no shadows)
+                pl = spawn(unreal.PointLight, (lx * 100, (y - side * 1.4) * 100, 640), label='LampLight%02d_%s' % (i, 'S' if side < 0 else 'N'))
+                plc = pl.get_component_by_class(unreal.PointLightComponent)
+                plc.set_editor_property('intensity', 9000.0); plc.set_editor_property('attenuation_radius', 1500.0)
+                plc.set_editor_property('light_color', unreal.Color(255, 196, 130, 255)); plc.set_editor_property('cast_shadows', False)
+                plc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
     for i, (hx, side) in enumerate([(-30, -1), (22, 1), (58, -1), (-66, 1)]):
         y = side * 11.8
         box(hx - 0.18, y - 0.18, 0.15, hx + 0.18, y + 0.18, 0.85, 'Hydrant%d' % i, hydrant, CYL, 'Furniture')
@@ -409,21 +415,34 @@ return c;
     for i, (cx, side) in enumerate([(-38, -1), (-26, -1), (24, -1), (36, 1), (-44, 1), (52, 1), (-60, -1), (66, -1)]):
         car(cx, side * 9.6, True, 'Car%02d' % i, car_mats[i % len(car_mats)])
 
-    # ---- lighting: low late-afternoon sun across the street (warm key on the fight, long facade shadows), sky, fog
-    sun = spawn(unreal.DirectionalLight, (0, 0, 50000), (0, -24, 128), 'Sun')
+    # ---- lighting (r02 dusk, critic r01: white sky + low contrast flattened the silhouettes): sun 7 deg over the roofs, deep
+    # orange, so the street floor is in facade shadow with a warm rim on the fighters; darker sky, thinner fog, lit street lamps
+    sun = spawn(unreal.DirectionalLight, (0, 0, 50000), (0, -7, 128), 'Sun')
     sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
-    sc.set_editor_property('intensity', 9.0)
-    sc.set_editor_property('light_color', unreal.Color(255, 226, 190, 255))
+    sc.set_editor_property('intensity', 6.0)
+    sc.set_editor_property('light_color', unreal.Color(255, 170, 105, 255))
     sc.set_editor_property('atmosphere_sun_light', True)
     sc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
     spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
     sky = spawn(unreal.SkyLight, (0, 0, 1000), label='SkyLight')
     skc = sky.get_component_by_class(unreal.SkyLightComponent)
     skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
+    skc.set_editor_property('intensity', 0.6)
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='HeightFog')
-    fog.get_component_by_class(unreal.ExponentialHeightFogComponent).set_editor_property('fog_density', 0.012)
+    fgc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
+    fgc.set_editor_property('fog_density', 0.006)
+    try: fgc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(0.08, 0.07, 0.09, 1.0))
+    except Exception as ex: log('fog colour not set: %s' % ex)
     spawn(unreal.VolumetricCloud, (0, 0, 0), label='VolumetricCloud')
     ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='GlobalPPV'); ppv.set_editor_property('unbound', True)
+    try:
+        pps = ppv.get_editor_property('settings')
+        for k, v in (('override_auto_exposure_bias', True), ('auto_exposure_bias', -0.6), ('override_vignette_intensity', True), ('vignette_intensity', 0.55),
+                     ('override_color_contrast', True), ('color_contrast', unreal.Vector4(1.12, 1.12, 1.12, 1.12)),
+                     ('override_color_saturation', True), ('color_saturation', unreal.Vector4(1.08, 1.08, 1.08, 1.0))):
+            pps.set_editor_property(k, v)
+        ppv.set_editor_property('settings', pps)
+    except Exception as ex: log('ppv grade not set: %s' % ex)
     # fight fill: a soft cool fill from the shadow side so faces read in the canyon shade (not a stage light: low intensity)
     fill = spawn(unreal.RectLight, (0, -900, 900), (0, -30, 90), 'FightFill')
     fc_ = fill.get_component_by_class(unreal.RectLightComponent)

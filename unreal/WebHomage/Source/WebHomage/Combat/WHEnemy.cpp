@@ -41,7 +41,7 @@ const FWHEnemyType& FWHEnemyType::Get(EWHEnemyType Ty)
 {
 	static FWHEnemyType Melee{ 50, 3.2, 1.35, 9, 1, { "thugPunch1", "thugPunch2", "thugKick" } };
 	static FWHEnemyType Gunman{ 38, 3.0, 1.3, 6, 1, { "thugPunch2", "thugPunch1" } };
-	static FWHEnemyType Brute{ 150, 2.4, 1.7, 18, 1.24, { "bruteSlam", "thugPunch1", "bruteSlam" } };
+	static FWHEnemyType Brute{ 150, 2.4, 1.7, 18, 1.3, { "bruteSlam", "thugPunch1", "bruteSlam" } };   // r02: taller + much wider (below)
 	return Ty == EWHEnemyType::Gunman ? Gunman : Ty == EWHEnemyType::Brute ? Brute : Melee;
 }
 
@@ -98,7 +98,7 @@ void AWHEnemy::Setup(AWHCombatDirector* InDir, EWHEnemyType InType, int32 InInde
 		Mesh->SetRelativeRotation(MeshCorr);
 	}
 	const double S = T.Scale;
-	SetActorScale3D(Type == EWHEnemyType::Brute ? FVector(S * 1.1, S * 1.1, S) : FVector(S));
+	SetActorScale3D(Type == EWHEnemyType::Brute ? FVector(S * 1.4, S * 1.45, S) : FVector(S));   // brute: bulk reads by silhouette
 	// cocoon: translucent web wraps on the torso / arms / legs, scaled by the web amount (fx.js Cocoon)
 	UStaticMesh* Sph = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Sphere.Sphere"));
 	if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbTrans.M_CmbTrans")))
@@ -118,8 +118,61 @@ void AWHEnemy::Setup(AWHCombatDirector* InDir, EWHEnemyType InType, int32 InInde
 		C->SetVisibility(false);
 		Cocoon.Add(C);
 	}
+	// r02 attack warning: a glowing "!" over the head (orange = melee, deep red = brute / gun) + the gunman's aim laser
+	UStaticMesh* Cyl = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFX.M_CmbFX")))
+	{
+		WarnMat = UMaterialInstanceDynamic::Create(M, this); LaserMat = UMaterialInstanceDynamic::Create(M, this);
+		LaserMat->SetVectorParameterValue(TEXT("Color"), FLinearColor(6.f, 0.25f, 0.2f));
+	}
+	auto Mk = [this](UStaticMesh* SMh, UMaterialInstanceDynamic* Mt)
+	{
+		UStaticMeshComponent* C = NewObject<UStaticMeshComponent>(this);
+		C->SetStaticMesh(SMh); C->SetCollisionEnabled(ECollisionEnabled::NoCollision); C->SetCastShadow(false);
+		C->SetUsingAbsoluteLocation(true); C->SetUsingAbsoluteRotation(true); C->SetUsingAbsoluteScale(true);
+		C->SetupAttachment(Root); C->RegisterComponent(); if (Mt) C->SetMaterial(0, Mt); C->SetVisibility(false);
+		return C;
+	};
+	WarnBar = Mk(Sph, WarnMat); WarnDot = Mk(Sph, WarnMat); Laser = Mk(Cyl, LaserMat);
 	SyncActor();
 	Play("thugIdle", 0.25);
+}
+
+bool AWHEnemy::WarnOn() const
+{
+	if (!Alive()) return false;
+	return (State == EWHEnemyState::Attack && !bSwung) || State == EWHEnemyState::Aim || (State == EWHEnemyState::Fire && Shots < 3);
+}
+
+void AWHEnemy::UpdateWarn(double Dt)
+{
+	const bool bOn = WarnOn();
+	WarnT = bOn ? WarnT + Dt : 0;
+	if (WarnBar) WarnBar->SetVisibility(bOn);
+	if (WarnDot) WarnDot->SetVisibility(bOn);
+	const bool bGun = State == EWHEnemyState::Aim || State == EWHEnemyState::Fire;
+	if (Laser) Laser->SetVisibility(bOn && bGun && bHasGun && Dir.IsValid());
+	if (!bOn) return;
+	const double Pop = FMath::Min(1.0, WarnT / 0.08), Pulse = 1.0 + 0.12 * FMath::Sin(WarnT * 26.0);
+	const FVector H = FVector(Pos.X, Pos.Y, Pos.Z + 1.95 * T.Scale + 0.25);
+	const double K = 0.9 * Pop * Pulse;
+	WarnBar->SetWorldLocationAndRotation((H + FVector(0, 0, 0.2)) * 100.0, FQuat::Identity);
+	WarnBar->SetWorldScale3D(FVector(0.085, 0.085, 0.26) * K);
+	WarnDot->SetWorldLocationAndRotation(H * 100.0, FQuat::Identity);
+	WarnDot->SetWorldScale3D(FVector(0.09) * K);
+	if (WarnMat)
+	{
+		const FLinearColor Cw = bGun || Type == EWHEnemyType::Brute ? FLinearColor(7.f, 0.5f, 0.25f) : FLinearColor(7.f, 2.6f, 0.3f);
+		WarnMat->SetVectorParameterValue(TEXT("Color"), Cw); WarnMat->SetScalarParameterValue(TEXT("Opacity"), 1.f);
+	}
+	if (Laser && Laser->IsVisible())
+	{
+		const FVector A = Muzzle(), B = Dir->PlayerChest();
+		const FVector Dd = B - A; const double L = Dd.Size();
+		Laser->SetWorldLocationAndRotation((A + B) * 50.0, FQuat::FindBetweenNormals(FVector::UpVector, Dd / FMath::Max(1e-3, L)));
+		Laser->SetWorldScale3D(FVector(0.012, 0.012, L));
+		if (LaserMat) LaserMat->SetScalarParameterValue(TEXT("Opacity"), float(State == EWHEnemyState::Aim ? 0.35 + 0.65 * FMath::Min(1.0, St / FMath::Max(0.1, AimDur)) : 1.0));
+	}
 }
 
 UAnimSequence* AWHEnemy::Clip(FName Name)
@@ -246,7 +299,7 @@ FWHHitResult AWHEnemy::Hit(const FWHHitIn& H)
 	const double Rel = AngWrap(FaceYaw - Yaw); // attacker bearing in his frame (UE: + = on his RIGHT)
 	const bool bDead = Hp <= 0;
 	if (State == EWHEnemyState::Webbed && H.Kind != "air") { Knock(H.Dir, 10, 3.4, true); R.bKnocked = true; return R; }
-	if (bArmored && !bDead) { Flinch = 1; FlinchDir = Rng.FRand() < 0.5 ? -1 : 1; MoveXZ(H.Dir.X * 0.15, H.Dir.Y * 0.15); R.bArmored = true; return R; }
+	if (bArmored && !bDead) { Flinch = 1; FlinchDir = Rng.FRand() < 0.5 ? -1 : 1; Slide = FlatNorm(H.Dir) * 2.4; R.bArmored = true; return R; }
 	if (H.Kind == "slam") { Vel = FVector(H.Dir.X * 2, H.Dir.Y * 2, -18); Set(EWHEnemyState::Air); Juggle = 0; bFalling = false; R.bSlam = true; return R; }
 	if (State == EWHEnemyState::Air && H.Kind != "air") { Juggle = 0; Vel = FVector(H.Dir.X * 4, H.Dir.Y * 4, FMath::Min(Vel.Z, 1.0)); Flinch = 1; R.bAir = true; return R; }
 	if (State == EWHEnemyState::Air || H.Kind == "air") { AirHit(H); if (bDead) Juggle = FMath::Min(Juggle, 0.25); R.bAir = true; return R; }
@@ -265,7 +318,11 @@ FWHHitResult AWHEnemy::Hit(const FWHHitIn& H)
 	LastStumble = S;
 	Set(EWHEnemyState::Stagger); TurnRate = FMath::Abs(Rel) > 2.3 ? 14 : 5;
 	const double Ts = 1.15 + Rng.FRand() * 0.15;
-	Play(S == "back" ? FName("thugStumbleBack") : S == "left" ? FName("thugStumbleLeft") : FName("thugStumbleRight"), 0.06, Ts, 1);
+	// r02: the flinch is already in the contact frame (clip entered at 0.1 s with a 0.02 s fade + procedural head / torso snap),
+	// then the hit-stop holds it and the victim is pushed ~0.4 m along the blow
+	Play(S == "back" ? FName("thugStumbleBack") : S == "left" ? FName("thugStumbleLeft") : FName("thugStumbleRight"), 0.02, Ts, 1, 0.1);
+	Flinch = 1; FlinchDir = S == "left" ? -1 : S == "right" ? 1 : (Rng.FRand() < 0.5 ? -1 : 1);
+	Slide = FlatNorm(H.Dir) * 2.6;
 	StagT = (S == "back" ? 0.7 : 0.6) / Ts - 0.06;
 	C->OnEnemyInterrupted(this);
 	R.bStagger = true;
@@ -364,6 +421,9 @@ void AWHEnemy::Update(double Dt)
 	const FVector P = C->PlayerFeet;
 	St += Dt; Cd -= Dt; Stun -= Dt;
 	Flinch = FMath::Max(0.0, Flinch - Dt * 5);
+	if (Slide.SizeSquared() > 1e-4 && State != EWHEnemyState::Air && State != EWHEnemyState::Knock && State != EWHEnemyState::Yanked && Stuck == 0)
+	{ MoveXZ(Slide.X * Dt, Slide.Y * Dt); Slide *= FMath::Exp(-6.0 * Dt); }
+	else if (Slide.SizeSquared() <= 1e-4) Slide = FVector::ZeroVector;
 	const double Dist = HDist(Pos, P);
 	const double FaceP = YawTo(Pos, P);
 	double Moving = 0;
@@ -400,7 +460,7 @@ void AWHEnemy::Update(double Dt)
 			Locomote(Spd, 0.2);
 		}
 		Yaw = DampAngle(Yaw, FaceP, 12, Dt);
-		if (Dist <= Reach + 1.0 && FMath::Abs(AngWrap(FaceP - Yaw)) < 0.6) StartSwing();
+		if (Dist <= Reach + 1.6 && FMath::Abs(AngWrap(FaceP - Yaw)) < 0.8) StartSwing();   // r02: wind up earlier, close in during it
 		else if (St > 2.4 || C->HeroAirborne()) { Set(EWHEnemyState::Hold); C->ReleaseToken(this); }
 		break;
 	}
@@ -572,6 +632,7 @@ void AWHEnemy::Late(double Dt)
 	if (UWHEnemyAnim* AI = Cast<UWHEnemyAnim>(Mesh->GetAnimInstance())) AI->SetFrame(S, Pr);
 	SyncActor();
 	UpdateCocoon(Dt);
+	UpdateWarn(Dt);
 }
 
 void AWHEnemy::SyncActor()

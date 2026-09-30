@@ -33,13 +33,15 @@ struct FWHFxItem
 	bool bStrand = false;
 	double Width = 0.012, Sag = 0;
 	int32 Tag = 0;
+	bool bReal = false;                   // r02 impact sparks: REAL-time life (hold static for Hold s, then fly + fade); others: game time
+	double Hold = 0;
 };
 
 class WEBHOMAGE_API FWHCombatFx
 {
 public:
 	void Init(AActor* Owner);
-	void Update(double Dt);
+	void Update(double Dt, double RealDt);
 	void Clear();
 
 	/** Impact: flash + sparks (+ ring when heavy). P, Dir in metres; Dir = direction the sparks fly (away from the blow). */

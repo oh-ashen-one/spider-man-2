@@ -9,6 +9,9 @@ import json, sys
 src, beats_log, out = sys.argv[1:4]
 S = json.load(open(src))
 fired = [json.loads(l) for l in open(beats_log) if l.strip()]
+# r02: 'reflex' dodges (script "reflex": the record run dodges telegraphed blows) become plain fixed-time beats
+reflex = [f for f in fired if f['label'].startswith('reflex dodge')]
+fired = [f for f in fired if not f['label'].startswith('reflex dodge')]
 beats = sorted(S['beats'], key=lambda b: b['t'])
 assert len(fired) == len(beats), (len(fired), len(beats))
 # beats fire in script order except reactive ones (they may fire later than later-listed beats): match by label + key
@@ -21,6 +24,9 @@ for b in beats:
     c['t'] = round(f['rt'] - 1 / 240, 4)
     if b.get('react'): c['recorded'] = '%s: %s' % (b['react'], f.get('react', ''))
     nb.append(c)
+for f in reflex:
+    nb.append({'t': round(f['rt'] - 1 / 240, 4), 'key': 'dodge', 'label': f['label'], 'recorded': f.get('react', '')})
+S.pop('reflex', None)
 S['beats'] = sorted(nb, key=lambda b: b['t'])
 S['frozen_from'] = src.split('/')[-1]
 json.dump(S, open(out, 'w'), indent=1)

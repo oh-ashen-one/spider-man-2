@@ -144,6 +144,10 @@ void AWHCombatDirector::LoadScript(const FString& Path)
 	FightStartAt = J.Num_(TEXT("start"), FightStartAt);
 	const double Q = J.Num_(TEXT("quit"), -1); if (Q > 0 && QuitAt < 0) QuitAt = Q;
 	if (J.Get(TEXT("seed"))) Rng.Initialize(int32(J.Num_(TEXT("seed"), 0)));
+	HeroMinHp = J.Num_(TEXT("hero_min_hp"), 0);
+	ReserveSpec = J.Str_(TEXT("reserve")); Reserve = ReserveSpec.Len();
+	KeepAlive = int32(J.Num_(TEXT("keep"), 0));
+	ReflexCd = J.Num_(TEXT("reflex"), 0);
 	if (const FJ* Arr = J.Get(TEXT("beats")))
 	{
 		for (const FJ& O : Arr->A)
@@ -152,7 +156,8 @@ void AWHCombatDirector::LoadScript(const FString& Path)
 			FWHBeat B;
 			B.T = O.Num_(TEXT("t"), 0); B.Key = FName(*O.Str_(TEXT("key"))); B.Hold = O.Num_(TEXT("hold"), 0);
 			B.Toward = O.Str_(TEXT("toward")); B.Label = O.Str_(TEXT("label"));
-			B.React = FName(*O.Str_(TEXT("react"))); B.Window = O.Num_(TEXT("window"), 3.0);
+				B.React = FName(*O.Str_(TEXT("react"))); B.Window = O.Num_(TEXT("window"), 3.0);
+				B.bGuard = O.Get(TEXT("guard")) && O.Get(TEXT("guard"))->N > 0;
 			Beats.Add(B);
 		}
 		Beats.Sort([](const FWHBeat& A, const FWHBeat& B) { return A.T < B.T; });
@@ -168,6 +173,23 @@ void AWHCombatDirector::RunBeats()
 		if (B.Key == "attack" && B.Hold > 0 && B.bFired && B.Result.IsEmpty() && RTime >= B.FiredRT + B.Hold) { Input.LmbUp(); B.Result = TEXT("released"); }
 	}
 	if (RTime > StickUntil) StickDir = FVector::ZeroVector;
+	if (ReflexCd > 0 && bEngaged && RTime - LastReflexRT > ReflexCd)
+	{ // record runs: a skilled player reacts to the telegraph (the freeze step turns every reflex into a fixed-time beat)
+		const FWHThreat* Th = NearestThreat();
+		const double R = Th ? Th->At - Time : 9;
+		const FName MN = Me->MoveName();
+		bool bGuarded = false;
+		for (const FWHBeat& B : Beats)
+			if (B.bGuard && ((B.bFired && RTime - B.FiredRT < 0.45) || (!B.bFired && B.T - RTime < 0.25 && B.T - RTime > -1.5))) bGuarded = true;
+		if (Th && !bGuarded && R >= 0.08 && R <= 0.22 && MN != "down" && MN != "finisher" && MN != "hit" && MN != "dodge" && !Me->bAirborne)
+		{
+			LastReflexRT = RTime; KeyPress("dodge");
+			const FString Row = FString::Printf(TEXT("{\"t\":%.3f,\"rt\":%.3f,\"gt\":%.3f,\"key\":\"dodge\",\"hold\":0.00,\"toward\":\"\",\"label\":\"reflex dodge %.2f\",\"move_before\":\"%s\",\"react\":\"reflex %s in %.3f\"}"),
+				RTime, RTime, Time, RTime, *MN.ToString(), Th->E.IsValid() ? *Th->E->Tag() : TEXT("?"), R);
+			BeatRows.Add(Row);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_BEAT %s"), *Row);
+		}
+	}
 	for (FWHBeat& B : Beats)
 	{
 		if (B.bFired || RTime < B.T) continue;
@@ -258,7 +280,7 @@ AWHEnemy* AWHCombatDirector::PickTarget(const FVector* Dir, double MaxD, const F
 {
 	FVector Want;
 	if (Dir && Dir->SizeSquared() > 0.04) Want = FlatNorm(*Dir);
-	else Want = YawDir(Hero->GetTravCamera().Yaw + CamYawOff * Smooth(CamW));
+	else Want = CamW > 0.5 ? YawDir(CYaw) : YawDir(Hero->GetTravCamera().Yaw);
 	AWHEnemy* Best = nullptr; double Bs = 1e18;
 	for (AWHEnemy* E : Enemies)
 	{
@@ -282,6 +304,9 @@ void AWHCombatDirector::Threat(AWHEnemy* E, double Lead, const TCHAR* Kind)
 {
 	FWHThreat T; T.E = E; T.At = Time + Lead; T.Kind = FName(Kind);
 	Threats.Add(T);
+	// r02: every threat is an attack start (melee wind-up / brute wind-up / gun aim). Longest gap between starts = aggression metric.
+	if (LastAttackRT >= 0) MaxAttackGap = FMath::Max(MaxAttackGap, RTime - LastAttackRT);
+	LastAttackRT = RTime; ++NAttackStarts;
 	LogEvent(FString::Printf(TEXT("threat %s %s lead %.2f"), *E->Tag(), Kind, Lead));
 }
 
@@ -301,10 +326,17 @@ const FWHThreat* AWHCombatDirector::NearestThreat() const
 	return B;
 }
 
+bool AWHCombatDirector::HasToken(const AWHEnemy* E) const
+{
+	for (const auto& W : MeleeTokens) if (W.Get() == E) return true;
+	for (const auto& W : GunTokens) if (W.Get() == E) return true;
+	return false;
+}
+
 void AWHCombatDirector::ReleaseToken(AWHEnemy* E)
 {
-	if (MeleeToken.Get() == E) { MeleeToken = nullptr; GlobalCd = Rnd(0.35, 0.9); }
-	if (GunToken.Get() == E) { GunToken = nullptr; GunCd = Rnd(1.2, 2.4); }
+	if (MeleeTokens.RemoveAll([E](const TWeakObjectPtr<AWHEnemy>& W) { return W.Get() == E; }) > 0) GlobalCd = Rnd(0.15, 0.4);
+	if (GunTokens.RemoveAll([E](const TWeakObjectPtr<AWHEnemy>& W) { return W.Get() == E; }) > 0) GunCd = FMath::Max(GunCd, Rnd(0.8, 1.6));
 }
 
 void AWHCombatDirector::OnDodge(const FWHThreat* T, bool bPerfect)
@@ -313,7 +345,9 @@ void AWHCombatDirector::OnDodge(const FWHThreat* T, bool bPerfect)
 	if (bPerfect)
 	{
 		++NPerfect;
-		Slowmo(0.85, 0.22, 0.35); Banner(TEXT("PERFECT DODGE")); Me->Focus = FMath::Min(3.0, Me->Focus + 0.35);
+		// r02: short slow-mo, at most every 3 s (r01's 0.85 s x0.22 on every perfect dodge made the fight float)
+		if (RTime - LastPerfectSlowRT > 3.0) { Slowmo(0.45, 0.35, 0.25); LastPerfectSlowRT = RTime; }
+		Banner(TEXT("PERFECT DODGE")); Me->Focus = FMath::Min(3.0, Me->Focus + 0.35);
 		Impact(0.15);
 	}
 	LogEvent(FString::Printf(TEXT("dodge %s threat=%s"), bPerfect ? TEXT("PERFECT") : TEXT("plain"), T && T->E.IsValid() ? *T->E->Tag() : TEXT("none")));
@@ -350,7 +384,13 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 	{
 		const FLinearColor Arm(3.f, 3.f, 3.4f);
 		Fx.Hit(Cp, -D, Heavy, R.bArmored ? &Arm : nullptr);
-		if (H.Kind == "finisher") HitStop(0.12, 0.05); else if (Heavy > 0.5) HitStop(0.065, 0.08); else HitStop(0.035, 0.15);
+		// r02: a true freeze of hero + victim (3-5 frames at 60 fps); the victim's flinch pose is already in the contact frame
+		if (H.Kind == "finisher") HitStop(6); else if (Heavy > 0.5) HitStop(5); else HitStop(4);
+		if (H.Kind == "finisher")
+		{ // finisher beat: freeze, then x0.25 slow-mo while the victim flies, the close-up camera holds 1.4 s past the blow
+			Slowmo(1.1, 0.25, 0.5); Shake(0.35); Impact(0.4);
+			if (CineS.bOn) CineS.Dur = FMath::Max(CineS.Dur, CineS.T + 1.4);
+		}
 		Shake(0.05 + Heavy * 0.25);
 		if (Heavy > 0.5) Impact(0.12 + Heavy * 0.15);
 		if (!R.bArmored) { ++ComboN; ComboT = 0; }
@@ -380,8 +420,9 @@ void AWHCombatDirector::Heal(double N)
 
 void AWHCombatDirector::Cine(AWHEnemy* Target, double Dur, FName Kind)
 {
+	if (Kind != "finisher") { Slowmo(0.5, 0.45, 0.25); LogEvent(TEXT("pin beat (slow-mo only, no camera move)")); return; }
 	CineS = FCine(); CineS.Target = Target; CineS.Dur = Dur; CineS.Kind = Kind; CineS.bOn = true;
-	if (Kind == "finisher") Slowmo(1.2, 0.45, 0.4); else Slowmo(0.7, 0.4, 0.3);
+	Slowmo(0.45, 0.55, 0.25);   // a light pre-slow on the wind-up; the takedown blow itself gets the deep slow-mo (PlayerHit)
 	LogEvent(FString::Printf(TEXT("cine %s %s %.2f s"), *Kind.ToString(), Target ? *Target->Tag() : TEXT("-"), Dur));
 }
 
@@ -416,9 +457,10 @@ void AWHCombatDirector::EnemyStrike(AWHEnemy* E)
 	const bool bHeavy = E->Type == EWHEnemyType::Brute || (E->Atk == "thugKick" && Rng.FRand() < 0.3);
 	const double Dmg = E->T.Dmg * (bHeavy && E->Type != EWHEnemyType::Brute ? 1.3 : 1.0);
 	Me->TakeHit(E, Dmg, bHeavy);
+	if (HeroMinHp > 0) Me->Hp = FMath::Max(Me->Hp, HeroMinHp);
 	const FLinearColor Col(5, 2, 1.5);
 	Fx.Hit(Me->Pos + FVector(0, 0, 0.5), FlatNorm(Pf - E->Pos), bHeavy ? 0.6 : 0.2, &Col);
-	HitStop(bHeavy ? 0.08 : 0.045, bHeavy ? 0.06 : 0.12); Shake(bHeavy ? 0.4 : 0.22); if (bHeavy) Impact(0.3);
+	HitStop(bHeavy ? 5 : 4); Shake(bHeavy ? 0.3 : 0.16); if (bHeavy) Impact(0.25);
 	ComboN = 0; ++NEnemyHits; DamageTaken += Dmg;
 	LogEvent(FString::Printf(TEXT("hero hit by %s %s dmg %.0f hp %.0f%s"), *E->Tag(), *E->Atk.ToString(), Dmg, Me->Hp, bHeavy ? TEXT(" HEAVY") : TEXT("")));
 }
@@ -431,13 +473,13 @@ void AWHCombatDirector::EnemyShoot(AWHEnemy* E)
 	Fx.Muzzle(Mz, D);
 	FTravHit Hb;
 	const bool bBlocked = Raycast(Mz, D, FVector::Dist(Mz, Ch) - 0.5, Hb);
-	const bool bMiss = Me->Invuln() || bBlocked || (Me->bAirborne && Rng.FRand() < 0.6);
+	const bool bMiss = Me->Invuln() || bBlocked || (Me->bAirborne && Rng.FRand() < 0.6) || (Me->Busy() && Rng.FRand() < 0.75);
 	const FVector End = bMiss ? Ch + FVector(Rnd(-1, 1), Rnd(-1, 1), Rnd(-0.4, 1)) + D * 6 : Ch;
 	Fx.Tracer(Mz, End);
 	++NShots;
 	if (E->Shots >= 3) ClearThreats(E);
 	if (bMiss) { LogEvent(FString::Printf(TEXT("shot %s missed%s"), *E->Tag(), Me->Invuln() ? TEXT(" (invulnerable)") : bBlocked ? TEXT(" (blocked)") : TEXT(""))); return; }
-	Me->Hp = FMath::Max(0.0, Me->Hp - E->T.Dmg);
+	Me->Hp = FMath::Max(HeroMinHp, Me->Hp - E->T.Dmg);
 	const FLinearColor Col(5, 2, 1.2);
 	Fx.Hit(Ch, -D, 0.05, &Col);
 	Shake(0.1); ComboN = 0; ++NShotHits; DamageTaken += E->T.Dmg;
@@ -464,9 +506,9 @@ void AWHCombatDirector::ThrowPistol(const FVector& P, const FVector& V)
 }
 
 // ------------------------------------------------------------------------------------------------ time scale (real time based)
-void AWHCombatDirector::HitStop(double Dur, double Scale)
-{
-	FTimeReq R; R.Until = RTime + Dur; R.Scale = Scale; R.bSlow = false; TimeReq.Add(R); ++NHitStops;
+void AWHCombatDirector::HitStop(int32 Frames, double Scale)
+{ // UpdateTime runs at the end of this frame: the next Frames rendered frames advance game time by x Scale only
+	FTimeReq R; R.Until = RTime + (Frames - 0.5) / 60.0; R.Scale = Scale; R.bSlow = false; TimeReq.Add(R); ++NHitStops;
 }
 
 void AWHCombatDirector::Slowmo(double Dur, double Scale, double Ease)
@@ -477,16 +519,17 @@ void AWHCombatDirector::Slowmo(double Dur, double Scale, double Ease)
 
 void AWHCombatDirector::UpdateTime()
 {
-	double Sc = 1, Slow = 0;
+	double Sc = 1, Slow = 0; bool bHS = false;
 	for (int32 i = TimeReq.Num() - 1; i >= 0; --i)
 	{
 		const FTimeReq& R = TimeReq[i];
 		if (RTime >= R.Until) { TimeReq.RemoveAt(i); continue; }
 		double S = R.Scale;
 		if (R.bSlow) { const double Left = R.Until - RTime; const double K = Smooth(Left / R.Ease); S = 1 - (1 - R.Scale) * K; Slow = FMath::Max(Slow, 1 - S); }
+		else bHS = true;
 		Sc = FMath::Min(Sc, S);
 	}
-	TimeScale = Sc; SlowK = Slow;
+	TimeScale = Sc; SlowK = Slow; bHitStop = bHS;
 	MinTimeScale = FMath::Min(MinTimeScale, Sc);
 	UGameplayStatics::SetGlobalTimeDilation(this, float(Sc));
 }
@@ -497,26 +540,15 @@ void AWHCombatDirector::StartFight(const FString& Spec, double Dist)
 	const FVector Pf = Me->Pos - FVector(0, 0, HH);
 	const FVector Fwd = YawDir(Hero->GetTravCamera().Yaw);
 	FightCenter = Pf + Fwd * Dist * 0.6;
-	// P2 armed street people (hero skeleton): variety per type
-	static const TCHAR* MeleeMeshes[] = { TEXT("SK_Street_Thug_Bat"), TEXT("SK_Street_Tee_Bat"), TEXT("SK_Street_Beard_Pipe"), TEXT("SK_Street_Hood") };
-	static const TCHAR* GunMeshes[] = { TEXT("SK_Street_Thug_Pistol"), TEXT("SK_Street_Hood_Pistol") };
-	int32 NM = 0, NG = 0;
 	const int32 L = Spec.Len();
 	for (int32 i = 0; i < L; ++i)
 	{
 		const TCHAR Ch = Spec[i];
-		const EWHEnemyType Ty = Ch == 'g' ? EWHEnemyType::Gunman : Ch == 'b' ? EWHEnemyType::Brute : EWHEnemyType::Melee;
-		const double A = (double(i) / L - 0.5) * 2.2;
-		const double R = Ty == EWHEnemyType::Gunman ? Dist + 4 : Dist;
+		const double A = (double(i) / L - 0.5) * 2.4;
+		const double R = Ch == 'g' ? Dist + 4 : Dist + (i % 2) * 1.2;
 		const FVector D = FQuat(FVector::UpVector, -A).RotateVector(Fwd);   // browser rotates +a about +Y (to his left): mirrored in UE
 		FVector P = Pf + D * R; P.Z = GroundHeight(P.X, P.Y, Pf.Z + 2);
-		const FString MeshName = Ty == EWHEnemyType::Gunman ? GunMeshes[NG++ % 2] : Ty == EWHEnemyType::Brute ? TEXT("SK_Street_Brute_Pipe") : MeleeMeshes[NM++ % 4];
-		FActorSpawnParameters SP; SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-		AWHEnemy* E = GetWorld()->SpawnActor<AWHEnemy>(AWHEnemy::StaticClass(), FTransform(P * 100.0), SP);
-		if (!E) continue;
-		E->Setup(this, Ty, i + 1, P, YawTo(P, Pf), MeshName);
-		E->Mesh->PrimaryComponentTick.AddPrerequisite(this, PrimaryActorTick);
-		Enemies.Add(E);
+		SpawnEnemy(Ch, P);
 	}
 	bFight = true; bEngaged = true; ComboN = 0; Me->Hp = FMath::Max(Me->Hp, 60.0); WarnCount = 0; ClearT = 0;
 	Input.Clear();
@@ -524,11 +556,51 @@ void AWHCombatDirector::StartFight(const FString& Spec, double Dist)
 	LogEvent(TEXT("fight start ") + Types);
 }
 
+void AWHCombatDirector::SpawnEnemy(TCHAR Ch, const FVector& P)
+{ // P2 armed street people (hero skeleton): variety per type
+	static const TCHAR* MeleeMeshes[] = { TEXT("SK_Street_Thug_Bat"), TEXT("SK_Street_Tee_Bat"), TEXT("SK_Street_Beard_Pipe"), TEXT("SK_Street_Hood") };
+	static const TCHAR* GunMeshes[] = { TEXT("SK_Street_Thug_Pistol"), TEXT("SK_Street_Hood_Pistol") };
+	const EWHEnemyType Ty = Ch == 'g' ? EWHEnemyType::Gunman : Ch == 'b' ? EWHEnemyType::Brute : EWHEnemyType::Melee;
+	int32 NM = 0, NG = 0; for (AWHEnemy* O : Enemies) if (O) { if (O->bHasGun || O->Type == EWHEnemyType::Gunman) ++NG; else if (O->Type != EWHEnemyType::Brute) ++NM; }
+	const FString MeshName = Ty == EWHEnemyType::Gunman ? GunMeshes[NG % 2] : Ty == EWHEnemyType::Brute ? TEXT("SK_Street_Brute_Pipe") : MeleeMeshes[NM % 4];
+	FActorSpawnParameters SP; SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AWHEnemy* E = GetWorld()->SpawnActor<AWHEnemy>(AWHEnemy::StaticClass(), FTransform(P * 100.0), SP);
+	if (!E) return;
+	E->Setup(this, Ty, NextIndex++, P, YawTo(P, PlayerFeet), MeshName);
+	E->Mesh->PrimaryComponentTick.AddPrerequisite(this, PrimaryActorTick);
+	Enemies.Add(E);
+}
+
+// r02 reinforcements: keep the ring full (script "keep" standing enemies, "reserve" = spawn spec). They run in from ~13 m in front
+// of the combat camera, so the player sees them arrive.
+void AWHCombatDirector::Reinforce(double Dt)
+{
+	SpawnCd -= Dt;
+	if (Reserve <= 0 || KeepAlive <= 0 || SpawnCd > 0) return;
+	int32 N = 0; for (AWHEnemy* E : Enemies) if (E && E->Alive() && E->State != EWHEnemyState::Down) ++N;
+	if (N >= KeepAlive) return;
+	const FVector Pf = PlayerFeet;
+	for (int32 Try = 0; Try < 8; ++Try)
+	{
+		const double A = CYaw + (Try % 2 ? 1 : -1) * (0.25 + 0.2 * Try) + Rnd(-0.1, 0.1);
+		const FVector D = YawDir(A);
+		double R = 13.0;
+		FTravHit H; if (Raycast(Pf + FVector(0, 0, 1), D, R + 1, H) && !H.bGround) R = H.Distance - 1.5;
+		if (R < 8) continue;
+		FVector P = Pf + D * R; P.Z = GroundHeight(P.X, P.Y, Pf.Z + 2);
+		const TCHAR Ch = ReserveSpec[ReserveSpec.Len() - Reserve];
+		--Reserve; SpawnCd = 0.6;
+		SpawnEnemy(Ch, P);
+		LogEvent(FString::Printf(TEXT("reinforcement %s %c at %.1f m"), *Enemies.Last()->Tag(), Ch, R));
+		return;
+	}
+}
+
 void AWHCombatDirector::EndFight(bool bWon)
 {
 	if (!bFight) return;
 	bFight = false; bEngaged = false; ComboN = 0;
-	Threats.Reset(); MeleeToken = nullptr; GunToken = nullptr;
+	Threats.Reset(); MeleeTokens.Reset(); GunTokens.Reset();
 	Me->Reset();
 	if (bWon) { Banner(TEXT("AREA CLEAR")); Slowmo(0.8, 0.35, 0.5); }
 	LogEvent(FString::Printf(TEXT("fight end %s"), bWon ? TEXT("WON") : TEXT("ended")));
@@ -549,27 +621,33 @@ void AWHCombatDirector::DirectorStep(double Dt)
 		default: break;
 		}
 	}
-	// surround: melee enemies around the player at ~3 m, gunmen at ~10 m
+	// surround: melee enemies around the player at ~3 m, gunmen at ~10 m. r02: the ring stays in the arc the combat camera sees
+	// (+-100 deg from its view direction), so nobody stands between the lens and the hero and the whole group is on screen.
+	const bool bCamArc = CamW > 0.3;
 	for (int32 Gp = 0; Gp < 2; ++Gp)
 	{
 		TArray<AWHEnemy*> Group;
 		for (AWHEnemy* E : Standing) if ((E->Type == EWHEnemyType::Gunman) == (Gp == 1)) Group.Add(E);
 		if (!Group.Num()) continue;
 		const bool bGun = Gp == 1;
+		const double Arc = bGun ? 0.62 : 1.75;
 		TArray<double> Ang;
 		for (AWHEnemy* E : Group) Ang.Add(FMath::Atan2(E->Pos.Y - Pf.Y, E->Pos.X - Pf.X));
-		const double MinSep = bGun ? 0.7 : FMath::Min(2 * PI / Group.Num(), 1.25);
-		for (int32 It = 0; It < 4; ++It)
+		const double MinSep = bGun ? 0.35 : FMath::Min((bCamArc ? 2 * Arc : 2 * PI) / Group.Num(), 1.1);
+		for (int32 It = 0; It < 6; ++It)
+		{
 			for (int32 i = 0; i < Ang.Num(); ++i)
 				for (int32 j = i + 1; j < Ang.Num(); ++j)
 				{
 					const double D = AngWrap(Ang[j] - Ang[i]);
 					if (FMath::Abs(D) < MinSep) { const double Push = (MinSep - FMath::Abs(D)) * 0.5 * (D >= 0 ? 1 : -1); Ang[i] -= Push; Ang[j] += Push; }
 				}
+			if (bCamArc) for (double& A : Ang) { const double R = AngWrap(A - CYaw); A = CYaw + FMath::Clamp(R, -Arc, Arc); }
+		}
 		for (int32 i = 0; i < Group.Num(); ++i)
 		{
 			AWHEnemy* E = Group[i];
-			double R = bGun ? 9.5 + (i % 2) * 1.5 : E->Type == EWHEnemyType::Brute ? 3.6 : 3.0 + (i % 2) * 0.7;
+			double R = bGun ? 8.5 + (i % 2) * 1.5 : E->Type == EWHEnemyType::Brute ? 3.6 : 2.8 + (i % 2) * 0.9;
 			if (Me->bAirborne && !bGun) R += 1.2;
 			const FVector D(FMath::Cos(Ang[i]), FMath::Sin(Ang[i]), 0);
 			FTravHit H;
@@ -577,31 +655,47 @@ void AWHCombatDirector::DirectorStep(double Dt)
 			Slots.Add(E, FVector(Pf.X + D.X * R, Pf.Y + D.Y * R, Pf.Z));
 		}
 	}
-	const FName MN = Me->MoveName();
-	if (MN == "down" || MN == "finisher") return;
-	// melee token: one committed attacker at a time
-	if (!MeleeToken.IsValid() && GlobalCd <= 0 && !Me->bAirborne)
+	// r02 aggression scheduler: several committed attackers, and a new wind-up at least every ~0.6-0.8 s (SM2 street fights keep
+	// the pressure on). Melee attackers are not sent while the hero is airborne (they could not reach him): gunmen fill those gaps.
+	MeleeTokens.RemoveAll([](const TWeakObjectPtr<AWHEnemy>& W) { return !W.IsValid() || !W->Alive() || (W->State != EWHEnemyState::Approach && W->State != EWHEnemyState::Attack); });
+	GunTokens.RemoveAll([](const TWeakObjectPtr<AWHEnemy>& W) { return !W.IsValid() || !W->Alive() || (W->State != EWHEnemyState::Aim && W->State != EWHEnemyState::Fire); });
+	const double Gap = LastAttackRT < 0 ? 9 : RTime - LastAttackRT;
+	const bool bPressure = Gap > 0.55;
+	const int32 MaxMelee = Gap > 0.7 ? 3 : 2;
+	if (MeleeTokens.Num() < MaxMelee && (GlobalCd <= 0 || bPressure) && (!Me->bAirborne || Gap > 0.8))
 	{
 		AWHEnemy* Best = nullptr; double Bs = 1e18;
 		for (AWHEnemy* E : Standing)
 		{
-			if ((E->Type == EWHEnemyType::Gunman && E->bHasGun) || E->State != EWHEnemyState::Hold || E->Cd > 0) continue;
+			if ((E->Type == EWHEnemyType::Gunman && E->bHasGun) || E->State != EWHEnemyState::Hold || (E->Cd > 0 && !bPressure)) continue;
 			const double D = HDist(E->Pos, Pf); if (D > 9) continue;
-			const double Sc = D + Rng.FRand() * 2;
+			const double Sc = D + Rng.FRand() * 2 + (E->Cd > 0 ? 2 : 0);
 			if (Sc < Bs) { Bs = Sc; Best = E; }
 		}
-		if (Best) { MeleeToken = Best; Best->Set(EWHEnemyState::Approach); LogEvent(TEXT("token melee ") + Best->Tag()); }
+		if (Best)
+		{
+			MeleeTokens.Add(Best); Best->Set(EWHEnemyState::Approach); GlobalCd = Rnd(0.25, 0.5); LogEvent(TEXT("token melee ") + Best->Tag());
+			if (Me->bAirborne) Best->StartSwing();   // hero above him: he swings up at once (it misses unless the hero comes down into it)
+		}
 	}
-	if (!GunToken.IsValid() && GunCd <= 0)
+	if (Gap > 0.8)
+	{ // pressure: the nearest attacker still closing in winds up now (the wind-up itself closes up to ~1.5 m)
+		AWHEnemy* Best = nullptr; double Bd = 1e9;
+		for (const auto& W : MeleeTokens)
+			if (W.IsValid() && W->State == EWHEnemyState::Approach) { const double Dd = HDist(W->Pos, Pf); if (Dd < W->T.Reach + 2.6 && Dd < Bd) { Bd = Dd; Best = W.Get(); } }
+		if (Best) Best->StartSwing();
+	}
+	const int32 MaxGun = (Me->bAirborne || Gap > 0.9) ? 2 : 1;
+	if (GunTokens.Num() < MaxGun && (GunCd <= 0 || Gap > 0.8))
 	{
 		for (AWHEnemy* E : Standing)
 		{
-			if (!E->bHasGun || E->State != EWHEnemyState::Hold || E->Cd > 0) continue;
+			if (!E->bHasGun || E->State != EWHEnemyState::Hold || (E->Cd > 0 && Gap < 0.8)) continue;
 			const double D = HDist(E->Pos, Pf); if (D > 24 || D < 2.5) continue;
 			const FVector From = E->Pos + FVector(0, 0, 1.4), To = PlayerChest();
 			FTravHit H;
 			if (Raycast(From, (To - From).GetSafeNormal(), FVector::Dist(From, To) - 0.5, H)) continue;
-			GunToken = E; E->Set(EWHEnemyState::Aim); E->AimDur = 0.95; Threat(E, 0.95, TEXT("gun"));
+			GunTokens.Add(E); E->Set(EWHEnemyState::Aim); E->AimDur = 0.8; GunCd = Rnd(1.0, 1.8); Threat(E, 0.8, TEXT("gun"));
 			LogEvent(TEXT("token gun ") + E->Tag());
 			break;
 		}
@@ -674,163 +768,192 @@ void AWHCombatDirector::UpdateShots(double Dt)
 	}
 }
 
-// ------------------------------------------------------------------------------------------------ combat camera layer
+// ------------------------------------------------------------------------------------------------ combat camera (r02)
+bool AWHCombatDirector::Project(const FVector& CamP, const FRotator& CamR, double FovDeg, const FVector& P, double& Sx, double& Sy)
+{
+	const FVector L = CamR.UnrotateVector(P - CamP);
+	if (L.X < 0.05) { Sx = Sy = -1; return false; }
+	const double Th = FMath::Tan(FMath::DegreesToRadians(FovDeg) * 0.5);
+	Sx = 0.5 + 0.5 * (L.Y / L.X) / Th;
+	Sy = 0.5 - 0.5 * (L.Z / L.X) / Th * (16.0 / 9.0);
+	return true;
+}
+
+// SM2-style group framing (refs group-fight-nm, street-fight-cars): mid-high, 4-6 m back, pitched 15-25 deg down, framing the hero
+// plus his 3 nearest enemies. Each frame it scores candidate orbit yaws (hero / group on screen, no body within 2.6 m of the lens
+// or on the lens-hero line, no wall in between, reward for every standing enemy in view, cost for turning) and turns toward the
+// best at <= 55 deg/s: no cuts, no snaps. During a hit-stop freeze the camera holds its last transform exactly.
 void AWHCombatDirector::CombatCamera(double RDt)
 {
 	UCameraComponent* Cam = Hero->Camera(); if (!Cam) return;
 	const FVector Pc = Me->Pos;
-	double NearD = 1e9, Spread = 0, N = 0; FVector Cen = FVector::ZeroVector;
-	for (AWHEnemy* E : Enemies)
+	const FVector P3Pos = Cam->GetComponentLocation() / 100.0;
+	const FRotator P3Rot = Cam->GetComponentRotation();
+	const double P3Fov = Cam->FieldOfView;
+	double NearD = 1e9;
+	for (AWHEnemy* E : Enemies) if (E && E->Alive()) NearD = FMath::Min(NearD, HDist(E->Pos, Pc));
+	const double Want = bFight && bEngaged && NearD < 16 ? 1 : 0;
+	if (Frozen() && bCamLast && CamW > 0.5)
 	{
-		if (!E || !E->Alive()) continue;
-		const double D = HDist(E->Pos, Pc); NearD = FMath::Min(NearD, D); if (D > 12) continue;
-		const double K = E->Type == EWHEnemyType::Gunman ? 0.5 : 1; N += K; Cen += E->Pos * K; Spread = FMath::Max(Spread, D * (E->Type == EWHEnemyType::Gunman ? 0.7 : 1));
+		Cam->SetWorldLocationAndRotation(LastCamPos * 100.0, LastCamRot); Cam->SetFieldOfView(LastFov);
+		CamPosM = LastCamPos; CamRotF = LastCamRot; CamFovF = LastFov;
+		return;
 	}
-	const bool bGrounded = Hero->GetTraversal()->Mode() == EWebTravMode::Ground || Me->Busy();
-	const double Want = bFight && bEngaged && bGrounded && NearD < 14 ? 1 : 0;
 	CamW = Damp(CamW, Want, Want > 0 ? 2.0 : 1.3, RDt);
 	const double W = Smooth(CamW);
 	CamPunchT += RDt;
-	CamPunch = CamPunchT < 0.15 ? Smooth(CamPunchT / 0.15) : 1 - Smooth((CamPunchT - 0.15) / 0.45);
-	FVector CamPos = Cam->GetComponentLocation() / 100.0;
-	FRotator CamRot = Cam->GetComponentRotation();
-	const FVector Fwd = CamRot.Vector(), Right = FRotationMatrix(CamRot).GetUnitAxis(EAxis::Y);
-	const FName MN = Me->MoveName();
-	const bool bJuggle = MN == "air" || MN == "airStrike" || MN == "slamDown" || (MN == "launch" && Me->M.bRise);
+	CamPunch = CamPunchT < 0.12 ? Smooth(CamPunchT / 0.12) : 1 - Smooth((CamPunchT - 0.12) / 0.4);
+	if (!bCamInit) { CYaw = CYawGoal = FMath::DegreesToRadians(P3Rot.Yaw); CHero = Pc; bCamInit = true; }
+	// hero anchor: tight follow, lag capped at 0.7 m (the hero never drifts toward the frame edge during a dash)
+	CHero.X = Damp(CHero.X, Pc.X, 12, RDt); CHero.Y = Damp(CHero.Y, Pc.Y, 12, RDt); CHero.Z = Damp(CHero.Z, Pc.Z, 7, RDt);
+	{ const FVector Lg = CHero - Pc; if (Lg.Size() > 0.7) CHero = Pc + Lg.GetSafeNormal() * 0.7; }
+	// framing set: the 3 nearest standing enemies
+	TArray<AWHEnemy*> Near, Stand;
+	for (AWHEnemy* E : Enemies)
+		if (E && E->Alive() && E->State != EWHEnemyState::Down && E->State != EWHEnemyState::Knock) Stand.Add(E);
+	Stand.Sort([&Pc](const AWHEnemy& A, const AWHEnemy& B) { return HDist(A.Pos, Pc) < HDist(B.Pos, Pc); });
+	for (AWHEnemy* E : Stand) if (Near.Num() < 3 && HDist(E->Pos, Pc) < 11) Near.Add(E);
+	FVector OffT = FVector::ZeroVector;
+	if (Near.Num()) { FVector Cn = FVector::ZeroVector; for (AWHEnemy* E : Near) Cn += E->Pos; OffT = Flat(Cn / Near.Num() - Pc) * 0.4; if (OffT.Size() > 1.4) OffT = OffT.GetSafeNormal() * 1.4; }
+	COff.X = Damp(COff.X, OffT.X, 2.5, RDt); COff.Y = Damp(COff.Y, OffT.Y, 2.5, RDt); COff.Z = 0;
+	const double Gz = GroundHeight(Pc.X, Pc.Y, Pc.Z + 0.5);
+	const double Air = FMath::Clamp((Pc.Z - HH) - Gz, 0.0, 4.0);
+	const double Pitch = FMath::Lerp(21.0, 15.5, FMath::Clamp(Air / 2.5, 0.0, 1.0));
+	CPitch = Damp(CPitch, Pitch, 3, RDt);
+	auto FocusNow = [&]() { FVector F = CHero + COff; F.Z = FMath::Max(Gz + 1.0, CHero.Z + 0.05); return F; };
+	FVector Focus = FocusNow();
+	auto RotFor = [&](double Yaw) { return FRotator(-CPitch, FMath::RadiansToDegrees(Yaw), 0); };
+	auto CamFor = [&](double Yaw, double Dist) { return Focus - RotFor(Yaw).Vector() * Dist; };
+	auto OutBy = [&](const FVector& Cp, const FRotator& R, const FVector& P, double M, double Fv = -1.0) -> double
+	{
+		double Sx, Sy; if (!Project(Cp, R, Fv > 0 ? Fv : CFov, P, Sx, Sy)) return 1.0;
+		return FMath::Max(0.0, FMath::Max(M - Sx, Sx - (1 - M))) + FMath::Max(0.0, FMath::Max(M - Sy, Sy - (1 - M)));
+	};
+	const FVector HeroTop = Pc + FVector(0, 0, 0.95), HeroFeet = Pc - FVector(0, 0, HH);
+	auto FramePen = [&](const FVector& Cp, const FRotator& R)
+	{
+		double C = 20 * (OutBy(Cp, R, HeroTop, 0.1) + OutBy(Cp, R, HeroFeet, 0.1));
+		for (AWHEnemy* E : Near) C += 6 * (OutBy(Cp, R, E->Pos + FVector(0, 0, 1.75 * E->T.Scale), 0.04) + OutBy(Cp, R, E->Pos, 0.04));
+		return C;
+	};
+	auto Score = [&](double Yaw, double Dist)
+	{
+		const FVector Cp = CamFor(Yaw, Dist); const FRotator R = RotFor(Yaw);
+		double C = FramePen(Cp, R) + 0.9 * FMath::Abs(AngWrap(Yaw - CYaw));
+		const FVector Dv = Cp - Focus; FTravHit H;
+		if (Raycast(Focus, Dv.GetSafeNormal(), Dv.Size() + 0.3, H)) C += 8 + (Dv.Size() + 0.3 - H.Distance);
+		for (AWHEnemy* E : Enemies)
+		{
+			if (!E || E->State == EWHEnemyState::Out || E->Stuck) continue;
+			const double Dh = HDist(E->Pos, Cp); if (Dh < 2.6) C += (2.6 - Dh) * 4;
+			const FVector Ec = E->Pos + FVector(0, 0, 1.0 * E->T.Scale);
+			const FVector Q = FMath::ClosestPointOnSegment(Ec, Cp, Pc);
+			if (FVector::Dist(Q, Ec) < 0.6 && FVector::Dist(Q, Pc) > 0.5) C += 3;
+		}
+		for (AWHEnemy* E : Stand)
+			if (OutBy(Cp, R, E->Pos + FVector(0, 0, 1.7 * E->T.Scale), 0.02) + OutBy(Cp, R, E->Pos, 0.02) <= 0) C -= 0.35;
+		return C;
+	};
 	if (W > 0.002)
 	{
-		const bool bAir = Me->bAirborne || Hero->GetTraversal()->Mode() == EWebTravMode::Air;
-		CamAir = Damp(CamAir, bJuggle ? 1 : bAir ? 0.4 : 0, bJuggle ? 3 : 1.5, RDt);
-		const double WantExtra = Clamp(0.35 + (Spread - 3) * 0.16, 0.2, 1.5) + CamAir * 1.1;
-		CamExtra = Damp(CamExtra < 0 ? WantExtra : CamExtra, WantExtra, 1.6, RDt);
-		FVector WantP = CamPos - Fwd * CamExtra * W; WantP.Z += (0.3 + CamAir * 0.9) * W;
-		if (CamAir > 0.01 && Me->Target.IsValid())
+		double BestY = CYawGoal, BestS = Score(CYawGoal, CDist);
+		for (int32 k = -7; k <= 7; ++k)
 		{
-			const FVector Tp = Me->Target->Pos; const double Lat = FVector::DotProduct(Tp - Pc, Right);
-			CamSide = Damp(CamSide, Lat >= 0 ? 1 : -1, 2, RDt);
-			WantP += Right * CamSide * 1.0 * CamAir * W;
+			const double Y = CYaw + k * 0.17; const double S = Score(Y, CDist);
+			if (S < BestS - 0.4) { BestS = S; BestY = Y; }
 		}
-		if (CamPunch > 0) WantP += Fwd * 0.25 * CamPunch * W;
-		FVector Off = N > 0 ? Flat(Cen / N - Pc) * 0.22 : FVector::ZeroVector;
-		if (Off.Size() > 1.6) Off = Off.GetSafeNormal() * 1.6;
-		CamFrame.X = Damp(CamFrame.X, Off.X, 2.2, RDt); CamFrame.Y = Damp(CamFrame.Y, Off.Y, 2.2, RDt);
-		WantP += Right * FVector::DotProduct(CamFrame, Right) * W;
-		// yaw drift (the orbit yaw belongs to P3's camera: combat keeps its own offset and orbits the final camera by it)
-		const double CamYaw = Hero->GetTravCamera().Yaw + CamYawOff * W;
-		AWHEnemy* Tg = Me->Target.IsValid() && Me->Target->Alive() ? Me->Target.Get() : nullptr;
-		if (Tg && !CineS.bOn && Time - Me->LastAttackT < 2.5 && !bJuggle)
-		{ // 3/4 framing: target not straight ahead along the view (his body would hide the blows)
-			const double YawST = FMath::Atan2(Tg->Pos.Y - Pc.Y, Tg->Pos.X - Pc.X), DA = AngWrap(YawST - CamYaw);
-			if (FMath::Abs(DA) < 0.72 && HDist(Tg->Pos, Pc) > 0.6)
-			{
-				const double Goal = YawST - (DA >= 0 ? 1 : -1) * 0.8, Step = AngWrap(Goal - CamYaw);
-				CamYawOff += FMath::Clamp(Step, -1.3 * RDt * W, 1.3 * RDt * W);
-			}
-		}
-		if (!CineS.bOn)
-		{ // an attacker winding up outside the view: drift the orbit toward him
-			const AWHEnemy* TT = nullptr; double Best = 1e9;
-			for (const FWHThreat& T : Threats) { const double R = T.At - Time; if (R > 0 && R < Best && T.E.IsValid()) { Best = R; TT = T.E.Get(); } }
-			if (TT)
-			{
-				const double Rel = AngWrap(FMath::Atan2(TT->Pos.Y - Pc.Y, TT->Pos.X - Pc.X) - CamYaw);
-				const double Over = FMath::Abs(Rel) - 0.62;
-				if (Over > 0) CamYawOff += FMath::Sign(Rel) * FMath::Min(Over, 1.4 * RDt * W);
-			}
-		}
-		const FVector Pivot = Pc + FVector(0, 0, 0.5);
-		const FQuat YQ(FVector::UpVector, CamYawOff * W);
-		WantP = Pivot + YQ.RotateVector(WantP - Pivot);
-		CamRot.Yaw += FMath::RadiansToDegrees(CamYawOff * W);
-		// world collision from the body
-		FVector ToCam = WantP - Pivot; const double Lc = ToCam.Size(); ToCam /= FMath::Max(1e-4, Lc);
-		double Raw = Lc + 0.6;
-		FTravHit H; if (Raycast(Pivot, ToCam, Lc + 0.9, H)) Raw = FMath::Min(Raw, H.Distance);
-		const double LimH = FMath::Max(0.6, Raw - 0.12), TgtH = FMath::Max(0.6, Raw - 0.6);
-		CamHard = FMath::Min(LimH, Damp(CamHard < 0 ? TgtH : CamHard, TgtH, TgtH < CamHard ? 12 : 2.5, RDt));
-		double Allow = FMath::Min(Lc, CamHard);
-		const double Hard = Allow;
-		for (AWHEnemy* E : Enemies)
-		{ // bodies between lens and hero: pull in only to a normal over-the-shoulder distance
-			if (!E || E->Stuck == 1 || E->State == EWHEnemyState::Out) continue;
-			const double R = 0.5 * E->T.Scale + (E->Web > 0.3 ? 0.25 : 0);
-			for (double Hg : { 0.6, 1.3 })
-			{
-				const FVector Ep = E->Pos + FVector(0, 0, Hg * E->T.Scale);
-				const double T = FVector::DotProduct(Ep - Pivot, ToCam); if (T < 0.5 || T > Allow + 0.4) continue;
-				const double D = FVector::Dist(Ep, Pivot + ToCam * T);
-				if (D < R + 0.25) Allow = FMath::Max(2.4, FMath::Min(Allow, T - R - 0.2));
-			}
-		}
-		CamSoft = Damp(CamSoft < 0 ? Lc : CamSoft, Allow, Allow < CamSoft ? 9 : 2.5, RDt);
-		const double CamAllow = FMath::Min(Hard, CamSoft);
-		if (CamAllow < Lc) { WantP = Pivot + ToCam * CamAllow; WantP.Z += (Lc - CamAllow) * 0.3; }
-		const double Gy = GroundHeight(WantP.X, WantP.Y, WantP.Z + 0.3) + 0.35; if (WantP.Z < Gy) WantP.Z = Gy;
-		CamPos = WantP;
+		CYawGoal = BestY;
+		const double Step = AngWrap(CYawGoal - CYaw) * (1 - FMath::Exp(-2.2 * RDt));
+		CYaw = AngWrap(CYaw + FMath::Clamp(Step, -0.95 * RDt, 0.95 * RDt));
+		double WantD = 6.0;
+		for (double D : { 4.4, 5.0, 5.6 }) if (FramePen(CamFor(CYaw, D), RotFor(CYaw)) <= 0) { WantD = D; break; }
+		CDist = Damp(CDist, WantD, 1.5, RDt);
 	}
-	else CamYawOff = Damp(CamYawOff, 0, 0.8, RDt);
-	// shake / impact (combat trauma on top of the chase camera's own)
-	CamTrauma = FMath::Max(0.0, CamTrauma - RDt * 1.6);
-	CamImpact = FMath::Max(0.0, CamImpact - RDt * 3.0);
-	if (CamTrauma > 0.001 || CamImpact > 0.001)
+	else { CYaw = CYawGoal = FMath::DegreesToRadians(P3Rot.Yaw); CHero = Pc; COff = FVector::ZeroVector; }
+	// hard hero margin: pull the framing offset back toward the hero until his head and feet sit inside a 7 % border
+	for (int32 It = 0; It < 4; ++It)
 	{
-		const double Tr = CamTrauma * CamTrauma;
-		const double Ph = RTime * 47.0;
-		CamRot.Pitch += Tr * 2.2 * FMath::Sin(Ph * 1.3) - CamImpact * 1.2;
-		CamRot.Yaw += Tr * 1.8 * FMath::Sin(Ph * 0.9 + 1.7);
-		CamRot.Roll += Tr * 1.5 * FMath::Sin(Ph * 1.1 + 0.4);
+		if (OutBy(CamFor(CYaw, CDist), RotFor(CYaw), HeroTop, 0.07) + OutBy(CamFor(CYaw, CDist), RotFor(CYaw), HeroFeet, 0.07) <= 0) break;
+		COff *= 0.5; CHero = CHero + (Pc - CHero) * 0.5; Focus = FocusNow();
 	}
-	// cinematic beats (finisher / wall pin): low side angle that frames BOTH actors every frame
+	FVector CamP = CamFor(CYaw, CDist); FRotator CamR = RotFor(CYaw);
+	{ // walls between focus and lens: pull in (never closer than 2.2 m)
+		const FVector Dv = CamP - Focus; FTravHit H;
+		if (Raycast(Focus, Dv.GetSafeNormal(), Dv.Size() + 0.3, H)) CamP = Focus + Dv.GetSafeNormal() * FMath::Max(2.2, H.Distance - 0.3);
+		const double Gy = GroundHeight(CamP.X, CamP.Y, CamP.Z + 0.3) + 0.4; if (CamP.Z < Gy) CamP.Z = Gy;
+	}
+	if (CamPunch > 0) CamP += CamR.Vector() * 0.22 * CamPunch;
+	double Fov = CFov;
+	// finisher beat: a low 3/4 close-up of hero + victim, eased in over 0.35 s (slow-mo x0.3 runs with it), eased out over 0.5 s
 	if (CineS.bOn)
 	{
 		CineS.T += RDt;
-		const double K = Smooth(CineS.T / 0.22) * (1 - Smooth((CineS.T - CineS.Dur + 0.3) / 0.3));
 		AWHEnemy* T = CineS.Target.Get();
-		if (CineS.T > CineS.Dur || !T) CineS.bOn = false;
-		else if (K > 0.001)
+		if (CineS.T > CineS.Dur || !T) { CineS.bOn = false; CineK = 0; }
+		else
 		{
-			const FVector Tp = T->Chest();
-			const FVector A = Pc + FVector(0, 0, 0.2);
-			const FVector Mid = A + (Tp - A) * (CineS.Kind == "pin" ? 0.55 : 0.5);
-			const double Span = FVector::Dist(A, Tp);
+			CineK = Smooth(CineS.T / 0.35) * (1 - Smooth((CineS.T - (CineS.Dur - 0.5)) / 0.5));
+			const FVector A = Pc, Tp = T->Chest();
+			const FVector Mid = (A + Tp) * 0.5;
+			const FVector Ax = FlatNorm(Tp - A);
 			if (!CineS.bSide)
-			{
-				const FVector Ax = FlatNorm(Tp - A);
-				TArray<FVector> Cands = { FVector(-Ax.Y, Ax.X, 0), FVector(Ax.Y, -Ax.X, 0) };
-				for (int32 i = 0; i < 2; ++i) { Cands.Add((Cands[i] - Ax * 0.8).GetSafeNormal()); Cands.Add((Cands[i] + Ax * 0.8).GetSafeNormal()); }
+			{ // 3/4 side candidates; no wall, no other body near the lens or on the lens-hero / lens-victim lines
+				const FVector Perp(-Ax.Y, Ax.X, 0);
+				CineS.Dist = 3.0 + FVector::Dist(A, Tp) * 0.7; CineExtra = 0;
 				double Bs = 1e18;
-				for (const FVector& Sd : Cands)
-				{
-					const double Dist = 2.6 + Span * 0.8; FVector Cp = Mid + Sd * Dist; Cp.Z = Mid.Z + 0.35;
-					double Sc = 0;
-					for (const FVector& Tg : { A, Tp })
+				for (double Sg : { 1.0, -1.0 })
+					for (double Bk : { -0.45, 0.0, 0.45 })
 					{
-						const FVector Dd = Tg - Cp; const double L = Dd.Size(); FTravHit H;
-						if (Raycast(Cp, Dd / L, L - 0.3, H)) Sc += 10;
+						const FVector Sd = (Perp * Sg * 0.9 + Ax * Bk).GetSafeNormal();
+						FVector Cp = Mid + Sd * CineS.Dist; Cp.Z = Mid.Z + 0.4;
+						double Sc = -FVector::DotProduct(Sd, FlatNorm(CamP - Mid)) * 0.8 + (Bk > 0 ? 0.6 : 0);
+						FTravHit H2; if (Raycast(Mid, Sd, CineS.Dist + 0.5, H2)) Sc += 10;
 						for (AWHEnemy* E : Enemies)
 						{
-							if (!E || E == T || !E->Alive()) continue;
-							const FVector Ep = E->Pos + FVector(0, 0, 1);
-							const FVector Q = FMath::ClosestPointOnSegment(Ep, Cp, Tg);
-							if (FVector::Dist(Q, Ep) < 0.7) Sc += 4;
+							if (!E || E == T || E->State == EWHEnemyState::Out || E->Stuck) continue;
+							const FVector Ep = E->Pos + FVector(0, 0, 1.0);
+							if (HDist(Ep, Cp) < 2.4) Sc += 6;
+							for (const FVector& Tg : { A, Tp }) if (FVector::Dist(FMath::ClosestPointOnSegment(Ep, Cp, Tg), Ep) < 0.8) Sc += 4;
 						}
+						if (Sc < Bs) { Bs = Sc; CineS.Side = Sd; }
 					}
-					FTravHit H2; if (Raycast(Mid, Sd, Dist, H2)) Sc += 6;
-					Sc -= FVector::DotProduct(Sd, FlatNorm(CamPos - Mid)) * 0.8;
-					if (Sc < Bs) { Bs = Sc; CineS.Side = Sd; CineS.Dist = Dist; }
-				}
 				CineS.bSide = true;
 			}
-			FVector Cpos = Mid + CineS.Side * (CineS.Dist + CineS.T * 0.35); Cpos.Z = Mid.Z + 0.35;
-			const FVector Dm = (Cpos - Mid).GetSafeNormal(); FTravHit Hh;
-			if (Raycast(Mid, Dm, FVector::Dist(Mid, Cpos), Hh)) Cpos = Mid + Dm * FMath::Max(1.0, Hh.Distance - 0.3);
-			const FVector Look0 = CamPos + CamRot.Vector() * FMath::Max(2.0, FVector::Dist(CamPos, Pc));
-			const FVector Look = Look0 + (Mid - Look0) * K;
-			CamPos = CamPos + (Cpos - CamPos) * K;
-			CamRot = (Look - CamPos).Rotation();
+			FVector Cp = Mid + CineS.Side * (CineS.Dist + CineExtra + CineS.T * 0.25); Cp.Z = Mid.Z + 0.4;
+			FTravHit Hh; const FVector Dm = (Cp - Mid).GetSafeNormal();
+			if (Raycast(Mid, Dm, FVector::Dist(Mid, Cp), Hh)) Cp = Mid + Dm * FMath::Max(1.2, Hh.Distance - 0.3);
+			const FVector LookC = Mid + FVector(0, 0, 0.1);
+			const FRotator Cr = (LookC - Cp).Rotation();
+			// keep hero + victim inside a 7 % border: back off smoothly while either leaves it
+			const double Ov = OutBy(Cp, Cr, HeroTop, 0.07, 62) + OutBy(Cp, Cr, HeroFeet, 0.07, 62) + OutBy(Cp, Cr, Tp + FVector(0, 0, 0.6), 0.05, 62) + OutBy(Cp, Cr, T->Pos, 0.05, 62);
+			if (Ov > 0) CineExtra = FMath::Min(3.0, CineExtra + RDt * 4.0);
+			const double K = CineK;
+			// blend position and LOOK TARGET (not the rotation): hero + victim stay centred through the whole ease
+			const FVector Look0 = Focus;
+			CamP = CamP + (Cp - CamP) * K;
+			CamR = (Look0 + (LookC - Look0) * K - CamP).Rotation();
+			Fov = FMath::Lerp(Fov, 62.0, K);
 		}
 	}
-	Cam->SetWorldLocationAndRotation(CamPos * 100.0, CamRot);
+	// blend from / to the P3 chase camera
+	FVector OutP = P3Pos + (CamP - P3Pos) * W;
+	FRotator OutR = FQuat::Slerp(P3Rot.Quaternion(), CamR.Quaternion(), W).Rotator();
+	const double OutFov = FMath::Lerp(P3Fov, Fov, W);
+	// shake / impact (trauma decays and the shake phase advances in real time, but not during a hit-stop freeze)
+	CamTrauma = FMath::Max(0.0, CamTrauma - RDt * 1.8);
+	CamImpact = FMath::Max(0.0, CamImpact - RDt * 3.0);
+	ShakePh += RDt * 47.0;
+	if (CamTrauma > 0.001 || CamImpact > 0.001)
+	{
+		const double Tr = CamTrauma * CamTrauma;
+		OutR.Pitch += Tr * 1.6 * FMath::Sin(ShakePh * 1.3) - CamImpact * 0.9;
+		OutR.Yaw += Tr * 1.3 * FMath::Sin(ShakePh * 0.9 + 1.7);
+		OutR.Roll += Tr * 1.0 * FMath::Sin(ShakePh * 1.1 + 0.4);
+	}
+	Cam->SetWorldLocationAndRotation(OutP * 100.0, OutR);
+	Cam->SetFieldOfView(float(OutFov));
+	LastCamPos = OutP; LastCamRot = OutR; LastFov = float(OutFov); bCamLast = true;
+	CamPosM = OutP; CamRotF = OutR; CamFovF = OutFov;
 }
 
 // ------------------------------------------------------------------------------------------------ per frame
@@ -851,7 +974,7 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 		FVector C = FVector::ZeroVector; int32 N = 0;
 		for (AWHEnemy* E : Enemies) if (E && E->Alive()) { C += E->Pos; ++N; }
 		if (N) FightCenter += (C / N - FightCenter) * (1 - FMath::Exp(-0.5 * Dt));
-		if (bEngaged) DirectorStep(Dt);
+			if (bEngaged) { DirectorStep(Dt); Reinforce(Dt); }
 		if (!N && Enemies.Num()) { ClearT += Dt; if (ClearT > 1.3 && (Me->IsFree() || ClearT > 3)) EndFight(true); } else ClearT = 0;
 	}
 	for (AWHEnemy* E : Enemies) if (E && (bEngaged || !E->Alive())) E->Update(Dt);
@@ -883,11 +1006,13 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 		}
 	}
 	SenseLvl = bEngaged ? Lvl : 0;
-	Fx.Sense(SenseLvl, bRed, Hero->HeadM() + FVector(0, 0, 0.08), RDt);
-	Fx.Update(Dt);
+	Fx.Sense(SenseLvl, bRed, Hero->HeadM() + FVector(0, 0, 0.08), Dt);
+	Fx.Update(Dt, RDt);
 	ComboT += Dt; if (ComboT > 3.2) ComboN = 0;
+	if (bHitStop) ++NFrozenFrames;
 	UpdateTime();
 	CombatCamera(RDt);
+	FrameRecord();
 	// automation: telemetry row, stills, quit
 	TelemetryRows.Add(FString::Printf(TEXT("%lld,%.4f,%.4f,%.3f,%s,%.3f,%.3f,%.3f,%.0f,%.2f,%d,%.2f,%d,%s,%s,%.2f,%s"),
 		Frame, RTime, Time, TimeScale, *Me->MoveName().ToString(), Me->Pos.X, Me->Pos.Y, Me->Pos.Z, Me->Hp, Me->Focus, ComboN, SenseLvl,
@@ -907,6 +1032,50 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 		if (APlayerController* PC = GetWorld()->GetFirstPlayerController()) PC->ConsoleCommand(TEXT("quit"));
 		else FGenericPlatformMisc::RequestExit(false);
 	}
+}
+
+// r02 per-frame record for the pixel measurements: camera, and each character's screen-space box (all skeleton bones projected with
+// the final camera of this frame; head top padded). The rendered frame shows this simulation state (movie frames lag by the render
+// pipeline; docs/night1/combat/measure_r02.py calibrates the offset from the hit-stop freezes).
+void AWHCombatDirector::FrameRecord()
+{
+	if (!bFight && Enemies.Num() == 0) return;
+	auto Box = [this](const USkeletalMeshComponent* M, double& X0, double& Y0, double& X1, double& Y1, double& Dist) -> bool
+	{
+		X0 = Y0 = 9; X1 = Y1 = -9; Dist = 1e9; bool bAny = false;
+		if (!M) return false;
+		const TArray<FTransform>& Cs = M->GetComponentSpaceTransforms();
+		const FTransform Ct = M->GetComponentTransform();
+		double Top = -1e9, Bot = 1e9;
+		for (const FTransform& B : Cs) { const FVector Wp = Ct.TransformPosition(B.GetLocation()) / 100.0; Top = FMath::Max(Top, Wp.Z); Bot = FMath::Min(Bot, Wp.Z); }
+		for (int32 i = 0; i < Cs.Num(); ++i)
+		{
+			FVector Wp = Ct.TransformPosition(Cs[i].GetLocation()) / 100.0;
+			if (Wp.Z >= Top - 1e-3) Wp.Z += 0.12;   // head top above the head bone
+			double Sx, Sy;
+			if (!Project(CamPosM, CamRotF, CamFovF, Wp, Sx, Sy)) continue;
+			X0 = FMath::Min(X0, Sx); X1 = FMath::Max(X1, Sx); Y0 = FMath::Min(Y0, Sy); Y1 = FMath::Max(Y1, Sy); bAny = true;
+			Dist = FMath::Min(Dist, FVector::Dist(Wp, CamPosM));
+		}
+		return bAny;
+	};
+	double X0, Y0, X1, Y1, D;
+	FString Row = FString::Printf(TEXT("{\"f\":%lld,\"rt\":%.4f,\"ts\":%.3f,\"frz\":%d,\"cine\":%.2f,\"cam\":[%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f],\"move\":\"%s\","),
+		Frame, RTime, TimeScale, bHitStop ? 1 : 0, CineK, CamPosM.X, CamPosM.Y, CamPosM.Z, CamRotF.Pitch, CamRotF.Yaw, CamRotF.Roll, CamFovF, *Me->MoveName().ToString());
+	Box(Hero->GetMesh(), X0, Y0, X1, Y1, D);
+	Row += FString::Printf(TEXT("\"hero\":[%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f],\"e\":["), Me->Pos.X, Me->Pos.Y, Me->Pos.Z - HH, X0, Y0, X1, Y1, D);
+	bool bFirst = true;
+	for (AWHEnemy* E : Enemies)
+	{
+		if (!E) continue;
+		const bool bOk = Box(E->Mesh, X0, Y0, X1, Y1, D);
+		const bool bWarn = E->WarnOn();
+		Row += FString::Printf(TEXT("%s[\"%s\",\"%s\",\"%s\",%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f,%d,%d]"), bFirst ? TEXT("") : TEXT(","), *E->Tag(), E->TypeName(), E->StateName(),
+			E->Pos.X, E->Pos.Y, E->Pos.Z, bOk ? X0 : -1.0, bOk ? Y0 : -1.0, bOk ? X1 : -1.0, bOk ? Y1 : -1.0, D, bWarn ? 1 : 0, E->Alive() ? 1 : 0);
+		bFirst = false;
+	}
+	Row += TEXT("]}");
+	FrameRows.Add(Row);
 }
 
 FString AWHCombatDirector::StateString() const
@@ -938,6 +1107,7 @@ void AWHCombatDirector::WriteTelemetry()
 	FFileHelper::SaveStringToFile(Csv, *(OutDir / (ShotName + TEXT("_telemetry.csv"))));
 	FFileHelper::SaveStringToFile(FString::Join(EventRows, TEXT("\n")) + TEXT("\n"), *(OutDir / (ShotName + TEXT("_events.jsonl"))));
 	FFileHelper::SaveStringToFile(FString::Join(BeatRows, TEXT("\n")) + TEXT("\n"), *(OutDir / (ShotName + TEXT("_beats.jsonl"))));
+	FFileHelper::SaveStringToFile(FString::Join(FrameRows, TEXT("\n")) + TEXT("\n"), *(OutDir / (ShotName + TEXT("_frames.jsonl"))));
 }
 
 void AWHCombatDirector::WriteSummary()
@@ -949,9 +1119,11 @@ void AWHCombatDirector::WriteSummary()
 	const FString J = FString::Printf(TEXT("{\n \"engine\": \"ue5.8\", \"frames\": %lld, \"real_s\": %.3f, \"game_s\": %.3f,\n \"enemies\": %d, \"enemies_alive\": %d, \"final_states\": \"%s\",\n")
 		TEXT(" \"hero_hp\": %.0f, \"hero_focus\": %.2f, \"damage_taken\": %.0f,\n \"hits\": %d, \"whiffs\": %d, \"kos\": %d, \"launches\": %d, \"air_hits\": %d, \"finishers\": %d,\n")
 		TEXT(" \"dodges\": %d, \"perfect_dodges\": %d, \"web_hits\": %d, \"enemy_melee_hits\": %d, \"shots\": %d, \"shot_hits\": %d,\n")
-		TEXT(" \"hitstops\": %d, \"slowmos\": %d, \"min_timescale\": %.3f, \"slowmo_game_s\": %.3f, \"slowmo_real_s\": %.3f,\n \"beats\": %d, \"beats_fired\": %d, \"fx_spawned\": %d\n}\n"),
+		TEXT(" \"hitstops\": %d, \"frozen_frames\": %d, \"slowmos\": %d, \"min_timescale\": %.3f, \"slowmo_game_s\": %.3f, \"slowmo_real_s\": %.3f,\n")
+		TEXT(" \"attack_starts\": %d, \"max_attack_gap_s\": %.3f, \"spawned\": %d, \"reserve_left\": %d,\n \"beats\": %d, \"beats_fired\": %d, \"fx_spawned\": %d\n}\n"),
 		Frame, RTime, Time, Enemies.Num(), Alive, *StateString(), Me->Hp, Me->Focus, DamageTaken, NHits, NWhiffs, NKOs, NLaunch, NAirHits, NFinishers,
-		NDodges, NPerfect, NWebHits, NEnemyHits, NShots, NShotHits, NHitStops, NSlowmo, MinTimeScale, SlowmoGameT, SlowmoRealT,
+		NDodges, NPerfect, NWebHits, NEnemyHits, NShots, NShotHits, NHitStops, NFrozenFrames, NSlowmo, MinTimeScale, SlowmoGameT, SlowmoRealT,
+		NAttackStarts, MaxAttackGap, Enemies.Num(), Reserve,
 		Beats.Num(), Beats.FilterByPredicate([](const FWHBeat& B) { return B.bFired; }).Num(), Fx.Spawned);
 	FFileHelper::SaveStringToFile(J, *(OutDir / (ShotName + TEXT("_summary.json"))));
 	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_SUMMARY %s"), *J.Replace(TEXT("\n"), TEXT(" ")));

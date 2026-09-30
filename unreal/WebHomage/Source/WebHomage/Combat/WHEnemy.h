@@ -109,6 +109,9 @@ public:
 	struct FYank { FVector From, To; double Dur = 0.3, Prev = 0; } Yk;
 	bool bMoving = false;
 	int32 HitsTaken = 0;
+	FVector Slide = FVector::ZeroVector;   // r02: hit push (m/s, decays): every light hit moves the victim >= 0.3 m
+	/** r02: attack warning visible (melee / brute wind-up until the blow, gun aim + burst). */
+	bool WarnOn() const;
 
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USceneComponent> Root;
 	UPROPERTY(VisibleAnywhere) TObjectPtr<USkeletalMeshComponent> Mesh;
@@ -122,6 +125,13 @@ private:
 	UPROPERTY(Transient) TMap<FName, TObjectPtr<UAnimSequence>> Clips;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> Cocoon;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> CocoonMat;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> WarnBar;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> WarnDot;
+	UPROPERTY(Transient) TObjectPtr<UStaticMeshComponent> Laser;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WarnMat;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> LaserMat;
+	double WarnT = 0;
+	void UpdateWarn(double Dt);
 	FString UnarmedMesh;
 	FQuat MeshCorr = FQuat::Identity;
 	FVector MeshUp = FVector::UpVector;   // hips -> head in the skeleton's component space
