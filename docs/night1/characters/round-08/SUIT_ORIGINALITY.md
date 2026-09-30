@@ -13,7 +13,7 @@ Name: **Tessera** (a small tile). A masked acrobat hero suit built from a slate-
 
 | Element | Tessera (round 08) | Where it lives in code (`tools/ue_char/suit8/design.py`) |
 |---|---|---|
-| Palette | TEAL `#0f4452` (body), TEAL_D `#0b3441` (crown), DEEP `#071a21` (panels, hood, gloves, trunks), AMBER `#e0780c` (accents), BONE (unused hairline), INK / SOLE near-black. **No red, no blue, no white.** | `TEAL ... SOLE` |
+| Palette | TEAL `#0f4452` (body), TEAL_D `#0b3441` (crown), DEEP `#071a21` (panels, hood, gloves, trunks), AMBER `#e0780c` (accents) and AMBER_D `#ad5c08`, STITCH `#9cc0c6` (dashed top-stitching), INK / SOLE near-black. **No red, no blue, no white.** | `TEAL ... SOLE` |
 | Colour blocking | Cross-asymmetric: the character's RIGHT arm forearm and RIGHT lower leg (greave) carry amber, the LEFT forearm has three amber wrist wraps and the LEFT thigh an amber net on a dark panel, the RIGHT thigh is teal. Left and right are deliberately different. | `Right arm = the amber light side`, `Left leg = amber side accents` |
 | Torso | Dark side wedges that widen toward the waist (taper, not a stripe); a tilted amber bandolier sash that is a plane slice of the torso (it climbs differently on the front and the back); a dark belt band with amber hairlines and a hexagon buckle plate; dark trunks above a diagonal hip-wrap cut that runs across both thighs at different heights. | `side panels`, `bandolier sash`, `belt band + trunks` |
 | Shoulders / joints | Dark raglan caps whose chest edge is a diagonal plane perpendicular to the arm (not a circle), plus plane-sliced sleeves at the elbows and knees with amber ring lines: one construction vocabulary for all joints. | `joint sleeves` |
@@ -31,9 +31,9 @@ Old = `art/night1/characters/hero/tex/suit_basecolor_r5.png` (rounds 05-07 textu
 | red (hue < 18 or > 340) | 44.96 % | **0 %** |
 | blue (205-265) | 43.86 % | **0 %** |
 | white (low saturation, bright) | 5.82 % | **0 %** |
-| teal (165-205) | 0 % | 32.9 % (plus 51.9 % of the atlas in the near-black ink-teal DEEP) |
-| amber (22-48) | 0 % | 12.4 % |
-| palette (k-means, 6) | blue (24,36,91) 43.8 %, red (156,16,21) 43.2 %, white (226,225,230) 5.8 % | ink-teal (7,26,33) 51.9 %, teal (15,68,81) 26.6 %, amber (224,120,12) 10.7 % |
+| teal (165-205) | 0 % | 33.9 % (plus 52.4 % of the atlas in the near-black ink-teal DEEP: hood, side wedges, trunks, gloves, shoulder caps) |
+| amber (22-48) | 0 % | 12.5 % |
+| palette (k-means, 6) | blue (24,36,91) 43.8 %, red (156,16,21) 43.2 %, white (226,225,230) 5.8 % | ink-teal (7,26,33) 51.6 %, teal (14,65,79) 32.7 %, amber (223,120,12) 10.8 % |
 
 Structure, side by side:
 

@@ -3,7 +3,7 @@
 #   tools/ue_char/run_r8_captures.sh <out_dir> [GROUPS]       GROUPS default: T K I C A D S E H F
 #     T = walker telemetry (no renderer): old layout with avoidance OFF (baseline), old layout avoidance ON, the round-07 crowd
 #     K = chroma-key crowd stills (stencil keyer), I = per-walker id stills, D = per-walker id movie (frame-exact with the crowd clip), C = crowd 1080p60 movie (+ telemetry of the same run), S = crowd 4K stills,
-#     E = enemy faces, H = hero movies + stills + leap, F = fight movies + stills, X = hero on the key (flat lens / bezel / suit classes), Q = 4K colour crowd movie (frame-picked stills)
+#     E = enemy faces, H = hero movies + stills + leap, F = fight movies + stills, X = hero on the key (flat lens / bezel / suit classes), Q = 4K colour crowd movie, M = 4K key crowd movie (frame-picked stills)
 # Every launch goes through gpu_slot.sh (capture_r5.sh / run_telemetry.sh); groups run one at a time, one engine of mine at any moment.
 set -u
 WT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -26,6 +26,7 @@ for g in $GROUPS_; do
     H) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "H G" "gH" "1" ;;
     X) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "" "gHK" "" ;;
     Q) "$WT/tools/ue_char/crowd/colour_movie.sh" "$OUT" "${QUIT_Q:-6.0}" ;;
+    M) "$WT/tools/ue_char/crowd/key_movie.sh" "$OUT" "${QUIT_Q:-6.0}" ;;
     F) "$WT/tools/ue_char/capture_r5.sh" "$OUT" "F" "gF" "" ;;
   esac
   echo "[r8 captures] group $g exit $? $(date +%H:%M:%S)"

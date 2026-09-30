@@ -21,7 +21,8 @@ while True:
     h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
     red = ((h < 8) | (h > 170)) & (s > 150) & (v > 90)
     blue = (h > 105) & (h < 130) & (s > 150) & (v > 50) & (v < 190)
-    m = (red | blue).astype(np.uint8)
+    teal = (h > 82) & (h < 112) & (s > 120) & (v > 40); amber = (h > 8) & (h < 26) & (s > 170) & (v > 110)      # round 08: Tessera
+    m = (red | blue | teal | amber).astype(np.uint8)
     m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
     n, lab, st, cen = cv2.connectedComponentsWithStats(m)
     if n <= 1: continue

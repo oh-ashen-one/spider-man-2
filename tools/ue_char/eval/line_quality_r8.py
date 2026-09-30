@@ -1,7 +1,7 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 """Round 08: stair-step / wobble measure for a line or an edge in a native-resolution capture (critic r07: 'web lines stair-step').
 
-  python3 tools/ue_char/eval/line_quality_r8.py IMAGE x0 y0 x1 y1 --ref R G B [--bg R G B] [--tol 70] [--label NAME]
+  python3 tools/ue_char/eval/line_quality_r8.py IMAGE x0 y0 x1 y1 --ref R G B [--bg R G B] [--tol 70] [--yellow] [--label NAME]
 
 The ROI must contain ONE roughly straight or smoothly curved line (or an edge between two flat colours), running mostly horizontally or vertically.  For every column (or
 row, whichever the line crosses) the sub-pixel centre of the line is the weight-centroid of its colour similarity to --ref; the track is compared with a smooth fit (Savitzky-Golay
@@ -24,6 +24,9 @@ label = a[a.index('--label') + 1] if '--label' in a else ''
 im = cv2.imread(img)[y0:y1, x0:x1, ::-1].astype(np.float32)
 d = np.linalg.norm(im - ref, axis=-1)
 w = np.clip(1 - d / tol, 0, 1) ** 2
+if '--yellow' in a:      # amber / yellow detector: (R + G) / 2 - B is large on amber, ~0 on white stitching and negative on teal / blue
+    yl = (im[..., 0] + im[..., 1]) / 2 - im[..., 2]
+    w = np.clip((yl - 45.0) / 55.0, 0, 1) ** 2
 H, W = w.shape
 horiz = True
 cols = w
@@ -40,6 +43,8 @@ n_l, n_p = W_.shape[1], W_.shape[0]          # length along the line, extent acr
 idx = np.arange(n_p)[:, None]
 den = W_.sum(0)
 ok = den > 0.6
+if ok.sum() > 20:
+    med = float(np.median(den[ok])); ok = ok & (den > 0.8 * med) & (den < 1.25 * med)      # only columns where the whole line is inside the ROI (not cut by its border, not merged with another feature)
 track = (W_ * idx).sum(0) / np.maximum(den, 1e-9)
 pos = np.arange(n_l)[ok].astype(np.float64); tr = track[ok].astype(np.float64)
 if len(pos) < 60:
