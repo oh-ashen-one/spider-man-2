@@ -44,6 +44,7 @@ def parse_cfg(spec):
     cv = []
     for p in parts[1:]:
         if p.startswith('set:'): cv += read_set(p[4:])
+        elif p.startswith('flag:'): cv.append((p, '1'))  # game command-line flag, e.g. flag:-WHTravMask (kept out of the cvar lists in main)
         else:
             k, v = p.split('=', 1); cv.append((k, v))
     d = {}
@@ -91,6 +92,7 @@ def main():
     summary, t_start, last = [], time.time(), 0.0
     for spec in a.configs.split(','):
         name, sp, cv = parse_cfg(spec)
+        flags = [k[5:] for k, v in cv if k.startswith('flag:')]; cv = [(k, v) for k, v in cv if not k.startswith('flag:')]
         if last and time.time() - t_start + last * 1.1 > a.budget_s:
             print('SKIP (lock budget)', name, flush=True); summary.append({'config': name, 'skipped': 'lock budget'}); continue
         d = os.path.join(out, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
@@ -99,13 +101,14 @@ def main():
         # no -WHTravMask: the hero-mask / scene-depth telemetry captures stay off (they re-render the scene every frame)
         extra = (['-WHTravScript=' + a.script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if a.script not in ('', 'none') else []) \
             + ['-csvGpuStats', '-benchmark', '-fps=60']
+        extra += flags
         if cv: extra.append('-dpcvars=' + ','.join('%s=%s' % (k, v) for k, v in cv))
         if a.trace: extra += ['-trace=' + a.trace, '-tracefile=' + os.path.join(d, 'trace.utrace')]
         cmd = [RUN_GAME, d, '-map', a.map, '-res', a.res, '-perf', a.window, '-name', name, '-timeout', str(a.timeout),
                '-exec', ','.join(execs), '--'] + extra
         r = subprocess.run(cmd, capture_output=True, text=True)
         open(os.path.join(d, 'run.txt'), 'w').write(' '.join(cmd) + '\n\n' + r.stdout + '\n' + r.stderr)
-        rec = {'config': name, 'spec': spec, 'screen_percentage': sp, 'cvars': dict(cv), 'map': a.map, 'res': a.res, 'window_s': a.window,
+        rec = {'config': name, 'spec': spec, 'screen_percentage': sp, 'cvars': dict(cv), 'flags': flags, 'map': a.map, 'res': a.res, 'window_s': a.window,
                'script': os.path.relpath(a.script, WT), 'wall_s': round(time.time() - started, 1),
                'command': ' '.join(x.replace(WT, '<wt>') for x in cmd)}
         pj = os.path.join(d, name + '_perf.json')
