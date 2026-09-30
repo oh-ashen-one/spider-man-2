@@ -442,12 +442,16 @@ void AWHLifeCrowd::RefreshLive(const FVector& Cam)
 		// a fast camera recycles everything that is 60 m or more BEHIND it too (nobody sees them, and waiting for the far edge of the disc left the sidewalks ahead empty for the first
 		// seconds of a flight that starts at the edge of the city), and puts them on the ring ahead
 		const float VSp = FVector2D(CamVel.X, CamVel.Y).Size(); const bool bFastCam = VSp > AheadSpeedCms; const FVector2D VDir = bFastCam ? FVector2D(CamVel.X, CamVel.Y) / VSp : FVector2D::ZeroVector;
+		int32 BehindBudget = 28;   // the flight sweeps about 6 m of avenue per refresh (2 sidewalks x 1.6 walkers / m ~ 20 walkers): recycle a few more than that per refresh, never the whole trailing half at once
 		for (int32 I = 0; I < Walkers.Num(); ++I)
-			if (const FVector2D Off = FVector2D(Walkers[I].Pos.X * 100.f, Walkers[I].Pos.Y * 100.f) - C2; Off.SizeSquared() > Rr2 || (bFastCam && FVector2D::DotProduct(Off, VDir) < -6000.f))
-			{
-				if (!bBuilt) { BuildRespawnEdges(Cam); bBuilt = true; }
-				Unassign(I); Respawn(Walkers[I], Cam, true);
-			}
+		{
+			const FVector2D Off = FVector2D(Walkers[I].Pos.X * 100.f, Walkers[I].Pos.Y * 100.f) - C2;
+			const bool bFar = Off.SizeSquared() > Rr2;
+			if (!bFar && !(bFastCam && BehindBudget > 0 && FVector2D::DotProduct(Off, VDir) < -6000.f)) continue;
+			if (!bFar) --BehindBudget;
+			if (!bBuilt) { BuildRespawnEdges(Cam); bBuilt = true; }
+			Unassign(I); Respawn(Walkers[I], Cam, true);
+		}
 	}
 	Center = Cam;
 	const float LiveR = FMath::Lerp(LiveRadius, LiveRadiusHigh, FMath::Clamp((Eye.Z - HighCamFromCm) / FMath::Max(1.f, HighCamToCm - HighCamFromCm), 0.f, 1.f));

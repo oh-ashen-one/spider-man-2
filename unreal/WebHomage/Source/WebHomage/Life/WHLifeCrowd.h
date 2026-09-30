@@ -102,7 +102,7 @@ public:
 	/** Character fill light (round 03): one unshadowed directional light on lighting channel 1 that only the walkers use (no GI contribution), aimed along the camera
 	 *  view and pitched down FillPitchDeg. It lifts walkers standing in deep shade (sidewalk sheds, canyon floors) so they read as people instead of black cut-outs.
 	 *  Lux; 0 = off. Command line: -WHLifeFill=<lux>, -WHLifeFillSteps=<t>:<lux>,<t>:<lux>... (game seconds, for sweeps), -WHLifeFillPitch=<deg>. */
-	UPROPERTY(EditAnywhere, Category="Life|Fill") float FillLux = 2300.f;
+	UPROPERTY(EditAnywhere, Category="Life|Fill") float FillLux = 1800.f;
 	/** The fill applies only to walkers the sun does not reach (a line trace towards the atmosphere sun light, every ~1 s per live walker): people in the sun keep their natural light. -WHLifeFillAll turns it off (everyone gets the fill). */
 	UPROPERTY(EditAnywhere, Category="Life|Fill") bool bFillShadeOnly = true;
 	UPROPERTY(EditAnywhere, Category="Life|Fill") float FillPitchDeg = 38.f;
