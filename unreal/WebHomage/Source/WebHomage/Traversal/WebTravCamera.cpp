@@ -240,7 +240,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	{
 		ChooseFlipView(P, World);
 		bFlipAbort = FlipTier >= 3;
-		FlipDistNow = FlipDistSel; FlipDistV = 0.0;
+		FlipDistNow = FlipDistSel; FlipDistV = 0.0; FlipCompactS = FMath::Clamp(double(P.FlipCompact), 0.0, 1.0); FlipCompactV = 0.0; FlipSinceObs = 9.0;
 	}
 	if (!bFlipCam) { bFlipAbort = false; FlipTier = -1; FlipObsT = 0.0; }
 	bFlipWas = bFlipCam;
@@ -248,13 +248,24 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	{ // TC11: sweep hero chest -> the held spot; a hit dollies the camera in along the axis, never yaws / re-picks the side
 		const double Ec = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDistSel), 0.0, 0.6));
 		const FVector Uc(FMath::Cos(FlipAz) * FMath::Cos(Ec), FMath::Sin(FlipAz) * FMath::Cos(Ec), -FMath::Sin(Ec));
-		double HitD = 0.0, Goal = FlipDistSel;
-		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * FlipDistSel, 0.3, HitD)) Goal = FMath::Min(Goal, HitD - 0.25);
+		// the distance follows the pose: a compact shape (tuck / pike) is pulled in FlipTuckPull m so the tuck-dominated backDouble reads as big as
+		// the open shapes (TC-C p50 >= .18 with p90 <= .36: one constant distance cannot do both -- a tuck is ~.15, a layout ~.30 at the same range)
+		SD(FlipCompactS, FlipCompactV, FMath::Clamp(double(P.FlipCompact), 0.0, 1.0), FlipCompactT, Dt);
+		const double Want = FlipDistSel - FlipTuckPull * FMath::Clamp(FlipCompactS, 0.0, 1.0);
+		double HitD = 0.0, ObsGoal = 1e9;
+		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * FlipDistSel, 0.3, HitD)) ObsGoal = HitD - 0.25;
+		const double Goal = FMath::Min(Want, ObsGoal);
 		// TC11: no room to keep the trick view (under FlipDistMin for FlipAbortGrace s running -- a trunk or a canopy edge passing the
 		// axis for a few frames is dollied through, r16 probe: one tree at a 13 m flip ended the whole trick camera) -> plain chase over FlipOutT
-		FlipObsT = Goal < FlipDistMin ? FlipObsT + Dt : 0.0;
+		FlipObsT = ObsGoal < FlipDistMin ? FlipObsT + Dt : 0.0;
 		if (FlipObsT > FlipAbortGrace) bFlipAbort = true;
-		else SD(FlipDistNow, FlipDistV, FMath::Max(Goal, 2.8), Goal < FlipDistNow ? FlipDollyInT : FlipDollyOutT, Dt);
+		else
+		{ // obstruction: in fast, out slow (0.6 s, and for 0.6 s after the last hit); pose-driven distance changes: 0.12 s in / 0.2 s out on top of the 0.25 s compactness spring
+			const bool bObs = ObsGoal < Want;
+			FlipSinceObs = bObs ? 0.0 : FlipSinceObs + Dt;
+			const double St = Goal < FlipDistNow ? (bObs ? FlipDollyInT : 0.12) : (FlipSinceObs < 0.6 ? FlipDollyOutT : 0.2);
+			SD(FlipDistNow, FlipDistV, FMath::Max(Goal, 2.8), St, Dt);
+		}
 	}
 	{
 		const bool bOn = bFlipCam && !bFlipAbort;
@@ -678,7 +689,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 {
 	struct FT { const TCHAR* N; double* P; };
 	const FT Tab[] = { {TEXT("SunMinDeg"), &SunMinDeg}, {TEXT("SunPrefDeg"), &SunPrefDeg}, {TEXT("FlipDist"), &FlipDist}, {TEXT("FlipDistMin"), &FlipDistMin},
-		{TEXT("FlipDrop"), &FlipDrop}, {TEXT("FlipYawMin"), &FlipYawMin}, {TEXT("FlipYawMax"), &FlipYawMax}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
+		{TEXT("FlipDrop"), &FlipDrop}, {TEXT("FlipTuckPull"), &FlipTuckPull}, {TEXT("FlipCompactT"), &FlipCompactT}, {TEXT("FlipYawMin"), &FlipYawMin}, {TEXT("FlipYawMax"), &FlipYawMax}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
 		{TEXT("FlipLeadDeg"), &FlipLeadDeg}, {TEXT("FlipSFrame"), &FlipSFrame}, {TEXT("FlipPitchUpMax"), &FlipPitchUpMax}, {TEXT("MaxLookUpDeg"), &MaxLookUpDeg},
 		{TEXT("FlipInT"), &FlipInT}, {TEXT("FlipOutT"), &FlipOutT}, {TEXT("FlipZInT"), &FlipZInT}, {TEXT("FlipDollyInT"), &FlipDollyInT}, {TEXT("FlipDollyOutT"), &FlipDollyOutT},
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},

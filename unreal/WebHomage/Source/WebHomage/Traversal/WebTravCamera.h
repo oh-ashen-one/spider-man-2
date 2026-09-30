@@ -34,6 +34,7 @@ struct FTravCamInput
 	bool bSky = false;       // round 10: sky launch (jump-release + trick) in progress
 	bool bFlip = false;      // round 11: a gymnast flip program is playing
 	bool bFlipSoon = false;  // round 12: an apex flip is armed and about to start (the flip camera moves into place first)
+	float FlipCompact = 0.f; // round 16: how compact the flip's upper-body shape is right now (tuck 1, pike 0.6, every open shape 0)
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -88,16 +89,16 @@ public:
 	// camera blends to the plain chase over FlipOutT. Blend in FlipInT (vertical FlipZInT), out FlipOutT (spring smooth times, TC10).
 	double FlipK = 0.0, FlipKV = 0.0, FlipZK = 0.0, FlipZKV = 0.0;   // weights: 0 chase .. 1 trick camera (FlipK = telemetry flipcam_k)
 	bool bFlipWas = false, bFlipAbort = false, bFlipOutRun = false;
-	double FlipObsT = 0.0, FlipAbortGrace = 0.20;   // seconds the held axis has been blocked under FlipDistMin / grace before the plain-chase fallback
+	double FlipObsT = 0.0, FlipSinceObs = 9.0, FlipAbortGrace = 0.20;   // seconds the held axis has been blocked under FlipDistMin / grace before the plain-chase fallback
 	double FlipOutClock = 0.0, FlipOutK0 = 0.0, FlipOutZ0 = 0.0;   // blend-out state (smoothstep over FlipOutT from the weights at its start)
-	double FlipDist = 4.2, FlipDistMin = 4.0, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
+	double FlipDist = 4.4, FlipDistMin = 4.0, FlipTuckPull = 0.6, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.25, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.36, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
 	double FlipInT = 0.35, FlipOutT = 0.90, FlipZInT = 0.15, FlipZHold = 0.30, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
 	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
 	double FlipAz = 0.0;        // rad, world azimuth hero -> camera (held for the trick)
 	double FlipOffDeg = 0.0;    // signed offset of that azimuth from the travel-behind direction at the release (deg, + = right of behind)
 	double FlipSide = 1.0;      // sign of FlipOffDeg
-	double FlipDistSel = 4.2, FlipDistNow = 4.2, FlipDistV = 0.0;   // chosen / current (dollied) distance
+	double FlipDistSel = 4.4, FlipDistNow = 4.4, FlipDistV = 0.0;   // chosen / current (dollied) distance
 	int32 FlipTier = -1;        // selection: 0 obstruction + sun ok, 1 sun rule failed (only side clear), 2 pulled in, 3 plain chase (no clear spot)
 	double FlipSkyShare = -1.0, FlipGlare = 0.0, FlipSunDeg = -1.0;   // telemetry: ring sky share / glare share / sun angle of the chosen view
 	// the sun: SunDir = unit vector TO the sun, set by the character from the level's atmosphere sun light (bHaveSun false = no sun term)

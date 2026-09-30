@@ -688,6 +688,15 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	// round 12: the flip camera starts searching for a sky background ~0.35 s before an armed apex flip begins
 	CI.bFlipSoon = Traversal->IsFlipArmed() && Traversal->VelM().Z < double(Traversal->SkyTrickVz) + 5.0;
 	{ float Ft = 0.f; CI.bFlip = Traversal->Anim.Sub == N_trick && FlipProgramNow(Ft) != nullptr; } // round 11: flip camera
+	{ // round 16: compactness of the flip's upper-body shape (this frame's camera uses the previous frame's pose): the trick camera pulls in during a tuck / pike
+		float Ft = 0.f;
+		CI.FlipCompact = 0.f;
+		if (CI.bFlip && LastFlip.bValid && FlipProgramNow(Ft) != nullptr)
+		{
+			auto Cmp = [](EWebFlipShape S) { return S == EWebFlipShape::Tuck ? 1.f : (S == EWebFlipShape::Pike ? 0.6f : 0.f); };
+			CI.FlipCompact = FMath::Lerp(Cmp(LastFlip.A), Cmp(LastFlip.B), LastFlip.W);
+		}
+	}
 	// round 15: the direction to the sun for the sun-aware trick camera (the level's atmosphere sun light 0; retried for the first
 	// frames in case the look rig streams in after BeginPlay)
 	if (!Cam.bHaveSun && SunTries < 240)
