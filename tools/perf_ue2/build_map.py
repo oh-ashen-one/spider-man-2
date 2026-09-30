@@ -37,7 +37,7 @@ def _wait_slot():
 
 bm.wait_slot = _wait_slot
 UE_DIR = os.path.join(WT, 'unreal', 'WebHomage')
-PRESET_STEM = os.environ.get('SM2_PERF_PRESET', 'perf60_hwl')
+PRESET_STEM = os.environ.get('SM2_PERF_PRESET', 'perf60_hwl2')   # round 04 (round 03: perf60_hwl)
 PRESET_SP = os.environ.get('SM2_PERF_PRESET_SP', '50')
 INI = os.path.join(UE_DIR, 'Config', 'Mac', 'MacEngine.ini')   # project platform layer: generated, untracked, never rewritten by the engine. (Saved/Config/MacEditor/Engine.ini does NOT work: the engine deletes it at exit when it holds nothing but console variables)
 BEGIN, END = '; >>> F perf preset (tools/perf_ue2/build_map.py step perf_preset) >>>', '; <<< F perf preset <<<'
@@ -56,7 +56,7 @@ def step_city_extra():
 
 
 def step_perf_apply():
-    steps = os.environ.get('SM2_PERF_APPLY_STEPS', 'rt_lite,cloud')
+    steps = os.environ.get('SM2_PERF_APPLY_STEPS', 'rt_lite_trees,tree_rt_opaque,cloud')   # round 04 (round 03: rt_lite,cloud); cloud km = env SM2_PERF_CLOUD_KM (perf_apply default 20 since round 04)
     logp = os.path.join(SCR, 'perf_apply.json')
     if os.path.exists(logp): os.remove(logp)
     bm.ue_python('perf_apply', bm.exec_wrapper(os.path.join(HERE, 'perf_apply.py'), ''), {'SM2_PERF_APPLY': steps, 'SM2_PERF_APPLY_LOG': logp})
@@ -100,7 +100,7 @@ def step_perf_preset_off():
 
 
 def step_perf_audit():
-    out = os.path.join(WT, 'docs', 'night1', 'perf', 'round-03', os.environ.get('SM2_PERF_AUDIT_NAME', 'content_audit.json'))   # SM2_PERF_AUDIT_NAME=content_audit_asbuilt.json before perf_apply
+    out = os.path.join(WT, 'docs', 'night1', 'perf', os.environ.get('SM2_PERF_ROUND', 'round-04'), os.environ.get('SM2_PERF_AUDIT_NAME', 'content_audit.json'))   # SM2_PERF_AUDIT_NAME=content_audit_asbuilt.json before perf_apply
     os.makedirs(os.path.dirname(out), exist_ok=True)
     bm.ue_python('perf_audit', bm.exec_wrapper(os.path.join(HERE, 'perf_audit.py'), ''), {'SM2_PERF_AUDIT_OUT': out})
     a = json.load(open(out))

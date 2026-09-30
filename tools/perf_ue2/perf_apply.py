@@ -13,23 +13,26 @@
 #   props_far_cull  City/Props components get a max draw distance of SM2_PERF_DRAWDIST cm (default 250000 = 2.5 km)
 #   rt_lite       (round 02) City/Far (hinterland), City/Props (trees) and City/far (far ground) out of the hardware ray-tracing scene only
 #                 (visible_in_ray_tracing = False; nothing else changes). Makes hardware-RT Lumen reflections cost ~+1.9 ms instead of ~+4.1 ms.
-#   cloud         (round 02) VolumetricCloud TracingMaxDistance = SM2_PERF_CLOUD_KM km (default 4) in the look rigs SM2_PERF_RIGS (default golden,midday,night):
+#   cloud         (round 02) VolumetricCloud TracingMaxDistance = SM2_PERF_CLOUD_KM km (default 20 since round 04; round 03 shipped 4) in the look rigs SM2_PERF_RIGS (default golden,midday,night):
 #                 /Game/Look/Rigs/Look_Rig_<rig>. The cost is min(TracingMaxDistance, DistanceToSampleMaxCount = 15 km) / 15 km of the full ray-march.
 #   rt_lite_trees (round 04) = rt_lite, but the tree LEAVES (City/Props ISM_ez_*_leaves, ISM_trees_*crownfar) stay IN the ray-tracing scene (bark, street furniture,
 #                 parked cars, hinterland, far ground out): hardware-RT Lumen GI is occluded by the canopy again (round-03 critic: canopy luma 2x without it).
 #                 Sets visible_in_ray_tracing on every City/Props component explicitly, so it also undoes a previous rt_lite run.
 #   tree_rt_opaque (round 04) the leaf meshes' sections are flagged force_opaque (ray tracing only: no any-hit shader for the alpha-masked leaf cards; the raster
 #                 passes keep the alpha mask). Measured as r.RayTracing.DebugForceOpaque in round-04 session y; this is the per-asset form of it.
+#                 Env SM2_PERF_OPAQUE_SKIP (default '_l0_'): leaf meshes whose ISM label contains it stay alpha-masked (the LOD0 street trees next to the
+#                 street-level cameras, where opaque cards over-darken the canopy in the round-02 S1 crop); '' = every leaf mesh opaque. Not undone by a re-run.
 # `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
 import unreal, json, os, time
 
 STEPS = set(x for x in os.environ.get('SM2_PERF_APPLY', '').split(',') if x)
 if 'all' in STEPS: STEPS |= {'static', 'far_rt', 'far_plain', 'kit_plain'}
-CLOUD_KM = float(os.environ.get('SM2_PERF_CLOUD_KM', '4'))
+CLOUD_KM = float(os.environ.get('SM2_PERF_CLOUD_KM', '20'))   # round 04: 20 km (round 03: 4)
 RIGS = [x for x in os.environ.get('SM2_PERF_RIGS', 'golden,midday,night').split(',') if x]
 LOG = os.environ.get('SM2_PERF_APPLY_LOG', '/Users/midir/sm2-n1/_scratch/perf/apply.json')
 GEO = os.environ.get('SM2_PERF_GEO', '/Game/Tests/City/City_Midtown_Geo')
 DRAW = float(os.environ.get('SM2_PERF_DRAWDIST', '250000'))
+OPQ_SKIP = os.environ.get('SM2_PERF_OPAQUE_SKIP', '_l0_')   # tree_rt_opaque leaves these leaf meshes alpha-masked in ray tracing (default: the near-LOD street trees, LOD0 pools)
 EAL = unreal.EditorAssetLibrary
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -111,10 +114,11 @@ if 'tree_rt_opaque' in STEPS:
     seen = set()
     for a, c in comps('City/Props'):
         if not is_leaves(a.get_actor_label()): continue
+        if OPQ_SKIP and OPQ_SKIP in a.get_actor_label(): continue
         sm = c.get_editor_property('static_mesh')
         if not sm or sm.get_path_name() in seen: continue
         seen.add(sm.get_path_name())
-        sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+        sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem) or unreal.new_object(unreal.StaticMeshEditorSubsystem)   # None in a -nullrhi commandlet; the UFUNCTIONs only touch the mesh passed in
         changed = False
         for lod in range(sm.get_num_lods()):
             for sec in range(sm.get_num_sections(lod)):
