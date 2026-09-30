@@ -287,6 +287,20 @@
     3,
     3
    ]
+  },
+  {
+   "piece": "P4 Look",
+   "round": 2,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    5,
+    5
+   ]
   }
  ],
  "agents": [

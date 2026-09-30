@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 21:50",
+ "updated": "2026-09-29 22:03",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "Fable 5.1 (director) found that every perf number so far rendered the scene three times (two per-frame scene captures from the telemetry mode), that the frame is GPU-bound rather than CPU-bound, and that 60 fps at 4K output is honest at TSR 50% (1080p internal) but not at 67%. The perf piece is executing its ranked plan (\u221212\u2026\u221225 ms).",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -63,9 +63,9 @@
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
    "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (sun/sky 5, GI 3, atmos 4, refl 3, post 3, night 2)",
-   "gap": "Night streets 85% near-black; no lamp pools or car lights; hero vanishes"
+   "round": 3,
+   "verdict": "R2: FAILS (sun 4, GI 4, atmos 4, refl 4, post 5, night 5)",
+   "gap": "Midday not per spec, far-field purple/white band, night swing is day-for-night"
   },
   {
    "id": "P5",
@@ -141,6 +141,20 @@
   }
  ],
  "comparisons": [
+  {
+   "title": "Look round 2 \u2014 night streets that read",
+   "note": "Round 1: 84% near-black. Round 2: lamp pools, wet asphalt, 0.15% near-black.",
+   "images": [
+    {
+     "label": "Round 1 night S1",
+     "src": "docs/night1/look/round-01/stills/night_S1_1920x1080.jpg"
+    },
+    {
+     "label": "Round 2 night S1",
+     "src": "docs/night1/look/round-02/stills/night_S1_1920x1080.jpg"
+    }
+   ]
+  },
   {
    "title": "Characters round 4 \u2014 armed lineup, walking crowd, leaning run",
    "note": "Opus builder. 7 thugs, 5 outfits, 3 weapon types; civilians walking; run lean ~30\u00b0.",
@@ -590,6 +604,14 @@
    "verdict": "fails",
    "gap": "Winner (Opus): add fine ripples with a sharp sun highlight and darken the water (detail \u226512, glints \u22651%, mean \u226480 in the near-water crop; C14 at S4).",
    "notes": "First same-gap model comparison. Opus 5.5 high 3.8 vs Sonnet 5.5 xhigh 3.4: Opus better colour/reflections; Sonnet better foam and the perch-view luma. Merged the Opus build."
+  },
+  {
+   "t": "22:03",
+   "piece": "P4 Look",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Midday per spec (mean 83\u201397, no clipping), far city takes the sky hue 15\u201332 luma below it, real night (no uniform facade fill).",
+   "notes": "Night street fixed: mean 10\u219255, near-black 84%\u21920.15%, 12 lit pools; round 2 far better than round 1. Night costs ~6.5 ms (Lights pass)."
   }
  ],
  "perf": [
@@ -835,6 +857,10 @@
   {
    "t": "21:50",
    "text": "Water A/B unblinded: Opus 5.5 high beat Sonnet 5.5 xhigh by 0.4 (3.8 vs 3.4); Opus build merged; recorded in the model ledger."
+  },
+  {
+   "t": "22:03",
+   "text": "Look R2 merged (night fixed, avg 3.3\u21924.3); round 3 on a fresh Sonnet builder, adopting the perf preset when ready."
   }
  ]
 }
