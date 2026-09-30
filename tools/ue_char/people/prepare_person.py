@@ -48,7 +48,7 @@ CFG = {
     # round 04: three more raw Tripo people (owner's assets), landmarks from mask.auto_landmarks
     # hood: auto landmarks pick the sunglasses as the nose -> measured with ortho.py (side view, 2 cm grid)
     'hood': dict(src='human+figure+3d+model.glb', name='StreetHood', eye=1.630, nose=1.603, ear_lobe=1.582, chin=1.527, axis_z=-0.02,
-                 mask=(58, 62, 42), seed=31, tie_band=False,
+                 mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True,
                  tints={'Grey': dict(region='top', color=(104, 104, 108))}),
     'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
                 mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70))),
@@ -320,6 +320,23 @@ def clear_graphic(img, pos, cov):
     return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
 
 
+def clear_temple_text(img, pos, cov, cfg):
+    """round 04b: the hood person's raw white sunglasses carry small dark lettering on the temple arms (reads like a maker mark).
+    No copied names: dark texels enclosed by the white frame on the temple band are filled with the frame's own white."""
+    x, y = pos[..., 0], pos[..., 1]
+    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    _, s_, _ = rgb2hsv(img)
+    eye = cfg.get('eye', 1.63)
+    band = cov & (y > eye - 0.04) & (y < eye + 0.05) & (np.abs(x) > 0.045)
+    frame = band & (lum > 175) & (s_ < 0.18)
+    enclosed = ndi.binary_closing(frame, iterations=4) & band
+    sel = enclosed & ~frame
+    sel = ndi.binary_dilation(sel, iterations=1) & enclosed
+    col = np.median(a[frame], 0) if frame.any() else np.array([235, 235, 235], np.float32)
+    out = a.copy(); out[sel] = col[None, :]
+    return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
+
+
 def tint_region(img, pos, cov, region, color):
     """luminance-preserving recolour of a garment for a variant atlas (same mesh, different material)."""
     h, s_, v = rgb2hsv(img)
@@ -464,6 +481,8 @@ def main():
         im4, nm = recolor_thug(im4, pos, cov); info['metal_px'] = nm
     if cfg.get('clear_graphic'):
         im4, ng = clear_graphic(im4, pos, cov); info['graphic_px'] = ng
+    if cfg.get('clear_temple_text'):
+        im4, nt = clear_temple_text(im4, pos, cov, cfg); info['temple_text_px'] = nt
     im4 = fill_gutters(im4, cov, erode=1)
     im4, nbord = M.seam_blend(im4, cov, pos); info['seam_blend_px'] = nbord
     im4, mw = M.paint_mask(im4, cov, pos, cfg, cfg['seed']); info['mask_px'] = int((mw > 0.5).sum())

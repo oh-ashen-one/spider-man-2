@@ -16,6 +16,7 @@ cd "$WT/unreal/WebHomage"
 # group: start_shot | still times (s) | quit | names (one per still)
 run_group() {
   local start="$1" shots="$2" quit="$3" tag="$4"; shift 4
+  if [ -n "$ONLY" ]; then case " $ONLY " in *" $tag "*) ;; *) return 0;; esac; fi   # ONLY="gC gE" runs a subset
   "$WT/tools/ue_char/ue_wait.sh"          # owner rule: never a 3rd+ Unreal instance (run_game.sh passes -RenderOffScreen -NoSound)
   "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map /Game/Tests/Characters/Char_Lineup -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" \
     -shots "$shots" -perf 3:$(( quit - 1 )) -quit "$quit" -name "$tag" -timeout 3600 -- -WHCharShot="$start" < /dev/null | tail -12
@@ -31,6 +32,10 @@ run_group 0  "4.5,10.5,16"            18 gA hero_turntable hero_run_side hero_ru
 run_group 3  "2.95,3.4,10"            11 gB hero_takeoff hero_jump suit_closeup
 run_group 5  "4.5,10"                 12 gC enemy_lineup_wide enemy_lineup_34
 run_group 7  "4.5,10,15"              17 gD thug_brute_pair_side thug_side_3m brute_side_3m
-run_group 10 "3.5,7.5,11,14,17"       19 gE thug_face brute_face hood_face tee_face beard_face
+run_group 10 "3.5,7.5"                10 gE thug_face brute_face
+# 3 s face shots drift out of their window when started from shot 10: one short run per face (round 04b)
+run_group 12 "3.0"                    6  gE2 hood_face
+run_group 13 "3.0"                    6  gE3 tee_face
+run_group 14 "3.0"                    6  gE4 beard_face
 run_group 15 "5.5,12.5"               14 gF civilians_tracking civilians_wide
 ls -la "$OUT"/*_4k.jpg "$OUT"/*_perf.json

@@ -611,6 +611,9 @@ if 'map' in STEPS:
         # tee + chains), 2 tint variants, 3 weapon types (bat, pipe, pistol); two staggered rows facing the road (-Y)
         LX, LY = 2050.0, 1900.0
         GA, TH, TL = PP + 'ABP_Street_GunAim', PP + 'ABP_Street_Stand', PP + 'ABP_Street_StandLook'
+        # round 04b: thugGunAim is a deep crouch aiming ~40 deg up (reads as a pose bug in the lineup, and drops the head out of the
+        # face close-up); pistol holders stand with the pistol lowered unless ARGS gun_aim is set
+        if not ARGS.get('gun_aim'): GA = TL
         crew = [('Crew_ThugBat', 'SK_Street_Thug_Bat', TH, 'Thug', 1.0, 1.0),
                 ('Crew_HoodPistol', 'SK_Street_Hood_Pistol', GA, 'Hood', 1.0, 1.0),
                 ('Crew_BrutePipe', 'SK_Street_Brute_Pipe', TL, 'Brute', BRUTE_SCALE, BRUTE_GIRTH),
@@ -645,7 +648,9 @@ if 'map' in STEPS:
             ('18_dapper_elder', 120, 1000, 1), ('19_marathon_runner', -260, -1200, 1),
             ('10_silver_tie', -150, 1500, -1), ('14_teen_skater', 200, 1900, -1), ('01_retired_gent', 40, 1300, -1), ('20_punk_artist', -230, 2300, -1)]
         L_CIV = 9000.0
+        CIV_SPREAD = float(ARGS.get('civ_spread', 0.45))   # round 04b: start positions pulled together so >= 8 fit the tracking shot
         for c, dy, x0, dr in plan:
+            x0 = x0 * CIV_SPREAD
             wk = CIT_WALK[c]
             start = (x0 + L_CIV / 2) if dr > 0 else (L_CIV / 2 - x0)
             civ.append(line('Citizen_' + c, ROOT + '/Citizens/SK_Citizen_' + c, ROOT + '/Citizens/ABP_Citizen_' + wk, (0, CY + dy, 0),
@@ -683,7 +688,7 @@ if 'map' in STEPS:
                  shot(enemies[1], K.CLOSEUP, 3, 105, 160, 0, 28, label='hood face close-up'),                                         # 12 @62.5
                  shot(enemies[3], K.CLOSEUP, 3, 105, 160, 0, 28, label='tee + cap face close-up'),                                    # 13 @65.5
                  shot(enemies[4], K.CLOSEUP, 3, 105, 160, 0, 28, label='beard face close-up'),                                        # 14 @68.5
-                 shot(civ_track, K.SIDE, 8, 700, 95, 15, 60, restart=civ_all, label='civilians walking past a tracking camera'),      # 15 @71.5
+                 shot(civ_track, K.SIDE, 8, 1150, 100, 45, 64, restart=civ_all, label='civilians walking past a tracking camera'),      # 15 @71.5
                  shot(cit_center, K.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY + 420, 175), restart=civ_all, label='civilians wide'),      # 16 @79.5
                  shot(suit_center, K.WIDE, 5, 0, 100, 0, 50, wl=(-2300, 820, 170), label='AI suits walking in place')]                # 17 @85.5 (ends 90.5)
         d.set_editor_property('shots', shots)

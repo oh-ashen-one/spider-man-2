@@ -20,7 +20,7 @@ from ganim import Doc, qmul, qinv, qaxis, qslerp
 ROOT = os.path.abspath(os.path.join(HERE, '../../..'))
 SRC = os.path.join(ROOT, 'public/assets/spiderman.glb')
 NEW_FRAMES = 17                 # run length in 1/30 s frames (UE imports clips on the 1/30 s grid only)
-LEAN = {'spine': 4.0, 'spine1': 4.0, 'spine2': 3.5, 'neck': -3.0, 'head': -3.5}   # extra world pitch per bone (deg, + = forward)
+LEAN = {'spine': 7.0, 'spine1': 7.0, 'spine2': 6.0, 'neck': -5.0, 'head': -5.5}   # extra world pitch per bone (deg, + = forward)
 ARM_K, FORE_K = 1.35, 1.15
 TAKEOFF_FRAMES = 16             # 0.533 s authored; the lineup plays its first 0.25 s (15 frames at 60 fps) before lift-off
 LAT = np.array([1.0, 0, 0])     # hero faces +Z, +X = left: pitch about +X moves the top forward

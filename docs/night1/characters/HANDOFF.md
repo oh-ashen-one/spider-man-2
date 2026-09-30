@@ -8,7 +8,7 @@ Round-03 critic (blind, `round-03/CRITIC.md`): hero model 4, hero animation 3, e
 ## Round 04: what changed
 
 **1. Hero run (browser + UE: `public/assets/spiderman.glb`).** `tools/ue_char/heroanim/hero_run_r4.py` (numpy, runs in python3 or `blender -b -P`) patches the GLB in place: every node, mesh, skin, texture and the other 78 clips stay byte-identical (checked: channels, mesh buffers, inverse binds and images equal), clip and bone names unchanged.
-- `run`: 19/30 s -> 17/30 s (3.16 -> 3.53 steps/s at rate 1), world-space forward pitch added along spine / spine1 / spine2 (+4, +4, +3.5 deg; neck -3, head -3.5 so the gaze stays down-range), upper-arm swing x1.35 and forearm flex x1.15 about the cycle mean. Head-to-hip lean 12.3 -> 19.9 deg (min 19.5), hand fore-aft swing 61 -> 74 cm (`evidence/hero_clips_r4.json`, before: `hero_run_r3_before.json`).
+- `run`: 19/30 s -> 17/30 s (3.16 -> 3.53 steps/s at rate 1), world-space forward pitch added along spine / spine1 / spine2 (+7, +7, +6 deg; neck -5, head -5.5 so the gaze stays down-range; round 04b raised it from +4/+4/+3.5 after the first capture measured 13 deg in pixels), upper-arm swing x1.35 and forearm flex x1.15 about the cycle mean. Head-to-hip lean 12.3 -> 25.6 deg (min 25.2), hand fore-aft swing 61 -> 73 cm (`evidence/hero_clips_r4.json`, before: `hero_run_r3_before.json`).
 - `runTakeoff` (NEW clip, additive): 16/30 s grounded anticipation crouch: the run contact pose gathers in 0.12 s into the `jump` clip's first pose with the hips lowered 17.2 cm so both feet stay on the ground, sinks 3 cm more until 0.25 s, then eases back toward the jump's start pose (never reached in the lineup: the actor leaves the ground at 0.25 s).
 - Browser: `npm test` 15/15, `vite build` ok, headless load on port 5203 (`tools/ue_char/heroanim/browser_check.mjs`): no console errors, rig `run` = 0.5667 s. The browser does not use `runTakeoff` (its jump charge uses `jumpCrouch`, P3's animator); the browser's LOCO anchor for `run` is 8.5 m/s while the clip's feet move at 5.95 m/s, so the browser run slides (not P2's file).
 - UE (`Source/WebHomage/Characters`): `UWHCharAnimInstance` has `Takeoff` + `TakeoffBlendIn` (0.07 s) and a `TakeoffTime` state; the crouch is held under the air blend for 0.12 s after lift-off so `jump` (same first pose) continues it; `FallAlpha` is reset on lift-off (a jump no longer starts on the skydive `fall` pose). `AWHCharLoopWalker`: `TakeoffTime`, `FirstHopDelay`, hops in Line mode, Line mode moves along the actor's yaw (180 = -X). Lineup ABP: `fall` = `fallCalm` (the old `fall` is a horizontal skydive: the round-03 "belly dive"), `takeoff` = `runTakeoff`; loco anchors are the clips' planted-foot speeds (walk 114, jog 310, run 570, sprint 899 cm/s; `tools/ue_char/heroanim/foot_speed.py`).
@@ -27,17 +27,33 @@ Round-03 critic (blind, `round-03/CRITIC.md`): hero model 4, hero animation 3, e
 - UV-seam duplicate weights welded in `citizen_rig.build` (the white seam streaks).
 - Layout: south sidewalk, 8 walking +X and 4 walking -X, start positions spread (gait phases differ), a mesh-less tracker at 1.1 m/s for the side-tracking camera; the AI suits are parked at x -3500 and no hero-suit mesh is near the civilian or enemy cameras.
 
-**4. Hero hand (UE only, if cheap).** `tools/ue_char/hero_hand_fix.py`: texels covered only by hand / finger triangles that are white are inpainted from the red glove (OpenCV Telea); texels shared with other triangles (chest emblem) untouched -> `art/night1/characters/hero/tex/suit_basecolor_r4.png`, used by the build. Browser texture unchanged. Lens specular / curvature: not done.
+**4. Hero hand + lens (UE only, if cheap).** `tools/ue_char/hero_hand_fix.py`: texels covered only by hand / finger triangles that are white are inpainted from the red glove (OpenCV Telea); texels shared with other triangles (chest emblem) untouched -> `art/night1/characters/hero/tex/suit_basecolor_r4.png`, used by the build. Browser texture unchanged. Texels shared with the chest emblem stay white (visible on one glove at 4K). Lens: `M_Char_HeroLens` (default lit, roughness 0.07, specular 1.0, base colour darkened toward grazing angles by Fresnel to suggest a dome); clear coat is not reachable from Python in UE 5.8 (`MP_CustomData0/1` are hidden enum values); lens geometry is still flat.
 
-RESULTS_PLACEHOLDER
+**5. Relocatable build (for the integrated map).** `tools/ue_char/p2paths.py`: `P2_WT` (repo, default = two levels above tools/ue_char), `P2_SCRATCH` (derived inputs + caches, default `<repo>/unreal/WebHomage/Saved/P2Build`), `P2_RAW` (raw Tripo people, default `~/sm2-assets/raw`); every tool under `tools/ue_char` uses it (no `/Users/...` paths left except the shared GPU lock default, overridable with `GPU_SLOT`). `build_characters.py` derives the repo from `unreal.Paths.project_dir()` and takes `ARGS` keys `wt` / `art` / `inputs` / `scratch` or env `P2_WT` / `P2_ART` / `P2_INPUTS` / `P2_SCRATCH`; it logs the resolved paths first. The four legacy constant lines are kept byte-identical so `build_manhattan.py`'s text substitution still works (a substituted value is kept; an untouched value is derived). Piece C can drop the substitution and pass `ARGS = {"steps": ..., "art": <stage>/art, "inputs": <stage>/ueimport}` instead. My own runs: `P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters`.
+
+**6. Round 04b fixes after the first captures.** Civilian start positions x 0.45 and the tracking camera at 11.5 m / FOV 64 (the 7 m camera held 2-6 people); lineup pistol holders stand with the pistol lowered (`thugGunAim` is a deep crouch aiming ~40 deg up; `ARGS gun_aim` restores it); hood sunglasses temple lettering removed (`clear_temple_text`, 2307 texels); `ue_wait.sh` follows the orchestrator's adaptive slot count (`_scratch/gpu/slots`) instead of a fixed 3; capture: `capture_segments.sh` (3 short movie runs), `capture_4k_stills.sh ONLY="gC gE"` subsets and one run per 3 s face shot; `video_checks.py head_bob` / `lean_belt`.
+
+## Round 04 results (builder-measured; `round-04/SPEC_CHECK.md`)
+
+| line | round 03 (critic) | round 04 |
+|---|---|---|
+| CH6 run step rate | 2.9 steps/s | head-blob bob FFT 3.46 Hz on the side run (3.64 on the 3/4 run); clip 3.53 |
+| CH7 lean | median 7 deg (pixels) | clip 25.6 deg; pixels head-to-belt median 24.2 (76 % of frames >= 15); whole-mask method median 15.9 |
+| CH10 run -> jump | 6 frames, no crouch | 11-12 frames of visible crouch before lift-off (movie); 15 frames clip level |
+| CH11 / CH13 enemies | 2 in frame, 2 outfits, 0 weapons | 7 in frame (YOLO), 5 outfits + 2 tints, 3 weapon types |
+| CH16 civilians per frame | 4 | tracking median 11 (9-14), wide median 11 (9-13); 12 distinct models, all animated |
+| CH5 | met | met (18 native-4K stills) |
+
+Browser: `npm test` 15/15, `vite build` ok, headless load on 5203 (no console errors, `run` 0.5667 s) after the final GLB.
 
 ## Commands
 
 ```
-# UE content (wipes + rebuilds /Game/Characters and /Game/Tests/Characters; 'prep' builds people, weapons, hand fix; waits while 3+ Unreal instances run)
+# UE content (wipes + rebuilds /Game/Characters and /Game/Tests/Characters; 'prep' builds people, weapons, hand fix; inside the GPU lock; waits at the loop's Unreal cap)
+P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters   # (this worktree's caches; default is <repo>/unreal/WebHomage/Saved/P2Build)
 tools/ue_char/build_characters_headless.sh
 unreal/WebHomage/Scripts/build_editor.sh                        # after C++ changes (takeoff / Line yaw this round)
-# hero clips (in place on public/assets/spiderman.glb; refuses to run twice)
+# hero clips (in place on public/assets/spiderman.glb; refuses to run twice; to re-tune LEAN, re-run from the pre-round-04 GLB: git show 30d6926:public/assets/spiderman.glb > orig.glb)
 python3 tools/ue_char/heroanim/hero_run_r4.py [--src GLB --out GLB]
 python3 tools/ue_char/heroanim/measure_clip.py GLB run jog sprint   # steps/s, lean, arm swing
 python3 tools/ue_char/heroanim/foot_speed.py GLB run [--speed 5.7]  # natural speed + slide per plant
@@ -50,8 +66,9 @@ python3 tools/ue_char/people/prepare_person.py thug|brute|hood|tee|beard
 tools/ue_char/eval/export_citizens.sh NAME...                   # FBX with all 5 walk styles (time-warped) + welded weights
 python3 tools/ue_char/eval/crowd_gait.py [--json OUT]           # natural speeds + slide before / after the warp
 # captures (offscreen, GPU lock, every launch waits for < 3 Unreal instances)
-tools/ue_char/capture_lineup.sh <out>                           # ONE 91 s 1080p60 -movie run -> clips + stills
-tools/ue_char/capture_4k_stills.sh <out>                        # native 4K stills (r.ScreenPercentage 100), 6 groups
+tools/ue_char/capture_segments.sh <out> [A B C]                  # 3 short 1080p60 -movie runs -> clips + stills (SEG_OFFSET=0.05)
+tools/ue_char/capture_lineup.sh <out>                           # (old) ONE 91 s run: ~25 min in a capture slot under load
+tools/ue_char/capture_4k_stills.sh <out>                        # native 4K stills (r.ScreenPercentage 100), 9 groups; ONLY="gC gE2" for a subset
 <venv>/bin/python tools/ue_char/eval/video_checks.py hero_run|takeoff|people ...   # opencv + ultralytics (YOLO11x, specs weights)
 ```
 
@@ -85,8 +102,14 @@ tools/ue_char/capture_4k_stills.sh <out>                        # native 4K stil
 
 ## Known problems
 
-KNOWN_PLACEHOLDER
+1. Pixel lean is not >= 15 deg on every frame (head-to-belt p10 is negative: the head window catches a swinging hand on some frames); the median passes by both pixel methods.
+2. Defects at 4K (SPEC_CHECK list): white on the back of one glove (UV shared with the emblem), hood mask holes + two-tone hair, beard mask streak + hair patch, brute mask flap over the collar, speckle streaks on dark citizen suits, lens bezel gap.
+3. Enemy idle is the hero's standing idle (plain A-ish stance); no loitering / weapon idle variety; the pistol aim clip is unusable as a lineup pose.
+4. CH1 / CH2 / CH3 / CH19 not measured this round; the lineup is a test stage, not the city or a fight.
+5. The browser's LOCO anchor for `run` (8.5 m/s) is above the clip's foot speed (5.95 m/s): foot slide in the browser is not P2's file.
+6. The hero suit design is still the open brand flag (owner decision).
+7. Movie B predates the hood temple-lettering fix (sub-pixel at 1080p); every other capture shows the final content.
 
 ## No copied IP (owner rule)
 
-Enemies and civilians come from the owner's own Tripo generations. Removed this round: the beard person's chest print and a left-chest logo with lettering (`clear_graphic`); the raw cap's texture is NOT used (procedural twill), so no badge can come along. Weapons are generic primitives (no brand, no lettering). Graphic-tee citizens (07, 11) are left out of the crowd. The hero suit design is still the open brand flag (round-02 and round-03 critics): owner decision.
+Enemies and civilians come from the owner's own Tripo generations. Removed this round: the beard person's chest print and a left-chest logo with lettering (`clear_graphic`); small lettering on the hood person's sunglasses temples (`clear_temple_text`, round 04b); the raw cap's texture is NOT used (procedural twill), so no badge can come along. Weapons are generic primitives (no brand, no lettering). Graphic-tee citizens (07, 11) are left out of the crowd. The hero suit design is still the open brand flag (round-02 and round-03 critics): owner decision.

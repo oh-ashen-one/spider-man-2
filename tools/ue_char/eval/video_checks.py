@@ -4,6 +4,7 @@ Needs opencv (+ ultralytics for `people`): run with a venv that has them.
                                 hero height / frame height                                              (CH2, CH6, CH7)
   takeoff   CLIP t0 t1          run -> jump: frames from the start of the crouch (mask height < 93 % of the running height) to the
                                 last grounded frame (mask bottom leaves the ground line)                 (CH10)
+  head_bob  CLIP t0 t1          step rate from the head blob only (CH6); lean_belt CLIP t0 t1: head -> red belt lean (CH7)
   people    CLIP|IMG [step_s]   YOLO11x person boxes per sampled frame: count, count >= 3 % height, heights (CH11, CH12, CH16)
 Same colour-mask approach as the round-03 critic's bob.py / hero_meas.py."""
 import sys, os, json
@@ -53,6 +54,58 @@ def hero_run(path, t0, t1):
                 hero_height_median=round(float(np.median(R[:, 2])), 3))
 
 
+def _red(f, smin=140, vmin=60):
+    hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV); h, s, v = cv2.split(hsv)
+    return ((h < 8) | (h > 172)) & (s > smin) & (v > vmin)
+
+
+def head_bob(path, t0, t1):
+    """Step rate from the HEAD alone (round 04): the head is the highest roughly square red blob in the upper 30 % of the hero.
+    The whole-mask top used by hero_run() is hijacked by a hand swung above the head (the bigger round-04 arm swing), which puts the
+    FFT peak at the stride frequency (half the step rate)."""
+    from scipy.signal import find_peaks
+    Y = []
+    for t, f, fps in frames(path, t0, t1):
+        m = suit_mask(f)
+        if m is None: Y.append(np.nan); continue
+        ys, _ = np.nonzero(m); top = ys.min(); H = ys.max() - top
+        red = _red(f, 100, 50)[:int(top + 0.3 * H)].astype(np.uint8)
+        n, lab, st, _ = cv2.connectedComponentsWithStats(red)
+        c = [st[i, 1] for i in range(1, n) if st[i, 4] > 800 and 0.6 < st[i, 2] / max(st[i, 3], 1) < 1.6]
+        Y.append(min(c) if c else np.nan)
+    Y = np.array(Y, float); ok = ~np.isnan(Y)
+    Yi = np.interp(np.arange(len(Y)), np.nonzero(ok)[0], Y[ok])
+    T = Yi - np.convolve(Yi, np.ones(31) / 31, 'same'); T = T[15:-15]; fps = 60.0
+    F = np.abs(np.fft.rfft(T * np.hanning(len(T)))); fr = np.fft.rfftfreq(len(T), 1 / fps); sel = (fr > 1) & (fr < 6)
+    pk, _ = find_peaks(-T, distance=8, prominence=2)
+    return dict(clip=path, t0=t0, t1=t1, frames=len(Y), head_found=int(ok.sum()), head_bob_fft_hz=round(float(fr[np.argmax(F * sel)]), 3),
+                head_bob_minima_per_s=round(len(pk) / (len(T) / fps), 3))
+
+
+def lean_belt(path, t0, t1):
+    """Torso lean from the head (top 10 % of the hero mask) to the red belt (row with most red pixels near the torso's blue centre,
+    33-58 % of the height). Round 04: the hero_run() lean uses the mask's mid band, which the swinging arms drag around."""
+    L = []
+    for t, f, fps in frames(path, t0, t1):
+        m = suit_mask(f)
+        if m is None: continue
+        hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV); h, s, v = cv2.split(hsv)
+        red = _red(f) & m; blue = ((h > 105) & (h < 130) & (s > 150) & (v > 40)) & m
+        ys, xs = np.nonzero(m); top = ys.min(); H = ys.max() - top
+        hy, hx = np.nonzero(m[top:top + int(0.10 * H)]); head = (np.median(hx), top + hy.mean())
+        z0, z1 = top + int(0.33 * H), top + int(0.58 * H)
+        by, bx = np.nonzero(blue[z0:z1])
+        if len(bx) == 0: continue
+        cx = int(np.median(bx))
+        rc = np.array([red[r, max(cx - 45, 0):cx + 45].sum() for r in range(z0, z1)])
+        row = z0 + int(np.argmax(rc)); rx = np.nonzero(red[row, max(cx - 60, 0):cx + 60])[0] + max(cx - 60, 0)
+        if len(rx) == 0: continue
+        L.append(float(np.degrees(np.arctan2(head[0] - rx.mean(), row - head[1]))))
+    A = np.array(L)
+    return dict(clip=path, t0=t0, t1=t1, frames=len(A), lean_belt_median=round(float(np.median(A)), 1), lean_belt_p10=round(float(np.percentile(A, 10)), 1),
+                lean_belt_p90=round(float(np.percentile(A, 90)), 1), frac_ge15=round(float((A >= 15).mean()), 2))
+
+
 def takeoff(path, t0, t1):
     rows = []
     for t, f, fps in frames(path, t0, t1):
@@ -91,5 +144,7 @@ if __name__ == '__main__':
     cmd, a = sys.argv[1], sys.argv[2:]
     if cmd == 'hero_run': r = hero_run(a[0], float(a[1]), float(a[2]))
     elif cmd == 'takeoff': r = takeoff(a[0], float(a[1]), float(a[2]))
+    elif cmd == 'head_bob': r = head_bob(a[0], float(a[1]), float(a[2]))
+    elif cmd == 'lean_belt': r = lean_belt(a[0], float(a[1]), float(a[2]))
     else: r = people(a[0], float(a[1]) if len(a) > 1 else 0.5)
     print(json.dumps(r))
