@@ -188,9 +188,11 @@ w("")
 w("The video frames are rendered offline at a fixed step; they say nothing about real-time frame rate.")
 if not glob.glob(os.path.join(ROUND, "stills", "*.jpg")):
     w("No 4K stills were captured this round (the stills column above does not apply): only the 1920x1080 movies (internal = output, "
-      "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). "
-      "All nine movies were captured with the final build of this round (see Build above), in two GPU holds (f1-f5, then a-d); warm-up pass skipped "
-      "(shader cache warm).")
+      "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). " +
+      ("Seven movies (f1-f5, a, b) were captured with the final build of this round (see Build above) in one GPU hold; c and d come from the first round-16 hold "
+       "(wall camera / no trick camera: untouched by the later trick-camera edits); warm-up pass skipped (shader cache warm)." if RN >= 16 else
+       "All nine movies were captured with the final build of this round (see Build above), in two GPU holds (f1-f5, then a-d); warm-up pass skipped "
+       "(shader cache warm)."))
 w("")
 if RN >= 5:
     w("Camera (round 05 chase camera): 3.8 m behind the hero along the lagged heading yaw (horizontal spring 0.07 s, held 3.5-5.0 m), "

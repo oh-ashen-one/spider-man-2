@@ -1,4 +1,4 @@
-# P3 round 16 FLOW CHECK (flow_check.py) on the rendered 1080p60 telemetry + movies, lit /Game/Maps/Manhattan. 2026-09-30 19:03
+# P3 round 16 FLOW CHECK (flow_check.py) on the rendered 1080p60 telemetry + movies, lit /Game/Maps/Manhattan. 2026-09-30 19:41
 # Homage fan game; not affiliated with Marvel, Sony or Insomniac. Tests: release->first shape <= .25 s, reach->attach <= .3 s, T4 <= 3.1 s, T2 <= 3.3 s, per-frame camera <= 3 deg / 4 deg / 1.2 m, flip-camera blend-out >= .4 s, backDouble <= 2 shapes, hero V.
 
 a_swing_chain: 7 releases, 8 attaches, 2 flip programs (15.6 s)
@@ -6,14 +6,14 @@ a_swing_chain: 7 releases, 8 attaches, 2 flip programs (15.6 s)
   11.93 s frontPikeSwan R1 release->shape 0.00 s PASS | R2 reach 13.25 -> attach 13.35 = +0.10 s PASS | program 1.59 s, ended 13.33 s, cut at t_prog 1.40 | shapes Pike/Swan/Tuck/Reach
   T4 release -> end of the web-less air (web / zip / wall / perch / ground): max 1.58 s (<= 3.1) PASS
   T2 attach -> attach: max 2.62 s (<= 3.3) PASS   (attaches at 0.40, 2.47, 4.65, 7.27, 9.15, 10.92, 13.35, 15.03)
-  C1 per-frame camera: max |d pitch| 2.70 deg @2.52 s (<= 3), |d yaw| 3.60 deg @15.28 s (<= 4), |d pos| 1.10 m @12.65 s (<= 1.2) -> 0 frames over PASS
+  C1 per-frame camera: max |d pitch| 2.70 deg @2.52 s (<= 3), |d yaw| 3.60 deg @15.28 s (<= 4), |d pos| 1.11 m @12.60 s (<= 1.2) -> 0 frames over PASS
      slew limiter active: position 6, pitch 18, yaw 3 frames (of 935)
      camera in geometry: 0 frames
   C2 7.25 s backDouble    flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
   C2 13.33 s frontPikeSwan flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 32 / p50 84 / min 23; all frames p10 77 / p50 127
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 33 / p50 80 / min 23; all frames p10 77 / p50 128
   => PASS (0 failing lines / frames)
-a_swing_chain.mp4 frames 935 diff median 15.19 p99 29.05 max 36.49 @ 13.68s
+a_swing_chain.mp4 frames 935 diff median 15.17 p99 29.01 max 36.63 @ 13.68s
  isolated spikes (>8 and >3x neighbours): none
 a_swing_chain_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 4.9 m @ 10.95 s
 
@@ -25,9 +25,9 @@ b_release_trick_dive_zip: 1 releases, 1 attaches, 1 flip programs (7.0 s)
      slew limiter active: position 2, pitch 12, yaw 6 frames (of 419)
      camera in geometry: 0 frames
   C2 2.87 s frontPikeSwan flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 93 / p50 102 / min 72; all frames p10 86 / p50 112
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 91 / p50 100 / min 72; all frames p10 83 / p50 114
   => PASS (0 failing lines / frames)
-b_release_trick_dive_zip.mp4 frames 419 diff median 12.66 p99 26.48 max 30.96 @ 0.02s
+b_release_trick_dive_zip.mp4 frames 419 diff median 12.80 p99 26.71 max 31.38 @ 0.02s
  isolated spikes (>8 and >3x neighbours): none
 b_release_trick_dive_zip_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 5.4 m @ 6.45 s
 
@@ -63,9 +63,9 @@ f1_flow_backDouble: 3 releases, 4 attaches, 1 flip programs (8.0 s)
      slew limiter active: position 2, pitch 8, yaw 3 frames (of 479)
      camera in geometry: 0 frames
   C2 4.97 s backDouble    flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 42 / p50 104 / min 27; all frames p10 54 / p50 125
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 46 / p50 106 / min 30; all frames p10 54 / p50 124
   => PASS (0 failing lines / frames)
-f1_flow_backDouble.mp4 frames 479 diff median 16.84 p99 25.89 max 28.28 @ 2.42s
+f1_flow_backDouble.mp4 frames 479 diff median 16.69 p99 25.89 max 28.25 @ 2.42s
  isolated spikes (>8 and >3x neighbours): none
 f1_flow_backDouble_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 4.9 m @ 2.50 s
 
@@ -77,9 +77,9 @@ f2_flow_pikeSwan: 4 releases, 4 attaches, 1 flip programs (8.0 s)
      slew limiter active: position 4, pitch 12, yaw 3 frames (of 479)
      camera in geometry: 0 frames
   C2 4.77 s frontPikeSwan flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 83 / p50 125 / min 51; all frames p10 75 / p50 132
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 86 / p50 123 / min 51; all frames p10 74 / p50 132
   => PASS (0 failing lines / frames)
-f2_flow_pikeSwan.mp4 frames 479 diff median 16.42 p99 26.06 max 27.48 @ 1.57s
+f2_flow_pikeSwan.mp4 frames 479 diff median 16.39 p99 26.10 max 27.61 @ 1.57s
  isolated spikes (>8 and >3x neighbours): none
 f2_flow_pikeSwan_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 4.9 m @ 2.48 s
 
@@ -91,9 +91,9 @@ f3_flow_corkscrew: 4 releases, 4 attaches, 1 flip programs (8.0 s)
      slew limiter active: position 34, pitch 41, yaw 15 frames (of 479)
      camera in geometry: 8 frames
   C2 2.83 s corkscrew     flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 35 / p50 52 / min 32; all frames p10 42 / p50 94
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 33 / p50 50 / min 31; all frames p10 41 / p50 93
   => PASS (0 failing lines / frames)
-f3_flow_corkscrew.mp4 frames 479 diff median 18.99 p99 38.30 max 47.57 @ 4.58s
+f3_flow_corkscrew.mp4 frames 479 diff median 18.99 p99 38.24 max 47.63 @ 4.58s
  isolated spikes (>8 and >3x neighbours): none
 f3_flow_corkscrew_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 7.9 m @ 5.38 s
 
@@ -113,9 +113,9 @@ f4_chain_flips: 5 releases, 5 attaches, 5 flip programs (11.6 s)
   C2 7.87 s corkscrew     flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
   C2 10.45 s backDouble    flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
   C2 11.57 s frontPikeSwan: flip camera still blending at the clip end (not judged: the clip ends first)
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 26 / p50 81 / min 18; all frames p10 32 / p50 94
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 26 / p50 80 / min 18; all frames p10 33 / p50 94
   => PASS (0 failing lines / frames)
-f4_chain_flips.mp4 frames 695 diff median 17.69 p99 32.28 max 32.89 @ 7.82s
+f4_chain_flips.mp4 frames 695 diff median 17.63 p99 32.38 max 32.99 @ 7.82s
  isolated spikes (>8 and >3x neighbours): none
 f4_chain_flips_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 4.8 m @ 0.65 s
 
@@ -124,13 +124,13 @@ f5_canyon_backDouble: 4 releases, 4 attaches, 2 flip programs (8.0 s)
   7.78 s backDouble    R1 release->shape 0.00 s PASS | R2 reach 9.38 -> attach nan = +nan s n/a (clip ends first) | program 1.80 s, ended 7.97 s, cut at t_prog 0.18 | shapes Tuck S1 1 shapes PASS
   T4 release -> end of the web-less air (web / zip / wall / perch / ground): max 1.58 s (<= 3.1) PASS
   T2 attach -> attach: max 2.58 s (<= 3.3) PASS   (attaches at 0.40, 2.33, 4.92, 6.70)
-  C1 per-frame camera: max |d pitch| 2.70 deg @6.73 s (<= 3), |d yaw| 2.10 deg @3.50 s (<= 4), |d pos| 0.85 m @3.72 s (<= 1.2) -> 0 frames over PASS
+  C1 per-frame camera: max |d pitch| 2.70 deg @6.75 s (<= 3), |d yaw| 2.10 deg @3.50 s (<= 4), |d pos| 0.85 m @3.72 s (<= 1.2) -> 0 frames over PASS
      slew limiter active: position 0, pitch 5, yaw 0 frames (of 479)
      camera in geometry: 0 frames
   C2 4.90 s backDouble    flip camera k 1.00 at the program end -> < 0.02 after 0.83 s (>= 0.4) PASS
   C2 7.97 s backDouble    flip camera k 0.00 at the program end -> < 0.02 after 0.00 s (>= 0.4) FAIL
-  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 52 / p50 80 / min 42; all frames p10 58 / p50 126
+  V1 hero brightness (median V, central 60 % of the pixel bbox): trick frames p10 52 / p50 76 / min 45; all frames p10 59 / p50 126
   => FAIL (1 failing lines / frames)
-f5_canyon_backDouble.mp4 frames 479 diff median 14.90 p99 22.82 max 31.83 @ 6.72s
+f5_canyon_backDouble.mp4 frames 479 diff median 14.84 p99 22.82 max 30.44 @ 6.72s
  isolated spikes (>8 and >3x neighbours): none
 f5_canyon_backDouble_telemetry.csv frozen-camera frames (moved<1cm while hero>8 m/s): 0  max cam-hero dist 4.9 m @ 2.47 s

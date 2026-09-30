@@ -23,4 +23,4 @@ for t in tests:
 sk = os.path.join(R, 'SKY_CHECK.txt')
 if os.path.exists(sk):
     for l in open(sk):
-        if l.startswith('TC-I pooled'): print('\nTC-I (pooled f1-f5): ' + l.strip())
+        if l.startswith('TC-I pooled'): print('\nTC-I (pooled f1-f5): ' + l.strip()); break
