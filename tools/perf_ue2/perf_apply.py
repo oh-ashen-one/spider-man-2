@@ -194,8 +194,18 @@ if 'rt_proxy_trees' in STEPS:
         for k_, v_ in (('recompute_normals', False), ('recompute_tangents', False), ('generate_lightmap_u_vs', False), ('distance_field_resolution_scale', 0.0)):
             try: bs.set_editor_property(k_, v_)
             except Exception as e: rep.setdefault('errors', []).append('build settings %s: %s' % (k_, str(e)[:80]))
+        # no collision at all on the proxy meshes (round 05: with the Interchange default complex collision the hidden proxies still blocked the
+        # PlayerStart and the origin: 'NO PLAYERSTART with positive rating', no hero, the perf route ran without the swing)
+        bset = sm.get_editor_property('body_setup')
+        coll_changed = False
+        if bset:
+            if bset.get_editor_property('collision_trace_flag') != unreal.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX:
+                bset.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX); coll_changed = True
+            try: sms.remove_collisions(sm)
+            except Exception as e: rep.setdefault('warnings', []).append('remove_collisions: ' + str(e)[:80])
         if not reuse:
             sms.set_lod_build_settings(sm, 0, bs); todo_save.append(dst)
+        elif coll_changed: todo_save.append(dst)
     for dst in todo_save: EAL.save_asset(dst)   # phase 2: save (waits for each build; most are done by now)
     for t in tiles:   # phase 3: one hidden, ray-tracing-only actor per tile
         dst = '%s/SM_%s' % (PROOT, t['name'])
@@ -214,7 +224,10 @@ if 'rt_proxy_trees' in STEPS:
                        ('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', True), ('visible_in_reflection_captures', False),
                        ('visible_in_real_time_sky_captures', False), ('receives_decals', False), ('generate_overlap_events', False)):
             prop(smc, k_, v_, 'rt_proxy_flags')
-        smc.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        smc.set_collision_profile_name('NoCollision'); smc.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        for k_, v_ in (('can_character_step_up_on', unreal.CanBeCharacterBase.ECB_NO), ('can_ever_affect_navigation', False)):
+            try: smc.set_editor_property(k_, v_)
+            except Exception as e: rep.setdefault('warnings', []).append('%s: %s' % (k_, str(e)[:60]))
         n_new += 1; tris += sum(t['tris'].values())
     if EAL.does_directory_exist(PROOT + '/_in'): EAL.delete_directory(PROOT + '/_in')
     # 3. the originals leave the ray-tracing scene (raster / shadows / distance fields unchanged)
