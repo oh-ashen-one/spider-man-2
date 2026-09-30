@@ -28,7 +28,7 @@ published mp4** (crop < 1.0 alone: 24 / 34). See "Why the combined test still fa
 |---|---|---|---|
 | CB1 hit-stop, crop < 1.0 for >= 3 frames | every hero blow | r02 froze the WHOLE frame (39 hit-stops of 4-6 frames, camera included) | **24 / 34** blows (master 22 / 34), median run 4 frames; hero-hit contacts (attacker + hero held) 7 / 9 |
 | CB1 ... and whole-frame diff >= 1.0 in those frames (the critic test) | every hero blow | - | **15 / 34** (master 16 / 34), median run 2. Whole-frame diff during the 189 held frames: min 0.59, 10th percentile 1.01 |
-| CB1 whole-frame frozen frames (diff < 0.3) | <= 3 % | **7.3 %** | **0.0 %** at 30 fps and at 60 fps |
+| CB1 whole-frame frozen frames (diff < 0.3, 480x270 gray) | <= 3 % | **7.3 %** (critic); same method on the whole r02 mp4: 7.0 % at 30 fps, 9.7 % at 60 fps | **0.0 %** in the measured fight window; whole r03 mp4 (incl. the opening): **0.21 % at 30 fps, 0.32 % at 60 fps** |
 | CB2 victim moves >= 0.5 m within 0.3 s | every blow | "barely moves over 24 frames" | **34 / 34** (min 0.52 m; light 0.77 m at 6.5 m/s decaying exp(-6 t)) |
 | CB2 victim rotates >= 30 deg within 0.3 s | every blow | - | **34 / 34** (min 36.8 deg): hit twist about the vertical axis, 72 % of 38-72 deg in the contact frame |
 | CB2 heavy / finisher / launcher >= 2 m (1 s) | every non-armoured heavy blow | - | **18 / 18** (min 2.71 m) |
