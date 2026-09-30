@@ -56,4 +56,4 @@ Weekly usage was at 50 %. Builders lean on **Sonnet 5.5 xhigh** for every piece;
 
 ## Day 2 resume (owner, 2026-09-30 ~10:30)
 
-Weekly usage at 80 %. **All builders on Sonnet 5.5 xhigh**, including the traversal flips; **Opus 5.5 high only for the blind critics** (never skipped); no Fable. One round per piece, three pieces at a time (traversal r13 renders, characters r6 engine check, perf r3 shipped preset), engine cap hard 2, new safety rules from oh-ashen-one/agents-md#4 (merged).
+Weekly usage at 80 %. Owner (corrected, same morning): quality first — **split building: Opus 5.5 high for traversal/flips, combat, perf, integration; Sonnet 5.5 xhigh for city, life, look, character assets, pipelines**; **Opus 5.5 high for every blind critic** (never skipped); Fable 5.1 only for stall diagnosis/final acceptance. The three rounds already started this morning keep their Sonnet builders. One round per piece, three pieces at a time (traversal r13 renders, characters r6 engine check, perf r3 shipped preset), engine cap hard 2, new safety rules from oh-ashen-one/agents-md#4 (merged).
