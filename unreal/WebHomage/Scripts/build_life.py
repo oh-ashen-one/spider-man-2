@@ -84,6 +84,7 @@ def ue_python(name, steps, timeout=7200):
 
 
 def step_prep():
+    os.environ.setdefault('SM2_LIFE_CIT', CIT)   # citizens_fbx.py writes where this build reads
     os.makedirs(VEH, exist_ok=True); os.makedirs(CIT, exist_ok=True)
     sh(['python3', 'tools/life/prep_vehicles.py', '--out', VEH], log_name='prep_vehicles.log')
     lay = os.path.join(EXPORT, 'layout.json')
