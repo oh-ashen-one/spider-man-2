@@ -36,3 +36,16 @@ Y = south (north = -Y), Z = up. Tile actors sit at (100 cx, 100 cz, 0). Instance
 - `M_CityProp` (partmat.js port, per-instance tint in custom data), `M_CityVC` (vertex colour / atlas), `M_CityLeaves`.
 - `MPC_City`: NightK, DnTime, InteriorGain, ShopGain, EmissiveScale.
 - Include path `/Project/City/*.ush` = `unreal/WebHomage/Shaders/City` (UE maps `<project>/Shaders` to `/Project`).
+
+## Street life added by the Unreal side (round 08; not exported from the browser scene, generated from the browser's rules and models)
+Run by `tools/export/build_city.sh` after `street_props.py`; each writes JSON next to `layout.json` and `build_city.py` (`steps=veh,leaves,map`) turns it into HISM actors:
+- `export_vehicles.py`: the browser's own Blender car models (`public/assets/city/vehicles.glb`, LOD0 of sedan / sedan2 / hatch / suv / suv2 / cross / pickup / van / taxi x4) as `proto/veh_*.glb`
+  + manifest records. The livery atlas `vehicles_atlas2.webp` is NOT used (real-game brands, `IP_EXCLUSIONS.md`): UVs are zeroed, vertex colour = plain part colour x baked AO, paint = per-instance tint.
+  Material: `M_CityProp` (part ids 1 paint / 2 metal / 3 glass / 5 rubber / 7 head / 8 tail / 15 taxi sign).
+- `street_cars.py` -> `streetcars.json`: parked cars and yellow taxis at both avenue curbs (~2.5 per 20 m per side, audit in `streetcars_audit.json`), browser rules (no lane on Park Av, bike lane, red bus lane).
+- `street_traffic.py` -> `streettraffic.json`: stopped / slow lane traffic (queues at the stop lines + free-flow cars). Own actors, World Outliner folder `City/Traffic`
+  (`ISM_traffic_*`): P6 owns moving traffic; delete or hide that folder in the integrated map, or build with `traffic=0`.
+- `street_trees.py` -> `streettrees.json`: trees planted in every empty tree pit and in gaps > 9 m along both sidewalks of every avenue (>= 2 per 20 m of frontage), each new tree with its own iron pit;
+  `_remove` lists browser trees within 16 m of a street-level shot camera. The r05 thinning of the S1 / S2 corridor is gone.
+Prop meshes re-imported over existing ones get a `_v<N>` suffix (`sm_path()` in `build_city.py` picks the newest): renaming / deleting a referenced mesh in a commandlet leaves redirectors that block the next rename.
+`M_CityLeaves` lowers its alpha cut with distance (`steps=leaves` rebuilds only that material): the leaf texture's mips lose coverage, beyond ~25 m every card was discarded and distant street trees were bare branches.

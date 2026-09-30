@@ -61,7 +61,7 @@ for ax, z0, z1 in blocks:
             direction = -1.0 if side < 0 else 1.0                             # z direction from the stop line back into the block (southbound queue extends to smaller z)
             # queue length by hash: 0..4
             u = hrand(ax, z0, side * 7 + li)
-            kq = 0 if u < 0.4 else 1 if u < 0.75 else 2 if u < 0.93 else 3
+            kq = 0 if u < 0.4 else 1 if u < 0.76 else 2 if u < 0.94 else 3
             placed = []                                                       # (z centre, half length)
             frontz = stop
             def add(kind, zc_front):
@@ -94,7 +94,7 @@ for ax, z0, z1 in blocks:
                 ln = veh[kind]['len']
                 zc = frontz + direction * ln / 2
                 if zc - ln / 2 < z0 + 6 or zc + ln / 2 > z1 - 6: break
-                if hrand(ax, frontz, li + side) < 0.6 and add(kind, frontz): cnt_b += 1
+                if hrand(ax, frontz, li + side) < 0.55 and add(kind, frontz): cnt_b += 1
                 frontz += direction * (ln + 12.0 + hrand(ax, frontz, 5) * 26.0)
     per_block.append(cnt_b)
 json.dump(out, open(EXP + 'streettraffic.json', 'w'))

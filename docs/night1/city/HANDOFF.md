@@ -1,39 +1,68 @@
-# P1 City — handoff after round 07 (for the next builder)
+# P1 City — handoff after round 08 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port 8771 (editor not needed any more), browser dev port **5202**.
+Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port 8771 (editor not needed: everything runs as `-nullrhi` commandlets and `-game` captures), browser dev port **5202** (only for a full re-export).
 Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, plus (flagged to the integrator)
 `unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
-Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city.
+Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. This branch was NOT re-merged with `Opus-5.5-Loop-Night-1` in r08 (it is ~48 commits behind; nothing here needed it, the C++ module is unchanged).
 
-## Read this first: state at the end of round 07 (finished by Sonnet 5.5 on 2026-09-30 after the 23:08 kernel panic)
-Critic r06: facades 5, street 4, skyline 4, Manhattan 5, image quality 5, FAILS. Its gaps: (1) far field C11/C13-C15, (2) parked cars / props C4/C6, (3) facade albedo C1.
-**Round 07 fixed (1) and (3) by measurement, not (2).** Numbers, before / after, sweep table and change log: `round-07/README.md`; raw checker output: `round-07/city_spec_check.md` + `.json`
-(`python3 tools/export/city_spec_check.py <round_dir> [--yolo] [--ip]`, regions `docs/night1/city/spec_regions.json`, ONE measurement for builder and critic).
-| line | r06 | r07 final (1080p / 4K) | target |
+## Read this first: state at the end of round 08 (Sonnet 5.5, 2026-09-30 02:00-04:10)
+Critic r07: facades 5, street dressing 3, skyline 4, composition 4, image quality 4, FAILS. Its biggest gap, the same as r06's: **the streets are empty** (no parked cars, no trees on the S1 west sidewalk, 0 cars in S1, <= 1 vehicle in S2).
+**Round 08 fixed that gap by measurement** (`round-08/README.md`, raw checker output `round-08/city_spec_check.md` + `.json`, YOLO evidence `round-08/builder_checks/yolo/`):
+| line | r07 | r08 (1080p; 4K in README) | target |
 |---|---|---|---|
-| C11 far-shore Laplacian / sky | 4.76 | 27.3 / 23.4 | >= 6 |
-| C13 far-shore Y - sky Y | -14.0 | -33.7 / -33.9 | -35..-25 |
-| C14 far shore - river | -3.4 | +23.5 | 5..35 |
-| C15 RMS far / near | 0.08 | 0.257 / 0.258 | >= 0.25 |
-| C1 facade crops pass | 10/18 | 17/18 / 17/18 | 18/18 |
-| C2 facade crops pass | 9/18 | 10/18 / 10/18 | 18/18 |
-| C4 / C6 cars, people (YOLO) | 0 / 0 | 0 / 0 (S1, S2, S6) | 5-19 cars, 14-22 vehicles |
-IP OCR: 0 hits. Captures: `round-07/S1..S8_*_{1920x1080,3840x2160}.jpg`, internal resolution 1399x787 / 1920x1080 (TSR), frame times contaminated (shared GPU, see README).
-Critic pack for r07: `/Users/midir/sm2-n1/_scratch/critic-P1-r07/pack` (key outside the pack: `pack.key.json`).
+| Test 1 S1 YOLO11x conf .30, cars / vehicles | 0 / 0 | 15 / 16 (4K 17 / 17) | >= 5 (C4 band 5-19) |
+| Test 1 S2 YOLO11x conf .30, vehicles | <= 1 | 17 (4K 19) | >= 14 (C6 band 14-22) |
+| Test 2 S1 x 0-900 trees, hand count | 0 | 5 trunks | >= 2 |
+| parked cars per 20 m of parkable curb / trees per 20 m of frontage | 0 / ~1.1 | 2.42 / 2.67 (85 % / 92 % of windows >= 2) | >= 2 |
+| C11-C15 far field, C1 facades | pass, 17/18 | unchanged | pass |
+IP OCR: 0 hits. Captures `round-08/S1..S8_*_{1920x1080,3840x2160}.jpg`, internal resolution 1399x787 / 1920x1080 (TSR), frame times contaminated (shared GPU, README). No movement sequences in `SHOTLIST.md`, so no mp4.
+Critic pack for r08: `/Users/midir/sm2-n1/_scratch/critic-P1-r08/pack` (key outside the pack: `pack.key.json`; pairs `pairs.json`: the 9 reference pairs + `progress-street` = S1 r07 vs r08).
 
-### Ranked to-do for round 08 (each item = one rerun of the checker)
-1. **C4 / C6 empty streets** (critic gap 2, unchanged since r06, and the loudest thing in S1 / S2 / S6 now): the browser has `src/world/vehicles.js`, `vehinst.js`, `npc/traffic.js`; the export has no vehicle protos. Either export a parked-car prototype set
-   (yellow taxis + ~6 body types, no livery IP: see `IP_EXCLUSIONS.md`, `vehicles_atlas2.webp` liveries are excluded) and place 5-19 at the S1 curbs / 14-22 along the S2 avenue (P1 owns parked cars per SPEC), or coordinate with P6 (`/Game/Life`) and have the integrated map carry them.
-   S1 also lacks street trees on the left and any crowd (P6).
-2. **C2 crush (S1 / S6 / S7, lighting):** sun 6 vs sky fill 1.7 at +2 EV is ~30:1; the SunK cap fixed C1 but darkened canyon-shadowed sun-facing walls (S1 left stone 33.5 -> 23.8). The material cannot see shadows.
-   P4 fix: a sun / sky-fill ratio near 4:1 (and a gentler exposure); then `SunK -> 1` (MPC, no recompile) and re-run the checker. If P4 re-lights the maps, ALSO re-run the far-field check: the C13 / C15 window is only ~0.01 wide (below).
-3. `s5_grey_tower` C1 (3.7 % > Y 204 = lit interior windows in daylight): `DayEmisK` 0.22 -> ~0.16 (MPC) but it dims S7's lit windows too; test S5 + S7 + S8 together.
-4. S3 foreground is near black (lighting), roof plane sparse; S5 red steps are flat pink; Times Square tree guards hold no trees; C3 window depth is judged, not measured.
-5. Far field is at the edge of its window because the sky is blown (Y 229): C13 margin 1.3 Y, C15 margin 0.007. Lowering the sky band ~10 Y (P4) widens it; fog / FarGain / FarJit are then free.
+### Ranked to-do for round 09 (each item = one rerun of the checker)
+1. **Re-place the CITY-SPEC facade boxes (`spec_regions.json` v2).** The new S1 west crowns overlap `s1_left_glass` / `s1_left_stone` and the S6 right foreground tree covers `s6_right_white`; their C1 / C2 numbers no longer measure facades (C2 "11/18" is really 10/18). Do this first, before quoting C1 / C2 again.
+2. **C2 crush (S1 / S5 / S6 / S7, lighting) and `s5_grey_tower` C1** (P4: sun / sky-fill ratio near 4:1, then `SunK -> 1`; `DayEmisK` 0.22 -> ~0.16 for the lit interior windows) — unchanged since r07, see below.
+3. r07 critic secondary items still open: S4 far band silhouette (top-row std >= 12 px at x 0-1300 y 150-260: replace the flat embankment wall by a seawall + piers), S8 glass crop <= 1.5 % > Y 204, card interiors / flat green sidewalk shed texture / paver joints and litter (S1), S6 red steps saturation >= 0.6 and the 63 white floor squares (Y > 240) in S6 x 1100-1920 y 700-1080.
+4. **Street life still open:** people (C4 people 6-32; P6), traffic lights (C4 >= 1: YOLO finds 0 in S1 although the signal heads are in frame: bigger / brighter heads), cars are static and matte (clearcoat, plates, original taxi toppers, buses / box trucks are exported but not placed), cross streets have neither trees nor cars, Times Square tree guards hold no trees.
+5. Far tree crowns read as solid green masses (hedge-like) after the leaf-alpha fix; a proper crown-clump LOD (the browser's `trees-street-near` / `-far` pools are skipped by `SKIP_POOL`) would look better and cost less than 5 k-15 k triangle leaf cards per tree.
+6. If P4 re-lights the maps, re-run the far-field check (the C13 / C15 window is ~0.01 wide).
 
-### What round 07 changed, root causes (details in round-07/README.md)
+### What round 08 changed, root causes (details in round-08/README.md; docs/night1/city/EXPORT.md "Street life")
+- **Why the streets were empty:** the browser's parked cars and traffic are runtime simulation (`npc/traffic.js` `parkedFor`, streamed around the camera), not `Pool` instances, so `export_city.mjs` never saw them; and r05's `thin()` had deleted 45-100 % of the S1 / S2 street trees while `street_props.py` added empty iron tree pits (the critic's "empty tree pit").
+- **Cars:** `tools/export/export_vehicles.py` exports the browser's Blender car models (`public/assets/city/vehicles.glb`, LOD0, 12 bodies) as `proto/veh_*.glb` + manifest records; the livery atlas is NOT used (IP); part colours in vertex colour; `M_CityProp` renders them (paint = per-instance tint). `street_cars.py` (parked, 197 cars / 37 taxis, browser rules) and `street_traffic.py` (stopped lane traffic, 195 cars, own actors under `City/Traffic`) write `streetcars.json` / `streettraffic.json`; `build_city.py` `make_ism()` spawns them.
+- **Trees:** `street_trees.py` plants every empty pit and every > 9 m gap on both sidewalks of the four avenues (`streettrees.json`, `_remove` = browser trees within 16 m of a street-level shot camera); `thin()` is gone. **`M_CityLeaves` distance alpha** (`steps=leaves`): alpha-tested leaf cards lose coverage in the texture mips, beyond ~25 m every card was discarded (bare branches in S2 / S8).
+- **Density tuning of the lane traffic** was done against the checker (lane cars per block -> S2 vehicles / S1 cars at conf .30): 13.7 -> 58 / 18, 7.1 -> 34 / 19, 4.9 -> 24 / 15, 4.1 -> 15 / 18 (margin to the >= 14 test too thin), 4.6 -> 17 / 16 (final). S1 and S2 look down the same avenue: their counts move together only roughly (+-3 from a re-hash), so re-run YOLO after ANY change of car positions.
+- Camera keep-outs (`CAMS` in `street_cars.py`, `street_traffic.py`, `street_trees.py`): no car within 15 m of a street-level shot camera or in the 22 m corridor ahead of it, no tree within 16 m (a hatchback 10 m from the S1 lens filled a third of the frame).
+- Checker: `city_spec_check.py` YOLO worker at conf 0.30 (the critic's test; `CITY_YOLO_CONF`), reports `vehicles_c35` too, `CITY_YOLO_ANN=<dir>` writes box-only annotated frames. `builder_crops.py` now writes the r08 evidence crops.
+
+### How a round runs now (measured wall times; the shared GPU queue took 2-15 min per wait on 2026-09-30, other agents' captures + perf runs)
+ONE slot hold for the whole sequence (nested `gpu_slot.sh` calls pass through; max hold 40 min INCLUDING `wait_slot.sh` sleeps while 4+ Unreal processes of other agents run: the r08 finals took 14-30 min):
+```
+cat > final.sh <<'X'   # zsh; strictly sequential, one Unreal process at a time
+WT=/Users/midir/sm2-n1/city
+$WT/tools/export/ue/run_commandlet.sh $WT/unreal/WebHomage/Scripts/build_city.py steps=leaves,map   # veh,leaves,map when the car meshes changed; map only when only the JSON placements changed (~20 s)
+while pgrep -f "MacOS/UnrealEditor .*$WT/unreal" >/dev/null; do sleep 3; done
+$WT/tools/export/capture_round.sh <raw_dir>            # 8 views x (1080p, 4K), perf window 18-28 s
+X
+/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label city -- zsh final.sh     # run with nohup ... & and poll the .out file
+python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN
+CITY_YOLO_ANN=docs/night1/city/round-NN/builder_checks/yolo python3 tools/export/city_spec_check.py docs/night1/city/round-NN --yolo --ip --json docs/night1/city/round-NN/city_spec_check.json --md docs/night1/city/round-NN/city_spec_check.md
+python3 tools/export/builder_crops.py docs/night1/city/round-NN
+```
+Placement scripts (`export_vehicles.py`, `street_cars.py`, `street_trees.py`, `street_traffic.py`) are pure Python on the export in `_scratch/city/export/midtown3x3` (no browser, no Unreal): edit, run, then `steps=map` and capture. A full 8-view + 4K round is ~8 min of GPU when the queue is empty.
+If the driver script exits 5 (`gpu_slot ... release exit=5`) the commandlet failed (rc != 0) and NO capture ran: read `Saved/Logs/city_cmdlet.log` (`grep -a 'Error\|WARN\|build_city  '`).
+Never run two of your own captures at once (one Unreal process per agent: do not queue a second hold while one is waiting). There is no `timeout` command on macOS; block on the log with `until grep -q DONE file; do sleep 5; done`.
+
+### New gotchas (r08)
+24. **Do not rename / delete a referenced mesh in a commandlet**: `EAL.rename_asset(old, old_ts)` leaves a redirector at the old path and the next `rename_asset(new, old)` fails ("An asset already exists at this location"), `delete_asset` returns False; the run then keeps the OLD mesh silently and exits rc=1. `build_city.py` now imports over an existing prop as `SM_<name>_v<N>` (`next_version()`); `sm_path()` picks the newest for the ISMs. A `clean` rebuild recreates everything.
+25. **Interchange keeps `TEXCOORD_1` as (part id, 0) with `use_full_precision_u_vs`**: the vehicle protos use the same `aPart.x` convention as every other prop, so `mi_for()` picks `M_CityProp`; vertex colour is linear part colour x AO, `TEXCOORD_0` zeros (no atlas).
+26. **Alpha-tested foliage and mips**: masked leaf cards vanish with distance (coverage loss in the alpha mips). Fix in the material (alpha cut falls with distance), not in the mesh.
+27. **YOLO is a moving target under re-hash**: any change of a car's position moves S1 / S2 counts by +-3 (S1 18 / 19 / 15 / 18 / 16 for five densities, see above). Keep >= 3 margin to the test threshold (>= 14 in S2) and re-run the checker on the FINAL frames, not on the iteration frames.
+28. `Scripts/run_game.sh` frames of one hold share one map build: capture only after `commandlet rc=0` (my `final.sh` aborts on rc != 0).
+29. The three street-level cameras (S1, S5, S6) define the keep-out discs; if `city_shots.json` moves a camera, re-run the three placement scripts.
+
+### What round 07 changed, root causes (details in round-07/README.md; still valid)
 - **CITY-SPEC measured once**: `spec_regions.json` (hand-placed boxes, 1080p + 4K per line), `city_spec_check.py` (texture statistics on the 1080p-normalised frame, mean-type statistics on the native frame; `--overlay <dir>` draws the boxes). r06's builder / critic disagreement was different boxes.
 - **`M_CityFarMass` never compiled in r06** (`vc.a` on an RGB-only custom-node input): every far-shore block of r03-r06 was the default grey material. New input kind `vca` in `make_material`. Then: per-24 m tone jitter `FarJit` (1.3), floor banding, ~1 block in 6 dark glass,
   window grid never below 18 %; `M_CityFarLand` canopy / lots / street lines; `M_CityCliff` basalt columns; water Fresnel (`WaterSpec` 0.035).
@@ -44,24 +73,7 @@ Critic pack for r07: `/Users/midir/sm2-n1/_scratch/critic-P1-r07/pack` (key outs
 - IP: MTA slogan, racing-franchise key art, sneaker photography replaced by original art (`ip_original_art.py`); 0 OCR hits. Sign atlases `never_stream`; `tsFrames` panelled cladding; 7 shop-interior types.
 - Scripts: `run_commandlet.sh` (headless `-nullrhi` commandlet through the GPU slot) is the way to run any editor script; `launch_editor.sh` (`open -n`, not slot-wrapped) should not be used while the lock is in force. Neither `pkill -9`s an engine any more.
 
-### How a round runs now (measured wall times; the queue for the shared GPU took 5-15 min per wait on 2026-09-30)
-ONE slot hold for the whole sequence (nested `gpu_slot.sh` calls pass through, so wrapping the driver script once is legal and avoids a queue wait per capture; max hold 40 min, the r07 final was 14 min):
-```
-cat > final.sh <<'X'   # zsh; strictly sequential, one Unreal process at a time
-WT=/Users/midir/sm2-n1/city
-$WT/tools/export/ue/run_commandlet.sh $WT/unreal/WebHomage/Scripts/build_city.py steps=mat,map
-$WT/tools/export/ue/run_commandlet.sh $WT/tools/export/ue/set_mpc.py FarGain=7.6 FarJit=1.3 SunK=0.08 DebugMode=0
-$WT/tools/export/capture_round.sh <raw_dir>            # 8 views x (1080p, 4K), perf window 18-28 s
-X
-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label city -- zsh final.sh
-python3 tools/export/assemble_round.py <raw_dir>/raw docs/night1/city/round-NN NN
-python3 tools/export/city_spec_check.py docs/night1/city/round-NN --yolo --ip --json docs/night1/city/round-NN/city_spec_check.json --md docs/night1/city/round-NN/city_spec_check.md
-python3 tools/export/builder_crops.py docs/night1/city/round-NN
-```
-Parameter sweeps: build variant maps with `tools/export/ue/atmo_variants.py` (`src=S4_perch_skyline names=d,e fog_d=.. aerial_d=.. fogc_d=..` -> `City_View_S4vd`) and capture them with `capture_one.sh <dir> S4vd 1920x1080`; MPC values with `set_mpc.py` (no recompile).
-Never run two of your own captures at once (one Unreal process per agent: do not queue a second hold while one is waiting; kill the waiting wrapper first). There is no `timeout` command on macOS; poll with a `for` loop.
-
-### New gotchas (r07)
+### Gotchas (r07)
 16. Custom-node vertex colour input is RGB; alpha needs the `A` output (`kind 'vca'`). A failed compile = default material in -game, silently: `grep "Failed to compile" <capture>.log`.
 17. Editor Python / materials / MPC / maps run fine in a `-nullrhi` commandlet; shaders compile lazily in the -game process.
 18. Sun direction in a material: `ResolvedView.DirectionalLightDirection.xyz` (toward the atmosphere sun) compiles in Custom nodes. The material cannot know shadows.
@@ -198,13 +210,13 @@ Result: dark glass with Lumen reflections, visible room interiors (desks, painti
 15. Debug recipe: replace the return of a Custom node by a debug value scaled by 0.05 (emissive 1.0 saturates at the +2 EV manual exposure), capture
     1080p in `-game`, read pixel values with PIL.
 
-## Known problems / next rounds (round-08 to-do list is at the top; this list is older and partly fixed: items marked FIXED r07)
+## Known problems / next rounds (the round-09 to-do list is at the top; this list is older and partly fixed: FIXED r07 / r08 marked)
 - Far field (r06 text; r07 added tone jitter, banding, dark-glass blocks, canopy clumps, basalt cliff, see top): the far-shore blocks are boxes with a window grid; no brick / trees / parks colour variety like the browser (the browser bakes park
   greens and lot tones into the far-land map, which is used, but the 2-4 km facade ring stays tone-flat). No bridges texture work, no far water towers.
   Horizon hinterland (> 5 km) is sub-pixel windows only. Hazy sky band stays bright (sky / exposure belong to P4).
 - Test-map atmosphere (r07: fog 0.0008, aerial 0.34, inscattering 0.76,0.78,0.80) is mine; if P4's look pass re-lights the maps, re-run `city_spec_check.py` (it supersedes spec_farfield.py / far_stats.py / facade_c1.py, which stay for mask captures).
 - The window-brightness numbers of round 04 (window_stats_round.py) were superseded by CITY-SPEC C1 (facade_c1.py); the r04 script still works with DebugMode 3.
-- CITY-SPEC (docs/night1/city/SPEC.md on Opus-5.5-Loop-Night-1) lists C4-C10 not yet worked: parked cars / traffic (P6), S3 water towers (>= 2 in frame), street-tree count in S1.
+- FIXED r08: parked cars / traffic (C4 / C6) and the S1 street-tree count. CITY-SPEC C4 people, C7 storefront count, C8 checklist, C9 S3 water towers (>= 2 in frame), C10 are still hand counts / P6.
 - `frames` / `far` steps leave the previous imports behind as `*_old<ts>` assets; a `clean` rebuild removes them.
 - Fire escapes are in the S1 crop x 0-1600, y 800-1700 only at its top-right corner (the lowest platforms of the far deco tower, x ~1525-1600,
   y 800-1000); nearer escapes start above the 6 m cornice, above that crop. If the critic wants them lower in frame: move the camera or add a
@@ -216,7 +228,7 @@ Result: dark glass with Lumen reflections, visible room interiors (desks, painti
 - S5 / S6 (Times Square): the kit also dresses those podiums; tree guards there still hold no trees; red steps flat; white clipping on the curb.
 - Sunset (S7) and night: interior emission only follows NightK; a dusk ramp belongs to P4.
 - FIXED r07 (lavender boxes, white shoreline slabs); bridges and piers on the far shore still missing (critic secondary issue).
-- No traffic or pedestrians (P6); sidewalk joints are visible in sun only (the avenue sidewalks sit in canyon shade).
+- FIXED r08: parked cars, stopped avenue traffic (static, folder City/Traffic) and trees; still no pedestrians (P6); sidewalk joints are visible in sun only (the avenue sidewalks sit in canyon shade).
 - Perf r05: see round-05 README; captures ran with other Unreal sessions active, numbers are contaminated (GPU util column).
 - Window brightness test (r04 numbers in the section above) was not re-measured in r05 (upper-floor glass unchanged; SkyLight 1.0 -> 1.7 brightens
   reflections slightly): re-run `window_stats_round.py` with fresh DebugMode-3 masks before quoting.
