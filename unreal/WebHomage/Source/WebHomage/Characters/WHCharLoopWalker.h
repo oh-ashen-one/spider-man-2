@@ -22,6 +22,7 @@ public:
 	AWHCharLoopWalker();
 	virtual void BeginPlay() override;
 	virtual void Tick(float Dt) override;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	/** Line mode: jump back to LineStart (and reposition now). The director calls this at the start of the shots that list this walker. */
 	UFUNCTION(BlueprintCallable, Category="Walker") void RestartLine();
 
@@ -53,8 +54,28 @@ public:
 	/** World-space centre of the loop (set from the actor location at BeginPlay). */
 	UPROPERTY(BlueprintReadOnly, Category="Walker") FVector Center = FVector::ZeroVector;
 
+	// ---- Round 07: walker avoidance (Line mode).  Every Line walker with bAvoid is a capsule of AvoidRadius (cm) in the ground plane; the group is
+	// stepped once per frame by the first member that ticks (order independent): each walker looks AvoidLookAhead s ahead at where the others will
+	// be and moves sideways (never faster than AvoidLateralSpeed, prefers its right-hand side) so that no two capsules overlap; whatever is left at
+	// the current instant is pushed apart (hard limit).  Telemetry: -WHWalkerLog=<csv> writes frame,time,label,x,y,yaw,offset,min_pair_dist.
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Avoid") bool bAvoid = false;
+	/** Capsule radius, cm (the brief asks for >= 35). Two capsules never overlap = centres stay >= 2 x AvoidRadius apart. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Avoid") float AvoidRadius = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Avoid") float AvoidLateralSpeed = 55.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Avoid") float AvoidMargin = 15.f;
+	/** Sideways offset from the lane (cm, to the walker's right) and the smallest centre distance to another avoiding walker in the last step. */
+	UPROPERTY(BlueprintReadOnly, Category="Avoid") float LaneOffset = 0.f;
+	UPROPERTY(BlueprintReadOnly, Category="Avoid") float MinPairDistance = 1e9f;
+
 private:
 	float Theta = 0.f, HopT = 0.f, Z = 0.f, Vz = 0.f, Yaw = 0.f, LineD = 0.f, TakeoffT = -1.f;
 	bool bAir = false;
 	void TickHop(float Dt);
+	// avoidance state
+	float LatVel = 0.f;
+	uint64 StepStamp = 0;
+	bool bStarted = false;
+	FVector AvoidPos(float Tau, float Off) const;
+	void ApplyLine();
+	void StepAvoidGroup(float Dt, bool bForce);
 };
