@@ -15,6 +15,20 @@ sys.path.insert(0, os.path.join(WT, 'unreal', 'WebHomage', 'Scripts'))
 os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
 import build_manhattan as bm  # noqa: E402
 bm.DEV_PORT = PORT
+
+
+def _wait_slot():
+    """same rule as bm.wait_slot (wait while 3+ Unreal run), but counts only real UnrealEditor processes: bm's
+    `pgrep -f MacOS/UnrealEditor( |$)` also matches gpu_slot.py WAITERS (their argv holds the queued UnrealEditor command)"""
+    import time
+    while True:
+        out = subprocess.run(['ps', '-axo', 'comm='], capture_output=True, text=True).stdout.splitlines()
+        n = sum(1 for c in out if c.strip().endswith('MacOS/UnrealEditor'))
+        if n < 3: return
+        bm.log('3+ Unreal instances running (%d), waiting 60 s' % n); time.sleep(60)
+
+
+bm.wait_slot = _wait_slot
 try:
     bm.main()
 finally:

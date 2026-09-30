@@ -1,6 +1,7 @@
 #!/bin/bash
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See DISCLAIMER.md.
-# Piece F: 3840x2160 stills of the P1 shot cameras S1 / S2 / S4 (C's /Game/Maps/Manhattan_View_<S#>, golden) and two route stills
+# Piece F: 3840x2160 stills of the P1 shot cameras S1 / S2 (C's /Game/Maps/Manhattan_View_<S#>) + S7 (F's local /Game/PerfF/View_S7,
+# tools/perf_ue2/make_views.py), all golden, and two route stills
 # (mid-swing, t = 20 s and 28 s of the warm-up route = 5 s / 13 s into the swing), for one config = SP + cvar set.
 # Run under a CAPTURE slot:  gpu_slot.sh capture --label perf -- tools/perf_ue2/stills.sh <out_dir> <SP> ["cvar=v,cvar=v" | set:<stem>]
 set -uo pipefail
@@ -12,8 +13,9 @@ if [[ "$CV" == set:* ]]; then CV=$(python3 -c "import sys; sys.path.insert(0,'$W
 EX="r.ScreenPercentage $SP"; DP=()
 if [ -n "$CV" ]; then EX="$EX,$(echo "$CV" | tr '=' ' ')"; DP=(-dpcvars="$CV"); fi
 echo "{\"sp\": $SP, \"cvars\": \"$CV\"}" > "$OUT/settings.json"
-for V in S1 S2 S4; do
-  "$WT/unreal/WebHomage/Scripts/run_game.sh" "$TMP/$V" -map /Game/Maps/Manhattan_View_$V -res 3840x2160 -shots 14 -name view_$V -timeout 900 \
+for V in ${SM2_PERF_STILL_VIEWS:-S1 S2 S7}; do
+  M=/Game/Maps/Manhattan_View_$V; [ "$V" = S7 ] && M=/Game/PerfF/View_S7
+  "$WT/unreal/WebHomage/Scripts/run_game.sh" "$TMP/$V" -map $M -res 3840x2160 -shots 14 -name view_$V -timeout 900 \
     -exec "$EX" -- "${DP[@]+"${DP[@]}"}" | tail -1
   p=$(ls "$TMP/$V/view_${V}_00_"*.png 2>/dev/null | head -1); [ -n "$p" ] && cp "$p" "$OUT/view_$V.png"
 done

@@ -10,7 +10,7 @@ ROUTE="$WT/docs/night1/manhattan/scripts/route_30s_warmup15.json"
 i=0
 for CV in "$@"; do
   D="$OUT/w$i"; rm -rf "$D"; mkdir -p "$D"
-  EX="r.ScreenPercentage 67"; DP=()
+  EX="r.ScreenPercentage 67${WARM_PRINT:+,$WARM_PRINT}"; DP=()   # WARM_PRINT="r.A,r.B": bare cvar names = print their values to the log
   if [ -n "$CV" ]; then EX="$EX,$(echo "$CV" | tr '=' ' ')"; DP=(-dpcvars="$CV"); fi
   echo "warmup $i: ${CV:-<base>}"
   "$WT/unreal/WebHomage/Scripts/run_game.sh" "$D" -map /Game/Maps/Manhattan -res 960x540 -quit 46 -name warm -timeout 1500 -exec "$EX" \

@@ -80,7 +80,7 @@ def main():
     ap.add_argument('--out', required=True)
     ap.add_argument('--configs', required=True)
     ap.add_argument('--map', default='/Game/Maps/Manhattan')
-    ap.add_argument('--script', default=ROUTE)
+    ap.add_argument('--script', default=ROUTE, help="traversal script; 'none' for a static view map (e.g. /Game/Maps/Manhattan_View_S2)")
     ap.add_argument('--res', default='3840x2160')
     ap.add_argument('--window', default='15:45', help='game seconds; the route runs 15..45 (15 s standing warm-up first)')
     ap.add_argument('--timeout', type=int, default=900)
@@ -96,7 +96,9 @@ def main():
         d = os.path.join(out, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
         started = time.time()
         execs = ['r.ScreenPercentage %s' % sp] + ['%s %s' % (k, v) for k, v in cv]
-        extra = ['-WHTravScript=' + a.script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv'), '-csvGpuStats', '-benchmark', '-fps=60']
+        # no -WHTravMask: the hero-mask / scene-depth telemetry captures stay off (they re-render the scene every frame)
+        extra = (['-WHTravScript=' + a.script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if a.script not in ('', 'none') else []) \
+            + ['-csvGpuStats', '-benchmark', '-fps=60']
         if cv: extra.append('-dpcvars=' + ','.join('%s=%s' % (k, v) for k, v in cv))
         if a.trace: extra += ['-trace=' + a.trace, '-tracefile=' + os.path.join(d, 'trace.utrace')]
         cmd = [RUN_GAME, d, '-map', a.map, '-res', a.res, '-perf', a.window, '-name', name, '-timeout', str(a.timeout),
