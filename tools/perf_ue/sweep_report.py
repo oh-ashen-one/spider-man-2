@@ -4,9 +4,12 @@
 For every variant it prints, per shot, mean Y / near-black % / clipped % / B-R and how many of the four LOOK-SPEC lines of the preset (look_spec_check.py: L1 / L2 / L3 / L5)
 that shot passes, plus the S4 far-field lines (L10 / L11) and, for night, the street-level L13 / L14 lines. Same instrument as look_spec_check.py (imported).
 usage: sweep_report.py --dir <stills dir> [--res 1920x1080] [--preset midday]"""
-import argparse, glob, os, re, sys
+import argparse, glob, json, os, re, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import look_spec_check as L
+import key_fill_check as K
+
+PAIRS = json.load(open(K.PAIRS)) if os.path.exists(K.PAIRS) else None
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--dir', required=True); ap.add_argument('--res', default='1920x1080'); ap.add_argument('--preset', default='')
@@ -16,14 +19,20 @@ def main():
         m = re.match(r'(midday|golden|night)_(S\d)_%s_(.+)\.jpg$' % a.res, os.path.basename(f))
         if not m or (a.preset and m.group(1) != a.preset): continue
         d = L.stats(f); v = L.verdict(os.path.basename(f), d)
+        if m.group(1) == 'golden': d['kf'] = K.stats(f, PAIRS)   # round 04: key / fill numbers (L21)
         rows.setdefault((m.group(1), m.group(3)), {})[m.group(2)] = (d, v)
     for (pre, var), shots in sorted(rows.items()):
-        tot = ok = 0; cells = []
+        tot = ok = 0; cells = []; kf_tot = kf_ok = 0
         for sid in sorted(shots):
             d, v = shots[sid]
             w = v[1] if v else {}
             n = sum(1 for k in w if w[k]); tot += len(w); ok += n
             cells.append('%s Y%.0f nb%.2f cl%.2f BR%+.0f [%d/%d]' % (sid, d['mean'], d['near_black_pct'], d['clipped_pct'], d['b_minus_r'], n, len(w)))
+            k = d.get('kf')
+            if k:
+                cells[-1] += '  p5 %.1f%s p95/p5 %.1f%s sat %.3f%s%s' % (k['p5'], '' if k['ok']['p5'] else '!', k['ratio'], '' if k['ok']['ratio'] else '!', k['sat'], '' if k['ok']['sat'] else '!',
+                                                                        (' pair %.2f%s' % (k['pair']['ratio'], '' if k['ok']['pair'] else '!')) if 'pair' in k else '')
+                kn = sum(1 for kk in ('p5', 'ratio', 'sat') if k['ok'][kk]); kf_tot += 3; kf_ok += kn
         extra = []
         s4 = shots.get('S4')
         if s4 and 'far' in s4[0]:
@@ -34,7 +43,7 @@ def main():
             if pre == 'night' and sid in shots:
                 d = shots[sid][0]; extra.append('%s L13 %d%s L14 p10 %.0f%s p90 %.0f%s' % (sid, d['lit_blobs_bottom_half'], '' if d['lit_blobs_bottom_half'] >= 5 else '!', d['bottom_third_p10'], '' if 15 <= d['bottom_third_p10'] <= 30 else '!',
                                                                                      d['bottom_third_p90'], '' if d['bottom_third_p90'] >= 100 else '!'))
-        print('== %s %-12s passes %d/%d' % (pre, var, ok, tot))
+        print('== %s %-12s passes %d/%d%s' % (pre, var, ok, tot, ('  key/fill (p5, p95/p5, sat) %d/%d' % (kf_ok, kf_tot)) if kf_tot else ''))
         for c in cells: print('   ' + c)
         for e in extra: print('   ' + e)
 

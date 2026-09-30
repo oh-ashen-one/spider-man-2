@@ -10,6 +10,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import look_spec_check as LS
 import night_tests as NT
+import key_fill_check as KF
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--round', required=True); a = ap.parse_args()
@@ -25,6 +26,11 @@ def main():
         L += ['## Stills %s' % res, '']
         md = subprocess.run([sys.executable, os.path.join(HERE, 'look_spec_check.py')] + files, capture_output=True, text=True).stdout
         L += [md, '']
+        gold = [f for f in files if os.path.basename(f).startswith('golden_')]
+        if gold:   # round 04: golden key / fill contrast (LOOK-SPEC L21)
+            pairs = json.load(open(KF.PAIRS)) if os.path.exists(KF.PAIRS) else None
+            L += ['### Golden key / fill contrast (L21: p5 Y <= 12, p95/p5 >= 16, mean HSV saturation >= 0.44; S1 / S5 / S6 facade pair sunlit / shaded mean-Y ratio >= 3), %s' % res, '']
+            L += KF.table([KF.stats(f, pairs) for f in gold]) + ['']
     ns = [f for f in sorted(glob.glob(os.path.join(rnd, 'stills', 'night_S[16]_*.jpg')))]
     if ns:
         L += ['## Round-1 critic night tests (night_tests.py; peak >= 120, valley <= 40, blur sigma 8 px at 1080p, bottom third)', '', '| still | mean Y | share < 10/255 | distinct light pools (target >= 4) | pool peaks |', '|---|---|---|---|---|']

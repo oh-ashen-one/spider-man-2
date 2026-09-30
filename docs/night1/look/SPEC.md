@@ -17,6 +17,15 @@
 | L5 | sun-facing golden view (S7-type) | 59–118 | ≤ 8.8 % | — | **≤ 0.7 %** | — | swing-avenue-sunset__nm_0654 .67 %, skyline-sunset-nm .00 %, sunset-swing-trailer .10 %, dive-sunset-og .02 %, sunset-river-og .07 %, rooftops-watertowers-golden .01 % |
 Round-1 critic night targets (mean ≥ 35, ≤ 3 % < 10) are consistent with L3; L3 is the binding, stricter line.
 
+### L21 golden key / fill contrast (added round 04, from the round-03 critic verdict `critic/round-03-CRITIC.md`, "Biggest gap")
+| id | preset | target (golden S1–S8 at 1080p, per still) | measured from |
+|---|---|---|---|
+| L21a | golden | **p5 Y ≤ 12** (deep shade reaches ref depth) | critic pass on the golden refs: 8–11 |
+| L21b | golden | **p95/p5 ≥ 16** | refs 18–26 |
+| L21c | golden | **mean HSV saturation ≥ 0.44** (S = (max−min)/max of the 8-bit RGB per pixel, frame mean) | round-03 stills 0.28–0.43 |
+| L21d | golden S1, S5, S6 | a **sunlit / shaded facade pair with mean-luma ratio ≥ 3** (boxes in `facade_pairs.json`) | critic pass |
+L1 keeps binding next to L21 (mean 61–100, Y<10 ≤ 8 %, clipped ≤ 1.8 %). Checker: `tools/perf_ue/key_fill_check.py` (same formulas as the critic's instrument; reproduces the round-03 numbers p5 17.6–39.6, p95/p5 4.6–11.3, saturation 0.28–0.43).
+
 ## 2. Colour by time of day (L-A)
 | id | target (frame mean B−R, 8-bit) | measured from (median [p10, p90]) |
 |---|---|---|
