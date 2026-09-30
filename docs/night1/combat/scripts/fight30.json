@@ -201,19 +201,19 @@
    "recorded": "free: hero free"
   },
   {
-   "t": 16.9128,
-   "key": "dodge",
-   "label": "reflex dodge 16.92",
-   "recorded": "reflex e6 in 0.220"
-  },
-  {
    "t": 17.1458,
    "key": "web",
    "label": "web brute b",
    "toward": "e5"
   },
   {
-   "t": 17.8288,
+   "t": 17.2958,
+   "key": "dodge",
+   "label": "reflex dodge 17.30",
+   "recorded": "reflex e4 in 0.133"
+  },
+  {
+   "t": 18.6288,
    "key": "launcher",
    "label": "launcher 2",
    "guard": 1,
@@ -221,98 +221,92 @@
    "recorded": "free: hero free"
   },
   {
-   "t": 18.7288,
+   "t": 19.5288,
    "key": "attack",
    "label": "launcher 2 juggle 1",
    "guard": 1,
    "recorded": "air: hero waits in the air"
   },
   {
-   "t": 19.0288,
+   "t": 19.8288,
    "key": "attack",
    "label": "launcher 2 juggle 2",
    "guard": 1,
    "recorded": "air: hero waits in the air"
   },
   {
-   "t": 19.3288,
+   "t": 20.1288,
    "key": "attack",
    "label": "launcher 2 juggle 3",
    "guard": 1,
    "recorded": "air: hero waits in the air"
   },
   {
-   "t": 19.8458,
+   "t": 21.0788,
    "key": "dodge",
-   "label": "reflex dodge 19.85",
-   "recorded": "reflex e12 in 0.099"
+   "label": "reflex dodge 21.08",
+   "recorded": "reflex e7 in 0.216"
   },
   {
-   "t": 21.0458,
+   "t": 21.1458,
    "key": "attack",
    "label": "combo E 1",
    "recorded": "free: hero free"
   },
   {
-   "t": 21.1958,
-   "key": "dodge",
-   "label": "reflex dodge 21.20",
-   "recorded": "reflex e2 in 0.220"
-  },
-  {
-   "t": 21.4458,
+   "t": 21.5458,
    "key": "attack",
    "label": "combo E 2"
   },
   {
-   "t": 21.8458,
+   "t": 21.9458,
    "key": "attack",
    "label": "combo E 3"
   },
   {
-   "t": 22.2128,
+   "t": 21.9458,
    "key": "dodge",
-   "label": "reflex dodge 22.22",
-   "recorded": "reflex e4 in 0.216"
+   "label": "reflex dodge 21.95",
+   "recorded": "reflex e1 in 0.202"
   },
   {
-   "t": 22.2458,
+   "t": 22.3458,
    "key": "attack",
    "label": "combo E 4"
   },
   {
-   "t": 22.9788,
+   "t": 23.0458,
    "key": "launcher",
    "label": "launcher 3",
    "guard": 1,
    "recorded": "free: hero free"
   },
   {
-   "t": 23.7458,
+   "t": 23.9458,
    "key": "attack",
    "label": "launcher 3 juggle 1",
    "guard": 1,
    "recorded": "air: hero waits in the air"
   },
   {
-   "t": 24.0458,
+   "t": 24.2458,
    "key": "attack",
    "label": "launcher 3 juggle 2",
    "guard": 1,
    "recorded": "air: hero waits in the air"
   },
   {
-   "t": 24.3458,
+   "t": 24.5458,
    "key": "attack",
    "label": "launcher 3 juggle 3",
    "guard": 1,
    "recorded": "air: hero waits in the air"
   },
   {
-   "t": 25.2458,
+   "t": 25.0628,
    "key": "dodge",
-   "label": "reflex dodge 25.25",
-   "recorded": "reflex e11 in 0.220"
+   "label": "reflex dodge 25.07",
+   "recorded": "reflex e7 in 0.216"
   },
   {
    "t": 25.7958,
@@ -321,50 +315,56 @@
    "guard": 1
   },
   {
-   "t": 26.6458,
+   "t": 26.2288,
    "key": "finisher",
    "label": "finisher 2",
    "guard": 1,
    "recorded": "free: hero free"
   },
   {
-   "t": 28.8788,
+   "t": 28.4628,
    "key": "attack",
    "label": "combo F 1",
    "recorded": "free: hero free"
   },
   {
-   "t": 29.2788,
+   "t": 28.8628,
    "key": "attack",
    "label": "combo F 2"
   },
   {
-   "t": 29.4788,
+   "t": 28.9458,
    "key": "dodge",
-   "label": "reflex dodge 29.48",
-   "recorded": "reflex e14 in 0.220"
+   "label": "reflex dodge 28.95",
+   "recorded": "reflex e14 in 0.217"
   },
   {
-   "t": 29.6788,
+   "t": 29.2628,
    "key": "attack",
    "label": "combo F 3"
   },
   {
-   "t": 30.0788,
+   "t": 29.6628,
    "key": "attack",
    "label": "combo F 4"
   },
   {
-   "t": 30.5958,
+   "t": 30.1788,
    "key": "dodge",
-   "label": "reflex dodge 30.60",
+   "label": "reflex dodge 30.18",
    "recorded": "reflex e5 in 0.216"
   },
   {
-   "t": 31.2958,
+   "t": 30.8788,
    "key": "web",
    "label": "web last",
    "recorded": "free: hero free"
+  },
+  {
+   "t": 31.5458,
+   "key": "dodge",
+   "label": "reflex dodge 31.55",
+   "recorded": "reflex e16 in 0.217"
   }
  ],
  "hero_armor": 1,

@@ -478,7 +478,7 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 
 void AWHCombatDirector::GroundPound(const FVector& P)
 {
-	Fx.Dust(P, 1.4); Shake(0.35); Impact(0.35); HitStop(6);
+	Fx.Dust(P, 0.9); Shake(0.35); Impact(0.35); HitStop(6);
 	for (AWHEnemy* E : Enemies)
 		if (E && E->Alive() && E->State != EWHEnemyState::Air && HDist(E->Pos, P) < 2.8)
 		{ FWHPlayerHit H; H.Kind = "ender"; H.Dmg = 8; H.Heavy = 0.4; H.Reach = 3.2; H.bSilent = true; PlayerHit(E, H); }
@@ -800,7 +800,7 @@ void AWHCombatDirector::Separate()
 		if (bCamLast && CamW > 0.5)
 		{ // r02: nobody stands at the lens (a foreground body fills a quarter of the frame): keep a 3.2 m bubble around the camera
 			const double Cx = A->Pos.X - BubbleP.X, Cy = A->Pos.Y - BubbleP.Y, Cd = FMath::Sqrt(Cx * Cx + Cy * Cy);
-			const double Rb = 3.2 + 0.9 * CineK; if (Cd < Rb && Cd > 1e-3) A->MoveXZ(Cx / Cd * (Rb - Cd) * 0.35, Cy / Cd * (Rb - Cd) * 0.35);
+			const double Rb = (3.2 + 0.9 * CineK) * (0.7 + 0.3 * A->T.Scale) * (A->Type == EWHEnemyType::Brute ? 1.15 : 1.0); if (Cd < Rb && Cd > 1e-3) A->MoveXZ(Cx / Cd * (Rb - Cd) * 0.35, Cy / Cd * (Rb - Cd) * 0.35);
 		}
 	}
 }
@@ -1065,18 +1065,20 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	  // hero's bones jump (a flip, arms up): a sudden pose change is the only thing that can still pop the camera.
 		MarginPull = FMath::Max(0.0, MarginPull - RDt * 0.8);
 		const FVector Fw = OutR.Vector();
-		auto HeroMargin = [&](double Pull)
+		auto HeroMargin = [&](double Pull, const FVector& Shift)
 		{
 			double X0, Y0, X1, Y1, Dd;
-			if (!ScreenBox(Hero->GetMesh(), OutP - Fw * Pull, OutR, OutFov, X0, Y0, X1, Y1, Dd)) return -1.0;
+			if (!ScreenBox(Hero->GetMesh(), OutP - Fw * Pull + Shift, OutR, OutFov, X0, Y0, X1, Y1, Dd)) return -1.0;
 			return FMath::Min(FMath::Min(X0, Y0), FMath::Min(1.0 - X1, 1.0 - Y1));
 		};
 		if (bFight && bEngaged)
-		{
+		{ // the soft target looks 0.18 s ahead (the hero's velocity: moving the camera by -V dt equals the hero moving by +V dt), so a dash
+		  // or a flip widens the frame BEFORE the hard pass has to snap it
+			const FVector Ahead = -Me->Vel * 0.18;
 			double Need = MarginPull;
-			for (int32 It = 0; It < 40 && HeroMargin(Need) < 0.10; ++It) Need += 0.08;
-			if (Need > MarginPull) MarginPull = FMath::Min(Need, MarginPull + RDt * 4.0);
-			for (int32 It = 0; It < 40 && HeroMargin(MarginPull) < 0.055; ++It) MarginPull += 0.08;
+			for (int32 It = 0; It < 40 && (HeroMargin(Need, FVector::ZeroVector) < 0.10 || HeroMargin(Need, Ahead) < 0.08); ++It) Need += 0.08;
+			if (Need > MarginPull) MarginPull = FMath::Min(Need, MarginPull + RDt * 8.0);
+			for (int32 It = 0; It < 40 && HeroMargin(MarginPull, FVector::ZeroVector) < 0.055; ++It) MarginPull += 0.08;
 		}
 		OutP -= Fw * MarginPull;
 	}

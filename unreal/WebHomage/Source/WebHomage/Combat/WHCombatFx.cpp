@@ -146,7 +146,7 @@ void FWHCombatFx::Dust(const FVector& P, double Amount)
 		D.Drag = 2.5; D.Life = Rng.FRandRange(0.6, 1.1);
 		const double S = Rng.FRandRange(0.2, 0.36) * (0.7 + 0.5 * Amount);
 		D.Size0 = FVector(S * 0.5); D.Size1 = FVector(S * 1.8);
-		D.Color = FLinearColor(0.10f, 0.09f, 0.08f); D.Op0 = 0.30; D.Op1 = 0.0;   // r02: darker dust (in daylight the old grey read as white discs)
+		D.Color = FLinearColor(0.10f, 0.09f, 0.08f); D.Op0 = 0.24; D.Op1 = 0.0;   // r02: darker dust (in daylight the old grey read as white discs)
 		Place(D, 0);
 	}
 }
