@@ -21,3 +21,13 @@ P-R = route frame times at TSR 44 / 46 / 50 (hardware-RT) and 50 / 58 (software)
 | R2 | the same route as a clip: 1920x1080 output at native internal resolution, `r.Nanite.MaxPixelsPerEdge 2` (= the 4 px of the 4K run), fixed 1/60 s step. Footage only: it says nothing about real-time speed | P3 chase camera | mp4 (after) | - |
 | P-R | frame times of R1 for 30 s, 3840x2160 output at TSR 50 / 58 / 67 % | - | perf tables | - |
 | P-S2 | frame times of S2 (static camera, 30 s) at TSR 50 % | - | perf table | - |
+
+**Round 03 update:** everything is on the REBUILT integrated map (`tools/perf_ue2/build_map.py`, see `round-03/NOTES.md`). "After" = the shipped path: preset `overrides/perf60_hwl.cvars` (full hardware-RT Lumen, Nanite error 8, skeletal meshes out of the ray-tracing scene) +
+`r.ScreenPercentage 50` (1920x1080 internal at 3840x2160 output) read from `Config/Mac/MacEngine.ini`, content = rebuilt + `perf_apply rt_lite,cloud` (spec `name@ini`, no per-run cvars). "Before" = the same rebuilt map as found (no preset, content untouched, TSR 50, Nanite error 1, hardware GI + reflections).
+Stills: S1, S2, S7 and route t = 20 / 28 / 38 / 42 s at 3840x2160 (committed as 1920x1080 JPEG in `round-03/stills/`); R2 clip `round-03/route_30s.mp4` = 1920x1080 output at native 1080p internal (`r.ScreenPercentage 100`, Nanite error 4 = the 8 px of the 4K run halved), fixed step, footage only;
+P-R = `round-03/perf/f1` (`hwl_a`, `hwl_b`), P-S2 = `f1/hwl_s2`. Crops for P7: `tools/perf_ue2/crop_ssim.py --set r03`.
+
+**Round 04 update:** same views and route on the same rebuilt map (no new merge). "After" = the shipped path with preset `overrides/perf60_hwl2.cvars` (round-03 `perf60_hwl` + `r.Shadow.Virtual.UseFarShadowCulling 0`, `r.Shadow.Virtual.Clipmap.UseConservativeCulling 1`,
+`r.VolumetricCloud.DistanceToSampleMaxCount 50`, `r.RayTracing.Culling.Angle 3`) + `r.ScreenPercentage 50` from `Config/Mac/MacEngine.ini` (1920x1080 internal at 3840x2160 output), content = rebuilt + `perf_apply rt_lite_trees,tree_rt_opaque,cloud` (cloud 20 km).
+"Before" = the round-03 as-found stills of the same build (`_scratch/perf/r03/before`). Stills S1 / S2 / S7 / route t20 / t28 / t38 / t42 in `round-04/stills/` (JPEG of the 4K PNGs), three-way comparisons (as found | round 03 | round 04) in `round-04/cmp/`,
+R2 clip `round-04/route_30s.mp4` (1080p output = internal, Nanite error 4, fixed step, footage only), P-R = `round-04/perf/f1` (`ship_a/b/c`), P-S2 = `f1/ship_s2`, look gate `round-04/LOOK_GATE.md` (round-02 crops, not moved).
