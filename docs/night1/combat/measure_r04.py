@@ -85,18 +85,23 @@ def shape(mask, W):
         rel = (ang - lo) % (2 * math.pi)
         inrun = (rel <= span) & sel
         tip = float(r[inrun].max()) if inrun.any() else 0.0
-        streaks.append(dict(bin0=b0, nbins=n, count=cnt, tip=tip, centre=lo + span / 2))
+        streaks.append(dict(bin0=b0, nbins=n, count=cnt, tip=tip, centre=lo + span / 2, lo=lo, span=span))
     # core radius: furthest pixel outside every streak sector
     inany = np.zeros(len(xs), bool)
     for s in streaks:
-        span = s['nbins'] * 2 * math.pi / nb + 0.06; lo = s['centre'] - span / 2
-        inany |= ((ang - lo) % (2 * math.pi)) <= span
+        inany |= ((ang - s['lo']) % (2 * math.pi)) <= s['span']
     rc = float(r[~inany].max()) if (~inany).any() else 0.0
     rc = max(rc, 0.0)
     tips = [s['tip'] for s in streaks]
+    lens = []   # per streak: tip radius minus the radius where its own pixels start beyond the core (a hollow centre leaves a gap between core and streak)
+    for s in streaks:
+        insec = ((ang - s['lo']) % (2 * math.pi)) <= s['span']
+        beyond = r[insec & (r > rc + 2)]
+        r_in = float(beyond.min()) if len(beyond) else rc
+        lens.append(s['tip'] - r_in)
     return dict(n_streaks=len(streaks), Rb_px=Rb, Rb_share=Rb / W, fill=fill, area_px=int(len(xs)), area_share=len(xs) / (W * W * 9 / 16),
                 core_r_px=rc, tip_share_min=min(tips) / W if tips else 0.0, tip_share_max=max(tips) / W if tips else 0.0,
-                len_share_min=(min(tips) - rc) / W if tips else 0.0, centre=(float(cx), float(cy)))
+                len_share_min=min(lens) / W if lens else 0.0, centre=(float(cx), float(cy)))
 
 
 def sobel_map(gray, box):
@@ -141,8 +146,8 @@ def selftest():
         for i in range(n):
             ang = 0.4 + i * 2 * math.pi / n
             for j in range(4):
-                w = 0.011 * W * (1.0, 0.75, 0.52, 0.32)[j]
-                r0 = 0.018 * W + Lp * j / 4; r1 = 0.018 * W + Lp * (j + 1) / 4
+                w = 0.0095 * W * (1.0, 0.75, 0.52, 0.32)[j]
+                r0 = 0.030 * W + Lp * j / 4; r1 = 0.030 * W + Lp * (j + 1) / 4
                 p0 = (int(cx + r0 * math.cos(ang)), int(cy + r0 * math.sin(ang))); p1 = (int(cx + r1 * math.cos(ang)), int(cy + r1 * math.sin(ang)))
                 cv2.line(layer, p0, p1, 1.0, max(1, int(w)))
         cv2.circle(layer, (cx, cy), int(0.0175 * W), 1.0, -1)
@@ -152,7 +157,8 @@ def selftest():
         s = shape(m, W)
         print('selftest streaks planted', n, '->', s['n_streaks'], 'tip %.3f len %.3f fill %.2f' % (s['tip_share_min'], s['len_share_min'], s['fill']))
         assert s['n_streaks'] == n, s
-        assert 0.10 < s['tip_share_min'] < 0.16, s
+        assert 0.12 < s['tip_share_min'] < 0.16, s
+        assert 0.085 < s['len_share_min'] < 0.115, s
         assert s['fill'] < 0.35, s
     # retention of an opaque disc vs streaks over a textured body
     body = bg.copy(); cv2.rectangle(body, (440, 200), (520, 400), (60, 60, 200), -1); body = cv2.GaussianBlur(body, (0, 0), 1)
