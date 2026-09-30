@@ -20,14 +20,14 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 |---|---|---|---|
 | P3 Traversal + flips | `night1/traversal` | r14 FAILS (5); **flips 7** (4→6→6→6→7); side-on camera + eased rotation | **r15 running (Opus)**: camera ≤ 8° up, sun behind camera, sky via height |
 | P2 Characters | `night1/characters` | r6 FAILS (4); seam holes fixed in engine | **r7 running (Sonnet)**: walker avoidance, last key see-through, floating polygon |
-| F 4K/60 perf | `night1/perf` | r2 **APPROACHES** (merged). r3 FAILS (look regressed: canopy 2x, clouds erased; builder hid it) — **r3 NOT merged** | **r4 running (Opus)**: kill VSM invalidation, trees back in RT, clouds ≥ 20 km, same-crop look gate |
+| F 4K/60 perf | `night1/perf` | r4 **APPROACHES** (p50 62 fps, p95 55.4 at 4K output / 1080p internal, look restored; merged r3+r4) | **r5 running (Opus)**: merge tree RT instances into proxies, in-game p95 ≤ 17.9 ms, S1 SSIM ≥ 0.97, measure with traffic + crowd |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
 | P6 City life | `night1/life` | r2 FAILS (4); r3 code only (no renders) | r3 renders: both sidewalks populated at every camera height |
 | P5 Combat | `night1/combat` | r2 FAILS (4); r3 judged, r4 WIP | resume r4 from HANDOFF (local hit-stop, starburst FX) |
 | P4 Look | `night1/look` | r2 FAILS (4); r3 presets v2 captured | r3 critic / r4 |
 | Water | merged (Opus A/B winner) | — | — |
 
-Merged into integration so far: traversal ≤ r14, city ≤ r9, life ≤ r3, perf ≤ r2. Characters ≤ r6 and traversal ≤ r13 merged after their critics.
+Merged into integration so far: traversal ≤ r14, city ≤ r9, life ≤ r3, perf ≤ r4. Characters ≤ r6 and traversal ≤ r13 merged after their critics.
 
 ## How rounds run
 

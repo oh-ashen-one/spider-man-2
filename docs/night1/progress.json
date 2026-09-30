@@ -1,5 +1,5 @@
 {
- "updated": "13:21",
+ "updated": "15:06",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -117,9 +117,9 @@
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
    "state": "active",
-   "round": 3,
-   "verdict": "fails \u2014 lowest 2 (Sonnet 5.5)",
-   "gap": "Stop per-frame shadow-page invalidation, spend the time on trees in the RT scene and clouds >= 20 km; restore the look (canopy luma +-10%, saturation)."
+   "round": 4,
+   "verdict": "approaches \u2014 lowest 6 (Opus 5.5)",
+   "gap": "Merge ~42k tree RT instances into <=1k proxies per tile to remove the CPU/GPU gap; in-game p95 <= 17.9 ms in 3 runs; S1 crop SSIM >= 0.97; re-measure with traffic + crowd."
   },
   {
    "id": "G",
@@ -734,6 +734,14 @@
    "verdict": "fails",
    "gap": "Trick camera nearly level (<= 8 deg up) with the sun behind it; sky behind the hero by flipping above the roofline, not by tilting up.",
    "notes": "Flips 6\u21927 (best yet): side-on trick camera (70\u2013115\u00b0 off behind), pitch after attach 5.5\u20138.3\u00b0 down, tuck turns ~650\u2013700\u00b0 on screen (was 207), rotation eased (ends 39\u201367% of mid speed), shapes held >= 0.31 s. Camera still climbs 20\u201327\u00b0 into the sun and blows out the hero."
+  },
+  {
+   "t": "15:06",
+   "piece": "F 4K/60 perf",
+   "round": 4,
+   "verdict": "approaches",
+   "gap": "Merge ~42k tree RT instances into <=1k proxies per tile to remove the CPU/GPU gap; in-game p95 <= 17.9 ms in 3 runs; S1 crop SSIM >= 0.97; re-measure with traffic + crowd.",
+   "notes": "3840x2160 output, 1920x1080 internal: p50 62.1\u201362.4 fps, CSV p95 55.4\u201355.5 fps (in-game counter 54.7\u201354.9), 0 hitches, worst second 57 fps. Look restored: clouds 20 km, canopy +6%, saturation back; shadow-page invalidation fixed (ShadowDepths p95 2.44 ms). Honest round: same crop, failing SSIM 0.955 disclosed. Merged (r3+r4)."
   }
  ],
  "perf": [
