@@ -7,6 +7,12 @@ raw 4K stills `r03/before` (the as-found reference of this build), `r03/final`, 
 Spec `SPEC.md` (P1-P11), shot list `SHOTLIST.md`, evidence `round-01` .. `round-04/` (`NOTES.md` = every fact of the round; `TABLE.md` = every run with its lock verdict; `LOOK_GATE.md`; `perf/<session>/`; `stills/`; `cmp/`; `route_30s.mp4`; `content_audit.json`).
 Critics: round 01 FAILS, round 02 APPROACHES, round 03 FAILS (look regression, VSM p95; `critic/`). Round-04 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r04/pack` (key `pack.key.json` next to it, `pairs.json`), not scored yet.
 
+## ROUND 05 IN PROGRESS (interim note, rewritten at the end of the round)
+- Merged `origin/Opus-5.5-Loop-Night-1` (fast-forward to 3aa92ba: traversal r14, characters r6). Rebuilt with `build_map.py --steps cpp,characters,map` (city / look inputs unchanged; P2 inputs staged from P2's worktree head 8ab861a = r07 WIP, C's staging rule).
+- Round target (round-04 critic): tree leaves / crowns / bark in the ray-tracing scene as <= 1 k merged proxies. New: `tools/perf_ue2/tree_proxy_dump.py` + `tree_proxy_build.py` (build_map step `tree_proxy`), `perf_apply.py` step `rt_proxy_trees` (402 tile meshes in `/Game/PerfF/RTProxy`, actors in `City/RTProxy`, hidden in game + affect-indirect-while-hidden = ray-tracing only; originals out of RT).
+- Gotcha found: `render_in_main_pass = False` removes a primitive from ray tracing and from Lumen card capture (engine `RayTracingMaterialHitShaders.cpp` 512, `LumenSceneRendering.cpp` 400). Use `hidden_in_game + affect_indirect_lighting_while_hidden` (`RayTracing.cpp` 1368).
+- Life: `tools/perf_ue2/build_life_variant.sh` -> `/Game/PerfF/Life/Manhattan` (perf spec `name@ini+variant:Life`).
+
 ## State at the end of round 04 (all numbers `round-04/NOTES.md`; exclusive `gpu_slot.sh perf`, `perf_valid`, 3840x2160 output, internal 1920x1080, 30 s route, fixed step)
 Shipped path on the rebuilt integrated map (build = integration c4fffda, same as round 03), no per-run cvars (`@ini`):
 preset `tools/perf_ue2/overrides/perf60_hwl2.cvars` (= `perf60_hwl` + far-shadow culling off + conservative clipmap culling + cloud samples spread over 50 km + RT culling angle 3) + `r.ScreenPercentage 50`,

@@ -11,7 +11,7 @@ Each tile mesh has two primitives: 'leaf' (leaf cards + crown masses) and 'bark'
 original tree HISMs out of the ray-tracing scene. Raster, shadows, distance fields of the trees are untouched.
 
 Reduction (a proxy for ray-traced GI / reflection occlusion, never rasterised):
-  leaf cards  every k-th card of each tree is kept (k per class: LOD0 street / small trees SM2_PERF_PROXY_K0, others SM2_PERF_PROXY_K1;
+  leaf cards  every k-th card of each tree is kept (k per class: LOD0 street / small trees + hedges SM2_PERF_PROXY_K0 (default 1 = every card), others SM2_PERF_PROXY_K1 (16);
               the phase changes per tree), scaled about its centre by sqrt(k * coverage * SM2_PERF_PROXY_COVER): the expected occluding area
               of the tree stays the leaf texture's alpha coverage (the as-found alpha-masked any-hit), with ONE opaque, cheap card instead of k masked ones
   crown masses (trees_*_crownfar, 100 triangles) kept whole
@@ -23,7 +23,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..'))
-K0 = int(os.environ.get('SM2_PERF_PROXY_K0', '4'))
+K0 = int(os.environ.get('SM2_PERF_PROXY_K0', '1'))   # round 05: 6 / 4 decimated the near (LOD0) street trees next to the street-level cameras: blotchy canopy GI (S1 crop 0.913 at k 4); 1 keeps every card, shrunk to its coverage
 K1 = int(os.environ.get('SM2_PERF_PROXY_K1', '16'))
 COVER = float(os.environ.get('SM2_PERF_PROXY_COVER', '3.5'))   # round 05: 1.0 (texture coverage at the near-field clip) left the S1 canopy 1.32x as bright as found; the material's distance boost fills cards beyond 25 m
 BARK_AREA = float(os.environ.get('SM2_PERF_PROXY_BARK_AREA', '0.6'))
