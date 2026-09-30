@@ -498,6 +498,19 @@ if 'rename' in STEPS:
     EAL.save_directory(ROOT, only_if_is_dirty=True, recursive=True)
     log('rename ok', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT, recursive=True) if '/Anims/' not in p and 'Textures' not in p and 'Materials' not in p))
 
+# ------------------------------------------------------------------------------------------------ round 09: re-import of the street enemies only
+# (the tee's see-through lip-crease slivers are flipped by people/mask.py flip_seethrough; build_people.sh rewrote the GLBs): a partial build without the wipe of 'clean'
+if 'peoplemesh' in STEPS:
+    names_ = ['SK_Street_' + k for k in PEOPLE] + ['SK_Street_%s_%s' % kw for kw in PEOPLE_ARMED]
+    for n_ in names_:
+        if os.path.exists('%s/%s.glb' % (GLB, n_)): do_import('%s/%s.glb' % (GLB, n_), ROOT + '/People', skeleton=HERO_SKEL, anims=False)
+    rename_anims(ROOT + '/People', 'SK_Street_Walks', 'A_Street_')     # flattens meshes that landed in subfolders (no loose clips are expected)
+    for k in PEOPLE + ['%s_%s' % kw for kw in PEOPLE_ARMED]:
+        set_slots(ROOT + '/People/SK_Street_' + k, {'*': ROOT + '/People/Materials/MI_Street_' + k.split('_')[0]})
+        load(ROOT + '/People/SK_Street_' + k).set_editor_property('physics_asset', load(HERO_PHYS))
+    EAL.save_directory(ROOT + '/People', only_if_is_dirty=True, recursive=True)
+    log('people meshes re-imported', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People', recursive=False) if 'SK_Street' in p))
+
 # ------------------------------------------------------------------------------------------------ round 09: in-place hit-reaction clips
 # tools/ue_char/fight/make_fight_clips.py writes SK_Street_Fight.glb (the thug mesh + hitBack / hitLeft / hitRight / down / getUp, pelvis travel removed;
 # the travel lives in fight_script.json's actor paths).  Imported onto the hero skeleton like the street walks; the mesh that carries them is deleted.

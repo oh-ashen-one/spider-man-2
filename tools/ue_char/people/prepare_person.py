@@ -52,6 +52,7 @@ CFG = {
                  tints={'Grey': dict(region='top', color=(104, 104, 108))}),
     'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
                 mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70)),
+                seethrough=True,   # round 09: flip the back-faced lip-crease slivers that are holes through the mask
                 hang=dict(uncover_mouth=True)),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
     'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
                   mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True),
@@ -478,11 +479,13 @@ def main():
     F, nflip = M.fix_flips(P, F, cfg)                            # round 05: back-faced slivers at lips / nostrils
     if cfg.get('flatten_mouth'): P = M.flatten_mouth(P, cfg); F, nflip2 = M.fix_flips(P, F, cfg); nflip += nflip2           # round 08: the mouth slit ledge (lips showing through the cloth)
     if cfg.get('sink_neck'): P = M.sink_neck(P, F, cfg)             # round 08: slack for the neck skin under the collar (collar shards)
+    nseethrough = 0
+    if cfg.get('seethrough'): F, nseethrough = M.flip_seethrough(P, F, cfg)   # round 09: back-faced slivers of the lip crease = holes through the cloth (tee_face_4k 198 / 91 / 24 px)
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
     N = M.cloth_normals(P, F, N, cfg)                            # round 05: smoothed cloth normals over the mask region
-    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
+    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), seethrough_flipped=int(nseethrough), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
                 drape_max_cm=round(float(moved.max() * 100), 2))
     # ---- texture
     im4 = np.asarray(im.resize((ATLAS, ATLAS), Image.LANCZOS))

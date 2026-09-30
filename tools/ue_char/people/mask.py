@@ -429,6 +429,62 @@ def fix_flips(P, F, cfg, min_area=5e-6):
     return F, int(bad.sum())
 
 
+def _raster_cov(Q, T, W, H, org, px):
+    """Coverage mask of the triangles T (vertex positions Q projected on x / y, orthographic, `px` metres per pixel)."""
+    m = np.zeros((H, W), bool)
+    if len(T) == 0: return m
+    A = (Q[T[:, 0], :2] - org) / px; B = (Q[T[:, 1], :2] - org) / px; C = (Q[T[:, 2], :2] - org) / px
+    for a_, b_, c_ in zip(A, B, C):
+        x0 = int(max(0, np.floor(min(a_[0], b_[0], c_[0])))); x1 = int(min(W - 1, np.ceil(max(a_[0], b_[0], c_[0]))))
+        y0 = int(max(0, np.floor(min(a_[1], b_[1], c_[1])))); y1 = int(min(H - 1, np.ceil(max(a_[1], b_[1], c_[1]))))
+        if x1 < x0 or y1 < y0: continue
+        xs, ys = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+        d = (b_[1] - c_[1]) * (a_[0] - c_[0]) + (c_[0] - b_[0]) * (a_[1] - c_[1])
+        if abs(d) < 1e-14: continue
+        l1 = ((b_[1] - c_[1]) * (xs - c_[0]) + (c_[0] - b_[0]) * (ys - c_[1])) / d
+        l2 = ((c_[1] - a_[1]) * (xs - c_[0]) + (a_[0] - c_[0]) * (ys - c_[1])) / d
+        m[y0:y1 + 1, x0:x1 + 1] |= (l1 >= -0.02) & (l2 >= -0.02) & (l1 + l2 <= 1.02)
+    return m
+
+
+def flip_seethrough(P, F, cfg, azimuths=(0.0, 28.0, -28.0), px=0.0005, max_area=1.5e-5, passes=3):
+    """Round 09 (critic r08: 'tee_face_4k has 3 see-through holes in the mask: 198 px, 91 px, 24 px'): the game draws single-sided, so a tiny triangle of the lip
+    crease whose winding ended up reversed is a hole through which the background shows.  The lower face is rasterised orthographically from the front and from
+    +-28 deg (0.5 mm pixels); every pixel inside the silhouette that only back-facing triangles cover is a see-through pixel, and the back-facing triangles (area
+    < 15 mm2) that cover it are flipped.  Larger back-facing walls (a real opening) are left alone.  Returns F, number flipped."""
+    from scipy import ndimage as ndi
+    F = F.copy(); nflip = 0
+    cen = P[F].mean(1)
+    phi, r = cyl(cen, cfg)
+    reg = (np.abs(phi) < np.radians(100)) & (r < 0.16) & (cen[:, 1] > cfg['chin'] - 0.07) & (cen[:, 1] < cfg['eye'] + 0.03)
+    for _ in range(passes):
+        ids = np.where(reg)[0]
+        flipped_now = 0
+        for az in azimuths:
+            a = np.radians(az)
+            R = np.array([[np.cos(a), 0, -np.sin(a)], [0, 1, 0], [np.sin(a), 0, np.cos(a)]])
+            Q = P @ R.T
+            T = F[ids]
+            xy = Q[T.reshape(-1), :2]
+            org = xy.min(0) - 0.005
+            W = int((xy[:, 0].max() - org[0] + 0.01) / px) + 1; H = int((xy[:, 1].max() - org[1] + 0.01) / px) + 1
+            fn = np.cross(Q[T[:, 1]] - Q[T[:, 0]], Q[T[:, 2]] - Q[T[:, 0]])
+            front = fn[:, 2] > 0
+            cov_front = _raster_cov(Q, T[front], W, H, org, px)
+            holes = ndi.binary_fill_holes(cov_front) & ~cov_front
+            holes = ndi.binary_opening(holes, structure=np.ones((2, 2), bool))                 # sub-pixel sliver noise is not a hole
+            if not holes.any(): continue
+            hd = ndi.binary_dilation(holes, iterations=1)
+            area = np.linalg.norm(fn, axis=1) / 2
+            for k in np.where(~front & (area < max_area))[0]:
+                c = _raster_cov(Q, T[k:k + 1], W, H, org, px)
+                if (c & hd).any():
+                    F[ids[k]] = F[ids[k]][[0, 2, 1]]; flipped_now += 1
+        nflip += flipped_now
+        if flipped_now == 0: break
+    return F, nflip
+
+
 def cloth_normals(P, F, N, cfg, iters=30):
     """Round 05: shading normals of the mask region = area-weighted face normals smoothed over the welded neighbours, so the mouth-slit
     walls / nostril pits (tiny triangles facing up, down or backwards) cannot light or darken the cloth.  Returns N."""
