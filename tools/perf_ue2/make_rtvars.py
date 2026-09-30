@@ -8,11 +8,15 @@
 #   RTvD   shipped RT-lite, but the far ground (City/far, 136 far-LOD tiles) back IN the ray-tracing scene (hardware GI sees the far city, not sky)
 #   RTvE   shipped RT-lite, but the hinterland (City/Far, 29 k ten-triangle boxes) back IN
 #   RTvF   D + E
+# Round 04: env SM2_PERF_RTVAR_CLOUD_KM=<km> also copies the golden look rig with VolumetricCloud TracingMaxDistance = <km> into /Game/PerfF/RTv<tag>k<km>/
+#   and swaps it into the map copies (tag suffix k<km>, e.g. RTvCk20 = trees in the ray-tracing scene + cloud 20 km), so trees + cloud share one A/B map.
 # Run in a headless commandlet of THIS worktree (editor + game closed, no GPU):
 #   SM2_PERF_RTVARS=A,B "<UnrealEditor>" <uproject> -run=pythonscript -script=<abs>/tools/perf_ue2/make_rtvars.py -unattended -nullrhi -RenderOffScreen -NoSound
 import unreal, json, os, time
 
 TAGS = [x for x in os.environ.get('SM2_PERF_RTVARS', 'B').split(',') if x]
+CLOUD_KM = os.environ.get('SM2_PERF_RTVAR_CLOUD_KM', '')
+RIG = '/Game/Look/Rigs/Look_Rig_golden'
 GEO = '/Game/Tests/City/City_Midtown_Geo'
 MAPS = ['/Game/Maps/Manhattan', '/Game/Maps/Manhattan_View_S1', '/Game/Maps/Manhattan_View_S2', '/Game/PerfF/View_S7']
 LOG = os.environ.get('SM2_PERF_VAR_LOG', '/Users/midir/sm2-n1/_scratch/perf/r03/rtvars.json')
@@ -32,9 +36,19 @@ def fresh_copy(src, dst):
 
 
 for t in TAGS:
-    tag = 'RTv' + t
+    tag = 'RTv' + t + ('k' + CLOUD_KM if CLOUD_KM else '')
     base = '/Game/PerfF/' + tag
     geo_dst = base + '/City_Midtown_Geo'
+    rig_dst = None
+    if CLOUD_KM:
+        rig_dst = base + '/Look_Rig_golden'
+        fresh_copy(RIG, rig_dst)
+        unreal.EditorLoadingAndSavingUtils.load_map(rig_dst)
+        rw = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        for a in eas.get_all_level_actors():
+            if isinstance(a, unreal.VolumetricCloud):
+                a.get_component_by_class(unreal.VolumetricCloudComponent).set_editor_property('tracing_max_distance', float(CLOUD_KM))
+        unreal.EditorLoadingAndSavingUtils.save_map(rw, rig_dst)
     fresh_copy(GEO, geo_dst)
     unreal.EditorLoadingAndSavingUtils.load_map(geo_dst)
     world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
@@ -55,7 +69,7 @@ for t in TAGS:
             n = c.get_instance_count() if isinstance(c, unreal.InstancedStaticMeshComponent) else 1
             if want: n_on += 1; inst_on += n
             else: n_off += 1
-    rep[tag] = {'props_components_in_rt': n_on, 'props_instances_in_rt': inst_on, 'props_components_out': n_off, 'geo_saved': bool(unreal.EditorLoadingAndSavingUtils.save_map(world, geo_dst)), 'maps': {}}
+    rep[tag] = {'cloud_km': CLOUD_KM or None, 'props_components_in_rt': n_on, 'props_instances_in_rt': inst_on, 'props_components_out': n_off, 'geo_saved': bool(unreal.EditorLoadingAndSavingUtils.save_map(world, geo_dst)), 'maps': {}}
     for m in MAPS:
         name = m.split('/')[-1]
         dst = base + '/' + name
@@ -67,6 +81,11 @@ for t in TAGS:
             if 'City_Midtown_Geo' in lvl.get_path_name() and tag not in lvl.get_path_name():
                 unreal.EditorLevelUtils.remove_level_from_world(lvl)
         unreal.EditorLevelUtils.add_level_to_world(world, geo_dst, unreal.LevelStreamingAlwaysLoaded)
+        if rig_dst:
+            for lvl in list(unreal.EditorLevelUtils.get_levels(world)):
+                if 'Look_Rig_golden' in lvl.get_path_name() and tag not in lvl.get_path_name():
+                    unreal.EditorLevelUtils.remove_level_from_world(lvl)
+            unreal.EditorLevelUtils.add_level_to_world(world, rig_dst, unreal.LevelStreamingAlwaysLoaded)
         les.set_current_level_by_name(str(world.get_name()))
         ok = unreal.EditorLoadingAndSavingUtils.save_map(world, dst)
         rep[tag]['maps'][name] = {'saved': bool(ok), 'levels': [l.get_path_name().split('.')[0].split('/')[-1] for l in unreal.EditorLevelUtils.get_levels(world)]}
