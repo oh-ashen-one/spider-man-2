@@ -52,6 +52,8 @@ public:
 	double CamZMin = 0.2, CamZMax = 1.8;   // held band over the hero centre (m) — r07 1.2..2.6, r09 0.2..1.8
 	// round 09: anchor-side composition — yaw (deg) and sideways shift (m) toward the active anchor, roll (deg) with the arc
 	double AnchorShift = 1.3, AnchorRollMax = 6.0; // round 09: sideways slide (m) toward the active anchor, roll at the arc ends (deg)
+	double AttachMaxS = 0.64;     // round 10: attach look-up keeps the hero centre at or above this share of the frame height
+	double RollDeadDeg = 1.0;     // round 10: roll leans under this are dropped (T13 median)
 	double AttachFovMax = 10.0;   // deg of extra vertical FOV at a web attach — round 08 (was 26)
 	double CamWallSoft = 3.0, CamWallHard = 1.5;   // m sideways clearance from facades — round 08
 	double SwingCloser = 0.4;      // m closer while swinging / airborne — round 07

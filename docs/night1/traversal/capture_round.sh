@@ -9,11 +9,11 @@ set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
 HERE="$(cd "$(dirname "$0")" && pwd)"
 UE_DIR="$(cd "$HERE/../../../unreal/WebHomage" && pwd)"
-# round 10: captures run in the lit city (P4 Look_Midtown_golden built in this worktree: city/build_city_p3.sh) with the
+# round 10: captures run in the integrated lit city /Game/Maps/Manhattan (golden; built in this worktree by Scripts/build_manhattan.py) with the
 # city scripts; TRAV_MAP=/Game/Tests/Traversal/Trav_Canyon TRAV_SCRIPTS=$HERE/scripts for the gray-box canyon
 SCR="${TRAV_SCRIPTS:-$HERE/scripts/city}"
 TMP=/Users/midir/sm2-n1/_scratch/traversal/capture
-MAP="${TRAV_MAP:-/Game/Tests/Look/Look_Midtown_golden}"
+MAP="${TRAV_MAP:-/Game/Maps/Manhattan}"
 # GPU lock (RULES / docs/night1/gpu/PROTOCOL.md): every game run takes a shared capture slot
 GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
 RUN() { "$GPU" capture --label traversal -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
@@ -22,14 +22,14 @@ PRE=0.8
 mkdir -p "$TMP" "$ROUND/stills"
 # name  script                          quit(s)  still times (game s)
 SEQS=(
-  "a_swing_chain a_swing_chain.json 15.6 1.0,3.4,5.5,7.4"
-  "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,2.2,3.6,5.9"
-  "c_wallrun_perch c_wallrun_perch.json 10.0 2.0,3.2,4.6,5.45,9.0"
-  "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,6.5,7.6,9.9"
+  "a_swing_chain a_swing_chain.json 15.6 1.0,2.6,3.4,5.9,9.5"
+  "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,1.9,2.5,4.4,5.8"
+  "c_wallrun_perch c_wallrun_perch.json 10.5 1.0,2.6,3.6,4.9,9.8"
+  "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,5.6,7.6,11.8"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
-wait_slot() { while [ "$(pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l)" -ge 3 ]; do echo "waiting: 3+ Unreal instances running"; sleep 60; done; }
+wait_slot() { while [ "$(pgrep -x UnrealEditor | wc -l)" -ge 3 ]; do sleep 5; done; }  # pgrep -x: the -f pattern also counted python wrappers
 # round 06: shader / texture warm-up render first (a fresh DDC compiles the hero and city materials on first use, which
 # rendered the suit white / unshaded in the first frames of a capture); low-res, not kept
 if [ -z "${SKIP_WARM:-}" ]; then

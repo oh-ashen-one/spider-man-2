@@ -61,6 +61,22 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	FVector2D PadLookRate = FVector2D(2.07, 1.38);
 
+	/**
+	 * Round 10 (Manhattan integration issue P3-1): hero mesh / clips are data, not code. Priority (last wins): these defaults
+	 * (the HeroDev proxy) < [/Script/WebHomage.WebTravCharacter] in Game ini < a Blueprint subclass / placed-actor value <
+	 * command line -WHHeroMesh=<obj path> -WHHeroLens=<obj path or "none"> -WHHeroClips=<folder> -WHHeroClipPrefix=<prefix>.
+	 * Clip asset = <HeroClipRoot>/<HeroClipPrefix><browser clip name> (P2: /Game/Characters/Hero/Anims + "A_Hero_").
+	 * HeroLensMeshPath empty = no separate lens mesh (P2's lenses are material slots on the body).
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroMeshPath = TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/SpiderMan.SpiderMan");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroLensMeshPath = TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/Lenses.Lenses");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroClipRoot = TEXT("/Game/Traversal/HeroDev");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroClipPrefix;
+
 private:
 	void BuildTravInput();
 	void BuildFigure();
@@ -102,7 +118,8 @@ private:
 	int32 AutoReleases = 0;
 	// round 10: auto-chain sky launch (jump-release + chained tricks, re-press below skyRepressH)
 	bool bSkyAuto = false, bSkyWasTrick = false;
-	int32 SkyTricksLeft = 0;
+	int32 SkyTricksLeft = 0, LastSkyRelease = -100;
+	double LastSkyT = -100.0, SkyPeakH = 0.0;
 	double SkyAutoT = 0.0;
 	int64 FrameIndex = 0;
 

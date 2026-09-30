@@ -9,6 +9,7 @@
 #include "BonePose.h"
 
 FString UWebTravAnimInstance::ClipRoot = TEXT("/Game/Traversal/HeroDev");
+FString UWebTravAnimInstance::ClipPrefix;
 
 namespace
 {
@@ -34,11 +35,12 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 	int32 Missing = 0;
 	for (const TCHAR* N : Names)
 	{
-		const FString Path = FString::Printf(TEXT("%s/%s.%s"), *ClipRoot, N, N);
+		const FString Asset = ClipPrefix + N; // round 10: P2 names clips A_Hero_<clip>
+		const FString Path = FString::Printf(TEXT("%s/%s.%s"), *ClipRoot, *Asset, *Asset);
 		UAnimSequence* S = LoadObject<UAnimSequence>(nullptr, *Path);
 		if (S) Clips.Add(FName(N), S); else ++Missing;
 	}
-	UE_LOG(LogWebHomage, Display, TEXT("WebTravAnimInstance: %d clips loaded from %s (%d missing)"), Clips.Num(), *ClipRoot, Missing);
+	UE_LOG(LogWebHomage, Display, TEXT("WebTravAnimInstance: %d clips loaded from %s/%s* (%d missing)"), Clips.Num(), *ClipRoot, *ClipPrefix, Missing);
 }
 
 UAnimSequence* UWebTravAnimInstance::Clip(FName Name)

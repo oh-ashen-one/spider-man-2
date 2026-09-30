@@ -19,7 +19,7 @@ namespace
 	WT_NAME(low) WT_NAME(fire) WT_NAME(flight) WT_NAME(catch)
 	// events
 	WT_NAME(jump) WT_NAME(land) WT_NAME(airTrick) WT_NAME(swingWallKick) WT_NAME(noAnchor) WT_NAME(swingChain) WT_NAME(swingStart)
-	WT_NAME(swingJump) WT_NAME(anchorLost) WT_NAME(ropeReanchor) WT_NAME(ropeWrap) WT_NAME(trickBoost) WT_NAME(wall) WT_NAME(cornerWrapEv)
+	WT_NAME(swingJump) WT_NAME(skyLaunch) WT_NAME(swingToWall) WT_NAME(anchorLost) WT_NAME(ropeReanchor) WT_NAME(ropeWrap) WT_NAME(trickBoost) WT_NAME(wall) WT_NAME(cornerWrapEv)
 	WT_NAME(wallLaunch) WT_NAME(wallHop) WT_NAME(zip) WT_NAME(zipLaunch) WT_NAME(zipCancel) WT_NAME(zipWebRelease) WT_NAME(perch)
 	WT_NAME(webDash) WT_NAME(quickZip) WT_NAME(quickBoost)
 #undef WT_NAME
@@ -457,7 +457,11 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	{
 		FVector HV;
 		const double Into = HDir(S.Vel, HV) ? -FVector::DotProduct(HV, C.Normal) : 0;
-		const bool bPushIn = FVector::DotProduct(InD, C.Normal) < -0.4;
+		// round 10: a push toward an open cross street past a corner is not a push into the wall
+		FTravHit HStick;
+		const FVector InN = InD.SizeSquared() > 0.1 ? InD.GetSafeNormal() : FVector::ZeroVector;
+		const bool bPushIn = FVector::DotProduct(InD, C.Normal) < -0.4
+			&& !(InN.SizeSquared() > 0.5 && !(TravWorld.Raycast(S.Pos, InN, 12.0, HStick) && FMath::Abs(HStick.Normal.Z) < 0.5));
 		// chaining (RMB held, or just released a swing) and not deliberately steering into the wall: skip off it
 		const bool bChaining = (I.bSwing || S.RelT < 0.7) && !bPushIn && HLen(S.Vel) > 9;
 		if ((Into > 0.3 || bPushIn) && S.WallCooldown <= 0 && C.Top - FeetZ() > 1.2 && WideWall(C.Normal, C.Point) && !bChaining)
@@ -767,13 +771,14 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
 		const double BottomZ = FMaxD + BottomFeet + H;
 		// round 07: the rope cap varies per swing (up to RopeCapJitter shorter) so a long chain never repeats one arc / tempo
-		const double RopeCap = double(MaxArcRope) * (1.0 - double(RopeCapJitter) * Rng.FRand());
+		// round 10: the web after a sky launch is a long rope (<= SkyRopeMax) that carries him from the fall back to the street
+		const double RopeCap = S.bSky ? double(SkyRopeMax) : double(MaxArcRope) * (1.0 - double(RopeCapJitter) * Rng.FRand());
 		// round 09: a high anchor would need a rope over the cap for the designed low point — lower the (virtual) pivot
 		// instead, so the deep / shallow alternation survives (the web still draws to the real anchor)
 		if (S.Pos.Z - BottomZ + DZ > RopeCap) DZ = FMath::Max(double(MinPivotRise), RopeCap - (S.Pos.Z - BottomZ));
 		double L = FMath::Clamp(S.Pos.Z + DZ - BottomZ, DZ + 3.0, FMath::Max(RopeCap, DZ + 3.0));
 		double DH = FMath::Sqrt(FMath::Max(L * L - DZ * DZ, 16.0));
-		DH = FMath::Min(DH, double(MaxPivotAhead));
+		DH = FMath::Min(DH, S.bSky ? double(SkyRopeMax) : double(MaxPivotAhead));
 		Sw.Pivot = S.Pos + Fl * DH + Rt * (Lat * PivotLateralKeep) + ZUP * DZ;
 		const double LN = FVector::Dist(S.Pos, Sw.Pivot);
 		Sw.Rope = LN; Sw.RopeTarget = LN;
@@ -1017,6 +1022,20 @@ void UWebTraversalComponent::StepSwing(double Hs, FWebTravInput& I)
 	FTravContact C;
 	if (Collide(0.3, R + 0.22, C))
 	{
+		// round 10 (Manhattan integration: steering off the avenue into a block pinned him swinging against the facade for 10+ s):
+		// the stick held INTO a wide facade he touches = the player wants onto that wall: let go of the web and wall-run up it
+		// (roof top-out -> back into the chain). Grazes without that intent keep the wall-skip below.
+		const FVector InN = InD.SizeSquared() > 0.1 ? InD.GetSafeNormal() : FVector::ZeroVector;
+		// (a corner grazed while turning into a cross street is not that: the stick direction itself must be blocked within 12 m)
+		FTravHit HStick;
+		const bool bStickBlocked = InN.SizeSquared() > 0.5 && TravWorld.Raycast(S.Pos, InN, 12.0, HStick) && FMath::Abs(HStick.Normal.Z) < 0.5;
+		if (bStickBlocked && FVector::DotProduct(InN, C.Normal) < -0.5 && S.WallCooldown <= 0 && C.Top - FeetZ() > 3.0 && WideWall(C.Normal, C.Point))
+		{
+			const double Sp = FMath::Max(12.0, S.Vel.Size());
+			bLeaveSwingOK = true; WebRelease(); EnterWall(C.Normal, C.Point, true, Sp); bLeaveSwingOK = false;
+			Emit(N_swingToWall);
+			return;
+		}
 		bMoved = true;
 		const double VN = FVector::DotProduct(S.Vel, C.Normal);
 		if (VN < 0)
@@ -1196,6 +1215,48 @@ void UWebTraversalComponent::TrickBoost(const FWebTravInput& I)
 	Emit(N_trickBoost, 0.f, float(S.Vel.Size() - Sp0));
 }
 
+double UWebTraversalComponent::SkyRoofOverStreet() const
+{
+	FVector HV;
+	if (!HDir(S.Vel, HV)) return -1.0;
+	const double Roof = RoofBesideAhead(HV);
+	return Roof < -0.5 ? -1.0 : Roof - TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+}
+
+double UWebTraversalComponent::RoofBesideAhead(const FVector& Dir, double Ahead) const
+{
+	// Per side and per sample 10, 20 .. Ahead m along the path: a horizontal ray finds the street wall (<= 40 m out), a ray
+	// straight down from 250 m above, 2.5 m inside that facade, finds the roof there (a tower set back further than 2.5 m reads
+	// as its podium roof: the street wall's roofline). Side roofline = the LOWEST sample (the part of the block he can top);
+	// cross streets (no wall hit) are skipped. Result = the lower side. (Box AABBs were tried first: rotated / merged boxes
+	// reported 225 m towers for a 45 m street wall.)
+	FVector F = Flat(Dir);
+	if (F.SizeSquared() < 1e-4) return -1.0;
+	F.Normalize();
+	const FVector Rt(-F.Y, F.X, 0);
+	double Top[2] = { -1.0, -1.0 };
+	for (double D = 10.0; D <= Ahead + 1e-3; D += 10.0)
+	{
+		const FVector P = S.Pos + F * D;
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			const FVector SD = Rt * (Side ? 1.0 : -1.0);
+			FTravHit Hw;
+			if (!TravWorld.Raycast(P, SD, 40.0, Hw) || FMath::Abs(Hw.Normal.Z) > 0.5 || Hw.bGround) continue;
+			const FVector Q = Hw.Point + SD * 2.5;
+			FTravHit Hr;
+			if (!TravWorld.Raycast(FVector(Q.X, Q.Y, S.Pos.Z + 250.0), FVector(0, 0, -1), 500.0, Hr) || Hr.bGround) continue;
+			const double Roof = Hr.Point.Z;
+			if (Roof < S.Pos.Z - 30.0) continue;
+			Top[Side] = Top[Side] < 0.0 ? Roof : FMath::Min(Top[Side], Roof);
+			if (bRoofDebug) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV roof sample %.0f m side %d wall %.1f m roof %.1f"), D, Side, Hw.Distance, Roof);
+		}
+	}
+	if (Top[0] < 0.0) return Top[1];
+	if (Top[1] < 0.0) return Top[0];
+	return FMath::Min(Top[0], Top[1]);
+}
+
 void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 {
 	WebRelease();
@@ -1226,7 +1287,22 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 		if (S.TrickBuf > 0)
 		{
 			S.bSky = true;
-			S.Vel.Z = FMath::Max(S.Vel.Z, double(SkyLaunchVz));
+			// round 10 (T7): solve the launch for an apex just over the lower street wall's roofline beside the path ahead
+			const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+			bRoofDebug = true;
+			const double Roof = RoofBesideAhead(HV);
+			bRoofDebug = false;
+			SkyRoofUsed = Roof > -0.5 ? Roof - Street : -1.0;
+			const double PeakOver = FMath::Clamp(Roof > -0.5 ? Roof - Street + double(SkyRoofOver) : double(SkyPeakMin), double(SkyPeakMin), double(SkyPeakMax));
+			SkyPeakWant = PeakOver;
+			const double Dh = FMath::Max(2.0, Street + PeakOver - FeetZ());
+			const double Vh = double(SkyHangVz), GRise = G * double(SkyRiseK), GHang = G * double(SkyHangK);
+			const double HangH = Vh * Vh / (2.0 * GHang);
+			const double V0 = FMath::Sqrt(FMath::Max(0.0, 2.0 * GRise * FMath::Max(0.0, Dh - HangH)) + Vh * Vh);
+			S.Vel.Z = FMath::Clamp(V0, double(SkyLaunchVz), double(SkyLaunchVzMax));
+			Emit(N_skyLaunch, float(PeakOver), float(SkyRoofUsed));
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV sky launch at (%.1f, %.1f, %.1f): street %.1f, lower roofline %.1f m over it, peak want %.1f m, vz %.1f m/s"),
+				S.Pos.X, S.Pos.Y, FeetZ(), Street, SkyRoofUsed, PeakOver, S.Vel.Z);
 		}
 	}
 	SetMode(EWebTravMode::Air, N_release); S.AirT = 0; S.ApexZ = FeetZ();

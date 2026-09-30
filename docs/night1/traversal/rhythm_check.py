@@ -9,12 +9,15 @@ import csv, json, sys
 import numpy as np
 R = list(csv.DictReader(open(sys.argv[1])))
 LAY = sys.argv[2] if len(sys.argv) > 2 and sys.argv[2].endswith('.json') else None
-rest = [a for a in sys.argv[2:] if not a.endswith('.json')]
+rest = [a for a in sys.argv[2:] if not a.endswith('.json') and not a.startswith('--')]
 T0 = float(rest[0]) if rest else 0.0; T1 = float(rest[1]) if len(rest) > 1 else 1e9
 f = lambda r, k: float(r[k]) if r.get(k) not in (None, '') else 0.0
 R = [r for r in R if T0 - 1e-6 <= f(r, 't') <= T1 + 1e-6]
 t = np.array([f(r, 't') for r in R]); web = np.array([f(r, 'web_on') > 0.5 for r in R])
 swing = np.array([r['mode'].lower() == 'swing' for r in R]); hf = np.array([f(r, 'height_above_floor_m') for r in R])
+# round 10: heights are FEET OVER THE STREET (z - 0.95 m; the city street is z = 0) - height_above_floor_m also counts trees,
+# awnings and vehicle roofs below him as floor. --floor keeps the old measure.
+if '--floor' not in sys.argv: hf = np.array([f(r, 'z_m') - 0.95 for r in R])
 sig = [r.get('pose_sig', '') for r in R]; sub = [r['sub'] for r in R]
 FP = json.load(open(LAY))['footprints'] if LAY else []
 def roof_beside(x, y):   # tallest footprint within 45 m of (x, y) in UE metres (browser x, z)

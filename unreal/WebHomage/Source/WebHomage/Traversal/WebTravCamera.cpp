@@ -151,7 +151,12 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	// round 09 (TRAVERSAL-SPEC T13: roll allowed, |roll| median <= 1.5 deg, p90 <= 10): a lean toward the anchor side only
 	// toward the arc ends
 	const double ArcRoll = SideK * FMath::DegreesToRadians(AnchorRollMax) * Smooth(FMath::Abs(P.SwingAngle), 0.55, 1.0);
-	const double WantRoll = FMath::Clamp(-YawRate * 0.04, -0.09, 0.09) - BankS * 0.05 + ArcRoll;
+	double WantRoll = FMath::Clamp(-YawRate * 0.03, -0.07, 0.07) - BankS * 0.04 + ArcRoll;
+	// round 10 (critic r09 T13 |roll| median 1.6 > 1.5 deg): small leans (< RollDeadDeg) are dropped, larger ones keep their size
+	{
+		const double Dz = FMath::DegreesToRadians(RollDeadDeg);
+		WantRoll *= FMath::Clamp((FMath::Abs(WantRoll) - Dz) / FMath::Max(Dz, 1e-6), 0.0, 1.0); // 0 below Dz, full from 2 Dz
+	}
 	Roll = Damp(Roll, WantRoll, 3, Dt);
 	// ---- compose (round 03): lagged chase camera with explicit framing and collision
 	const FVector Fwd = Forward();
@@ -384,7 +389,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		FovWant = FMath::Clamp(Span - VFov, 0.0, FMath::DegreesToRadians(AttachFovMax)); // round 08: 26 -> 10 deg (92-95 deg fish-eye shrank the hero)
 		const double Half = (VFov + FovWant) * 0.5;
 		const double Need = UpToAnchor - (Half - TopM);             // pitch-up that puts it TopM inside the top
-		const double HeroLimit = (Half - BotM) - DownToHero;        // keep the hero BotM inside the bottom
+		// round 10 (TRAVERSAL-SPEC T5 voids anchor-in-frame; T10 hero centre y <= 0.70, critic r09 cy p95 .72): the look-up stops
+		// where the hero centre reaches AttachMaxS of the frame height (was: hero 12 deg inside the bottom edge -> cy up to .87)
+		(void)BotM;
+		const double HeroLimit = FMath::Atan((AttachMaxS - 0.5) * 2.0 * FMath::Tan(Half)) - DownToHero;
 		LookWant = FMath::Max(0.0, FMath::Min(Need + PitchDown, HeroLimit + PitchDown));
 		// round 07: the new swings open with a steep swoop (up to 40 m/s down) — the look-up fades out as he falls faster so
 		// the hero does not drop off the bottom edge
@@ -404,8 +412,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// round 07: gentler, capped turn toward an off-screen anchor (the 0.035 s spring whipped the view ~45 deg in 0.1 s)
 	YawWant = FMath::Clamp(YawWant, -FMath::DegreesToRadians(25.0), FMath::DegreesToRadians(25.0));
 	SD(AttachYaw, AttachYawV, YawWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
-	SD(AttachLook, AttachLookV, LookWant, P.SwingT < 0.5 ? 0.035 : 0.3, Dt);
-	SD(AttachFov, AttachFovV, FovWant, P.SwingT < 0.5 ? 0.035 : 0.3, Dt);
+	// round 10 (critic r09: camera pop at b 0.000-0.017 s, a web attached on the first frame): 0.035 s -> 0.12 s springs
+	SD(AttachLook, AttachLookV, LookWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
+	SD(AttachFov, AttachFovV, FovWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
 	PitchDown -= AttachLook;
 	Pitch = PitchDown; // keep the orbit state coherent for Forward()
 	// (round 09: the hero stays centred horizontally — TRAVERSAL-SPEC T9; the off-axis look comes from the sideways slide)

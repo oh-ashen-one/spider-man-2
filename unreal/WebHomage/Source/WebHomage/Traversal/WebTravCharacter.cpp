@@ -278,13 +278,24 @@ void AWebTravCharacter::BuildFigure()
 
 bool AWebTravCharacter::SetupHeroMesh()
 {
-	// round 04: the real hero (browser GLB, dev proxy in /Game/Traversal/HeroDev; P2's hero replaces the path)
-	USkeletalMesh* Body = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/SpiderMan.SpiderMan"));
+	// round 04: the real hero; round 10: paths are properties (HeroMeshPath / HeroLensMeshPath / HeroClipRoot / HeroClipPrefix)
+	{
+		FString V;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHHeroMesh="), V)) HeroMeshPath = V;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHHeroLens="), V)) HeroLensMeshPath = V.Equals(TEXT("none"), ESearchCase::IgnoreCase) ? FString() : V;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHHeroClips="), V)) HeroClipRoot = V;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHHeroClipPrefix="), V)) HeroClipPrefix = V;
+	}
+	USkeletalMesh* Body = HeroMeshPath.IsEmpty() ? nullptr : LoadObject<USkeletalMesh>(nullptr, *HeroMeshPath);
 	if (!Body)
 	{
-		UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero mesh missing: placeholder figure stays"));
+		UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero mesh missing (%s): placeholder figure stays"), *HeroMeshPath);
 		return false;
 	}
+	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero: mesh %s, lens %s, clips %s/%s<clip>"), *HeroMeshPath,
+		HeroLensMeshPath.IsEmpty() ? TEXT("(none)") : *HeroLensMeshPath, *HeroClipRoot, *HeroClipPrefix);
+	UWebTravAnimInstance::ClipRoot = HeroClipRoot;
+	UWebTravAnimInstance::ClipPrefix = HeroClipPrefix;
 	USkeletalMeshComponent* M = GetMesh();
 	M->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 	M->SetAnimInstanceClass(UWebTravAnimInstance::StaticClass());
@@ -318,7 +329,7 @@ bool AWebTravCharacter::SetupHeroMesh()
 	M->SetRelativeLocation(FVector(0, 0, 0));
 	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero mesh: fwd(asset)=%s up(asset)=%s left-after-corr=%s footZ=%.1f headZ=%.1f cm"),
 		*Fwd.ToString(), *Up.ToString(), *LeftDir.GetSafeNormal().ToString(), FootZ, HeadZ);
-	if (USkeletalMesh* Lens = LoadObject<USkeletalMesh>(nullptr, TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/Lenses.Lenses")))
+	if (USkeletalMesh* Lens = HeroLensMeshPath.IsEmpty() ? nullptr : LoadObject<USkeletalMesh>(nullptr, *HeroLensMeshPath))
 	{
 		LensMesh = NewObject<USkeletalMeshComponent>(this, TEXT("HeroLenses"));
 		LensMesh->SetupAttachment(M);
@@ -475,13 +486,32 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			const int32 SkyEvery = Script->SkyEveryAt(TravTime, SkyRepressH, SkyTricks, SkyMax, SkyPhase);
 			bool bKeepSwingThisFrame = false;
 			// round 10: the sky release lets the arc climb further (skyPhase) before the launch
-			const double RelPhaseEff = (SkyEvery > 0 && (AutoReleases + 1) % SkyEvery == 0) ? SkyPhase : RelPhase;
-			if (bAutoHeld && bSwinging && bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex))
+			// round 10 (T7 "peak at roofline height, then 1-4 storeys over the street"): the next release is a sky launch when it is
+			// >= skyEvery releases after the previous one AND the lower street wall ahead is within reach (its roofline <=
+			// SkyPeakMax + 8 m over the street; a player launches where he can top the block), or 5.5 s after the previous one anyway
+			bool bSkyNext = false;
+			if (SkyEvery > 0 && AutoReleases + 1 - LastSkyRelease >= SkyEvery && bSwinging)
+			{
+				const double Roof = Traversal->SkyRoofOverStreet();
+				const bool bReach = Roof > 0.0 && Roof + Traversal->SkyRoofOver <= Traversal->SkyPeakMax + 8.0;
+				bSkyNext = bReach || TravTime - LastSkyT > 5.5;
+			}
+			const double RelPhaseEff = bSkyNext ? SkyPhase : RelPhase;
+			// round 10 (Manhattan integration: releasePhase 0.85 left him hanging at 49 m for 14 s — a swing that never came down
+			// fast or never reached the release phase): a player lets go of a stale swing after 2.4 s whatever its phase
+			const bool bStale = bSwinging && A.ModeT > 2.4f;
+			// round 10 (T1 rope held 0.5-1.6 s): past the low point and 1.45 s into the swing he lets go (the long web after a sky
+			// launch held 2.1-2.2 s)
+			// (the cut varies 1.25-1.55 s by release count so consecutive swings differ in length)
+			const float LongCut = 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
+			const bool bLong = bSwinging && bAutoSawDescent && A.ModeT > LongCut && Traversal->VelM().Z > 0;
+			if (bAutoHeld && bSwinging && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;
 				const int32 Every = Script->TrickEveryAt(TravTime);
-				if (SkyEvery > 0 && AutoReleases % SkyEvery == 0)
-				{ // round 10: sky launch = jump pressed while the web is still held (jump-release) + trick pressed with it
+				if (bSkyNext)
+				{
+					LastSkyRelease = AutoReleases; LastSkyT = TravTime; SkyPeakH = 0.0; // round 10: sky launch = jump pressed while the web is still held (jump-release) + trick pressed with it
 					I.bJump = true; I.bTrick = true; bKeepSwingThisFrame = true;
 					bSkyAuto = true; bSkyWasTrick = false; SkyTricksLeft = FMath::Max(0, SkyTricks - 1); SkyAutoT = 0.0;
 				}
@@ -493,7 +523,11 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 				const bool bTrickNow = A.Sub == FName(TEXT("trick"));
 				if (bSkyWasTrick && !bTrickNow && SkyTricksLeft > 0 && Traversal->VelM().Z > -12.0) { I.bTrick = true; --SkyTricksLeft; }
 				bSkyWasTrick = bTrickNow;
-				if ((Traversal->VelM().Z < 0 && Traversal->HeightAboveStreet() <= SkyRepressH && !bTrickNow) || SkyAutoT >= SkyMax)
+				// round 10: re-press once he has fallen 12 m from the peak (or through skyRepressH): the long web after a sky launch
+				// then carries him down to the street (StartSwing: SkyRopeMax) instead of a web-less fall
+				const double HS = Traversal->HeightAboveStreet();
+				SkyPeakH = FMath::Max(SkyPeakH, HS);
+				if ((Traversal->VelM().Z < 0 && (HS <= SkyRepressH || HS <= SkyPeakH - 12.0) && !bTrickNow) || SkyAutoT >= SkyMax)
 				{
 					bAutoHeld = true; bSkyAuto = false;
 				}

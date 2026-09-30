@@ -77,7 +77,16 @@ public:
 	 * SkyHangVz (hang time at the top, tricks chained on input), and no web is searched on the way up. The camera drops under the
 	 * hero and looks up (sky behind him) until he falls faster than 8 m/s.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyLaunchVz = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyLaunchVz = 26.f;
+	/** Round 10 (T7 "peak at roofline height"): the launch speed is solved so the apex lands SkyRoofOver m above the lower street
+	 *  wall's roofline beside the path ahead (RoofBesideAhead), the peak clamped to SkyPeakMin..SkyPeakMax m over the street and the
+	 *  launch to SkyLaunchVz..SkyLaunchVzMax m/s. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyRoofOver = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyPeakMin = 38.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyPeakMax = 58.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyLaunchVzMax = 52.f;
+	/** Round 10: rope cap (and pivot reach) of the first web after a sky launch (a long dive back to the street). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyRopeMax = 50.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyHangK = 0.55f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyHangVz = 7.f;
 	/** Round 10: gravity scale on the rest of a sky launch's climb (vz >= SkyHangVz): the release carries him to the roofline. */
@@ -143,6 +152,13 @@ public:
 	/** Round 10: feet height over the street / building mass below (props, trees, awnings ignored). */
 	double HeightAboveStreet() const { return FeetZ() - TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); }
 	bool IsSkyLaunch() const { return S.bSky && S.Mode == EWebTravMode::Air; }
+	/** Round 10: roofline (m, world Z) of the LOWER of the two street walls beside the path 0..Ahead m ahead along Dir; -1 if none. */
+	double RoofBesideAhead(const FVector& Dir, double Ahead = 60.0) const;
+	/** Round 10: that roofline over the street below (m), along the current horizontal velocity; -1 if none. */
+	double SkyRoofOverStreet() const;
+	/** Round 10: sky-launch telemetry: the peak the launch was solved for (m over the street), the roofline used (m over the street). */
+	double SkyPeakWant = 0.0, SkyRoofUsed = 0.0;
+	mutable bool bRoofDebug = false;
 	bool IsSwinging() const { return S.Mode == EWebTravMode::Swing; }
 	const FVector& SwingAnchor() const { return S.Sw.Anchor; }
 	const FVector& SwingDir() const { return S.Sw.Dir; }

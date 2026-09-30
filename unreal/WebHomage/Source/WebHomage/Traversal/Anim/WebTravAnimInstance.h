@@ -69,8 +69,9 @@ public:
 		bReachRight = true; LastMode = EWebTravMode::Ground;
 	}
 
-	/** Content folder with the hero clips (dev proxy; P2's hero replaces this path). */
+	/** Content folder with the hero clips and the asset-name prefix (set from AWebTravCharacter::HeroClipRoot / HeroClipPrefix). */
 	static FString ClipRoot;
+	static FString ClipPrefix;
 
 	FWebTravAnimFrame Frame;
 

@@ -2,12 +2,46 @@
  "name": "d_sprint_jump_first_swing_city",
  "note": "Round 10, lit city: street sprint north up the avenue, charged jump, first swing, then the round-10 chain rule (sky launch every 2nd release).",
  "seed": 1234,
- "spawn": { "pos": [250, 244, 0.95], "yaw": -90, "camPitch": 0.14 },
+ "spawn": {
+  "pos": [
+   250,
+   244,
+   0.95
+  ],
+  "yaw": -90,
+  "camPitch": 0.14
+ },
  "keys": [
-  { "t": 0.0, "move": [0, 1], "heading": -90, "sprint": true },
-  { "t": 1.8, "jump": true },
-  { "t": 2.2, "jump": false },
-  { "t": 2.6, "swing": true, "autoChain": true, "releasePhase": 0.55, "gap": 0.45, "repressVz": 99.0, "trickEvery": 0,
-    "skyEvery": 2, "skyTricks": 2, "skyRepressH": 28, "skyPhase": 0.75, "skyMax": 3.0 }
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "sprint": true
+  },
+  {
+   "t": 1.8,
+   "jump": true
+  },
+  {
+   "t": 2.2,
+   "jump": false
+  },
+  {
+   "t": 2.6,
+   "swing": true,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 0,
+   "skyEvery": 2,
+   "skyTricks": 2,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
  ]
 }
