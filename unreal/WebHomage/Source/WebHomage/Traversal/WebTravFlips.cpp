@@ -50,19 +50,19 @@ namespace WebFlips
 			// Tuck 1.0 s (peak ~680 deg/s), Kickout 0.7 s (<= 150 deg/s for ~0.65 s), mean ~420 deg/s (FLIPS_SPEC F2 300-500).
 			// (r12: tuck / layout / tuck / layout / reach 2.3 s; r11: nine segments)
 			{
-				// round 14 (critic r13 "a spinning ball at a constant 678 deg/s"; F4 Kickout hold 0.22 s): Tuck 1.15 s eased (ends ~60 % of the
-				// ~740 deg/s middle), Kickout 0.62 s at <= ~100 deg/s (inertia 10.5); catch 1.57 s after the release (r13 1.50)
+				// round 14 (critic r13 "a spinning ball at a constant 678 deg/s"; F4 Kickout hold 0.22 s): Tuck 1.20 s eased (ends ~62 % of the
+				// ~700 deg/s middle, peak ~755), Kickout 0.60 s at <= ~100 deg/s (inertia 10.5); catch 1.60 s after the release (r13 1.50)
 				FWebFlipProgram F; F.Name = FName(TEXT("backDouble")); F.PitchDeg = -720.f;
-				F.Segs = { {S::Tuck, 1.15f, 0.f, 0.75f, 0.85f}, {S::Kickout, 0.62f} };
+				F.Segs = { {S::Tuck, 1.20f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.60f} };
 				F.CatchOpen = 0.2f; P.Add(F);
 			}
 			// front pike into a slow inverted swan that unwinds (critic r10 reference description), tuck up, reach (r12 1.97 s -> 1.65 s)
 			// round 14 (critic r13: "b uses 5 shapes in 1.7 s", every shape >= 0.3 s, F3 rendered peak 980-1180 deg/s): the pencil is dropped,
 			// pike 0.40 s and tuck 0.38 s eased at both ends, swan 0.55 s (1.65 -> 1.59 s)
-			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 0.7f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 0.7f, 0.7f}, {S::Reach, 0.26f} });
+			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.26f} });
 			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach (1.84 -> 1.66 s)
 			// round 14: every shape >= 0.3 s (layout 0.22 -> 0.31, tuck 0.26 -> 0.34 eased), twist 0.42 s, swan 0.36 s (1.66 -> 1.67 s)
-			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Swan, 0.36f}, {S::Tuck, 0.34f, 0.f, 0.6f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
+			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Swan, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
 			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.24f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing

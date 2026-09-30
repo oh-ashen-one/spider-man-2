@@ -319,12 +319,13 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	FVector Cam(CamXY.X, CamXY.Y, CamZ);
 	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /
 	// rotated positions and move there smoothly (held ~1 s so the camera does not flicker)
+	bool bNoSweep = false; // round 14: set below when the hero himself is inside geometry
 	auto ClearFrom = [&](const FVector& From, const FVector& To, FVector& Out) -> double
 	{
 		const FVector D = To - From;
 		const double L = D.Size();
 		double HitD = 0;
-		if (L > 1e-3 && World.SphereSweep(From, To, 0.22, HitD)) { Out = From + D / L * FMath::Max(0.0, HitD - 0.12); return FMath::Max(0.0, HitD - 0.12); }
+		if (!bNoSweep && L > 1e-3 && World.SphereSweep(From, To, 0.22, HitD)) { Out = From + D / L * FMath::Max(0.0, HitD - 0.12); return FMath::Max(0.0, HitD - 0.12); }
 		Out = To;
 		return L;
 	};
@@ -336,17 +337,12 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		From = Chest + FVector(0, 0, Lift);
 		if (!World.SphereOverlaps(From, 0.22)) { bFromOk = true; break; }
 	}
-	if (!bFromOk && bChaseInit && !CamPos.IsZero())
-	{ // the hero himself is inside geometry this frame (e.g. clipping a facade at a zip arrival): hold the last view
-		// round 13 (rendered f4 8.75-9.17 s, a 11.43-11.58 s: the hero skimming a street-tree canopy at swing bottom left every
-		// sweep origin overlapping, so the ABSOLUTE camera position froze while he flew on at 43 m/s -> 20 m away, then a dot):
-		// hold the view RELATIVE to the hero (same offset, same rotation); at a zip arrival he is static, so this is the old hold
-		if (bHaveComposeHero) CamPos += Hero - LastComposeHero;
-		LastComposeHero = Hero; bHaveComposeHero = true;
-		HeroDist = FVector::Dist(CamPos, Hero);
-		bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
-		return;
-	}
+	// round 14 (probe f3 4.8-5.6 s: the hero swings through a street-tree canopy at a swing bottom; every sweep origin overlaps the
+	// canopy): the r13 hold kept the camera's offset AND rotation for 0.8 s (hero slid to 0.90 of the frame, pitch 28 deg down, camera
+	// 49 frames inside the foliage). Now the frame composes normally but WITHOUT the collision sweeps (the hero is inside geometry,
+	// so a sweep from him cannot tell a clear spot): the chase spot behind him is taken as it is.
+	bNoSweep = !bFromOk && bChaseInit && !CamPos.IsZero();
+	if (bNoSweep) From = Chest;
 	auto ClearTo = [&](const FVector& To, FVector& Out) -> double
 	{
 		ClearFrom(From, To, Out);

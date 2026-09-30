@@ -572,9 +572,11 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// round 13 (T2 attach -> attach <= 3.3 s): a swing that ends in a flip program is let go at 1.05-1.2 s
 			const int32 EveryNext = Script->TrickEveryAt(TravTime);
 			const bool bTrickNext = EveryNext > 0 && (AutoReleases + 1) % EveryNext == 0 && !Traversal->bTrickLaunch;
-			// (round 14: 1.05-1.2 -> 0.98-1.12 s: the eased backDouble catches 0.07 s later, T2 kept <= 2.65 s)
-			const float LongCut = bTrickNext ? 0.98f + 0.14f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
-			const bool bLong = bSwinging && bAutoSawDescent && A.ModeT > LongCut && Traversal->VelM().Z > 0;
+			// (round 14: 1.05-1.2 -> 0.92-1.06 s: the eased backDouble catches 0.07 s later, T2 kept <= 2.65 s)
+			const float LongCut = bTrickNext ? 0.92f + 0.14f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
+			// round 14: a swing that ends in a flow flip is let go at LongCut even before it rises (the flip solves its own climb; a flat
+			// swing over a low roof held f4 1.4 s -> attach-to-attach 2.98 s)
+			const bool bLong = bSwinging && bAutoSawDescent && A.ModeT > LongCut && (Traversal->VelM().Z > 0 || bTrickNext);
 			if (bAutoHeld && bSwinging && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;

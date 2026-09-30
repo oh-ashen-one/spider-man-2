@@ -79,6 +79,8 @@ def sig_head(k):
     s = R[min(k + 1, n - 1)].get('pose_sig', '').split()
     return (float(s[0]), float(s[1])) if len(s) >= 2 else None
 for a, b, name in progs:
+    if b >= n - 2:
+        P('-- %s %.2f-%.2f s: still playing on the clip\'s last frame (the clip length cut it) -- not judged' % (name, T[a], T[b])); continue
     P('-- %s %.2f-%.2f s' % (name, T[a], T[b]))
     # S1: view angle out of the flip plane
     vx, vy = f(R[a], 'vx'), f(R[a], 'vy')
