@@ -10,7 +10,7 @@ import skinfit, make_walk
 from skinfit import read_glb, accessor
 from PIL import Image
 ROOT=os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','..'))
-SC=os.environ.get('P2_SCRATCH','/Users/midir/sm2-n1/_scratch/characters')
+from p2paths import SCRATCH as SC   # noqa: E402
 game=skinfit.Game(ROOT+'/public/assets/spiderman.glb')
 an=next(a for a in game.j['animations'] if a['name']=='walk')
 times,rot,tra,name2i,Pm=make_walk.build(game,an,'street')
@@ -32,7 +32,7 @@ def posed(k):
     S=np.stack([G[i] for i in joints])@ibm
     B=np.einsum('vk,vkij->vij',W,S[J])
     return np.einsum('vij,vj->vi',B[:,:3,:3],R)+B[:,:3,3]
-np.save(SC+'/r6/thug_posed_frames.npy',np.stack([posed(k) for k in range(0,n)]))
+os.makedirs(SC+'/r6',exist_ok=True); np.save(SC+'/r6/thug_posed_frames.npy',np.stack([posed(k) for k in range(0,n)]))
 # stretch over clip
 E=np.concatenate([F[:,[0,1]],F[:,[1,2]],F[:,[2,0]]])
 rest=np.linalg.norm(R[E[:,0]]-R[E[:,1]],axis=1)
