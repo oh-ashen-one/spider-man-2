@@ -11,26 +11,24 @@ Homage fan game, not affiliated with Marvel, Sony or Insomniac. Coordinates are 
 | Civilians | **5** | Heads are now separated. `crowd_tracking` has 10–11 people (CH16 low end). The hijab walker's rear shin goes horizontal at 18 % of stature (1080 frame 0.25 s, 7.0 s), and her coat stays rigid. |
 | Image quality | **5** | CH18 fails. `tee_face_4k` has 3 see-through holes in the mask: 198 px (2240,1071), 91 px (2327,1062) and 24 px. The `thug_face_4k` collar still has a 100×180 px skin wedge (1750–1850, 1350–1530). Clips are 1080p. |
 
-## A/B decisions (pixels first)
-- The ref-vs-ours pairs all go to the ref: hero-run A, hero-chase B, hero-standing A, suit-close A, hero-face A, thugs-group A, fight-clip B, thug-close A, citizens-clip A, citizens-still B. The ref sides show lit streets, knockdowns and blended motion.
-- progress-hero-standing: **A**. B copies a famous suit's emblem and colour blocking.
-- progress-hero-face: **B**. In A the lens sits beyond the head outline.
-- progress-suit-close: **B**. It has an original emblem, and A copies the white emblem.
-- progress-crowd-still: **B**. A has fused heads.
-- progress-tee-mask: **B**. A shows an open mouth slit.
-- progress-thug-collar: **tie**. The shard is identical.
-- hero-eye-3x: **B**.
-- hero-lines-3x: **A**. B's lines stair-step.
-- tee-mouth-3x: **B**.
-- thug-collar-3x: **tie**.
-- crowd-heads-3x: **B**.
-- Brand check: no copied logo or text in our frames. The hoodie print is illegible.
+## A/B decisions
+- **Ref vs ours:** the ref wins every pair. Its streets are lit, it has knockdowns and its motion is blended.
+- **Our progress pairs:**
+  - hero-standing: **A**. B copies a famous suit's emblem.
+  - hero-face: **B**. A's lens sits outside the head.
+  - suit-close: **B**.
+  - crowd-still: **B**. A has fused heads.
+  - tee-mask: **B**. A shows a mouth slit.
+  - thug-collar: **tie**.
+  - eye-3x: **B**.
+  - lines-3x: **A**. B stair-steps.
+  - tee-mouth-3x: **B**.
+  - collar-3x: **tie**.
+  - heads-3x: **B**.
+- **Brand check:** no copied logo or text. The hoodie print is illegible.
 
 ## Single biggest gap
-Give enemies real combat reactions. Re-capture the 8 s `street_fight_34` and check:
-- at least 3 distinct hit reactions (stagger, recoil) and at least 1 knockdown, with the thug's torso on the ground for 1 s or more;
-- no 1 s window in which all 7 thugs hold guard idle;
-- per-0.25 s frame-diff of at least 3 % px throughout.
+Give enemies real combat reactions. In the 8 s `street_fight_34`, show at least 3 hit reactions and at least 1 knockdown, with the torso grounded for 1 s or more. No 1 s window should have all 7 thugs idle in guard.
 
 ## Secondary issues
 1. Delete the tee-mask holes and the thug collar skin wedge, so no component is 20 px or larger inside character silhouettes (CH18).
