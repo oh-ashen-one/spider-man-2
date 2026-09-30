@@ -1500,7 +1500,8 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			{
 				const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 				const double Roof = RoofBesideAhead(HV, double(FlowRoofAhead));
-				if (Roof > -0.5)
+				// (probe r15: street-tree canopies 9-15 m read as a "roofline" -- a roof counts only FlowRoofMinH m or more over the street)
+				if (Roof > -0.5 && Roof - Street >= double(FlowRoofMinH))
 				{
 					FlowRoofUsed = Roof - Street;
 					const double Need = Roof + double(FlowRoofOver) - FeetZ();
@@ -2470,6 +2471,17 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 		View.Fwd = RM.GetUnitAxis(EAxis::X); View.Right = RM.GetUnitAxis(EAxis::Y); View.Up = RM.GetUnitAxis(EAxis::Z);
 		View.TanHalfV = FMath::Tan(FMath::DegreesToRadians(Cam->OutVFov * 0.5));
 		View.TanHalfH = View.TanHalfV * 16.0 / 9.0;
+		// round 15: while the side-on trick camera frames a flip (now on the sun-away side, often facing away from the route's zip
+		// points) the reticle aims along the chase heading -- the player's aim, not the cinematic view (probe r15 b: the roof point
+		// left the side view at 2.67 s and the 2.88 s zip found nothing)
+		if (Cam->FlipK > 0.3)
+		{
+			const FVector F = Cam->ForwardFlat();
+			const FRotator AimR(6.0, FMath::RadiansToDegrees(FMath::Atan2(F.Y, F.X)), 0.0);
+			const FRotationMatrix AM(AimR);
+			View.Pos = S.Pos - F * 3.8 + FVector(0, 0, 1.2);
+			View.Fwd = AM.GetUnitAxis(EAxis::X); View.Right = AM.GetUnitAxis(EAxis::Y); View.Up = AM.GetUnitAxis(EAxis::Z);
+		}
 		FVector PerchOut = Flat(S.P.Normal);
 		if (PerchOut.SizeSquared() > 0.09) PerchOut.Normalize(); else PerchOut = YawDir(S.Facing);
 		Anchors->UpdateTargeting(Dt, View, Eye, bEnabled, bPerched ? &S.P.Pos : nullptr,

@@ -99,7 +99,7 @@ public:
 	// deg off the travel-behind direction, on ONE side for the whole trick (chosen by sky at the first search) -- at elevations
 	// FlipMinElev..FlipElevMax (camera below the hero), the flip look-up is capped at FlipPitchUpMax, every non-wall view at
 	// MaxLookUpDeg, and the flip camera blends in FlipInT / out FlipOutT (spring times, s).
-	double FlipSideMin = 70.0, FlipSideMax = 115.0, FlipElevMax = 6.0, FlipPitchUpMax = 8.0, MaxLookUpDeg = 10.0, /* round 15: 28 / 27 / 29 */  FlipInT = 0.25, FlipOutT = 0.18;
+	double FlipSideMin = 70.0, FlipSideMax = 115.0, FlipElevMax = 6.0, FlipPitchUpMax = 8.0, MaxLookUpDeg = 10.0, /* round 15: 28 / 27 / 29 */  FlipInT = 0.30 /* r15: 0.25 -> the slew-limited yaw turn is past 100 deg from the sun by k 0.5 */, FlipOutT = 0.18;
 	// round 15 (critic r14 single gap: "the trick camera climbs to 20-27 deg up and looks into the sun, which flares out the flips";
 	// instruction: cap it at 8 deg up, orbit to the side that puts the sun behind the camera, >= 100 deg between sun and view;
 	// orchestrator: sky behind the hero by HEIGHT, trick camera near the hero's height and nearly level): the flip view elevations
@@ -109,7 +109,7 @@ public:
 	// the sun, set by the character from the level's atmosphere sun light (bHaveSun false = no sun term).
 	FVector SunDir = FVector::UpVector;
 	bool bHaveSun = false;
-	double SunMinDeg = 100.0, SunPrefDeg = 140.0, FlipPrefElev = 2.0;
+	double SunMinDeg = 100.0, SunPrefDeg = 140.0, FlipPrefElev = 1.0; // (probe r15: 2.0 -> trick pitch 4.4-4.9 down, b T11 3.9)
 	double FlipSunDeg = -1.0;  // telemetry: sun angle of the chosen flip view at the last search
 	double CapUpDeg = 29.0;    // the look-up cap applied this frame (also after the output slew re-aim)
 	/** Round 15: -WHCamTune=Name=Value,... for the named tuning doubles (probes without a rebuild). Returns false if unknown. */
