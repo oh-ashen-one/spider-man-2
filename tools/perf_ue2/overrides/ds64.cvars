@@ -1,0 +1,5 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 06 probe: Lumen screen probes one per 64x64 px tile. NOTE (found in round 06): the running game already applies the engine "High" GI
+# scalability (log: "Applying CVar settings from Section [GlobalIlluminationQuality@2]"), i.e. DownsampleFactor 32 / 16 adaptive probes / radiance cache 16 / 100;
+# this goes one step below it.
+r.Lumen.ScreenProbeGather.DownsampleFactor=64
