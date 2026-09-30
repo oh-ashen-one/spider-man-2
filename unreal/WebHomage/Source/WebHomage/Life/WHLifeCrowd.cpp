@@ -105,6 +105,8 @@ void AWHLifeCrowd::BeginPlay()
 {
 	Super::BeginPlay();
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeStats="), StatsInterval);
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeRT"))) bVisibleInRayTracing = true;
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeNoShadow"))) bCastShadows = false;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeOff")) || FParse::Param(FCommandLine::Get(), TEXT("WHCrowdOff"))) { UE_LOG(LogWHCrowd, Display, TEXT("[crowd] disabled by command line")); return; }
 	if (Meshes.Num() == 0 || !AnimClass) { UE_LOG(LogWHCrowd, Warning, TEXT("[crowd] no citizen meshes / anim class")); return; }
 	ParseWalk(); Populate();
@@ -122,6 +124,7 @@ void AWHLifeCrowd::BeginPlay()
 			C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 			C->SetCanEverAffectNavigation(false);
 			C->SetCastShadow(bCastShadows);
+			C->SetVisibleInRayTracing(bVisibleInRayTracing);
 			C->VisibilityBasedAnimTickOption = EVisibilityBasedAnimTickOption::AlwaysTickPoseAndRefreshBones;
 			C->RegisterComponent();
 			C->SetVisibility(false); C->SetComponentTickEnabled(false);

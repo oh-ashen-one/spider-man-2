@@ -45,6 +45,49 @@ The C++ under `Source/WebHomage/Life/` must be merged with the branch (new folde
 | `tools/life/` | `export_lanes.mjs`, `prep_vehicles.py` (GLB split + sanitised atlas), `citizens_fbx.py` (P2's exporter redirected), `citizen_variants.py` (2 outfit recolours per citizen), `build_deps.py`, `build_cpp.sh`, `ip_check.py`, `analyze_feet.py`, `spec_table.py` |
 | `docs/night1/life/` | this file, `IP_EXCLUSIONS.md`, `capture_round.sh`, `round-01/` (stills, clip, probe logs, perf, spec table, notes) |
 
+
+## Round 01 results (evidence: `round-01/`)
+
+Spec table `round-01/SPEC_TABLE.md` (probe counts, not YOLO: see its header). Summary at 4K, S1 / S2 cameras, median over 4 reports:
+
+| id | target | measured | |
+|---|---|---|---|
+| C4 cars (S1) | 5-19, median ~11 | 9 vehicles >= 44 px (8-12); 21.5 incl. small far ones >= 22 px | in range at 44 px |
+| C4 people (S1) | 6-32, median ~24 | 15 (12-19) at >= 28 px, 12 (9-13) at >= 56 px | in range, median low |
+| S1 parked cars incl. taxis | >= 5 | 12 parked, 1 taxi among them (moving taxis 2-4) | meets |
+| C6 vehicles (S2) | median 14-22 | 14 (10-16) at >= 22 px | low edge |
+| CH16 people | 8-25 | 15 (12-19) | meets |
+| CH17 >= 6 models, no twins | 6 / 0 | 15 looks in frame (12-19), 0 identical looks in all 4 reports of each run | meets in these runs (twins can still appear briefly) |
+| CH17 feet | 0 sliding walkers | ankle displacement in planted stances (14 nearest walkers): median 15.7 cm (4K) / 21.7 cm (1080p), 2.2 % / 3.6 % of stances > 45 cm, per-walker medians 12-21 cm | no continuous glide; ankle bone only, not toe-level |
+| CH19 gait phases | spread >= 0.2 cycle, >= 6 walkers | 14 walkers, mean pairwise 0.264, max 0.49 cycle | meets |
+| C4 traffic lights | >= 1 | P1 heads present, NOT driven | gap |
+
+Instance counts: about 650-710 moving vehicle instances (of which 30-50 % stopped at lights), 1197 parked (140 taxis), 1458 simulated walkers of which about 290 live (skeletal) near the camera; 15 vehicle meshes x 3 LODs, 60 looks.
+Sim cost (CPU, game thread): traffic 0.06 ms + instance push 0.08-0.12 ms, crowd 0.17-0.45 ms.
+
+GPU-locked perf (`round-01/PERF_TABLE.md`, exclusive runs, S1 view, NATIVE internal resolution, GPU 0-2 % before each run):
+
+| | frame ms (avg) | GPU ms (avg) | life vs off |
+|---|---|---|---|
+| 1080p, life off | 22.70 | 20.48 | |
+| 1080p, life ON, ray-tracing visible (first build) | 38.77 | 34.74 | +16.1 frame / +14.3 GPU: too expensive |
+| 1080p, life ON (default now) | 23.59 | 22.62 | +0.9 frame / +2.1 GPU |
+| 4K, life off (run 2; run 1 was 64.43 / 61.72) | 55.38 | 52.64 | |
+| 4K, life ON (default now) | 58.09 | 54.64 | +2.7 frame / +2.0 GPU |
+
+The whole cost was the ray-tracing scene (`r.RayTracing=True` + Lumen HWRT): moving ISM instances and skinned meshes force TLAS / BLAS updates every frame. `bVisibleInRayTracing = false` (default on both actors) removes it; the cars and walkers then do not appear in Lumen reflections / GI (they still get direct light, shadows and screen-space effects). Shadows from the life actors cost nothing measurable (24.3 vs 23.6 ms with them off). Crowd only: +1.4 ms frame (CPU, 290 skeletal components), traffic only: about 0. The scene without life is 20 ms GPU at native 1080p, so the 60 fps budget is P4's problem, not P6's.
+
+## Known gaps / next (round 02 candidates)
+
+1. Water (`/Game/Water`): not started (P1 has the far-field water material; boats, waterfront, wakes are in the browser `water.js` / `waterfx/` / `boats.js`).
+2. Drive the P1 signal heads from the life clock (`AWHLifeTraffic::GetSignalClock`); crosswalk "walk" lights.
+3. People avoid P1 street props (the export has the prop positions), yield to / are yielded to by cars at crosswalks, react to the hero (scatter, look up); cars brake / honk for the hero (browser `playerObstacle`).
+4. More than 20 citizen meshes (P2 pipeline) or per-look normal / detail variation; the seam-crack skinning issue of the crowd rig noted in P2's handoff was not re-checked here.
+5. Night: headlights / taillights / lit windows through `MPC_City NightK` are wired but not captured (round 01 is golden hour only); the taxi topper and bus screens glow at night.
+6. Lane changes, parked-car pull-outs, buses at stops, bicycles, the Broadway diagonals beyond the 2 short links in the region.
+7. Perf: instance culling per LOD distance, VSM caching flags for the parked instances, skeletal LODs / URO for the crowd.
+8. Integration: add `Life_Actors` to the Manhattan maps (see above); the map keeps the default game mode.
+
 ## Gotchas learned
 
 1. **Stale module manifest**: while other agents' editors of this engine run, UBT links `libUnrealEditor-WebHomage-000N.dylib` but sometimes leaves `UnrealEditor.modules` on the old name; the commandlet then dies with "game module WebHomage could not be found". `tools/life/build_cpp.sh` re-points the manifest to the newest dylib.

@@ -176,6 +176,7 @@ void AWHLifeTraffic::BuildComponents()
 			C->SetCanEverAffectNavigation(false);
 			C->SetGenerateOverlapEvents(false);
 			C->SetCastShadow(bCastShadows);
+			C->SetVisibleInRayTracing(bVisibleInRayTracing);
 			C->bAffectDistanceFieldLighting = false;
 			C->NumCustomDataFloats = 4;
 			C->SetCullDistances(FMath::RoundToInt(CullDistance * 0.85f), FMath::RoundToInt(CullDistance));
@@ -243,6 +244,8 @@ void AWHLifeTraffic::BeginPlay()
 {
 	Super::BeginPlay();
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeStats="), StatsInterval);
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeRT"))) bVisibleInRayTracing = true;
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeNoShadow"))) bCastShadows = false;
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeOff")) || FParse::Param(FCommandLine::Get(), TEXT("WHTrafficOff"))) { UE_LOG(LogWHLife, Display, TEXT("[life] traffic disabled by command line")); return; }
 	GlobalRng = 0x9E3779B9u * (uint32)(Seed + 1);
 	ParseLanes();

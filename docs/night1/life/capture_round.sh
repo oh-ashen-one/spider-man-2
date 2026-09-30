@@ -4,7 +4,7 @@
 #   <round>/stills/S1_street_{1080p,4k}.jpg, S2_avenue_{1080p,4k}.jpg   city_shots.json S1 / S2 cameras in /Game/Tests/Life/Life_View_S1|S2, shot at game t = 28 s
 #   <round>/street_clip_1080p60.mp4                                     20 s street-level walk (Life_Street_Clip), fixed 1/60 s steps (-movie), H.264 <= 15 MB
 #   <round>/probe_*.txt                                                 WH_LIFE_* lines (frame counts in the camera frustum, foot-slide watch, sim ms)
-#   <round>/perf_*.json / perf_*.txt                                    GPU-locked frame times, with and without the life actors (A/B)
+#   <round>/perf_*.json / perf_gpu_*.json                               GPU-locked frame times, with and without the life actors (A/B), PERF_TABLE.md
 # usage: docs/night1/life/capture_round.sh <round dir> [warm|stills|clip|perf ...]      (heavy frames: _scratch/life/capture)
 set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
@@ -62,18 +62,9 @@ if has clip; then
 fi
 
 if has perf; then
-  # exclusive lock (waits for GPU < 15 % for 10 s); A = life on, B = -WHLifeOff (no traffic, no crowd): the delta is the cost of the life actors
+  # exclusive lock (waits for GPU < 15 % for 10 s); off = -WHLifeOff (no traffic, no crowd), on = default, rt_on = instances visible to ray tracing (the expensive setting).
+  # Names / labels of the round-01 table: tools/life/perf_table.py. More variants: docs/night1/life/perf_variants.sh
   for RES in 1920x1080 3840x2160; do
-    TAG=$([ "$RES" = 1920x1080 ] && echo 1080p || echo 4k)
-    for MODE in on off; do
-      EXTRA=""; [ "$MODE" = off ] && EXTRA="-WHLifeOff"
-      echo "== perf $RES life=$MODE  GPU $(util) %"
-      rm -rf "$TMP/perf_${TAG}_$MODE"
-      $G perf --label life --json "$ROUND/perf_gpu_${TAG}_$MODE.json" -- "$UE_DIR/Scripts/run_game.sh" "$TMP/perf_${TAG}_$MODE" -map /Game/Tests/Life/Life_View_S1 -res $RES \
-        -perf 22:52 -name perf -timeout 2400 -exec "r.ScreenPercentage $SP" -- -WHLifeStats=10 $EXTRA | tail -4
-      cp "$TMP/perf_${TAG}_$MODE/perf_perf.json" "$ROUND/perf_${TAG}_$MODE.json" 2>/dev/null || cp "$TMP/perf_${TAG}_$MODE/"*perf*.json "$ROUND/perf_${TAG}_$MODE.json" 2>/dev/null
-      grep -E "WH_LIFE|\[life\]|\[crowd\]" "$TMP/perf_${TAG}_$MODE/perf.log" | sed 's/^.*Display: //' > "$ROUND/perf_${TAG}_${MODE}_life.txt"
-      $G summary "$ROUND/perf_gpu_${TAG}_$MODE.json" 2>/dev/null > "$ROUND/perf_gpu_${TAG}_$MODE.txt"
-    done
+    "$HERE/perf_variants.sh" "$ROUND" $RES off:-WHLifeOff on: rt_on:-WHLifeRT
   done
 fi

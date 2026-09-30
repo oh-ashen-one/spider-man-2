@@ -82,6 +82,8 @@ public:
 	/** Cull moving and parked instances beyond this distance (cm). */
 	UPROPERTY(EditAnywhere, Category="Life") float CullDistance = 100000.f;
 	UPROPERTY(EditAnywhere, Category="Life") bool bCastShadows = true;
+	/** Ray tracing (Lumen hardware RT / TLAS) sees the instances. Off by default: moving instances force a TLAS update every frame. */
+	UPROPERTY(EditAnywhere, Category="Life") bool bVisibleInRayTracing = false;
 	/** Simulated signal clock offset (s). */
 	UPROPERTY(EditAnywhere, Category="Life") float SignalOffset = 0.f;
 	/** Tick-time budget log every N seconds (0 = off). */

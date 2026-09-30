@@ -70,6 +70,8 @@ public:
 	UPROPERTY(EditAnywhere, Category="Life") float SpeedMax = 135.f;
 	UPROPERTY(EditAnywhere, Category="Life") float SidewalkZ = 15.f;
 	UPROPERTY(EditAnywhere, Category="Life") bool bCastShadows = true;
+	/** Ray tracing (Lumen hardware RT) sees the walkers. Off by default: skinned meshes need a BLAS refit per frame. */
+	UPROPERTY(EditAnywhere, Category="Life") bool bVisibleInRayTracing = false;
 	UPROPERTY(EditAnywhere, Category="Life") float StatsInterval = 0.f;
 	/** Fixed camera for the live set (test rigs); ignored if zero. */
 	UPROPERTY(EditAnywhere, Category="Life") FVector FocusOverride = FVector::ZeroVector;

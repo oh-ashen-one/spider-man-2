@@ -24,11 +24,11 @@
 
 1. **Signal heads are not driven.** P1's traffic-light props keep whatever state they were built with; the cars and pedestrians obey the 40 s phase of `props.js` on their own clock.
 2. **People and cars ignore the props and each other across kinds.** Walkers pass through P1's street furniture (benches, trash cans, planter boxes in the S1 still, left sidewalk) and through each other's lanes at corners; cars do not yield to people on crosswalks and do not react to the hero.
-3. **Identical looks still occur now and then** in 4K frames (0-1 pairs per frame with 60 looks; the mesh alone repeats). Only 20 citizen meshes exist; the outfit variants are recolours of the same atlas tiles (hue-shifted clothes, some hi-vis vests turn green / purple).
-4. **Foot planting** is by construction (ground speed = animation speed) and measured with the ankle bone only: per-walker median stance displacement 12-41 cm (heel-to-toe roll is ~20-25 cm), 2-3 % of individual stances travel more than 45 cm (turns at corners, speed changes at crosswalks). No toe bone, so a sole-level slide is not measured.
+3. **Identical looks** (same mesh AND outfit) were 0 in every probe report of these runs, but the assignment only avoids them among on-screen walkers at the moment of assignment / re-assignment (farther walker of a pair, >= 30 m), so a brief twin pair can appear. The mesh alone repeats often: only 20 citizen meshes exist; the outfit variants are recolours of the same atlas tiles (hue-shifted clothes, some hi-vis vests turn green / purple).
+4. **Foot planting** is by construction (ground speed = animation speed) and measured with the ankle bone only: per-walker median stance displacement 12-21 cm at 4K (heel-to-toe roll is ~20-25 cm), 2-4 % of individual stances travel more than 45 cm (turns at corners, speed changes at crosswalks). No toe bone, so a sole-level slide is not measured.
 5. **Vehicle interiors** (driver and passengers) are photographic cards seen through dark glass; the wheels do not rotate (the browser models have static wheels).
 6. **Region only**: the Midtown 3x3 block (x -262..514 m, z -512..256 m); cars appear at and disappear into the region edges; Broadway has 2 short links in the region; no water, no boats, no pigeons / fauna yet.
-7. **Cost**: parked cars and the crowd cast virtual shadow map shadows; moving instances update every frame. See the perf files for the measured price.
+7. **Cost / ray tracing**: the vehicle instances and the walkers are invisible to ray tracing (that setting made the first build cost +14 ms GPU), so they do not appear in Lumen reflections or GI. See `PERF_TABLE.md`.
 8. **Camera in the road**: the P1 S1 camera stands in a traffic lane, so cars pass through the camera position now and then (a car may fill the frame, as in the S1 stills).
 
 ## Counting method
