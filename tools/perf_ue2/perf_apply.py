@@ -20,8 +20,8 @@
 #                 Sets visible_in_ray_tracing on every City/Props component explicitly, so it also undoes a previous rt_lite run.
 #   tree_rt_opaque (round 04) the leaf meshes' sections are flagged force_opaque (ray tracing only: no any-hit shader for the alpha-masked leaf cards; the raster
 #                 passes keep the alpha mask). Measured as r.RayTracing.DebugForceOpaque in round-04 session y; this is the per-asset form of it.
-#                 Env SM2_PERF_OPAQUE_SKIP (default '_l0_'): leaf meshes whose ISM label contains it stay alpha-masked (the LOD0 street trees next to the
-#                 street-level cameras, where opaque cards over-darken the canopy in the round-02 S1 crop); '' = every leaf mesh opaque. Not undone by a re-run.
+#                 Env SM2_PERF_OPAQUE_SKIP (default '' = every leaf mesh opaque): leaf meshes whose ISM label contains it stay alpha-masked; '_l0_' keeps the LOD0
+#                 street trees next to the street-level cameras masked (closer S1 canopy, but +0.6 ms p50 / +0.9 ms p95: session z1 ship_a vs ship_op). Not undone by a re-run.
 # `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
 import unreal, json, os, time
 
@@ -32,7 +32,7 @@ RIGS = [x for x in os.environ.get('SM2_PERF_RIGS', 'golden,midday,night').split(
 LOG = os.environ.get('SM2_PERF_APPLY_LOG', '/Users/midir/sm2-n1/_scratch/perf/apply.json')
 GEO = os.environ.get('SM2_PERF_GEO', '/Game/Tests/City/City_Midtown_Geo')
 DRAW = float(os.environ.get('SM2_PERF_DRAWDIST', '250000'))
-OPQ_SKIP = os.environ.get('SM2_PERF_OPAQUE_SKIP', '_l0_')   # tree_rt_opaque leaves these leaf meshes alpha-masked in ray tracing (default: the near-LOD street trees, LOD0 pools)
+OPQ_SKIP = os.environ.get('SM2_PERF_OPAQUE_SKIP', '')   # tree_rt_opaque leaves leaf meshes whose ISM label contains this alpha-masked in ray tracing ('' = none; '_l0_' = the near-LOD street trees: +0.6 / +0.9 ms, session z1)
 EAL = unreal.EditorAssetLibrary
 eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
