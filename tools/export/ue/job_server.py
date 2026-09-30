@@ -3,7 +3,7 @@
 # the exception (if any) go to <job>.out / <job>.done. File based -> only this editor ever sees these jobs.
 import unreal, os, sys, io, time, traceback, glob
 
-JOBS = os.environ.get('SM2_CITY_JOBS', '/Users/midir/sm2-n1/_scratch/city/uejobs')
+JOBS = os.environ.get('SM2_CITY_JOBS', os.path.join(os.environ.get('SM2_CITY_SCRATCH', '/Users/midir/sm2-n1/_scratch/city'), 'uejobs'))
 os.makedirs(JOBS, exist_ok=True)
 _last = [0.0]
 
