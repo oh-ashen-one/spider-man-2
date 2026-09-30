@@ -68,10 +68,10 @@ def load(p): return unreal.load_asset(p)
 if 'prep' in STEPS:
     subprocess.run(['python3', WT + '/tools/ue_char/prep_glbs.py'], check=True, capture_output=True, env=_ENV)
     subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_hand_fix.py'], check=True, capture_output=True, env=_ENV)
-    # round 05: hero suit quality (smooth panel borders, raised thread normal / orm, twill detail) + domed lens in the UE-only hero GLB
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r5.py'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r5.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    # round 08: the ORIGINAL hero suit (Tessera: procedural base colour / normal / orm on the hero UV atlas, tools/ue_char/suit8) and the rebuilt eyes (one closed
+    # bezel ring sealed to a lens conformed to the mask) in the UE-only hero GLB; replaces the round-05 browser-suit quality pass (hero_hand_fix / hero_suit_r5 / hero_lens_r5)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r8.py'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r8.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
     subprocess.run(['python3', WT + '/tools/ue_char/eval/underlayer.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
@@ -123,10 +123,13 @@ if 'tex' in STEPS:
     H = ART + '/hero/tex'; TH = ART + '/thug/tex'
     # round 04: hand white paint inpainted (tools/ue_char/hero_hand_fix.py, run in 'prep'); falls back to the extracted texture
     # round 05: r5 maps (smooth panel borders, raised threads, glossy crests) when tools/ue_char/hero_suit_r5.py has run
+    # round 08: the original Tessera suit maps (hero_suit_r8.py) when present, else the round-05 maps
+    r8 = os.path.exists(H + '/suit_basecolor_r8.png')
     r5 = os.path.exists(H + '/suit_basecolor_r5.png')
-    import_tex(H + ('/suit_basecolor_r5.png' if r5 else '/suit_basecolor_r4.png' if os.path.exists(H + '/suit_basecolor_r4.png') else '/suit_basecolor.png'), ROOT + '/Hero/Textures', 'T_Hero_BaseColor', 'srgb')
-    import_tex(H + ('/suit_normal_r5.png' if r5 else '/suit_normal.png'), ROOT + '/Hero/Textures', 'T_Hero_Normal', 'normal_gl')   # glTF = OpenGL (curl test)
-    import_tex(H + ('/suit_orm_r5.png' if r5 else '/suit_orm.png'), ROOT + '/Hero/Textures', 'T_Hero_ORM', 'linear')
+    sfx = '_r8' if r8 else '_r5' if r5 else ''
+    import_tex(H + ('/suit_basecolor%s.png' % sfx if sfx else '/suit_basecolor.png'), ROOT + '/Hero/Textures', 'T_Hero_BaseColor', 'srgb')
+    import_tex(H + ('/suit_normal%s.png' % sfx if sfx else '/suit_normal.png'), ROOT + '/Hero/Textures', 'T_Hero_Normal', 'normal_gl')   # glTF = OpenGL (curl test)
+    import_tex(H + ('/suit_orm%s.png' % sfx if sfx else '/suit_orm.png'), ROOT + '/Hero/Textures', 'T_Hero_ORM', 'linear')
     if os.path.exists(ART + '/shared/suit_twill_n.png'):
         import_tex(ART + '/shared/suit_twill_n.png', ROOT + '/Shared/Textures', 'T_Fabric_Twill_N', 'normal_gl')   # fine 2/2 twill (0.45 mm yarn), OpenGL
     # fabric micro-normal (browser detail maps; curl test says DirectX convention -> no flip)
@@ -331,7 +334,7 @@ if 'mat' in STEPS:
     # round 05: the chunky knit (tiling 48 = 3 mm ribs) is replaced by a fine twill: 32 yarns per tile, 0.45 mm per yarn -> tiling 122 from the
     # mesh's UV density (0.569 UV units per metre, tools/ue_char/hero_suit_r5.py)
     _fine = EAL.does_asset_exist(ROOT + '/Shared/Textures/T_Fabric_Twill_N')
-    _hj = ART + '/hero/tex/suit_r5.json'
+    _hj = ART + ('/hero/tex/suit_r8.json' if os.path.exists(ART + '/hero/tex/suit_r8.json') else '/hero/tex/suit_r5.json')
     _tile = float(_json0.load(open(_hj))['detail_tiling']) if (_fine and os.path.exists(_hj)) else 48.0
     mi('MI_Hero_Suit', ROOT + '/Hero/Materials', suit,
        tex={'BaseColor': ROOT + '/Hero/Textures/T_Hero_BaseColor', 'ORM': ROOT + '/Hero/Textures/T_Hero_ORM',
@@ -340,12 +343,12 @@ if 'mat' in STEPS:
        scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.55, 'Specular': 0.6}, switches={'HasORM': True})
     try:   # round 04: glossy lens with a grazing-angle falloff; the old simple lens stays as the fallback
         hlens = build_hero_lens()
-        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.6, 'Emissive': 0.02}, vec={'Color': (0.64, 0.66, 0.70, 1)})   # round 05: domed lens (hero_lens_r5.py) - darker base so the sky / sun reflections read as highlights
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.86, 0.44, 0.06, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
         log('hero lens: glossy + fresnel falloff')
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.35}, vec={'Color': (0.02, 0.02, 0.025, 1)})
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.28, 'Specular': 0.6}, vec={'Color': (0.016, 0.026, 0.03, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
