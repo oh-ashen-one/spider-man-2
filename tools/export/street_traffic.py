@@ -2,7 +2,7 @@
 """Stopped / slow avenue traffic for the City test maps (round 08; CITY-SPEC C6: 'avenue seen from swing height: vehicles median 14-22 per frame').
 
 Parked cars alone put ~10 detectable vehicles into the S2 swing view (the first 80 m of the avenue are below the frame), so the four travel lanes carry cars too:
-per lane and block a queue at the stop line (0-3 cars, the red-light platoon the browser's signals produce: stop lines at zA + 4.6 northbound (east half) and zB - 4.6
+per lane and block a queue at the stop line (0-3 cars, mean 0.9, the red-light platoon the browser's signals produce: stop lines at zA + 4.6 northbound (east half) and zB - 4.6
 southbound (west half), ground.js) and sparse free-flow cars behind it. The cars stand still (there is no simulation in the City test maps; P6 owns the moving traffic
 and pedestrians: build_city.py puts these cars into their OWN actors under the World Outliner folder City/Traffic so the integrated map can hide or delete them).
 Same models, paint mix and item format as street_cars.py. Lane centres +-1.8 / +-5.4 m (Park Av, shifted around its median: +-3.7 / +-7.1). Cars keep clear of the lane-closure
@@ -61,7 +61,7 @@ for ax, z0, z1 in blocks:
             direction = -1.0 if side < 0 else 1.0                             # z direction from the stop line back into the block (southbound queue extends to smaller z)
             # queue length by hash: 0..4
             u = hrand(ax, z0, side * 7 + li)
-            kq = 0 if u < 0.32 else 1 if u < 0.66 else 2 if u < 0.88 else 3
+            kq = 0 if u < 0.4 else 1 if u < 0.75 else 2 if u < 0.93 else 3
             placed = []                                                       # (z centre, half length)
             frontz = stop
             def add(kind, zc_front):
@@ -94,7 +94,7 @@ for ax, z0, z1 in blocks:
                 ln = veh[kind]['len']
                 zc = frontz + direction * ln / 2
                 if zc - ln / 2 < z0 + 6 or zc + ln / 2 > z1 - 6: break
-                if hrand(ax, frontz, li + side) < 0.85 and add(kind, frontz): cnt_b += 1
+                if hrand(ax, frontz, li + side) < 0.6 and add(kind, frontz): cnt_b += 1
                 frontz += direction * (ln + 12.0 + hrand(ax, frontz, 5) * 26.0)
     per_block.append(cnt_b)
 json.dump(out, open(EXP + 'streettraffic.json', 'w'))

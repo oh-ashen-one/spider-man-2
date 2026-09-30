@@ -177,7 +177,7 @@ WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 # (r03) ez-tree leaf cards (eztrees.js): leaf-shaped alpha, green albedo from the leaf texture, per-leaf crown exposure
 # (aLeafE.x in UV1: 0 deep inside .. 1 outer sun-side shell), two-sided foliage shading: light passes through the leaves
 # (r08) the alpha of the leaf texture loses coverage in its mips: beyond ~25 m every card was discarded and the street trees of S2 / S8 read as bare branches (the browser
-# switches to crown clumps there, the Unreal port only has these cards). The alpha cut is lowered with distance (0 at 25 m .. 0.55 at 80 m): cards fill up, the canopy stays a green mass.
+# switches to crown clumps there, the Unreal port only has these cards). The alpha cut is lowered with distance (0 at 25 m .. 0.55 at 80 m): cards fill up, the canopy stays a green mass (its colour and translucency fall off with the same factor: a lit opaque canopy glowed mint-green at the end of the avenue).
 def make_leaves():
     make_material('M_CityLeaves', None, '''
 float4 t = Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y));
@@ -185,7 +185,9 @@ float e = saturate(uv1.x);
 float3 c = min(t.rgb * Tint.rgb * lerp(2.1, 3.0, e), 0.6);
 float dst = length(wpos - cam) * 0.01;
 float boost = saturate((dst - 25.0) / 55.0) * 0.55;
-Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2); Rough = 0.7;
+float far = boost / 0.55;
+c *= lerp(1.0, 0.55, far);
+Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
 return c;''',
         [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1)), ('wpos', 'wpos', None), ('cam', 'cam', None)],
         [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
