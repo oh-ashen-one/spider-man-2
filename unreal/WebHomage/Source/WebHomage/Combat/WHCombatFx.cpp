@@ -105,12 +105,13 @@ int32 FWHCombatFx::LiveCount() const
 	int32 N = 0; for (const FWHFxItem& It : Items) N += It.bLive ? 1 : 0; return N;
 }
 
-void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color)
+void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
 {
 	// r02: a small additive spark burst (critic r01: the opaque white disc covered the contact). Real-time life of 6 frames at 60 fps:
 	// static for the first 4 (the hit-stop freeze), then the streaks fly out and everything is gone by frame 6. Core <= ~0.2 m.
 	const FLinearColor C = Color ? *Color * 0.8f : FLinearColor(4.0f, 2.8f, 1.3f);
-	const double Life = 0.1, Hold = 0.066;
+	// static for the whole hit-stop (the spawn tick + HoldFrames frozen ticks + 0.5), then they fly for ~4 more frames
+	const double Hold = (HoldFrames + 1.5) / 60.0, Life = Hold + 0.07;
 	{
 		FWHFxItem& F = Alloc(EWHFxMat::Glow, Sphere);
 		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;

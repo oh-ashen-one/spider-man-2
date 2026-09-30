@@ -79,18 +79,21 @@ for e in ev:
         contacts.append((e['rt'], 'hero', s.split(' dmg')[0].replace('hero hit by ', '') + ' ->hero'))
 cres = []
 for rt, tag, label in contacts:
-    fc = frame_at(rt); vc = v_of(fc)
-    if vc + 8 >= NV or vc < 2 or fc not in byf: continue
+    fc = frame_at(rt); vc0 = v_of(fc)
+    if vc0 + 12 >= NV or vc0 < 3 or fc not in byf: continue
     r = byf[fc]; cb = crop_box(r, tag)
     if not cb: cres.append(dict(rt=rt, label=label, note='victim off screen')); continue
     X0, Y0, X1, Y1 = cb
-    seq = [float(np.abs(V[v, Y0:Y1, X0:X1] - V[v - 1, Y0:Y1, X0:X1]).mean()) for v in range(vc + 1, vc + 9)]
+    cdiff = lambda v: float(np.abs(V[v, Y0:Y1, X0:X1] - V[v - 1, Y0:Y1, X0:X1]).mean())
+    # the contact frame = the frame (within -1 .. +3 of the calibrated one) where the victim crop changes most: the flinch appears there
+    vc = max(range(vc0 - 1, vc0 + 4), key=cdiff)
+    seq = [cdiff(v) for v in range(vc + 1, vc + 9)]
     run = 0; best_run = 0
-    for x in seq:
+    for x in seq[:6]:
         run = run + 1 if x < 1.0 else 0; best_run = max(best_run, run)
-    flinch = float(np.abs(V[vc, Y0:Y1, X0:X1] - V[vc - 1, Y0:Y1, X0:X1]).mean())
+    flinch = cdiff(vc)
     p0 = epos(r, tag); f5 = fc + 30
-    push = float(np.linalg.norm((epos(byf[f5], tag) - p0)[:2])) if f5 in byf and p0 is not None and epos(byf[f5], tag) is not None else None
+    push = float(np.linalg.norm(epos(byf[f5], tag) - p0)) if f5 in byf and p0 is not None and epos(byf[f5], tag) is not None else None   # 3D: a launched victim rises
     newwhite = lambda v: float(((V[v] - V[vc - 1] > 45) & (V[v] > 200)).mean())
     cres.append(dict(rt=round(rt, 3), label=label, frame=vc, crop=[X0, Y0, X1, Y1], diffs=[round(x, 2) for x in seq], frozen_run=best_run,
                      flinch_diff=round(flinch, 2), push_m=None if push is None else round(push, 2),
@@ -153,7 +156,7 @@ md = ['# P5 combat r02: measurements (`measure_r02.py`)', '',
       f'(calibrated: mean whole-frame diff over frozen sim frames {best[1]:.2f}). Measured window: fight start {t0:.2f} s + 0.5 s to the end ({N} frames).', '',
       '## Summary', '', '| test (critic r01) | target | measured |', '|---|---|---|',
       f'| contacts with victim-crop diff < 1.0 for >= 3 frames | every contact | {res["contacts_frozen_ge3"]} / {res["contacts"]} |',
-      f'| hero blows: victim displaced >= 0.3 m within 0.5 s | every contact | {res["contacts_push_ge_0_3"]} / {res["hero_contacts"]} |',
+      f'| hero blows: victim root displaced >= 0.3 m (3D) within 0.5 s | every contact | {res["contacts_push_ge_0_3"]} / {res["hero_contacts"]} |',
       f'| spark: new near-white area in the contact frame | <= 3 % | max {res["spark_area_max_pct"]} % |',
       f'| spark: still near-white 6 frames later | ~0 | max {res["spark_area_f6_max_pct"]} % |',
       f'| longest gap between attack starts | <= 1.0 s | {res["max_attack_gap_s"]} s ({res["attack_starts"]} starts; first {res["first_attack_after_start_s"]} s after fight start) |',

@@ -45,7 +45,7 @@ public:
 	void Clear();
 
 	/** Impact: flash + sparks (+ ring when heavy). P, Dir in metres; Dir = direction the sparks fly (away from the blow). */
-	void Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color = nullptr);
+	void Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color = nullptr, int32 HoldFrames = 4);
 	void Dust(const FVector& P, double Amount);
 	/** Web line between two moving points for Life s (fades over the last Fade s). Returns a handle (tag). */
 	int32 Strand(TFunction<FVector()> A, TFunction<FVector()> B, double Life, double Sag = 0.05, double Fade = 0.1);

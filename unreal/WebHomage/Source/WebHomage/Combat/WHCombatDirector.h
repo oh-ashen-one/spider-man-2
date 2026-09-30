@@ -133,7 +133,7 @@ public:
 	void HitStop(int32 Frames, double Scale = 0.002);
 	/** True while a hit-stop freeze is active (the combat camera holds still, FX timers pause). */
 	bool Frozen() const { return bHitStop; }
-	bool bHitStop = false;
+	bool bHitStop = false, bDtFrozen = false;
 	void Slowmo(double Dur, double Scale = 0.3, double Ease = 0.25);
 	void Banner(const FString& S) { LogEvent(TEXT("banner ") + S); }
 
@@ -190,6 +190,7 @@ private:
 	void SpawnEnemy(TCHAR Ch, const FVector& FeetM);
 	void Reinforce(double Dt);
 	void FrameRecord();
+	void ApplyLook(const FString& Spec);
 	void Separate();
 	void LoadScript(const FString& Path);
 	void RunBeats();

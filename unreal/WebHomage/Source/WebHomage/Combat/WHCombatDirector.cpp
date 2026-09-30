@@ -8,6 +8,18 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "EngineUtils.h"
+#include "Engine/DirectionalLight.h"
+#include "Engine/ExponentialHeightFog.h"
+#include "Engine/PointLight.h"
+#include "Engine/PostProcessVolume.h"
+#include "Engine/RectLight.h"
+#include "Engine/SkyLight.h"
+#include "Components/DirectionalLightComponent.h"
+#include "Components/ExponentialHeightFogComponent.h"
+#include "Components/PointLightComponent.h"
+#include "Components/RectLightComponent.h"
+#include "Components/SkyLightComponent.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -59,6 +71,7 @@ void AWHCombatDirector::Init(AWHCombatHero* InHero)
 	FParse::Value(Cmd, TEXT("WHCmbDist="), FightDist);
 	FParse::Value(Cmd, TEXT("WHCmbQuit="), QuitAt);
 	FParse::Value(Cmd, TEXT("WHCmbShotName="), ShotName);
+	{ FString LookSpec; if (FParse::Value(Cmd, TEXT("WHCmbLook="), LookSpec, false) && !LookSpec.IsEmpty()) ApplyLook(LookSpec); }
 	FString ShotList;
 	if (FParse::Value(Cmd, TEXT("WHCmbShots="), ShotList, false))
 	{
@@ -72,6 +85,46 @@ void AWHCombatDirector::Init(AWHCombatHero* InHero)
 	if (!ScriptPath.IsEmpty()) LoadScript(ScriptPath);
 	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB director ready: script=%s fight=%s beats=%d shots=%d quit=%.1f out=%s"),
 		*ScriptPath, *FightSpec, Beats.Num(), ShotTimes.Num(), QuitAt, *OutDir);
+}
+
+// r02 look presets without rebuilding the map: -WHCmbLook="sunI=9,sunR=255,sunG=190,sunB=130,sunPitch=-11,sunYaw=180,skyI=1,expBias=0,fogD=0.004,..."
+// Keys: sunI sunR sunG sunB sunPitch sunYaw | skyI | expBias expMin expMax | fogD fogR fogG fogB | lampI | fillI | sat contrast vig. Only the keys given are changed.
+void AWHCombatDirector::ApplyLook(const FString& Spec)
+{
+	TMap<FString, double> K;
+	TArray<FString> Parts; Spec.ParseIntoArray(Parts, TEXT(","));
+	for (const FString& P : Parts) { FString A, B; if (P.Split(TEXT("="), &A, &B)) K.Add(A.TrimStartAndEnd(), FCString::Atod(*B)); }
+	auto Has = [&K](const TCHAR* Key) { return K.Contains(Key); };
+	auto G = [&K](const TCHAR* Key, double Def) { const double* V = K.Find(Key); return V ? *V : Def; };
+	UWorld* W = GetWorld(); if (!W) return;
+	for (TActorIterator<ADirectionalLight> It(W); It; ++It)
+	{
+		UDirectionalLightComponent* C = Cast<UDirectionalLightComponent>(It->GetLightComponent()); if (!C) continue;
+		if (Has(TEXT("sunI"))) C->SetIntensity(float(G(TEXT("sunI"), 6)));
+		if (Has(TEXT("sunR")) || Has(TEXT("sunG")) || Has(TEXT("sunB"))) C->SetLightColor(FLinearColor(float(G(TEXT("sunR"), 255) / 255.0), float(G(TEXT("sunG"), 255) / 255.0), float(G(TEXT("sunB"), 255) / 255.0)));
+		if (Has(TEXT("sunPitch")) || Has(TEXT("sunYaw"))) It->SetActorRotation(FRotator(G(TEXT("sunPitch"), -7), G(TEXT("sunYaw"), 128), 0));
+	}
+	for (TActorIterator<ASkyLight> It(W); It; ++It)
+		if (USkyLightComponent* C = It->GetLightComponent()) { if (Has(TEXT("skyI"))) C->SetIntensity(float(G(TEXT("skyI"), 1))); C->RecaptureSky(); }
+	for (TActorIterator<AExponentialHeightFog> It(W); It; ++It)
+		if (UExponentialHeightFogComponent* C = It->GetComponent())
+		{
+			if (Has(TEXT("fogD"))) C->SetFogDensity(float(G(TEXT("fogD"), 0.006)));
+			if (Has(TEXT("fogR")) || Has(TEXT("fogG")) || Has(TEXT("fogB"))) C->SetFogInscatteringColor(FLinearColor(float(G(TEXT("fogR"), 0.08)), float(G(TEXT("fogG"), 0.07)), float(G(TEXT("fogB"), 0.09))));
+		}
+	for (TActorIterator<APostProcessVolume> It(W); It; ++It)
+	{
+		FPostProcessSettings& S = It->Settings;
+		if (Has(TEXT("expBias"))) { S.bOverride_AutoExposureBias = true; S.AutoExposureBias = float(G(TEXT("expBias"), 0)); }
+		if (Has(TEXT("expMin"))) { S.bOverride_AutoExposureMinBrightness = true; S.AutoExposureMinBrightness = float(G(TEXT("expMin"), 0.03)); }
+		if (Has(TEXT("expMax"))) { S.bOverride_AutoExposureMaxBrightness = true; S.AutoExposureMaxBrightness = float(G(TEXT("expMax"), 8)); }
+		if (Has(TEXT("sat"))) { S.bOverride_ColorSaturation = true; const float V = float(G(TEXT("sat"), 1)); S.ColorSaturation = FVector4(V, V, V, 1); }
+		if (Has(TEXT("contrast"))) { S.bOverride_ColorContrast = true; const float V = float(G(TEXT("contrast"), 1)); S.ColorContrast = FVector4(V, V, V, V); }
+		if (Has(TEXT("vig"))) { S.bOverride_VignetteIntensity = true; S.VignetteIntensity = float(G(TEXT("vig"), 0.4)); }
+	}
+	if (Has(TEXT("lampI"))) for (TActorIterator<APointLight> It(W); It; ++It) if (UPointLightComponent* C = Cast<UPointLightComponent>(It->GetLightComponent())) C->SetIntensity(float(G(TEXT("lampI"), 9000)));
+	if (Has(TEXT("fillI"))) for (TActorIterator<ARectLight> It(W); It; ++It) if (URectLightComponent* C = Cast<URectLightComponent>(It->GetLightComponent())) C->SetIntensity(float(G(TEXT("fillI"), 40)));
+	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB look override: %s"), *Spec);
 }
 
 // ------------------------------------------------------------------------------------------------ script
@@ -401,9 +454,11 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 	if (!H.bSilent)
 	{
 		const FLinearColor Arm(3.f, 3.f, 3.4f);
-		Fx.Hit(Cp, -D, Heavy, R.bArmored ? &Arm : nullptr);
-		// r02: a true freeze of hero + victim (3-5 frames at 60 fps); the victim's flinch pose is already in the contact frame
-		if (H.Kind == "finisher") HitStop(6); else if (Heavy > 0.5) HitStop(5); else HitStop(4);
+		// r02: a true freeze of hero + victim: 5 / 6 / 7 frames at 60 fps (the first 1-2 frames after the flinch are lost to the temporal
+		// AA settling: the critic's test needs >= 3 stable frames). The sparks hold the same time.
+		const int32 Fr = H.Kind == "finisher" ? 7 : Heavy > 0.5 ? 6 : 5;
+		Fx.Hit(Cp, -D, Heavy, R.bArmored ? &Arm : nullptr, Fr);
+		HitStop(Fr);
 		if (H.Kind == "finisher")
 		{ // finisher beat: freeze, then x0.25 slow-mo while the victim flies, the close-up camera holds 1.4 s past the blow
 			Slowmo(1.1, 0.25, 0.5); Shake(0.35); Impact(0.4);
@@ -422,7 +477,7 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 
 void AWHCombatDirector::GroundPound(const FVector& P)
 {
-	Fx.Dust(P, 1.4); Shake(0.35); Impact(0.35);
+	Fx.Dust(P, 1.4); Shake(0.35); Impact(0.35); HitStop(6);
 	for (AWHEnemy* E : Enemies)
 		if (E && E->Alive() && E->State != EWHEnemyState::Air && HDist(E->Pos, P) < 2.8)
 		{ FWHPlayerHit H; H.Kind = "ender"; H.Dmg = 8; H.Heavy = 0.4; H.Reach = 3.2; H.bSilent = true; PlayerHit(E, H); }
@@ -477,8 +532,8 @@ void AWHCombatDirector::EnemyStrike(AWHEnemy* E)
 	Me->TakeHit(E, Dmg, bHeavy);
 	if (HeroMinHp > 0) Me->Hp = FMath::Max(Me->Hp, HeroMinHp);
 	const FLinearColor Col(5, 2, 1.5);
-	Fx.Hit(Me->Pos + FVector(0, 0, 0.5), FlatNorm(Pf - E->Pos), bHeavy ? 0.6 : 0.2, &Col);
-	HitStop(bHeavy ? 5 : 4); Shake(bHeavy ? 0.3 : 0.16); if (bHeavy) Impact(0.25);
+	Fx.Hit(Me->Pos + FVector(0, 0, 0.5), FlatNorm(Pf - E->Pos), bHeavy ? 0.6 : 0.2, &Col, bHeavy ? 6 : 5);
+	HitStop(bHeavy ? 6 : 5); Shake(bHeavy ? 0.3 : 0.16); if (bHeavy) Impact(0.25);
 	ComboN = 0; ++NEnemyHits; DamageTaken += Dmg;
 	LogEvent(FString::Printf(TEXT("hero hit by %s %s dmg %.0f hp %.0f%s"), *E->Tag(), *E->Atk.ToString(), Dmg, Me->Hp, bHeavy ? TEXT(" HEAVY") : TEXT("")));
 }
@@ -741,6 +796,11 @@ void AWHCombatDirector::Separate()
 		const FVector Pf = PlayerFeet;
 		const double Dx = A->Pos.X - Pf.X, Dy = A->Pos.Y - Pf.Y, D = FMath::Sqrt(Dx * Dx + Dy * Dy), Mn = 0.8 * A->T.Scale;
 		if (D < Mn && D > 1e-4 && FMath::Abs(A->Pos.Z - Pf.Z) < 1) A->MoveXZ(Dx / D * (Mn - D), Dy / D * (Mn - D));
+		if (bCamLast && CamW > 0.5)
+		{ // r02: nobody stands at the lens (a foreground body fills a quarter of the frame): keep a 3.2 m bubble around the camera
+			const double Cx = A->Pos.X - CamPosM.X, Cy = A->Pos.Y - CamPosM.Y, Cd = FMath::Sqrt(Cx * Cx + Cy * Cy);
+			if (Cd < 3.2 && Cd > 1e-3) A->MoveXZ(Cx / Cd * (3.2 - Cd) * 0.35, Cy / Cd * (3.2 - Cd) * 0.35);
+		}
 	}
 }
 
@@ -831,7 +891,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	double NearD = 1e9;
 	for (AWHEnemy* E : Enemies) if (E && E->Alive()) NearD = FMath::Min(NearD, HDist(E->Pos, Pc));
 	const double Want = bFight && bEngaged && NearD < 16 ? 1 : 0;
-	if (Frozen() && bCamLast && CamW > 0.5)
+	if (bDtFrozen && bCamLast && CamW > 0.5)
 	{
 		Cam->SetWorldLocationAndRotation(LastCamPos * 100.0, LastCamRot); Cam->SetFieldOfView(LastFov);
 		CamPosM = LastCamPos; CamRotF = LastCamRot; CamFovF = LastFov;
@@ -883,7 +943,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		for (AWHEnemy* E : Enemies)
 		{
 			if (!E || E->State == EWHEnemyState::Out || E->Stuck) continue;
-			const double Dh = HDist(E->Pos, Cp); if (Dh < 2.6) C += (2.6 - Dh) * 4;
+			const double Dh = HDist(E->Pos, Cp); if (Dh < 3.6) C += (3.6 - Dh) * 4;
 			const FVector Ec = E->Pos + FVector(0, 0, 1.0 * E->T.Scale);
 			const FVector Q = FMath::ClosestPointOnSegment(Ec, Cp, Pc);
 			if (FVector::Dist(Q, Ec) < 0.6 && FVector::Dist(Q, Pc) > 0.5) C += 3;
@@ -908,7 +968,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	if (W > 0.002)
 	{
 		double BestY = CYawGoal, BestS = Score(CYawGoal, CDist);
-		for (int32 k = -7; k <= 7; ++k)
+		if (!CineS.bOn) for (int32 k = -7; k <= 7; ++k)   // (paused during the finisher beat: it orbits from the current yaw)
 		{
 			const double Y = CYaw + k * 0.17; const double S = Score(Y, CDist);
 			if (S < BestS - 0.4) { BestS = S; BestY = Y; }
@@ -945,12 +1005,12 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		if (CineS.T > CineS.Dur || !T) { CineS.bOn = false; CineK = 0; }
 		else
 		{
-			CineK = Smooth(CineS.T / 0.45) * (1 - Smooth((CineS.T - (CineS.Dur - 0.6)) / 0.6));
+			CineK = Smooth(CineS.T / 0.7) * (1 - Smooth((CineS.T - (CineS.Dur - 0.8)) / 0.8));
 			const FVector Tp = T->Chest();
 			if (!CineS.bSide)
 			{ // orbit side chosen once: the candidate with no wall or other body between the lens and hero / victim
 				double Bs = 1e18;
-				for (double Off : { 0.5, -0.5, 0.3, -0.3, 0.0 })
+				for (double Off : { 0.32, -0.32, 0.18, -0.18, 0.0 })
 				{
 					const double Y = CYaw + Off;
 					const FVector Mid0 = (Pc + Tp) * 0.5;
@@ -972,14 +1032,14 @@ void AWHCombatDirector::CombatCamera(double RDt)
 			const FVector Mid = (Pc + Tp) * 0.5;
 			const FVector Foc = Focus + (Mid - Focus) * (0.6 * K);
 			const double Yw = CYaw + CineS.SideYaw * K;
-			const double Pt = FMath::Lerp(CPitch, 12.0, K);
-			const double Dst = FMath::Max(3.3, CDist - 1.6 * K);
+			const double Pt = FMath::Lerp(CPitch, 14.0, K);
+			const double Dst = FMath::Max(3.4, CDist - 1.3 * K);
 			CamR = FRotator(-Pt, FMath::RadiansToDegrees(Yw), 0);
 			CamP = Foc - CamR.Vector() * Dst;
 			const FVector Dv = CamP - Foc; FTravHit Hh;
 			if (Raycast(Foc, Dv.GetSafeNormal(), Dv.Size() + 0.3, Hh)) CamP = Foc + Dv.GetSafeNormal() * FMath::Max(2.0, Hh.Distance - 0.3);
 			const double Gy2 = GroundHeight(CamP.X, CamP.Y, CamP.Z + 0.3) + 0.4; if (CamP.Z < Gy2) CamP.Z = Gy2;
-			Fov = FMath::Lerp(Fov, 66.0, K);
+			Fov = FMath::Lerp(Fov, 68.0, K);
 		}
 	}
 	// blend from / to the P3 chase camera
@@ -997,9 +1057,10 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		OutR.Yaw += Tr * 1.3 * FMath::Sin(ShakePh * 0.9 + 1.7);
 		OutR.Roll += Tr * 1.0 * FMath::Sin(ShakePh * 1.1 + 0.4);
 	}
-	{ // hero margin (critic r01: the hero was cut at the frame edge): dolly back along the view axis until his bone box sits inside a 6.5 %
-	  // border. The pull rises at once (in 8 cm steps) and relaxes at 1.2 m/s, so it never jitters.
-		MarginPull = FMath::Max(0.0, MarginPull - RDt * 1.2);
+	{ // hero margin (critic r01: the hero was cut at the frame edge): dolly back along the view axis. A SOFT controller aims at a 10 %
+	  // border (the pull rises at <= 4 m/s and relaxes at 0.8 m/s), and a hard pass (8 cm steps, at once) guarantees 5.5 % even when the
+	  // hero's bones jump (a flip, arms up): a sudden pose change is the only thing that can still pop the camera.
+		MarginPull = FMath::Max(0.0, MarginPull - RDt * 0.8);
 		const FVector Fw = OutR.Vector();
 		auto HeroMargin = [&](double Pull)
 		{
@@ -1007,7 +1068,13 @@ void AWHCombatDirector::CombatCamera(double RDt)
 			if (!ScreenBox(Hero->GetMesh(), OutP - Fw * Pull, OutR, OutFov, X0, Y0, X1, Y1, Dd)) return -1.0;
 			return FMath::Min(FMath::Min(X0, Y0), FMath::Min(1.0 - X1, 1.0 - Y1));
 		};
-		if (bFight && bEngaged) for (int32 It = 0; It < 40 && HeroMargin(MarginPull) < 0.065; ++It) MarginPull += 0.08;
+		if (bFight && bEngaged)
+		{
+			double Need = MarginPull;
+			for (int32 It = 0; It < 40 && HeroMargin(Need) < 0.10; ++It) Need += 0.08;
+			if (Need > MarginPull) MarginPull = FMath::Min(Need, MarginPull + RDt * 4.0);
+			for (int32 It = 0; It < 40 && HeroMargin(MarginPull) < 0.055; ++It) MarginPull += 0.08;
+		}
 		OutP -= Fw * MarginPull;
 	}
 	Cam->SetWorldLocationAndRotation(OutP * 100.0, OutR);
@@ -1023,6 +1090,7 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 	if (!Hero || !Me || !Hero->GetTraversal()) return;
 	const double Dt = FMath::Clamp(double(DeltaSeconds), 0.0, 0.1);
 	const double RDt = FMath::Clamp(double(GetWorld()->DeltaRealTimeSeconds), 0.0, 0.1);
+	bDtFrozen = bHitStop;   // the dilation applied to THIS tick's dt was set by the previous tick's UpdateTime
 	Time += Dt; RTime += RDt; ++Frame;
 	if (TimeScale < 0.999) { SlowmoGameT += Dt; SlowmoRealT += RDt; }
 	RunBeats();

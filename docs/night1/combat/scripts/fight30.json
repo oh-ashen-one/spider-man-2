@@ -1,0 +1,384 @@
+{
+ "spec": "mmgmbmgmm",
+ "reserve": "mmgmmmbmmgmmm",
+ "keep": 9,
+ "dist": 6,
+ "seed": 19,
+ "start": 1.0,
+ "quit": 32.0,
+ "hero_min_hp": 30,
+ "note": "r02 30 s fight: 9 enemies + 13 reinforcements (keep 9 up), reflex dodges of telegraphed blows; chained beats (rel / react air / launcher key) so a hit or a moving target cannot break a combo; hero_armor + hero_min_hp are capture aids",
+ "beats": [
+  {
+   "t": 1.4958,
+   "key": "attack",
+   "label": "combo A 1",
+   "toward": "e4"
+  },
+  {
+   "t": 1.8958,
+   "key": "attack",
+   "label": "combo A 2"
+  },
+  {
+   "t": 2.2958,
+   "key": "attack",
+   "label": "combo A 3"
+  },
+  {
+   "t": 2.3628,
+   "key": "dodge",
+   "label": "reflex dodge 2.37",
+   "recorded": "reflex e5 in 0.220"
+  },
+  {
+   "t": 2.6958,
+   "key": "attack",
+   "label": "combo A 4"
+  },
+  {
+   "t": 3.7128,
+   "key": "attack",
+   "label": "combo B 1",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 3.7958,
+   "key": "dodge",
+   "label": "reflex dodge 3.80",
+   "recorded": "reflex e6 in 0.220"
+  },
+  {
+   "t": 4.1128,
+   "key": "attack",
+   "label": "combo B 2"
+  },
+  {
+   "t": 4.5128,
+   "key": "attack",
+   "label": "combo B 3"
+  },
+  {
+   "t": 4.6458,
+   "key": "dodge",
+   "label": "reflex dodge 4.65",
+   "recorded": "reflex e2 in 0.216"
+  },
+  {
+   "t": 4.9128,
+   "key": "attack",
+   "label": "combo B 4"
+  },
+  {
+   "t": 5.9128,
+   "key": "launcher",
+   "label": "launcher 1",
+   "guard": 1,
+   "toward": "e2",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 6.7128,
+   "key": "attack",
+   "label": "launcher 1 juggle 1",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 7.0128,
+   "key": "attack",
+   "label": "launcher 1 juggle 2",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 7.3128,
+   "key": "attack",
+   "label": "launcher 1 juggle 3",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 7.8458,
+   "key": "dodge",
+   "label": "reflex dodge 7.85",
+   "recorded": "reflex e7 in 0.216"
+  },
+  {
+   "t": 9.1288,
+   "key": "web",
+   "label": "web gunman 1a",
+   "toward": "e3",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 9.2628,
+   "key": "dodge",
+   "label": "reflex dodge 9.27",
+   "recorded": "reflex e2 in 0.217"
+  },
+  {
+   "t": 9.4788,
+   "key": "web",
+   "label": "web gunman 1b",
+   "toward": "e3"
+  },
+  {
+   "t": 9.9628,
+   "key": "strike",
+   "label": "web strike",
+   "toward": "e7",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 10.0628,
+   "key": "dodge",
+   "label": "reflex dodge 10.07",
+   "recorded": "reflex e3 in 0.120"
+  },
+  {
+   "t": 10.8958,
+   "key": "attack",
+   "label": "combo C 1",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 10.8958,
+   "key": "dodge",
+   "label": "reflex dodge 10.90",
+   "recorded": "reflex e3 in 0.217"
+  },
+  {
+   "t": 11.2958,
+   "key": "attack",
+   "label": "combo C 2"
+  },
+  {
+   "t": 11.6958,
+   "key": "attack",
+   "label": "combo C 3"
+  },
+  {
+   "t": 11.6958,
+   "key": "dodge",
+   "label": "reflex dodge 11.70",
+   "recorded": "reflex e10 in 0.083"
+  },
+  {
+   "t": 12.0958,
+   "key": "attack",
+   "label": "combo C 4"
+  },
+  {
+   "t": 12.4958,
+   "key": "dodge",
+   "label": "reflex dodge 12.50",
+   "recorded": "reflex e8 in 0.114"
+  },
+  {
+   "t": 13.1958,
+   "key": "attack",
+   "label": "combo D 1",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 13.4958,
+   "key": "dodge",
+   "label": "reflex dodge 13.50",
+   "recorded": "reflex e11 in 0.220"
+  },
+  {
+   "t": 13.5958,
+   "key": "attack",
+   "label": "combo D 2"
+  },
+  {
+   "t": 13.8958,
+   "key": "focus",
+   "label": "focus fill (scripted: guarantees the finisher meter)",
+   "guard": 1
+  },
+  {
+   "t": 14.5288,
+   "key": "finisher",
+   "label": "finisher 1",
+   "guard": 1,
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 17.2458,
+   "key": "web",
+   "label": "web brute a",
+   "toward": "e5",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 17.3128,
+   "key": "dodge",
+   "label": "reflex dodge 17.32",
+   "recorded": "reflex e8 in 0.217"
+  },
+  {
+   "t": 17.5958,
+   "key": "web",
+   "label": "web brute b",
+   "toward": "e5"
+  },
+  {
+   "t": 18.2288,
+   "key": "launcher",
+   "label": "launcher 2",
+   "guard": 1,
+   "toward": "e5",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 19.2628,
+   "key": "attack",
+   "label": "launcher 2 juggle 1",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 19.5628,
+   "key": "attack",
+   "label": "launcher 2 juggle 2",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 19.8628,
+   "key": "attack",
+   "label": "launcher 2 juggle 3",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 20.5958,
+   "key": "dodge",
+   "label": "reflex dodge 20.60",
+   "recorded": "reflex e12 in 0.216"
+  },
+  {
+   "t": 21.6788,
+   "key": "attack",
+   "label": "combo E 1",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 21.9958,
+   "key": "dodge",
+   "label": "reflex dodge 22.00",
+   "recorded": "reflex e2 in 0.220"
+  },
+  {
+   "t": 22.0788,
+   "key": "attack",
+   "label": "combo E 2"
+  },
+  {
+   "t": 22.4788,
+   "key": "attack",
+   "label": "combo E 3"
+  },
+  {
+   "t": 22.8788,
+   "key": "attack",
+   "label": "combo E 4"
+  },
+  {
+   "t": 23.5958,
+   "key": "launcher",
+   "label": "launcher 3",
+   "guard": 1,
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 24.3288,
+   "key": "attack",
+   "label": "launcher 3 juggle 1",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 24.6288,
+   "key": "attack",
+   "label": "launcher 3 juggle 2",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 24.9288,
+   "key": "attack",
+   "label": "launcher 3 juggle 3",
+   "guard": 1,
+   "recorded": "air: hero waits in the air"
+  },
+  {
+   "t": 25.4288,
+   "key": "dodge",
+   "label": "reflex dodge 25.43",
+   "recorded": "reflex e7 in 0.083"
+  },
+  {
+   "t": 25.7958,
+   "key": "focus",
+   "label": "focus fill 2 (scripted)",
+   "guard": 1
+  },
+  {
+   "t": 26.7458,
+   "key": "finisher",
+   "label": "finisher 2",
+   "guard": 1,
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 28.9628,
+   "key": "attack",
+   "label": "combo F 1",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 28.9628,
+   "key": "dodge",
+   "label": "reflex dodge 28.97",
+   "recorded": "reflex e7 in 0.119"
+  },
+  {
+   "t": 29.3628,
+   "key": "attack",
+   "label": "combo F 2"
+  },
+  {
+   "t": 29.7628,
+   "key": "attack",
+   "label": "combo F 3"
+  },
+  {
+   "t": 30.0458,
+   "key": "dodge",
+   "label": "reflex dodge 30.05",
+   "recorded": "reflex e15 in 0.217"
+  },
+  {
+   "t": 30.1628,
+   "key": "attack",
+   "label": "combo F 4"
+  },
+  {
+   "t": 31.2458,
+   "key": "web",
+   "label": "web last",
+   "recorded": "free: hero free"
+  },
+  {
+   "t": 31.7628,
+   "key": "dodge",
+   "label": "reflex dodge 31.77",
+   "recorded": "reflex e4 in 0.117"
+  }
+ ],
+ "hero_armor": 1,
+ "frozen_from": "script_seed19.json"
+}

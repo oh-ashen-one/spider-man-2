@@ -14,6 +14,7 @@ UE="/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Content
 G=/Users/midir/sm2-n1/_scratch/gpu/bin
 MAP=/Game/Tests/Combat/Combat_Street
 mkdir -p "$OUT"; OUT="$(cd "$OUT" && pwd)"; SCRIPT="$(cd "$(dirname "$SCRIPT")" && pwd)/$(basename "$SCRIPT")"
+LOOK="${WHCMB_LOOK:-}"; LOOKARG=(); [ -n "$LOOK" ] && LOOKARG=(-WHCmbLook="$LOOK")
 QUIT=$(python3 -c "import json;print(json.load(open('$SCRIPT')).get('quit',30))")
 if pgrep -f "$UPROJECT" >/dev/null; then echo "an Unreal process of this worktree is running"; exit 2; fi
 # (r02: no own instance-count wait: gpu_slot.sh enforces the auto-tuned cap and queues FIFO)
@@ -21,17 +22,19 @@ case "$MODE" in
   logic)
     # r02: through the GPU lock as well (RULES: every Unreal launch), although -nullrhi uses no GPU
     $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$UE" "$UPROJECT" "$MAP" -game -nullrhi -NoSound -NoCrashReports -benchmark -fps=60 -unattended -WHNoMouseCapture \
-      -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight -abslog="$OUT/fight.log" > "$OUT/stdout.txt" 2>&1
+      -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight ${LOOKARG[@]+"${LOOKARG[@]}"} -abslog="$OUT/fight.log" > "$OUT/stdout.txt" 2>&1
     echo "rc $?"
     grep -o 'WH_CMB_SUMMARY.*' "$OUT/fight.log" | head -1 ;;
   movie)
     RES="${ARG4:-1920x1080}"
     $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "$RES" -quit 400 -name fight -movie -timeout 2400 \
-      -- -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight
+      -- -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight ${LOOKARG[@]+"${LOOKARG[@]}"}
     echo "rc $?" ;;
   stills)
-    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res 3840x2160 -quit 400 -name still -timeout 2400 \
-      -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=still -WHCmbShots="$ARG4"
+    # WHCMB_RES (default 3840x2160 native) and WHCMB_QUIT (game s to stop at) are for quick look tests; r.ScreenPercentage 100 always
+    QARG=(); [ -n "${WHCMB_QUIT:-}" ] && QARG=(-WHCmbQuit="$WHCMB_QUIT")
+    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "${WHCMB_RES:-3840x2160}" -quit 400 -name still -timeout 2400 \
+      -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=still -WHCmbShots="$ARG4" ${LOOKARG[@]+"${LOOKARG[@]}"} ${QARG[@]+"${QARG[@]}"}
     echo "rc $?" ;;
   *) echo "mode: logic | movie | stills"; exit 1 ;;
 esac
