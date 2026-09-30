@@ -182,3 +182,54 @@ def frame_view(Pw_list, ppm, margin=0.08):
     ymax = allp[:, 1].max() + margin; ymin = min(0.0, allp[:, 1].min()) - margin
     W = int(2 * r * ppm); H = int((ymax - ymin) * ppm)
     return W, H, W / 2.0, ymax * ppm
+
+
+def raster_tex(Pw, T, uv, tex, yaw, ppm, W, H, ox, oy, bg=(190, 190, 190), light=(0.35, 0.55, 0.75), cull=True, ambient=0.55, nrm=None):
+    """Textured painter's raster (per-triangle affine texture warp, bilinear): for close-up inspection (few thousand triangles in view)."""
+    R = view_matrix(yaw)
+    Q = Pw @ R.T
+    A_, B_, C_ = Q[T[:, 0]], Q[T[:, 1]], Q[T[:, 2]]
+    fn = np.cross(B_ - A_, C_ - A_); fn /= np.linalg.norm(fn, axis=1, keepdims=True) + 1e-15
+    front = fn[:, 2] > 0 if cull else np.ones(len(T), bool)
+    sx = Q[:, 0] * ppm + ox; sy = oy - Q[:, 1] * ppm
+    P2 = np.stack([sx, sy], 1)
+    th_, tw_ = tex.shape[:2]
+    img = np.zeros((H, W, 3), np.uint8); img[:] = np.array(bg, np.uint8)[::-1]
+    L = np.asarray(light, float); L /= np.linalg.norm(L)
+    lam = ambient + (1 - ambient) * np.clip(fn @ L, 0, 1)
+    order = np.where(front)[0]
+    order = order[np.argsort(A_[order, 2] + B_[order, 2] + C_[order, 2])]
+    texb = np.ascontiguousarray(tex[..., ::-1])
+    for t in order:
+        s = P2[T[t]].astype(np.float32)
+        x0, y0 = np.floor(s.min(0)).astype(int) - 1; x1, y1 = np.ceil(s.max(0)).astype(int) + 1
+        if x1 < 0 or y1 < 0 or x0 >= W or y0 >= H: continue
+        x0c, y0c, x1c, y1c = max(x0, 0), max(y0, 0), min(x1, W), min(y1, H)
+        if x1c <= x0c or y1c <= y0c: continue
+        u = (uv[T[t]] * np.array([tw_, th_])).astype(np.float32)
+        M = cv2.getAffineTransform(u, s - np.array([x0c, y0c], np.float32))
+        patch = cv2.warpAffine(texb, M, (x1c - x0c, y1c - y0c), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        m = np.zeros((y1c - y0c, x1c - x0c), np.uint8)
+        cv2.fillConvexPoly(m, np.round((s - np.array([x0c, y0c], np.float32)) * 16).astype(np.int32), 1, lineType=cv2.LINE_AA, shift=4)
+        sub = img[y0c:y1c, x0c:x1c]
+        mm = m.astype(bool)
+        sub[mm] = np.clip(patch[mm].astype(np.float32) * lam[t], 0, 255).astype(np.uint8)
+    return img
+
+
+def silhouette_spikes(gbuf, groups=(1, 2, 3, 4, 5), r=6, min_len=6):
+    """Thin protrusions of the garment silhouette (torso, arms, legs; not hands / head): pixels that a disc opening of radius r removes, as components
+    whose longest side is >= min_len px.  A protrusion thinner than 2 r px and longer than `min_len` px is what a stretched triangle / vertex spike
+    looks like from the side (the critic's "spike longer than 5 px outside the cloth hull").  Returns (count, px, mask)."""
+    m = np.isin(gbuf, groups)
+    m = ndimage.binary_closing(m, structure=np.ones((3, 3), bool))
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
+    op = cv2.morphologyEx(m.astype(np.uint8), cv2.MORPH_OPEN, k).astype(bool)
+    thin = m & ~op
+    lab, n = ndimage.label(thin)
+    if not n: return 0, 0, thin
+    keep = np.zeros(n + 1, bool); px = 0
+    for i, sl in enumerate(ndimage.find_objects(lab), 1):
+        h = sl[0].stop - sl[0].start; w = sl[1].stop - sl[1].start
+        if max(h, w) >= min_len and (lab[sl] == i).sum() >= 12: keep[i] = True; px += int((lab[sl] == i).sum())
+    return int(keep.sum()), px, keep[lab]

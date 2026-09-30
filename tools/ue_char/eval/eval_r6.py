@@ -56,7 +56,7 @@ def evaluate(m, name, ppm=700, thin=7, yaws=8, step=4, imgs=None, log=print):
     from scipy import ndimage
     gid = CP.tri_groups(m)
     tot_thin = tot_px = tot_wide = tot_gap_px = 0; worst = []
-    poke_px = 0; bygrp = {}
+    poke_px = 0; bygrp = {}; spk_n = spk_px = 0
     ng = getattr(m, 'n_garment_tris', len(m.T))
     ts_comp = ts_px = 0                              # the same measure with back faces drawn (two-sided material, what ships)
     for (c, f), Pw in zip(frames, Pws):
@@ -64,6 +64,7 @@ def evaluate(m, name, ppm=700, thin=7, yaws=8, step=4, imgs=None, log=print):
             yaw = 360.0 * k / yaws
             _, mask, gbuf = CP.raster(Pw, m.T, m.uv, None, yaw, ppm, W, H, ox, oy, colour=False, gid=gid)
             nt, tp, wp, tm, wm = CP.key_holes(mask, thin=thin)
+            sn, spx, _ = CP.silhouette_spikes(gbuf); spk_n += sn; spk_px += spx
             crack, gap, by = CP.classify_holes(tm, gbuf, wm)
             for g_, l_ in by.items(): bygrp[g_] = bygrp.get(g_, 0) + sum(l_)
             ncr = int(ndimage.label(crack)[1])
@@ -83,7 +84,7 @@ def evaluate(m, name, ppm=700, thin=7, yaws=8, step=4, imgs=None, log=print):
                 cv2.imwrite(os.path.join(imgs, '%s_%s_f%d_y%d.png' % (name, c, f, yaw)), vis)
     el, er = CP.stretch(m)
     n_views = len(frames) * yaws
-    res = dict(name=name, tris=int(len(m.T)), views=n_views, crack_components=int(tot_thin), crack_px=int(tot_px), crack2s_components=int(ts_comp), crack2s_px=int(ts_px), core_poke_px=int(poke_px), crack_px_by_group={str(k): v for k, v in sorted(bygrp.items())}, gap_px=int(tot_gap_px), wide_px=int(tot_wide),
+    res = dict(name=name, tris=int(len(m.T)), views=n_views, crack_components=int(tot_thin), crack_px=int(tot_px), crack2s_components=int(ts_comp), crack2s_px=int(ts_px), silhouette_spike_components=int(spk_n), silhouette_spike_px=int(spk_px), crack_px_by_group={str(k): v for k, v in sorted(bygrp.items())}, gap_px=int(tot_gap_px), wide_px=int(tot_wide),
                views_with_cracks=len(worst), spike_over_5cm=int((el > 0.05).sum()), spike_over_10cm=int((el > 0.10).sum()), max_growth_cm=float(el.max() * 100),
                worst=sorted(worst, reverse=True)[:3])
     log(json.dumps(res))
@@ -108,6 +109,6 @@ if __name__ == '__main__':
     for n in a:
         m = load_legacy(n) if legacy else load_r6(n, suffix)
         out[n] = evaluate(m, n, imgs=imgs, **opt)
-    tot = {k: sum(r[k] for r in out.values()) for k in ('crack_components', 'crack_px', 'crack2s_components', 'crack2s_px', 'core_poke_px', 'spike_over_5cm', 'spike_over_10cm')}
+    tot = {k: sum(r[k] for r in out.values()) for k in ('crack_components', 'crack_px', 'crack2s_components', 'crack2s_px', 'silhouette_spike_components', 'silhouette_spike_px', 'spike_over_5cm', 'spike_over_10cm')}
     print('TOTAL', json.dumps(tot))
     if js: json.dump(out, open(js, 'w'), indent=1)

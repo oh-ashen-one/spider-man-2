@@ -129,13 +129,14 @@ def skirt_flags(pos, dense, nrm=None, idx=None, reach=0.25):
     return flag
 
 
-def skirt_weights(pos, nrm, idx, dense):
+def skirt_weights(pos, nrm, idx, dense, extra=None):
     """Round 05b (CH18): a coat / dress skirt is a set of separate panels skinned (by the pack's auto weights) to different legs; when the legs stride
     the panels pull apart (jagged tears, flaps behind the trailing leg).  Free-hanging vertices below the hips get a position-only rig instead:
     thigh L / thigh R by side (tanh(x / 8 cm): the centre front stays put, the flanks follow their leg) scaled by depth below the hip line (0 at the
     hips, `SKIRT_AMAX` at 50 cm below), the rest on the hips bone.  Every panel at the same place gets the same weights, so nothing tears; over the
     first 8 cm below the hip line the old weights fade out.  Legs may show through the hem (a coat swings less than the legs)."""
     fl = skirt_flags(pos, dense, nrm, idx)
+    if extra is not None: fl = fl | extra          # round 06: vertices joined to the opposite leg by a triangle (weights_r6.opposite_leg_flags)
     if fl.sum() < 8: return dense, fl
     y = pos[fl, 1]; x = pos[fl, 0]
     depth = np.clip((SKIRT_Y - y) / 0.50, 0, 1); a = SKIRT_AMAX * depth

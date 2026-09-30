@@ -45,6 +45,19 @@ def edges_of(F, n):
     return np.unique(e, axis=0)
 
 
+def opposite_leg_flags(P, D, E, rings=3):
+    """A triangle that joins a vertex of the left leg to one of the right leg below the crotch is a coat / dress / skirt panel (trouser legs are separate
+    tubes): flag both ends and `rings` rings of neighbours so the whole panel gets the skirt rig."""
+    Lw = D[:, [11, 12, 13]].sum(1); Rw = D[:, [14, 15, 16]].sum(1)
+    a, b = E[:, 0], E[:, 1]
+    bad = (((Lw[a] > 0.5) & (Rw[b] > 0.5)) | ((Rw[a] > 0.5) & (Lw[b] > 0.5))) & (P[a, 1] < 0.85) & (P[b, 1] < 0.85)
+    fl = np.zeros(len(P), bool); fl[E[bad].ravel()] = True
+    for _ in range(rings):
+        nf = fl.copy(); nf[E[fl[E[:, 0]], 1]] = True; nf[E[fl[E[:, 1]], 0]] = True
+        fl = nf & (P[:, 1] < 0.9)
+    return fl
+
+
 def sample_frames(clips=CP.CLIPS_USED, every=2):
     r = CP.rig(); out = []
     for cn in clips:
@@ -107,7 +120,7 @@ def process(name, log=print):
     D = Du
     if SMOOTH: D = U.smooth_weights(Pu, Nu, D)
     fl = None
-    if SKIRT: D, fl = U.skirt_weights(Pu, Nu, Fu, D)
+    if SKIRT: D, fl = U.skirt_weights(Pu, Nu, Fu, D, extra=opposite_leg_flags(Pu, D, E) if os.environ.get('SKIRT_TOPO', '1') == '1' else None)
     D = top4(D)
     w1, r1 = worst_edge_growth(Pu, E, D, Ms)
     st.update(bad_after_skirt=int((w1 > REL * r1 + ABS).sum()), skirt_verts=int(fl.sum()) if fl is not None else 0)
