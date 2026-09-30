@@ -1,5 +1,5 @@
 {
- "updated": "15:46",
+ "updated": "15:52",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "active",
-   "round": 6,
+   "round": 7,
    "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Walker avoidance (people walk through each other), remaining key see-through on one jeans leg, a floating 37x27 px triangle."
+   "gap": "Original suit layout (the current one copies an official suit \u2014 legal + quality) and sealed eye lenses inside the head silhouette."
   },
   {
    "id": "P3",
@@ -750,6 +750,14 @@
    "verdict": "fails",
    "gap": "Trick camera orbits freely: pick one side-on yaw at release (clear of trees, >=100 deg from the sun), hold it +-30 deg, frame the hero at .15-.38 height and x .44-.56.",
    "notes": "Camera level and sun-aware (pitch max 1.9 deg down, was 21 deg up; sun >= 109 deg away); hero glare 93% \u2192 26%; wall camera 56 \u2192 30 deg; trees in the f3 camera 43 \u2192 8 frames. Camera axis has scored 5 for four rounds (12\u201315): each fix breaks another demand \u2192 Fable 5.1 director pass for one reconciled camera spec."
+  },
+  {
+   "t": "15:52",
+   "piece": "P2 Characters",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "Original suit layout (the current one copies an official suit \u2014 legal + quality) and sealed eye lenses inside the head silhouette.",
+   "notes": "Walker avoidance in C++ (min distance 130 cm, 0 frames under 0.70 m); stencil keyer: 0 green pixels inside clothing, 0 floating polygons; ankle gaps fixed. Civilians and image quality 4\u21925. Round 8 designs an original suit."
   }
  ],
  "perf": [
