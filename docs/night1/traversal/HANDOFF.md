@@ -2,6 +2,14 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
+**Status (end of round 10, 2026-09-30):** round 10 is CLOSED on the engine side: code committed and built (dylib 21:57), the four sequences a/b/c/d
+captured in the lit `/Game/Maps/Manhattan` (golden) at 1080p60 with 4K stills, measured (`round-10/SPEC_CHECK.txt` + the check files), and the blind
+critic pack is built at `/Users/midir/sm2-n1/_scratch/critic-P3-r10/pack` (key outside the pack: `pack.key.json`; pairs in `pairs.json`) — the
+orchestrator runs the critic. **Next:** (1) file the r10 critic verdict as `critic/round-10-CRITIC.md` and fix its single biggest gap; (2) the owner's
+queued **round 11 = gymnast-quality flips** (`FLIPS_BRIEF.md`, includes measuring the owner clip first); (3) mouse look too fast (see §8).
+The interrupted r10 loop left the d 4K stills from an older build; they were re-shot at the end (the fresh 4K run's telemetry matched the committed
+d movie telemetry bit for bit over all 719 rows: position, velocity and camera identical, so the committed movies are the current build).
+
 Branch `night1/traversal`, worktree `~/sm2-n1/traversal`, UE MCP port 8773 (never used; everything runs through commandlets and `-game`).
 Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`,
 `unreal/WebHomage/Scripts/build_traversal.py`, `docs/night1/traversal/**`.
@@ -159,6 +167,11 @@ python3 docs/night1/traversal/wall_check.py <telemetry.csv> <label>   # wall-run
 python3 docs/night1/traversal/scripts/bake_keys.py <auto.json> <telemetry.csv> <out.json> <name>  # rule → plain timed keys
 python3 docs/night1/traversal/make_shotlist.py <round dir> "round NN" <commit>   # neutral SHOTLIST.md
 ```
+After an interruption / reboot re-run only what is missing: `capture_round.sh <round> <seq>` (movie + 4K stills of that sequence, plus the warm-up render unless `SKIP_WARM=1` — keep it after a reboot / DDC wipe; the replay
+is deterministic, so a re-run reproduces the telemetry exactly). `Scripts/run_game.sh -timeout N` ends with `kill -9` of the engine when N wall seconds
+pass (integrator-owned file, breaks the RULES no-SIGKILL law): keep `-timeout` well above the real run length (capture_round.sh uses 2400-3000 s) and
+stop a stuck run with `stop_ue.sh "<worktree>"`. `spec_check_round.sh <round dir>` writes SPEC_CHECK.txt (its YOLO step uses `device='mps'`: wrap it in
+`gpu_slot.sh capture --label traversal --`; reuse the cached `_scratch/traversal/specwork/<label>/*_dets.json` when re-running).
 capture_round.sh renders an unrecorded 960x540 warm-up pass first (shader compile after a DDC wipe) and runs every sequence with a 0.8 s pre-roll that is trimmed.
 Tuning without a rebuild: `-WHTravTune=MaxArcRope=30,PendingVz=5` (any float UPROPERTY of the traversal component).
 RULES: never a 4th Unreal instance (capture_round.sh waits; probe loops should `pgrep -f 'MacOS/UnrealEditor( |$)'` first).
@@ -284,6 +297,34 @@ d (street start in its window) passes 4/9: pitch p5 -11, yaw p50 10.0, hero x p9
 start; its swing part looks like a. Other checks: pixel framing >= 160 px 96-98 %, drop test PASS/PASS, air variety 0 held
 pairs, T-pose 0, camera in geometry 0, wall-run 14 phases / 17-17 / 272-272.
 
+## 6f. Round-10 checks (captures in `round-10/`; SPEC_CHECK.txt = TRAVERSAL-SPEC lines; all in the lit Manhattan golden map, 1080p60, `r.ScreenPercentage 100`)
+Movies: 1920x1080 internal = output (no upscaling), TSR + Lumen project defaults, fixed 1/60 s step, 0.8 s pre-roll trimmed; stills 3840x2160 internal = output.
+GPU was shared during captures (holders logged in `_scratch/traversal/capture_round10b.log`); no perf claim is made from these runs.
+| Spec line (a_swing_chain, chain window 0.4-15.6 s) | round 10 | r09 (gray box) |
+|---|---|---|
+| T1 rope held 0.5-1.6 s | 5 swings, 1.15-1.55 s PASS | 1.0-1.5 |
+| T2 attaches per 8 s (2-4) | 2-3 in every 8 s window PASS | 4 |
+| T3 rope on screen 25-45 % (video detector) | whole window 0.28 PASS; 8 s windows 0.17-0.33 (some under .25); engine `web_on` 0.44 | 0.52-0.67 FAIL |
+| T4 web-less phases (pose changes every 0.1 s) | 4 phases (2.85 s, 2.65 s, 0.78 s x2), every one 100 % changing PASS; 5 air cycles, none repeated | gaps 0.4-0.7 s |
+| T5 / T6 rope | reaches the top edge in 57 % of rope frames; angle p10/50/90 10/23/36 deg, width 3 px | 65 % / 32 deg |
+| T7 roofline -> 3-13 m within 4 s | **partial:** sky launches peak 50.3 m and 41.7 m over the street, the lower street wall's roof is 68 m / 52 m there (peak 18 / 10 m UNDER it, the SkyPeakMax 58 m cap); lows 8.6 m in 2.5 s and 7.2 m in 2.1 s | never above 20 m |
+| T8 hero height p10 / p50 / p90 | .122 / .211 / .267 PASS | .177 / .217 / .272 |
+| T9 hero cx p5-p95 | .461-.532 PASS | .463-.545 |
+| T10 hero cy spread >= .20 | .357-.557 spread .199 engine (video .201) — **marginal** (FrameLowS .44 -> .50 lifted it from .187) | .372, p95 .72 FAIL |
+| T11 pitch p5 / p50 / p95 | engine -9.8 / 5.5 / 22.0, video 2.5 / 9.8 / 22.0 PASS | 3.0 / 11.8 / 22.1 |
+| T12 / T13 / T14 | yaw 5.5 / 11.3, roll .1 / .8 (max 1.7), hFOV 103.7 (98-111) PASS | 7.6 / 14.2, 1.5 / 3.1, 104 |
+| T16 / T19 | 100 % / 0 occluded, 0 camera-in-geometry PASS | 100 % / 0 / 0 |
+| T17 / T18 near-field | cov p50 .37 p90 .48 PASS; side third p50 **.68 (band .45-.65) FAIL**, 79 % of frames > 50 % (band 40-80) | .29 / .46; .48, 47 % |
+| Arc low points | 11.1, 7.0, 4.7, 6.7, 3.2 m (consecutive diff min 2.0 m) | 9.2 ... 3.1 min diff |
+| b (0-7 s) | 6/9 camera lines: T10 p95 .72, T11 p95 32 deg, T14 hFOV 96 (dive + zip) FAIL; T3 .34, T8 med .20, sky launch rise at 1.4-3.3 s | 4/9 |
+| c (wall-run, 0-10.5 s) | 11 limb phases, head above hips 11/11, 2.86 steps/s, hero in frame 183/183 through top-out + landing, wall camera up to 55.8 deg (T22 20-65 PASS) | 14 / 17 / 272 |
+| d (2.6-12 s) | 7/9 camera lines: T9 p95 .565 (edge), T11 p50 +0.7 deg (low pitch in the street run) FAIL | 4/9 |
+| Anim / camera safety (a, b, c, d) | 0 T-pose frames, 0 same-silhouette air pairs (a: min pair distance 0.090 m vs 0.08 threshold), camera in geometry 0 frames | same |
+Hero pixel share >= 160 px fell to 80-94 % (r09 96-98 %; median 212-272 px, min 80-92): the Manhattan avenue plus the wider fov keep him smaller.
+Old critic checks (cadence / drop / facade files) still print PASS/FAIL against the round-06..08 targets that TRAVERSAL-SPEC voided (see the NOTE in each file).
+Lit-city observations for other pieces: a soft green-white glow around the hero's leg at d 2.3 s (a bloom / reflection artefact on the street); a painted
+ghost-ad on a roof block at c 3.4 s reads "IRON ..." (city ad texture; P1: check it against `IP_EXCLUSIONS`).
+
 ## 7. Critic history (blind critic vs Marvel's Spider-Man 2 refs; arc / camera / web / moves / body)
 | Round | Scores | Biggest gap | What changed next |
 |---|---|---|---|
@@ -296,6 +337,20 @@ pairs, T-pose 0, camera in geometry 0, wall-run 14 phases / 17-17 / 272-272.
 | r07 | 4/3/4/4/4 | Facade clearance + occlusion during swings (a 14.3-14.8 s, d 6.8-7.3 s): path >= 3 m from walls, camera >= 1.5 m, no facade > 30 % of frame, hero never occluded; also blur on everything, thick blooming rope (orchestrator: the critic's "hero 6-8 % of frame" was wrong, ~17 %) | r08 wall-frame canyon keeping, camera wall clearance, wall_frac / hero_occl capture, blur only at speed, thin matte web |
 | r08 | 4/4/4/3/3 | Locked symmetric camera + identical swings (critic asked 30-70 % screen weave — voided by TRAVERSAL-SPEC T9); orchestrator/spec: lively weave inside the safe corridor, camera 2-25 deg off axis, near facade in a side third 40-80 % of frames, pitch median 4-12 down, hFOV 100-110, arc low points vary | r09 alternating arc depth, alternating anchor sides + bounded weave, camera side slide + arc-end roll, lower camera, dark 2 px rope, crouch-first landings |
 | r09 | 5/6/4/5/5 | T3/T4/T7: four identical 2 s swings, rope on screen 52-67 %, never at roofline height | r10 Manhattan captures, roofline-solved sky launch + long web back to the street, rope 25-45 %, swing-to-wall-run turns, configurable hero paths |
-| r10 | (critic pending) | | |
+| r10 | (critic pending; pack `_scratch/critic-P3-r10/pack`, 6 pairs incl. r09-vs-r10) | expected gaps: T7 peaks stay under the roofline (58 m cap vs 68-300 m walls), T18 side third .68, T10 marginal, b/d camera lines | r11 = flips (owner brief) after the critic's verdict is fixed |
 
 Round folders `docs/night1/traversal/round-0N/` hold videos, stills, telemetry, SHOTLIST, CRITIC and the check outputs.
+
+## 8. Queue for the next session
+1. **Critic r10 verdict** -> `critic/round-10-CRITIC.md`; the `critic/` folder gets one file per round; fix only its single biggest gap first.
+2. **Round 11 flips (owner request 2026-09-29 23:45)** — `FLIPS_BRIEF.md`: gymnast-quality flips (tuck / pike / layout / swan, eased rotation, chained 2-3 per release,
+   corkscrews, continuous into the next web catch). Measure the owner's clip first (rotation deg/s, rotations per release, hold time, camera behaviour) into a numeric
+   SPEC, then build (Blender keyed trick clips retargeted onto the hero rig + procedural blending in `UWebTravAnimInstance`); judged by a blind Opus critic on moving
+   A/B vs the owner clip. Today's tricks are the browser clips (`trick_scissor`, `layout`, `corkscrew`, `tuckFlip`) with a figure-root spin: the sky launch already
+   chains 2 tricks per release, so the hooks (`TrickDur`, `TrickSide`, `BodyQ`) exist.
+3. **Mouse look too fast** (owner, same session): `MouseRadPerUnit` 0.033 was tuned for the browser; start at ~0.011 and expose a sensitivity setting
+   (`AWebTravCharacter` input setup); needs a real mouse to judge (Hari tests gameplay).
+4. Open engineering (from §6): awning-safe street wall-run, T7 peaks under the roofline (raise `SkyPeakMax` / add a roof-hop), T18 side third, d/b camera lines,
+   hero P2 swap capture (`-WHHeroMesh=...`), zip perch framing.
+5. Teardown (AGENTS.md): after the branch is pushed, `_scratch/traversal/capture` (~10 GB of PNG frames) and `specwork` are disposable; delete when the round is merged.
+
