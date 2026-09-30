@@ -193,7 +193,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 			SlewFlags |= 1;
 		}
 		const double SlP = CamRot.Pitch - LastOutRot.Pitch, SlY = FRotator::NormalizeAxis(CamRot.Yaw - LastOutRot.Yaw);
-		const double MP = MaxStepPitchDeg * K, MY = MaxStepYawDeg * K;
+		const double MP = MaxStepPitchDeg * K, MY = (FlipK > 1e-3 ? FlipMaxStepYawDeg : MaxStepYawDeg) * K; // round 16 (TC-B): <= 150 deg/s while the trick camera is in (blend in / hold / blend out)
 		if (FMath::Abs(SlP) > MP) { CamRot.Pitch = LastOutRot.Pitch + FMath::Sign(SlP) * MP; SlewFlags |= 2; }
 		if (FMath::Abs(SlY) > MY) { CamRot.Yaw = LastOutRot.Yaw + FMath::Sign(SlY) * MY; SlewFlags |= 4; }
 		if (SlewFlags) { HeroDist = FVector::Dist(CamPos, P.Pos); bCamInGeometry = World.SphereOverlaps(CamPos, 0.15); }
@@ -242,7 +242,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		bFlipAbort = FlipTier >= 3;
 		FlipDistNow = FlipDistSel; FlipDistV = 0.0;
 	}
-	if (!bFlipCam) { bFlipAbort = false; FlipTier = -1; }
+	if (!bFlipCam) { bFlipAbort = false; FlipTier = -1; FlipObsT = 0.0; }
 	bFlipWas = bFlipCam;
 	if (bFlipCam && !bFlipAbort && bChaseInit)
 	{ // TC11: sweep hero chest -> the held spot; a hit dollies the camera in along the axis, never yaws / re-picks the side
@@ -250,14 +250,33 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		const FVector Uc(FMath::Cos(FlipAz) * FMath::Cos(Ec), FMath::Sin(FlipAz) * FMath::Cos(Ec), -FMath::Sin(Ec));
 		double HitD = 0.0, Goal = FlipDistSel;
 		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * FlipDistSel, 0.3, HitD)) Goal = FMath::Min(Goal, HitD - 0.25);
-		if (Goal < FlipDistMin) bFlipAbort = true; // TC11: no room to keep the trick view -> plain chase over FlipOutT
-		else SD(FlipDistNow, FlipDistV, Goal, Goal < FlipDistNow ? FlipDollyInT : FlipDollyOutT, Dt);
+		// TC11: no room to keep the trick view (under FlipDistMin for FlipAbortGrace s running -- a trunk or a canopy edge passing the
+		// axis for a few frames is dollied through, r16 probe: one tree at a 13 m flip ended the whole trick camera) -> plain chase over FlipOutT
+		FlipObsT = Goal < FlipDistMin ? FlipObsT + Dt : 0.0;
+		if (FlipObsT > FlipAbortGrace) bFlipAbort = true;
+		else SD(FlipDistNow, FlipDistV, FMath::Max(Goal, 2.8), Goal < FlipDistNow ? FlipDollyInT : FlipDollyOutT, Dt);
 	}
 	{
 		const bool bOn = bFlipCam && !bFlipAbort;
-		SD(FlipK, FlipKV, bOn ? 1.0 : 0.0, bOn ? FlipInT : FlipOutT, Dt);
+		if (bOn)
+		{ // blend in: critically damped springs (smooth times FlipInT horizontal, FlipZInT height), continuous with a blend-out still running
+			bFlipOutRun = false;
+			SD(FlipK, FlipKV, 1.0, FlipInT, Dt);
+			SD(FlipZK, FlipZKV, 1.0, FlipZInT, Dt);
+		}
+		else if (FlipK > 1e-4 || FlipZK > 1e-4)
+		{ // blend out (TC10): a smoothstep over FlipOutT seconds from the weights at its start -- finite, so the next trick of a chain never
+			// starts on the exponential tail of this one (a critically damped tail left 22 % of the old side in the next flip: a 19 deg jump)
+			if (!bFlipOutRun) { bFlipOutRun = true; FlipOutClock = 0.0; FlipOutK0 = FlipK; FlipOutZ0 = FlipZK; }
+			FlipOutClock += Dt;
+			const double X = FMath::Clamp(FlipOutClock / FMath::Max(0.05, FlipOutT), 0.0, 1.0), S = X * X * (3.0 - 2.0 * X), Dv = 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipOutT);
+			FlipK = FlipOutK0 * (1.0 - S); FlipKV = -FlipOutK0 * Dv;
+			// the height weight holds FlipZHold s after the catch before it follows (TC6: the lens stays under the hips through the 0.5 s tail)
+			const double Xz = FMath::Clamp((FlipOutClock - FlipZHold) / FMath::Max(0.05, FlipOutT), 0.0, 1.0), Sz = Xz * Xz * (3.0 - 2.0 * Xz);
+			FlipZK = FlipOutZ0 * (1.0 - Sz); FlipZKV = Xz > 0.0 && Xz < 1.0 ? -FlipOutZ0 * 6.0 * Xz * (1.0 - Xz) / FMath::Max(0.05, FlipOutT) : 0.0;
+		}
+		else { bFlipOutRun = false; FlipK = FlipZK = 0.0; FlipKV = FlipZKV = 0.0; }
 		FlipK = FMath::Clamp(FlipK, 0.0, 1.0);
-		SD(FlipZK, FlipZKV, bOn ? 1.0 : 0.0, bOn ? FlipZInT : FlipOutT, Dt);
 		FlipZK = FMath::Clamp(FlipZK, 0.0, 1.0);
 	}
 	SWant = FMath::Lerp(SWant, FlipSFrame, FlipK);

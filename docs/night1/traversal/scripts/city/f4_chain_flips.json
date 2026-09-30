@@ -1,11 +1,11 @@
 {
  "name": "f4_chain_flips",
- "note": "Round 14: the same chain rule NORTH-bound on the west avenue from y 375 (r13 ran south from y 120 and its 4th flip left the traversal world's south edge at y ~515: hero pinned on the corridor clamp, camera hold). Flips start low in the southern low-rise blocks (side-on sky) and continue into the taller blocks. Round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): a trick pressed at a web release starts its flip program AT the release (flow flip, climb solved so the catch window opens ~2 m over the release height, inside the canyon), and the next web attaches in the program's final reach. West avenue from y 120, 13 s: a flip on EVERY release (backDouble, frontPikeSwan, corkscrew cycled) -- the continuous chain.",
+ "note": "Round 16: spawn y 375 -> 367 (same chain rule and flip times; the r15 start put the first flip at y 342 where the sun-away side of the trick camera hit the west tree row and the camera had to use the sun-facing side (38 deg)).  Round 14: the same chain rule NORTH-bound on the west avenue from y 375 (r13 ran south from y 120 and its 4th flip left the traversal world's south edge at y ~515: hero pinned on the corridor clamp, camera hold). Flips start low in the southern low-rise blocks (side-on sky) and continue into the taller blocks. Round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): a trick pressed at a web release starts its flip program AT the release (flow flip, climb solved so the catch window opens ~2 m over the release height, inside the canyon), and the next web attaches in the program's final reach. West avenue from y 120, 13 s: a flip on EVERY release (backDouble, frontPikeSwan, corkscrew cycled) -- the continuous chain.",
  "seed": 1234,
  "spawn": {
   "pos": [
    -250,
-   375,
+   367,
    24
   ],
   "vel": [

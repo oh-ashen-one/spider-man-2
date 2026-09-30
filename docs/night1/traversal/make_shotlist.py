@@ -163,6 +163,16 @@ if RN >= 4:
           "is inside a street-tree canopy the camera spot is lifted out of the foliage. A flow flip's rise targets 3 m over the lower street "
           "wall's roofline (buildings >= 16 m) when that needs <= 14 m of rise, else the round-13 3 m rise. While the trick camera frames a flip "
           "the zip reticle aims along the chase heading (b: zip fired from the final Reach at 2.88 s).")
+    if RN >= 16:
+        w("- Round 16 (director's TRICK_CAMERA_SPEC.md, replacing the r11-r15 sky search / side-on orbit): while a flip program plays the camera is a "
+          "HELD 3/4-behind chase. At the release frame ONE yaw offset of 40-55 deg from the travel-behind direction is chosen (obstruction first: "
+          "the spot must be sweep-reachable with 1.5 m free beyond it and a clear path 0.5 s along the travel; then the sun rule, view >= 100 deg "
+          "from the level's sun; then open space) and is never re-searched; it is held on its WORLD azimuth. The camera sits 4.5 m from the hero "
+          "(pulled in along the same axis by an obstruction, to 4.0 m, else blended to the plain chase), 1.0 m under his body centre, hero framed "
+          "at 0.36 of the frame height with a 5 deg lead-room yaw bias toward his travel; look-up capped at 7.5 deg; no roll, no attach yaw beat; "
+          "FOV / kick / punch / shake untouched. Blend in: critically damped springs (0.35 s horizontal, 0.15 s height), blend out: smoothstep "
+          "over 0.9 s from the web attach, the chase camera keeps running underneath (polar blend about the hero). No other flip or swing rule "
+          "changed; scripts are the r15 ones.")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")

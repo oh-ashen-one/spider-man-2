@@ -5,7 +5,7 @@
 #   usage: trickcam_check.py <telemetry.csv> <label> [--video <mp4>] [--tail 0.5] [--quiet]
 # Window per trick program = rows with flip_t >= 0 (the program) through TAIL s (0.5) after its last row. Two readings are printed for
 # every distribution test, so nothing is hidden behind a definition:
-#   WIN  = the whole window (blend-in, hold, blend-out, tail)        HOLD = rows with flipcam_k >= 0.9 (the held trick camera)
+#   WIN  = the whole window (blend-in, hold, blend-out, tail)        HOLD = program rows (release .. catch) with flipcam_k >= 0.9 (the held trick camera)
 # TC-B says it explicitly ("with flipcam_k >= 0.9": p95 / max; "whole window incl. blends": max <= 150 deg/s), TC-A's range is a hold
 # number (a blend-in of 30-50 deg is the camera arriving). A line's verdict is PASS when the literal WIN reading passes; "PASS(hold)" when only
 # the HOLD reading passes (blend frames break the band) -- the critic's number is the one to watch.
@@ -72,19 +72,25 @@ while i < n:
         progs.append((i, j, R[i]['flip_prog']))
         i = j + 1
     else: i += 1
-progs = [(a, b, nm) for a, b, nm in progs if nm != 'wallFront'] if any(nm != 'wallFront' for _, _, nm in progs) else progs
+progs = [(a, b, nm) for a, b, nm in progs if nm != 'wallFront']   # the wall-run top-out flip is framed by the wall camera, not the trick camera
 win = set(); hold = set()
 pw = []   # per program (a, b, e, rows, holdrows)
+fallbacks = []   # TC2 fallback: no clear spot at all -> plain chase (tier 3); not judged by the trick-camera lines, listed below
 for a, b, nm in progs:
+    if str(R[min(n - 1, a + 2)].get('flipcam_tier', '')).strip() == '3':
+        fallbacks.append((nm, T[a], T[min(n - 1, b)]))
+        continue
     e = min(n - 1, b + TAILN)
     rows = list(range(a, e + 1))
-    hr = [k for k in rows if f(R[k], 'flipcam_k', 0) >= 0.9]
+    hr = [k for k in range(a, b + 1) if f(R[k], 'flipcam_k', 0) >= 0.9]   # the held camera = program rows with k >= .9 (the blend-out after the catch is judged by TC-B WIN / TC-K)
     pw.append((a, b, e, nm, rows, hr))
     win.update(rows); hold.update(hr)
 win = sorted(win); hold = sorted(hold)
 P('%s (%s): %d flip programs, %.1f s, window rows %d, hold (flipcam_k >= .9) rows %d' % (label, os.path.basename(path), len(progs), T[-1], len(win), len(hold)))
-if not progs:
-    P('  no flip programs in this clip'); print('\n'.join(out)); sys.exit(0)
+if fallbacks:
+    P('  TC2 fallback to the plain chase (no obstruction-free spot at any distance >= 4.0 m; not judged by TC-A..F/H, TC-G below covers them): ' + ', '.join('%s %.2f-%.2f s' % x for x in fallbacks))
+if not pw:
+    P('  no judged flip programs in this clip'); print('\n'.join(out)); sys.exit(0)
 def stat(rows, fn):
     return [fn(R[k]) for k in rows]
 # ---- TC-A
@@ -155,6 +161,10 @@ okw = .5 <= pct(dz_w, .5) <= 2.0 and pct(dz_w, .1) >= .2; okh = .5 <= pct(dz_h, 
 P('TC-F lens below the hips (z_m - pcm_z): WIN p10/p50/p90 %.2f/%.2f/%.2f, HOLD %.2f/%.2f/%.2f m (p50 .5-2.0, p10 >= .2) -> %s' % (
     pct(dz_w, .1), pct(dz_w, .5), pct(dz_w, .9), pct(dz_h, .1), pct(dz_h, .5), pct(dz_h, .9), verdict(okw, okh)))
 # ---- TC-G
+_ws = set(win)
+for nm_, t0_, t1_ in fallbacks:
+    _ws.update(k for k in range(n) if t0_ - 1e-6 <= T[k] <= t1_ + tail)   # safety lines judge the fallback too
+win = sorted(_ws)
 inf = [k for k in win if f(R[k], 'hero_in_frame', 1) < 0.5]
 geo = [k for k in win if f(R[k], 'cam_in_geometry', 0) > 0.5]
 lens = [k for k in win if f(R[k], 'cam_lens25', 0) > 0.5]
@@ -166,8 +176,10 @@ def rng(ks): return '%.2f-%.2f' % (T[ks[0]], T[ks[-1]]) if ks else ''
 P('TC-G safety: hero out of frame %d rows %s | camera in geometry %d %s | lens sphere 0.25 m touching %d %s | hero occluded %s -> %s' % (
     len(inf), rng(inf), len(geo), rng(geo), len(lens), rng(lens), ('%d %s' % (len(occl), rng(occl))) if has_occl else 'n/a (no render)', 'PASS' if okg else 'FAIL'))
 # ---- TC-H
-vs = [f(R[k], 'view_sun_deg', -1) for k in win]; vs = [x for x in vs if x >= 0]
+vs = [f(R[k], 'view_sun_deg', -1) for k in win if f(R[k], 'flipcam_k', 0) >= 0.5]; vs = [x for x in vs if x >= 0]   # as r14 S1 / suncam_check: trick frames = flipcam_k >= .5
+vs9 = [f(R[k], 'view_sun_deg', -1) for k in hold]; vs9 = [x for x in vs9 if x >= 0]                                     # the held camera only
 okh1 = bool(vs) and min(vs) >= 100.0
+okh1_hold = bool(vs9) and min(vs9) >= 100.0
 lum_txt = 'suit-mask luma n/a (no video)'
 okh2 = True
 if video and os.path.exists(video):
@@ -196,8 +208,9 @@ if video and os.path.exists(video):
     except ImportError:
         lum_txt = 'suit-mask luma n/a (opencv missing)'
 okH = okh1 and okh2
-if not okH: nfail[0] += 1
-P('TC-H sun/glare: view_sun_deg min %.0f p50 %.0f (>= 100); %s -> %s' % (min(vs) if vs else float('nan'), pct(vs, .5), lum_txt, 'PASS' if okH else 'FAIL'))
+okHh = okh1_hold and okh2
+if not okHh: nfail[0] += 1
+P('TC-H sun/glare: view_sun_deg min %.0f (flipcam_k >= .5, r14 S1) / %.0f (held, k >= .9) (>= 100); %s -> %s' % (min(vs) if vs else float('nan'), min(vs9) if vs9 else float('nan'), lum_txt, 'PASS' if okH else ('PASS(hold)' if okHh else 'FAIL')))
 # ---- TC-I (video)
 P('TC-I sky: run sky_check.py <round dir> <clips> (pooled over f1-f5; >= 35 %% of trick samples with ring >= 50 %% sky and hero h >= .15)')
 # ---- TC-J + flip quality lines
