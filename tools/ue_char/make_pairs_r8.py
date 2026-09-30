@@ -35,6 +35,7 @@ for n, note in (('hero-eye-3x', 'hero eye, 3x crop, two versions: judge backgrou
                 ('thug-collar-3x', 'street criminal collar, 3x crop, two versions: judge jagged shards'),
                 ('tee-mouth-3x', 'masked face mouth area, 3x crop, two versions: judge lips showing through the mask'),
                 ('crowd-heads-3x', 'two pedestrians heads, 3x crop, two versions: judge fused heads')):
-    add(n, os.path.join(crops, 'r8_%s.jpg' % n), os.path.join(crops, 'r7_%s.jpg' % n), note)
+    b = n[:-3] if n.endswith('-3x') else n      # crop files are r7_<name>.jpg / r8_<name>.jpg (crops_r8.py)
+    add(n, os.path.join(crops, 'r8_%s.jpg' % b), os.path.join(crops, 'r7_%s.jpg' % b), note)
 json.dump(pairs, open(out, 'w'), indent=1)
 print('pairs', len(pairs), '->', out)
