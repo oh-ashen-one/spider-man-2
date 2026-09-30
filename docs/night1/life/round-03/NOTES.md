@@ -62,3 +62,10 @@ The swing A/B without the ahead recycling (g10) and the second swing camera (g9)
 2. A verification run of the swing rig (`Life_Swing_Clip`, `-WHLifeSample=2.5:12.5:0.5`): every sample should show >= 15 people within 80 m.
 3. `docs/night1/life/capture_round.sh docs/night1/life/round-03 stills clips detect` (each call inside one `gpu_slot.sh capture` hold; the script refuses to start an engine when `_scratch/life/bin/gui_ok.sh` says the session cannot launch apps), then
    `tools/life/spec_table.py`, `perf_variants.sh` (fill light + shade traces + 190 m disc are new GPU / CPU cost: measure life ON vs OFF; budget <= 3 ms GPU), `hand_counts.json` (by-eye counts of the S2 4K still and of a few swing frames), the critic pack.
+
+## Critic pack
+
+`/Users/midir/sm2-n1/_scratch/critic-P6-r03/pack` (key outside it: `pack.key.json`; `pairs.json`; built with `tools/night1/abpack.py`). Because the final captures do not exist it is built from the experiment frames (all real game, 1080p unless noted):
+avenue-street = `g3` S1 t = 28 s (1080p), sidewalk = `g3` t = 24 s, avenue-traffic = `g7` S2 4K t = 28 s, swing-avenue = `g8` t = 6.5 s (a still, not a clip), plus three ours-vs-ours pairs against the round 02 stills / swing clip frame.
+The S1 frames are from the g3 build (curb-gap proxy, fill 2500 lux, density 1600 / 1100); the committed defaults differ slightly (fill 1800, rule-based curb gaps, corridor 24 m). No street / signal clip pairs: they were not re-shot.
+
