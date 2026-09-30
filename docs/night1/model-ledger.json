@@ -381,6 +381,45 @@
     3,
     5
    ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 7,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    3,
+    4,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 8,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    4,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 9,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    4,
+    5,
+    5
+   ]
   }
  ],
  "agents": [

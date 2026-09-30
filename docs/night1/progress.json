@@ -1,5 +1,5 @@
 {
- "updated": "08:06",
+ "updated": "08:33",
  "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -35,10 +35,10 @@
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
-   "state": "fixing",
-   "round": 7,
-   "verdict": "R6: FAILS (facades 5, street 4, skyline 4, Manhattan 5, IQ 5)",
-   "gap": "Far field still plain boxes; facade base colours clip; shared spec-check script (builder and critic measured differently)"
+   "state": "active",
+   "round": 9,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall."
   },
   {
    "id": "P2",
@@ -665,6 +665,30 @@
    "verdict": "approaches",
    "gap": "HW-RT reflection preset is now CPU/GPU-serialised (2.9 ms frame\u2212GPU gap); trace and remove it, then re-measure on the rebuilt integrated Manhattan map with the cloud/RT-lite changes in shipped content.",
    "notes": "3840x2160 output, TSR 46% (1766x994 internal), HW-RT reflections + RT-lite, cloud 4 km: p50 16.01 ms (62.4 fps), p95 18.05 ms (55.4 fps), p99 19.08, 0 hitches \u2014 recomputed by the auditor from raw CSVs under the exclusive lock. Not yet in shipped content (measured on a local map copy); glass SSIM 0.92 vs 0.97 gate."
+  },
+  {
+   "t": "08:33",
+   "piece": "P1 City",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "Streets empty: park cars/taxis on both curbs, 2 trees per 20 m.",
+   "notes": "Far field passes C11\u2013C15 at 1080p and 4K; facade albedo cap restored."
+  },
+  {
+   "t": "08:33",
+   "piece": "P1 City",
+   "round": 8,
+   "verdict": "fails",
+   "gap": "Shadowed facades too dark (canyon crush).",
+   "notes": "197 parked cars, 37 taxis, 195 lane cars, 179 new trees; S1 0\u219215 cars (IP-clean liveries). Street dressing 3\u21925."
+  },
+  {
+   "t": "08:33",
+   "piece": "P1 City",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall.",
+   "notes": "Canyon shade fill: dark-pixel share S3 72%\u219220%, S7 63%\u21924%; image quality 4\u21925."
   }
  ],
  "perf": [
@@ -950,6 +974,10 @@
   {
    "t": "08:06",
    "text": "4K/60 perf rounds 1\u20132 done: APPROACHES TARGET. 3840x2160 output at TSR 46% (1766x994 internal): p50 62.4 fps, p95 55.4 fps, 0 hitches (was ~38 fps p50). Still to do: fold the settings into the shipped map, fix a CPU/GPU sync stall, recover glass reflections. Merged."
+  },
+  {
+   "t": "08:33",
+   "text": "City rounds 7\u20139 done (3 blind Opus critics, all FAILS, lowest 3\u21924\u21924): streets now have parked cars, taxis, traffic and trees; the canyon crush is fixed. Next: the far-shore skyline band. Merged. Also fixed run_game.sh, which still force-killed engines on timeout."
   }
  ]
 }
