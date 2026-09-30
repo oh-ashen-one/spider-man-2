@@ -1,5 +1,5 @@
 {
- "updated": "07:57",
+ "updated": "08:06",
  "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -116,10 +116,10 @@
    "id": "F",
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": "Executing the Fable strategy: capture gate, clean baseline, one-variable probes under the exclusive lock"
+   "state": "active",
+   "round": 2,
+   "verdict": "approaches \u2014 lowest 3 (Sonnet 5.5)",
+   "gap": "HW-RT reflection preset is now CPU/GPU-serialised (2.9 ms frame\u2212GPU gap); trace and remove it, then re-measure on the rebuilt integrated Manhattan map with the cloud/RT-lite changes in shipped content."
   },
   {
    "id": "G",
@@ -649,6 +649,22 @@
    "verdict": "fails",
    "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1.",
    "notes": "Pedestrians 2\u21925, traffic 4\u21925: S1 people 5\u219227, street clip 4\u219219, 100 citizen looks. Round 3 ran code/experiments but could not capture after the 06:55 WindowServer reset."
+  },
+  {
+   "t": "08:06",
+   "piece": "F 4K/60 perf",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Late-route horizon: volumetric cloud 0.5\u21922.3 ms; lower cloud tracing distance; restore lit windows/glass lost to software Lumen.",
+   "notes": "Route p50 26.45\u219216.44 ms (60.8 fps) at 3840x2160 output, TSR 50% (1920x1080 internal); p95 19.86 ms. Gains: harness scene captures \u221211.6 ms, Nanite error 4 px \u22125.4, software Lumen \u22124.6."
+  },
+  {
+   "t": "08:06",
+   "piece": "F 4K/60 perf",
+   "round": 2,
+   "verdict": "approaches",
+   "gap": "HW-RT reflection preset is now CPU/GPU-serialised (2.9 ms frame\u2212GPU gap); trace and remove it, then re-measure on the rebuilt integrated Manhattan map with the cloud/RT-lite changes in shipped content.",
+   "notes": "3840x2160 output, TSR 46% (1766x994 internal), HW-RT reflections + RT-lite, cloud 4 km: p50 16.01 ms (62.4 fps), p95 18.05 ms (55.4 fps), p99 19.08, 0 hitches \u2014 recomputed by the auditor from raw CSVs under the exclusive lock. Not yet in shipped content (measured on a local map copy); glass SSIM 0.92 vs 0.97 gate."
   }
  ],
  "perf": [
@@ -930,6 +946,10 @@
   {
    "t": "07:57",
    "text": "City life rounds 2\u20133 done (critic r2: FAILS, lowest 4; pedestrians 2\u21925). Merged."
+  },
+  {
+   "t": "08:06",
+   "text": "4K/60 perf rounds 1\u20132 done: APPROACHES TARGET. 3840x2160 output at TSR 46% (1766x994 internal): p50 62.4 fps, p95 55.4 fps, 0 hitches (was ~38 fps p50). Still to do: fold the settings into the shipped map, fix a CPU/GPU sync stall, recover glass reflections. Merged."
   }
  ]
 }
