@@ -62,11 +62,14 @@ for (a, b, name) in progs:
         s = R[k].get('flip_shape', '')
         if s and (not shapes or shapes[-1] != s): shapes.append(s)
     ok1 = d_rel <= 0.25
-    ok2 = (t_att - t_reach) <= 0.3 if nxt is not None else False
+    # round 13 (rendered captures): a program still playing on the clip's last frame (the script's last release sits at the end of the
+    # clip) cannot show its catch: R2 / C2 are reported "not judged" instead of FAIL (the clip length, not the game, ended it)
+    trunc = b >= len(R) - 2
+    ok2 = (t_att - t_reach) <= 0.3 if nxt is not None else trunc
     ok_s = len(set(shapes)) <= 2 if name == 'backDouble' else True
     fails += (not ok1) + (not ok2) + (not ok_s)
     P('  %.2f s %-13s R1 release->shape %.2f s %s | R2 reach %.2f -> attach %.2f = %+.2f s %s | program %.2f s, ended %.2f s, cut at t_prog %.2f | shapes %s%s'
-      % (T[a], name, d_rel, 'PASS' if ok1 else 'FAIL', t_reach, t_att, t_att - t_reach, 'PASS' if ok2 else 'FAIL', DUR.get(name, 0), T[b],
+      % (T[a], name, d_rel, 'PASS' if ok1 else 'FAIL', t_reach, t_att, t_att - t_reach, ('PASS' if ok2 else 'FAIL') if not (trunc and nxt is None) else 'n/a (clip ends first)', DUR.get(name, 0), T[b],
          f(R[b], 'flip_t'), '/'.join(shapes), (' S1 %d shapes %s' % (len(set(shapes)), 'PASS' if ok_s else 'FAIL')) if name == 'backDouble' else ''))
 # ---- T4 / T2
 worst4, worst2 = 0.0, 0.0
@@ -110,7 +113,7 @@ for (a, b, name) in progs:
     if name == 'wallFront': continue  # the top-out uses the wall camera, not the flip camera
     k0 = f(R[b], 'flipcam_k')
     e = next((k for k in range(b, len(R)) if f(R[k], 'flipcam_k') < 0.02), None)
-    if e is None: P('  C2 %.2f s %s: flip camera still blending at the clip end' % (T[b], name)); continue
+    if e is None: P('  C2 %.2f s %s: flip camera still blending at the clip end (not judged: the clip ends first)' % (T[b], name)); continue
     dur = T[e] - T[b]
     okb = dur >= 0.4
     fails += not okb

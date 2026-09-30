@@ -1,6 +1,6 @@
 {
  "name": "b_release_trick_dive_zip_city",
- "note": "Round 13, Manhattan: swing north up the avenue from 30 m, release + trick at 1.4 s (flow flip frontPikeSwan starts at the release, 1.65 s), no re-press: a short dive at 3.05 s, zip to a roof point at 3.35 s, perch.",
+ "note": "Round 13, Manhattan: swing north up the avenue from 30 m, release + trick at 1.4 s (flow flip frontPikeSwan starts at the release, 1.65 s), no re-press: a short dive at 3.05 s, zip to a roof point at 3.35 s, perch. Round 13: the zip is pressed the moment the zip target reappears after the program (3.08 s; reach 2.82 -> attach <= 0.3 s); the dive key is held only 0.1 s.",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -41,11 +41,7 @@
    "drop": true
   },
   {
-   "t": 3.3,
-   "drop": false
-  },
-  {
-   "t": 3.35,
+   "t": 3.08,
    "zip": true,
    "move": [
     0,
@@ -54,7 +50,11 @@
    "heading": false
   },
   {
-   "t": 3.45,
+   "t": 3.15,
+   "drop": false
+  },
+  {
+   "t": 3.18,
    "zip": false
   }
  ]

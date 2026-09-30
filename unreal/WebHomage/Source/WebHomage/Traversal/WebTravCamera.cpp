@@ -35,6 +35,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 	bHasLastGoal = false; AnchorLean = 0.0; AnchorLeanV = 0.0;
 	bChaseInit = false; UserPitch = 0.0; OccYawGoal = OccUpGoal = 0.0;
 	bOutInit = false; // round 13: a teleport / reset is allowed to move the view at once
+	bHaveComposeHero = false;
 }
 
 void FWebTravCamera::ApplyLook(const FVector2D& Look)
@@ -334,6 +335,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	if (!bFromOk && bChaseInit && !CamPos.IsZero())
 	{ // the hero himself is inside geometry this frame (e.g. clipping a facade at a zip arrival): hold the last view
+		// round 13 (rendered f4 8.75-9.17 s, a 11.43-11.58 s: the hero skimming a street-tree canopy at swing bottom left every
+		// sweep origin overlapping, so the ABSOLUTE camera position froze while he flew on at 43 m/s -> 20 m away, then a dot):
+		// hold the view RELATIVE to the hero (same offset, same rotation); at a zip arrival he is static, so this is the old hold
+		if (bHaveComposeHero) CamPos += Hero - LastComposeHero;
+		LastComposeHero = Hero; bHaveComposeHero = true;
 		HeroDist = FVector::Dist(CamPos, Hero);
 		bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
 		return;
@@ -434,6 +440,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		}
 	}
 	CamPos = Cam;
+	LastComposeHero = Hero; bHaveComposeHero = true;
 	HeroDist = FVector::Dist(CamPos, Hero);
 	bCamInGeometry = World.SphereOverlaps(CamPos, 0.15);
 	// ---- orientation: yaw toward the hero; pitch puts the hero's centre at FrameS on screen (user look adds an offset)

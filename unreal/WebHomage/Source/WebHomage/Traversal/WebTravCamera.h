@@ -158,4 +158,7 @@ private:
 	bool bOutInit = false;
 	FVector LastOutPos = FVector::ZeroVector;
 	FRotator LastOutRot = FRotator::ZeroRotator;
+	// round 13: the hero position of the last composed frame (the "hero inside geometry" hold follows the hero instead of freezing)
+	FVector LastComposeHero = FVector::ZeroVector;
+	bool bHaveComposeHero = false;
 };
