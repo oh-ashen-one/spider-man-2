@@ -68,15 +68,16 @@ def load(p): return unreal.load_asset(p)
 if 'prep' in STEPS:
     subprocess.run(['python3', WT + '/tools/ue_char/prep_glbs.py'], check=True, capture_output=True, env=_ENV)
     subprocess.run(['python3', WT + '/tools/ue_char/extract_textures.py'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_hand_fix.py'], check=True, capture_output=True, env=_ENV)
-    # round 05: hero suit quality (smooth panel borders, raised thread normal / orm, twill detail) + domed lens in the UE-only hero GLB
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r5.py'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r5.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    # round 08: the ORIGINAL hero suit (Tessera: procedural base colour / normal / orm on the hero UV atlas, tools/ue_char/suit8) and the rebuilt eyes (one closed
+    # bezel ring sealed to a lens conformed to the mask) in the UE-only hero GLB; replaces the round-05 browser-suit quality pass (hero_hand_fix / hero_suit_r5 / hero_lens_r5)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r8.py'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r8.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
     subprocess.run(['python3', WT + '/tools/ue_char/eval/underlayer.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
     subprocess.run(['python3', WT + '/tools/ue_char/eval/refit.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     subprocess.run(['python3', WT + '/tools/ue_char/eval/weights_r6.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/eval/shards_r8.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)   # round 08: detached shoe shards
     # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
     subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True, env=_ENV)
     # street thug + brute: raw Tripo people (~/sm2-assets/raw) dressed, fitted to the hero skeleton (cached), textures + stripped GLBs
@@ -123,10 +124,13 @@ if 'tex' in STEPS:
     H = ART + '/hero/tex'; TH = ART + '/thug/tex'
     # round 04: hand white paint inpainted (tools/ue_char/hero_hand_fix.py, run in 'prep'); falls back to the extracted texture
     # round 05: r5 maps (smooth panel borders, raised threads, glossy crests) when tools/ue_char/hero_suit_r5.py has run
+    # round 08: the original Tessera suit maps (hero_suit_r8.py) when present, else the round-05 maps
+    r8 = os.path.exists(H + '/suit_basecolor_r8.png')
     r5 = os.path.exists(H + '/suit_basecolor_r5.png')
-    import_tex(H + ('/suit_basecolor_r5.png' if r5 else '/suit_basecolor_r4.png' if os.path.exists(H + '/suit_basecolor_r4.png') else '/suit_basecolor.png'), ROOT + '/Hero/Textures', 'T_Hero_BaseColor', 'srgb')
-    import_tex(H + ('/suit_normal_r5.png' if r5 else '/suit_normal.png'), ROOT + '/Hero/Textures', 'T_Hero_Normal', 'normal_gl')   # glTF = OpenGL (curl test)
-    import_tex(H + ('/suit_orm_r5.png' if r5 else '/suit_orm.png'), ROOT + '/Hero/Textures', 'T_Hero_ORM', 'linear')
+    sfx = '_r8' if r8 else '_r5' if r5 else ''
+    import_tex(H + ('/suit_basecolor%s.png' % sfx if sfx else '/suit_basecolor.png'), ROOT + '/Hero/Textures', 'T_Hero_BaseColor', 'srgb')
+    import_tex(H + ('/suit_normal%s.png' % sfx if sfx else '/suit_normal.png'), ROOT + '/Hero/Textures', 'T_Hero_Normal', 'normal_gl')   # glTF = OpenGL (curl test)
+    import_tex(H + ('/suit_orm%s.png' % sfx if sfx else '/suit_orm.png'), ROOT + '/Hero/Textures', 'T_Hero_ORM', 'linear')
     if os.path.exists(ART + '/shared/suit_twill_n.png'):
         import_tex(ART + '/shared/suit_twill_n.png', ROOT + '/Shared/Textures', 'T_Fabric_Twill_N', 'normal_gl')   # fine 2/2 twill (0.45 mm yarn), OpenGL
     # fabric micro-normal (browser detail maps; curl test says DirectX convention -> no flip)
@@ -331,21 +335,21 @@ if 'mat' in STEPS:
     # round 05: the chunky knit (tiling 48 = 3 mm ribs) is replaced by a fine twill: 32 yarns per tile, 0.45 mm per yarn -> tiling 122 from the
     # mesh's UV density (0.569 UV units per metre, tools/ue_char/hero_suit_r5.py)
     _fine = EAL.does_asset_exist(ROOT + '/Shared/Textures/T_Fabric_Twill_N')
-    _hj = ART + '/hero/tex/suit_r5.json'
+    _hj = ART + ('/hero/tex/suit_r8.json' if os.path.exists(ART + '/hero/tex/suit_r8.json') else '/hero/tex/suit_r5.json')
     _tile = float(_json0.load(open(_hj))['detail_tiling']) if (_fine and os.path.exists(_hj)) else 48.0
     mi('MI_Hero_Suit', ROOT + '/Hero/Materials', suit,
        tex={'BaseColor': ROOT + '/Hero/Textures/T_Hero_BaseColor', 'ORM': ROOT + '/Hero/Textures/T_Hero_ORM',
             'Normal': ROOT + '/Hero/Textures/T_Hero_Normal',
             'DetailNormal': ROOT + ('/Shared/Textures/T_Fabric_Twill_N' if _fine else '/Shared/Textures/T_Fabric_Knit_N')},
-       scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.55, 'Specular': 0.6}, switches={'HasORM': True})
+       scal={'DetailTiling': _tile, 'DetailStrength': 0.8 if _fine else 0.6, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (0.50, 0.62, 0.68, 1)}, switches={'HasORM': True})
     try:   # round 04: glossy lens with a grazing-angle falloff; the old simple lens stays as the fallback
         hlens = build_hero_lens()
-        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.05, 'Specular': 1.0, 'EdgeDarken': 0.6, 'Emissive': 0.02}, vec={'Color': (0.64, 0.66, 0.70, 1)})   # round 05: domed lens (hero_lens_r5.py) - darker base so the sky / sun reflections read as highlights
+        mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.50, 0.13, 0.01, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
         log('hero lens: glossy + fresnel falloff')
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.35}, vec={'Color': (0.02, 0.02, 0.025, 1)})
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.5, 'Specular': 0.25}, vec={'Color': (0.006, 0.011, 0.013, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
@@ -1012,5 +1016,44 @@ if 'mapkey' in STEPS:
     EAL.save_directory(TESTS + '/Materials', only_if_is_dirty=True, recursive=True)
     key_map('Char_CrowdKey', mk)
     key_map('Char_CrowdID', mid_)
+
+    # ---- round 08: hero key map.  Char_Hero copy: the hero writes stencil 1 and every slot is an unlit FLAT colour (lens magenta, bezel yellow, suit blue); everything that
+    # is not the hero becomes the key green (M_PP_Key).  Exact per-pixel classes for the eye checks (tools/ue_char/eval/lens_check_r8.py): background pixels between bezel and
+    # lens (green inside the eye), lens pixels touching the background (a lens at the silhouette).  Needs r.CustomDepth 3.
+    def hero_key_map(map_name):
+        flat = new_material(TESTS + '/Materials', 'M_Char_FlatID', skeletal=True)
+        flat.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+        MEL.connect_material_property(vector(flat, 'Color', (1, 0, 1, 1), -400, 0), 'RGB', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+        MEL.recompile_material(flat)
+        cols = {'Lens': (1.0, 0.0, 1.0, 1), 'LensFrame': (1.0, 1.0, 0.0, 1), 'SpiderSuit': (0.0, 0.0, 1.0, 1)}
+        mis = {k: mi('MI_Flat_' + k, TESTS + '/Materials', flat, vec={'Color': v}) for k, v in cols.items()}
+        EAL.save_directory(TESTS + '/Materials', only_if_is_dirty=True, recursive=True)      # the class materials must be ON DISK: -WHFlatClasses loads them by path in the running game
+        if EAL.does_asset_exist(TESTS + '/' + map_name): EAL.delete_asset(TESTS + '/' + map_name)
+        EAL.duplicate_asset(TESTS + '/Char_Hero', TESTS + '/' + map_name)
+        unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/' + map_name)
+        nh = 0
+        for a in unreal.EditorLevelLibrary.get_all_level_actors():
+            lab = a.get_actor_label()
+            if isinstance(a, unreal.WHCharLoopWalker) and lab.startswith('Hero_'):
+                nh += 1
+                mc = a.get_editor_property('mesh')
+                mc.set_editor_property('render_custom_depth', True)
+                mc.set_editor_property('custom_depth_stencil_value', 1)
+                names = [str(n) for n in mc.get_material_slot_names()]
+                log('hero key', lab, 'slots', names)
+                for i, n in enumerate(names):
+                    if n in mis: mc.set_material(i, mis[n])
+            elif lab == 'Post':
+                st = a.get_editor_property('settings')
+                wb = unreal.WeightedBlendable(); wb.set_editor_property('weight', 1.0); wb.set_editor_property('object', mk)
+                wbs = unreal.WeightedBlendables(); wbs.set_editor_property('array', [wb])
+                st.set_editor_property('weighted_blendables', wbs)
+                for ov, val in (('bloom_intensity', 0.0), ('vignette_intensity', 0.0), ('film_grain_intensity', 0.0)):
+                    try:
+                        st.set_editor_property('override_' + ov, True); st.set_editor_property(ov, val)
+                    except Exception as e: log('post setting', ov, 'not set:', str(e)[:80])
+                a.set_editor_property('settings', st)
+        log(map_name, 'saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), nh, 'hero actors flat-coloured + stencil')
+    hero_key_map('Char_HeroKey')
 
 log('done')

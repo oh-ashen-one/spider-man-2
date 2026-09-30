@@ -2,6 +2,7 @@
 #include "Characters/WHCharLoopWalker.h"
 #include "Characters/WHCharAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Materials/MaterialInterface.h"
 #include "EngineUtils.h"
 #include "Misc/CommandLine.h"
 #include "Misc/FileHelper.h"
@@ -59,6 +60,18 @@ AWHCharLoopWalker::AWHCharLoopWalker()
 void AWHCharLoopWalker::BeginPlay()
 {
 	Super::BeginPlay();
+	// round 08: -WHFlatClasses = every slot of the walker's mesh takes the unlit class-colour material /Game/Tests/Characters/Materials/MI_Flat_<SlotName> when it exists
+	// (hero eye checks: lens magenta, bezel yellow, suit blue on the stencil key; an editor-time override did not survive into the running game)
+	static const bool bFlatClasses = FParse::Param(FCommandLine::Get(), TEXT("WHFlatClasses"));
+	if (bFlatClasses && Mesh)
+	{
+		const TArray<FName> Slots = Mesh->GetMaterialSlotNames();
+		for (int32 i = 0; i < Slots.Num(); ++i)
+		{
+			const FString Path = FString::Printf(TEXT("/Game/Tests/Characters/Materials/MI_Flat_%s.MI_Flat_%s"), *Slots[i].ToString(), *Slots[i].ToString());
+			if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, *Path)) Mesh->SetMaterial(i, M);
+		}
+	}
 	Center = GetActorLocation();
 	Theta = FMath::DegreesToRadians(StartAngle);
 	Yaw = GetActorRotation().Yaw;

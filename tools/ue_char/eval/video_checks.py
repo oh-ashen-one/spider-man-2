@@ -25,7 +25,9 @@ def frames(path, t0=0, t1=1e9):
 def suit_mask(f):
     hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV); h, s, v = cv2.split(hsv)
     red = ((h < 8) | (h > 172)) & (s > 140) & (v > 60); blue = (h > 105) & (h < 130) & (s > 150) & (v > 40)
-    m = (red | blue).astype(np.uint8)
+    # round 08: the original Tessera suit (teal panels + amber accents); the old red / blue stays so earlier clips still measure
+    teal = (h > 82) & (h < 112) & (s > 120) & (v > 40); amber = (h > 8) & (h < 26) & (s > 170) & (v > 110)
+    m = (red | blue | teal | amber).astype(np.uint8)
     m = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8)); md = cv2.dilate(m, np.ones((25, 25), np.uint8))
     n, lab, st, _ = cv2.connectedComponentsWithStats(md)
     if n < 2: return None
@@ -55,8 +57,9 @@ def hero_run(path, t0, t1):
 
 
 def _red(f, smin=140, vmin=60):
+    """Hero 'primary colour' mask: red (old suit) OR teal (Tessera crown / body); name kept for the callers."""
     hsv = cv2.cvtColor(f, cv2.COLOR_BGR2HSV); h, s, v = cv2.split(hsv)
-    return ((h < 8) | (h > 172)) & (s > smin) & (v > vmin)
+    return (((h < 8) | (h > 172)) & (s > smin) & (v > vmin)) | ((h > 82) & (h < 112) & (s > max(smin - 20, 100)) & (v > max(vmin - 10, 35)))
 
 
 def head_bob(path, t0, t1):
@@ -71,7 +74,7 @@ def head_bob(path, t0, t1):
         ys, _ = np.nonzero(m); top = ys.min(); H = ys.max() - top
         red = _red(f, 100, 50)[:int(top + 0.3 * H)].astype(np.uint8)
         n, lab, st, _ = cv2.connectedComponentsWithStats(red)
-        c = [st[i, 1] for i in range(1, n) if st[i, 4] > 800 and 0.6 < st[i, 2] / max(st[i, 3], 1) < 1.6]
+        c = [st[i, 1] for i in range(1, n) if st[i, 4] > 250 and 0.6 < st[i, 2] / max(st[i, 3], 1) < 1.6]      # round 08: 250 px (the Tessera crown is a smaller teal blob than the old red head)
         Y.append(min(c) if c else np.nan)
     Y = np.array(Y, float); ok = ~np.isnan(Y)
     Yi = np.interp(np.arange(len(Y)), np.nonzero(ok)[0], Y[ok])
