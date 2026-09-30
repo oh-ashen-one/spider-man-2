@@ -173,6 +173,26 @@ MP = unreal.MaterialProperty
 TEXA = lambda n: f'{ROOT}/Textures/{n}'
 WORLD = [('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None)]
 
+# tree leaves: alpha-tested cards, two-sided, per-vertex / per-instance tint
+# (r03) ez-tree leaf cards (eztrees.js): leaf-shaped alpha, green albedo from the leaf texture, per-leaf crown exposure
+# (aLeafE.x in UV1: 0 deep inside .. 1 outer sun-side shell), two-sided foliage shading: light passes through the leaves
+# (r08) the alpha of the leaf texture loses coverage in its mips: beyond ~25 m every card was discarded and the street trees of S2 / S8 read as bare branches (the browser
+# switches to crown clumps there, the Unreal port only has these cards). The alpha cut is lowered with distance (0 at 25 m .. 0.55 at 80 m): cards fill up, the canopy stays a green mass.
+def make_leaves():
+    make_material('M_CityLeaves', None, '''
+float4 t = Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y));
+float e = saturate(uv1.x);
+float3 c = min(t.rgb * Tint.rgb * lerp(2.1, 3.0, e), 0.6);
+float dst = length(wpos - cam) * 0.01;
+float boost = saturate((dst - 25.0) / 55.0) * 0.55;
+Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2); Rough = 0.7;
+return c;''',
+        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1)), ('wpos', 'wpos', None), ('cam', 'cam', None)],
+        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
+        blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material rebuilt')
+
+
 # (r04) MPC_City scalars. DayEmisK scales the facade's interior / sign emission in daylight (1.0 at night): rooms behind
 # window glass are ~10x darker than sunlit masonry; GlassSpec = UE Specular of dielectric sash glass (0.5 = F0 0.04, real
 # glass; r03 used 0.1375 = F0 0.011, which turned every masonry window into a flat unreflective slab); DebugMode 1 = facade
@@ -307,18 +327,7 @@ return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None),
          ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
-    # tree leaves: alpha-tested cards, two-sided, per-vertex / per-instance tint
-    # (r03) ez-tree leaf cards (eztrees.js): leaf-shaped alpha, green albedo from the leaf texture, per-leaf crown exposure
-    # (aLeafE.x in UV1: 0 deep inside .. 1 outer sun-side shell), two-sided foliage shading: light passes through the leaves
-    make_material('M_CityLeaves', None, '''
-float4 t = Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y));
-float e = saturate(uv1.x);
-float3 c = min(t.rgb * Tint.rgb * lerp(2.1, 3.0, e), 0.6);
-Op = t.a > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2); Rough = 0.7;
-return c;''',
-        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1))],
-        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
-        blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
+    make_leaves()   # (r08) tree leaves: defined above the mat block so the light 'leaves' step can rebuild only this material
     # (r06) far field. M_CityFarMass = farshore.js createMassMaterial port (far-shore blocks: window grid, spandrels, glass towers, night lights);
     # vertex alpha = window flag from the exporter (0 none / 0.5 windows / 1 glass), colour = block tone.
     make_material('M_CityFarMass', None, r"""
@@ -810,15 +819,33 @@ SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'tru
 CROWN = ('trees_park_crownfar', 'trees_elm_crownfar', 'trees_conifer_crownfar')  # (r03) opaque canopy mass inside the park LOD1 trees
 protos = [p for p in man['protos'] if p['name'] in CROWN or (not any(s in p['name'] for s in SKIP_POOL) and not p['name'].endswith('_far'))]
 LEAFY = lambda n: 'leaves' in n
+def next_version(base):
+    v = 2
+    while EAL.does_asset_exist(f'{base}_v{v}'): v += 1
+    return f'{base}_v{v}'
+def sm_path(name):
+    """(r08) newest imported version of a prop mesh: SM_<name>, SM_<name>_v2, ..."""
+    base = f'{ROOT}/Props/SM_{name}'; best = base if EAL.does_asset_exist(base) else None
+    for v in range(2, 60):
+        if EAL.does_asset_exist(f'{base}_v{v}'): best = f'{base}_v{v}'
+    return best or base
 # (r08) 'veh' step: only the parked-car prototypes (tools/export/export_vehicles.py: the browser's Blender car models, part colours, no atlas), M_CityProp instances
 VEH_PROTOS = [p for p in protos if p['name'].startswith('veh_')]
 _todo = protos if 'proto' in STEPS else (VEH_PROTOS if 'veh' in STEPS else [])
 if _todo:
+    if any(p['name'].startswith('veh_') for p in _todo) and EAL.does_asset_exist(TESTS + '/City_Midtown_Geo'):
+        # (r08) nothing may reference the old car meshes while they are replaced: drop the vehicle ISM actors from the geometry level first (the map step re-spawns them)
+        unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
+        _eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem); _n = 0
+        for _a in _eas.get_all_level_actors():
+            if _a.get_actor_label().startswith(('ISM_veh_', 'ISM_traffic_')): _eas.destroy_actor(_a); _n += 1
+        unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
+        log('removed vehicle ISM actors from the geometry level', _n)
     import_files([os.path.join(EXPORT, p['file']) for p in _todo], ROOT + '/Props/_in', mesh_pipeline(True))
     for p in _todo:
         src = f'{ROOT}/Props/_in/{p["name"]}/StaticMeshes/{p["name"]}'; dst = f'{ROOT}/Props/SM_{p["name"]}'
         if not EAL.does_asset_exist(src): log('MISSING proto', src); continue
-        if EAL.does_asset_exist(dst): EAL.rename_asset(dst, dst + '_old' + str(int(time.time())))   # (r08) re-import over an existing prop: keep the referenced old asset out of the way
+        if EAL.does_asset_exist(dst): dst = next_version(dst)   # (r08) re-import over an existing prop: deleting / renaming a referenced mesh leaves redirectors that block the rename; a new _v<N> asset is used instead (sm_path() picks the newest)
         EAL.rename_asset(src, dst); sm = load(dst)
         if LEAFY(p['name']):
             mi = at.create_asset('MI_' + p['name'], MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
@@ -929,11 +956,13 @@ def build_geo_level(path):
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
     ni = 0
-    EXTRA_PROPS = {}
+    EXTRA_PROPS = {}; REMOVE_AT = set()
     for _fn in ('streetprops.json', 'streettrees.json', 'streetcars.json'):   # (r05) street furniture, (r08) trees on every avenue sidewalk + parked cars (tools/export/street_props.py, street_trees.py, street_cars.py)
         _fp = os.path.join(EXPORT, _fn)
         if os.path.exists(_fp):
-            for _pool, _its in json.load(open(_fp)).items(): EXTRA_PROPS.setdefault(_pool, []).extend(_its)
+            for _pool, _its in json.load(open(_fp)).items():
+                if _pool == '_remove': REMOVE_AT.update((round(q[0], 1), round(q[1], 1)) for q in _its)   # (r08) existing trees / pits within 16 m of a street-level shot camera
+                else: EXTRA_PROPS.setdefault(_pool, []).extend(_its)
     def make_ism(label, folder, sm_path, items, cast_shadow=True):
         """one HISM actor with per-instance custom data 0..2 = tint, 3 = state (M_CityProp / M_CityLeaves); items in the layout.json pool-item format"""
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label, folder=folder)
@@ -953,8 +982,9 @@ def build_geo_level(path):
     for p in protos:
         pool = p['src']; items = (L['instances'].get(pool) or {}).get('items') or []
         # (r08) the r05 thinning of the S1 / S2 corridor's street trees is gone (critic r07: empty tree pits, no tree on the S1 west sidewalk): every browser street tree stays
+        if REMOVE_AT and (pool.startswith('ez-street') or pool in ('pit', 'pit2')): items = [it for it in items if (round(it['x'], 1), round(it['z'], 1)) not in REMOVE_AT]
         items = list(items) + EXTRA_PROPS.get(pool, [])  # (r05) supplemental street furniture (tools/export/street_props.py); (r08) + street trees + parked cars
-        sp = f'{ROOT}/Props/SM_{p["name"]}'
+        sp = sm_path(p['name'])
         if not items or not EAL.does_asset_exist(sp): continue
         ni += make_ism('ISM_' + p['name'], 'City/Props', sp, items)
     # (r08) stopped avenue traffic (tools/export/street_traffic.py) in its OWN actors, folder City/Traffic: P6 owns moving traffic, the integrated map can hide / delete this folder.
@@ -962,7 +992,7 @@ def build_geo_level(path):
     tp = os.path.join(EXPORT, 'streettraffic.json'); nt = 0
     if os.path.exists(tp) and ARGS.get('traffic', '1') != '0':
         for pool, items in json.load(open(tp)).items():
-            sp = f'{ROOT}/Props/SM_{pool}'
+            sp = sm_path(pool)
             if items and EAL.does_asset_exist(sp): nt += make_ism('ISM_traffic_' + pool, 'City/Traffic', sp, items)
     log('stopped traffic cars', nt)
     ni += nt

@@ -24,7 +24,7 @@ SRC = os.path.join(REPO, 'public', 'assets', 'city', 'vehicles.glb')
 MODELS = ['sedan', 'sedan2', 'hatch', 'suv', 'suv2', 'cross', 'pickup', 'van', 'taxi', 'taxi_hy', 'taxi_mv', 'taxi_gr']
 # linear colour per material part (vehicles_atlas2 cell means, converted to linear; paint (1) stays white: the instance tint multiplies it)
 PCOL = {0: (0.42, 0.42, 0.40), 1: (1.0, 1.0, 1.0), 2: (0.36, 0.37, 0.38), 3: (0.02, 0.02, 0.02), 4: (0.6, 0.55, 0.4), 5: (0.008, 0.008, 0.008), 6: (0.006, 0.006, 0.006),
-        7: (0.30, 0.30, 0.30), 8: (0.42, 0.02, 0.02), 15: (0.55, 0.45, 0.28)}
+        7: (0.10, 0.10, 0.10), 8: (0.42, 0.02, 0.02), 15: (0.55, 0.45, 0.28)}
 
 def read_meshes(path):
     b = open(path, 'rb').read()

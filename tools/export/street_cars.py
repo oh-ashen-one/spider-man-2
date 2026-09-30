@@ -24,6 +24,8 @@ args = [a for a in sys.argv[1:] if not a.startswith('--')]
 EXP = (args[0] if args else _EXPORT).rstrip('/') + '/'
 DENSITY = float(sys.argv[sys.argv.index('--density') + 1]) if '--density' in sys.argv else 0.92
 lay = json.load(open(EXP + 'layout.json')); veh = json.load(open(EXP + 'vehicles.json'))
+SHOTS = json.load(open(os.path.join(HERE, '..', '..', 'unreal', 'WebHomage', 'Scripts', 'city_shots.json')))
+CAMS = [(c['pos'][0], c['pos'][2]) for c in SHOTS if c['pos'][1] < 10.0]   # street-level shot cameras: no car within 15 m (it would fill the frame) or in the 22 m ahead corridor
 REGION = lay['region']                       # exported tiles: asphalt exists only inside
 AVS = [-610, -430, -250, 0, 250, 430, 610]
 HALF = 11.0; KEEP = 9.5; CURB_EDGE = 10.75
@@ -40,6 +42,9 @@ def lin2(c): return [v ** 2.2 for v in lin(c)]
 PAL = [lin2(c) for c in (0x0e0e0f, 0x151517, 0x1b1c1f, 0x101418, 0xe2e2df, 0xd8d8d4, 0xcfcfca, 0xe6e3da, 0xa9adb1, 0x9c9fa3, 0xb7b9bb, 0x8e9296, 0x6d7074, 0x55585c, 0x44474b,
        0x1b2a4a, 0x223a63, 0x2f4c7a, 0x5a1216, 0x6e1a1a, 0x8a1f1f, 0xb3a98f, 0x9b8f75, 0x2c3d2e, 0x44563f, 0x6b86a0, 0x4a3a2c, 0x3b4450, 0x7c8a8f, 0x2a2d33)]
 TAXI = lin2(0xf5a900); VANC = [lin2(c) for c in (0xd6d6d2, 0xcfccc4, 0xc9c9c7, 0xd9d7d0)]
+
+def cam_blocked(x, z):
+    return any(math.hypot(x - cx, z - cz) < 15.0 or (abs(x - cx) < 3.6 and cz - 22.0 < z < cz + 6.0) for cx, cz in CAMS)
 
 def side_rule(i, side, z):
     """'none' (no parking lane / bike lane), 'bus' (red bus lane in mid-block), 'full'"""
@@ -105,6 +110,7 @@ for i, ax, z0, z1 in blocks:
                 blocked = (near(road_obst, x, zc, ln / 2 + 1.4)
                            or near(side_obst['hydrant'], ax + side * HALF, zc, ln / 2 + 0.7)
                            or near(side_obst['busstop'], ax + side * (HALF + 1), zc, 12.0) or near(side_obst['dock'], ax + side * HALF, zc, 8.0) or near(side_obst['subway'], ax + side * HALF, zc, 6.0))
+                blocked = blocked or cam_blocked(x, zc) or cam_blocked(x, zc - ln / 2) or cam_blocked(x, zc + ln / 2)
                 if skip or blocked:
                     cursor += (ln + gap) if skip else 1.2; continue
                 seedk = hrand(ax, zc, 8)

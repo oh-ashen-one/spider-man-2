@@ -207,7 +207,7 @@ def yolo_worker(path):
     r = m.predict(im, classes=[0, 2, 3, 5, 7, 9], conf=YOLO_CONF, verbose=False, device=os.environ.get('CITY_YOLO_DEVICE', 'cpu'), imgsz=1920)[0]
     cls = r.boxes.cls.cpu().numpy(); cf = r.boxes.conf.cpu().numpy()
     if YOLO_ANN:
-        os.makedirs(YOLO_ANN, exist_ok=True); cv2.imwrite(os.path.join(YOLO_ANN, os.path.basename(path).rsplit('.', 1)[0] + '_yolo.jpg'), r.plot(boxes=True, masks=False, labels=True, conf=True))
+        os.makedirs(YOLO_ANN, exist_ok=True); cv2.imwrite(os.path.join(YOLO_ANN, os.path.basename(path).rsplit('.', 1)[0] + '_yolo.jpg'), r.plot(boxes=True, masks=False, labels=False, conf=False, line_width=1))
     veh = np.isin(cls, [2, 3, 5, 7])
     print(json.dumps(dict(people=int((cls == 0).sum()), vehicles=int(veh.sum()), cars=int((cls == 2).sum()), traffic_lights=int((cls == 9).sum()), vehicles_c35=int((veh & (cf >= 0.35)).sum()), conf=YOLO_CONF)))
 

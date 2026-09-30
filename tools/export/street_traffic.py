@@ -2,7 +2,7 @@
 """Stopped / slow avenue traffic for the City test maps (round 08; CITY-SPEC C6: 'avenue seen from swing height: vehicles median 14-22 per frame').
 
 Parked cars alone put ~10 detectable vehicles into the S2 swing view (the first 80 m of the avenue are below the frame), so the four travel lanes carry cars too:
-per lane and block a queue at the stop line (0-6 cars, the red-light platoon the browser's signals produce: stop lines at zA + 4.6 northbound (east half) and zB - 4.6
+per lane and block a queue at the stop line (0-3 cars, the red-light platoon the browser's signals produce: stop lines at zA + 4.6 northbound (east half) and zB - 4.6
 southbound (west half), ground.js) and sparse free-flow cars behind it. The cars stand still (there is no simulation in the City test maps; P6 owns the moving traffic
 and pedestrians: build_city.py puts these cars into their OWN actors under the World Outliner folder City/Traffic so the integrated map can hide or delete them).
 Same models, paint mix and item format as street_cars.py. Lane centres +-1.8 / +-5.4 m (Park Av, shifted around its median: +-3.7 / +-7.1). Cars keep clear of the lane-closure
@@ -33,7 +33,7 @@ def pick(a, b):
     r = hrand(a, b, 11); h = hrand(a, b, 12)
     if r < 0.14: return 'veh_taxi' if h < 0.15 else 'veh_taxi_hy' if h < 0.6 else 'veh_taxi_mv' if h < 0.85 else 'veh_taxi_gr'
     if r < 0.47: return ['veh_sedan', 'veh_sedan2', 'veh_hatch'][int(h * 3) % 3]
-    if r < 0.92: return ['veh_suv', 'veh_cross', 'veh_suv2', 'veh_pickup'][int(h * 4) % 4]
+    if r < 0.955: return ['veh_suv', 'veh_cross', 'veh_suv2', 'veh_pickup'][int(h * 4) % 4]
     return 'veh_van'
 
 def cam_blocked(x, z):
@@ -61,7 +61,7 @@ for ax, z0, z1 in blocks:
             direction = -1.0 if side < 0 else 1.0                             # z direction from the stop line back into the block (southbound queue extends to smaller z)
             # queue length by hash: 0..4
             u = hrand(ax, z0, side * 7 + li)
-            kq = 0 if u < 0.08 else 1 if u < 0.2 else 2 if u < 0.38 else 3 if u < 0.58 else 4 if u < 0.76 else 5 if u < 0.9 else 6
+            kq = 0 if u < 0.32 else 1 if u < 0.66 else 2 if u < 0.88 else 3
             placed = []                                                       # (z centre, half length)
             frontz = stop
             def add(kind, zc_front):
@@ -87,15 +87,15 @@ for ax, z0, z1 in blocks:
                 ln = veh[kind]['len']
                 if add(kind, frontz): cnt_b += 1
                 frontz += direction * (ln + 1.1 + hrand(ax, z0, q + li * 9) * 1.5)
-            # free-flow cars behind the queue: one every ~10-25 m
-            frontz += direction * (4.0 + hrand(ax, z0, 31 + li + side) * 9.0)
+            # free-flow cars behind the queue: one every ~25-45 m
+            frontz += direction * (8.0 + hrand(ax, z0, 31 + li + side) * 18.0)
             while True:
                 kind = pick(ax * 5.3 + side * 2 + li + 1, z0 + frontz)
                 ln = veh[kind]['len']
                 zc = frontz + direction * ln / 2
                 if zc - ln / 2 < z0 + 6 or zc + ln / 2 > z1 - 6: break
-                if hrand(ax, frontz, li + side) < 0.82 and add(kind, frontz): cnt_b += 1
-                frontz += direction * (ln + 3.5 + hrand(ax, frontz, 5) * 14.0)
+                if hrand(ax, frontz, li + side) < 0.85 and add(kind, frontz): cnt_b += 1
+                frontz += direction * (ln + 12.0 + hrand(ax, frontz, 5) * 26.0)
     per_block.append(cnt_b)
 json.dump(out, open(EXP + 'streettraffic.json', 'w'))
 print({k: len(v) for k, v in sorted(out.items())}, 'lane cars:', n, 'blocks:', len(per_block), 'mean per block %.1f' % (sum(per_block) / max(1, len(per_block))))

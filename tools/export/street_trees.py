@@ -8,7 +8,7 @@ stayed empty: S1 showed empty pits and no tree on the west sidewalk. Round 08 re
   3. gaps longer than GAP (9 m) between trees on an avenue sidewalk are filled with new trees (each with its own iron-fenced pit), so every 20 m of avenue frontage carries >= 2 trees
      (block ends keep 7 m clear for crosswalks and corner furniture; lamps, hydrants, signal masts, bus stops and other furniture keep 1.1-1.8 m clear, the tree slides along the curb).
 Trees: the browser's three street species (ez_street0..2); high-detail LOD0 within 80 m of a street-level shot camera (S1, S5, S6), LOD1 (half the triangles) elsewhere.
-Output: <export>/streettrees.json {pool: [items]} (pools ez-street{0,1,2}-l{0,1}-{leaves,bark} and 'pit'), same item format as layout.json; build_city.py appends them to the ISMs.
+Output: <export>/streettrees.json {pool: [items], '_remove': [[x, z] existing trees to drop]} (pools ez-street{0,1,2}-l{0,1}-{leaves,bark} and 'pit'), same item format as layout.json; build_city.py appends them to the ISMs.
 usage: street_trees.py [export_dir]
 """
 import json, math, os, sys
@@ -44,6 +44,8 @@ for k in ('hydrant', 'trash', 'newsbox', 'bench', 'planter', 'mailbox', 'bikerac
     for i in I.get(k, {}).get('items') or []: obst.append((i['x'], i['z'], 2.2 if k in ('shed', 'busstop', 'subway') else (1.6 if k in ('lamp', 'mast', 'post') else 1.1)))
 obst = np.array(obst)
 
+def cam_near(x, z, r=16.0):
+    return any(math.hypot(x - hx, z - hz) < r for hx, hz in HERO)
 def tree_near(x, z, r):
     return len(tree_pts) > 0 and bool((np.hypot(tree_pts[:, 0] - x, tree_pts[:, 1] - z) < r).any())
 def blocked(x, z):
@@ -58,7 +60,7 @@ new_pits = []
 # 2. empty pits of street_props.py get a tree
 for it in sp.get('pit', []):
     if not (R['x0'] < it['x'] < R['x1'] and R['z0'] < it['z'] < R['z1']): continue
-    if tree_near(it['x'], it['z'], MINTREE): continue
+    if tree_near(it['x'], it['z'], MINTREE) or cam_near(it['x'], it['z']): continue
     new_trees.append((it['x'], it['z'], None, 'pit')); tree_pts = np.vstack([tree_pts, [it['x'], it['z']]])
 
 # 3. fill the gaps on avenue frontage
@@ -85,7 +87,7 @@ for ax, z0, z1 in blocks:
                 zt = a + (b - a) * k / (n + 1)
                 for d in (0.0, 1.6, -1.6, 3.0, -3.0, 4.4, -4.4):
                     zz = zt + d
-                    if zz < lo or zz > hi or blocked(x, zz) or tree_near(x, zz, 3.4): continue
+                    if zz < lo or zz > hi or blocked(x, zz) or tree_near(x, zz, 3.4) or cam_near(x, zz): continue
                     added.append(zz); break
         for zz in added:
             new_trees.append((x, zz, None, 'gap')); new_pits.append((x, zz))
@@ -95,7 +97,9 @@ for ax, z0, z1 in blocks:
         for w0 in np.arange(lo, hi - 19.9, 20.0):
             audit.append((ax, side, round(float(w0), 1), int(((allz >= w0) & (allz < w0 + 20.0)).sum())))
 
-out = {}
+# existing browser trees within 16 m of a street-level shot camera are removed (a trunk 12 m from the lens fills the frame, S1 x 0-200); their pits go with them
+remove = [[x, z] for (x, z) in trees.keys() if cam_near(x, z)]
+out = {'_remove': remove}
 def put(pool, it): out.setdefault(pool, []).append(it)
 for x, z, sidx, src in new_trees:
     sidx = int(hrand(x, z, 3) * 3) % 3
@@ -108,6 +112,7 @@ for x, z in new_pits:
     put('pit', {'x': round(x, 3), 'y': 0.15, 'z': round(z, 3), 'ry': 1.5708, 's': 1, 'e': {'aTint': [0.029, 0.029, 0.029], 'aState': 0}})
 json.dump(out, open(EXP + 'streettrees.json', 'w'))
 cnt = np.array([a[3] for a in audit]) if audit else np.array([0])
+print('removed trees near shot cameras:', len(remove))
 print('new trees:', len(new_trees), '(empty pits planted', sum(1 for t in new_trees if t[3] == 'pit'), ', gap fills', sum(1 for t in new_trees if t[3] == 'gap'), ')  new pits:', len(new_pits))
 print(f'per-20 m frontage windows: n={len(cnt)} mean {cnt.mean():.2f} min {cnt.min()} share >= 2: {(cnt >= 2).mean() * 100:.0f} %')
 json.dump({'windows': audit}, open(EXP + 'streettrees_audit.json', 'w'))
