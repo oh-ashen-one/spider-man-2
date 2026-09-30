@@ -774,10 +774,13 @@ if 'maps5' in STEPS:
     K5 = unreal.WHShotKind
     H5 = ROOT + '/Hero/'; PP5 = ROOT + '/People/'
 
+    NEWLEVEL_N = [0]
+
     def new_stage(tag, fills=False):
         """Level with the round-04 test-stage lighting + street; returns the level's fill-light state (enemy fills on lighting channel 1 only)."""
         les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
-        les.new_level('/Temp/Char_%s_Build_%d' % (tag, int(time.time())))
+        NEWLEVEL_N[0] += 1
+        les.new_level('/Temp/Char_%s_Build_%d_%d' % (tag, int(time.time()), NEWLEVEL_N[0]))   # unique per call (two maps built within one second collided)
         sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-35, -40, 0), 'Sun')
         sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
         sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True)
@@ -880,16 +883,16 @@ if 'maps5' in STEPS:
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================
     CY5 = -1900.0
     L5 = 9000.0
-    # round 07 layout (tools/ue_char/crowd/layout_search.py seed 8): (citizen, lane offset dy in cm from the street centre line, start x0 at the start of the
-    # shot in cm, direction).  The tracking camera follows x = 0 at 1.1 m/s on the +Y side, 11.5 m from the mid lane; the near lane (dy 580-820) is 3.6-5.7 m
-    # from it.  Straight-line paths of every pair stay >= 117 cm apart for 2 s beyond both shots (so the runtime avoidance has nothing to do), the +X
-    # stream keeps to the camera side of the near lane (right-hand traffic), ~12 people in the tracking frame.
-    MID7 = [('03_white_tee', -10, -640, 1), ('12_sundress_mom', -200, 740, 1), ('13_construction_worker', 340, 550, 1), ('15_executive', -260, -330, 1),
-            ('04_blue_sweatshirt', -50, -750, 1), ('19_marathon_runner', -340, -220, 1),
-            ('10_silver_tie', -330, -530, -1), ('14_teen_skater', 230, 510, -1), ('01_retired_gent', 80, 1420, -1), ('20_punk_artist', 220, 1490, -1),
-            ('18_dapper_elder', 110, 700, -1), ('08_black_suit', 210, 1980, -1)]
-    NEAR7 = [('02_leather_jacket', 610, 150, -1), ('06_chrome_shades', 580, 960, -1), ('16_lumberjack_hipster', 620, 840, -1),
-             ('05_black_tee', 820, 320, 1), ('17_hijabi_student', 760, -150, 1), ('09_kurta_waistcoat', 820, 30, 1)]
+    # round 07 layout (tools/ue_char/crowd/layout_search.py --seed 1 --iters 14000 --flip): (citizen, lane offset dy in cm from the street centre line, start x0 at the
+    # start of the shot in cm, direction).  The tracking camera follows x = 0 at 1.1 m/s on the +Y side, 11.5 m from the mid lane; the near lane (dy 690-740) is
+    # 4.1-4.6 m from it.  Straight-line paths of every pair stay >= 130 cm apart for 2 s beyond both shots (so the runtime avoidance has nothing to do in them);
+    # the mid lane is two-way flow, the near lane walks one way (with the camera) so no two near-lane silhouettes ever overlap on screen; ~11 people in the tracking frame.
+    MID7 = [('03_white_tee', 90, -620, 1), ('12_sundress_mom', 80, -180, 1), ('13_construction_worker', -30, 460, 1), ('15_executive', -340, 680, 1),
+            ('04_blue_sweatshirt', -320, 530, 1), ('19_marathon_runner', -200, 2110, 1),
+            ('10_silver_tie', 300, 650, -1), ('14_teen_skater', -70, 70, -1), ('01_retired_gent', -340, 390, -1), ('20_punk_artist', -240, 60, -1),
+            ('18_dapper_elder', 240, 780, -1), ('08_black_suit', -160, 1880, -1)]
+    NEAR7 = [('02_leather_jacket', 690, 1370, 1), ('06_chrome_shades', 690, 550, 1), ('16_lumberjack_hipster', 740, 2710, 1),
+             ('05_black_tee', 690, -1930, 1), ('17_hijabi_student', 690, -160, 1), ('09_kurta_waistcoat', 720, -10, 1)]
     # the round-06 layout (walkers passing through each other): used ONLY by Char_CrowdAvoid, the engine test of the avoidance itself
     MID6 = [('03_white_tee', 150, -560, 1), ('12_sundress_mom', -140, -160, 1), ('13_construction_worker', 190, 150, 1), ('15_executive', -220, 420, 1),
             ('04_blue_sweatshirt', 60, -820, 1), ('19_marathon_runner', -60, 620, 1),

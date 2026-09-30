@@ -1,4 +1,19 @@
-# P2 Characters: handoff after round 06
+# P2 Characters: handoff (round 07 IN PROGRESS, written 2026-09-30 13:05; rewritten at the end of the round)
+
+> Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
+
+## ROUND 07 STATE (read first; the round-06 text below is history)
+
+Target (critic r06): walker avoidance with capsule radius >= 35 cm + the key see-through fix, re-capture `crowd_key_c_4k` / `crowd_key_a_4k`; zero garment pixels with G>R+40, no walker-mask overlap across `crowd_tracking` at 60 fps, no detached polygon > 4 px; close the 3 ankle gaps.
+
+Done and committed on `night1/characters` (latest commits "P2 characters r07 WIP ..."):
+- C++ `AWHCharLoopWalker` avoidance (`bAvoid`, capsule 40 cm, 2 s look-ahead, lateral steering with right-hand bias, hard limit 2R + 0.5 cm, order independent group step) + telemetry `-WHWalkerLog=<csv>`; `-WHNoAvoid` = A/B baseline. The offline model `tools/ue_char/crowd/avoid_sim.py` reproduces the engine telemetry exactly (old layout: min pair distance 80.37 cm with avoidance, 10 cm without).
+- New crowd layout (`layout_search.py --seed 1 --flip`, literals in `build_characters.py` MID7 / NEAR7): collision-free straight lanes for 2 s beyond both shots.
+- Chroma key replaced: `Char_CrowdKey` = `Char_Crowd` + custom-depth stencil on the citizens + post-process material `M_PP_Key` (after tonemapping) that paints everything that is not a citizen exactly (0,230,0) (round 05/06 keyed the street geometry: its green bounce tinted garments = the "key-green jeans" of the critic). `Char_CrowdID` writes R = 12 x walker id. Capture needs `r.CustomDepth 3` (capture_r5.sh gK / gI do that).
+- Ankle: skin gradient across the ankle joint (`weights_r6.py ankle_blend`); `ankle_gap.py`, `island_drift.py`, `ankle_sliver.py`, `key_check_r7.py`, `telemetry_check.py`.
+- Content rebuilt locally at 13:00 (nothing committed: no .uasset / .umap).
+
+Pending at the time of writing: engine captures (`tools/ue_char/run_r7_captures.sh <out> "K T"` running), then I C S E H F; measurements; round-07 docs; critic pack.
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 

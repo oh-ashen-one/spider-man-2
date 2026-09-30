@@ -29,6 +29,7 @@ namespace
 		}
 	}
 	constexpr float Horizons[] = {0.f, 0.5f, 1.0f, 1.5f, 2.0f};
+	bool AvoidOff() { static const bool b = FParse::Param(FCommandLine::Get(), TEXT("WHNoAvoid")); return b; }   // -WHNoAvoid: the A/B baseline run (avoidance disabled)
 	FString Label(const AActor* A)
 	{
 #if WITH_EDITOR
@@ -36,6 +37,12 @@ namespace
 #else
 		return A->GetName();
 #endif
+	}
+	void AppendRow(const AWHCharLoopWalker* M, uint64 Frame, float Time, float MinPair)
+	{
+		const FVector P = M->GetActorLocation();
+		GLogBuf += FString::Printf(TEXT("%llu,%.4f,%s,%.2f,%.2f,%.2f,%.2f,%.2f\n"), Frame, Time, *Label(M), P.X, P.Y, M->GetActorRotation().Yaw, M->LaneOffset, MinPair);
+		if (++GLogFrames % 4320 == 0) FlushLog();
 	}
 }
 
@@ -78,7 +85,7 @@ void AWHCharLoopWalker::Tick(float Dt)
 		SetActorLocationAndRotation(P + FVector(0, 0, Z), FRotator(0.f, T.Rotation().Yaw, 0.f));
 		if (AI) { AI->ForcedSpeed = Speed; AI->bForceAir = bAir; AI->ForcedVerticalSpeed = Vz; AI->TakeoffTime = TakeoffT; }
 	}
-	else if (Mode == EWHWalkerMode::Line && bAvoid)
+	else if (Mode == EWHWalkerMode::Line && bAvoid && !AvoidOff())
 	{
 		StepAvoidGroup(Dt, false);
 		if (AI) { AI->ForcedSpeed = Speed; AI->bForceAir = bAir; AI->ForcedVerticalSpeed = Vz; AI->TakeoffTime = TakeoffT; }
@@ -90,6 +97,7 @@ void AWHCharLoopWalker::Tick(float Dt)
 		TickHop(Dt);
 		SetActorLocationAndRotation(Center + FRotator(0.f, Yaw, 0.f).Vector() * X + FVector(0, 0, Z), FRotator(0.f, Yaw, 0.f));
 		if (AI) { AI->ForcedSpeed = Speed; AI->bForceAir = bAir; AI->ForcedVerticalSpeed = Vz; AI->TakeoffTime = TakeoffT; }
+		if (bAvoid && Dt > 0.f) { InitLog(); if (!GLogPath.IsEmpty()) AppendRow(this, GFrameCounter, GetWorld()->GetTimeSeconds(), -1.f); }   // baseline run (-WHNoAvoid): telemetry only
 	}
 	else if (Mode == EWHWalkerMode::Turntable)
 	{
@@ -120,7 +128,7 @@ void AWHCharLoopWalker::RestartLine()
 	HopT = FirstHopDelay >= 0.f ? HopInterval - FirstHopDelay : 0.f; TakeoffT = -1.f; bAir = false; Z = 0.f; Vz = 0.f;
 	if (Mode == EWHWalkerMode::Line)
 	{
-		if (bAvoid) StepAvoidGroup(0.f, true);   // reposition now (and resolve the whole group at its restarted positions)
+		if (bAvoid && !AvoidOff()) StepAvoidGroup(0.f, true);   // reposition now (and resolve the whole group at its restarted positions)
 		else Tick(0.f);
 	}
 }
@@ -228,12 +236,5 @@ void AWHCharLoopWalker::StepAvoidGroup(float Dt, bool bForce)
 	}
 	for (AWHCharLoopWalker* M : G) M->ApplyLine();
 	if (Dt > 0.f && !GLogPath.IsEmpty())
-	{
-		for (AWHCharLoopWalker* M : G)
-		{
-			const FVector P = M->GetActorLocation();
-			GLogBuf += FString::Printf(TEXT("%llu,%.4f,%s,%.2f,%.2f,%.2f,%.2f,%.2f\n"), Frame, W->GetTimeSeconds(), *Label(M), P.X, P.Y, M->GetActorRotation().Yaw, M->LaneOffset, M->MinPairDistance);
-		}
-		if (++GLogFrames % 240 == 0) FlushLog();
-	}
+		for (AWHCharLoopWalker* M : G) AppendRow(M, Frame, W->GetTimeSeconds(), M->MinPairDistance);
 }

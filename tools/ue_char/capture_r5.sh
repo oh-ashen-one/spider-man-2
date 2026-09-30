@@ -29,7 +29,7 @@ seg_run() {   # name map start_shot quit_s [res]
   "$WT/tools/ue_char/ue_wait.sh"
   ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' > "$OUT/seg$1_gpu_util_before.txt" || true
   "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map "$2" -res "${5:-1920x1080}" -quit "$4" -name "seg$1" -movie -exec "${MOVIE_EXEC-r.MotionBlurQuality 0}" -timeout 3000 \
-      -- -WHCharShot="$3" < /dev/null | tail -4
+      -- -WHCharShot="$3" ${WLOG:+-WHWalkerLog="$WLOG"} < /dev/null | tail -4
 }
 cut_clip() {  # seg name start_s dur_s
   ffmpeg -loglevel error -y -framerate 60 -start_number $(python3 -c "print(int(round($3 * 60)))") -i "$OUT/seg$1_frames/MovieFrame%05d.png" \
@@ -47,7 +47,7 @@ for m in $MOVIES; do
     F) seg_run F /Game/Tests/Characters/Char_Fight 0 24.5
        cut_clip F street_fight_wide $D 8; cut_clip F street_fight_34 $(python3 -c "print($D+8)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16)") 8
        cut_still F street_fight_1080 $(python3 -c "print($D+3)") ;;
-    C) seg_run C /Game/Tests/Characters/Char_Crowd 0 15
+    C) WLOG="$OUT/crowd_walkers.csv" seg_run C /Game/Tests/Characters/Char_Crowd 0 15     # round 07: walker telemetry of the very run the clips are cut from
        cut_clip C crowd_tracking $D 8; cut_clip C crowd_wide $(python3 -c "print($D+8)") 6
        cut_still C crowd_tracking_1080 $(python3 -c "print($D+4)"); cut_still C crowd_wide_1080 $(python3 -c "print($D+11)") ;;
   esac
