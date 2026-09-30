@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# P5 combat: turn a record run (reactive 'threat' / 'free' beats) into a fixed-time playback script.
+#   freeze_script.py <record script.json> <record run beats.jsonl> <out script.json>
+# Every beat gets t = the real time it fired in the record run (minus a quarter frame, so the replay fires on the same frame);
+# 'react' / 'window' are dropped. The replay must reproduce the record run exactly (deterministic fixed-step sim): check_replay
+# compares the two event logs.
+import json, sys
+src, beats_log, out = sys.argv[1:4]
+S = json.load(open(src))
+fired = [json.loads(l) for l in open(beats_log) if l.strip()]
+beats = sorted(S['beats'], key=lambda b: b['t'])
+assert len(fired) == len(beats), (len(fired), len(beats))
+# beats fire in script order except reactive ones (they may fire later than later-listed beats): match by label + key
+by = {}
+for f in fired: by.setdefault((f['label'], f['key']), []).append(f)
+nb = []
+for b in beats:
+    f = by[(b['label'], b['key'])].pop(0)
+    c = {k: v for k, v in b.items() if k not in ('react', 'window')}
+    c['t'] = round(f['rt'] - 1 / 240, 4)
+    if b.get('react'): c['recorded'] = '%s: %s' % (b['react'], f.get('react', ''))
+    nb.append(c)
+S['beats'] = sorted(nb, key=lambda b: b['t'])
+S['frozen_from'] = src.split('/')[-1]
+json.dump(S, open(out, 'w'), indent=1)
+print('wrote', out, len(nb), 'beats')
