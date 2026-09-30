@@ -1,5 +1,8 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-# Round 06 preset "perf60_hwl3" = round-04 perf60_hwl2 + the round-06 cuts (overrides/r06cut.cvars: skin cache off, Lumen translucency volume off, probe octahedron 4).
+# Round 06 preset "perf60_hwl3" = round-04 perf60_hwl2 + GPU skin cache off (overrides/sk0.cvars).
+# Why (docs/night1/perf/round-06/NOTES.md): the +1.2 ms GPU/Unaccounted that P6's traffic + crowd add was the GPU skin cache (one compute dispatch per
+# skinned mesh per frame, ~600 live citizens); off, the skinning runs in the vertex shaders. Look-neutral (S1 / S2 / S7 full-frame SSIM vs perf60_hwl2 0.990 / 0.991 / 0.996).
+# Rejected in round 06 on look (overrides/r06cut.cvars): Lumen translucency volume off (S1 recess 1.26x), probe octahedron 4 (S1 crop 0.880), probe tiles 48 / 64 px (S1 crop 0.870 / 0.852).
 # Applied by tools/perf_ue2/build_map.py step perf_preset (Config/Mac/MacEngine.ini, SM2_PERF_PRESET_SP = 50).
 set:perf60_hwl2
-set:r06cut
+set:sk0

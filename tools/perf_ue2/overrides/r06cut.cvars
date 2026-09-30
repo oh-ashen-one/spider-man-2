@@ -1,5 +1,5 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-# Round 06 cuts on top of perf60_hwl2 (sessions r06/x1, r06/y1; attribution in docs/night1/perf/round-06/NOTES.md):
+# REJECTED ON LOOK in round 06 (kept for the record, not shipped). Round 06 cuts on top of perf60_hwl2 (sessions r06/x1, r06/y1; attribution in docs/night1/perf/round-06/NOTES.md):
 # 1. GPU skin cache off (sk0): the life GPU/Unaccounted +1.05 ms of ~600 per-mesh skinning dispatches; life p50 17.12 -> 16.08.
 set:sk0
 # 2. Lumen translucency GI volume off: translucent surfaces (none in the city look; glass is opaque) lose Lumen GI; -0.17 / -0.19 ms (p50 / p95) and GPU/LumenReflections -0.23 ms.
