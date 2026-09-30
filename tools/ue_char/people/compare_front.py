@@ -5,12 +5,13 @@ Fan homage project; not official Marvel/Sony/Insomniac; no affiliation.
 python3 tools/ue_char/people/compare_front.py OUT.png     - rest pose (A-pose), metres ruler; shoulder-width lines from measure_build.py
 """
 import sys, os, json
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 import numpy as np
 from PIL import Image, ImageDraw
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, '..', '..', 'skinfit'))
 import skinfit, ortho, measure_build
-SCR = '/Users/midir/sm2-n1/_scratch/characters/r3'
+SCR = _scr('r3')
 SZ = json.load(open(os.path.join(HERE, 'people.json')))['brute']
 
 def load(fit, atlas):

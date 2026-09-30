@@ -35,11 +35,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float StartAngle = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") bool bClockwise = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float TurntableDegPerSec = 30.f;
-	/** 0 = never; otherwise hop every N seconds (Loop mode). */
+	/** 0 = never; otherwise hop every N seconds (Loop and Line modes). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float HopInterval = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float HopVelocity = 520.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float Gravity = 1470.f;
-	/** Line mode: walks +X (actor yaw) from Center - LineLength/2, starting LineStart cm along it, and wraps at LineLength (cm). */
+	/** Grounded anticipation before each hop (s): the AnimInstance plays its Takeoff crouch, then the actor leaves the ground. 0 = none. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float TakeoffTime = 0.f;
+	/** First hop this many seconds after BeginPlay / RestartLine (<0: HopInterval). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float FirstHopDelay = -1.f;
+	/** Line mode: walks along the actor's initial yaw (0 = +X, 180 = -X) from Center - LineLength/2, starting LineStart cm along it, and wraps at LineLength (cm). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float LineLength = 3000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float LineStart = 0.f;
 
@@ -47,6 +51,7 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Walker") FVector Center = FVector::ZeroVector;
 
 private:
-	float Theta = 0.f, HopT = 0.f, Z = 0.f, Vz = 0.f, Yaw = 0.f, LineD = 0.f;
+	float Theta = 0.f, HopT = 0.f, Z = 0.f, Vz = 0.f, Yaw = 0.f, LineD = 0.f, TakeoffT = -1.f;
 	bool bAir = false;
+	void TickHop(float Dt);
 };

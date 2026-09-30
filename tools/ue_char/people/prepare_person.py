@@ -9,37 +9,51 @@ Fan homage project; not official Marvel/Sony/Insomniac; no affiliation. Sources 
      nearest-island colour (no dark dashes / sparkles at seams under mip filtering);
   4. recolours / removes items (brute: orange beanie -> charcoal knit, red-green plaid -> one flannel tone, pom-pom pulled onto the dome;
      thug: ornamental belt buckle and key-chain metal -> plain dark steel);
-  5. builds a MODELLED bandana: a shell around the lower face and neck, ray-cast from the head axis onto the real head surface
-     (so it follows nose, cheeks, jaw and collar), 7 mm off the skin, with cloth folds, a rolled top edge and its own texture
-     strip at the bottom of the atlas. Eyes, forehead, ears and hair stay untouched;
-  6. writes a 4096x4096 atlas (raw atlas squeezed to 4096x3584 + 512-px bandana strip) into ONE primitive / ONE material.
+  5. round 04: the face mask is the head surface itself (tools/ue_char/people/mask.py): lower face / neck subdivided once and draped
+     over the convex hull of the front of the head (spans nose -> cheeks and chin -> collar), cloth painted by 3D position with a
+     stitched hem, a tie band round the back of the head, ears left bare; UV-island seams blended by 3D position; brute beanie
+     knit + soft edge, plaid remnants cleared; chest print removed where a tee carries one; optional cap (raw Tripo cap fitted on
+     the head, procedural twill in the accessory strip) and tint variants (extra atlases, same mesh);
+  6. writes a 4096x4096 atlas (raw atlas squeezed to 4096x3584 + 512-px accessory strip) into ONE primitive / ONE material.
+     (build_bandana / bandana_strip are the round-03 shell, kept for reference, no longer called.)
 
-usage: python3 tools/ue_char/people/prepare_person.py thug|brute [--out DIR]
+usage: python3 tools/ue_char/people/prepare_person.py thug|brute|hood|tee|beard [--out DIR]
 """
 import os, sys, argparse, json, time
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr, RAW as _P2RAW  # noqa: E402
 import numpy as np
 from PIL import Image
 from scipy import ndimage as ndi
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import gltfio, skinfit  # noqa: E402
+import gltfio, skinfit, mask as M  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(HERE, '../../..'))
-RAW = os.path.expanduser('~/sm2-assets/raw')
-SCR = '/Users/midir/sm2-n1/_scratch/characters/r3'
+RAW = _P2RAW
+SCR = _scr('r3')   # scratch, regenerated
 ATLAS = 4096
 SIZES = json.load(open(os.path.join(HERE, 'people.json')))
-CONTENT_H = 3584            # raw atlas is squeezed into rows [0, 3584); rows [3584, 4096) hold the bandana strip
+CONTENT_H = 3584            # raw atlas is squeezed into rows [0, 3584); rows [3584, 4096) hold the accessory strip (cap)
 
 CFG = {
     'thug': dict(src='leather+jacket+man+3d+model.glb', name='StreetThug',
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
-                 bandana=(40, 43, 58), bandana_hi=(66, 70, 92), seed=11),
+                 mask=(38, 42, 60), seed=11,
+                 tints={'Oxblood': dict(region='jacket', color=(58, 26, 24))}),
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
-                  bandana=(62, 26, 24), bandana_hi=(90, 44, 38), seed=23),
+                  mask=(66, 24, 22), seed=23),
+    # round 04: three more raw Tripo people (owner's assets), landmarks from mask.auto_landmarks
+    # hood: auto landmarks pick the sunglasses as the nose -> measured with ortho.py (side view, 2 cm grid)
+    'hood': dict(src='human+figure+3d+model.glb', name='StreetHood', eye=1.630, nose=1.603, ear_lobe=1.582, chin=1.527, axis_z=-0.02,
+                 mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True,
+                 tints={'Grey': dict(region='top', color=(104, 104, 108))}),
+    'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
+                mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70))),
+    'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
+                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True),
 }
 
 
@@ -257,13 +271,166 @@ def recolor_thug(img, pos, cov):
     return np.clip(out, 0, 255).astype(np.uint8), int(metal.sum())
 
 
+# ------------------------------------------------------------------------------------------------------ round-04 texture edits
+def knit_beanie(out, img, pos, beanie, cfg):
+    """the recoloured beanie + cuff get a knit rib (vertical ribs by azimuth, rows by height) instead of a flat tone, and a soft
+    (2 texel) lower edge instead of the stair-stepped texel mask."""
+    phi, r = M.cyl(pos, cfg)
+    y = pos[..., 1]
+    rib = 0.5 + 0.5 * np.sin(phi * np.maximum(r, 0.06) * 2 * np.pi / 0.0055)
+    row = 0.5 + 0.5 * np.sin(y * 2 * np.pi / 0.0032)
+    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    lo = ndi.gaussian_filter(lum, 6)
+    tone = np.array([46, 47, 52], np.float32)
+    knit = tone[None, None, :] * (np.clip(lo / 120.0, 0.45, 1.5) * (0.78 + 0.16 * rib + 0.08 * row))[..., None]
+    soft = ndi.gaussian_filter(beanie.astype(np.float32), 1.2)
+    soft = np.where(beanie, np.maximum(soft, 0.5), soft)
+    return out * (1 - soft[..., None]) + knit * soft[..., None]
+
+
+def clear_plaid_remnants(img, pos, cov):
+    """saturated red / green texels left on the brute's sleeves, cuffs and collar (the round-03 critic's 'mis-UV blotches') -> the
+    flannel tone, by position (arms / torso / collar) and colour; hands and face are kept by position."""
+    h, s_, v = rgb2hsv(img)
+    x, y = pos[..., 0], pos[..., 1]
+    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    hands = (np.abs(x) > 0.55) & (y < 1.25)
+    face = (y > 1.42) & (np.abs(x) < 0.13)
+    red = (s_ > 0.28) & ((h < 16) | (h > 330)); green = (s_ > 0.16) & (h > 65) & (h < 200)
+    sel = cov & (y > 0.62) & (y < 1.52) & (red | green) & ~hands & ~face
+    sel = ndi.binary_dilation(sel, iterations=2) & cov & ~hands & ~face & (y > 0.62) & (y < 1.52) & ((s_ > 0.12) | (lum > 70))
+    tone = np.array([50, 44, 41], np.float32)
+    out = a.copy()
+    out[sel] = tone[None, :] * np.clip(0.75 + 0.25 * lum[sel] / 90.0, 0.6, 1.2)[:, None]
+    return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
+
+
+def clear_graphic(img, pos, cov):
+    """chest print on a dark tee -> plain tee (no copied / pseudo graphics). Front torso band, bright texels on the dark shirt."""
+    x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
+    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    band = cov & (((y > 0.98) & (y < 1.31) & (np.abs(x) < 0.24)) | ((y > 1.29) & (y < 1.43) & (x > 0.035) & (x < 0.19))) & (z > -0.03)   # chest print + left-chest logo; the neck chains (|x| < 0.035) stay
+    shirt = band & (lum < 45)
+    tee = np.median(a[shirt], 0) if shirt.any() else np.array([28, 28, 32], np.float32)
+    sel = band & (lum >= 45)
+    sel = ndi.binary_dilation(sel, iterations=3) & band
+    shade = ndi.gaussian_filter(np.where(shirt, lum, np.median(lum[shirt]) if shirt.any() else 30), 10)
+    out = a.copy()
+    out[sel] = tee[None, :] * np.clip(shade[sel] / max(1.0, float(np.median(lum[shirt]) if shirt.any() else 30)), 0.7, 1.3)[:, None]
+    return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
+
+
+def clear_temple_text(img, pos, cov, cfg):
+    """round 04b: the hood person's raw white sunglasses carry small dark lettering on the temple arms (reads like a maker mark).
+    No copied names: dark texels enclosed by the white frame on the temple band are filled with the frame's own white."""
+    x, y = pos[..., 0], pos[..., 1]
+    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    _, s_, _ = rgb2hsv(img)
+    eye = cfg.get('eye', 1.63)
+    band = cov & (y > eye - 0.04) & (y < eye + 0.05) & (np.abs(x) > 0.045)
+    frame = band & (lum > 175) & (s_ < 0.18)
+    enclosed = ndi.binary_closing(frame, iterations=4) & band
+    sel = enclosed & ~frame
+    sel = ndi.binary_dilation(sel, iterations=1) & enclosed
+    col = np.median(a[frame], 0) if frame.any() else np.array([235, 235, 235], np.float32)
+    out = a.copy(); out[sel] = col[None, :]
+    return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
+
+
+def tint_region(img, pos, cov, region, color):
+    """luminance-preserving recolour of a garment for a variant atlas (same mesh, different material)."""
+    h, s_, v = rgb2hsv(img)
+    x, y = pos[..., 0], pos[..., 1]
+    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    skin = (h > 4) & (h < 40) & (s_ > 0.18) & (s_ < 0.65) & (v > 0.25)
+    if region == 'jacket':       # leather jacket + hood: dark, low-saturation, above the hips
+        sel = cov & (y > 0.92) & (y < 1.62) & (lum < 80) & (s_ < 0.35) & ~skin & ~((np.abs(x) < 0.12) & (y > 1.45) & (pos[..., 2] > 0.0))
+    else:                        # 'top': hoodie / shirt, above the hips
+        sel = cov & (y > 0.93) & (y < 1.52) & (lum < 70) & (s_ < 0.30) & ~skin & ~((np.abs(x) < 0.13) & (y > 1.42))
+    ref = float(np.median(lum[sel])) if sel.any() else 40.0
+    col = np.asarray(color, np.float32)
+    out = a.copy()
+    out[sel] = col[None, :] * np.clip(lum[sel] / max(ref, 1.0), 0.45, 1.8)[:, None]
+    soft = ndi.gaussian_filter(sel.astype(np.float32), 0.8)
+    out = a * (1 - soft[..., None]) + out * soft[..., None]
+    return np.clip(out, 0, 255).astype(np.uint8), int(sel.sum())
+
+
+# ------------------------------------------------------------------------------------------------------ weapon tiles
+WEAPON_X0 = 3584            # strip columns [3584, 4096): solid material tiles for tools/ue_char/weapons/add_weapon.py
+WEAPON_TILES = [('wood', (150, 108, 66)), ('steel', (104, 108, 114)), ('polymer', (30, 30, 33)), ('grip', (44, 40, 38)), ('tape', (24, 24, 26))]
+
+
+def weapon_tiles():
+    h = ATLAS - CONTENT_H
+    out = np.zeros((h, ATLAS - WEAPON_X0, 3), np.float32)
+    rng = np.random.RandomState(5)
+    for k, (nm, col) in enumerate(WEAPON_TILES):
+        y0, y1 = int(h * k / len(WEAPON_TILES)), int(h * (k + 1) / len(WEAPON_TILES))
+        g = ndi.gaussian_filter(rng.randn(y1 - y0, ATLAS - WEAPON_X0), 2.0); g /= g.std() + 1e-6
+        out[y0:y1] = np.asarray(col, np.float32)[None, None, :] * (1 + 0.03 * g[..., None])
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+# ------------------------------------------------------------------------------------------------------ cap (accessory)
+CAP_SRC = 'baseball+cap+3d+model.glb'
+
+
+def fit_cap(P, F, cfg, seed):
+    """raw Tripo baseball cap on the person's head: scaled to the hair width, crown centred over the skull, brim over the eyes;
+    hair vertices poking through the crown are pulled inside it. Returns (person P, cap verts, normals, uv 0..1, faces, strip RGB)."""
+    Pc, Nc, UVc, Fc, imc = gltfio.read_person(os.path.join(RAW, CAP_SRC))
+    R = np.array([[0, 0, -1], [0, 1, 0], [1, 0, 0]], float)      # like the people: bill +X -> +Z (forward)
+    Pc = Pc @ R.T; Nc = Nc @ R.T
+    crown = Pc[:, 2] < Pc[:, 2].min() + 0.62                      # crown = everything behind the bill
+    cw = Pc[crown, 0].max() - Pc[crown, 0].min(); cd = Pc[crown, 2].max() - Pc[crown, 2].min()
+    eye = cfg['eye']
+    hair = (P[:, 1] > eye + 0.015) & (P[:, 1] < eye + 0.075) & (np.hypot(P[:, 0], P[:, 2] - cfg['axis_z']) < 0.16)
+    hw = P[hair, 0].max() - P[hair, 0].min(); hz = (P[hair, 2].max() + P[hair, 2].min()) / 2
+    hd = P[hair, 2].max() - P[hair, 2].min()
+    k = max(hw * 0.98 / cw, hd * 0.96 / cd)
+    ky = 0.125 / (Pc[crown, 1].max() - Pc[crown, 1].min())       # the raw cap is tall for its width: crown height 12.5 cm
+    Pc = Pc * np.array([k, ky, k]); Nc = Nc / np.array([k, ky, k]); Nc /= np.linalg.norm(Nc, axis=1, keepdims=True) + 1e-12
+    cc = (Pc[crown].max(0) + Pc[crown].min(0)) / 2
+    Pc[:, 0] -= cc[0]; Pc[:, 2] += hz - cc[2]
+    Pc[:, 1] += (eye + 0.022) - Pc[:, 1].min()
+    # tilt 6 deg back (brim up a little)
+    t = np.radians(-6); c_, s_ = np.cos(t), np.sin(t)
+    piv = np.array([0, Pc[:, 1].min(), hz])
+    q = Pc - piv; Pc = piv + np.stack([q[:, 0], c_ * q[:, 1] - s_ * q[:, 2], s_ * q[:, 1] + c_ * q[:, 2]], 1)
+    Nc = np.stack([Nc[:, 0], c_ * Nc[:, 1] - s_ * Nc[:, 2], s_ * Nc[:, 1] + c_ * Nc[:, 2]], 1)
+    # hair inside the crown: ellipsoid fitted to the crown (centre, semi-axes) shrunk 6 %; person points above the cap band and
+    # outside it are pulled onto it
+    cr = Pc[crown if len(crown) == len(Pc) else slice(None)]
+    ctr = (cr.max(0) + cr.min(0)) / 2; ctr[1] = cr[:, 1].min()
+    ax = np.array([(cr[:, 0].max() - cr[:, 0].min()) / 2, cr[:, 1].max() - cr[:, 1].min(), (cr[:, 2].max() - cr[:, 2].min()) / 2]) * 0.94
+    P = P.copy()
+    head = (P[:, 1] > ctr[1] - 0.005) & (np.hypot(P[:, 0], P[:, 2] - cfg['axis_z']) < 0.2)
+    q = (P[head] - ctr) / ax
+    n = np.linalg.norm(q, axis=1)
+    out = n > 1.0
+    idx = np.where(head)[0][out]
+    P[idx] = ctr + (q[out] / n[out][:, None]) * ax
+    # procedural dark twill strip (the raw cap texture is not used: no badge / logo can come along)
+    W, Hh = ATLAS, ATLAS - CONTENT_H
+    rng = np.random.RandomState(seed)
+    yy, xx = np.mgrid[0:Hh, 0:W].astype(np.float32)
+    tw = 0.5 + 0.5 * np.sin((xx + yy) * 2 * np.pi / 5.0)
+    g = ndi.gaussian_filter(rng.randn(Hh, W).astype(np.float32), 1.0); g /= g.std() + 1e-6
+    shade = np.asarray(imc.convert('L').resize((W, Hh), Image.BILINEAR), np.float32)
+    shade = ndi.gaussian_filter(shade, 6); shade = shade / max(1.0, float(np.median(shade)))
+    col = np.asarray(cfg['cap']['color'], np.float32)
+    strip = col[None, None, :] * (np.clip(shade, 0.6, 1.4) * (0.88 + 0.10 * tw + 0.04 * g))[..., None]
+    return P, Pc, Nc, UVc, Fc, np.clip(strip, 0, 255).astype(np.uint8), dict(cap_scale=round(float(k), 3), cap_scale_y=round(float(ky), 3), hair_pulled=int(out.sum()))
+
+
 # ------------------------------------------------------------------------------------------------------ main
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('which', choices=sorted(CFG))
     ap.add_argument('--out', default=SCR + '/people')
     a = ap.parse_args()
-    cfg = CFG[a.which]
+    cfg = dict(CFG[a.which])
     os.makedirs(a.out, exist_ok=True)
     t0 = time.time()
     game = skinfit.Game(os.path.join(ROOT, 'public/assets/spiderman.glb'))
@@ -273,6 +440,13 @@ def main():
     P = skinfit.normalise_target(P, game)
     print('%s: %d verts %d tris' % (a.which, len(P), len(F)))
     info = {}
+    lm = M.auto_landmarks(P, cfg['axis_z'])
+    if cfg.get('auto'):
+        cfg.update({k: v for k, v in lm.items() if k != 'axis_z'})
+    # nose-tip radius from the head axis at the measured nose height (bounds the mask region radially)
+    fr = (np.abs(P[:, 1] - cfg['nose']) < 0.006) & (np.abs(P[:, 0]) < 0.02)
+    cfg['nose_r'] = float(np.max(P[fr, 2]) - cfg['axis_z']) if fr.any() else 0.13
+    info['landmarks'] = {k: round(float(cfg[k]), 4) for k in ('eye', 'nose', 'ear_lobe', 'chin', 'nose_r')}
     if a.which == 'brute':
         # pom-pom: pull its vertices onto the beanie dome (sphere fitted to the dome vertices) so no hole has to be capped
         pom = (P[:, 1] > 1.705) & (P[:, 2] < -0.07) & (np.abs(P[:, 0]) < 0.08)
@@ -285,14 +459,37 @@ def main():
         P[pom] = ctr + d / np.linalg.norm(d, axis=1, keepdims=True) * rad
         N[pom] = d / np.linalg.norm(d, axis=1, keepdims=True)
         info.update(pompom_verts=int(pom.sum()), dome_centre=[round(float(x), 3) for x in ctr], dome_radius=round(rad, 3))
+    # ---- mask geometry: subdivide the lower face / neck once, then drape it over the front of the head
+    wv = M.region_weight(P, cfg, feather=0.02)
+    tri = (wv[F].max(1) > 0) & (np.hypot(P[F][:, :, 0], P[F][:, :, 2] - cfg['axis_z']).max(1) < 0.14)
+    nt0 = len(F)
+    P, N, UV, F = M.subdivide_region(P, N, UV, F, tri)
+    P, moved = M.drape(P, F, cfg, cfg['seed'])
+    N2 = M.vertex_normals(P, F)
+    chg = moved > 1e-5
+    N[chg] = N2[chg]
+    info.update(mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
+                drape_max_cm=round(float(moved.max() * 100), 2))
+    # ---- texture
     im4 = np.asarray(im.resize((ATLAS, ATLAS), Image.LANCZOS))
     cov, pos = raster_positions(P, UV, F, ATLAS)
     print('  uv coverage %.1f%%' % (100 * cov.mean()))
     if a.which == 'brute':
         im4, nb, npl = recolor_brute(im4, pos, cov); info['beanie_px'] = nb; info['plaid_px'] = npl
-    else:
+        im4, nrem = clear_plaid_remnants(im4, pos, cov); info['plaid_remnant_px'] = nrem
+    elif a.which == 'thug':
         im4, nm = recolor_thug(im4, pos, cov); info['metal_px'] = nm
+    if cfg.get('clear_graphic'):
+        im4, ng = clear_graphic(im4, pos, cov); info['graphic_px'] = ng
+    if cfg.get('clear_temple_text'):
+        im4, nt = clear_temple_text(im4, pos, cov, cfg); info['temple_text_px'] = nt
     im4 = fill_gutters(im4, cov, erode=1)
+    im4, nbord = M.seam_blend(im4, cov, pos); info['seam_blend_px'] = nbord
+    im4, mw = M.paint_mask(im4, cov, pos, cfg, cfg['seed']); info['mask_px'] = int((mw > 0.5).sum())
+    im4 = fill_gutters(im4, cov, erode=0)
+    variants = {}
+    for tn, tc in (cfg.get('tints') or {}).items():
+        variants[tn], npx = tint_region(im4, pos, cov, tc['region'], tc['color']); info['tint_%s_px' % tn] = npx
     if a.which == 'brute':
         # the actor is widened by `girth` in X/Y at run time: shrink the head (and the top of the neck) by 1/girth so it keeps natural proportions
         f = 1.0 / SIZES['brute']['girth']
@@ -303,22 +500,35 @@ def main():
         P[:, 2] = z0 + (P[:, 2] - z0) * sx
         N = np.stack([N[:, 0] / sx, N[:, 1], N[:, 2] / sx], -1); N /= np.linalg.norm(N, axis=1, keepdims=True) + 1e-12
         info['head_shrink'] = round(f, 3)
-    # bandana shell
-    bv, bn, buv, bf = build_bandana(P, F, cfg, cfg['seed'])
-    # squeeze the original atlas rows into [0, CONTENT_H)
-    atlas = np.zeros((ATLAS, ATLAS, 3), np.uint8)
-    atlas[:CONTENT_H] = np.asarray(Image.fromarray(im4).resize((ATLAS, CONTENT_H), Image.LANCZOS))
-    atlas[CONTENT_H:] = bandana_strip(cfg, cfg['seed'])
+    strip = np.zeros((ATLAS - CONTENT_H, ATLAS, 3), np.uint8) + 40
+    Pf, Nf, Ff = P, N, F
     UV2 = UV.copy(); UV2[:, 1] = UV[:, 1] * (CONTENT_H / ATLAS)
-    m = 6.0 / ATLAS
-    buv2 = np.stack([np.clip(buv[:, 0], m, 1 - m), (CONTENT_H + m * ATLAS + buv[:, 1] * (ATLAS - CONTENT_H - 2 * m * ATLAS)) / ATLAS], -1)
-    Pf = np.concatenate([P, bv]); Nf = np.concatenate([N, bn]); UVf = np.concatenate([UV2, buv2]); Ff = np.concatenate([F, bf + len(P)])
-    print('  bandana %d verts %d tris; total %d verts %d tris' % (len(bv), len(bf), len(Pf), len(Ff)))
+    UVf = UV2
+    if cfg.get('cap'):
+        P2, cv, cn, cuv, cf, strip, cinfo = fit_cap(P, F, cfg, cfg['seed'])
+        info.update(cinfo)
+        m = 6.0 / ATLAS
+        cuv2 = np.stack([np.clip(cuv[:, 0], m, 1 - m) * (WEAPON_X0 / ATLAS), (CONTENT_H + m * ATLAS + np.clip(cuv[:, 1], 0, 1) * (ATLAS - CONTENT_H - 2 * m * ATLAS)) / ATLAS], -1)
+        Pf = np.concatenate([P2, cv]); Nf = np.concatenate([N, cn]); UVf = np.concatenate([UV2, cuv2]); Ff = np.concatenate([F, cf + len(P2)])
+        info['cap_tris'] = len(cf)
+
+    strip = np.asarray(Image.fromarray(strip).resize((WEAPON_X0, ATLAS - CONTENT_H), Image.LANCZOS)) if cfg.get('cap') else strip[:, :WEAPON_X0]
+    strip = np.concatenate([strip, weapon_tiles()], 1)
+
+    def atlas_of(img):
+        at = np.zeros((ATLAS, ATLAS, 3), np.uint8)
+        at[:CONTENT_H] = np.asarray(Image.fromarray(img).resize((ATLAS, CONTENT_H), Image.LANCZOS))
+        at[CONTENT_H:] = strip
+        return Image.fromarray(at)
+    print('  total %d verts %d tris' % (len(Pf), len(Ff)))
     out = os.path.join(a.out, cfg['name'] + '_prepared.glb')
-    gltfio.write_static_glb(out, Pf, Nf, UVf, Ff, Image.fromarray(atlas), cfg['name'])
-    Image.fromarray(atlas).save(os.path.join(a.out, cfg['name'] + '_atlas.png'))
+    atlas = atlas_of(im4)
+    gltfio.write_static_glb(out, Pf, Nf, UVf, Ff, atlas, cfg['name'])
+    atlas.save(os.path.join(a.out, cfg['name'] + '_atlas.png'))
+    for tn, img in variants.items():
+        atlas_of(img).save(os.path.join(a.out, cfg['name'] + '_' + tn + '_atlas.png'))
     np.savez_compressed(os.path.join(a.out, cfg['name'] + '_prepared.npz'), P=Pf, N=Nf, UV=UVf, F=Ff, n_body_verts=len(P), n_body_tris=len(F))
-    info.update(name=cfg['name'], verts=len(Pf), tris=len(Ff), bandana_tris=len(bf), seconds=round(time.time() - t0, 1))
+    info.update(name=cfg['name'], verts=len(Pf), tris=len(Ff), variants=sorted(variants), seconds=round(time.time() - t0, 1))
     json.dump(info, open(os.path.join(a.out, cfg['name'] + '_prepared.json'), 'w'), indent=1)
     print(json.dumps(info))
 

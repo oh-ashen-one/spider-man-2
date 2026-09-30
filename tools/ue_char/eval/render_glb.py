@@ -7,11 +7,12 @@ blender -b -P tools/ue_char/eval/render_glb.py -- NAME GLB [--anims HERO_GLB] [-
 Clip: orbit while walking (1-60), 3/4 walk (61-105), side view second clip (106-150). Also writes a face close-up.
 """
 import bpy, sys, os, json, argparse
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import studio
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
-SCR = '/Users/midir/sm2-n1/_scratch/characters/eval/frames'
+SCR = _scr('eval', 'frames')
 DOCS = os.path.join(ROOT, 'docs/night1/characters/round-01/assets')
 
 ap = argparse.ArgumentParser()

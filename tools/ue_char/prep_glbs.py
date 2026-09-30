@@ -2,13 +2,14 @@
 """Prepare the browser character GLBs for Unreal Interchange (fan homage project; not official Marvel/Sony/Insomniac).
 - strips EXT_texture_webp textures (UE rejects them; PNGs are imported separately)
 - hero: merges the Lenses primitives into the body mesh (same skin) so UE builds ONE skeletal mesh with 3 slots
-Outputs to /Users/midir/sm2-n1/_scratch/characters/ueimport/ (derived, reproducible, not committed)."""
+Outputs to $P2_SCRATCH/ueimport/ (tools/ue_char/p2paths.py) (derived, reproducible, not committed)."""
 import json, struct, os, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '.')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 sys.path.insert(0, os.path.dirname(__file__))
 from strip_glb import main as strip  # noqa
 
-WT = '/Users/midir/sm2-n1/characters'
-OUT = '/Users/midir/sm2-n1/_scratch/characters/ueimport'
+WT = _P2WT
+OUT = _scr('ueimport')
 os.makedirs(OUT, exist_ok=True)
 
 def rw(path, fn):
