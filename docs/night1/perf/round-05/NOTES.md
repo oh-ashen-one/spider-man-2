@@ -42,6 +42,7 @@ Other lines (same session):
 | **life** lwarm / a / b / c (P6 traffic + crowd ON, `/Game/PerfF/Life/Manhattan`) | 17.07 / 17.13 / 17.13 / 17.11 | 19.46 / 19.61 / 19.47 / 19.37 | 19.96 / 20.15 / 19.91 / 19.94 | 20.7-20.9 | 31.7 / 37.8 / 25.8 / 30.6 | 410-428 | 0 / **1** / 0 / 0 | 0.23 / 0.18 / 1.17 / 0.26 |
 - Proxies vs the round-04 content on the same build: p50 -0.28 ms (15.68 vs 15.96 mean), CSV p95 -0.14 ms, in-game p95 -0.15 ms, gap -0.9 ms mean. Trees in ray tracing cost +0.85 ms p50 over no trees (round 04: +1.1 ms).
 - **With traffic and crowd ON the route FAILS P1 and P2**: p50 17.1 (> 16.67), CSV p95 19.4-19.6 and in-game p95 19.9-20.2 (> 18.18), one hitch (37.8 ms, life_a). Life costs +1.4 ms p50 / +1.7 ms p95 (P6's own round-02 number: +2.85 ms GPU at 4K / 67 %). The round-04 route had no traffic / crowd; the shipped `/Game/Maps/Manhattan` still has none.
+- Life thread times (g1): GameThread 1.85 -> 4.3 ms, RHI thread 2.7 -> 5.2 ms, GPU 14.4 -> 16.9 ms (ship_a vs life_a / life_c).
 - The worst frames of the ship runs (28.3 / 25.8 ms) are single spikes below the hitch rule (> 25 ms AND > 2x median = 31 ms).
 
 ## 4. Look (`LOOK_GATE_raw.md`, `look_gate_final.json`; stills `stills/final_*.jpg` = 1920x1080 JPEG of the 3840x2160 PNGs, internal 1920x1080)
@@ -52,8 +53,11 @@ Other lines (same session):
 - Disclosed visual differences vs as found: leaf-level canopy GI pattern (above); far trees (l1, > ~50 m) are represented by every 16th card enlarged ~3x in ray tracing (coarser far-canopy occlusion / reflection); proxies are not in reflection captures; characters out of ray tracing (unchanged since round 03); far shadows from VSM (round 04); cloud 20 km (round 04).
 
 ## 5. Clip
-`route_30s.mp4`: see `route_30s_settings.json` (1920x1080 output at native 1080p internal, Nanite error 4, fixed 1/60 s step, footage only, says nothing about real-time speed).
+`route_30s.mp4` (14.6 MB, 30.0 s; hero spawned, no spawn errors in its log): see `route_30s_settings.json` (1920x1080 output at native 1080p internal, Nanite error 4, fixed 1/60 s step, footage only, says nothing about real-time speed).
 
 ## 6. Cost of the proxies (facts)
 - Content: 717 MB of local `.uasset` (never committed), import + build ~16 min in the commandlet (`perf_apply rt_proxy_trees`).
 - Per-pass GPU (void session f1, same content, no hero; for the direction only): the proxies add ~+0.2 ms to `LumenScreenProbeGather` vs the round-04 content (`void_nohero/f1/gpu_pass_diff.txt`).
+
+## 7. Critic pack
+`/Users/midir/sm2-n1/_scratch/critic-F-r05/pack` (8 pairs: S1 / S2 / S7 / route t28 / clip vs the private references, round 04 vs round 05 S1, round 05 vs as found S1, round 05 vs round-04 content route t20 on the same build), key `pack.key.json`, `pairs.json`.
