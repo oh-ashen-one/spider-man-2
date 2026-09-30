@@ -18,6 +18,8 @@ import numpy as np
 
 ROOT = citizen_rig.ROOT
 SCR = _scr('eval')
+if not os.path.isdir(SCR):   # legacy fallback; tools/life/citizens_fbx.py (P6 city life) redirects exactly this line (and EXP / DOCS below) by string substitution
+    SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'
 DOCS = os.path.join(ROOT, 'docs/night1/characters/round-01/assets')
 EXP = os.path.join(ROOT, 'art/night1/characters/export/citizens')
 
@@ -30,6 +32,7 @@ for name in names:
     var = next(x for x in meta['variants'] if x['name'] == name)
     walk = 'walkF' if var['female'] else 'walk'
     png = os.path.join(SCR, 'tiles', name + '.png')   # cropped by tiles.py (Blender's python has no Pillow)
+    png = citizen_rig.refit_tex(name) or png            # round 06: the refit citizen's own 2048 px texture (refit.py), else the atlas tile
     if mode == 'fbx':
         import shutil
         os.makedirs(EXP, exist_ok=True)

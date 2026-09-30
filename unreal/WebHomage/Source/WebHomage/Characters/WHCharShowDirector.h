@@ -34,6 +34,8 @@ struct WEBHOMAGE_API FWHShot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") FString Label;
 	/** Line-mode walkers restarted when this shot begins (so a side-tracking clip always starts with the walkers at the same place). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> RestartWalkers;
+	/** Round 05: with a non-empty Director.ManagedActors list, only these (plus the shot's target) are visible during the shot; every other managed actor is hidden. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> ShowActors;
 };
 
 UCLASS()
@@ -46,6 +48,8 @@ public:
 	virtual void Tick(float Dt) override;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") TArray<FWHShot> Shots;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") bool bLoop = true;
+	/** Round 05: actors whose visibility the director controls per shot (see FWHShot::ShowActors): a hero shot never shows another hero or a thug in the background. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") TArray<TObjectPtr<AActor>> ManagedActors;
 private:
 	UPROPERTY() TObjectPtr<ACameraActor> Cam;
 	float T = 0.f;

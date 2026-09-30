@@ -1,4 +1,4 @@
-// Headless load check after the round-04 hero clip edit: the game loads, the player rig has the edited `run` (17/30 s), the new
+// Headless load check after the round-04 / round-05 hero clip edits (round 05 adds runLeap / runLeapB): the game loads, the player rig has the edited `run` (17/30 s), the new
 // `runTakeoff`, every other clip, and a few seconds of play raise no console errors. Port 5203 only.
 // Fan homage project; not official Marvel/Sony/Insomniac; no affiliation.
 //   node tools/ue_char/heroanim/browser_check.mjs [OUT_DIR]
@@ -24,7 +24,7 @@ try {
     const p = window.__ctx.player; const found = {};
     const scan = o => { for (const a of (o.animations || [])) found[a.name] = +a.duration.toFixed(4); };
     p.object.traverse(scan); scan(p.rig || {}); if (p.rig?.clips) for (const [k, c] of (p.rig.clips.entries?.() || Object.entries(p.rig.clips))) found[k] = +(c.duration ?? c.clip?.duration ?? 0).toFixed(4);
-    return { n: Object.keys(found).length, run: found.run, runTakeoff: found.runTakeoff, jog: found.jog, sprint: found.sprint, hasClip: p.rig?.hasClip?.('run') };
+    return { n: Object.keys(found).length, run: found.run, runTakeoff: found.runTakeoff, runLeap: found.runLeap, runLeapB: found.runLeapB, jog: found.jog, sprint: found.sprint, hasClip: p.rig?.hasClip?.('run') };
   });
   await page.screenshot({ path: OUT + '/game.png' });
   console.log(JSON.stringify(info), errs.length ? 'ERRORS: ' + errs.slice(0, 5).join(' | ') : 'no console errors');

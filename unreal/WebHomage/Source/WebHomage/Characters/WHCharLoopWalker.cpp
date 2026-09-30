@@ -28,6 +28,7 @@ void AWHCharLoopWalker::Tick(float Dt)
 {
 	Super::Tick(Dt);
 	UWHCharAnimInstance* AI = Mesh ? Cast<UWHCharAnimInstance>(Mesh->GetAnimInstance()) : nullptr;
+	if (AI) AI->IdleOffset = AnimOffset;
 	if (Mode == EWHWalkerMode::Loop)
 	{
 		const float S = FMath::Sin(Theta), C = FMath::Cos(Theta);

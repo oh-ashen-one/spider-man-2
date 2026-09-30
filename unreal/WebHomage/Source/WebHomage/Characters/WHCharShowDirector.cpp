@@ -39,6 +39,9 @@ void AWHCharShowDirector::Tick(float Dt)
 	if (Idx != LastShot)
 		for (AActor* W : S.RestartWalkers)
 			if (AWHCharLoopWalker* LW = Cast<AWHCharLoopWalker>(W)) LW->RestartLine();
+	if (Idx != LastShot && ManagedActors.Num() > 0)
+		for (AActor* M : ManagedActors)
+			if (M) M->SetActorHiddenInGame(!(M == S.Target || S.ShowActors.Contains(M)));
 	const FVector Base = S.Target->GetActorLocation();
 	const FVector Aim = Base + FVector(0, 0, S.AimHeight);
 	const bool bCut = Idx != LastShot; LastShot = Idx;

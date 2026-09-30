@@ -6,7 +6,9 @@
 GPU_DIR="${GPU_DIR:-/Users/midir/sm2-n1/_scratch/gpu}"
 while true; do
   cap=$(cat "$GPU_DIR/slots" 2>/dev/null | tr -dc '0-9'); [ -z "$cap" ] && cap=3
-  n=$(pgrep -fl "MacOS/UnrealEditor( |$)" | wc -l | tr -d ' ')
+  # real engine processes only (comm == UnrealEditor): the gpu_slot.py wrappers of queued agents carry the engine path on their command line and
+  # must not count, or the queue starves this script while gpu_slot's own FIFO lock (which enforces the cap) would have served it in order
+  n=$(pgrep -x UnrealEditor | wc -l | tr -d ' ')
   [ "$n" -lt "$cap" ] && break
   echo "ue_wait: $n Unreal instances running (cap $cap), waiting 60 s" >&2
   sleep 60

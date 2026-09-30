@@ -133,7 +133,7 @@ def people(path, step=0.5):
         for t, f, fps in frames(path):
             if t - last >= step - 1e-6: ims.append((t, f)); last = t
     for t, im in ims:
-        r = m.predict(im, classes=[0], conf=0.35, verbose=False, device='mps', imgsz=1920)[0]
+        r = m.predict(im, classes=[0], conf=0.35, verbose=False, device=__import__('os').environ.get('YOLO_DEVICE','mps'), imgsz=1920)[0]
         b = r.boxes.xyxy.cpu().numpy(); hts = (b[:, 3] - b[:, 1]) / im.shape[0]
         out.append(dict(t=round(t, 2), people=int(len(hts)), people_h3=int((hts >= 0.03).sum()), heights=[round(float(x), 3) for x in sorted(hts, reverse=True)]))
     P3 = np.array([o['people_h3'] for o in out])
