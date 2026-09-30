@@ -11,7 +11,9 @@ usage: gen_street_signs.py [out_png]   (default _scratch/city/tex/street_signs.p
 import json, os, sys, random
 from PIL import Image, ImageDraw, ImageFont
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else '/Users/midir/sm2-n1/_scratch/city/tex/street_signs.png'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from citypaths import TEX as _TEX
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(_TEX, 'street_signs.png')
 FONTS = {
     'futura': ('/System/Library/Fonts/Supplemental/Futura.ttc', 2), 'georgia': ('/System/Library/Fonts/Supplemental/Georgia Bold.ttf', 0),
     'copper': ('/System/Library/Fonts/Supplemental/Copperplate.ttc', 1), 'didot': ('/System/Library/Fonts/Supplemental/Didot.ttc', 2),

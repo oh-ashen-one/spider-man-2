@@ -1,0 +1,44 @@
+{
+ "name": "f5_canyon_backDouble",
+ "note": "Round 12 honesty check: the round-11 f1 stretch of the Midtown avenue (x 250 from y 170 north), whose towers (140-250 m) no launch can clear; skyEvery 1, so a release is a sky launch only when SkyPeakNeeded says it can clear the roofs (expect plain releases, no flip, or a capped launch).",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   250,
+   170,
+   30
+  ],
+  "yaw": -90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -26,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "swing": false,
+   "flip": "backDouble"
+  },
+  {
+   "t": 0.4,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 0,
+   "skyEvery": 1,
+   "skyTricks": 1,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
+ ]
+}

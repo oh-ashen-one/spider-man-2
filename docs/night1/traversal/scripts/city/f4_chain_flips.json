@@ -1,0 +1,44 @@
+{
+ "name": "f4_chain_flips",
+ "note": "Round 12 (critic r11: tricks must start from an apex >= 3 m over the tallest roof within 30 m, sky behind the hero): the west avenue (x -250) heading south into the lower blocks south of y 195, where a launch can clear every roof within 30 m of its flip (engine height field, _scratch/traversal/r12/hm). 13 s swing chain from y 120: plain releases in the tall blocks, every release a sky launch once its flip apex clears the roofs (programs cycle backDouble, frontPikeSwan, corkscrew).",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   -250,
+   120,
+   24
+  ],
+  "yaw": 90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   22,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": 90,
+   "swing": false,
+   "flip": "backDouble,frontPikeSwan,corkscrew"
+  },
+  {
+   "t": 0.4,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 0,
+   "skyEvery": 1,
+   "skyTricks": 1,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
+ ]
+}

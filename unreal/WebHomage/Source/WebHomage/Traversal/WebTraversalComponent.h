@@ -51,6 +51,11 @@ public:
 	float ReleaseBoostMul = 1.f;
 	/** Round 07: a held swing button re-searches for the next anchor this long (s) after a web release, even while rising. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReattachAfter = 0.22f;
+	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipFloorClear = 6.f;  // round 11: a flip must be done this high over the floor
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipCatchRoom = 0.35f; // round 11: s left after the program's reach for the catch // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingVz = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
@@ -65,8 +70,47 @@ public:
 	/** Round 09: alternating arc depth below the entry height (m): odd swings shallow, even swings deep. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropShallow = 10.2f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropDeep = 17.5f;
+	/** Round 10: lowest designed arc bottom (feet over the floor, m; T7: 1-4 storeys over the street, never skimming car roofs). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcLowMin = 5.f;
+	/** Round 10: the first web after a sky launch bottoms out ArcLowMin + 0..SkyArcExtra m over the street (dives back into the canyon). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyArcExtra = 4.f;
 	/** Round 09: the next anchor search leans this far (deg) toward the side opposite the previous web. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAltDeg = 30.f;
+	/**
+	 * Round 10 (critic r09 T3/T4/T7: four identical 2 s swings, never at the roofline): a jump-release with a trick pressed is a
+	 * SKY LAUNCH — the release climbs at up to SkyLaunchVz m/s (plain jump-release: 22), gravity is x SkyHangK while |vz| <
+	 * SkyHangVz (hang time at the top, tricks chained on input), and no web is searched on the way up. The camera drops under the
+	 * hero and looks up (sky behind him) until he falls faster than 8 m/s.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyLaunchVz = 26.f;
+	/** Round 10 (T7 "peak at roofline height"): the launch speed is solved so the apex lands SkyRoofOver m above the lower street
+	 *  wall's roofline beside the path ahead (RoofBesideAhead), the peak clamped to SkyPeakMin..SkyPeakMax m over the street and the
+	 *  launch to SkyLaunchVz..SkyLaunchVzMax m/s. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyRoofOver = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyPeakMin = 38.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyPeakMax = 90.f; // r10-r11 58
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyLaunchVzMax = 60.f; // r10-r11 52
+	/** Round 10: rope cap (and pivot reach) of the first web after a sky launch (a long dive back to the street). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyRopeMax = 50.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyHangK = 0.55f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyHangVz = 7.f;
+	/** Round 10: gravity scale on the rest of a sky launch's climb (vz >= SkyHangVz): the release carries him to the roofline. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyRiseK = 1.0f; // r10-r11 1.4 (round 12: taller launches under the vz cap)
+	/**
+	 * Round 12 (critic r11 single gap: release tricks low in the canyon, facades behind the hero): every release trick starts from
+	 * an apex above the rooftops. A trick pressed at a web release is a sky launch (bTrickLaunch), the launch is solved so its apex
+	 * sits SkyApexOver m above the TALLEST roof within SkyTallR m of the path the flip program will cover (TallestRoofAlong), and the
+	 * program is armed on the climb and starts once the climb has slowed to SkyTrickVz m/s (it then plays in the apex hang). The
+	 * peak cap SkyPeakMax rose 58 -> 90 m over the street; where even that cannot clear the roofs the flip still plays at the cap.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bTrickLaunch = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;
+	/** Round 12: gravity scale while a sky launch's flip program plays (from vz 9 m/s: ~5 m more climb, ends near its start height). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyFlipGK = 0.32f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyTallR = 30.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyTrickVz = 9.f;
+	/** Round 10: a new web's anchor must sit at least this far (m) above the body (critic r09: rope anchored below / behind, b 2.0 s). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorMinAbove = 3.f;
 
 	/**
 	 * Fraction of the anchor's lateral offset (relative to the swing direction) kept in the physics pivot.
@@ -122,6 +166,32 @@ public:
 	FVector RootPosM() const { return RootPos; }
 	double Facing() const { return S.Facing; }
 	bool IsDiving() const { return S.bDive || S.bGliding; }
+	/** Round 10: airborne from a sky launch (jump-release + trick) and not yet falling into the dive. */
+	/** Round 10: feet height over the street / building mass below (props, trees, awnings ignored). */
+	double HeightAboveStreet() const { return FeetZ() - TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); }
+	bool IsSkyLaunch() const { return S.bSky && S.Mode == EWebTravMode::Air; }
+	/** Round 10: roofline (m, world Z) of the LOWER of the two street walls beside the path 0..Ahead m ahead along Dir; -1 if none. */
+	double RoofBesideAhead(const FVector& Dir, double Ahead = 60.0) const;
+	/** Round 10: that roofline over the street below (m), along the current horizontal velocity; -1 if none. */
+	double SkyRoofOverStreet() const;
+	/** Round 10: sky-launch telemetry: the peak the launch was solved for (m over the street), the roofline used (m over the street). */
+	double SkyPeakWant = 0.0, SkyRoofUsed = 0.0;
+	/** Round 12: highest roof (m, world Z) within R m of the horizontal path D0..D1 m along Dir from From (down-ray grid, 5 m); -1 if none. */
+	double TallestRoofAlong(const FVector& From, const FVector& Dir, double D0, double D1, double Rad) const;
+	/** Round 12: the sky-launch peak (m over the street) a trick release here would need to clear the tallest roof near its flip
+	 *  (current velocity; cached 0.25 s) and whether it is within SkyPeakMax. */
+	double SkyPeakNeeded(bool& bReachable) const;
+	/** Round 12: tallest roof used by the last sky launch (m over the street; -1 none) and the flip program armed for the apex. */
+	double SkyTallUsed = -1.0;
+	bool IsFlipArmed() const { return !S.ArmedFlip.IsNone() && S.Mode == EWebTravMode::Air; }
+	FName ArmedFlipName() const { return S.ArmedFlip; }
+	mutable bool bRoofDebug = false;
+	mutable double NeedCacheT = -1e9, NeedCacheV = 0.0;
+	mutable bool bNeedCacheOk = false;
+	/** Round 12: peak (m over Street) solved for a launch from Pos with horizontal speed HS along HV: max(RoofRule, tallest roof near
+	 *  the apex path + SkyApexOver), clamped to SkyPeakMin..SkyPeakMax; TallOut = that tallest roof over Street (-1 none), bOk = reachable. */
+	double SolveSkyPeak(const FVector& Pos, const FVector& HV, double HS, double Street, double RoofRule, double& TallOut, bool& bOk) const;
+	double SkyV0For(double PeakOver, double Street, double FeetZNow) const;
 	bool IsSwinging() const { return S.Mode == EWebTravMode::Swing; }
 	const FVector& SwingAnchor() const { return S.Sw.Anchor; }
 	const FVector& SwingDir() const { return S.Sw.Dir; }
@@ -211,6 +281,7 @@ private:
 		bool bLastTrick = false, bTrickBoosted = false, bTrickNoUp = false;
 		FName Trick, LastTrickName;
 		double TrickSide = 1, TrickDur = 0, TrickSnapT = 9, TrickLat = 0, TrickSteep = 0;
+		int32 FlipCycle = 0, AutoFlipK = 0; // round 11: flip program cycling (script list / automatic choice)
 		double TrickBuf = 0;
 		double SearchT = 0, SwingCooldown = 0, WallCooldown = 0, ZipCooldown = 0, DashWebT = 0, QuickBuf = 0;
 		int32 DashCount = 0;
@@ -221,6 +292,8 @@ private:
 		double LandSeverity = 0, LandLock = 0;
 		FQuat BodyQ = FQuat::Identity;
 		double Roll = 0, Pitch = 0, Bank = 0, RollA = 0, PitchA = 0;
+		bool bSky = false;      // round 10: sky launch (jump-release + trick) until the next web / landing
+		FName ArmedFlip;        // round 12: flip program armed at a sky launch, started on the climb's last SkyTrickVz m/s
 		bool bTopOut = false;   // round 06: airborne from a wall-run top-out (crouch landing on touchdown)
 		int32 SwingIdx = 0;     // round 09: swings started (alternating arc depth)
 		int32 LastAnchorSide = 0; // round 09: side of the last web anchor (+1 right of travel, -1 left)
@@ -280,6 +353,8 @@ private:
 	void RopeWrap(double H);
 	// ---- tricks / release
 	FName ChooseTrick(const FWebTravInput& I);
+	FName FitFlip(FName Want) const;
+	double AirTimeToClear() const;
 	void StartTrick(FName Name);
 	void TrickBoost(const FWebTravInput& I);
 	void ReleaseSwing(bool bJump, const FWebTravInput& I);

@@ -31,6 +31,9 @@ struct FTravCamInput
 	double HAbove = 0.0;   // feet height above the floor below (m)
 	double SwingAngle = 0.0; // rope angle from straight down (rad), swinging only
 	double SwingT = 99.0;    // s since the current web attached
+	bool bSky = false;       // round 10: sky launch (jump-release + trick) in progress
+	bool bFlip = false;      // round 11: a gymnast flip program is playing
+	bool bFlipSoon = false;  // round 12: an apex flip is armed and about to start (the flip camera moves into place first)
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -51,12 +54,14 @@ public:
 	double CamZMin = 0.2, CamZMax = 1.8;   // held band over the hero centre (m) — r07 1.2..2.6, r09 0.2..1.8
 	// round 09: anchor-side composition — yaw (deg) and sideways shift (m) toward the active anchor, roll (deg) with the arc
 	double AnchorShift = 1.3, AnchorRollMax = 6.0; // round 09: sideways slide (m) toward the active anchor, roll at the arc ends (deg)
+	double AttachMaxS = 0.64;     // round 10: attach look-up keeps the hero centre at or above this share of the frame height
+	double RollDeadDeg = 1.0;     // round 10: roll leans under this are dropped (T13 median)
 	double AttachFovMax = 10.0;   // deg of extra vertical FOV at a web attach — round 08 (was 26)
 	double CamWallSoft = 3.0, CamWallHard = 1.5;   // m sideways clearance from facades — round 08
 	double SwingCloser = 0.4;      // m closer while swinging / airborne — round 07
 	double PitchDownMin = -8.0;    // deg, lowest look-down of the chase camera — r07 10, r09 -8 (T11 p5: 10 deg up .. 3 deg down)
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
-	double FrameLowS = 0.44, FrameHighS = 0.37; // hero screen centre (0 top .. 1 bottom): arc bottom .. top — r09 (was 0.48 / 0.40; T10 range <= 0.70)
+	double FrameLowS = 0.50, FrameHighS = 0.37; // hero screen centre (0 top .. 1 bottom): arc bottom .. top — r10 low 0.44 -> 0.50 (T10 spread .187 < .20); r09 (was 0.48 / 0.40; T10 range <= 0.70)
 	// ---- round 06 wall-run camera (critic r05 / ref wall-run): below and out from the hero, looking UP the facade at a
 	// grazing angle (view 20-35 deg off the wall plane) so the wall converges to the roof edge; hero in the lower third
 	double WallCamBelow = 2.2;     // m under the hero centre
@@ -65,6 +70,28 @@ public:
 	double WallFrameS = 0.68;      // hero screen centre on the wall
 	double WallFovAdd = 4.0;       // deg vertical FOV added on the wall
 	double WallK = 0.0;            // 0 chase .. 1 wall camera (spring)
+	// round 10 (TRAVERSAL-SPEC T23: release trick silhouetted against the sky, with a rise): during a sky launch the camera sinks
+	// SkyCamBelow m under the hero centre and frames him at SkySFrame (upper centre), look-up limited to SkyPitchUp deg (T11 p5)
+	double SkyCamBelow = 1.2, SkySFrame = 0.40, SkyPitchUp = 10.0;
+	double SkyK = 0.0, SkyKV = 0.0;
+	// round 11 (FLIPS_SPEC F9, critic r10 "flips foreshortened from behind"): while a flip program plays the camera orbits
+	// FlipOrbitDeg off the travel axis toward the side with more open space (the rotation plane reads side-on), sinks under the
+	// hero like the sky camera (silhouette against the sky) and never rolls with the body
+	double FlipOrbitDeg = 40.0, FlipSFrame = 0.42, FlipCamBelow = 1.6, FlipCloser = 0.2, FlipPitchUp = 18.0; // r11 capture 1: 10 deg look-up clamp framed the flips against facades
+	double FlipK = 0.0, FlipKV = 0.0, FlipSide = 1.0;
+	bool bFlipWas = false;
+	// round 12 (critic r11: tricks framed against facades; test = >= 50 % sky in a 40 px ring around the hero in >= 70 % of trick
+	// frames): the flip camera SEARCHES its view. Every FlipSearchDt s it scores orbit yaw offsets (around the travel-behind
+	// direction) x look-up elevations (camera below the hero) by the share of a ring of rays past the hero (the hero bbox + 40 px
+	// in angle) that reach open sky (no hit within FlipSkyRay m), preferring a 3/4 side view and the lowest look-up that is clear;
+	// the chosen yaw offset / elevation are springs (FlipAimT s), the camera sits FlipDist m from the hero along that line.
+	// (first round-12 capture: the chase springs left the camera 4.4 m out at 17 deg, and the far skyline — visual-only towers the
+	// rays cannot hit — filled the ring's lower half at <= 20 deg: the spot is now taken exactly (blended by FlipK) and the look-up
+	// never goes under FlipMinElev)
+	double FlipDist = 2.9, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 55.0, FlipMinElev = 30.0;
+	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
+	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
+	void SearchSkyView(const FTravCamInput& P, const FWebTravWorld& World, const FVector& Back, bool bFirst);
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame

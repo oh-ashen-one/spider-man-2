@@ -13,6 +13,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Traversal/WebTravTypes.h"
 #include "Traversal/WebTravCamera.h"
+#include "Traversal/WebTravFlips.h"
 #include "WebTravCharacter.generated.h"
 
 class UWebTraversalComponent;
@@ -55,11 +56,27 @@ protected:
 
 	/** Mouse look: radians per Mouse2D unit (browser 0.0023 rad / px; Mouse2D arrives pre-scaled by 0.07). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
-	float MouseRadPerUnit = 0.033f;
+	float MouseRadPerUnit = 0.011f; // round 11: 0.033 (browser) -> 0.011; scaled at run time by the console variable wh.MouseSensitivity
 
 	/** Right stick look rate (rad/s) at full deflection (browser 900 px/s x 0.0023). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	FVector2D PadLookRate = FVector2D(2.07, 1.38);
+
+	/**
+	 * Round 10 (Manhattan integration issue P3-1): hero mesh / clips are data, not code. Priority (last wins): these defaults
+	 * (the HeroDev proxy) < [/Script/WebHomage.WebTravCharacter] in Game ini < a Blueprint subclass / placed-actor value <
+	 * command line -WHHeroMesh=<obj path> -WHHeroLens=<obj path or "none"> -WHHeroClips=<folder> -WHHeroClipPrefix=<prefix>.
+	 * Clip asset = <HeroClipRoot>/<HeroClipPrefix><browser clip name> (P2: /Game/Characters/Hero/Anims + "A_Hero_").
+	 * HeroLensMeshPath empty = no separate lens mesh (P2's lenses are material slots on the body).
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroMeshPath = TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/SpiderMan.SpiderMan");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroLensMeshPath = TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/Lenses.Lenses");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroClipRoot = TEXT("/Game/Traversal/HeroDev");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroClipPrefix;
 
 private:
 	void BuildTravInput();
@@ -67,6 +84,10 @@ private:
 	bool SetupHeroMesh();
 	void PoseFigure(float Dt);
 	float SwayW = 0.f; // round 06: air-sway weight (spring)
+	FQuat FlipOffQ = FQuat::Identity;   // round 11: flip rotation relative to the body frame (springs back when a program is cut)
+	FWebFlipPose LastFlip;              // round 11: telemetry
+	FName LastFlipName;
+	const FWebFlipProgram* FlipProgramNow(float& OutT) const;
 	void UpdateWebs(float Dt, const FVector& CamPosCm);
 	FVector HandWorldCm(bool bRight) const;
 	void PushTelemetry(double T, const FWebTravInput& I);
@@ -100,6 +121,11 @@ private:
 	bool bAutoHeld = true, bAutoWasSwinging = false;
 	double AutoGapT = 0.0;
 	int32 AutoReleases = 0;
+	// round 10: auto-chain sky launch (jump-release + chained tricks, re-press below skyRepressH)
+	bool bSkyAuto = false, bSkyWasTrick = false;
+	int32 SkyTricksLeft = 0, LastSkyRelease = -100;
+	double LastSkyT = -100.0, SkyPeakH = 0.0;
+	double SkyAutoT = 0.0;
 	int64 FrameIndex = 0;
 
 	// placeholder figure parts

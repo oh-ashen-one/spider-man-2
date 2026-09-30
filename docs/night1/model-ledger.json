@@ -301,6 +301,138 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 10,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 11,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    6,
+    6,
+    7,
+    6,
+    6,
+    6
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 12,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    5,
+    5,
+    6,
+    7,
+    6,
+    6
+   ]
+  },
+  {
+   "piece": "P6 City life",
+   "round": 2,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "F 4K/60 perf",
+   "round": 1,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    8,
+    6,
+    3,
+    3,
+    9
+   ]
+  },
+  {
+   "piece": "F 4K/60 perf",
+   "round": 2,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    7,
+    7,
+    3,
+    5
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 7,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    3,
+    4,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 8,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    4,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 9,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    4,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 5,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    5,
+    5,
+    4,
+    3
+   ]
   }
  ],
  "agents": [

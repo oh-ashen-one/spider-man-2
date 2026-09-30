@@ -1,0 +1,43 @@
+{
+ "name": "a_swing_chain_city",
+ "note": "Round 10, lit city (Look_Midtown_golden): airborne swing chain north up the 5th-Av-like avenue (x = 250 m, north = -Y). autoChain rule: release on the rising front (phase 0.62), re-press after 0.45 s; every 2nd release is a SKY LAUNCH (jump-release + trick, 2 chained tricks, next web below 24 m).",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   250,
+   240,
+   24
+  ],
+  "yaw": -90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -22,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "swing": false
+  },
+  {
+   "t": 0.4,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 0,
+   "skyEvery": 2,
+   "skyTricks": 2,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
+ ]
+}

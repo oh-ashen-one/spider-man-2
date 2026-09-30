@@ -222,6 +222,41 @@ float3 shopBack(float2 m, float typ, float sd, float w) {
     float table = shBox(m.y, 0.0f, 0.72f, w) * shBox(frac(m.x / 1.3f), 0.08f, 0.92f, w / 1.3f + 0.01f);
     float stack = step(0.5f, frac(m.y / 0.09f));
     c = lerp(c, lerp(float3(0.25f, 0.2f, 0.16f), gc * 1.1f, stack * fine + 0.3f), table);
+  } else if (typ > 5.5f) {                            // (r07) gallery / electronics: pale wall, framed canvases and a row of screens, track spots
+    c = lerp(float3(0.46f, 0.45f, 0.43f), float3(0.62f, 0.61f, 0.58f), smoothstep(0.0f, 2.0f, m.y));
+    float gxk = floor(m.x / 1.5f); float gh = shH(float2(gxk + sd, 8.3f)); float gf = frac(m.x / 1.5f);
+    float frameM = shBox(gf, 0.14f, 0.86f, w / 1.5f + 0.006f) * shBox(m.y, 0.95f, 2.15f, w) * step(0.25f, gh);
+    float inner2 = shBox(gf, 0.19f, 0.81f, w / 1.5f + 0.006f) * shBox(m.y, 1.0f, 2.1f, w);
+    float3 art = lerp(shPack(frac(gh * 7.3f)) * 1.3f, shPack(frac(gh * 3.1f + 0.4f)) * 1.1f, smoothstep(0.35f, 0.65f, frac((m.x * 0.5f + m.y * 0.9f) * 0.9f + gh)));
+    c = lerp(c, float3(0.06f, 0.055f, 0.05f), frameM);
+    c = lerp(c, art, inner2 * step(0.25f, gh) * (fine * 0.85f + 0.15f));
+    float scr = shBox(gf, 0.16f, 0.84f, w / 1.5f + 0.006f) * shBox(m.y, 1.1f, 1.85f, w) * (1.0f - step(0.25f, gh));   // screens (dark bezel, bright picture)
+    c = lerp(c, float3(0.03f, 0.03f, 0.035f), scr);
+    c = lerp(c, lerp(float3(0.1f, 0.25f, 0.45f), float3(0.55f, 0.3f, 0.6f), frac(gh * 9.0f)) * 1.6f * (0.7f + 0.3f * frac(m.y * 3.0f)), scr * shBox(gf, 0.2f, 0.8f, w / 1.5f) * shBox(m.y, 1.15f, 1.8f, w) * fine);
+    c = lerp(c, float3(0.16f, 0.15f, 0.14f), smoothstep(0.75f, 0.7f, m.y) * 0.9f);     // plinth / low counter
+    c += float3(1.0f, 0.93f, 0.78f) * 0.8f * smoothstep(0.3f + w, 0.05f, length(float2(frac(m.x / 1.5f + 0.5f) - 0.5f, (m.y - 2.7f) * 0.5f)));   // track-light pools
+  } else if (typ > 4.5f) {                            // (r07) bookstore: floor-to-ceiling shelves of book spines, reading lamp glow
+    float bt = floor(m.y / 0.33f); float bf = m.y - bt * 0.33f;
+    float bxk = floor(m.x / 0.045f); float bh1 = shH(float2(bxk + sd, bt * 5.7f)); float bh2 = shH(float2(bxk * 1.3f + sd, bt + 3.0f));
+    float3 sp = lerp(shPack(bh1) * (0.7f + 0.6f * bh2), float3(0.5f, 0.46f, 0.38f), step(0.85f, bh2));
+    float bookH = 0.19f + 0.12f * bh2; float onB = shBox(bf, 0.03f, bookH, w * fine + 0.002f) * shBox(frac(m.x / 0.045f), 0.06f, 0.94f, w / 0.045f * 0.7f + 0.02f) * step(0.12f, shH(float2(bxk * 0.7f + sd, bt + 1.0f)));
+    c = lerp(float3(0.05f, 0.035f, 0.025f), lerp(float3(0.35f, 0.28f, 0.2f), sp, fine * 0.85f + 0.15f), onB);
+    c = lerp(c, float3(0.26f, 0.18f, 0.11f), (1.0f - smoothstep(0.02f, 0.035f + w, bf)) * 0.95f);
+    c *= lerp(1.0f, 0.4f, smoothstep(2.05f, 2.5f, m.y));
+    c += float3(1.0f, 0.78f, 0.45f) * 1.2f * smoothstep(0.4f + w, 0.05f, length(float2(frac(m.x / 2.3f + 0.5f) - 0.5f, (m.y - 1.2f) * 0.6f)) * 1.3f) * shBox(m.y, 0.95f, 1.45f, w) * 0.5f;
+  } else if (typ > 3.5f) {                            // (r07) restaurant: dark panelled wall, bottle shelves behind a bar, tables with cloths and candles
+    c = lerp(float3(0.08f, 0.045f, 0.03f), float3(0.2f, 0.11f, 0.07f), smoothstep(0.0f, 1.2f, m.y)) * (0.8f + 0.4f * shH(float2(floor(m.x / 0.45f), sd)));
+    c = lerp(c, float3(0.04f, 0.028f, 0.02f), shBox(frac(m.x / 0.45f), 0.0f, 0.02f, w / 0.45f));
+    float bot = shBox(frac(m.x / 0.11f), 0.15f, 0.85f, w / 0.11f + 0.01f) * (shBox(m.y, 1.25f, 1.6f, w) + shBox(m.y, 1.75f, 2.1f, w));
+    c = lerp(c, shPack(shH(float2(floor(m.x / 0.11f), floor(m.y / 0.5f) + sd))) * 1.1f, bot * fine);
+    c += float3(1.0f, 0.7f, 0.35f) * 0.9f * (shBox(m.y, 1.2f, 1.24f, w) + shBox(m.y, 1.7f, 1.74f, w));   // shelf strip lights
+    float tbl = shBox(frac(m.x / 1.1f), 0.12f, 0.88f, w / 1.1f + 0.01f) * shBox(m.y, 0.62f, 0.78f, w);
+    c = lerp(c, float3(0.86f, 0.84f, 0.8f), tbl);
+    float cdl = smoothstep(0.05f + w, 0.02f, length(float2(frac(m.x / 1.1f) - 0.5f, (m.y - 0.86f) * 1.2f)));
+    c += float3(1.0f, 0.62f, 0.25f) * 2.5f * cdl;
+    c = lerp(c, float3(0.05f, 0.04f, 0.035f), shBox(frac(m.x / 1.1f), 0.42f, 0.58f, w / 1.1f) * shBox(m.y, 0.0f, 0.6f, w) * 0.9f);   // table pedestal / chair shadow
+    float pl = length(float2(frac(m.x / 1.4f + 0.5f) - 0.5f, (m.y - 2.5f) * 0.55f)) * 1.4f;
+    c += float3(1.0f, 0.72f, 0.4f) * 1.8f * smoothstep(0.1f + w, 0.05f, pl);
   } else {                                            // pharmacy / bank: bright wall, light aisle shelves, dark counter, logo slab
     c = lerp(float3(0.36f, 0.38f, 0.4f), float3(0.5f, 0.53f, 0.56f), smoothstep(0.0f, 2.0f, m.y));
     float sh2 = step(1.1f, m.y) * step(m.y, 2.3f); float cx = floor(m.x / 0.14f); float h4 = shH(float2(cx + sd, floor(m.y / 0.36f)));
@@ -620,7 +655,7 @@ Surf facade(TEXDECL) {
         mull = max(mull, 1.0f - boxAA(TEXPASS, abs(gp.y - (signY0 - 0.9f)), 0.04f, 9.0f, ah));
         float door = step(rnd, 0.5f) * boxAA(TEXPASS, gp.x, 0.4f, 1.5f, aw) * step(gp.y, 2.6f);
         gRoomWrap = gw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * mw,gp.y - glassY0), dirIn, gw + 24.0f * mw, signY0 - glassY0 + 0.6f, 5.0f,
-                             12.0f + floor(rnd * 4.0f), 1.0f, 1.0f);
+                             12.0f + floor(frac(sin(dot(float2(bi2 + seed * 13.1f, faceW * 0.37f + seed * 3.3f), float2(127.1f, 311.7f))) * 43758.5453f) * 7.0f), 1.0f, 1.0f);
         float F = 0.04f + 0.96f * pow(1.0f - Vt.z, 5.0f);
         Surf gl = (Surf)0; gl.alb = ((float3)(0.02f)); gl.rough = 0.04f; gl.metal = 0.0f; gl.n = float3(0.0f,0.0f,1.0f);
         gl.emis = room * uShopGain * (1.0f - F);
@@ -1173,4 +1208,12 @@ float3 CityFacade(TEXDECL, float2 fac, float4 F, float4 S, float4 W, float2 X7, 
   f0 = gF0 * gSpecTint * (1.0 - 0.4 * gSash) * lerp(1.0, gSashV, gSash);
   glass = cg;
   return FS.alb;
+}
+// (r07, CITY-SPEC C1) albedo soft knee: light stone and pale window-panel / spandrel base colours are compressed above 'knee' (luma of the linear albedo)
+// so a sunlit facade crop keeps <= 1.5 % of pixels above Y 204; albedo below the knee (shadowed and dark facades) is untouched.
+float3 CityAlbCap(float3 a, float knee, float slope)
+{
+  float L = dot(a, float3(0.2126, 0.7152, 0.0722));
+  float Lc = L <= knee ? L : knee + (L - knee) * slope;
+  return a * (Lc / max(L, 1e-4));
 }

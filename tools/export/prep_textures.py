@@ -6,8 +6,9 @@ import os, sys
 from PIL import Image
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ip_sanitize import sanitize  # UE-only IP exclusions (ts_ads / ts_signs cells); browser atlas files stay untouched
+from citypaths import TEX as _TEX, EXPORT as _EXPORT, asset_rel
 SRC = os.path.join(os.path.dirname(__file__), '../../public/assets/city/tex')
-OUT = sys.argv[1] if len(sys.argv) > 1 else '/Users/midir/sm2-n1/_scratch/city/tex'
+OUT = sys.argv[1] if len(sys.argv) > 1 else _TEX
 os.makedirs(OUT, exist_ok=True)
 ARRAYS = {'walls_col.jpg': 1024, 'walls_nrm.webp': 512, 'walls_hao.jpg': 512, 'roof_col.png': 512, 'roof_nrm.png': 256}
 PLAIN = ['interiors.png', 'signs.png', 'noise.png', 'detail_nrm.png', 'asphalt_col.png', 'asphalt_nrm.png', 'asphalt_macro.png',
@@ -26,21 +27,21 @@ for f in PLAIN:
     im = sanitize(f, Image.open(p)); im.save(os.path.join(OUT, f.split('.')[0] + '.png')); print(f, im.size, im.mode)
 
 # (r06) baked far-land ground map (exported from the browser page by export_city.mjs next to the manifest)
-_fm = os.path.join(os.path.dirname(sys.argv[2] if len(sys.argv) > 2 else '/Users/midir/sm2-n1/_scratch/city/export/midtown3x3/manifest.json'), 'farland_map.png')
+_fm = os.path.join(os.path.dirname(sys.argv[2] if len(sys.argv) > 2 else os.path.join(_EXPORT, 'manifest.json')), 'farland_map.png')
 if os.path.exists(_fm): Image.open(_fm).convert('RGB').save(os.path.join(OUT, 'farland_map.png')); print('farland_map', _fm)
 # city_signart is sampled by the signage material (M_CitySignage) although no exported mesh references it as a map
 os.makedirs(os.path.join(OUT, 'maps'), exist_ok=True)
 Image.open(os.path.join(SRC, 'city_signart.webp')).convert('RGB').save(os.path.join(OUT, 'maps', 'assets_city_tex_city_signart.png'))
 # textures referenced by exported meshes / prototypes (manifest 'map' URLs), converted to PNG as tex/maps/<path_with_underscores>.png
 import json
-MAN = sys.argv[2] if len(sys.argv) > 2 else '/Users/midir/sm2-n1/_scratch/city/export/midtown3x3/manifest.json'
+MAN = sys.argv[2] if len(sys.argv) > 2 else os.path.join(_EXPORT, 'manifest.json')
 PUB = os.path.join(os.path.dirname(__file__), '../../public')
 if os.path.exists(MAN):
     m = json.load(open(MAN)); os.makedirs(os.path.join(OUT, 'maps'), exist_ok=True)
     for r in m['meshes'] + m['protos']:
         u = (r.get('mat') or {}).get('map')
         if not u: continue
-        rel = u.split('5202/', 1)[-1].split('?')[0]
+        rel = asset_rel(u)
         dst = os.path.join(OUT, 'maps', rel.replace('/', '_').rsplit('.', 1)[0] + '.png')
         if os.path.exists(dst) and 'ts_ads' not in dst and 'ts_signs' not in dst: continue
         sanitize(os.path.basename(dst), Image.open(os.path.join(PUB, rel)).convert('RGB') if 'ts_ads' in dst or 'ts_signs' in dst else Image.open(os.path.join(PUB, rel))).save(dst); print('map', rel)

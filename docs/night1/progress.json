@@ -1,6 +1,6 @@
 {
- "updated": "23:47",
- "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
+ "updated": "09:39",
+ "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
  "pieces": [
@@ -35,28 +35,28 @@
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
-   "state": "fixing",
-   "round": 7,
-   "verdict": "R6: FAILS (facades 5, street 4, skyline 4, Manhattan 5, IQ 5)",
-   "gap": "Far field still plain boxes; facade base colours clip; shared spec-check script (builder and critic measured differently)"
+   "state": "active",
+   "round": 9,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall."
   },
   {
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "fixing",
+   "state": "active",
    "round": 5,
-   "verdict": "R4: FAILS (hero 4, anim 5, enemies 4, civilians 3, IQ 3) \u2014 best yet",
-   "gap": "Seam cracks (26 slivers), a real fight capture, suit weave/lens quality (Sonnet builder)"
+   "verdict": "fails \u2014 lowest 3 (Sonnet 5.5)",
+   "gap": "Garment integrity: zero see-through seam holes in crowd torsos/sleeves, no vertex spikes or stretched fingers on coats, trousers, hoodie collar."
   },
   {
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "fixing",
-   "round": 10,
-   "verdict": "R9: FAILS (arc 5, camera 6, web 4, moves 5, body 5) \u2014 best yet",
-   "gap": "Rhythm/altitude: rope 52\u201367% on screen (spec 25\u201345%), no long trick phase, never reaches rooflines; moving into the real lit city"
+   "state": "active",
+   "round": 12,
+   "verdict": "fails \u2014 lowest 5 (Opus 5.5)",
+   "gap": "Make tricks continuous with the swing chain: flip within 0.25 s of release, next web within 0.3 s, no one-frame camera cuts."
   },
   {
    "id": "P4",
@@ -80,10 +80,10 @@
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
-   "state": "fixing",
+   "state": "active",
    "round": 2,
-   "verdict": "R1: FAILS (traffic 4, motion 3, peds 2, ped motion 4, believability 3)",
-   "gap": "Pedestrians 4/frame (need \u226516), avenue traffic, lit signals + queues"
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1."
   },
   {
    "id": "A",
@@ -116,10 +116,10 @@
    "id": "F",
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": "Executing the Fable strategy: capture gate, clean baseline, one-variable probes under the exclusive lock"
+   "state": "active",
+   "round": 2,
+   "verdict": "approaches \u2014 lowest 3 (Sonnet 5.5)",
+   "gap": "HW-RT reflection preset is now CPU/GPU-serialised (2.9 ms frame\u2212GPU gap); trace and remove it, then re-measure on the rebuilt integrated Manhattan map with the cloud/RT-lite changes in shipped content."
   },
   {
    "id": "G",
@@ -418,6 +418,11 @@
    "title": "Browser baseline \u2014 carBlock",
    "src": "docs/night1/baseline/clips/swingChain.mp4",
    "caption": "the browser build today (before)"
+  },
+  {
+   "title": "Traversal r12 \u2014 pike to swan over the roofs",
+   "src": "docs/night1/traversal/round-12/f2_sky_pikeSwan.mp4",
+   "caption": "gymnast flips round 2 (Opus 5.5): held pike then swan against the sky"
   }
  ],
  "critic": [
@@ -612,6 +617,86 @@
    "verdict": "fails",
    "gap": "Midday per spec (mean 83\u201397, no clipping), far city takes the sky hue 15\u201332 luma below it, real night (no uniform facade fill).",
    "notes": "Night street fixed: mean 10\u219255, near-black 84%\u21920.15%, 12 lit pools; round 2 far better than round 1. Night costs ~6.5 ms (Lights pass)."
+  },
+  {
+   "t": "06:15",
+   "piece": "P3 Traversal",
+   "round": 10,
+   "verdict": "fails",
+   "gap": "Flips too fast (~900\u00b0/s), no held shape, seen from behind; build tricks as 3 beats with a held pencil/swan against sky.",
+   "notes": "Round 10 finished (resumed): sky launch, long web back to street, swing-to-wall-run."
+  },
+  {
+   "t": "06:15",
+   "piece": "P3 Traversal",
+   "round": 11,
+   "verdict": "fails",
+   "gap": "Tricks happen low in the canyon against facades; launch from an apex above the roofs with sky behind the hero.",
+   "notes": "Gymnast flips v1 (owner request): owner clip measured into FLIPS_SPEC; Blender-keyed tuck/pike/pencil/swan shapes, eased rotation, leg lag, corkscrew, wall-run top-out flip; mouse 0.011 + wh.MouseSensitivity. Flips 4\u21926."
+  },
+  {
+   "t": "06:15",
+   "piece": "P3 Traversal",
+   "round": 12,
+   "verdict": "fails",
+   "gap": "Make tricks continuous with the swing chain: flip within 0.25 s of release, next web within 0.3 s, no one-frame camera cuts.",
+   "notes": "Apex sky launches: sky behind the hero in 95\u2013100% of trick frames (was 3\u201315%). New problems: 1.7 s posed rise, 1.3 s dive, one-frame camera cut. Rounds 13\u201314 on Opus."
+  },
+  {
+   "t": "07:57",
+   "piece": "P6 City life",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1.",
+   "notes": "Pedestrians 2\u21925, traffic 4\u21925: S1 people 5\u219227, street clip 4\u219219, 100 citizen looks. Round 3 ran code/experiments but could not capture after the 06:55 WindowServer reset."
+  },
+  {
+   "t": "08:06",
+   "piece": "F 4K/60 perf",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Late-route horizon: volumetric cloud 0.5\u21922.3 ms; lower cloud tracing distance; restore lit windows/glass lost to software Lumen.",
+   "notes": "Route p50 26.45\u219216.44 ms (60.8 fps) at 3840x2160 output, TSR 50% (1920x1080 internal); p95 19.86 ms. Gains: harness scene captures \u221211.6 ms, Nanite error 4 px \u22125.4, software Lumen \u22124.6."
+  },
+  {
+   "t": "08:06",
+   "piece": "F 4K/60 perf",
+   "round": 2,
+   "verdict": "approaches",
+   "gap": "HW-RT reflection preset is now CPU/GPU-serialised (2.9 ms frame\u2212GPU gap); trace and remove it, then re-measure on the rebuilt integrated Manhattan map with the cloud/RT-lite changes in shipped content.",
+   "notes": "3840x2160 output, TSR 46% (1766x994 internal), HW-RT reflections + RT-lite, cloud 4 km: p50 16.01 ms (62.4 fps), p95 18.05 ms (55.4 fps), p99 19.08, 0 hitches \u2014 recomputed by the auditor from raw CSVs under the exclusive lock. Not yet in shipped content (measured on a local map copy); glass SSIM 0.92 vs 0.97 gate."
+  },
+  {
+   "t": "08:33",
+   "piece": "P1 City",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "Streets empty: park cars/taxis on both curbs, 2 trees per 20 m.",
+   "notes": "Far field passes C11\u2013C15 at 1080p and 4K; facade albedo cap restored."
+  },
+  {
+   "t": "08:33",
+   "piece": "P1 City",
+   "round": 8,
+   "verdict": "fails",
+   "gap": "Shadowed facades too dark (canyon crush).",
+   "notes": "197 parked cars, 37 taxis, 195 lane cars, 179 new trees; S1 0\u219215 cars (IP-clean liveries). Street dressing 3\u21925."
+  },
+  {
+   "t": "08:33",
+   "piece": "P1 City",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall.",
+   "notes": "Canyon shade fill: dark-pixel share S3 72%\u219220%, S7 63%\u21924%; image quality 4\u21925."
+  },
+  {
+   "t": "09:39",
+   "piece": "P2 Characters",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "Garment integrity: zero see-through seam holes in crowd torsos/sleeves, no vertex spikes or stretched fingers on coats, trousers, hoodie collar.",
+   "notes": "Skirt rig, hull hole-fill, chase cameras; hero bob 3.5 Hz, lean 24.5\u00b0. Round 6 fixed the seam-hole root cause offline (cracks 1035\u2192244, edges >10 cm 915\u21920) but could not render after the 06:55 reset \u2014 engine verification pending, not merged yet."
   }
  ],
  "perf": [
@@ -881,6 +966,38 @@
   {
    "t": "23:47",
    "text": "Overnight resume. Weekly usage at 50%: builders lean on Sonnet 5.5 xhigh, Opus 5.5 high for flips + every critic, Fable 5.1 only if a piece stalls or for final acceptance. Up to 3 rounds per piece (perf 2), engine cap auto-tuned 2\u20134, safety watchdog on."
+  },
+  {
+   "t": "06:15",
+   "text": "Traversal rounds 10\u201312 done (3 blind Opus critics). Flips 4\u21926\u21926: clean held shapes and sky-backed apex flips now; next gap is flow (no pause before/after the trick, no camera cut). Rounds 13\u201314 launched on Opus 5.5. Merged into the integration branch."
+  },
+  {
+   "t": "06:55",
+   "text": "WindowServer watchdog reset (no panic): four concurrent 4K captures inside an auto-raised cap of 5 starved WindowServer on the GPU; the owner was logged out and the desktop session died, so no engine can render until the owner logs in. Fix: hard cap 2 (never auto-raised), a PAUSED switch in the GPU lock, rule PR oh-ashen-one/agents-md#4. Builders continue CPU-side work."
+  },
+  {
+   "t": "07:57",
+   "text": "City life rounds 2\u20133 done (critic r2: FAILS, lowest 4; pedestrians 2\u21925). Merged."
+  },
+  {
+   "t": "08:06",
+   "text": "4K/60 perf rounds 1\u20132 done: APPROACHES TARGET. 3840x2160 output at TSR 46% (1766x994 internal): p50 62.4 fps, p95 55.4 fps, 0 hitches (was ~38 fps p50). Still to do: fold the settings into the shipped map, fix a CPU/GPU sync stall, recover glass reflections. Merged."
+  },
+  {
+   "t": "08:33",
+   "text": "City rounds 7\u20139 done (3 blind Opus critics, all FAILS, lowest 3\u21924\u21924): streets now have parked cars, taxis, traffic and trees; the canyon crush is fixed. Next: the far-shore skyline band. Merged. Also fixed run_game.sh, which still force-killed engines on timeout."
+  },
+  {
+   "t": "09:39",
+   "text": "Characters r5 critic: FAILS (lowest 3, image quality: see-through seams in crowd clothing). r6 fixed the root cause offline (cracks 1035\u2192244); waits for rendering to verify. Traversal r13 flow-flip code done and passing headless checks; waits for rendering + critic. Two engines stuck half-exited since 06:55 block all launches until the owner logs in (a reboot may be needed if they do not clear)."
+  },
+  {
+   "t": "09:52",
+   "text": "Morning: the owner found the Studio frozen on a macOS firewall prompt and had to power it off. Cause: at 00:48 a perf agent ran Unreal Insights (opens a network listener), and the prompt sat unanswered for 6 h; at 06:55 four concurrent 4K captures starved WindowServer, which was reset, leaving the screen frozen on that dialog. All WIP was committed and pushed; nothing lost. New rules: hard cap 2, no network-listening tools unattended without owner firewall approval, watchdog flags system dialogs, dead-session protocol (PR oh-ashen-one/agents-md#4). Loop paused."
+  },
+  {
+   "t": "10:07",
+   "text": "Owner merged the safety rules (agents-md#4: hard cap 2, no OS dialogs unattended, dead-session protocol). Firewall already allows every Unreal tool. Usage at 80%: all builders now Sonnet 5.5 xhigh, Opus only for blind critics. Resumed: traversal r13 renders + critic, characters r6 engine check + critic, perf r3 (preset into the shipped map)."
   }
  ]
 }

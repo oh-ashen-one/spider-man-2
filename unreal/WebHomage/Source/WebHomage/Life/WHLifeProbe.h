@@ -18,6 +18,7 @@ class WEBHOMAGE_API AWHLifeProbe : public AActor
 	GENERATED_BODY()
 public:
 	AWHLifeProbe();
+	virtual void BeginPlay() override;
 	virtual void Tick(float Dt) override;
 
 	UPROPERTY(EditAnywhere, Category="Probe") TObjectPtr<AWHLifeTraffic> Traffic;
@@ -31,6 +32,12 @@ public:
 	/** Minimum apparent height in pixels for a vehicle / person to count. */
 	UPROPERTY(EditAnywhere, Category="Probe") float MinCarPx = 22.f;
 	UPROPERTY(EditAnywhere, Category="Probe") float MinPersonPx = 28.f;
+	/** Periodic sampler (game seconds): every SampleEvery s between SampleFrom and SampleTo one WH_LIFE_SAMPLE line (frustum counts, lane motion, box stops, queue links). */
+	UPROPERTY(EditAnywhere, Category="Probe") float SampleEvery = 0.f;
+	UPROPERTY(EditAnywhere, Category="Probe") float SampleFrom = 0.f;
+	UPROPERTY(EditAnywhere, Category="Probe") float SampleTo = 0.f;
+	/** Lane link file ids whose queue (cars on the link, stopped, distance of the front car to the stop line) is logged at every sample. */
+	UPROPERTY(EditAnywhere, Category="Probe") TArray<int32> QueueLinks;
 
 private:
 	float T = 0.f;
@@ -42,6 +49,8 @@ private:
 	FString FootCsv;
 	bool bFeetInit = false, bFeetDone = false;
 	void Report(int32 Idx);
+	void Sample();
+	float NextSample = 0.f;
 	void FootStep(float Dt);
 	void FootReport();
 };
