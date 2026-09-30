@@ -1,5 +1,5 @@
 {
- "updated": "2026-09-29 20:56",
+ "updated": "2026-09-29 21:43",
  "phase": "Wave 2 \u2014 director plan",
  "headline": "The integrated Manhattan map works (city + golden look + hero + street people; 30 s swing route clean) and gave the first uncontaminated perf number: 19 fps at 4K / TSR 67% (52 ms; GPU 42 ms, render thread 51 ms). Performance is now the biggest gap; an Opus perf piece is profiling it.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -71,10 +71,10 @@
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "building",
-   "round": 1,
-   "verdict": "",
-   "gap": "Opus 5.5 high: C++ port of browser combat"
+   "state": "fixing",
+   "round": 2,
+   "verdict": "R1: FAILS (impact 3, moves 4, enemies 3, camera 3, spectacle 3)",
+   "gap": "No visible hit-stop (0% frozen frames), passive enemies without tells, camera crops the hero"
   },
   {
    "id": "P6",
@@ -330,6 +330,11 @@
  ],
  "clips": [
   {
+   "title": "Combat R1 \u2014 25 s scripted fight",
+   "src": "docs/night1/combat/round-01/fight25_1080p60.mp4",
+   "caption": "first C++ combat port, lit test street"
+  },
+  {
    "title": "City life R1 \u2014 street clip",
    "src": "docs/night1/life/round-01/street_clip_1080p60.mp4",
    "caption": "traffic + pedestrians (sparse); IP-clean liveries"
@@ -569,6 +574,14 @@
    "verdict": "fails",
    "gap": "Detector median \u226516 pedestrians; \u226514 moving vehicles at swing height; lit signals with stop-and-go queues.",
    "notes": "650\u2013700 moving + 1,197 parked vehicles and 1,458 simulated walkers, but few read on screen (detector 4\u20136 people/frame vs builder probe 15). Round 1 beat the empty street by 7 people and 7 vehicles. IP-clean."
+  },
+  {
+   "t": "21:43",
+   "piece": "P5 Combat",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "Hit-stop 3\u20135 frames + flinch on every contact; enemies attack at least every 1 s with 0.4 s tells, \u22655 on screen; mid-high combat camera with 5% margins.",
+   "notes": "Full C++ port of the browser combat (director, tokens, dodge slow-mo, finishers, 14 enemy states); 40/40 scripted beats fire. Critic measured 0% frozen frames and no finisher on screen although both are implemented \u2014 likely a capture/time-dilation mismatch; round 2 must prove it in pixels."
   }
  ],
  "perf": [
@@ -801,6 +814,10 @@
   {
    "t": "20:56",
    "text": "City life R1 merged + critic FAILS (peds 2); round 2 on Sonnet with the spec detector as the measure. GPU tuner ceiling set to 5 from measurements."
+  },
+  {
+   "t": "21:43",
+   "text": "Combat R1 merged + critic FAILS; round 2 on Opus (resolve hit-stop visibility, enemy aggression, combat camera)."
   }
  ]
 }
