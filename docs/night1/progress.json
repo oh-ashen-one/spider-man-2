@@ -1,5 +1,5 @@
 {
- "updated": "11:31",
+ "updated": "11:52",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "active",
-   "round": 5,
-   "verdict": "fails \u2014 lowest 3 (Sonnet 5.5)",
-   "gap": "Garment integrity: zero see-through seam holes in crowd torsos/sleeves, no vertex spikes or stretched fingers on coats, trousers, hoodie collar."
+   "round": 6,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Walker avoidance (people walk through each other), remaining key see-through on one jeans leg, a floating 37x27 px triangle."
   },
   {
    "id": "P3",
@@ -705,6 +705,14 @@
    "verdict": "fails",
    "gap": "Side-on trick camera (>=60 deg off the flip axis, pitch <= 30 deg up, back to 4-12 deg down after attach) and eased rotation (ends >=30% slower, shapes held >=0.3 s).",
    "notes": "Flow fixed: flip starts at release (0.00 s), next web in the Reach pose, longest gap without a web 1.68 s, web-to-web <= 2.65 s, no camera cuts. Still lost all 5 blind pairs vs the owner clip: the camera looks up from below so the back double reads as a spinning ball. Round 14 on Opus 5.5."
+  },
+  {
+   "t": "11:52",
+   "piece": "P2 Characters",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Walker avoidance (people walk through each other), remaining key see-through on one jeans leg, a floating 37x27 px triangle.",
+   "notes": "Seam fix verified in the engine: holes through clothing 6+ \u2192 0; coat flap, trouser spikes, stretched fingers and armpit hole gone. Image quality 3\u21924."
   }
  ],
  "perf": [
