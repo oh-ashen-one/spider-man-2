@@ -93,6 +93,14 @@ if 'adstex' in STEPS:
     EAL.save_directory(ROOT + '/Textures', only_if_is_dirty=False, recursive=True)
     log('adstex done')
 
+# (r09) 'sunh' step: the baked building height field (tools/export/bake_sunmask.py) the shade fill ray-marches toward the sun. RGB8 uncompressed, linear, point-filtered, clamped, always resident; mips (simple average) only serve the B channel (mean building height = enclosure).
+# Run BEFORE the 'mat' step (the materials reference it); also part of the default steps.
+if 'sunh' in STEPS or 'tex' in STEPS:
+    import_files([os.path.join(TEX, 'sunmask_h.png')], ROOT + '/Textures')
+    t = load(f'{ROOT}/Textures/sunmask_h'); tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP, wrap=False)
+    t.set_editor_property('mip_gen_settings', unreal.TextureMipGenSettings.TMGS_SIMPLE_AVERAGE); t.set_editor_property('filter', unreal.TextureFilter.TF_NEAREST); t.set_editor_property('never_stream', True)
+    EAL.save_asset(f'{ROOT}/Textures/sunmask_h'); log('sunmask_h imported')
+
 # ------------------------------------------------------------------------------------------------ materials
 MAT = ROOT + '/Materials'
 def sampler_for(t):
@@ -114,7 +122,8 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     c.set_editor_property('code', code)
     c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
     c.set_editor_property('description', name)
-    if include: c.set_editor_property('include_file_paths', [include])
+    incs = ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code) else [])   # (r09) shared canyon-shade fill header
+    if incs: c.set_editor_property('include_file_paths', incs)
     ins = []
     for n, kind, arg in inputs:
         ci = unreal.CustomInput(); ci.set_editor_property('input_name', n); ins.append(ci)
@@ -188,9 +197,12 @@ float boost = saturate((dst - 25.0) / 55.0) * 0.55;
 float far = boost / 0.55;
 c *= lerp(1.0, 0.55, far);
 Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
+// (r09) crowns inside the canyon shade: a share (0.35) of the wall fill, so the foliage keeps its own lit / shaded contrast
+Emis = CityShadeFill(c, float3(0.0, 0.0, 1.0), wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill * 0.35, nightk, CityShadeW(tSunH, tSunHSampler, wpos, float3(0.0, 0.0, 1.0), ResolvedView.DirectionalLightDirection.xyz));
 return c;''',
-        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1)), ('wpos', 'wpos', None), ('cam', 'cam', None)],
-        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)],
+        [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1)), ('wpos', 'wpos', None), ('cam', 'cam', None),
+         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
+        [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
 if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material rebuilt')
 
@@ -201,7 +213,8 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 # emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
-                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 7.6), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3))  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 7.6), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
+                ('ShadeFill', 0.17), ('GlassSky', 0.15))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -223,6 +236,7 @@ float r, m, g; float3 n, e, f;
 float3 a = CityFacade(tWallC, tWallCSampler, tWallN, tWallNSampler, tWallH, tWallHSampler, tDetail, tDetailSampler, tInterior, tInteriorSampler, tSigns, tSignsSampler, tNoise, tNoiseSampler,
   uv0, float4(uv1, uv2), float4(uv3, uv4), float4(uv5, uv6), uv7, vc.rgb * 2.0, wpos, wn, cam, float4(igain, sgain, nightk, dntime), float2(0.0, 0.0), r, m, n, e, g, f);
 a = CityAlbCap(a, albknee, albslope); f *= f0scale;   // (r07) light stone / pale panel base colours compressed (C1)
+float3 a0 = a;
 // (r07, C1) test lighting: sun 6 vs sky fill 1.7 (+2 EV) makes every sun-facing surface saturate (Y > 204) while the shaded ones crush; the albedo alone cannot fix that (albedo 0.02 still gives Y 110
 // on a white tower: glass reflection + emission). Sun-facing surfaces (N.L > 0) have their BASE colour luma limited to SunK (MPC): shaded facades (facing away) and dark stone are untouched.
 // fades out beyond ~1-2 km (the far skyline keeps its albedo). NOTE: every statement of a Custom node needs its own line below a // comment (r07 WIP had the cap swallowed by a comment)
@@ -236,6 +250,12 @@ a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 float gm = g * (1.0 - gSash);
 float ek = lerp(dayemis, 1.0, saturate(nightk));
 float3 col = lerp(a, f, gm); float3 em = e * escale * ek;
+// (r09) canyon shade fill: the wall's own albedo (before the sun cap) x a sky-bounce irradiance, glass gets a sky-gradient reflection instead (ShadeFill.ush)
+float litS = CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz);
+float3 fw = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, litS);
+float3 fg = CitySkyRefl(lerp(f, float3(0.1, 0.1, 0.1), gSash), n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, glasssky, nightk, litS);
+float3 fillE = lerp(fw, fg, saturate(g));
+if (dbgmode < 0.5) em += fillE;
 if (dbgmode > 0.5 && dbgmode < 1.5) col = float3(0, 0, 0);
 if (dbgmode > 1.5 && dbgmode < 2.5) em = float3(0, 0, 0);
 if (dbgmode > 2.5 && dbgmode < 3.5) { col = float3(0, 0, 0); em = float3(saturate(g) * 0.05, 0, 0); }  // window (glass) mask for the brightness test
@@ -247,39 +267,49 @@ if (dbgmode > 8.5 && dbgmode < 9.5) { col = float3(0, 0, 0); em = 0.05 * float3(
 if (dbgmode > 9.5 && dbgmode < 10.5) { col = float3(0, 0, 0); em = 0.3 * Texture2DSampleLevel(tSigns, tSignsSampler, frac(uv0 * 0.02), 0.0).rgb; }
 if (dbgmode > 10.5 && dbgmode < 11.5) { col = float3(0, 0, 0); em = float3(0.05, 0, 0); }   // facade-only mask (CITY-SPEC C1 check)
 if (dbgmode > 3.5 && dbgmode < 4.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI / 9.0, saturate(length(gDx) * 100.0), saturate(vF.y / 16.0)); }
+if (dbgmode > 11.5 && dbgmode < 12.5) { col = float3(0, 0, 0); em = 0.05 * float3(1.0 - litS, 0.0, litS); }   // (r09) shade-fill weight: blue = full fill (shaded canyon), red = none (sunlit or above the skyline)
 Rough = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 0.0 : lerp(0.5, glassspec, g * gSash);
 return col;''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
-         ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise'))]
+         ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise')), ('tSunH', 'tex', TEXA('sunmask_h'))]
         + [(f'uv{i}', 'uv', i) for i in range(8)] + [('vc', 'vc', None)] + WORLD
         + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale'),
            ('dayemis', 'mpc', 'DayEmisK'), ('glassspec', 'mpc', 'GlassSpec'), ('dbgmode', 'mpc', 'DebugMode'),
-           ('albknee', 'mpc', 'AlbKnee'), ('albslope', 'mpc', 'AlbSlope'), ('f0scale', 'mpc', 'F0Scale'), ('sunk', 'mpc', 'SunK')],
+           ('albknee', 'mpc', 'AlbKnee'), ('albslope', 'mpc', 'AlbSlope'), ('f0scale', 'mpc', 'F0Scale'), ('sunk', 'mpc', 'SunK'),
+           ('shadefill', 'mpc', 'ShadeFill'), ('glasssky', 'mpc', 'GlassSky')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)])
     make_material('M_CityDetail', '/Project/City/Detail.ush', '''
 float r, m, o; float3 n;
 float3 a = CityDetail(tNoise, tNoiseSampler, tDetail, tDetailSampler, vc.rgb, uv1.x, uv0, wpos, wn, cam, Parameters.SvPosition.xy, r, m, n, o);
+float3 a0 = a;
 // (r07, C1) cornices / string courses / piers are the light stone of the facade crops too: same sun-facing scale of LIGHT base colours as M_CityFacade
 // fades out beyond ~1-2 km (the far skyline keeps its albedo). NOTE: every statement of a Custom node needs its own line below a // comment (r07 WIP had the cap swallowed by a comment)
 float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));
 float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
+// (r09) canyon shade fill (ShadeFill.ush)
+Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz));
 Rough = r; Metal = m; NormalW = n; Op = o; return a;''',
-        [('tNoise', 'tex', TEXA('noise')), ('tDetail', 'tex', TEXA('detail_nrm')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None), ('sunk', 'mpc', 'SunK')] + WORLD,
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Op', 1, MP.MP_OPACITY_MASK)], blend='masked')
+        [('tNoise', 'tex', TEXA('noise')), ('tDetail', 'tex', TEXA('detail_nrm')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None), ('sunk', 'mpc', 'SunK'),
+         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + WORLD,
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], blend='masked')
     make_material('M_CityRoof', '/Project/City/Roof.ush', '''
 float r, m; float3 n;
 float3 a = CityRoof(tRoofC, tRoofCSampler, tRoofN, tRoofNSampler, tNoiseR, tNoiseRSampler, vc.rgb, uv0, float4(uv1, uv2), float4(uv3, uv4), wpos, wn, cam, r, m, n);
+float3 a0 = a;
 // (r07, C1) ledges / string courses / roofs are drawn by this material too: same sun-facing base colour luma ceiling as M_CityFacade / M_CityDetail
 // fades out beyond ~1-2 km (the far skyline keeps its albedo). NOTE: every statement of a Custom node needs its own line below a // comment (r07 WIP had the cap swallowed by a comment)
 float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));
 float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
+// (r09) canyon shade fill (ShadeFill.ush)
+Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz));
 Rough = r; Metal = m; NormalW = n; return a;''',
-        [('tRoofC', 'tex', TEXA('TA_roof_col')), ('tRoofN', 'tex', TEXA('TA_roof_nrm')), ('tNoiseR', 'tex', TEXA('noise')), ('sunk', 'mpc', 'SunK')] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL)])
+        [('tRoofC', 'tex', TEXA('TA_roof_col')), ('tRoofN', 'tex', TEXA('TA_roof_nrm')), ('tNoiseR', 'tex', TEXA('noise')), ('sunk', 'mpc', 'SunK'),
+         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR)])
     make_material('M_CityAsphalt', '/Project/City/Asphalt.ush', '''
 float r; float3 n;
 float3 a = CityAsphalt(tCol, tColSampler, tNrm, tNrmSampler, tMacro, tMacroSampler, tNoise, tNoiseSampler, tDec, tDecSampler, float3(uv0, uv1.x), wpos, cam, r, n);
@@ -304,12 +334,14 @@ if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured 
   float gl = saturate(1.0 - 12.0 * length(max(ddx(q), ddy(q))));   // fine speckle fades out with distance
   float sm = 1.0 - smoothstep(0.012, 0.03, min(min(frac(q.x / 1.8), 1.0 - frac(q.x / 1.8)) * 1.8, min(frac(q.y / 1.2), 1.0 - frac(q.y / 1.2)) * 1.2)); // cast-panel joints
   c *= (0.82 + 0.34 * nA) * (1.0 + 0.16 * (nB - 0.5)) * (1.0 + 0.22 * (nC - 0.5) * gl) * (1.0 - 0.3 * sm * gl);
-  Emis = float3(0, 0, 0);
+  float3 nv = normalize(wn);
+  Emis = CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
 }
 Rough = RoughP; Metal = MetalP; Op = t.a > AlphaCut ? 1.0 : 0.0;
 return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('vc', 'vc', None), ('Tint', 'vector', (1, 1, 1, 1)),
-         ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None)],
+         ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
+         ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
     # props (partmat.js port): per-part roughness / metal / emission, per-instance tint in custom data 0..2, state in 3
@@ -324,10 +356,12 @@ else if (P >= 10 && P <= 12) { float on = abs(float(P - 10) - st) < 0.5 ? 1.0 : 
 else if (P == 13) { float3 lc = st > 1.5 ? float3(0.9, 0.95, 1.0) : float3(1.0, 0.45, 0.05); c = lc * 0.05; pE = lc * 10.0; }
 else if (P == 14) { pR = 0.1; pE = c * 3.0; } else if (P == 15) { pR = 0.3; pE = c * 0.25; } else if (P >= 16 && P <= 22) pR = 0.8;
 if (nightk > 0.0) { if (P == 4) pE += float3(1.0, 0.78, 0.5) * 9.0 * nightk; else if (P == 7) pE += float3(1.0, 0.93, 0.8) * 7.0 * nightk; }
-Rough = pR; Metal = pM; Emis = pE * escale;
+Rough = pR; Metal = pM; float3 nv = normalize(wn);
+Emis = pE * escale + CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
 return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None),
-         ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale')],
+         ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'),
+         ('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
     make_leaves()   # (r08) tree leaves: defined above the mat block so the light 'leaves' step can rebuild only this material
     # (r06) far field. M_CityFarMass = farshore.js createMassMaterial port (far-shore blocks: window grid, spandrels, glass towers, night lights);
@@ -511,10 +545,12 @@ if (K == 0) {
   } else { float sides = max(step(g.x, 0.035), step(0.405, g.x)); float rung = 1.0 - step(0.03, abs(frac(g.y / 0.3) - 0.5) * 0.3 * 3.3); op = lerp(max(sides, rung), 0.7, aa); }
   alb = vc.rgb * (0.85 + 0.5 * nzf.r); metal = 0.55; rough = 0.55;
 } else { emis = alb * 4.0; }
-Rough = rough; Metal = metal; Op = op; Emis = emis * escale;
+float fillW = (K == 3 && Pm < 0.5) ? 0.0 : 1.0;
+Rough = rough; Metal = metal; Op = op; float3 nv = normalize(wn);
+Emis = emis * escale + fillW * CityShadeFill(alb, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
 return alb;""",
         [('tSigns', 'tex', TEXA('street_signs')), ('tNoise', 'tex', TEXA('noise')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None),
-         ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale')],
+         ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', two_sided=True, world_normal=False)
     # (r04) Times Square frame / housing blocks (tsFrames): the exporter paints the big billboard housings vertex-colour black (0.018),
@@ -626,10 +662,13 @@ else if (K == 1) {
   float3 gp = min(tx.rgb * 0.58 + 0.04, float3(0.46, 0.46, 0.46)) * lerp(float3(1, 1, 1), dc / max(dot(dc, float3(0.333, 0.333, 0.333)), 0.05), 0.45);
   dc = lerp(gp, dc, min(0.94, 0.5 + 0.35 * wear + 0.15 * bh * nearB + 0.2 * (1.0 - nearB))); sgR = 0.92;
 }
-Rough = sgR; Metal = sgM; Op = opv; Emis = sgE * 2.0;
+float fillW = (K == 3 || K == 4 || K == 6) ? 0.0 : 1.0;
+Rough = sgR; Metal = sgM; Op = opv; float3 nv = normalize(wn);
+Emis = sgE * 2.0 + fillW * CityShadeFill(dc, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
 return dc;""",
         [('tAds', 'tex', TEXA('Maps/assets_city_tex_ts_ads')), ('tSigns', 'tex', TEXA('Maps/assets_city_tex_ts_signs')), ('tArt', 'tex', TEXA('Maps/assets_city_tex_city_signart')), ('tNoise', 'tex', TEXA('noise')),
-         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK')],
+         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'),
+         ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
     EAL.save_directory(MAT, only_if_is_dirty=False, recursive=True)

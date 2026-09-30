@@ -14,5 +14,6 @@ python3 tools/export/export_vehicles.py   # (r08) parked-car prototypes into pro
 python3 tools/export/street_cars.py       # (r08) parked cars / taxis along the avenue curbs
 python3 tools/export/street_trees.py      # (r08) street trees on every avenue sidewalk (fills empty pits + gaps)
 python3 tools/export/street_traffic.py    # (r08) stopped avenue traffic (own actors, folder City/Traffic)
+python3 tools/export/bake_sunmask.py      # (r09) building height field the materials ray-march for the canyon shade fill (-> $TEX/sunmask_h.png, imported by the tex / sunh step)
 node tools/export/gen_shaders.mjs
 UEJOB_TIMEOUT=7200 python3 tools/export/ue/uejob.py unreal/WebHomage/Scripts/build_city.py steps=${STEPS:-clean,tex,mat,mesh,proto,map}
