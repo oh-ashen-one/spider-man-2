@@ -258,8 +258,8 @@ def make_textures():
     A = equalise(np.abs(spectrum_noise(14, 2.0, 2, 120)))
     rgba = (np.stack([R, G, B, A], -1) * 255 + 0.5).astype(np.uint8)
     Image.fromarray(rgba, 'RGBA').save(os.path.join(out, 'T_WaterNoise.png'))
-    # T_WaterRipple: tileable ripple normal map (RG = slope x / y encoded 0.5 + s), height spectrum k^-3 over 2..24 cycles per tile
-    h = spectrum_noise(21, 3.0, 2, 24)
+    # T_WaterRipple: tileable ripple normal map (RG = slope x / y encoded 0.5 + s), height spectrum k^-3 over 2..12 cycles per tile (a finer band reads as pixel noise: Lumen's reflection of the cloudy sky flickers per pixel)
+    h = spectrum_noise(21, 3.0, 2, int(os.environ.get('SM2_WATER_RIPK', '12')))
     f = np.fft.fftfreq(N) * N; kx, ky = np.meshgrid(f, f)
     H = np.fft.fft2(h)
     sx = np.real(np.fft.ifft2(1j * kx * H)); sy = np.real(np.fft.ifft2(1j * ky * H))
@@ -406,9 +406,9 @@ TUNE = {'body': [0.068, 0.086, 0.070],      # linear albedo of the turbid river 
         'bottom': [0.11, 0.095, 0.065],      # silty river bed showing through near the walls
         'foam': [0.62, 0.64, 0.62],
         'spec': 0.25,                        # UE Specular: F0 = 0.08 * 0.25 = 0.02 (water, n = 1.333)
-        'slope_k': 0.7,                      # scale of the resolved Gerstner slopes in the shading normal
-        'dn_k': 0.6,                         # scale of the ripple normal layers
-        'sw_k': 0.5,                         # extra slope gain of the waves shorter than 5 m (the browser's saturated spectrum reads as marbling at 4K)
+        'slope_k': 0.85,                     # scale of the resolved Gerstner slopes in the shading normal
+        'dn_k': 0.75,                        # scale of the ripple normal layers
+        'sw_k': 0.7,                         # extra slope gain of the waves shorter than 5 m (the browser's saturated spectrum reads as marbling at 4K)
         'foam_k': 0.5, 'rough_lo': 0.8, 'rough_hi': 1.2,
         'a2_base': 0.022, 'mss0': 0.0015, 'mss1': 0.003, 'var_k': 0.7}   # GGX alpha^2 = a2_base^2 + 2 mss unres + 2 var_k varU
 if os.environ.get('SM2_WATER_TUNE'): TUNE.update(json.loads(os.environ['SM2_WATER_TUNE']))
