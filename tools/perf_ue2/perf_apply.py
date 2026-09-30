@@ -150,32 +150,41 @@ if 'rt_proxy_trees' in STEPS:
         if str(a.get_folder_path()) == 'City/RTProxy': eas.destroy_actor(a); n_old += 1
     rep['rt_proxy_old_actors'] = n_old
     les.save_current_level()
-    if EAL.does_directory_exist(PROOT): EAL.delete_directory(PROOT)
+    reuse = os.environ.get('SM2_PERF_PROXY_REUSE', '0') == '1' and all(EAL.does_asset_exist('%s/SM_%s' % (PROOT, t['name'])) for t in tiles)   # flags-only re-run: keep the imported meshes
+    rep['rt_proxy_reused_meshes'] = reuse
+    if EAL.does_directory_exist(PROOT) and not reuse: EAL.delete_directory(PROOT)
     # 2. import (Interchange, no Nanite, no materials / textures)
     p = unreal.InterchangeGenericAssetsPipeline()
     p.common_meshes_properties.set_editor_properties({'recompute_normals': False, 'recompute_tangents': False, 'remove_degenerates': False})
     p.mesh_pipeline.set_editor_properties({'generate_lightmap_u_vs': False, 'build_nanite': False})
+    try: p.mesh_pipeline.set_editor_property('combine_static_meshes', False)
+    except Exception as e: rep.setdefault('warnings', []).append('combine_static_meshes: ' + str(e)[:80])
     p.material_pipeline.set_editor_property('import_materials', False)
     p.material_pipeline.texture_pipeline.set_editor_property('import_textures', False)
     tasks = []
-    for t in tiles:
-        tk = unreal.AssetImportTask(); tk.filename = os.path.join(PDIR, 'tiles', t['name'] + '.glb'); tk.destination_path = PROOT + '/_in'
+    for f in ([] if reuse else sorted(set(t.get('file', t['name']) for t in tiles))):   # round 05: several tiles per GLB (tree_proxy_build.py packs), one static mesh per glTF mesh
+        tk = unreal.AssetImportTask(); tk.filename = os.path.join(PDIR, 'tiles', f + '.glb'); tk.destination_path = PROOT + '/_in'
         tk.automated = True; tk.replace_existing = True; tk.save = False; tk.options = p; tasks.append(tk)
-    unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
+    if tasks: unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks(tasks)
     crown = unreal.load_asset('/Game/City/Materials/M_CityCrown')
     bark_mat = None
     for a, c in comps('City/Props'):
         if a.get_actor_label().startswith('ISM_ez_street0_l1_bark'): bark_mat = c.get_materials()[0]
     sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem) or unreal.new_object(unreal.StaticMeshEditorSubsystem)
     n_new, missing, tris = 0, [], 0
-    for t in tiles:
-        src = '%s/_in/%s/StaticMeshes/%s' % (PROOT, t['name'], t['name'])
-        if not EAL.does_asset_exist(src):
-            src2 = '%s/_in/%s' % (PROOT, t['name'])
-            src = src2 if EAL.does_asset_exist(src2) else None
-        if not src: missing.append(t['name']); continue
+    found = {}
+    if not reuse and EAL.does_directory_exist(PROOT + '/_in'):
+        for ap_ in EAL.list_assets(PROOT + '/_in', recursive=True):
+            nm_ = ap_.split('.')[0].split('/')[-1]
+            if nm_.startswith('RTP_') and isinstance(unreal.load_asset(ap_.split('.')[0]), unreal.StaticMesh): found[nm_] = ap_.split('.')[0]
+    todo_save = []
+    for t in tiles:   # phase 1: rename, materials, build settings (the async mesh builds run in parallel)
         dst = '%s/SM_%s' % (PROOT, t['name'])
-        EAL.rename_asset(src, dst); sm = unreal.load_asset(dst)
+        if not reuse:
+            src = found.get(t['name'])
+            if not src: missing.append(t['name']); continue
+            EAL.rename_asset(src, dst)
+        sm = unreal.load_asset(dst)
         for i, sl in enumerate(sm.get_editor_property('static_materials')):
             nm = str(sl.get_editor_property('material_slot_name'))
             sm.set_material(i, bark_mat if (nm.startswith('bark') and bark_mat) else crown)
@@ -185,13 +194,23 @@ if 'rt_proxy_trees' in STEPS:
         for k_, v_ in (('recompute_normals', False), ('recompute_tangents', False), ('generate_lightmap_u_vs', False), ('distance_field_resolution_scale', 0.0)):
             try: bs.set_editor_property(k_, v_)
             except Exception as e: rep.setdefault('errors', []).append('build settings %s: %s' % (k_, str(e)[:80]))
-        sms.set_lod_build_settings(sm, 0, bs)
-        EAL.save_asset(dst)
+        if not reuse:
+            sms.set_lod_build_settings(sm, 0, bs); todo_save.append(dst)
+    for dst in todo_save: EAL.save_asset(dst)   # phase 2: save (waits for each build; most are done by now)
+    for t in tiles:   # phase 3: one hidden, ray-tracing-only actor per tile
+        dst = '%s/SM_%s' % (PROOT, t['name'])
+        if t['name'] in missing: continue
+        sm = unreal.load_asset(dst)
         c_ = t['center_cm']
         act = eas.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(c_[0], c_[1], c_[2]), unreal.Rotator(0, 0, 0))
         act.set_actor_label('RTP_' + t['name']); act.set_folder_path('City/RTProxy')
         smc = act.static_mesh_component; smc.set_static_mesh(sm); act.set_mobility(unreal.ComponentMobility.STATIC)
-        for k_, v_ in (('render_in_main_pass', False), ('render_in_depth_pass', False), ('cast_shadow', False), ('visible_in_ray_tracing', True),
+        # ray tracing only = HIDDEN in game + 'affect indirect lighting while hidden' (engine RayTracing.cpp keeps a hidden primitive in the game view's
+        # ray-tracing scene only when it retains while hidden; RayTracingInstanceMask.cpp gives it the indirect (Lumen / reflection) mask bits then).
+        # render_in_main_pass must stay ON: FRayTracingMeshProcessor and the Lumen card capture skip primitives that do not render in the main pass
+        # (round-05 first try: render_in_main_pass off = no occlusion at all, S1 canopy luma 1.93x as found).
+        for k_, v_ in (('hidden_in_game', True), ('affect_indirect_lighting_while_hidden', True), ('cast_hidden_shadow', False), ('cast_shadow', False),
+                       ('render_in_main_pass', True), ('render_in_depth_pass', True), ('visible_in_ray_tracing', True),
                        ('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', True), ('visible_in_reflection_captures', False),
                        ('visible_in_real_time_sky_captures', False), ('receives_decals', False), ('generate_overlap_events', False)):
             prop(smc, k_, v_, 'rt_proxy_flags')

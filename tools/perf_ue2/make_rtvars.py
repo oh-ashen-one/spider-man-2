@@ -9,6 +9,9 @@
 #   RTvE   shipped RT-lite, but the hinterland (City/Far, 29 k ten-triangle boxes) back IN
 #   RTvF   D + E
 #   RTvL   (round 04) tree LEAVES in (ISM_*_leaves + ISM_trees_*crownfar), bark / street furniture / parked cars OUT: half the tree instances of RTvC
+#   RTvR   (round 05 control) = the round-04 shipped content on today's build: the tree ray-tracing proxies (City/RTProxy) OUT of the ray-tracing scene,
+#          the leaf / crown HISMs (42 k instances, force-opaque sections) back IN, bark out
+#   RTvN   (round 05) no tree geometry in the ray-tracing scene at all (proxies out, leaves out)
 # Round 04: env SM2_PERF_RTVAR_CLOUD_KM=<km> also copies the golden look rig with VolumetricCloud TracingMaxDistance = <km> into /Game/PerfF/RTv<tag>k<km>/
 #   and swaps it into the map copies (tag suffix k<km>, e.g. RTvCk20 = trees in the ray-tracing scene + cloud 20 km), so trees + cloud share one A/B map.
 # Run in a headless commandlet of THIS worktree (editor + game closed, no GPU):
@@ -61,11 +64,15 @@ for t in TAGS:
                 for c in a.get_components_by_class(unreal.StaticMeshComponent):
                     c.set_editor_property('visible_in_ray_tracing', True); n_on += 1
                     inst_on += c.get_instance_count() if isinstance(c, unreal.InstancedStaticMeshComponent) else 1
+    if t in 'RN':
+        for a in eas.get_all_level_actors():
+            if str(a.get_folder_path()) == 'City/RTProxy':
+                for c in a.get_components_by_class(unreal.StaticMeshComponent): c.set_editor_property('visible_in_ray_tracing', False); n_off += 1
     for a in eas.get_all_level_actors():
         if t in 'DEF' or str(a.get_folder_path()) != 'City/Props': continue
         tree = is_tree(a.get_actor_label())
         leaves = tree and not a.get_actor_label().endswith('_bark')
-        want = {'A': True, 'B': not tree, 'C': tree, 'L': leaves}[t]
+        want = {'A': True, 'B': not tree, 'C': tree, 'L': leaves, 'R': leaves, 'N': False}[t]
         for c in a.get_components_by_class(unreal.StaticMeshComponent):
             c.set_editor_property('visible_in_ray_tracing', want)
             n = c.get_instance_count() if isinstance(c, unreal.InstancedStaticMeshComponent) else 1

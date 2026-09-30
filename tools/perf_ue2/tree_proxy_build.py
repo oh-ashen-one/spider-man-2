@@ -5,7 +5,7 @@ instances in the ray-tracing scene cost ~0.6 ms of FrameTime - GPUTime; merge th
 
 Input : tree_proxy_dump.py json (every tree HISM instance's world matrix, read from the rebuilt level) + the browser export's proto GLBs
         (the same files build_city.py imported; mesh-local frame verified against the imported meshes' bounds) + the leaf textures.
-Output: <out>/tiles/RTP_<i>_<j>.glb (glTF, metres, tile-local), <out>/tiles.json (tile centre in UE cm, triangle / tree counts), <out>/report.json.
+Output: <out>/tiles/RTPack_<n>.glb (glTF, metres; one mesh RTP_<i>_<j> per tile, tile-local, SM2_PERF_PROXY_PACK tiles per file), <out>/tiles.json (tile centre in UE cm, triangle / tree counts), <out>/report.json.
 Each tile mesh has two primitives: 'leaf' (leaf cards + crown masses) and 'bark'. perf_apply.py step rt_proxy_trees imports them into
 /Game/PerfF/RTProxy, places one actor per tile (ray tracing only: not in the main / depth pass, no shadow, no distance field) and takes the
 original tree HISMs out of the ray-tracing scene. Raster, shadows, distance fields of the trees are untouched.
@@ -23,11 +23,12 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..'))
-K0 = int(os.environ.get('SM2_PERF_PROXY_K0', '6'))
+K0 = int(os.environ.get('SM2_PERF_PROXY_K0', '4'))
 K1 = int(os.environ.get('SM2_PERF_PROXY_K1', '16'))
-COVER = float(os.environ.get('SM2_PERF_PROXY_COVER', '1.0'))
+COVER = float(os.environ.get('SM2_PERF_PROXY_COVER', '3.5'))   # round 05: 1.0 (texture coverage at the near-field clip) left the S1 canopy 1.32x as bright as found; the material's distance boost fills cards beyond 25 m
 BARK_AREA = float(os.environ.get('SM2_PERF_PROXY_BARK_AREA', '0.6'))
 BARK_MAX = int(os.environ.get('SM2_PERF_PROXY_BARK_MAX', '160'))
+PACK = int(os.environ.get('SM2_PERF_PROXY_PACK', '40'))   # tiles per GLB file
 LEAF_TEX = {'ash': 'ash.png', 'oak': 'oak.png', 'pine': 'pine.png', 'aspen': 'aspen.png'}
 
 
@@ -121,10 +122,12 @@ def tri_area(P, I):
     return 0.5 * np.linalg.norm(np.cross(P[I[:, 1]] - P[I[:, 0]], P[I[:, 2]] - P[I[:, 0]]), axis=1)
 
 
-def write_glb(path, prims):
-    """prims: list of (name, P (n,3) metres glTF frame, N (n,3), I (m,3)); one mesh, one node, one material per primitive"""
-    bufs, views, accs, mprims, mats = [], [], [], [], []
+def write_glb(path, meshes):
+    """meshes: list of (mesh name, prims); prims: list of (material name, P (n,3) metres glTF frame, N (n,3), I (m,3)). One node + one mesh per entry
+    (Interchange makes one static mesh per glTF mesh: several tiles per file = far fewer import tasks), shared materials 'leaf' / 'bark'."""
+    bufs, views, accs, mats, jmeshes, nodes = [], [], [], [], [], []
     off = 0
+    matidx = {}
 
     def add(arr, target, typ, ct, minmax=False):
         nonlocal off
@@ -134,17 +137,19 @@ def write_glb(path, prims):
         a = {'bufferView': len(views) - 1, 'componentType': ct, 'count': int(arr.shape[0]), 'type': typ}
         if minmax: a['min'] = arr.min(0).tolist(); a['max'] = arr.max(0).tolist()
         accs.append(a); return len(accs) - 1
-    for k, (name, P, N, I) in enumerate(prims):
-        if len(I) == 0: continue
-        pa = add(P.astype(np.float32), 34962, 'VEC3', 5126, True)
-        na = add(N.astype(np.float32), 34962, 'VEC3', 5126)
-        ua = add(np.zeros((len(P), 2), np.float32), 34962, 'VEC2', 5126)
-        ia = add(I.astype(np.uint32).reshape(-1), 34963, 'SCALAR', 5125)
-        mats.append({'name': name, 'doubleSided': True})
-        mprims.append({'attributes': {'POSITION': pa, 'NORMAL': na, 'TEXCOORD_0': ua}, 'indices': ia, 'material': len(mats) - 1})
-    name = os.path.basename(path)[:-4]
-    js = {'asset': {'version': '2.0', 'generator': 'sm2 perf tree_proxy_build'}, 'scene': 0, 'scenes': [{'nodes': [0]}], 'nodes': [{'mesh': 0, 'name': name}],
-          'meshes': [{'name': name, 'primitives': mprims}], 'materials': mats, 'buffers': [{'byteLength': off}], 'bufferViews': views, 'accessors': accs}
+    for mname, prims in meshes:
+        mprims = []
+        for name, P, N, I in prims:
+            if len(I) == 0: continue
+            pa = add(P.astype(np.float32), 34962, 'VEC3', 5126, True)
+            na = add(N.astype(np.float32), 34962, 'VEC3', 5126)
+            ua = add(np.zeros((len(P), 2), np.float32), 34962, 'VEC2', 5126)
+            ia = add(I.astype(np.uint32).reshape(-1), 34963, 'SCALAR', 5125)
+            if name not in matidx: matidx[name] = len(mats); mats.append({'name': name, 'doubleSided': True})
+            mprims.append({'attributes': {'POSITION': pa, 'NORMAL': na, 'TEXCOORD_0': ua}, 'indices': ia, 'material': matidx[name]})
+        nodes.append({'mesh': len(jmeshes), 'name': mname}); jmeshes.append({'name': mname, 'primitives': mprims})
+    js = {'asset': {'version': '2.0', 'generator': 'sm2 perf tree_proxy_build'}, 'scene': 0, 'scenes': [{'nodes': list(range(len(nodes)))}], 'nodes': nodes,
+          'meshes': jmeshes, 'materials': mats, 'buffers': [{'byteLength': off}], 'bufferViews': views, 'accessors': accs}
     jb = json.dumps(js, separators=(',', ':')).encode(); jb += b' ' * ((-len(jb)) % 4)
     bb = b''.join(bufs)
     with open(path, 'wb') as f:
@@ -221,6 +226,7 @@ def main():
             if grp == 'leaf' and kind != 'crown' or kind == 'crown': t['trees'] += 1
     inv = AXES['xzy'].T   # UE world (cm) -> glTF (m): the importer maps glTF back with the same axes the protos used (checked: every proto picked 'xzy')
     out_tiles = []
+    pack, npack = [], 0
     for (i, j), t in sorted(tiles.items()):
         cx, cy = (i + 0.5) * T, (j + 0.5) * T
         prims = []
@@ -233,10 +239,12 @@ def main():
             Pw = np.concatenate(Ps); Pw[:, 0] -= cx; Pw[:, 1] -= cy
             prims.append((grp, (Pw @ inv) / 100.0, np.concatenate(Ns) @ inv, np.concatenate(Is)))
             ntri[grp] = int(sum(len(x) for x in Is))
-        name = 'RTP_%d_%d' % (i, j)
-        name = name.replace('-', 'm')
-        write_glb(os.path.join(a.out, 'tiles', name + '.glb'), prims)
-        out_tiles.append({'name': name, 'center_cm': [cx, cy, 0.0], 'tris': ntri, 'trees': t['trees']})
+        name = ('RTP_%d_%d' % (i, j)).replace('-', 'm')
+        pack.append((name, prims))
+        out_tiles.append({'name': name, 'center_cm': [cx, cy, 0.0], 'tris': ntri, 'trees': t['trees'], 'file': 'RTPack_%02d' % npack})
+        if len(pack) >= PACK:
+            write_glb(os.path.join(a.out, 'tiles', 'RTPack_%02d.glb' % npack), pack); pack = []; npack += 1
+    if pack: write_glb(os.path.join(a.out, 'tiles', 'RTPack_%02d.glb' % npack), pack)
     rep['tiles'] = len(out_tiles)
     rep['tris_total'] = sum(sum(x['tris'].values()) for x in out_tiles)
     rep['tris_leaf'] = sum(x['tris'].get('leaf', 0) for x in out_tiles); rep['tris_bark'] = sum(x['tris'].get('bark', 0) for x in out_tiles)
