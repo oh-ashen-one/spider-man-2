@@ -16,8 +16,8 @@ def load(d, n):
         if os.path.exists(f): return Image.open(f).convert('RGB')
     raise SystemExit('missing ' + n + ' in ' + d)
 ENT = [  # name, (r06 image, box), (r07 image, box)
-    ('jeans-leg', ('crowd_key_c_4k', (3040, 1640, 3760, 2040)), ('crowd_key_c_4k', (700, 1600, 1420, 2000))),
-    ('overlap-near', ('crowd_key_a_4k', (100, 800, 940, 1520)), ('crowd_key_a_4k', (1300, 860, 1980, 1500))),
+    ('jeans-leg', ('crowd_key_c_4k', (3040, 1640, 3760, 2040)), ('crowd_key_c_4k', (800, 1560, 1520, 1960))),
+    ('overlap-near', ('crowd_key_a_4k', (100, 800, 820, 1520)), ('crowd_key_a_4k', (1240, 800, 1960, 1520))),
     ('ankle-close', ('crowd_key_tracking_4k', (1475, 1150, 1775, 1350)), ('crowd_key_c_4k', (430, 1100, 730, 1300))),
     ('floating-shape', ('crowd_key_c_4k', (2090, 1100, 2390, 1300)), ('crowd_key_c_4k', (2090, 1100, 2390, 1300))),
 ]
