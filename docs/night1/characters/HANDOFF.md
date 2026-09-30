@@ -12,7 +12,7 @@ Round-05 critic (blind, `critic/round-05-CRITIC.md`): hero model 4, hero animati
 - **Hoodie collar (thug):** the "black shards" are hard-edged sun shadows of the hood rim, not geometry (diagnostic with shadows off, `evidence/collar_shadow_test.jpg`). Lineup lighting softened (sun disc 3 deg, enemy fill 1.4 lux, `build_characters.py` `sun_angle` / `enemy_fill`); the wedge inside the hood is softer but still visible. Only the five `*_face_4k` stills come from that second (`map`-only) build.
 - **Texture-streaming warm-up in `-movie` runs** (first ~0.4 s show low mips): the first clip of each run is trimmed by 0.6 s (`hero_run_side`, `hero_run_chase`, `street_fight_wide`, `crowd_tracking`).
 - **Blind critic pack is built:** `/Users/midir/sm2-n1/_scratch/critic-P2-r06/pack` (19 pairs, key outside at `pack.key.json`, pairs in `round-06/critic_pairs.json`): the standard reference pairs plus round-05 vs round-06 (still, clip, run, key stills, four 3x-region close-ups). The critic's verdict goes to `round-06/CRITIC.md` and `critic/round-06-CRITIC.md` (not written yet).
-- **Nothing is running, nothing is queued.** No engine of mine is alive; no `.uasset` / `.umap` was committed; `Content/Characters`, `Content/Tests/Characters` are local rebuilt copies (regenerate with the build command below). `DerivedDataCache/` and `Intermediate/` of this worktree were left in place (regenerable, needed for the next launch; delete only when disk is short).
+- **Nothing is running, nothing is queued.** No engine of mine is alive; no `.uasset` / `.umap` was committed; `Content/Characters`, `Content/Tests/Characters` are local rebuilt copies (regenerate with the build command below). The worktree's `DerivedDataCache/` is empty (0 B, the shared engine DDC is used) and `Intermediate/` is 40 KB: nothing to clean.
 
 ## How this round ran (for the successor)
 
@@ -54,7 +54,6 @@ Scripts are bash: in zsh a `$VAR` list is not word-split (use `bash -c` or a scr
 
 - `unreal/WebHomage/Content/{Characters,Tests/Characters}`; `art/night1/characters/**/*.png, *.fbx` (git-ignored).
 - `/Users/midir/sm2-n1/_scratch/characters/`: `ueimport/`, `eval/refit` (NAME.npz, NAME_final.npz, NAME_fit.json, NAME_tex.png), `eval/hull`, `eval/tiles`, `r4/yv` (ultralytics venv), `r5/`, `r6/` (offline proxy renders, `cap/` + `cap_lineup2/` + `collar/` raw captures, `untrimmed/` originals of the four trimmed clips, logs).
-- `DerivedDataCache/`, `Intermediate/` of the worktree.
 
 ## Gotchas
 
