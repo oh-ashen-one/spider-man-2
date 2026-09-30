@@ -7,15 +7,18 @@ import csv, glob, json, os, sys
 ROUND, LABEL, COMMIT = sys.argv[1], sys.argv[2], sys.argv[3]
 HERE = os.path.dirname(os.path.abspath(__file__))
 SEQ = [
-    ("a_swing_chain", "Swing chain down the avenue at speed",
-     "Airborne start (spawn 22 m over the avenue with 22 m/s forward velocity), then a continuous swing chain along +X."),
+    ("a_swing_chain", "Swing chain up the avenue at speed (lit Manhattan map, golden)",
+     "Airborne start 24 m over the north-south avenue (x 250 m) with 22 m/s forward velocity heading north (-Y); scripted swing chain "
+     "(autoChain rule: release on the rising front, re-press after 0.8 s; a sky launch = jump-release + trick where the lower street "
+     "wall ahead is within reach, at most every 2nd release)."),
     ("b_release_trick_dive_zip", "Release + trick + dive + zip to a rooftop",
-     "Airborne start 58 m over the avenue (26 m/s forward), one swing, release, dive, web-zip to a podium roof corner across the avenue, perch."),
-    ("c_wallrun_perch", "Wall-run up a building + perch",
-     "Street start facing a 40.9 m podium facade; sprint into the wall, wall-run to the top, top-out onto the roof, land, "
-     "camera turn, web-zip to the roof edge over the avenue, perch."),
+     "Airborne start 30 m over the avenue (26 m/s north), one swing, jump-release with a trick (sky launch), second trick at the top, "
+     "dive, web-zip to a roof point, perch."),
+    ("c_wallrun_perch", "Swing into a facade -> wall-run up -> perch",
+     "Airborne swing start 22 m over the avenue, the stick turns east into the 45 m loft facade (x 266 m), swing let go at 1.7 s, "
+     "wall-run up, top-out onto the roof, camera turn, web-zip to the roof edge over the avenue, perch."),
     ("d_sprint_jump_first_swing", "Ground sprint -> jump -> first swing",
-     "Street start; run down the avenue, charged jump, first swing, then the chain continues."),
+     "Street start on the avenue; run north, charged jump, first swing, then the round-10 chain rule (as a)."),
 ]
 FIELD = {"trick": "F trick", "move": "stick (x right, y fwd)", "swing": "RMB swing", "jump": "Space", "sprint": "Shift", "zip": "E zip",
          "drop": "C drop/dive", "quick": "Q boost", "look": "look (deg/s yaw, pitch-down)", "heading": "heading (world yaw deg)"}

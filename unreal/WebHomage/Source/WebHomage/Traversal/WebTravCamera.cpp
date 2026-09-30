@@ -203,6 +203,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SkyK = FMath::Clamp(SkyK, 0.0, 1.0);
 	SWant = FMath::Lerp(SWant, SkySFrame, SkyK);
 	SWant = FMath::Clamp(SWant, 0.32, 0.72);
+	// round 10 (critic r09: camera pop at b 0.000-0.017 s): the first composed frame starts AT its framing / attach targets
+	// (FrameS was reset to 0.55 and sprang to ~0.40 over the first frames: 4 deg of pitch per frame)
+	const bool bFirst = !bChaseInit;
+	if (bFirst) { FrameS = SWant; FrameSV = 0.0; }
 	SD(FrameS, FrameSV, SWant, 0.22, Dt);
 	// ---- desired position: behind the (lagged) heading yaw, above the hero
 	const FVector Back = -ForwardFlat(), Right = RightFlat();
@@ -411,6 +415,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	// round 07: gentler, capped turn toward an off-screen anchor (the 0.035 s spring whipped the view ~45 deg in 0.1 s)
 	YawWant = FMath::Clamp(YawWant, -FMath::DegreesToRadians(25.0), FMath::DegreesToRadians(25.0));
+	if (bFirst) { AttachYaw = YawWant; AttachLook = LookWant; AttachFov = FovWant; AttachYawV = AttachLookV = AttachFovV = 0.0; }
 	SD(AttachYaw, AttachYawV, YawWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);
 	// round 10 (critic r09: camera pop at b 0.000-0.017 s, a web attached on the first frame): 0.035 s -> 0.12 s springs
 	SD(AttachLook, AttachLookV, LookWant, P.SwingT < 0.5 ? 0.12 : 0.3, Dt);

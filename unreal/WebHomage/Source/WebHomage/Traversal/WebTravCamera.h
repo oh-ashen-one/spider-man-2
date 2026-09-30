@@ -59,7 +59,7 @@ public:
 	double SwingCloser = 0.4;      // m closer while swinging / airborne — round 07
 	double PitchDownMin = -8.0;    // deg, lowest look-down of the chase camera — r07 10, r09 -8 (T11 p5: 10 deg up .. 3 deg down)
 	double MinHeroDist = 2.2;      // never closer to the hero (m)
-	double FrameLowS = 0.44, FrameHighS = 0.37; // hero screen centre (0 top .. 1 bottom): arc bottom .. top — r09 (was 0.48 / 0.40; T10 range <= 0.70)
+	double FrameLowS = 0.50, FrameHighS = 0.37; // hero screen centre (0 top .. 1 bottom): arc bottom .. top — r10 low 0.44 -> 0.50 (T10 spread .187 < .20); r09 (was 0.48 / 0.40; T10 range <= 0.70)
 	// ---- round 06 wall-run camera (critic r05 / ref wall-run): below and out from the hero, looking UP the facade at a
 	// grazing angle (view 20-35 deg off the wall plane) so the wall converges to the roof edge; hero in the lower third
 	double WallCamBelow = 2.2;     // m under the hero centre
