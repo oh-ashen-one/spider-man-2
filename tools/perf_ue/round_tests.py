@@ -35,7 +35,7 @@ def main():
     clips = sorted(glob.glob(os.path.join(rnd, 'swing_*.mp4')))
     if clips:
         L += ['## Swing clips (clip_check.py on every 3rd frame at 960x540; hero luma from the P3 hero-only depth capture)', '',
-              '| clip | frames measured | mean Y (mean / min / max) | B-R (mean / p10 / p90) | frames outside B-R +-13 | near-black % | clipped % | L18 edge / centre sharpness p10 / p50 / p90 (0.20..0.65) | hero box luma min / p5 / mean (frames < 40) |', '|---|---|---|---|---|---|---|---|---|']
+              '| clip | frames measured | mean Y (mean / min / max) | B-R (mean / p10 / p90) | frames outside B-R +-13 (night L8 band; midday / golden bands differ) | near-black % | clipped % | L18 edge / centre sharpness p10 / p50 / p90 (0.20..0.65) | hero box luma min / p5 / mean (frames < 40) |', '|---|---|---|---|---|---|---|---|---|']
         for c in clips:
             name = os.path.basename(c)[:-4]
             r = json.loads(subprocess.run([sys.executable, os.path.join(HERE, 'clip_check.py'), c, '--every', '3'], capture_output=True, text=True).stdout)
