@@ -18,7 +18,7 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 
 | Piece | Branch | Last judged round → verdict (lowest axis) | Next |
 |---|---|---|---|
-| P3 Traversal + flips | `night1/traversal` | r12 FAILS (5); flips 4→6→6 | **r13 running**: flow-flip code done (headless probes pass), rendering + critic now |
+| P3 Traversal + flips | `night1/traversal` | r13 FAILS (5); flips 4→6→6→6; flow fixed | **r14 running (Opus)**: side-on trick camera + eased rotation |
 | P2 Characters | `night1/characters` | r5 FAILS (3, garment seams) | **r6 running**: seam fix done offline (cracks 1035→244), engine check + critic now |
 | F 4K/60 perf | `night1/perf` | r2 **APPROACHES** (p50 62.4 / p95 55.4 fps at 3840×2160, TSR 46 % = 1766×994) | **r3 running**: move preset into the shipped Manhattan map, remove CPU/GPU sync stall, glass SSIM ≥ 0.97 |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
@@ -27,7 +27,7 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 | P4 Look | `night1/look` | r2 FAILS (4); r3 presets v2 captured | r3 critic / r4 |
 | Water | merged (Opus A/B winner) | — | — |
 
-Merged into integration so far: traversal ≤ r12, city ≤ r9, life ≤ r3, perf ≤ r2. Characters r5/r6 and traversal r13 stay on their branches until a critic has judged rendered output.
+Merged into integration so far: traversal ≤ r13, city ≤ r9, life ≤ r3, perf ≤ r2. Characters r5/r6 and traversal r13 stay on their branches until a critic has judged rendered output.
 
 ## How rounds run
 

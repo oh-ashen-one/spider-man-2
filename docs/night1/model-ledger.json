@@ -433,6 +433,20 @@
     4,
     3
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 13,
+   "model": "Sonnet 5.5 (render/verify) on Opus 5.5 code",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    5,
+    6,
+    7,
+    6,
+    6
+   ]
   }
  ],
  "agents": [

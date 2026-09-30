@@ -1,5 +1,5 @@
 {
- "updated": "09:39",
+ "updated": "11:31",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 12,
-   "verdict": "fails \u2014 lowest 5 (Opus 5.5)",
-   "gap": "Make tricks continuous with the swing chain: flip within 0.25 s of release, next web within 0.3 s, no one-frame camera cuts."
+   "round": 13,
+   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5 (render/verify) on Opus 5.5 code)",
+   "gap": "Side-on trick camera (>=60 deg off the flip axis, pitch <= 30 deg up, back to 4-12 deg down after attach) and eased rotation (ends >=30% slower, shapes held >=0.3 s)."
   },
   {
    "id": "P4",
@@ -697,6 +697,14 @@
    "verdict": "fails",
    "gap": "Garment integrity: zero see-through seam holes in crowd torsos/sleeves, no vertex spikes or stretched fingers on coats, trousers, hoodie collar.",
    "notes": "Skirt rig, hull hole-fill, chase cameras; hero bob 3.5 Hz, lean 24.5\u00b0. Round 6 fixed the seam-hole root cause offline (cracks 1035\u2192244, edges >10 cm 915\u21920) but could not render after the 06:55 reset \u2014 engine verification pending, not merged yet."
+  },
+  {
+   "t": "11:31",
+   "piece": "P3 Traversal",
+   "round": 13,
+   "verdict": "fails",
+   "gap": "Side-on trick camera (>=60 deg off the flip axis, pitch <= 30 deg up, back to 4-12 deg down after attach) and eased rotation (ends >=30% slower, shapes held >=0.3 s).",
+   "notes": "Flow fixed: flip starts at release (0.00 s), next web in the Reach pose, longest gap without a web 1.68 s, web-to-web <= 2.65 s, no camera cuts. Still lost all 5 blind pairs vs the owner clip: the camera looks up from below so the back double reads as a spinning ball. Round 14 on Opus 5.5."
   }
  ],
  "perf": [
