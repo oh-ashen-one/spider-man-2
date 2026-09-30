@@ -35,6 +35,11 @@ case "$MODE" in
     echo "rc $?" ;;
   *) echo "mode: logic | movie | stills"; exit 1 ;;
 esac
-pgrep -f "$UPROJECT" >/dev/null && pkill -9 -f "$UPROJECT"
-pgrep -f "CrashReportClient.*$WT" >/dev/null && pkill -9 -f "CrashReportClient.*$WT"
+# r02 (RULES, 2026-09-29 23:08 panic): never SIGKILL a rendering engine. A run that has not exited by now is stopped with stop_ue.sh
+# (driver scripts first, SIGTERM, wait 60 s). The bracketed pattern cannot match this shell's own command line.
+if pgrep -f "$UPROJECT" >/dev/null; then
+  echo "engine of this worktree still running after the run: stop_ue.sh"
+  $G/stop_ue.sh "$(printf '%s' "$WT" | sed 's|/\([^/]\)|/[\1]|g')/unreal"
+fi
+pgrep -f "CrashReportClient.*$WT" >/dev/null && pkill -f "CrashReportClient.*$WT"
 exit 0

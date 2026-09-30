@@ -29,6 +29,7 @@ CHAR_STAGE = os.path.join(SCR, 'chars')
 P2_WT = os.environ.get('SM2_P2_WT', '/Users/midir/sm2-n1/characters')
 P2_SCR = os.environ.get('SM2_P2_SCR', '/Users/midir/sm2-n1/_scratch/characters')
 STEPS_ALL = ['cpp', 'traversal', 'characters', 'combat']
+GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'
 
 try:
     import unreal  # noqa: F401
@@ -67,7 +68,7 @@ def wait_slot():
 
 def ue_python(name, code, timeout=3600):
     if subprocess.run(['pgrep', '-f', UPROJECT], capture_output=True).returncode == 0:
-        raise SystemExit('an Unreal process of this worktree is running; stop it first: pkill -9 -f "%s"' % UPROJECT)
+        raise SystemExit('an Unreal process of this worktree is running; stop it first with /Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh (never SIGKILL a rendering engine)')
     jobs = os.path.join(SCR, 'jobs'); os.makedirs(jobs, exist_ok=True)
     job = os.path.join(jobs, name + '.py'); open(job, 'w').write(code)
     lg = os.path.join(SCR, 'logs', name + '.log')
@@ -75,8 +76,10 @@ def ue_python(name, code, timeout=3600):
     log('UE commandlet', name, '-> log', lg)
     t0 = time.time()
     with open(lg + '.stdout', 'w') as so:
-        r = subprocess.run([UE, UPROJECT, '-run=pythonscript', '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen',
-                            '-NoSound', '-NoCrashReports', '-abslog=' + lg], stdout=so, stderr=subprocess.STDOUT, timeout=timeout)
+        # r02 (RULES): every Unreal launch goes through the GPU slot lock, headless commandlets included
+        r = subprocess.run([GPU_SLOT, 'capture', '--label', 'combat', '--timeout', '3600', '--', UE, UPROJECT, '-run=pythonscript', '-script=' + job,
+                            '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen', '-NoSound', '-NoCrashReports', '-abslog=' + lg],
+                           stdout=so, stderr=subprocess.STDOUT, timeout=timeout)
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
     bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l]
     log('UE commandlet %s: rc %d, %.0f s, %d python error lines' % (name, r.returncode, time.time() - t0, len(bad)))

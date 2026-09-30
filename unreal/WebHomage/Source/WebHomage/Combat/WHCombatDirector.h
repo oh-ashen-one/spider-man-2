@@ -68,8 +68,9 @@ struct FWHBeat
 	FName Key;
 	double Hold = 0;
 	FString Toward;       // enemy tag (e1..): the stick points at him for this beat (targeting only)
-	FName React;          // record runs only: 'threat' = fire when a threat is 0.08-0.25 s from contact (window s after T)
+	FName React;          // record runs only: 'threat' = fire when a threat is 0.08-0.25 s from contact; 'free' = hero free; 'air' = hero waits in the air (else skipped)
 	double Window = 3.0;
+	double Rel = -1;      // r02: >= 0 = fire this many real s after the PREVIOUS beat fired (chains: launcher hold after its jab, juggle after the rise)
 	bool bGuard = false;  // r02: no reflex dodge 0.5 s before / 1.2 s after this beat (launchers, juggles, finishers)
 	FString Label;
 	bool bFired = false;
@@ -148,7 +149,7 @@ public:
 	TArray<TWeakObjectPtr<AWHEnemy>> MeleeTokens, GunTokens;   // r02: several committed attackers (aggression scheduler)
 	bool HasToken(const AWHEnemy* E) const;
 	double LastAttackRT = -1, MaxAttackGap = 0; int32 NAttackStarts = 0;
-	double HeroMinHp = 0;
+	double HeroMinHp = 0; bool bHeroArmor = false;   // scripted captures only (script "hero_min_hp", "hero_armor"): hp floor; launcher not interruptible, no knockdown
 	double ReflexCd = 0, LastReflexRT = -9, LastPerfectSlowRT = -9;   // script "reflex": scripted player dodges telegraphed blows (min interval s)          // scripted captures: the hero cannot drop below this (script "hero_min_hp")
 	int32 Reserve = 0, KeepAlive = 0, NextIndex = 1; double SpawnCd = 0; FString ReserveSpec;   // reinforcements (script "reserve", "keep")
 	double GlobalCd = 0, GunCd = 0;
@@ -160,16 +161,18 @@ public:
 	FVector StickDir = FVector::ZeroVector;   // world stick direction this frame (script 'toward'), zero = neutral
 
 	// cinematic (finisher / wall pin)
-	struct FCine { TWeakObjectPtr<AWHEnemy> Target; double T = 0, Dur = 1, Dist = 3; FVector Side = FVector::ZeroVector; bool bSide = false; FName Kind; bool bOn = false; } CineS;
+	struct FCine { TWeakObjectPtr<AWHEnemy> Target; double T = 0, Dur = 1, SideYaw = 0; bool bSide = false; FName Kind; bool bOn = false; } CineS;
 	double CamW = 0, CamPunchT = 9, CamPunch = 0;
 	double CamTrauma = 0, CamImpact = 0, SenseLvl = 0, ShakePh = 0;
 	// r02 combat framing camera (mid-high, 4-6 m back, 15-25 deg down, hero + 3 nearest enemies, no enemy near the lens)
 	bool bCamInit = false, bCamLast = false;
-	double CYaw = 0, CYawGoal = 0, CDist = 5.2, CPitch = 20, CFov = 75, CineK = 0, CineExtra = 0;
+	double CYaw = 0, CYawGoal = 0, CDist = 5.2, CPitch = 20, CFov = 75, CineK = 0, MarginPull = 0;
 	FVector CHero = FVector::ZeroVector, COff = FVector::ZeroVector;
 	FVector LastCamPos = FVector::ZeroVector; FRotator LastCamRot = FRotator::ZeroRotator; float LastFov = 75.f;
 	/** Project a world point (m) with a camera (m, rot, horizontal fov deg, 16:9). Returns false behind the lens. */
 	static bool Project(const FVector& CamP, const FRotator& CamR, double FovDeg, const FVector& P, double& Sx, double& Sy);
+	/** Screen box (0..1, 16:9) of a skeletal mesh from all its bones (head top padded): false when nothing is in front of the lens. */
+	static bool ScreenBox(const USkeletalMeshComponent* M, const FVector& CamP, const FRotator& CamR, double FovDeg, double& X0, double& Y0, double& X1, double& Y1, double& Dist);
 
 	// stats (telemetry / summary)
 	int32 NFrozenFrames = 0;
