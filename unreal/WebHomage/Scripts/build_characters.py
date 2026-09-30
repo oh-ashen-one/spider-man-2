@@ -74,6 +74,9 @@ if 'prep' in STEPS:
     subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r5.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
     subprocess.run(['python3', WT + '/tools/ue_char/eval/underlayer.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
+    # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
+    subprocess.run(['python3', WT + '/tools/ue_char/eval/refit.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/eval/weights_r6.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     # brute base colour painted on the thug UV layout (+ face/hands region mask for the test captures); rewrites the webp deterministically
     subprocess.run(['bash', WT + '/tools/ue_char/brute/build_brute.sh'], check=True, capture_output=True, env=_ENV)
     # street thug + brute: raw Tripo people (~/sm2-assets/raw) dressed, fitted to the hero skeleton (cached), textures + stripped GLBs

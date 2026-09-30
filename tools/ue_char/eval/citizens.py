@@ -32,6 +32,7 @@ for name in names:
     var = next(x for x in meta['variants'] if x['name'] == name)
     walk = 'walkF' if var['female'] else 'walk'
     png = os.path.join(SCR, 'tiles', name + '.png')   # cropped by tiles.py (Blender's python has no Pillow)
+    png = citizen_rig.refit_tex(name) or png            # round 06: the refit citizen's own 2048 px texture (refit.py), else the atlas tile
     if mode == 'fbx':
         import shutil
         os.makedirs(EXP, exist_ok=True)

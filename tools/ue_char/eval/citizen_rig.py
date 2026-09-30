@@ -17,6 +17,9 @@ from mathutils import Matrix
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 NPC = os.path.join(ROOT, 'public/assets/city/npc')
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from p2paths import scr as _p2scr   # noqa: E402
 C = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], float)
 Ci = np.linalg.inv(C)
 
@@ -57,6 +60,23 @@ def lbs(g, Mf):
     return out
 
 
+def load_refit(name):
+    """Round 06 (CH18): the raw-Tripo refit of a citizen (refit.py + weights_r6.py: welded skin weights, no shredded shells), or None (legacy pack LOD0
+    + hull) when it has not been generated or CIT_SRC=legacy."""
+    if os.environ.get('CIT_SRC') == 'legacy': return None
+    f = os.path.join(_p2scr('eval', 'refit'), name + '_final.npz')
+    if not os.path.exists(f): return None
+    z = np.load(f)
+    return {k: z[k] for k in z.files}
+
+
+def refit_tex(name):
+    """Round 06: the refit citizen's own base colour (raw Tripo 8192 px texture at 2048), or None."""
+    if load_refit(name) is None: return None
+    f = os.path.join(_p2scr('eval', 'refit'), name + '_tex.png')
+    return f if os.path.exists(f) else None
+
+
 def load_hull(name):
     """Round 05 (CH18): the closed under-layer hull made by underlayer.py (None when it has not been generated)."""
     try:
@@ -74,6 +94,13 @@ def load_hull(name):
 def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hull=True):
     p, M = load_people()
     meta, var, g = load_citizen(name)
+    R6 = load_refit(name)
+    if R6 is not None:   # round 06: the refit mesh replaces the pack LOD0 (uv = glTF, origin top-left; the weights are final, 4 per vertex)
+        top6 = np.argsort(-R6['dense'], 1)[:, :4]
+        wt6 = np.take_along_axis(R6['dense'], top6, 1); wt6 = wt6 / np.maximum(wt6.sum(1, keepdims=True), 1e-9)
+        g = dict(pos=R6['pos'].astype(float), nrm=R6['nrm'].astype(float), uv=R6['uv'].astype(float), si=top6, sw=wt6, idx=R6['idx'].astype(int))
+        hull = False
+        print('citizen_rig: %s from the round-06 refit (%d verts, %d tris)' % (name, len(g['pos']), len(g['idx'])))
     bones = p['bones']
     sc = bpy.context.scene
     # armature
@@ -116,11 +143,14 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hu
     nv0 = len(vb)
     H_ = load_hull(name) if hull else None
     faces = g['idx']
-    gx, gy = meta['grid']
-    c, r = var['tile']
-    tuv = np.c_[g['uv'][:, 0] * gx - c, 1.0 - (g['uv'][:, 1] * gy - r)]   # tile-local, Blender v up
+    if R6 is not None:
+        tuv = np.c_[g['uv'][:, 0], 1.0 - g['uv'][:, 1]]                     # whole texture, Blender v up
+    else:
+        gx, gy = meta['grid']
+        c, r = var['tile']
+        tuv = np.c_[g['uv'][:, 0] * gx - c, 1.0 - (g['uv'][:, 1] * gy - r)]   # tile-local, Blender v up
     loop_uv = tuv[faces.ravel()]
-    EXPAND_M = float(os.environ.get('CIT_EXPAND', '0.003'))
+    EXPAND_M = 0.0 if R6 is not None else float(os.environ.get('CIT_EXPAND', '0.003'))
     idx_g = g['idx']
     if EXPAND_M > 0:   # round 05b (CH18, geometry level): every garment triangle grows by EXPAND_M on each edge (about its incentre, uv scaled identically so the
         # texture stays put): hairline gaps between the crowd pack's separate shells (up to ~2 x EXPAND_M wide) close (uv NOT scaled: the atlas has gutters); triangles are unwelded (3 corners each,
@@ -152,19 +182,22 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hu
     ob.parent = arm
     for i, b in enumerate(bones):
         vg = ob.vertex_groups.new(name=b['name'])
-    w = g['sw'] / g['sw'].sum(1, keepdims=True)
-    # round 04: weld the weights of UV-seam duplicates (same position, different vertex) - unequal quantised weights open hairline
-    # cracks along every texture seam as soon as the pose changes (the white streaks / sparkles the critics saw on citizens)
-    dense = np.zeros((len(w), len(bones)))
-    for k in range(4): np.add.at(dense, (np.arange(len(w)), g['si'][:, k]), w[:, k])
-    key = np.round(g['pos'] / 1e-5).astype(np.int64)
-    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
-    acc = np.zeros((inv.max() + 1, len(bones))); np.add.at(acc, inv, dense)
-    cnt = np.bincount(inv).astype(float)
-    dense = acc[inv] / cnt[inv][:, None]
-    # round 05 (CH18, weights level): abutting garment shells move together (underlayer.smooth_weights); the hull skins from these weights too
-    from underlayer import final_weights   # = smooth_weights + skirt-panel blend (round 05b)
-    dense = final_weights(g['pos'], g['nrm'], g['idx'], dense)
+    if R6 is not None:   # round 06: final weights come from weights_r6.py (welded, smoothed, skirt rig, stretch relaxed)
+        dense = R6['dense'].astype(float)
+    else:
+        w = g['sw'] / g['sw'].sum(1, keepdims=True)
+        # round 04: weld the weights of UV-seam duplicates (same position, different vertex) - unequal quantised weights open hairline
+        # cracks along every texture seam as soon as the pose changes (the white streaks / sparkles the critics saw on citizens)
+        dense = np.zeros((len(w), len(bones)))
+        for k in range(4): np.add.at(dense, (np.arange(len(w)), g['si'][:, k]), w[:, k])
+        key = np.round(g['pos'] / 1e-5).astype(np.int64)
+        _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
+        acc = np.zeros((inv.max() + 1, len(bones))); np.add.at(acc, inv, dense)
+        cnt = np.bincount(inv).astype(float)
+        dense = acc[inv] / cnt[inv][:, None]
+        # round 05 (CH18, weights level): abutting garment shells move together (underlayer.smooth_weights); the hull skins from these weights too
+        from underlayer import final_weights   # = smooth_weights + skirt-panel blend (round 05b)
+        dense = final_weights(g['pos'], g['nrm'], g['idx'], dense)
     top = np.argsort(-dense, 1)[:, :4]
     wt = np.take_along_axis(dense, top, 1); wt /= wt.sum(1, keepdims=True)
     g['si'], g['sw'], w = top, wt, wt
