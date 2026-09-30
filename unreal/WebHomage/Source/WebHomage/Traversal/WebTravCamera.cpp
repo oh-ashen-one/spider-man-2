@@ -645,7 +645,7 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 		C.Tier = C.Sun >= SunMinDeg ? 0 : 1;
 		C.Cost = 2.0 * (1.0 - C.Open) + 1.5 * (1.0 - C.Sky) + 4.0 * (1.0 - C.ClearT / 1.5) + GlareW * C.Glare
 			+ 2.0 * FMath::Max(0.0, SunPrefDeg - C.Sun) / 40.0
-			+ 0.3 * FMath::Abs(OffDeg - FlipPrefYaw) / 10.0 + (FMath::Sign(CurOff) != double(Side) ? 0.25 : 0.0);
+			+ 0.6 * FMath::Abs(OffDeg - FlipPrefYaw) / 5.0 + (FMath::Sign(CurOff) != double(Side) ? 0.25 : 0.0);
 		return true;
 	};
 	static const double OffsDeg[] = { 40.0, 45.0, 50.0, 55.0 };

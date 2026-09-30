@@ -124,15 +124,22 @@ ok = (pct(rh, .95) <= 40 and (max(rh) if rh else 0) <= 60 and (max(rw) if rw els
 if not rh: ok = False
 P('TC-B yaw rate: HOLD p95 %.1f / max %.1f deg/s (<= 40 / 60); WIN incl. blends max %.0f deg/s (<= 150) -> %s' % (
     pct(rh, .95), max(rh) if rh else float('nan'), max(rw) if rw else float('nan'), 'PASS' if ok else (nfail.__setitem__(0, nfail[0] + 1) or 'FAIL')))
-# ---- TC-C
+# ---- TC-C (verdict on the rendered hero MASK when the run has pixels -- the critic's measure; the bone box (bones +-10 cm) is ~6-10 % larger)
 hb_w = stat(win, lambda r: f(r, 'hero_bbox_h')); hb_h = stat(hold, lambda r: f(r, 'hero_bbox_h'))
 def cband(v): return (pct(v, .10), pct(v, .50), pct(v, .90))
+def mh(rows): return [(f(R[k], 'px_bottom') - f(R[k], 'px_top')) / 1080.0 for k in rows if f(R[k], 'px_top', -1) >= 0 and f(R[k], 'px_bottom', -1) > f(R[k], 'px_top', -1)]
+mk_w, mk_h = mh(win), mh(hold)
+has_mask = len(mk_w) > 30
 cw, ch = cband(hb_w), cband(hb_h)
-okw = cw[0] >= .12 and .18 <= cw[1] <= .28 and cw[2] <= .36
-okh = ch[0] >= .12 and .18 <= ch[1] <= .28 and ch[2] <= .36
-msk = [(f(R[k], 'px_bottom') - f(R[k], 'px_top')) / 1080.0 for k in win if f(R[k], 'px_top', -1) >= 0 and f(R[k], 'px_bottom', -1) > f(R[k], 'px_top', -1)]
-mtxt = ' | mask (px) p10/p50/p90 %.3f/%.3f/%.3f' % cband(msk) if len(msk) > 10 else ' | mask n/a'
-P('TC-C hero height (bone box): WIN p10/p50/p90 %.3f/%.3f/%.3f, HOLD %.3f/%.3f/%.3f (>= .12 / .18-.28 / <= .36)%s -> %s' % (*cw, *ch, mtxt, verdict(okw, okh)))
+def okband(b): return b[0] >= .12 and .18 <= b[1] <= .28 and b[2] <= .36
+if has_mask:
+    mw, mhh = cband(mk_w), cband(mk_h)
+    okw, okh = okband(mw), okband(mhh)
+    mtxt = 'MASK WIN %.3f/%.3f/%.3f, HOLD %.3f/%.3f/%.3f | bone box WIN %.3f/%.3f/%.3f, HOLD %.3f/%.3f/%.3f' % (*mw, *mhh, *cw, *ch)
+else:
+    okw, okh = okband(cw), okband(ch)
+    mtxt = 'bone box WIN %.3f/%.3f/%.3f, HOLD %.3f/%.3f/%.3f (mask n/a: no render)' % (*cw, *ch)
+P('TC-C hero height p10/p50/p90 (>= .12 / .18-.28 / <= .36): %s -> %s' % (mtxt, verdict(okw, okh)))
 # ---- TC-D
 cx_w = stat(win, lambda r: f(r, 'hero_cx')); cx_h = stat(hold, lambda r: f(r, 'hero_cx'))
 cy_w = stat(win, lambda r: f(r, 'hero_cy')); cy_h = stat(hold, lambda r: f(r, 'hero_cy'))
@@ -197,7 +204,9 @@ if video and os.path.exists(video):
                     g = cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
                     hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
                     m = ((hsv[..., 1] > 90) & (hsv[..., 2] > 35)).astype(np.uint8)   # the saturated suit, closed + dilated into a silhouette
-                    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((21, 21), np.uint8)); m = cv2.dilate(m, np.ones((5, 5), np.uint8)) > 0
+                    # round 16: a TIGHT suit mask (close 9x9 fills the white emblem / specular spots inside the suit, dilate 3x3): the r14/r15 21x21 close + 5x5
+                    # dilate bridged the gaps between the arms and counted the bright SKY there as 'suit' (f1 3.55 s: 7 % 'clipped', the suit itself not)
+                    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8)); m = cv2.dilate(m, np.ones((3, 3), np.uint8)) > 0
                     if m.sum() > 50:
                         fh = float((g[m] >= 245).mean()); vals.append(fh)
                         if fh > worst[0]: worst = (fh, T[i])

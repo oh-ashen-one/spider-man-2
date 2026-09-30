@@ -90,14 +90,14 @@ public:
 	bool bFlipWas = false, bFlipAbort = false, bFlipOutRun = false;
 	double FlipObsT = 0.0, FlipAbortGrace = 0.20;   // seconds the held axis has been blocked under FlipDistMin / grace before the plain-chase fallback
 	double FlipOutClock = 0.0, FlipOutK0 = 0.0, FlipOutZ0 = 0.0;   // blend-out state (smoothstep over FlipOutT from the weights at its start)
-	double FlipDist = 4.3, FlipDistMin = 4.0, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 45.0, FlipLeadDeg = 5.0;
+	double FlipDist = 4.2, FlipDistMin = 4.0, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.36, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
 	double FlipInT = 0.35, FlipOutT = 0.90, FlipZInT = 0.15, FlipZHold = 0.30, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
 	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
 	double FlipAz = 0.0;        // rad, world azimuth hero -> camera (held for the trick)
 	double FlipOffDeg = 0.0;    // signed offset of that azimuth from the travel-behind direction at the release (deg, + = right of behind)
 	double FlipSide = 1.0;      // sign of FlipOffDeg
-	double FlipDistSel = 4.3, FlipDistNow = 4.3, FlipDistV = 0.0;   // chosen / current (dollied) distance
+	double FlipDistSel = 4.2, FlipDistNow = 4.2, FlipDistV = 0.0;   // chosen / current (dollied) distance
 	int32 FlipTier = -1;        // selection: 0 obstruction + sun ok, 1 sun rule failed (only side clear), 2 pulled in, 3 plain chase (no clear spot)
 	double FlipSkyShare = -1.0, FlipGlare = 0.0, FlipSunDeg = -1.0;   // telemetry: ring sky share / glare share / sun angle of the chosen view
 	// the sun: SunDir = unit vector TO the sun, set by the character from the level's atmosphere sun light (bHaveSun false = no sun term)
