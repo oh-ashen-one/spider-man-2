@@ -11,7 +11,7 @@
 
 These match the builder's CSV. Static S2: 14.49 / 15.45 ms. The in-game counter gives p95 18.02 ms, a **0.16 ms margin**.
 
-**Trust:** all seven `perf_gpu.json` records are exclusive, not contaminated and `perf_valid`, with one instance and no foreign captures. Caveat: the runs were offscreen with `-NoVSync` and a fixed-step script,, so display present was never measured. The p50 result is solid; the p95 result is marginal.
+**Trust:** all seven `perf_gpu.json` records are exclusive, not contaminated and `perf_valid`, with one instance and no foreign captures. Caveat: the runs were offscreen with `-NoVSync` and a fixed-step script, so display present was never measured. The p50 result is solid; the p95 result is marginal.
 
 **Visual regressions** (my pixel measurements, before and after at the same TSR):
 - **Canopy:** green-pixel luma roughly doubles (S1 61.8→122.8, t20 63.8→133.5, t42 60.3→95.8).
