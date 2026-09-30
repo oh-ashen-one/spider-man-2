@@ -202,18 +202,36 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(SkyK, SkyKV, (P.bSky && P.Vel.Z > -9.0) ? 1.0 : 0.0, P.bSky && P.Vel.Z > -9.0 ? 0.25 : 0.35, Dt);
 	SkyK = FMath::Clamp(SkyK, 0.0, 1.0);
 	SWant = FMath::Lerp(SWant, SkySFrame, SkyK);
-	// round 11: flip camera weight (0.3 s in, 0.45 s out) and its side, chosen once per flip: the side with more open space
-	if (P.bFlip && !bFlipWas)
+	// round 11: flip camera weight (0.3 s in, 0.45 s out). Round 12: its view (orbit yaw + look-up) is searched for a sky
+	// background behind the hero (SearchSkyView), starting from where the camera is now
+	const bool bFlipCam = P.bFlip || P.bFlipSoon;
 	{
-		const FVector Rt = RightFlat();
-		double DR = 40.0, DL = 40.0;
-		FTravHit FH;
-		if (World.Raycast(Hero, Rt, 40.0, FH) && FMath::Abs(FH.Normal.Z) < 0.5) DR = FH.Distance;
-		if (World.Raycast(Hero, -Rt, 40.0, FH) && FMath::Abs(FH.Normal.Z) < 0.5) DL = FH.Distance;
-		FlipSide = DR >= DL ? -1.0 : 1.0; // + rotates the camera to the hero's left
+		const FVector BackNow = -ForwardFlat();
+		if (bFlipCam && !bFlipWas)
+		{ // start the springs at the current camera placement (no jump), then search
+			const FVector Off = CamPos - Hero;
+			const double OffH = FVector2D(Off.X, Off.Y).Size();
+			if (bChaseInit && OffH > 0.2)
+			{
+				const double AOff = FMath::Atan2(Off.Y, Off.X), ABack = FMath::Atan2(BackNow.Y, BackNow.X);
+				FlipYawOff = FMath::Atan2(FMath::Sin(AOff - ABack), FMath::Cos(AOff - ABack));
+				FlipElev = FMath::Atan2(-Off.Z, OffH);
+			}
+			FlipYawOffV = FlipElevV = 0.0;
+			SearchSkyView(P, World, BackNow, true);
+			FlipSearchT = FlipSearchDt;
+		}
+		else if (bFlipCam)
+		{
+			FlipSearchT -= Dt;
+			if (FlipSearchT <= 0.0) { SearchSkyView(P, World, BackNow, false); FlipSearchT = FlipSearchDt; }
+		}
+		else FlipSkyShare = -1.0;
+		SD(FlipYawOff, FlipYawOffV, FlipYawGoal, FlipAimT, Dt);
+		SD(FlipElev, FlipElevV, FlipElevGoal, FlipAimT, Dt);
 	}
-	bFlipWas = P.bFlip;
-	SD(FlipK, FlipKV, P.bFlip ? 1.0 : 0.0, P.bFlip ? 0.3 : 0.45, Dt);
+	bFlipWas = bFlipCam;
+	SD(FlipK, FlipKV, bFlipCam ? 1.0 : 0.0, bFlipCam ? 0.3 : 0.45, Dt);
 	FlipK = FMath::Clamp(FlipK, 0.0, 1.0);
 	SWant = FMath::Lerp(SWant, FlipSFrame, FlipK);
 	SWant = FMath::Clamp(SWant, 0.32, 0.72);
@@ -227,7 +245,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// round 07: 0.4 m closer while swinging / airborne (the higher round-07 camera left the hero < 160 px at the arc ends)
 	const double AirClose = (bSwinging || bAir) ? SwingCloser : 0.0;
 	const double BackDist = ChaseDist - AirClose - FlipCloser * FlipK + 1.3 * FMath::Max(0.0, KickK);
-	const double OY = OccYawOff + FlipSide * FMath::DegreesToRadians(FlipOrbitDeg) * Smooth(FlipK, 0.0, 1.0), OU = OccUp;
+	const double OY = OccYawOff, OU = OccUp; // round 12: the flip orbit is placed below (searched view), not a fixed 40 deg
 	const FVector BackR(Back.X * FMath::Cos(OY) - Back.Y * FMath::Sin(OY), Back.X * FMath::Sin(OY) + Back.Y * FMath::Cos(OY), 0);
 	// round 09 (TRAVERSAL-SPEC T12/T17/T18): the camera slides AnchorShift m toward the ACTIVE anchor's side (kept through the
 	// swing chain's short air phases) while still looking at the hero: the view runs 2-25 deg off the avenue axis and the near
@@ -243,8 +261,16 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if (P.bDive || ChainAirT > 0.8) bInChain = false;       // a long fall / dive is not the chain rhythm: centred again (aiming)
 	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
 	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
-	const double LowK = FMath::Max(SkyK, FlipK), LowBelow = SkyK >= FlipK ? SkyCamBelow : FlipCamBelow;
-	const double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -LowBelow, LowK) + OU;
+	double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -SkyCamBelow, SkyK) + OU;
+	// round 12: flip camera spot = FlipDist m from the hero along the searched line (yaw offset from behind, elevation below)
+	const double FlipKs = Smooth(FlipK, 0.0, 1.0);
+	FVector FlipSpot = Hero;
+	{
+		const FVector BF(Back.X * FMath::Cos(FlipYawOff) - Back.Y * FMath::Sin(FlipYawOff), Back.X * FMath::Sin(FlipYawOff) + Back.Y * FMath::Cos(FlipYawOff), 0);
+		FlipSpot = Hero + BF * (FlipDist * FMath::Cos(FlipElev)) - FVector(0, 0, FlipDist * FMath::Sin(FlipElev));
+		Desired = FMath::Lerp(Desired, FlipSpot, FlipKs);
+		ZWant = FMath::Lerp(ZWant, FlipSpot.Z, FlipKs);
+	}
 	if (!bChaseInit)
 	{
 		bChaseInit = true;
@@ -254,11 +280,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SDV(CamXY, CamXYV, FVector(Desired.X, Desired.Y, 0), 0.07, Dt);
 	FVector HD = FVector(CamXY.X - Hero.X, CamXY.Y - Hero.Y, 0);
 	const double HL = HD.Size();
-	const double MaxH = 5.0 - AirClose + 1.3 * FMath::Max(0.0, KickK), MinH = 3.5 - AirClose;
+	const double MaxH = 5.0 - AirClose + 1.3 * FMath::Max(0.0, KickK), MinH = FMath::Lerp(3.5 - AirClose, FMath::Min(3.5 - AirClose, FlipDist * FMath::Cos(FlipElev) - 0.2), FlipKs);
 	if (HL < 1e-3) HD = BackR * MinH; else if (HL < MinH) HD *= MinH / HL; else if (HL > MaxH) HD *= MaxH / HL;
 	CamXY = FVector(Hero.X + HD.X, Hero.Y + HD.Y, 0);
 	SD(CamZ, CamZV, ZWant, 0.05, Dt);
-	CamZ = FMath::Clamp(CamZ, Hero.Z + FMath::Lerp(CamZMin, -LowBelow - 0.3, LowK) + OU, Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6
+	CamZ = FMath::Clamp(CamZ, FMath::Lerp(Hero.Z + FMath::Lerp(CamZMin, -SkyCamBelow - 0.3, SkyK) + OU, FlipSpot.Z - 0.3, FlipKs), Hero.Z + CamZMax + OU); // round 07: 0.7..1.8 -> 1.2..2.6
 	FVector Cam(CamXY.X, CamXY.Y, CamZ);
 	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /
 	// rotated positions and move there smoothly (held ~1 s so the camera does not flicker)
@@ -391,7 +417,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	UserPitch = Damp(UserPitch, 0.0, LastLook > 1.5 ? 1.5 : 0.0, Dt);
 	const double Delta = FMath::Atan((FrameS - 0.5) * 2.0 * TanHalfV);
 	// (round 06: on the wall the lower clamp opens up to an 80 deg look UP the facade)
-	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(PitchDownMin, -(SkyPitchUp + (FlipPitchUp - SkyPitchUp) * FlipK), FMath::Max(SkyK, FlipK)), -80.0, Smooth(WallK, 0.0, 1.0))),
+	// (round 12: during a flip the look-up limit follows the searched elevation: + 20 deg of framing, <= 75)
+	const double FlipUpDeg = FMath::Min(75.0, FMath::Max(FlipPitchUp, FMath::RadiansToDegrees(FlipElev) + 20.0));
+	double PitchDown = FMath::Clamp(DownToHero - Delta + UserPitch, FMath::DegreesToRadians(FMath::Lerp(FMath::Lerp(FMath::Lerp(PitchDownMin, -SkyPitchUp, SkyK), -FlipUpDeg, FlipK), -80.0, Smooth(WallK, 0.0, 1.0))),
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
@@ -439,4 +467,52 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	Pitch = PitchDown; // keep the orbit state coherent for Forward()
 	// (round 09: the hero stays centred horizontally — TRAVERSAL-SPEC T9; the off-axis look comes from the sideways slide)
 	CamRot = FRotator(FMath::RadiansToDegrees(-PitchDown), FMath::RadiansToDegrees(ToHeroYaw + AttachYaw), 0);
+}
+
+// round 12 (critic r11 single gap): choose the flip camera's view so open sky is behind the hero. Candidates: yaw offset around
+// the travel-behind direction x elevation (camera below the hero looking up). Score = share of ring rays (hero box + 40 px in
+// angle at 1080p: +-11 deg vertical, +-8 deg horizontal around the hero) that hit nothing within FlipSkyRay m, cast from the
+// camera spot; the spot itself must be reachable from the hero (sphere sweep) and above the floor. Cost prefers full sky, then
+// a 3/4 side view (FlipPrefYaw), then the lowest look-up, with hysteresis toward the current goal.
+void FWebTravCamera::SearchSkyView(const FTravCamInput& P, const FWebTravWorld& World, const FVector& Back, bool bFirst)
+{
+	const FVector Hero = P.Pos;
+	static const double YawsDeg[] = { -120, -100, -80, -65, -50, -35, -20, 0, 20, 35, 50, 65, 80, 100, 120 };
+	static const double ElevsDeg[] = { 8, 16, 24, 32, 40, 48, 56 };
+	static const double RingDeg[][2] = { {0, 11}, {0, -11}, {8, 0}, {-8, 0}, {8, 11}, {-8, 11}, {8, -11}, {-8, -11},
+		{8, 5}, {-8, 5}, {8, -5}, {-8, -5}, {4, 11}, {-4, 11}, {4, -11}, {-4, -11} };
+	const double GoalY = FMath::RadiansToDegrees(FlipYawGoal), GoalE = FMath::RadiansToDegrees(FlipElevGoal);
+	double BestCost = 1e9, BY = FlipYawGoal, BE = FlipElevGoal, BSky = 0.0;
+	for (double YD : YawsDeg)
+	{
+		const double Yr = FMath::DegreesToRadians(YD);
+		const FVector BF(Back.X * FMath::Cos(Yr) - Back.Y * FMath::Sin(Yr), Back.X * FMath::Sin(Yr) + Back.Y * FMath::Cos(Yr), 0);
+		for (double ED : ElevsDeg)
+		{
+			const double Er = FMath::DegreesToRadians(ED);
+			const FVector ToCam = BF * FMath::Cos(Er) - FVector(0, 0, FMath::Sin(Er));
+			const FVector CamP = Hero + ToCam * FlipDist;
+			double HitD = 0.0;
+			if (World.SphereSweep(Hero, CamP, 0.25, HitD)) continue;
+			if (CamP.Z < World.GroundHeight(CamP.X, CamP.Y, CamP.Z + 0.5) + 0.5) continue;
+			// view basis through the hero
+			const FVector D = -ToCam;                                   // camera -> hero
+			const FVector Rt = FVector::CrossProduct(FVector::UpVector, D).GetSafeNormal();
+			const FVector Up = FVector::CrossProduct(D, Rt).GetSafeNormal();
+			int32 Free = 0, N = 0;
+			for (const auto& RD : RingDeg)
+			{
+				const FVector Dir = (D + Rt * FMath::Tan(FMath::DegreesToRadians(RD[0])) + Up * FMath::Tan(FMath::DegreesToRadians(RD[1]))).GetSafeNormal();
+				FTravHit H;
+				++N;
+				// from just past the hero (the pawn is ignored anyway; nothing between camera and hero counts as background)
+				if (!World.Raycast(CamP + Dir * (FlipDist + 0.6), Dir, FlipSkyRay, H)) ++Free;
+			}
+			const double Sky = double(Free) / double(FMath::Max(1, N));
+			double Cost = (1.0 - Sky) * 10.0 + 0.8 * FMath::Abs(FMath::Abs(YD) - FlipPrefYaw) / 90.0 + 0.9 * (ED - 8.0) / 48.0;
+			if (!bFirst) Cost += 0.5 * (FMath::Abs(YD - GoalY) / 60.0 + FMath::Abs(ED - GoalE) / 30.0);
+			if (Cost < BestCost) { BestCost = Cost; BY = Yr; BE = Er; BSky = Sky; }
+		}
+	}
+	if (BestCost < 1e8) { FlipYawGoal = BY; FlipElevGoal = BE; FlipSkyShare = BSky; }
 }

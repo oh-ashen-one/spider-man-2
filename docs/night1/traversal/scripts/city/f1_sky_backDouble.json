@@ -1,18 +1,18 @@
 {
  "name": "f1_sky_backDouble",
- "note": "Round 11 flips: swing north up the avenue from 30 m, sky launch at 1.4 s with the backDouble program (tuck, held inverted pencil, tuck, layout flash, tuck, straddle, tuck, upright throne, reach: 720 deg back in 2.35 s), web re-pressed for the catch in the reach, then the swing chain continues.",
+ "note": "Round 12 (critic r11: tricks must start from an apex >= 3 m over the tallest roof within 30 m, sky behind the hero): the west avenue (x -250) heading south into the lower blocks south of y 195, where a launch can clear every roof within 30 m of its flip (engine height field, _scratch/traversal/r12/hm). autoChain from 0.4 s; a release is a sky launch only when the flip apex can clear the roofs (SkyPeakNeeded); the backDouble program is armed on the climb, starts at vz <= 9 m/s and the web is re-pressed in its final reach.",
  "seed": 1234,
  "spawn": {
   "pos": [
-   250,
+   -250,
    170,
-   30
+   28
   ],
-  "yaw": -90,
+  "yaw": 90,
   "camPitch": 0.12,
   "vel": [
    0,
-   -26,
+   24,
    0
   ]
  },
@@ -23,33 +23,22 @@
     0,
     1
    ],
-   "heading": -90,
-   "swing": true,
+   "heading": 90,
+   "swing": false,
    "flip": "backDouble"
   },
   {
-   "t": 1.4,
-   "jump": true,
-   "trick": true
-  },
-  {
-   "t": 1.42,
-   "swing": false,
-   "jump": false,
-   "trick": false
-  },
-  {
-   "t": 3.49,
-   "swing": true
-  },
-  {
-   "t": 4.09,
+   "t": 0.4,
    "autoChain": true,
    "releasePhase": 0.55,
    "gap": 0.8,
    "repressVz": 99.0,
    "trickEvery": 0,
-   "skyEvery": 0
+   "skyEvery": 1,
+   "skyTricks": 1,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
   }
  ]
 }

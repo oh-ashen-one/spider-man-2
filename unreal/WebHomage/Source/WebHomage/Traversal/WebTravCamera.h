@@ -33,6 +33,7 @@ struct FTravCamInput
 	double SwingT = 99.0;    // s since the current web attached
 	bool bSky = false;       // round 10: sky launch (jump-release + trick) in progress
 	bool bFlip = false;      // round 11: a gymnast flip program is playing
+	bool bFlipSoon = false;  // round 12: an apex flip is armed and about to start (the flip camera moves into place first)
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -79,6 +80,15 @@ public:
 	double FlipOrbitDeg = 40.0, FlipSFrame = 0.42, FlipCamBelow = 1.6, FlipCloser = 0.2, FlipPitchUp = 18.0; // r11 capture 1: 10 deg look-up clamp framed the flips against facades
 	double FlipK = 0.0, FlipKV = 0.0, FlipSide = 1.0;
 	bool bFlipWas = false;
+	// round 12 (critic r11: tricks framed against facades; test = >= 50 % sky in a 40 px ring around the hero in >= 70 % of trick
+	// frames): the flip camera SEARCHES its view. Every FlipSearchDt s it scores orbit yaw offsets (around the travel-behind
+	// direction) x look-up elevations (camera below the hero) by the share of a ring of rays past the hero (the hero bbox + 40 px
+	// in angle) that reach open sky (no hit within FlipSkyRay m), preferring a 3/4 side view and the lowest look-up that is clear;
+	// the chosen yaw offset / elevation are springs (FlipAimT s), the camera sits FlipDist m from the hero along that line.
+	double FlipDist = 3.4, FlipSearchDt = 0.15, FlipSkyRay = 900.0, FlipAimT = 0.3, FlipPrefYaw = 55.0;
+	double FlipYawOff = 0.0, FlipYawOffV = 0.0, FlipElev = 0.2, FlipElevV = 0.0, FlipYawGoal = 0.0, FlipElevGoal = 0.2, FlipSearchT = 0.0;
+	double FlipSkyShare = -1.0; // telemetry: ring sky share of the chosen view at the last search (-1 = not searching)
+	void SearchSkyView(const FTravCamInput& P, const FWebTravWorld& World, const FVector& Back, bool bFirst);
 
 	// ---- outputs
 	bool bCamInGeometry = false;            // camera sphere (0.25 m) overlaps solid geometry this frame

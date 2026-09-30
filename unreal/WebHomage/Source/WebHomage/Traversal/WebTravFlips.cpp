@@ -43,8 +43,10 @@ namespace WebFlips
 			};
 			// sky launch / long air: double back in the owner clip's S3 rhythm (3 turns in 2.8 s, short holds): tuck to inverted, inverted
 			// pencil, tuck round, a flash of upright layout, tuck to inverted again, straddle, tuck round, upright "throne" spread, reach
-			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 0.31f}, {S::Pencil, 0.36f}, {S::Tuck, 0.31f}, {S::Layout, 0.14f}, {S::Tuck, 0.31f},
-				{S::Straddle, 0.26f}, {S::Tuck, 0.26f}, {S::Throne, 0.24f}, {S::Reach, 0.16f} });
+			// round 12 (critic r11 secondary: "snaps at 640 deg/s through four shapes that last 0.15-0.36 s; hold each shape >= 0.5 s,
+			// at most 2 shapes, blend >= 0.15 s"): two shapes only, tuck and layout, each held 0.5-0.55 s, then the reach
+			// (r11: tuck / pencil / tuck / layout / tuck / straddle / tuck / throne / reach, 2.35 s)
+			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 0.55f}, {S::Layout, 0.5f}, {S::Tuck, 0.55f}, {S::Layout, 0.5f}, {S::Reach, 0.2f} });
 			// front pike into a slow inverted swan that unwinds (critic r10 reference description), tuck up, reach
 			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.36f}, {S::Pencil, 0.36f}, {S::Swan, 0.72f}, {S::Tuck, 0.27f}, {S::Reach, 0.26f} });
 			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach

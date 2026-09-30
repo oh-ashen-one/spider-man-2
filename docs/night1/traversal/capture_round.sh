@@ -16,7 +16,10 @@ TMP=/Users/midir/sm2-n1/_scratch/traversal/capture
 MAP="${TRAV_MAP:-/Game/Maps/Manhattan}"
 # GPU lock (RULES / docs/night1/gpu/PROTOCOL.md): every game run takes a shared capture slot
 GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
-RUN() { "$GPU" capture --label traversal -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
+# round 12: GPU_OUTER=1 = the caller already holds one capture slot for the whole batch (gpu_slot.sh capture -- capture_round.sh ...;
+# max hold 40 min): the runs then go straight to run_game.sh instead of queueing once per run
+if [ -n "${GPU_OUTER:-}" ]; then RUN() { "$UE_DIR/Scripts/run_game.sh" "$@"; }
+else RUN() { "$GPU" capture --label traversal -- "$UE_DIR/Scripts/run_game.sh" "$@"; }; fi
 # round 06: pre-roll (s) rendered from the start pose before the sequence starts (exposure / Lumen settle), trimmed from the movie
 PRE=0.8
 mkdir -p "$TMP" "$ROUND/stills"
@@ -27,10 +30,12 @@ SEQS=(
   "c_wallrun_perch c_wallrun_perch.json 10.5 1.0,2.6,3.6,4.9,9.8"
   "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,5.6,7.6,11.8"
   # round 11 (flips): sky-launch flip programs, a chain with a flip on every release (c = the wall-run top-out flip, b = r10 pair)
-  "f1_sky_backDouble f1_sky_backDouble.json 7.0 1.9,2.9"
-  "f2_sky_pikeSwan f2_sky_pikeSwan.json 6.5 1.9,2.6"
-  "f3_sky_corkscrew f3_sky_corkscrew.json 6.5 1.9,2.4"
-  "f4_chain_flips f4_chain_flips.json 13.0 3.0,6.0"
+  # round 12: f1-f4 moved to the east waterfront (apex over the roofs), f5 = the r11 f1 canyon stretch (no launch can clear it)
+  "f1_sky_backDouble f1_sky_backDouble.json ${F1Q:-8.0} ${F1T:-3.5,4.5}"
+  "f2_sky_pikeSwan f2_sky_pikeSwan.json ${F2Q:-8.0} ${F2T:-3.5,4.5}"
+  "f3_sky_corkscrew f3_sky_corkscrew.json ${F3Q:-8.0} ${F3T:-3.5,4.5}"
+  "f4_chain_flips f4_chain_flips.json 13.0 ${F4T:-3.0,6.0}"
+  "f5_canyon_backDouble f5_canyon_backDouble.json 8.0 2.0,4.0"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running

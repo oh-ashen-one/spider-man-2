@@ -15,6 +15,7 @@
 #include "WebHomage.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Misc/FileHelper.h"
 
 #include "Camera/CameraComponent.h"
 #include "Camera/PlayerCameraManager.h"
@@ -443,6 +444,34 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
 	const double Dt = FMath::Clamp(double(DeltaSeconds), 1e-4, 0.1);
+	// round 12 (planning tool): -WHTravHeightmap=<csv> writes the traversal world's height field once (5 m grid, down-rays from
+	// 600 m; x, y, top z, ground flag) — the roofs the sky-launch solver and the web search actually see (the exported
+	// collision.json misses geometry the lit map has)
+	{
+		static bool bHmDone = false;
+		FString HmPath;
+		if (!bHmDone && Traversal && FParse::Value(FCommandLine::Get(), TEXT("-WHTravHeightmap="), HmPath))
+		{
+			bHmDone = true;
+			FString Out = TEXT("x,y,z,ground\n");
+			double HX0 = -320.0, HY0 = -620.0, HX1 = 680.0, HY1 = 380.0;
+			FString Ext;
+			if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHmExt="), Ext))
+			{
+				TArray<FString> E; Ext.ParseIntoArray(E, TEXT(","));
+				if (E.Num() == 4) { HX0 = FCString::Atod(*E[0]); HY0 = FCString::Atod(*E[1]); HX1 = FCString::Atod(*E[2]); HY1 = FCString::Atod(*E[3]); }
+			}
+			for (double Y = HY0; Y <= HY1; Y += 5.0)
+				for (double X = HX0; X <= HX1; X += 5.0)
+				{
+					FTravHit Hh;
+					if (Traversal->TravWorld.Raycast(FVector(X, Y, 600.0), FVector(0, 0, -1), 700.0, Hh))
+						Out += FString::Printf(TEXT("%.0f,%.0f,%.1f,%d\n"), X, Y, Hh.Point.Z, Hh.bGround ? 1 : 0);
+				}
+			FFileHelper::SaveStringToFile(Out, *HmPath);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV heightmap written: %s"), *HmPath);
+		}
+	}
 	// round 06: capture pre-roll (-WHTravPreroll=<s>): the start pose is rendered for a while (camera, exposure, Lumen settle)
 	// with the traversal frozen and no input / telemetry; capture_round.sh trims these frames. Auto-exposure lag at the start
 	// is what rendered the suit white / blown out in the first ~0.6 s of earlier captures.
@@ -498,9 +527,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			bool bSkyNext = false;
 			if (SkyEvery > 0 && AutoReleases + 1 - LastSkyRelease >= SkyEvery && bSwinging)
 			{
-				const double Roof = Traversal->SkyRoofOverStreet();
-				const bool bReach = Roof > 0.0 && Roof + Traversal->SkyRoofOver <= Traversal->SkyPeakMax + 8.0;
-				bSkyNext = bReach || TravTime - LastSkyT > 5.5;
+				// round 12: reachable = the apex that clears the tallest roof near the flip (SkyPeakNeeded) is within SkyPeakMax
+				bool bReach = false;
+				Traversal->SkyPeakNeeded(bReach);
+				bSkyNext = bReach; // round 12: no forced launch any more (r10: "or 5.5 s after the last one anyway" flipped under the roofline)
 			}
 			const double RelPhaseEff = bSkyNext ? SkyPhase : RelPhase;
 			// round 10 (Manhattan integration: releasePhase 0.85 left him hanging at 49 m for 14 s — a swing that never came down
@@ -521,19 +551,36 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 					I.bJump = true; I.bTrick = true; bKeepSwingThisFrame = true;
 					bSkyAuto = true; bSkyWasTrick = false; SkyTricksLeft = FMath::Max(0, SkyTricks - 1); SkyAutoT = 0.0;
 				}
-				else if (Every > 0 && AutoReleases % Every == 0) I.bTrick = true; // trick pressed together with this release
+				else if (Every > 0 && AutoReleases % Every == 0)
+				{ // trick pressed together with this release (round 12: with bTrickLaunch that release is a sky launch: same bookkeeping)
+					I.bTrick = true;
+					if (Traversal->bTrickLaunch)
+					{
+						LastSkyRelease = AutoReleases; LastSkyT = TravTime; SkyPeakH = 0.0; bKeepSwingThisFrame = true;
+						bSkyAuto = true; bSkyWasTrick = false; SkyTricksLeft = FMath::Max(0, SkyTricks - 1); SkyAutoT = 0.0;
+					}
+				}
 			}
 			else if (!bAutoHeld && bSkyAuto)
 			{ // sky phase: chain the next trick the moment one ends, then re-press once falling through skyRepressH
-				SkyAutoT += Dt; AutoGapT += Dt;
+				AutoGapT += Dt;
 				const bool bTrickNow = A.Sub == FName(TEXT("trick"));
+				// round 12: the flip now plays at the apex (armed on the climb): the skyMax clock runs only outside the climb / program,
+				// and the web is re-pressed in the program's final reach so the catch comes out of the reach (FLIPS_SPEC F8)
+				if (!Traversal->IsFlipArmed() && !bTrickNow) SkyAutoT += Dt;
+				bool bInReach = false;
+				{
+					float Ft = 0.f;
+					if (const FWebFlipProgram* FP = bTrickNow ? FlipProgramNow(Ft) : nullptr)
+						bInReach = FP->Segs.Num() > 0 && Ft >= FP->Dur() - FP->Segs.Last().Dur - 0.1f;
+				}
 				if (bSkyWasTrick && !bTrickNow && SkyTricksLeft > 0 && Traversal->VelM().Z > -12.0) { I.bTrick = true; --SkyTricksLeft; }
 				bSkyWasTrick = bTrickNow;
 				// round 10: re-press once he has fallen 12 m from the peak (or through skyRepressH): the long web after a sky launch
 				// then carries him down to the street (StartSwing: SkyRopeMax) instead of a web-less fall
 				const double HS = Traversal->HeightAboveStreet();
 				SkyPeakH = FMath::Max(SkyPeakH, HS);
-				if ((Traversal->VelM().Z < 0 && (HS <= SkyRepressH || HS <= SkyPeakH - 12.0) && !bTrickNow) || SkyAutoT >= SkyMax)
+				if ((Traversal->VelM().Z < 0 && (HS <= SkyRepressH || HS <= SkyPeakH - 12.0) && !bTrickNow) || SkyAutoT >= SkyMax || bInReach)
 				{
 					bAutoHeld = true; bSkyAuto = false;
 				}
@@ -586,6 +633,8 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.SwingAngle = Traversal->Anim.Swing.Angle;
 	CI.SwingT = Traversal->SwingTime();
 	CI.bSky = Traversal->IsSkyLaunch();
+	// round 12: the flip camera starts searching for a sky background ~0.35 s before an armed apex flip begins
+	CI.bFlipSoon = Traversal->IsFlipArmed() && Traversal->VelM().Z < double(Traversal->SkyTrickVz) + 5.0;
 	{ float Ft = 0.f; CI.bFlip = Traversal->Anim.Sub == N_trick && FlipProgramNow(Ft) != nullptr; } // round 11: flip camera
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 
@@ -925,7 +974,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1043,7 +1092,13 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		PcmLoc.X / 100.0, PcmLoc.Y / 100.0, PcmLoc.Z / 100.0, PcmRot.Pitch, PcmRot.Yaw, PcmFov, PxTop, PxBottom, PxLeft, PxRight,
 		HeadHipDz, LimbZ.IsEmpty() ? TEXT("-") : *LimbZ, BodyRope,
 		(Traversal->Strands[0].bActive && Traversal->Strands[0].ReleaseT < 0.f) || (Traversal->Strands[1].bActive && Traversal->Strands[1].ReleaseT < 0.f) ? 1 : 0, WallFrac, HeroOccl, bBehind ? -1.0 : 0.5 * (MinX + MaxX), PcmRot.Roll);
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols);
+	// round 12: armed apex flip, flip camera view search (yaw offset from behind, elevation below the hero, ring sky share of the
+	// chosen view), tallest roof near the last sky launch's flip and its solved peak (m over the street)
+	const FString Flip12 = FString::Printf(TEXT(",%s,%.3f,%.1f,%.1f,%.2f,%.1f,%.1f"),
+		Traversal->IsFlipArmed() ? *Traversal->ArmedFlipName().ToString() : TEXT(""), Cam.FlipK,
+		FMath::RadiansToDegrees(Cam.FlipYawOff), FMath::RadiansToDegrees(Cam.FlipElev), Cam.FlipSkyShare,
+		Traversal->SkyTallUsed, Traversal->SkyPeakWant);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12);
 }
 
 // ------------------------------------------------------------------ game mode

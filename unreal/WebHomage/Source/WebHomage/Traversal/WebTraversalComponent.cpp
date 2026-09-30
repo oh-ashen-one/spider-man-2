@@ -387,7 +387,14 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		}
 		else S.AirTapT = S.AirT;
 	}
-	if (S.TrickBuf > 0 && S.Sub != N_trick && S.Trick.IsNone() && HeightAboveFloor() > 4.0 && S.AirT > 0.05)
+	if (!S.ArmedFlip.IsNone() && (S.Vel.Z <= double(SkyTrickVz) || !S.bSky))
+	{ // round 12: the sky launch's flip program starts as the climb slows (apex hang)
+		const FName N = S.ArmedFlip;
+		S.ArmedFlip = NAME_None;
+		StartTrick(N);
+		Emit(N_airTrick);
+	}
+	if (S.TrickBuf > 0 && S.ArmedFlip.IsNone() && S.Sub != N_trick && S.Trick.IsNone() && HeightAboveFloor() > 4.0 && S.AirT > 0.05)
 	{ // round 04: trick on input during the air phase
 		StartTrick(ChooseTrick(I)); S.TrickBuf = 0; S.bAirTrickUsed = true;
 		Emit(N_airTrick);
@@ -398,7 +405,8 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	const bool bWDive = I.Move.Y > 0.5 && S.AirT > 0.3 && (S.Vel.Z < -7 || (S.bDive && S.Vel.Z < 0)) && S.Sub != N_trick && S.Sub != N_zipPull && HAF > 6;
 	S.bDive = (I.bDrop || bWDive) && S.AirT > 0.08 && HAF > 3;
 	double Gr = G;
-	if (!S.bDive && FMath::Abs(S.Vel.Z) < 3.5 && S.Sub != N_zipPull) Gr *= 0.55; // apex hang time
+	if (S.bSky && !S.bDive && S.Sub == N_trick && WebFlips::Find(S.Trick)) Gr *= SkyFlipGK; // round 12: the apex flip floats (stays over the roofs)
+	else if (!S.bDive && FMath::Abs(S.Vel.Z) < 3.5 && S.Sub != N_zipPull) Gr *= 0.55; // apex hang time
 	else if (S.bSky && !S.bDive && FMath::Abs(S.Vel.Z) < SkyHangVz) Gr *= SkyHangK; // round 10: sky-launch hang time
 	else if (S.bSky && !S.bDive && S.Vel.Z >= SkyHangVz) Gr *= SkyRiseK;              // round 10: sky-launch climb
 	if (S.bDive) Gr *= 1.55;
@@ -1335,8 +1343,82 @@ double UWebTraversalComponent::RoofBesideAhead(const FVector& Dir, double Ahead)
 	return FMath::Min(Top[0], Top[1]);
 }
 
+double UWebTraversalComponent::TallestRoofAlong(const FVector& From, const FVector& Dir, double D0, double D1, double Rad) const
+{
+	// round 12: down-ray grid (5 m) over every point within R m of the horizontal segment D0..D1 m along Dir; building hits only
+	FVector F = Flat(Dir);
+	if (F.SizeSquared() < 1e-4) return -1.0;
+	F.Normalize();
+	const FVector Rt(-F.Y, F.X, 0);
+	double Top = -1.0;
+	const double Step = 5.0;
+	for (double A = D0 - Rad; A <= D1 + Rad + 1e-3; A += Step)
+	{
+		const double Ac = FMath::Clamp(A, D0, D1);
+		for (double L = -Rad; L <= Rad + 1e-3; L += Step)
+		{
+			if ((A - Ac) * (A - Ac) + L * L > Rad * Rad) continue;
+			const FVector Q = From + F * A + Rt * L;
+			FTravHit Hr;
+			if (!TravWorld.Raycast(FVector(Q.X, Q.Y, From.Z + 350.0), FVector(0, 0, -1), 700.0, Hr) || Hr.bGround) continue;
+			Top = FMath::Max(Top, Hr.Point.Z);
+		}
+	}
+	return Top;
+}
+
+double UWebTraversalComponent::SkyV0For(double PeakOver, double Street, double FeetZNow) const
+{
+	const double Dh = FMath::Max(2.0, Street + PeakOver - FeetZNow);
+	const double Vh = double(SkyHangVz), GRise = G * double(SkyRiseK), GHang = G * double(SkyHangK);
+	const double HangH = Vh * Vh / (2.0 * GHang);
+	const double V0 = FMath::Sqrt(FMath::Max(0.0, 2.0 * GRise * FMath::Max(0.0, Dh - HangH)) + Vh * Vh);
+	return FMath::Clamp(V0, double(SkyLaunchVz), double(SkyLaunchVzMax));
+}
+
+double UWebTraversalComponent::SolveSkyPeak(const FVector& Pos, const FVector& HV, double HS, double Street, double RoofRule, double& TallOut, bool& bOk) const
+{
+	// round 12: the flip program is armed on the climb and plays from vz <= SkyTrickVz through the apex hang; the tallest roof
+	// within SkyTallR of that stretch of the path (predicted from the climb time, horizontal speed <= 32 m/s: the air drag cap)
+	// must sit SkyApexOver m under the apex. Two passes: the apex distance depends on the peak.
+	const double GRise = G * double(SkyRiseK);
+	const double HSe = FMath::Min(HS, 32.0);
+	double Peak = FMath::Max(RoofRule, double(SkyPeakMin));
+	TallOut = -1.0;
+	const double FeetNow = Pos.Z - H;
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		const double V0 = SkyV0For(Peak, Street, FeetNow);
+		const double TStart = FMath::Max(0.0, V0 - double(SkyTrickVz)) / GRise;            // program start (vz = SkyTrickVz)
+		const double D0 = HSe * TStart, D1 = D0 + HSe * 2.4;                                  // the longest program (backDouble 2.35 s)
+		const double Tall = TallestRoofAlong(Pos, HV, D0, D1, double(SkyTallR));
+		TallOut = Tall > -0.5 ? Tall - Street : -1.0;
+		Peak = FMath::Max(FMath::Max(RoofRule, double(SkyPeakMin)), TallOut > -0.5 ? TallOut + double(SkyApexOver) : 0.0);
+	}
+	bOk = Peak <= double(SkyPeakMax) + 1e-3;
+	return FMath::Clamp(Peak, double(SkyPeakMin), double(SkyPeakMax));
+}
+
+double UWebTraversalComponent::SkyPeakNeeded(bool& bReachable) const
+{
+	if (S.Clock - NeedCacheT < 0.1) { bReachable = bNeedCacheOk; return NeedCacheV; }
+	NeedCacheT = S.Clock;
+	FVector HV;
+	if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
+	const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+	const double Roof = RoofBesideAhead(HV);
+	const double Rule = Roof > -0.5 ? Roof - Street + double(SkyRoofOver) : double(SkyPeakMin);
+	double Tall = -1.0;
+	NeedCacheV = SolveSkyPeak(S.Pos, HV, HLen(S.Vel) + SWING_JUMP, Street, Rule, Tall, bNeedCacheOk);
+	bNeedCacheOk = NeedCacheV <= double(SkyPeakMax) - 4.0 && bNeedCacheOk; // margin: the release velocity differs a little
+	bReachable = bNeedCacheOk;
+	return NeedCacheV;
+}
+
 void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 {
+	// round 12 (critic r11): a trick pressed at a web release is a sky launch — the flip plays at an apex above the rooftops
+	if (!bJump && bTrickLaunch && !bLegacyTricks && S.TrickBuf > 0) bJump = true;
 	WebRelease();
 	// release inertia (user feedback #4b): the velocity at release carries over 1:1, plus a small boost along it
 	const double Sp = S.Vel.Size();
@@ -1371,27 +1453,31 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			const double Roof = RoofBesideAhead(HV);
 			bRoofDebug = false;
 			SkyRoofUsed = Roof > -0.5 ? Roof - Street : -1.0;
-			const double PeakOver = FMath::Clamp(Roof > -0.5 ? Roof - Street + double(SkyRoofOver) : double(SkyPeakMin), double(SkyPeakMin), double(SkyPeakMax));
+			// round 12: and SkyApexOver m over the tallest roof within SkyTallR m of the flip's stretch of the path
+			const double Rule = Roof > -0.5 ? Roof - Street + double(SkyRoofOver) : double(SkyPeakMin);
+			bool bReach = false;
+			const double PeakOver = SolveSkyPeak(S.Pos, HV, HLen(S.Vel), Street, Rule, SkyTallUsed, bReach);
 			SkyPeakWant = PeakOver;
-			const double Dh = FMath::Max(2.0, Street + PeakOver - FeetZ());
-			const double Vh = double(SkyHangVz), GRise = G * double(SkyRiseK), GHang = G * double(SkyHangK);
-			const double HangH = Vh * Vh / (2.0 * GHang);
-			const double V0 = FMath::Sqrt(FMath::Max(0.0, 2.0 * GRise * FMath::Max(0.0, Dh - HangH)) + Vh * Vh);
-			S.Vel.Z = FMath::Clamp(V0, double(SkyLaunchVz), double(SkyLaunchVzMax));
+			S.Vel.Z = SkyV0For(PeakOver, Street, FeetZ());
 			Emit(N_skyLaunch, float(PeakOver), float(SkyRoofUsed));
-			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV sky launch at (%.1f, %.1f, %.1f): street %.1f, lower roofline %.1f m over it, peak want %.1f m, vz %.1f m/s"),
-				S.Pos.X, S.Pos.Y, FeetZ(), Street, SkyRoofUsed, PeakOver, S.Vel.Z);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV sky launch at (%.1f, %.1f, %.1f): street %.1f, lower roofline %.1f m over it, tallest roof near the flip %.1f m, peak want %.1f m (%s), vz %.1f m/s"),
+				S.Pos.X, S.Pos.Y, FeetZ(), Street, SkyRoofUsed, SkyTallUsed, PeakOver, bReach ? TEXT("clears") : TEXT("CAPPED"), S.Vel.Z);
 		}
 	}
 	SetMode(EWebTravMode::Air, N_release); S.AirT = 0; S.ApexZ = FeetZ();
 	S.SwingCooldown = 0.05; S.RelT = 0;
 	// release trick (user r10): the common case (~80 %); a plain release never twice in a row. Needs room to play out.
 	const double HF = HeightAboveFloor();
-	const bool bRoom = HF > 5 && S.Vel.Size() > 9 && (S.Vel.Z > -5 || HF > 14);
+	const bool bRoom = S.bSky || (HF > 5 && S.Vel.Size() > 9 && (S.Vel.Z > -5 || HF > 14)); // round 12: a sky launch always has room (f4 probe: a launch off a roof skipped the arming and the buffered trick started on the climb)
 	// round 04: tricks only on input (trick pressed up to 0.4 s before the release, or during the air phase below)
 	FName TrickN = NAME_None; // round 11: FitFlip may answer "no room for any flip" -> plain release
 	if (bRoom && S.TrickBuf > 0) { TrickN = ChooseTrick(I); S.TrickBuf = 0; }
-	if (!TrickN.IsNone()) { StartTrick(TrickN); S.bLastTrick = true; }
+	S.ArmedFlip = NAME_None;
+	if (!TrickN.IsNone() && S.bSky && WebFlips::Find(TrickN))
+	{ // round 12: armed on the climb, started at vz <= SkyTrickVz (StepAir) so the whole program plays in the apex hang
+		S.ArmedFlip = TrickN; S.Trick = NAME_None; S.bLastTrick = true; // (no plain-release push: the program boosts at its snap)
+	}
+	else if (!TrickN.IsNone()) { StartTrick(TrickN); S.bLastTrick = true; }
 	else { S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K; }
 	S.bTrickNoUp = false; // user r10f: every release gains height again
 	const double HS = HLen(S.Vel), HL = FMath::Max(VmaxC(), Sp);
@@ -2401,7 +2487,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 			}
 		}
 	}
-	if (S.Mode != EWebTravMode::Air) S.bSky = false; // round 10: a sky launch ends at the next web / landing / wall / zip
+	if (S.Mode != EWebTravMode::Air) { S.bSky = false; S.ArmedFlip = NAME_None; } // round 10: a sky launch ends at the next web / landing / wall / zip
 	S.bGrounded = S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch;
 	if (S.Mode == EWebTravMode::Ground) S.DashCount = 0;
 	FinalQ = Orient(Dt);
