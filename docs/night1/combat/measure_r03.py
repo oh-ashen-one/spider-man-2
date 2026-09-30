@@ -98,12 +98,12 @@ for e in ev:
     elif s.startswith('hero hit by'):
         contacts.append((e['rt'], 'hero', s.split(' dmg')[0].replace('hero hit by ', '') + ' ->hero', False))
 
-def red_mask(v, vref, win):
+def red_mask(v, vref, win, arr=False):
     X0, Y0, X1, Y1 = win
     a = RGB[v, Y0:Y1, X0:X1].astype(np.int16); b = RGB[vref, Y0:Y1, X0:X1].astype(np.int16)
     dd = a - b
     m = (dd[..., 0] >= 45) & (dd[..., 0] - dd[..., 2] >= 35) & (dd[..., 0] >= dd[..., 1])
-    return int(m.sum())
+    return m if arr else int(m.sum())
 
 cres = []
 for rt, tag, label_, bHero in contacts:
@@ -126,10 +126,15 @@ for rt, tag, label_, bHero in contacts:
     cx, cy = (b[0] + b[2]) / 2 * W, (b[1] + b[3]) / 2 * H
     win = (int(max(0, cx - 0.22 * W)), int(max(0, cy - 0.30 * H)), int(min(W, cx + 0.22 * W)), int(min(H, cy + 0.30 * H)))
     fl = [round(red_mask(min(NV - 1, vc + k), vc - 1, win) / (W * H) * 100, 2) for k in range(0, 10)]
+    # 'gone': the pixels that show the flare at +3 (against +10, flare-free by construction) and how many of them still show it at +7 / +8 (against +10)
+    S3 = red_mask(min(NV - 1, vc + 3), min(NV - 1, vc + 10), win, True)
+    def left(k):
+        return float((red_mask(min(NV - 1, vc + k), min(NV - 1, vc + 10), win, True) & S3).sum()) / max(1, int(S3.sum()))
+    f8_resid = round(left(8), 3); f7_left = round(left(7), 3)
     newwhite = lambda v: float(((V[v] - V[vc - 1] > 45) & (V[v] > 200)).mean()) * 100
     crowded = any(rt + 0.01 < r2[0] < rt + 0.16 for r2 in contacts)   # another blow / hit lands within 9 frames: its own flare is still up at frame 8
     cres.append(dict(rt=round(rt, 3), label=label_, hero_blow=bHero, frame=vc, crop=[X0, Y0, X1, Y1], diffs=[round(x, 2) for x in seq], wdiffs=[round(x, 2) for x in wseq],
-                     crop_run=best_run, good_run=best_good, flinch_diff=round(cdiff(vc), 2), flare=fl, flare_peak=max(fl[:7]), flare_f8=fl[8],
+                     crop_run=best_run, good_run=best_good, flinch_diff=round(cdiff(vc), 2), flare=fl, flare_peak=max(fl[:7]), flare_f8=f8_resid, flare_f7=f7_left, flare_f8_vs_pre=fl[8],
                      flare_f9=fl[9], crowded=crowded, newwhite_peak=round(max(newwhite(v) for v in range(vc, vc + 7)), 2), variant=variant_at(rt),
                      shake_px=round(max(abs(byf[f]['shk'][0]) + abs(byf[f]['shk'][1]) for f in range(fc, fc + 6) if f in byf), 2) if 'shk' in r else None))
 okc = [c for c in cres if 'crop_run' in c]
@@ -189,7 +194,7 @@ res = dict(video=vid, label=label, lag_frames=L, lag_calib_mean_hero_diff=None i
            hero_hit_contacts=sum(not c['hero_blow'] for c in okc), hero_hit_crop_run_ge3=sum(c['crop_run'] >= 3 for c in okc if not c['hero_blow']),
            flare_peak_min=min((c['flare_peak'] for c in hb), default=None), flare_peak_median=float(np.median([c['flare_peak'] for c in hb])) if hb else None,
            flare_peak_max=max((c['flare_peak'] for c in hb), default=None), flare_in_1_3=sum(1 <= c['flare_peak'] <= 3 for c in hb),
-           flare_f8_max=max((c['flare_f8'] for c in hb if not c['crowded']), default=None), flare_gone_by_8=sum(c['flare_f8'] <= max(0.5, 0.2 * c['flare_peak']) for c in hb if not c['crowded']), flare_uncrowded=sum(not c['crowded'] for c in hb),
+           flare_f8_max=max((c['flare_f8'] for c in hb if not c['crowded']), default=None), flare_f7_median=float(np.median([c['flare_f7'] for c in hb])) if hb else None, flare_gone_by_8=sum(c['flare_f8'] <= 0.2 for c in hb if not c['crowded']), flare_uncrowded=sum(not c['crowded'] for c in hb),
            whole_frozen_pct_60fps=round(frozen60, 2), whole_frozen_pct_30fps=round(frozen30, 2), whole_diff_median=round(float(np.median(wds)), 2),
            whole_diff_in_hold_min=round(float(wds[hero_held].min()), 2) if hero_held.any() else None,
            whole_diff_in_hold_p10=round(float(np.percentile(wds[hero_held], 10)), 2) if hero_held.any() else None, held_frames=int(hero_held.sum()),
@@ -216,7 +221,7 @@ md = [f'# P5 combat r03: measurements (`measure_r03.py`, {label})', '', '> Homag
       f'| whole-frame diff during the hero hold ({R["held_frames"]} held frames) | >= 1.0 | min {R["whole_diff_in_hold_min"]}, 10th percentile {R["whole_diff_in_hold_p10"]} |',
       f'| whole-frame frozen frames (diff < 0.3) | <= 3 % | **{R["whole_frozen_pct_30fps"]} % at 30 fps**, {R["whole_frozen_pct_60fps"]} % at 60 fps |',
       f'| red-orange flare area, peak over frames 0..6 | 1-3 % of the frame | min {R["flare_peak_min"]}, median {R["flare_peak_median"]}, max {R["flare_peak_max"]} %; {R["flare_in_1_3"]} / {R["hero_blows_measured"]} in 1-3 % |',
-      f'| flare gone by frame 8 (area <= max(0.5 %, 20 % of its peak): the noise floor of the mask with a moving camera is 0.1-0.5 %) | every blow | {R["flare_gone_by_8"]} / {R["flare_uncrowded"]} blows without another contact within 9 frames (max at frame 8: {R["flare_f8_max"]} %) |',
+      f'| flare gone by frame 8 (of the pixels that show the flare at frame +3, at most 20 % still do at frame +8; frame +7 median {R["flare_f7_median"]}; measured against frame +10 because frame +8 versus the frame before the contact is dominated by moving red things such as the hero suit, the warning markers and aim lines) | every blow | {R["flare_gone_by_8"]} / {R["flare_uncrowded"]} blows without another contact within 9 frames (worst share left at frame 8: {R["flare_f8_max"]}) |',
       f'| camera hit shake | 2-4 px | max applied {R["shake_px_max"]} px (1080p) |',
       f'| victim pushed >= 0.5 m within 0.3 s (3D) | every blow | {rsum["push03_ge_0_5"]} / {rsum["hero_blows"]} (min {rsum["push03_min"]} m) |',
       f'| victim rotates >= 30 deg within 0.3 s | every blow | {rsum["rot03_ge_30"]} / {rsum["rot_measured"]} (min {rsum["rot03_min"]} deg) |',

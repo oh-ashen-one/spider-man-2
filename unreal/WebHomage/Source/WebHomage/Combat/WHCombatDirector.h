@@ -142,6 +142,8 @@ public:
 	bool bShakeSweep = false; int32 ShakeSweepN = 0; // -WHCmbSweep=1: cycle shake / flare variants per blow (experiment run)
 	FVector BaseCamP = FVector::ZeroVector; FRotator BaseCamR = FRotator::ZeroRotator; double BaseCamFov = 75;   // framing camera before the hit shake
 	FRandomStream ShakeRng = FRandomStream(777);
+	double VigBase = 0.3, VigAmp = 0.0;             // r03 impact vignette (OFF by default: never rendered yet): the map's vignette (0.3) ramps up by VigAmp over the hold, a whole-frame change that leaves the middle alone; -WHCmbVigA=0.5
+	void ImpactVignette(class UCameraComponent* Cam) const;
 	mutable double ShakeOutPx = 0, ShakeOutPx2 = 0; // the shake applied this frame: roll / zoom edge displacement in 1080p px (logged as 'shk')
 	void Slowmo(double Dur, double Scale = 0.3, double Ease = 0.25);
 	void Banner(const FString& S) { LogEvent(TEXT("banner ") + S); }

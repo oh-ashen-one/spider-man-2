@@ -74,6 +74,7 @@ void AWHCombatDirector::Init(AWHCombatHero* InHero)
 	FParse::Value(Cmd, TEXT("WHCmbShakePx="), HitShakePx);   // r03 experiments / tuning: hit shake px (1080p) and Hz, flare size factor, per-blow variant sweep
 	FParse::Value(Cmd, TEXT("WHCmbShakeHz="), HitShakeHz);
 	FParse::Value(Cmd, TEXT("WHCmbHoldR="), HoldRadius);
+	FParse::Value(Cmd, TEXT("WHCmbVigA="), VigAmp);
 	{ double Fi = 1.0; if (FParse::Value(Cmd, TEXT("WHCmbFlareI="), Fi)) Fx.FlareI = Fi; }
 	{ double Fk = 1.0; if (FParse::Value(Cmd, TEXT("WHCmbFlareK="), Fk)) Fx.FlareK = Fk; int32 Sw = 0; if (FParse::Value(Cmd, TEXT("WHCmbSweep="), Sw)) bShakeSweep = Sw != 0; }
 	{ FString LookSpec; if (FParse::Value(Cmd, TEXT("WHCmbLook="), LookSpec, false) && !LookSpec.IsEmpty()) ApplyLook(LookSpec); }
@@ -934,6 +935,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		Cam->SetWorldLocationAndRotation(BaseCamP * 100.0, R); Cam->SetFieldOfView(float(Fv));
 		LastCamPos = BaseCamP; LastCamRot = R; LastFov = float(Fv);
 		CamPosM = BaseCamP; CamRotF = R; CamFovF = Fv; Fx.SetCam(BaseCamP, Fv);
+		ImpactVignette(Cam);
 		return;
 	}
 	CamW = Damp(CamW, Want, Want > 0 ? 2.0 : 1.3, RDt);
@@ -1127,6 +1129,19 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	Cam->SetFieldOfView(float(ShFov));
 	LastCamPos = OutP; LastCamRot = OutR; LastFov = float(ShFov); bCamLast = true;
 	CamPosM = OutP; CamRotF = OutR; CamFovF = ShFov; Fx.SetCam(OutP, OutFov);
+	ImpactVignette(Cam);
+}
+
+// r03 impact vignette: over the hold the vignette ramps from the map's 0.3 up by VigAmp (linear per frame, so every hold frame changes), and eases back in 2 frames.
+// It darkens the frame EDGES only: the whole-frame diff stays >= 1.0 during a hold while the hero / victim in the middle of the frame stay put.
+void AWHCombatDirector::ImpactVignette(UCameraComponent* Cam) const
+{
+	if (!Cam || VigAmp <= 0.0) return;   // off: the camera's post-process settings are left untouched
+	const double K = FMath::Clamp((ShakeUntil - RTime) * 30.0, 0.0, 1.0);
+	const double Ramp = FMath::Clamp((RTime - ShakeStart) * 60.0 / 6.0, 0.0, 1.0);
+	Cam->PostProcessSettings.bOverride_VignetteIntensity = K > 0.0;
+	Cam->PostProcessSettings.VignetteIntensity = float(VigBase + VigAmp * K * Ramp);
+	Cam->PostProcessBlendWeight = K > 0.0 ? 1.0f : 0.0f;
 }
 
 // r03 hit shake: a RADIAL shake of HitShakePx (1080p px displacement at the frame edge) at HitShakeHz, from the contact frame for the hold + 2 frames (full for
