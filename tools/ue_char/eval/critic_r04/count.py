@@ -7,7 +7,7 @@ for p in sys.argv[1:]:
         ok,im=cap.read()
         if not ok: break
         if i % int(round(fps/2))==0:
-            r=m.predict(im,classes=[0],conf=0.35,verbose=False,device='mps',imgsz=1920)[0]
+            r=m.predict(im,classes=[0],conf=0.35,verbose=False,device=__import__('os').environ.get('YOLO_DEVICE','mps'),imgsz=1920)[0]
             b=r.boxes.xyxy.cpu().numpy(); h=(b[:,3]-b[:,1])/im.shape[0]
             P.append(len(h)); P3.append(int((h>=0.03).sum())); HT+= list(h)
         i+=1

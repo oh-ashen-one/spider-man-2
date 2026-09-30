@@ -611,6 +611,9 @@ if 'map' in STEPS:
         sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-35, -40, 0), 'Sun')
         sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
         sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True)
+        # round 06: the round-05 'black shards' in the thug hoodie collar are hard-edged SUN shadows of the hood rim / mask hem (they vanish with shadows
+        # off, docs/night1/characters/round-06/evidence/collar_shadow_test.jpg), not geometry: a wider sun disc gives a real penumbra
+        sc.set_editor_property('light_source_angle', float(ARGS.get('sun_angle', 3.0)))
         spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
         sky = spawn(unreal.SkyLight, (0, 0, 300), label='SkyLight')
         skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
@@ -684,7 +687,7 @@ if 'map' in STEPS:
         for fi, fyaw in enumerate((0, 90, 180, 270)):
             fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'EnemyFill_%d' % fi)   # rot = (yaw, pitch, roll)
             fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
-            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 0.8))); fc.set_editor_property('cast_shadows', False)
+            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 1.4))); fc.set_editor_property('cast_shadows', False)
             fc.set_editor_property('lighting_channels', only1)
         # civilians: 12 distinct crowd people on the south sidewalk, each its own walk style at that style's foot-locked speed, both
         # directions, gait phases spread by start position; a mesh-less tracker walks with them for the tracking camera

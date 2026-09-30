@@ -3,7 +3,7 @@ from ultralytics import YOLO
 m=YOLO('/Users/midir/sm2-n1/_scratch/city/yolo/yolo11x-seg.pt')
 for p in sys.argv[1:]:
     im=cv2.imread(p); H,W=im.shape[:2]
-    r=m.predict(im,classes=[0],conf=0.35,verbose=False,device='mps',imgsz=1920,retina_masks=True)[0]
+    r=m.predict(im,classes=[0],conf=0.35,verbose=False,device=__import__('os').environ.get('YOLO_DEVICE','mps'),imgsz=1920,retina_masks=True)[0]
     hsv=cv2.cvtColor(im,cv2.COLOR_BGR2HSV).astype(int)
     tot=0; rep=[]
     for k,mk in enumerate(r.masks.data.cpu().numpy()):
