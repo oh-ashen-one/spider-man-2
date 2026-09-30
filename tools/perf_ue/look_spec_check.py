@@ -79,6 +79,7 @@ def main():
                     dy, ok(-32 <= dy <= -15), dbr, ok(abs(dbr) <= 10), hz, ok(hz >= 3) if d['file'].startswith('midday') else '(n/a)', fr, ok(5 <= fr <= 35)))
     L += ['', '### Glass p10 (L17: >= 20; glass-only boxes)', '', '| still | box | p10 Y | mean Y | B-R | L17 |', '|---|---|---|---|---|---|']
     for d in rows:
+        if d['file'].startswith('night_'): continue   # L17 is a daylight line
         for k, g in (d.get('glass') or {}).items(): L.append('| %s | %s | %.1f | %.1f | %+.1f | %s |' % (d['file'], k, g['p10'], g['mean'], g['BR'], 'yes' if g['p10'] >= 20 else 'NO'))
     L += ['', '### Night street views (L13 / L14)', '', '| still | lit blobs (L13 >= 5) | bottom-third p10 (L14 15..30) | bottom-third p90 (L14 >= 100) |', '|---|---|---|---|']
     for d in rows:

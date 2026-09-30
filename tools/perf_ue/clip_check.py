@@ -6,6 +6,7 @@ clipped = any channel >= 250, B-R = mean(B) - mean(R)), measured on frames decod
 usage: clip_check.py <clip.mp4> [--every 3] [--json out.json]"""
 import argparse, json, subprocess, sys
 import numpy as np
+from scipy import ndimage as ndi
 
 def frames(path, every):
     W, H = 960, 540
@@ -22,13 +23,17 @@ def main():
     rows = []
     for f in frames(a.clip, a.every):
         Y = 0.2126 * f[..., 0] + 0.7152 * f[..., 1] + 0.0722 * f[..., 2]
-        rows.append({'mean': float(Y.mean()), 'br': float((f[..., 2] - f[..., 0]).mean()), 'lt10': float((Y < 10).mean() * 100), 'clip': float((f.max(axis=2) >= 250).mean() * 100)})
+        lap = np.abs(ndi.laplace(ndi.gaussian_filter(Y, 0.8)))          # L18: motion blur = edge sharpness / centre sharpness (mean |Laplacian|; centre = middle 40 % x 40 %, edge = outer 20 % on each side)
+        H, W = lap.shape; cen = lap[int(H * .3):int(H * .7), int(W * .3):int(W * .7)].mean()
+        edge = np.concatenate([lap[:, :int(W * .2)].ravel(), lap[:, int(W * .8):].ravel(), lap[:int(H * .2), int(W * .2):int(W * .8)].ravel(), lap[int(H * .8):, int(W * .2):int(W * .8)].ravel()]).mean()
+        rows.append({'mean': float(Y.mean()), 'br': float((f[..., 2] - f[..., 0]).mean()), 'lt10': float((Y < 10).mean() * 100), 'clip': float((f.max(axis=2) >= 250).mean() * 100), 'ec': float(edge / max(cen, 1e-6))})
     if not rows: sys.exit('no frames decoded')
     A = {k: np.array([r[k] for r in rows]) for k in rows[0]}
     out = {'clip': a.clip, 'frames_measured': len(rows), 'every': a.every,
            'mean_Y': {'mean': float(A['mean'].mean()), 'min': float(A['mean'].min()), 'max': float(A['mean'].max())},
            'B_minus_R': {'mean': float(A['br'].mean()), 'min': float(A['br'].min()), 'max': float(A['br'].max()), 'p10': float(np.percentile(A['br'], 10)), 'p90': float(np.percentile(A['br'], 90))},
-           'frames_outside_pm13_pct': float(((A['br'] < -13) | (A['br'] > 13)).mean() * 100), 'near_black_pct_mean': float(A['lt10'].mean()), 'clipped_pct_mean': float(A['clip'].mean())}
+           'frames_outside_pm13_pct': float(((A['br'] < -13) | (A['br'] > 13)).mean() * 100), 'near_black_pct_mean': float(A['lt10'].mean()), 'clipped_pct_mean': float(A['clip'].mean()),
+           'L18_edge_over_centre_sharpness': {'p10': float(np.percentile(A['ec'], 10)), 'p50': float(np.percentile(A['ec'], 50)), 'p90': float(np.percentile(A['ec'], 90))}}
     print(json.dumps(out, indent=1))
     if a.json: json.dump({**out, 'per_frame': rows}, open(a.json, 'w'), indent=1)
 

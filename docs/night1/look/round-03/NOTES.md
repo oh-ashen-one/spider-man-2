@@ -1,0 +1,43 @@
+# Look round capture notes (neutral facts only)
+
+> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+
+Everything below was rendered by the running game (`Scripts/run_game.sh`: standalone `-game`, offscreen, true back-buffer size; every run inside `gpu_slot.sh capture`), not by an editor viewport.
+Presets are defined in `unreal/WebHomage/Scripts/look_presets.json` (midday / golden / night) and built by `unreal/WebHomage/Scripts/build_look.py`.
+Camera positions are browser metres (x east, y up, z south); the UE position is (100 x, 100 z, 100 y) cm. Stills are JPEG converted from the PNG screenshot taken at the given game time.
+
+## Stills
+
+| file | preset | view | output | internal resolution | camera pos (m) | camera target (m) | fov | game time (s) |
+|---|---|---|---|---|---|---|---|---|
+| stills/golden_S1_1920x1080.jpg | golden | S1_avenue_street | 1920x1080 | 100% of output | [246, 2.0, 150] | [251, 16, -300] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S2_1920x1080.jpg | golden | S2_avenue_swing | 1920x1080 | 100% of output | [243, 42, 185] | [252, 18, -350] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S3_1920x1080.jpg | golden | S3_rooftop_watertower | 1920x1080 | 100% of output | [166, 48.5, -122] | [158, 51, -150] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S4_1920x1080.jpg | golden | S4_perch_skyline | 1920x1080 | 100% of output | [182, 306, -92] | [-120, 150, -470] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S5_1920x1080.jpg | golden | S5_timessq_south | 1920x1080 | 100% of output | [-12, 6, -255] | [0, 48, -40] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S6_1920x1080.jpg | golden | S6_timessq_street | 1920x1080 | 100% of output | [8, 1.8, -110] | [-4, 26, -330] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S7_1920x1080.jpg | golden | S7_sunset_crosstown | 1920x1080 | 100% of output | [300, 30, -160] | [-300, 22, -160] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/golden_S8_1920x1080.jpg | golden | S8_aerial_midtown | 1920x1080 | 100% of output | [420, 160, 220] | [0, 20, -320] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S1_1920x1080.jpg | midday | S1_avenue_street | 1920x1080 | 100% of output | [246, 2.0, 150] | [251, 16, -300] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S2_1920x1080.jpg | midday | S2_avenue_swing | 1920x1080 | 100% of output | [243, 42, 185] | [252, 18, -350] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S3_1920x1080.jpg | midday | S3_rooftop_watertower | 1920x1080 | 100% of output | [166, 48.5, -122] | [158, 51, -150] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S4_1920x1080.jpg | midday | S4_perch_skyline | 1920x1080 | 100% of output | [182, 306, -92] | [-120, 150, -470] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S5_1920x1080.jpg | midday | S5_timessq_south | 1920x1080 | 100% of output | [-12, 6, -255] | [0, 48, -40] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S6_1920x1080.jpg | midday | S6_timessq_street | 1920x1080 | 100% of output | [8, 1.8, -110] | [-4, 26, -330] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S7_1920x1080.jpg | midday | S7_sunset_crosstown | 1920x1080 | 100% of output | [300, 30, -160] | [-300, 22, -160] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/midday_S8_1920x1080.jpg | midday | S8_aerial_midtown | 1920x1080 | 100% of output | [420, 160, 220] | [0, 20, -320] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S1_1920x1080.jpg | night | S1_avenue_street | 1920x1080 | 100% of output | [246, 2.0, 150] | [251, 16, -300] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S2_1920x1080.jpg | night | S2_avenue_swing | 1920x1080 | 100% of output | [243, 42, 185] | [252, 18, -350] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S3_1920x1080.jpg | night | S3_rooftop_watertower | 1920x1080 | 100% of output | [166, 48.5, -122] | [158, 51, -150] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S4_1920x1080.jpg | night | S4_perch_skyline | 1920x1080 | 100% of output | [182, 306, -92] | [-120, 150, -470] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S5_1920x1080.jpg | night | S5_timessq_south | 1920x1080 | 100% of output | [-12, 6, -255] | [0, 48, -40] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S6_1920x1080.jpg | night | S6_timessq_street | 1920x1080 | 100% of output | [8, 1.8, -110] | [-4, 26, -330] | 80 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S7_1920x1080.jpg | night | S7_sunset_crosstown | 1920x1080 | 100% of output | [300, 30, -160] | [-300, 22, -160] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+| stills/night_S8_1920x1080.jpg | night | S8_aerial_midtown | 1920x1080 | 100% of output | [420, 160, 220] | [0, 20, -320] | 75 | tour: 4 s settle per pose (first pose 10 s), >= 90 frames |
+
+## Clips
+
+| file | preset | map | output | internal resolution | frames | seconds | bytes | time step | script |
+|---|---|---|---|---|---|---|---|---|---|
+
+Clip frames are rendered offline at a fixed 1/60 s step (`-benchmark -fps=60 -dumpmovie`), so a clip says nothing about real-time frame rate; see `PERF.md` for measured frame times.

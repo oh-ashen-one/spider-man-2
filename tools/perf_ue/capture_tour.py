@@ -98,7 +98,7 @@ def main():
                 out = '%s/stills/%s.jpg' % (rnd, name)
                 if not a.no_jpeg: subprocess.run(['sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', str(a.jpeg_q), got[sid], '--out', out], capture_output=True)
                 notes.append({'kind': 'still', 'file': os.path.relpath(out, rnd), 'preset': preset, 'view': s['id'], 'desc': s['desc'], 'output': res,
-                              'internal': '%s%% of output' % a.sp, 'camera_pos_m': s['pos'], 'camera_target_m': s['target'], 'fov_deg': s.get('fov', 70), 'game_time_s': None,
+                              'internal': '%s%% of output' % a.sp, 'camera_pos_m': s['pos'], 'camera_target_m': s['target'], 'fov_deg': s.get('fov', 70), 'game_time_s': 'tour: %g s settle per pose (first pose %g s), >= %d frames' % (a.settle, a.first_settle, a.min_frames),
                               'gpu_util_before_pct': None, 'wall_s': None, 'method': 'shot tour (one session per preset and resolution)'})
     import capture_looks
     capture_looks.flush(rnd, notes, json.load(open(os.path.join(UE, 'Scripts', 'city_shots.json'))))
