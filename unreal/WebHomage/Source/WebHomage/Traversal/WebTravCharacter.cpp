@@ -766,8 +766,17 @@ void AWebTravCharacter::UpdateHeroFill()
 	FVector To = CamCm - Hero;
 	To = To.SizeSquared() > 1.0 ? To.GetSafeNormal() : FVector(-1, 0, 0);
 	HeroFill->SetWorldLocation(Hero + To * (HeroFillDist * 100.0) + FVector(0, 0, HeroFillUp * 100.0));
-	const double K = FMath::Clamp(Cam.FlipK, 0.0, 1.0);
-	HeroFill->SetIntensity(float(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K)));
+	double K = FMath::Clamp(Cam.FlipK, 0.0, 1.0);
+	// round 15 (rendered f2 4.73 s: with the sun now behind the camera the sunlit hero + the 18000 cd flip fill read pale / clipped): the
+	// fill only lifts a BACKLIT hero -- scaled by how much the view looks toward the sun, down to HeroFillFrontK x base when front-lit
+	double Scale = 1.0;
+	if (Cam.bHaveSun)
+	{
+		const double B = FMath::SmoothStep(-0.3, 0.4, FVector::DotProduct(-To, Cam.SunDir)); // 1 = looking into the sun (backlit hero)
+		K *= B;
+		Scale = FMath::Lerp(double(HeroFillFrontK), 1.0, B);
+	}
+	HeroFill->SetIntensity(float(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K) * Scale));
 }
 
 const FWebFlipProgram* AWebTravCharacter::FlipProgramNow(float& OutT) const

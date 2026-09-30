@@ -86,6 +86,8 @@ protected:
 	 */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillCd = 5000.f;
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFlipCd = 18000.f;
+	/** Round 15: fill multiplier when the hero is front-lit by the sun (camera looking away from it). */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFrontK = 0.3f;
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillDist = 1.8f;
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillUp = 0.4f;
 
