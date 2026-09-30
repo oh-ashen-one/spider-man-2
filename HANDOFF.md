@@ -20,14 +20,14 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 |---|---|---|---|
 | P3 Traversal + flips | `night1/traversal` | r15 FAILS (5); **flips 7**; camera stuck at 5 for r12–r15 → Fable director wrote `docs/night1/traversal/TRICK_CAMERA_SPEC.md` | **r16 running (Sonnet, per director)**: implement TRICK_CAMERA_SPEC (held 3/4-behind chase), critic scores against it |
 | P2 Characters | `night1/characters` | r7 FAILS (4); crowd avoidance + clean key; civilians/IQ 5 | **r8 running (Sonnet)**: ORIGINAL suit design (legal: r7 critic found a copied official layout) + sealed lenses |
-| F 4K/60 perf | `night1/perf` | r4 **APPROACHES** (p50 62 fps, p95 55.4 at 4K output / 1080p internal, look restored; merged r3+r4) | **r5 running (Opus)**: merge tree RT instances into proxies, in-game p95 ≤ 17.9 ms, S1 SSIM ≥ 0.97, measure with traffic + crowd |
+| F 4K/60 perf | `night1/perf` | r5 **APPROACHES**: no-life p95 passes (17.8 ms); **life-on fails** (p50 58.5 fps, p95 ~50 fps); tree RT proxies | **r6 running (Opus)**: Lumen probe gather −1.3 ms, traffic/crowd cost, pass with life on |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
 | P6 City life | `night1/life` | r2 FAILS (4); r3 code only (no renders) | r3 renders: both sidewalks populated at every camera height |
 | P5 Combat | `night1/combat` | r2 FAILS (4); r3 judged, r4 WIP | resume r4 from HANDOFF (local hit-stop, starburst FX) |
 | P4 Look | `night1/look` | r2 FAILS (4); r3 presets v2 captured | r3 critic / r4 |
 | Water | merged (Opus A/B winner) | — | — |
 
-Merged into integration so far: traversal ≤ r15, city ≤ r9, life ≤ r3, perf ≤ r4. Characters ≤ r7 and traversal ≤ r13 merged after their critics.
+Merged into integration so far: traversal ≤ r15, city ≤ r9, life ≤ r3, perf ≤ r5. Characters ≤ r7 and traversal ≤ r13 merged after their critics.
 
 ## How rounds run
 
