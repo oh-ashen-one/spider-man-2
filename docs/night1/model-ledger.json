@@ -301,6 +301,48 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 10,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    6,
+    6,
+    5,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 11,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    6,
+    6,
+    7,
+    6,
+    6,
+    6
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 12,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    5,
+    5,
+    6,
+    7,
+    6,
+    6
+   ]
   }
  ],
  "agents": [

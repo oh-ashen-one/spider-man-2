@@ -1,5 +1,5 @@
 {
- "updated": "23:47",
+ "updated": "06:15",
  "phase": "Night 1 \u2014 overnight run resumed (owner approved the showcase)",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -53,10 +53,10 @@
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "fixing",
-   "round": 10,
-   "verdict": "R9: FAILS (arc 5, camera 6, web 4, moves 5, body 5) \u2014 best yet",
-   "gap": "Rhythm/altitude: rope 52\u201367% on screen (spec 25\u201345%), no long trick phase, never reaches rooflines; moving into the real lit city"
+   "state": "active",
+   "round": 12,
+   "verdict": "fails \u2014 lowest 5 (Opus 5.5)",
+   "gap": "Make tricks continuous with the swing chain: flip within 0.25 s of release, next web within 0.3 s, no one-frame camera cuts."
   },
   {
    "id": "P4",
@@ -418,6 +418,11 @@
    "title": "Browser baseline \u2014 carBlock",
    "src": "docs/night1/baseline/clips/swingChain.mp4",
    "caption": "the browser build today (before)"
+  },
+  {
+   "title": "Traversal r12 \u2014 pike to swan over the roofs",
+   "src": "docs/night1/traversal/round-12/f2_sky_pikeSwan.mp4",
+   "caption": "gymnast flips round 2 (Opus 5.5): held pike then swan against the sky"
   }
  ],
  "critic": [
@@ -612,6 +617,30 @@
    "verdict": "fails",
    "gap": "Midday per spec (mean 83\u201397, no clipping), far city takes the sky hue 15\u201332 luma below it, real night (no uniform facade fill).",
    "notes": "Night street fixed: mean 10\u219255, near-black 84%\u21920.15%, 12 lit pools; round 2 far better than round 1. Night costs ~6.5 ms (Lights pass)."
+  },
+  {
+   "t": "06:15",
+   "piece": "P3 Traversal",
+   "round": 10,
+   "verdict": "fails",
+   "gap": "Flips too fast (~900\u00b0/s), no held shape, seen from behind; build tricks as 3 beats with a held pencil/swan against sky.",
+   "notes": "Round 10 finished (resumed): sky launch, long web back to street, swing-to-wall-run."
+  },
+  {
+   "t": "06:15",
+   "piece": "P3 Traversal",
+   "round": 11,
+   "verdict": "fails",
+   "gap": "Tricks happen low in the canyon against facades; launch from an apex above the roofs with sky behind the hero.",
+   "notes": "Gymnast flips v1 (owner request): owner clip measured into FLIPS_SPEC; Blender-keyed tuck/pike/pencil/swan shapes, eased rotation, leg lag, corkscrew, wall-run top-out flip; mouse 0.011 + wh.MouseSensitivity. Flips 4\u21926."
+  },
+  {
+   "t": "06:15",
+   "piece": "P3 Traversal",
+   "round": 12,
+   "verdict": "fails",
+   "gap": "Make tricks continuous with the swing chain: flip within 0.25 s of release, next web within 0.3 s, no one-frame camera cuts.",
+   "notes": "Apex sky launches: sky behind the hero in 95\u2013100% of trick frames (was 3\u201315%). New problems: 1.7 s posed rise, 1.3 s dive, one-frame camera cut. Rounds 13\u201314 on Opus."
   }
  ],
  "perf": [
@@ -881,6 +910,10 @@
   {
    "t": "23:47",
    "text": "Overnight resume. Weekly usage at 50%: builders lean on Sonnet 5.5 xhigh, Opus 5.5 high for flips + every critic, Fable 5.1 only if a piece stalls or for final acceptance. Up to 3 rounds per piece (perf 2), engine cap auto-tuned 2\u20134, safety watchdog on."
+  },
+  {
+   "t": "06:15",
+   "text": "Traversal rounds 10\u201312 done (3 blind Opus critics). Flips 4\u21926\u21926: clean held shapes and sky-backed apex flips now; next gap is flow (no pause before/after the trick, no camera cut). Rounds 13\u201314 launched on Opus 5.5. Merged into the integration branch."
   }
  ]
 }
