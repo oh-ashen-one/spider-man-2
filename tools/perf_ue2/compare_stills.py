@@ -32,7 +32,9 @@ def main():
         ya, yb = luma(As), luma(Bs)
         mse = float(((As.astype(np.float64) - Bs.astype(np.float64)) ** 2).mean())
         d = np.abs(ya - yb)
-        res[f[:-4]] = {'psnr_db': round(10 * np.log10(255 ** 2 / max(mse, 1e-9)), 2), 'ssim_luma': round(ssim(ya, yb), 4),
+        lt10 = lambda y: round(float((y < 10).mean() * 100), 2)
+        clip = lambda im: round(float((im.max(axis=2) >= 250).mean() * 100), 2)  # look-spec L1-L5 columns: near-black Y < 10, any channel >= 250
+        res[f[:-4]] = {'lt10_ref': lt10(ya), 'lt10_test': lt10(yb), 'clip_ref': clip(As), 'clip_test': clip(Bs), 'psnr_db': round(10 * np.log10(255 ** 2 / max(mse, 1e-9)), 2), 'ssim_luma': round(ssim(ya, yb), 4),
                        'mean_abs_dY': round(float(d.mean()), 2), 'frac_dY_gt12': round(float((d > 12).mean()), 4),
                        'meanY_ref': round(float(ya.mean()), 1), 'meanY_test': round(float(yb.mean()), 1)}
         sbs = np.concatenate([cv2.resize(As, (960, 540)), cv2.resize(Bs, (960, 540))], axis=1)

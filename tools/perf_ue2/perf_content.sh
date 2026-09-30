@@ -19,6 +19,7 @@ case "${1:-}" in
     if [ ! -f "$BK/.done" ]; then
       mkdir -p "$BK"; for f in "${FILES[@]}"; do mkdir -p "$BK/$(dirname "$f")"; cp -R "$C/$f" "$BK/$f"; done; touch "$BK/.done"; echo "backed up to $BK"
     fi
+    while pgrep -f "sm2-n1/perf/tools/perf_ue2/[s]tills.sh" > /dev/null || pgrep -f "sm2-n1/perf/unreal/WebHomage/WebHomage.uproject" > /dev/null; do echo "my stills / game still running, waiting 20 s"; sleep 20; done
     wait_slot
     SM2_PERF_APPLY="$STEPS" "$UEBIN" "$UE/WebHomage.uproject" -run=pythonscript -script="$WT/tools/perf_ue2/perf_apply.py" -unattended -nullrhi -RenderOffScreen -NoSound \
       -abslog="/Users/midir/sm2-n1/_scratch/perf/logs/perf_apply.log" > /Users/midir/sm2-n1/_scratch/perf/logs/perf_apply.stdout 2>&1
