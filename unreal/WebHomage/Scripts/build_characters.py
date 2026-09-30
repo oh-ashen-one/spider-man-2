@@ -501,6 +501,10 @@ if 'rename' in STEPS:
 # ------------------------------------------------------------------------------------------------ round 09: re-import of the street enemies only
 # (the tee's see-through lip-crease slivers are flipped by people/mask.py flip_seethrough; build_people.sh rewrote the GLBs): a partial build without the wipe of 'clean'
 if 'peoplemesh' in STEPS:
+    for k in PEOPLE:        # base colour atlases (round 09: the thug's nape texels, tools/ue_char/people/nape_fix.py)
+        import_tex(ART + '/people/%s_basecolor.png' % k.lower(), ROOT + '/People/Textures', 'T_Street_%s_BaseColor' % k, 'srgb')
+    for k, v in PEOPLE_TINTS:
+        import_tex(ART + '/people/%s_%s_basecolor.png' % (k.lower(), v), ROOT + '/People/Textures', 'T_Street_%s%s_BaseColor' % (k, v), 'srgb')
     names_ = ['SK_Street_' + k for k in PEOPLE] + ['SK_Street_%s_%s' % kw for kw in PEOPLE_ARMED]
     for n_ in names_:
         if os.path.exists('%s/%s.glb' % (GLB, n_)): do_import('%s/%s.glb' % (GLB, n_), ROOT + '/People', skeleton=HERO_SKEL, anims=False)
@@ -523,6 +527,22 @@ if 'fightclips' in STEPS:
         log('fight clips', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People/Anims', recursive=True) if 'A_Fight_' in p))
     else:
         log('fightclips: SK_Street_Fight.glb missing (run tools/ue_char/fight/make_fight_clips.py)')
+
+# ------------------------------------------------------------------------------------------------ round 09: crowd walk clips with the swing-foot lift capped
+# tools/ue_char/crowd/lift_cap.py (hooked into eval/citizen_rig.load_people) caps the rear-foot lift at 10 % of stature; export_citizens.sh rewrote the FBX takes.  Only the clips
+# are re-imported (from the first citizen's FBX, onto the existing citizen skeleton); the old A_Citizen_* clips are deleted first and the AnimBPs ('abp' step) rebuilt after.
+if 'citizenclips' in STEPS:
+    import shutil
+    os.makedirs(CIT_TMP, exist_ok=True)
+    f_ = '%s/SK_CitClips.fbx' % CIT_TMP
+    shutil.copyfile('%s/%s.fbx' % (CIT, CITIZENS[0]), f_)
+    for p_ in EAL.list_assets(ROOT + '/Citizens/Anims', recursive=True):
+        if 'A_Citizen_' in p_: EAL.delete_asset(p_.split('.')[0])
+    do_import(f_, ROOT + '/Citizens', skeleton=CIT_SKEL, anims=True, physics=False)
+    rename_anims(ROOT + '/Citizens', 'SK_CitClips', 'A_Citizen_')
+    if EAL.does_asset_exist(ROOT + '/Citizens/SK_CitClips'): EAL.delete_asset(ROOT + '/Citizens/SK_CitClips')
+    EAL.save_directory(ROOT + '/Citizens', only_if_is_dirty=True, recursive=True)
+    log('citizen clips', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/Citizens/Anims', recursive=True)))
 
 # ------------------------------------------------------------------------------------------------ AnimBPs (children of UWHCharAnimInstance)
 def make_abp(name, path, skel, idle, loco, jump=None, fall=None, land=None, takeoff=None, seq=None, seq_blend=0.15, jump_variants=None,

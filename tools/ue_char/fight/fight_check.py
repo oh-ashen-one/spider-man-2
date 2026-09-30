@@ -113,6 +113,30 @@ def main():
         vw = [(round(vt0 + i / fps, 2), round(float(diff[i:i + 60].mean()), 2)) for i in range(0, len(diff) - 59, 30)]
         res['video_frame_diff_pct_per_1s_window'] = vw
         res['video_frame_diff_pct_min_window'] = min(v for _, v in vw) if vw else None
+    # optional pixel check per walker: project the bone log into the clip's camera and measure the frame difference inside each walker's box, per 1 s window
+    if '--video' in a and '--cam' in a:
+        cx, cy, cz, ax, ay, az_, fov = [float(x) for x in a[a.index('--cam') + 1].split(',')]
+        cam = np.array([cx, cy, cz]); fw = np.array([ax, ay, az_]) - cam; fw /= np.linalg.norm(fw)
+        rt = np.cross([0, 0, 1.0], fw); rt /= np.linalg.norm(rt); up_ = np.cross(fw, rt)
+        tf = math.tan(math.radians(fov) / 2); VW, VH = 480, 270
+        def proj(p):
+            v = p - cam; z = v @ fw
+            return (VW / 2 + (VW / 2) * (v @ rt) / (z * tf), VH / 2 - (VW / 2) * (v @ up_) / (z * tf))
+        t_vid = vt0 + np.arange(len(diff) + 1) / fps
+        per = {}
+        d_full = np.abs(np.diff(fr, axis=0)) > 12       # (n-1, 270, 480)
+        for lbl, bones in D.items():
+            ts_ = bones['hips'][:, 0]; rows_ = []
+            for s0 in np.arange(max(t0, vt0), min(t1, vt0 + len(diff) / fps) - 1.0 + 1e-6, 0.5):
+                i0 = int((s0 - vt0) * fps); i1 = i0 + 60
+                pts = []
+                for b in ('hips', 'spine2', 'head', 'hand.L', 'hand.R', 'foot.L', 'foot.R'):
+                    k = int(np.argmin(np.abs(bones[b][:, 0] - (s0 + 0.5)))); pts.append(proj(bones[b][k, 1:4]))
+                pts = np.array(pts); x0_, x1_ = int(max(0, pts[:, 0].min() - 12)), int(min(VW, pts[:, 0].max() + 12)); y0_, y1_ = int(max(0, pts[:, 1].min() - 12)), int(min(VH, pts[:, 1].max() + 12))
+                if x1_ - x0_ < 4 or y1_ - y0_ < 4: rows_.append((round(float(s0), 2), None)); continue
+                rows_.append((round(float(s0), 2), round(float(d_full[i0:i1, y0_:y1_, x0_:x1_].mean() * 100), 2)))
+            per[lbl] = rows_
+        res['video_box_frame_diff_pct'] = per
     json.dump(res, open(out, 'w'), indent=1)
     print(json.dumps({k: res[k] for k in ('idle_windows_all_walkers_inactive', 'min_walkers_active_in_any_1s_window', 'window_summary')}, indent=1))
     for lbl, v in res['walkers'].items():

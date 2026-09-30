@@ -40,7 +40,7 @@ CFG = {
     'thug': dict(src='leather+jacket+man+3d+model.glb', name='StreetThug',
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
-                 mask=(38, 42, 60), seed=11, sink_neck=True, soften_neck=True,   # collar_dark=(42, 40, 42) was tried (offline): no visible effect, not built into the round-08 content
+                 mask=(38, 42, 60), seed=11, sink_neck=True, soften_neck=True,   # collar_dark=(42, 40, 42) was tried (offline): no visible effect, not built into the round-08 content; round 09: the wedge is fixed AFTER skinfit by nape_fix.py (build_people.sh)
                  tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
