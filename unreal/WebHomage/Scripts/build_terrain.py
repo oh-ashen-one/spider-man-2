@@ -24,7 +24,7 @@ PREP = os.environ.get('SM2_TERRAIN_PREP', os.path.join(SCR, 'prep'))
 PUB = os.path.join(WT, 'public', 'assets', 'city', 'tex')
 try: ARGS = JOB_ARGS  # noqa: F821 (set by a job wrapper)
 except NameError: ARGS = {}
-STEPS = set((ARGS.get('steps') or os.environ.get('SM2_TERRAIN_STEPS') or 'clean,tex,mat,mesh,foliage,map').split(','))
+STEPS = set((ARGS.get('steps') or os.environ.get('SM2_TERRAIN_STEPS') or 'clean,tex,mat,mesh,foliage,map,views').split(','))
 ROOT = '/Game/Terrain'
 at = unreal.AssetToolsHelpers.get_asset_tools()
 EAL = unreal.EditorAssetLibrary
@@ -290,7 +290,8 @@ def build_land(path):
         if not keep(r): continue
         sp = f'{MESHD}/{r["kind"]}/SM_{r["name"]}'
         if not EAL.does_asset_exist(sp): continue
-        a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label=r['name'], folder='Terrain/' + r['kind'])
+        # park lawn + city-park lawns sit 3 cm above the city's own flat ribbons / lawns (same height 0.17 m): they are covered, never z-fighting, and the city assets stay untouched
+        a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 3.0 if r['name'] in ('park', 'mapLawns') else 0.0), label=r['name'], folder='Terrain/' + r['kind'])
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
         if r['name'] == 'park' or r['name'].startswith(('mapLawns', 'coastLawn', 'parkWater')): a.tags = [unreal.Name('WHGround')]
         if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
@@ -304,7 +305,7 @@ def build_land(path):
         recs = [buf[i:i + 5] for i in range(0, len(buf), 5)]          # x, z, yaw, width scale, height m
         classes = [('TuftLow', [r for r in recs if r[4] < 0.11]), ('TuftMid', [r for r in recs if 0.11 <= r[4] < 0.2]), ('TuftHigh', [r for r in recs if r[4] >= 0.2])]
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_grass_tufts', folder='Terrain/Grass')
-        gy = TJ['GY']['GRASS']
+        gy = TJ['GY']['GRASS'] + 0.03   # + the 3 cm the park ground is raised
         for nm, S in classes:
             xs = [unreal.Transform(U(x, gy - 0.01, z), unreal.Rotator(0.0, 0.0, -math.degrees(yw)), unreal.Vector(w, w, h / 0.85)) for x, z, yw, w, h in S]
             hism(a, f'{PROD}/SM_tuft', xs, cull=4500, material=load(f'{MAT}/Inst/MI_{nm}'))
@@ -333,18 +334,10 @@ def build_land(path):
     return world
 
 def build_persistent(path):
-    """the integrated Manhattan map (golden) + the terrain sublevel; the city's flat park-path ribbons and lawns are hidden (terrain supersedes them)"""
+    """the integrated Manhattan map (golden) + the terrain sublevel (the terrain ground sits 3 cm above the city's flat park ribbons / lawns, which stay untouched)"""
     MAPS = '/Game/Maps'; CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'; BOXES = '/Game/Look/Look_Boxes'; RIG = '/Game/Look/Rigs/Look_Rig_golden'; ACTORS = MAPS + '/Manhattan_Actors'
     for need in (CITY_GEO, BOXES, RIG, ACTORS):
         if not EAL.does_asset_exist(need): raise RuntimeError('missing base content %s: run the base Manhattan build first (build_manhattan.py)' % need)
-    unreal.EditorLoadingAndSavingUtils.load_map(CITY_GEO)
-    hid = 0
-    for a in eas.get_all_level_actors():
-        lb = a.get_actor_label()
-        if isinstance(a, unreal.StaticMeshActor) and lb.startswith(('parkPaths', 'mapLawns')):
-            a.set_actor_hidden_in_game(True); hid += 1
-    les.save_current_level()
-    log('city park paths / lawn actors hidden in game:', hid)
     world = open_level(path)
     have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
     for lp in (CITY_GEO, BOXES, RIG, ACTORS, ROOT + '/Terrain_Land'):
@@ -357,10 +350,35 @@ def build_persistent(path):
     ok = unreal.EditorLoadingAndSavingUtils.save_map(world, path)
     log('map', path, 'saved' if ok else 'SAVE FAILED', 'levels', len(unreal.EditorLevelUtils.get_levels(world)))
 
+def build_views():
+    """still maps for the shot list: golden Manhattan sublevels (+ Terrain_Land for V_*, without it for the baseline VB_*) + a shot camera (no game mode: the camera is the view)"""
+    SH = json.load(open(os.path.join(WT, 'docs', 'night1', 'terrain', 'shots.json')))['shots']
+    CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'; BOXES = '/Game/Look/Look_Boxes'; RIG = '/Game/Look/Rigs/Look_Rig_golden'; ACTORS = '/Game/Maps/Manhattan_Actors'
+    for sh in SH:
+        for pre, land in (('V_', True), ('VB_', False)):
+            path = ROOT + '/Maps/' + pre + sh['id']
+            world = open_level(path)
+            have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
+            for lp in [CITY_GEO, BOXES, RIG, ACTORS] + ([ROOT + '/Terrain_Land'] if land else []):
+                if not any(('/' + lp.split('/')[-1] + ':') in h or h.endswith(lp.split('/')[-1]) for h in have):
+                    unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
+            les.set_current_level_by_name(str(world.get_name()))
+            p0 = unreal.Vector(*[v * 100.0 for v in sh['pos']]); t0 = unreal.Vector(*[v * 100.0 for v in sh['target']])
+            d = unreal.Vector(t0.x - p0.x, t0.y - p0.y, t0.z - p0.z)
+            rot = unreal.Rotator(roll=0.0, pitch=math.degrees(math.atan2(d.z, math.hypot(d.x, d.y))), yaw=math.degrees(math.atan2(d.y, d.x)))
+            ca = eas.spawn_actor_from_class(unreal.CameraActor, p0, rot)
+            ca.set_actor_label('ShotCam_' + sh['id'])
+            ca.camera_component.set_editor_property('field_of_view', sh.get('fov', 66))
+            ca.camera_component.set_editor_property('constrain_aspect_ratio', False)
+            ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
+            unreal.EditorLoadingAndSavingUtils.save_map(world, path)
+        log('view', sh['id'])
+
 if 'map' in STEPS:
     EAL.make_directory(ROOT + '/Maps')
     build_land(ROOT + '/Terrain_Land')
     unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), ROOT + '/Terrain_Land')
     log('Terrain_Land saved')
     build_persistent(ROOT + '/Maps/Manhattan_Terrain')
+if 'views' in STEPS: build_views()
 log('DONE')

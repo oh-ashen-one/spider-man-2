@@ -1,0 +1,12 @@
+{
+ "name": "t5_avenue_to_park",
+ "note": "Terrain r01 movie: street sprint then swing chain north up 5th Av (x 250 m) toward the park's south edge (y -569 m); the hero leaves the detailed Midtown block and flies on over the terrain. Adapted from the island r1 route.",
+ "seed": 1234,
+ "spawn": { "pos": [250, -120, 0.95], "yaw": -90, "camPitch": 0.14 },
+ "keys": [
+  { "t": 0.0, "move": [0, 1], "heading": -90, "sprint": true },
+  { "t": 1.8, "jump": true },
+  { "t": 2.2, "jump": false },
+  { "t": 2.6, "swing": true, "autoChain": true, "releasePhase": 0.55, "gap": 0.8, "repressVz": 99.0, "trickEvery": 0, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8 }
+ ]
+}
