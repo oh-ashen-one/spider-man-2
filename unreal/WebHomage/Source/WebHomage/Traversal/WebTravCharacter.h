@@ -13,6 +13,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "Traversal/WebTravTypes.h"
 #include "Traversal/WebTravCamera.h"
+#include "Traversal/WebTravFlips.h"
 #include "WebTravCharacter.generated.h"
 
 class UWebTraversalComponent;
@@ -55,11 +56,40 @@ protected:
 
 	/** Mouse look: radians per Mouse2D unit (browser 0.0023 rad / px; Mouse2D arrives pre-scaled by 0.07). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
-	float MouseRadPerUnit = 0.033f;
+	float MouseRadPerUnit = 0.0025f; // 2026-10-01 owner playtest ("tiny move = seizure"): Enhanced Input mouse = raw pixels, so 0.011 rad/px (0.6 deg) spun the camera; 0.0025 rad/px (~0.14 deg, typical PC TPS); x wh.MouseSensitivity
 
 	/** Right stick look rate (rad/s) at full deflection (browser 900 px/s x 0.0023). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	FVector2D PadLookRate = FVector2D(2.07, 1.38);
+
+	/**
+	 * Round 10 (Manhattan integration issue P3-1): hero mesh / clips are data, not code. Priority (last wins): these defaults
+	 * (the HeroDev proxy) < [/Script/WebHomage.WebTravCharacter] in Game ini < a Blueprint subclass / placed-actor value <
+	 * command line -WHHeroMesh=<obj path> -WHHeroLens=<obj path or "none"> -WHHeroClips=<folder> -WHHeroClipPrefix=<prefix>.
+	 * Clip asset = <HeroClipRoot>/<HeroClipPrefix><browser clip name> (P2: /Game/Characters/Hero/Anims + "A_Hero_").
+	 * HeroLensMeshPath empty = no separate lens mesh (P2's lenses are material slots on the body).
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroMeshPath = TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/SpiderMan.SpiderMan");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroLensMeshPath = TEXT("/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/Lenses.Lenses");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroClipRoot = TEXT("/Game/Traversal/HeroDev");
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero")
+	FString HeroClipPrefix;
+
+	/**
+	 * Round 13 (critic r12: "the hero is black at f4 8.45 s, V 44/255" -- a flip seen from below against a bright sky): a camera-side
+	 * fill light that lights ONLY the hero (lighting channel 1; the hero meshes are on channels 0 + 1, the city on 0), no shadows, no GI.
+	 * Candela = HeroFillCd + (HeroFillFlipCd - HeroFillCd) x flip-camera weight; placed HeroFillDist m from the hero toward the camera,
+	 * HeroFillUp m above that line. Command line: -WHHeroFill=<base cd>,<flip cd> (0,0 = off).
+	 */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillCd = 5000.f;
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFlipCd = 18000.f;
+	/** Round 15: fill multiplier when the hero is front-lit by the sun (camera looking away from it). */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFrontK = 0.3f;
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillDist = 1.8f;
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillUp = 0.4f;
 
 private:
 	void BuildTravInput();
@@ -67,6 +97,10 @@ private:
 	bool SetupHeroMesh();
 	void PoseFigure(float Dt);
 	float SwayW = 0.f; // round 06: air-sway weight (spring)
+	FQuat FlipOffQ = FQuat::Identity;   // round 11: flip rotation relative to the body frame (springs back when a program is cut)
+	FWebFlipPose LastFlip;              // round 11: telemetry
+	FName LastFlipName;
+	const FWebFlipProgram* FlipProgramNow(float& OutT) const;
 	void UpdateWebs(float Dt, const FVector& CamPosCm);
 	FVector HandWorldCm(bool bRight) const;
 	void PushTelemetry(double T, const FWebTravInput& I);
@@ -90,9 +124,13 @@ private:
 	FWebTravInput PrevInput;
 
 	FWebTravCamera Cam;
+	int32 SunTries = 0; // round 15: frames spent looking for the level's sun light
 	double TravTime = 0.0;
 	bool bTravStarted = false;
 	bool bAutoSawDescent = false; // round 07: auto-chain rule, this swing has descended
+	// round 18: the auto-chain predicts its next flow-flip release FlipPreT s ahead (the trick camera pre-blends; critic r17 TC-A window)
+	bool bAutoFlipPre = false;
+	float FlipPreT = 0.38f;
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
 	int32 PrerollFrames = 0;
@@ -100,6 +138,11 @@ private:
 	bool bAutoHeld = true, bAutoWasSwinging = false;
 	double AutoGapT = 0.0;
 	int32 AutoReleases = 0;
+	// round 10: auto-chain sky launch (jump-release + chained tricks, re-press below skyRepressH)
+	bool bSkyAuto = false, bSkyWasTrick = false;
+	int32 SkyTricksLeft = 0, LastSkyRelease = -100;
+	double LastSkyT = -100.0, SkyPeakH = 0.0;
+	double SkyAutoT = 0.0;
 	int64 FrameIndex = 0;
 
 	// placeholder figure parts
@@ -109,6 +152,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> WebSegs;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
+	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
+	void UpdateHeroFill();
 	bool bHeroMesh = false;
 	// round 05: pixel measurement of the hero (depth capture that shows only the hero, same camera as the view)
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;

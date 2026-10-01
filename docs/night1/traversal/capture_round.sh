@@ -9,29 +9,47 @@ set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
 HERE="$(cd "$(dirname "$0")" && pwd)"
 UE_DIR="$(cd "$HERE/../../../unreal/WebHomage" && pwd)"
-SCR="$HERE/scripts"
+# round 10: captures run in the integrated lit city /Game/Maps/Manhattan (golden; built in this worktree by Scripts/build_manhattan.py) with the
+# city scripts; TRAV_MAP=/Game/Tests/Traversal/Trav_Canyon TRAV_SCRIPTS=$HERE/scripts for the gray-box canyon
+SCR="${TRAV_SCRIPTS:-$HERE/scripts/city}"
 TMP=/Users/midir/sm2-n1/_scratch/traversal/capture
-MAP=/Game/Tests/Traversal/Trav_Canyon
+MAP="${TRAV_MAP:-/Game/Maps/Manhattan}"
+# GPU lock (RULES / docs/night1/gpu/PROTOCOL.md): every game run takes a shared capture slot
+GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
+# round 12: GPU_OUTER=1 = the caller already holds one capture slot for the whole batch (gpu_slot.sh capture -- capture_round.sh ...;
+# max hold 40 min): the runs then go straight to run_game.sh instead of queueing once per run
+if [ -n "${GPU_OUTER:-}" ]; then RUN() { "$UE_DIR/Scripts/run_game.sh" "$@"; }
+else RUN() { "$GPU" capture --label traversal -- "$UE_DIR/Scripts/run_game.sh" "$@"; }; fi
 # round 06: pre-roll (s) rendered from the start pose before the sequence starts (exposure / Lumen settle), trimmed from the movie
 PRE=0.8
 mkdir -p "$TMP" "$ROUND/stills"
 # name  script                          quit(s)  still times (game s)
 SEQS=(
-  "a_swing_chain a_swing_chain.json 15.6 1.0,3.4,5.5,7.4"
-  "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,2.2,3.6,5.9"
-  "c_wallrun_perch c_wallrun_perch.json 10.0 2.0,3.2,4.6,5.45,9.0"
-  "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,6.5,7.6,9.9"
+  "a_swing_chain a_swing_chain.json 15.6 1.0,2.6,3.4,5.9,9.5"
+  "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,1.9,2.5,4.4,5.8"
+  "c_wallrun_perch c_wallrun_perch.json 10.5 1.0,2.6,3.6,4.9,9.8"
+  "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,5.6,7.6,11.8"
+  # round 17: f1-f5 = the y -560 cross street heading east, a flip on every release, each solved for an apex >= 3 m over the lower roofline
+  # round 13 (flow flips: the program starts at the web release, the next web attaches in its final reach): f1-f3 the west avenue
+  # (x -250 south, lower blocks), a flip on every 2nd release; f4 a flip on every release; f5 the Midtown canyon (x 250 north)
+  "f1_flow_backDouble f1_flow_backDouble.json ${F1Q:-9.0} ${F1T:-2.4,3.0}"
+  "f2_flow_pikeSwan f2_flow_pikeSwan.json ${F2Q:-9.0} ${F2T:-2.4,3.0}"
+  "f3_flow_corkscrew f3_flow_corkscrew.json ${F3Q:-9.0} ${F3T:-2.4,3.0}"
+  "f4_chain_flips f4_chain_flips.json ${F4Q:-13.3} ${F4T:-3.0,6.0}"   # round 18: 3 flips, a plain release where the catch guard finds no web (9.12 s), the 4th flip 10.88 s, its catch ~12.5 s + 0.8 s (r17: 12.2 s, the 4th flip missed its catch)
+  "f5_canyon_backDouble f5_canyon_backDouble.json ${F5Q:-9.0} ${F5T:-2.4,3.0}"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
-wait_slot() { while [ "$(pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l)" -ge 3 ]; do echo "waiting: 3+ Unreal instances running"; sleep 60; done; }
+wait_slot() { while [ "$(pgrep -x UnrealEditor | wc -l)" -ge 3 ]; do sleep 5; done; }  # pgrep -x: the -f pattern also counted python wrappers
 # round 06: shader / texture warm-up render first (a fresh DDC compiles the hero and city materials on first use, which
 # rendered the suit white / unshaded in the first frames of a capture); low-res, not kept
+if [ -z "${SKIP_WARM:-}" ]; then
 echo "== warm-up render (not kept)"
 rm -rf "$TMP/warmup"
 wait_slot
-"$UE_DIR/Scripts/run_game.sh" "$TMP/warmup" -map "$MAP" -res 960x540 -quit 16 -name warmup -timeout 2400 \
+RUN "$TMP/warmup" -map "$MAP" -res 960x540 -quit ${WARM_QUIT:-16} -name warmup -timeout 2400 \
   -- -benchmark -fps=60 -WHTravScript="$SCR/a_swing_chain.json" | tail -1
+fi
 for entry in "${SEQS[@]}"; do
   read -r NAME JSON QUIT SHOTS <<< "$entry"
   if [ ${#WANT[@]} -gt 0 ] && [[ ! " ${WANT[*]} " =~ " $NAME " ]]; then continue; fi
@@ -40,7 +58,7 @@ for entry in "${SEQS[@]}"; do
   rm -rf "$TMP/$NAME"
   QUITP=$(python3 -c "print(round($QUIT + $PRE, 3))")
   wait_slot
-  "$UE_DIR/Scripts/run_game.sh" "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
+  RUN "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
     -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE | tail -3
   FR="$TMP/$NAME/${NAME}_frames"
   if [ -d "$FR" ] && [ -f "$TMP/$NAME/${NAME}_telemetry.csv" ]; then
@@ -58,12 +76,13 @@ for entry in "${SEQS[@]}"; do
     cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/"
     echo "movie: $ROUND/$NAME.mp4 $(stat -f %z "$ROUND/$NAME.mp4") bytes, ${DUR}s"
   fi
-  # --- 3840x2160 stills (same deterministic replay)
+  # --- 3840x2160 stills (same deterministic replay); NO_STILLS=1 skips them (round 11: long shared GPU queue)
+  if [ -n "${NO_STILLS:-}" ]; then continue; fi
   rm -rf "$TMP/${NAME}_4k"
   # shot times are world seconds: shift by the pre-roll; files are named by sequence time
   SHOTSP=$(python3 -c "print(','.join(str(round(float(t) + $PRE, 3)) for t in '$SHOTS'.split(',')))")
   wait_slot
-  "$UE_DIR/Scripts/run_game.sh" "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTSP" -name "$NAME" -timeout 1500 \
+  RUN "$TMP/${NAME}_4k" -map "$MAP" -res 3840x2160 -shots "$SHOTSP" -name "$NAME" -timeout 1500 \
     -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE \
     -WHTravCsv="$TMP/${NAME}_4k/stills_telemetry.csv" | tail -2
   I=0

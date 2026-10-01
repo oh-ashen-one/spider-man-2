@@ -5,7 +5,7 @@ usage: uejob.py file.py [key=value ...]  |  uejob.py -c "code"      (key=value p
 The job runs with __file__ = the submitted file's real path (so scripts find their sibling data files) and with the
 P4 scratch locations for the city export / textures (P1's scripts read SM2_CITY_EXPORT / SM2_CITY_TEX)."""
 import os, sys, time, json, uuid
-SCR = '/Users/midir/sm2-n1/_scratch/look'
+SCR = os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look')   # scratch root (export/, tex/, uejobs/, capture/ ...)
 JOBS = os.environ.get('SM2_LOOK_JOBS', SCR + '/uejobs')
 os.makedirs(JOBS, exist_ok=True)
 if sys.argv[1] == '-c': code, args, real = sys.argv[2], {}, '<inline>'

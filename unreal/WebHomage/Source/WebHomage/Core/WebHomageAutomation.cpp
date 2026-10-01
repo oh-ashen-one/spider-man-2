@@ -114,7 +114,9 @@ void UWebHomageAutomation::Tick(float DeltaTime)
 	while (NextShot < ShotTimes.Num() && Elapsed >= ShotTimes[NextShot])
 	{
 		const FString File = ShotDir / FString::Printf(TEXT("%s_%02d_t%05.1f.png"), *ShotName, NextShot, ShotTimes[NextShot]);
-		FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
+		// -WHShowSettings (settings-menu verification): include the Slate UI in the shot; every other run stays scene-only
+		static const bool bShotUI = FParse::Param(FCommandLine::Get(), TEXT("WHShowSettings"));
+		FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ bShotUI, /*bAddFilenameSuffix*/ false);
 		UE_LOG(LogWebHomage, Display, TEXT("WH_SHOT %s"), *File);
 		++NextShot;
 	}

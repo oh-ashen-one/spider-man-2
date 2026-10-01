@@ -109,6 +109,10 @@ void UWebTravScript::Initialize(FSubsystemCollectionBase& Collection)
 					if (SV && SV->A.Num() == 3) SpawnVel = FVector(SV->A[0]->N, SV->A[1]->N, SV->A[2]->N);
 				}
 				if (const FVal* Sd = Root->Get(TEXT("seed"))) SeedValue = int32(Sd->N);
+				// round 17: per-script tuning ("tune": "Name=V,..." traversal floats, "camTune": camera doubles) -- same format as -WHTravTune /
+				// -WHCamTune, applied before them (the command line wins); lets a route carry its own settings through capture_round.sh
+				if (const FVal* TU = Root->Get(TEXT("tune"))) { if (TU->Type == FVal::Str) TuneStr = TU->S; }
+				if (const FVal* CT = Root->Get(TEXT("camTune"))) { if (CT->Type == FVal::Str) CamTuneStr = CT->S; }
 				if (const FVal* KeysJ = Root->Get(TEXT("keys")))
 				{
 					for (const TSharedPtr<FVal>& O : KeysJ->A)
@@ -131,7 +135,13 @@ void UWebTravScript::Initialize(FSubsystemCollectionBase& Collection)
 						Bool(TEXT("zip"), K.Zip); Bool(TEXT("drop"), K.Drop); Bool(TEXT("quick"), K.Quick);
 						Bool(TEXT("autoChain"), K.AutoChain);
 						Bool(TEXT("trick"), K.Trick);
+						if (const FVal* FL = O->Get(TEXT("flip"))) { if (FL->Type == FVal::Str) K.Flip = FL->S; else K.Flip = FString(); }
 						if (const FVal* TE = O->Get(TEXT("trickEvery"))) K.TrickEvery = int32(TE->N);
+						if (const FVal* SE = O->Get(TEXT("skyEvery"))) K.SkyEvery = int32(SE->N);
+						if (const FVal* ST = O->Get(TEXT("skyTricks"))) K.SkyTricks = int32(ST->N);
+						if (const FVal* SH = O->Get(TEXT("skyRepressH"))) K.SkyRepressH = SH->N;
+						if (const FVal* SM = O->Get(TEXT("skyMax"))) K.SkyMax = SM->N;
+						if (const FVal* SP = O->Get(TEXT("skyPhase"))) K.SkyPhase = SP->N;
 						if (const FVal* HD = O->Get(TEXT("heading"))) { if (HD->Type == FVal::Num) K.Heading = HD->N; else K.Heading = 1e9; }
 						if (const FVal* RP = O->Get(TEXT("releasePhase"))) K.ReleasePhase = RP->N;
 						if (const FVal* GP = O->Get(TEXT("gap"))) K.Gap = GP->N;
@@ -185,6 +195,7 @@ FWebTravInput UWebTravScript::Sample(double T, FVector2D& OutLookRate) const
 		if (K.Drop) I.bDrop = *K.Drop;
 		if (K.Quick) I.bQuick = *K.Quick;
 		if (K.Trick) I.bTrick = *K.Trick;
+		if (K.Flip) I.FlipReq = *K.Flip;
 	}
 	if (I.Move.Size() > 1.0) I.Move = I.Move.GetSafeNormal();
 	OutLookRate = FVector2D(FMath::DegreesToRadians(Look.X), FMath::DegreesToRadians(Look.Y));
@@ -198,6 +209,17 @@ int32 UWebTravScript::TrickEveryAt(double T) const
 	{
 		if (K.T > T + 1e-6) break;
 		if (K.AutoChain) N = K.TrickEvery;
+	}
+	return N;
+}
+
+int32 UWebTravScript::SkyEveryAt(double T, double& OutRepressH, int32& OutTricks, double& OutMax, double& OutPhase) const
+{
+	int32 N = 0;
+	for (const FKey& K : Keys)
+	{
+		if (K.T > T + 1e-6) break;
+		if (K.AutoChain) { N = K.SkyEvery; OutRepressH = K.SkyRepressH; OutTricks = K.SkyTricks; OutMax = K.SkyMax; OutPhase = K.SkyPhase; }
 	}
 	return N;
 }

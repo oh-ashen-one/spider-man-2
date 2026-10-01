@@ -9,12 +9,22 @@
 # usage: tools/perf_ue/rebuild_city.sh        (about 10 min export + import; the editor must be running: tools/perf_ue/launch_editor.sh)
 set -e
 WT="$(cd "$(dirname "$0")/../.." && pwd)"; cd "$WT"
-SCR=/Users/midir/sm2-n1/_scratch/look; mkdir -p $SCR
+SCR=${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}; mkdir -p $SCR; export SM2_LOOK_SCRATCH=$SCR   # scratch root (env SM2_LOOK_SCRATCH); dev port: SM2_LOOK_DEV_PORT
+DEVP=${SM2_LOOK_DEV_PORT:-5205}
 [ -d node_modules ] || npm ci
-curl -s -o /dev/null http://127.0.0.1:5205/ || { (nohup npx vite --port 5205 --host 127.0.0.1 --strictPort > $SCR/vite.log 2>&1 &); sleep 4; }
-[ -n "$SKIP_EXPORT" ] || node tools/export/export_city.mjs --url http://127.0.0.1:5205/ --out $SCR/export/midtown3x3 --profile $SCR/chrome-profile
-sed -i '' 's#127.0.0.1:5205/#127.0.0.1:5202/#g' $SCR/export/midtown3x3/manifest.json
-python3 tools/export/prep_textures.py $SCR/tex $SCR/export/midtown3x3/manifest.json
+curl -s -o /dev/null http://127.0.0.1:$DEVP/ || { (nohup npx vite --port $DEVP --host 127.0.0.1 --strictPort > $SCR/vite.log 2>&1 &); sleep 4; }
+[ -n "$SKIP_EXPORT" ] || node tools/export/export_city.mjs --url http://127.0.0.1:$DEVP/ --out $SCR/export/midtown3x3 --profile $SCR/chrome-profile
+sed -i '' "s#127.0.0.1:$DEVP/#127.0.0.1:5202/#g" $SCR/export/midtown3x3/manifest.json
+# (round 03) mirror P1's tools/export/build_city.sh (round 05 / 06): patch_export -> textures -> street signs -> street kit -> street props -> shaders,
+# every script pointed at THIS worktree's scratch (never P1's _scratch/city); paths need the trailing slash
+EXPD=$SCR/export/midtown3x3/
+python3 tools/export/patch_export.py $EXPD
+python3 tools/export/prep_textures.py $SCR/tex $EXPD/manifest.json
+python3 tools/export/gen_street_signs.py $SCR/tex/street_signs.png
+python3 tools/export/street_kit.py $EXPD
+python3 tools/export/street_props.py $EXPD
 node tools/export/gen_shaders.mjs
-UEJOB_TIMEOUT=7200 python3 tools/perf_ue/uejob.py unreal/WebHomage/Scripts/build_city.py steps=${STEPS:-clean,tex,mat,mesh,proto,map}
-echo "city content rebuilt. Now: close the editor (pkill -9 -f $WT/unreal/WebHomage/WebHomage.uproject), then tools/perf_ue/rebuild_look.sh"
+UEJOB_TIMEOUT=7200 python3 tools/perf_ue/uejob.py unreal/WebHomage/Scripts/build_city.py steps=${STEPS:-clean,tex,mat,mesh,proto,kit,map}
+echo "city content rebuilt: closing this worktree's editor and re-running the traversal-box / look build (steps geo,rigs,night,maps: the boxes depend on the city geometry level)"
+pkill -9 -f "$WT/unreal/WebHomage/WebHomage.uproject"; sleep 4
+"$WT/tools/perf_ue/rebuild_look.sh" geo,rigs,night,maps

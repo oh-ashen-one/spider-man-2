@@ -6,7 +6,9 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from glbio import read_glb
 
-EXPORT = '/Users/midir/sm2-n1/_scratch/city/export/midtown3x3/'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from citypaths import EXPORT as _EXPORT
+EXPORT = _EXPORT.rstrip('/') + '/'
 
 def load_faces(export=EXPORT):
     man = json.load(open(export + 'manifest.json')); lay = json.load(open(export + 'layout.json'))
@@ -49,7 +51,7 @@ def load_faces(export=EXPORT):
 
 if __name__ == '__main__':
     F = load_faces()
-    json.dump(F, open('/Users/midir/sm2-n1/_scratch/city/export/midtown3x3/street_faces.json', 'w'))
+    json.dump(F, open(os.path.join(EXPORT, 'street_faces.json'), 'w'))
     import collections
     print(len(F), 'faces', collections.Counter(f['kind'] for f in F), collections.Counter(int(f['style']) for f in F))
     print(collections.Counter((round(f['N'][0]), round(f['N'][1])) for f in F))

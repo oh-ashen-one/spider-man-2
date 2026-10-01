@@ -34,5 +34,40 @@ Y = south (north = -Y), Z = up. Tile actors sit at (100 cx, 100 cz, 0). Instance
   Lumen reflections replace the browser's faked city reflection. Non-Nanite (Nanite quantises the data UVs).
 - `M_CityDetail` (masked: fire-escape grating), `M_CityRoof`, `M_CityAsphalt`, `M_CitySidewalk`: ports of the matching browser shaders.
 - `M_CityProp` (partmat.js port, per-instance tint in custom data), `M_CityVC` (vertex colour / atlas), `M_CityLeaves`.
-- `MPC_City`: NightK, DnTime, InteriorGain, ShopGain, EmissiveScale.
+- `MPC_City`: NightK, DnTime, InteriorGain, ShopGain, EmissiveScale (+ DayEmisK, GlassSpec, FarGain, ... and, r09, `ShadeFill`, `GlassSky`).
 - Include path `/Project/City/*.ush` = `unreal/WebHomage/Shaders/City` (UE maps `<project>/Shaders` to `/Project`).
+
+## Street life added by the Unreal side (round 08; not exported from the browser scene, generated from the browser's rules and models)
+Run by `tools/export/build_city.sh` after `street_props.py`; each writes JSON next to `layout.json` and `build_city.py` (`steps=veh,leaves,map`) turns it into HISM actors:
+- `export_vehicles.py`: the browser's own Blender car models (`public/assets/city/vehicles.glb`, LOD0 of sedan / sedan2 / hatch / suv / suv2 / cross / pickup / van / taxi x4) as `proto/veh_*.glb`
+  + manifest records. The livery atlas `vehicles_atlas2.webp` is NOT used (real-game brands, `IP_EXCLUSIONS.md`): UVs are zeroed, vertex colour = plain part colour x baked AO, paint = per-instance tint.
+  Material: `M_CityProp` (part ids 1 paint / 2 metal / 3 glass / 5 rubber / 7 head / 8 tail / 15 taxi sign).
+- `street_cars.py` -> `streetcars.json`: parked cars and yellow taxis at both avenue curbs (~2.5 per 20 m per side, audit in `streetcars_audit.json`), browser rules (no lane on Park Av, bike lane, red bus lane).
+- `street_traffic.py` -> `streettraffic.json`: stopped / slow lane traffic (queues at the stop lines + free-flow cars). Own actors, World Outliner folder `City/Traffic`
+  (`ISM_traffic_*`): P6 owns moving traffic; delete or hide that folder in the integrated map, or build with `traffic=0`.
+- `street_trees.py` -> `streettrees.json`: trees planted in every empty tree pit and in gaps > 9 m along both sidewalks of every avenue (>= 2 per 20 m of frontage), each new tree with its own iron pit;
+  `_remove` lists browser trees within 16 m of a street-level shot camera. The r05 thinning of the S1 / S2 corridor is gone.
+Prop meshes re-imported over existing ones get a `_v<N>` suffix (`sm_path()` in `build_city.py` picks the newest): renaming / deleting a referenced mesh in a commandlet leaves redirectors that block the next rename.
+`M_CityLeaves` lowers its alpha cut with distance (`steps=leaves` rebuilds only that material): the leaf texture's mips lose coverage, beyond ~25 m every card was discarded and distant street trees were bare branches.
+
+## Canyon shade fill (round 09, `Shaders/City/ShadeFill.ush`, hand-written; not generated)
+Lumen sees only a slit of sky inside a 30 m avenue and the r07 albedo cap (`SunK`) is keyed on N.L, so shadowed walls came out near black (S1 crops mean Y 20-22, S3 72 % / S7 62 % of the frame below Y 25).
+`CityShadeFill(alb, n, wpos, cam, sunDir, k, nightk)` returns an emissive term = the surface's albedo (before the sun cap, lifted `^0.65`) x a constant sky-bounce irradiance `k` (MPC `ShadeFill`),
+weighted by the normal (walls 0.62, roofs 1), height above the street (0.72 at the pavement .. 1 at 80 m), sun height (warm and 0.55x at sunset), faded out 0.9-2.2 km (far skyline keeps its C11-C15 look) and by `1 - NightK`.
+`CitySkyRefl(f, n, ...)` = sky-gradient reflection for coated curtain glass (MPC `GlassSky`, tint = the glass F0). Both are included by `M_CityFacade`, `M_CityDetail`, `M_CityRoof`, `M_CityProp`,
+`M_CityVC` (untextured solids only), `M_CityKit`, `M_CitySignage` (not its emissive kinds) and `M_CityLeaves` (0.35 of the wall value). Debug modes of the facade material skip the fill (masks stay clean).
+Where the fill applies: `tools/export/bake_sunmask.py` bakes a 1 m building HEIGHT FIELD (`sunmask_h.png`, 1024^2, x -384..640 / z -640..384: rasterised up-facing roof triangles of the exported roof meshes + facade vertices + footprint boxes outside the detailed block; R/G = height in 0.02 m, B = height / 400 m) that build step `sunh` imports (point-filtered, mips, never_stream).
+`CityShadeW` = `CityEnclosure` (the point's height against the mean building height around it, mips 5 / 7: 1 on the canyon floor, 0 above the local skyline) x `(1 - 0.88 CitySunLit)` (28-step ray march toward the sun): full fill in canyon shade, 12 % where the sun reaches, ~0 above the skyline. Facade `DebugMode 12` displays the weight.
+Outside the height-field extents the texels clamp to height 0: no fill above 8 m (r08 look).
+Tune without recompiling: `tools/export/ue/run_commandlet.sh tools/export/ue/set_mpc.py ShadeFill=0.12 GlassSky=0.11`; sweep + measure: `tools/export/shade_sweep.sh`, `tools/export/shade_check.py`.
+
+## Far skyline, wooded bluff, shoreline and tree clumps (round 10, `tools/export/far_skyline.py`)
+Critic r09 gap: the S4 far-shore band was a white plateau (silhouette-top row std 6.1 px, 38.8 % of the band above Y 204) behind a smooth grey wall (the Palisades face) with no trees. Pure Python on the export (no browser, no Unreal),
+deterministic (seeded); writes `<export>/mesh/farsky/*.glb`, `<export>/proto/farsky_clump.glb`, `<export>/farsky.json`. Run it after `export_city.mjs` / `patch_export.py`, before `build_city.py steps=...,fsky,map`.
+- **Plateau towers** (`farsky_towers__*`, `M_CityFarMass`, same vertex-colour convention as the exporter's `farCityMass`: rgb = tone x MPC FarGain, alpha 0 plain / 0.5 windows / 1 glass): Fort-Lee-like clusters (60-255 m, podium + shaft + crown + spire) on the Palisades plateau, z -5100..1000.
+- **Hinterland skyline** (`farsky.json` `hinterland`, same 13-column item format as `hinterland.json`, merged into `ISM_hinterland`, `M_CityHinter`): the S4 columns 0..1560 are cut into downtown / mid-rise / gap regimes and filled with buildings whose roofs land on a chosen screen row (`top_to_height`, camera altitude 306 m, horizon row ~136); a few spires. The far sprawl keeps the rest.
+- **Bluff** (`farsky_bluff__*`, `M_CityFarBluff`): replaces the flat `palisadesCliff` face (the geo-level build skips the old mesh when the bluff assets exist): 12 m columns x 24 rows, talus (15 m), ledges, ravines, headlands; vertex colour R = wooded fraction, G = rock tone; tree clumps on the wooded parts and along the brow.
+- **Shoreline** (`farsky_shore__*`, `MI_farsky_shore` = `M_CityVC`): seawall + cap + promenade along the New-Jersey shore z -5100..2300, 13 extra piers with sheds where the browser's piers stop (z < -2600), promenade tree row.
+- **Lawn trees**: clumps on the green pixels of `farland_map.png` (the browser's far canopy is not exported). All clumps = one HISM (`ISM_farsky_clumps`, `SM_farsky_clump`, 80 triangles, `M_CityCrown`, no shadows).
+- Build step `fsky` (also needs `mat` once for `M_CityFarBluff`); `arg farsky=0` builds without. Folder `City/Far` in the geometry level. Nothing here is copied from the reference game (generic shapes, no names, no art).
+- Measure: `tools/export/s4_far_check.py <frame>` = the critic's tests T1 (silhouette-top row std, 3 definitions) / T2 (share of (0,150,1300,300) above Y 204) + C11-C15; `city_spec_check.py` (regions v3) includes them and the other critic r09 boxes.

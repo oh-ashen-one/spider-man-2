@@ -203,6 +203,19 @@ _proj_dir = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir(
 _hero_src = os.path.normpath(os.path.join(_proj_dir, "..", "..", "public", "assets", "spiderman.glb"))
 _hero_tmp = os.path.join(_proj_dir, "Saved", "HeroDev.glb")
 convert(_hero_src, _hero_tmp)
+# round 11 (FLIPS_BRIEF): gymnast shape clips keyed in Blender on the hero rig (headless, CPU only), spliced into the hero GLB
+# (rotation channels matched by bone name, after a Blender round-trip check on 'airApex'); clip assets HeroDev/flip<Shape>
+_flip_dir = os.path.normpath(os.path.join(_proj_dir, "..", "..", "docs", "night1", "traversal", "blender"))
+_flip_glb = os.path.join(_proj_dir, "Saved", "HeroFlips.glb")
+_blender = os.environ.get("SM2_BLENDER", "/Applications/Blender.app/Contents/MacOS/Blender")
+_r = subprocess.run([_blender, "-b", "--factory-startup", "-P", os.path.join(_flip_dir, "make_flip_shapes.py"), "--", _hero_src, _flip_glb,
+                     os.path.join(_proj_dir, "Saved", "HeroFlips_report.json")], capture_output=True, text=True)
+assert "FLIPSHAPES_OK" in _r.stdout, "Blender flip shapes failed:\n" + _r.stdout[-3000:] + _r.stderr[-2000:]
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location("splice_flips", os.path.join(_flip_dir, "splice_flips.py"))
+_sf = _ilu.module_from_spec(_spec); _spec.loader.exec_module(_sf)
+_rt, _nb, _added = _sf.splice(_hero_tmp, _flip_glb)
+unreal.log("HERO_FLIPS_OK roundtrip_max=%.5f bones=%d clips=%s" % (_rt, _nb, [a[0] for a in _added]))
 _task = unreal.AssetImportTask()
 _task.set_editor_property("filename", _hero_tmp)
 _task.set_editor_property("destination_path", HERO_DIR)

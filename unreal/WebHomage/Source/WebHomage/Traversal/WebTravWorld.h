@@ -48,6 +48,9 @@ public:
 	bool SphereOverlaps(const FVector& P, double Radius) const;
 	/** Highest surface at (X,Y) at or below FromZ (m). -1000 if nothing. */
 	double GroundHeight(double X, double Y, double FromZ) const;
+	/** Round 10 (lit city): like GroundHeight but passes through props / trees / street-kit meshes (only ground-tagged actors
+	 *  and indexed building boxes count), so a swing's designed low point is measured from the street, not a tree canopy. */
+	double StreetHeight(double X, double Y, double FromZ) const;
 	/** Pushes a vertical capsule (feet, radius R, height H) horizontally out of solids; only the part above StepH collides. */
 	bool PushOutCapsule(FVector& Feet, double R, double H, double StepH, FTravContact& Out) const;
 	/** Is the point inside a building box (margin m)? */
@@ -66,6 +69,9 @@ private:
 	int64 Key(int32 CX, int32 CY) const { return (int64(CX) << 32) ^ int64(uint32(CY)); }
 	TMap<int64, TArray<int32>> Grid;
 	TMap<const UPrimitiveComponent*, int32> CompToBox;
+	// instanced meshes (ISM/HISM): one box per instance (index = instance index, -1 = skipped); a component-wide bounds box made
+	// giant invisible walls/floors (owner playtest 2026-10-01: landing / running in mid-air)
+	TMap<const UPrimitiveComponent*, TArray<int32>> InstToBox;
 	double Cell = 24.0;
 	TWeakObjectPtr<UWorld> World;
 	FCollisionQueryParams Params;

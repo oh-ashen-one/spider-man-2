@@ -11,15 +11,16 @@
 #   /Game/Look/Rigs/Look_Rig_<preset>    ALL lighting of a preset: SkyAtmosphere, sun (+moon), SkyLight (real-time capture),
 #                                        VolumetricCloud, ExponentialHeightFog (+volumetric fog, +haze layer), PostProcessVolume,
 #                                        star dome (night), MPC_City night parameters through a Level Sequence (see step rigs)
+#   /Game/Look/Look_NightLights          night street lighting (step night): lamps, storefront spill, stand-in traffic lights, wet-street decal, hero lights
 #   /Game/Tests/Look/Look_Midtown[_golden|_night]     playable maps (traversal game mode): city geometry + Look_Boxes + rig + PlayerStart
 #   /Game/Tests/Look/Look_View_<preset>_<S#>          the city shot views (Scripts/city_shots.json) under each preset
-import unreal, os, json, math, time
+import unreal, os, json, math, time, random
 
-EXPORT = os.environ.get('SM2_CITY_EXPORT', '/Users/midir/sm2-n1/_scratch/look/export/midtown3x3')
-HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/look/unreal/WebHomage/Scripts'
+EXPORT = os.environ.get('SM2_CITY_EXPORT', os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'export', 'midtown3x3'))   # the city export (collision.json, layout.json)
+HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.path.join(os.environ.get('SM2_LOOK_WORKTREE', '/Users/midir/sm2-n1/look'), 'unreal/WebHomage/Scripts')
 try: ARGS = JOB_ARGS  # noqa: F821 (set by tools/perf_ue/uejob.py)
 except NameError: ARGS = {}
-STEPS = set((ARGS.get('steps') or os.environ.get('SM2_LOOK_STEPS') or 'geo,rigs,maps').split(','))
+STEPS = set((ARGS.get('steps') or os.environ.get('SM2_LOOK_STEPS') or 'geo,rigs,night,maps').split(','))
 PRESETS_JSON = json.load(open(os.path.join(HERE, 'look_presets.json')))
 ORDER = [p for p in PRESETS_JSON['order'] if p in (ARGS.get('presets') or os.environ.get('SM2_LOOK_PRESETS') or ','.join(PRESETS_JSON['order'])).split(',')]
 PRE = PRESETS_JSON['presets']
@@ -154,6 +155,12 @@ def build_rig(name):
                      ('atmosphere_sun_light', True), ('atmosphere_sun_light_index', 1), ('cast_shadows', True), ('cast_volumetric_shadow', True),
                      ('cast_cloud_shadows', False), ('per_pixel_atmosphere_transmittance', True)):
             setp(mc, k, v, 'Moon')
+    for fill_d in P.get('fills', []):   # unshadowed, non-atmosphere fill directional lights (night: horizon city glow, lights facades the moon does not reach)
+        fl = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(fill_d['elev'], fill_d['az']), 'CityGlow' + fill_d['name'], 'Lighting')
+        fc_ = fl.light_component; fc_.set_mobility(unreal.ComponentMobility.MOVABLE)
+        for k, v in (('intensity', fill_d['lux']), ('use_temperature', True), ('temperature', fill_d['temp']), ('atmosphere_sun_light', False), ('cast_shadows', False),
+                     ('cast_volumetric_shadow', False), ('volumetric_scattering_intensity', 0.0), ('light_source_angle', 2.0)):
+            setp(fc_, k, v, 'CityGlow' + fill_d['name'])
     # --- sky atmosphere (aerial perspective) + real-time captured sky light
     sa = spawn(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), label='SkyAtmosphere', folder='Lighting')
     for k, v in P['atmosphere'].items():
@@ -164,13 +171,14 @@ def build_rig(name):
     slc = sl.light_component
     slc.set_mobility(unreal.ComponentMobility.MOVABLE)
     for k, v in (('real_time_capture', True), ('intensity', P['sky']['intensity']), ('cloud_ambient_occlusion', False),
-                 ('light_color', unreal.Color(*[int(255 * c) for c in P['sky']['tint']] + [255])), ('lower_hemisphere_is_black', False)):
+                 ('light_color', unreal.Color(r=int(255 * P['sky']['tint'][0]), g=int(255 * P['sky']['tint'][1]), b=int(255 * P['sky']['tint'][2]), a=255)), ('lower_hemisphere_is_black', False)):
         setp(slc, k, v, 'SkyLight')
     # --- volumetric clouds
     vc = spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
     vcc = vc.get_component_by_class(unreal.VolumetricCloudComponent)
     cl = P['clouds']
     mat = unreal.load_asset('/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst')
+    if cl.get('mi'): mat = make_cloud_mi(name, cl['mi']) or mat   # (round 03) overcast: own instance of the engine cloud material (coverage / density / albedo)
     if mat: setp(vcc, 'material', mat, 'Clouds')
     else: MISS.append('Clouds: m_SimpleVolumetricCloud_Inst missing')
     for k in ('layer_bottom_altitude', 'layer_height', 'tracing_max_distance'): setp(vcc, k, float(cl[k]), 'Clouds')
@@ -210,6 +218,21 @@ def build_rig(name):
     build_mpc_sequence(name, P['mpc'], world)
     unreal.EditorLoadingAndSavingUtils.save_map(world, path)
     log('rig', name)
+
+def make_cloud_mi(name, d):
+    """/Game/Look/MI_LookClouds_<preset>: instance of the engine's m_SimpleVolumetricCloud with the preset's coverage / density / albedo
+    (parameters: Cloud_GlobalCoverage, Cloud_GlobalDensity, Cloud_AlbedoColor, Layout_CloudGlobalScale; engine defaults -0.2 / 0.008 / 0.98)"""
+    parent = unreal.load_asset('/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud')
+    if not parent: MISS.append('m_SimpleVolumetricCloud missing'); return None
+    path = LOOK + '/MI_LookClouds_' + name
+    if EAL.does_asset_exist(path): mi = unreal.load_asset(path)
+    else: mi = unreal.AssetToolsHelpers.get_asset_tools().create_asset('MI_LookClouds_' + name, LOOK, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    mel = unreal.MaterialEditingLibrary
+    mel.set_material_instance_parent(mi, parent)
+    for k, v in d.get('scalars', {}).items(): mel.set_material_instance_scalar_parameter_value(mi, k, float(v))
+    for k, v in d.get('vectors', {}).items(): mel.set_material_instance_vector_parameter_value(mi, k, unreal.LinearColor(*[float(x) for x in v]))
+    EAL.save_asset(path)
+    return mi
 
 def build_stars():
     MAT_PATH = LOOK + '/M_LookStars'
@@ -269,12 +292,405 @@ def build_mpc_sequence(name, values, world):
     except Exception as e:
         MISS.append('mpc sequence %s: %s' % (name, str(e).split('\n')[0][:160]))
 
+
+# ------------------------------------------------------------------------------------------------ step night
+# /Game/Look/Look_NightLights (added to the night maps as an always-loaded sublevel by step maps). Everything is driven by
+# presets.night.lights in look_presets.json and by the browser's own layout (layout.json):
+#   * a spot light + a small halo point light + an emissive head at every street lamp (instances.lamp, head = base + arm 2.9 m, 9.15 m up)
+#   * storefront spill: spot lights on the street-facing ground-floor faces of the building footprints, onto the sidewalks
+#   * STAND-IN TRAFFIC (P6 owns real traffic later): dark box car proxies (no collision) in the avenue / street lanes with head lights
+#     (spot on the road, emissive) and tail lights (red point, emissive) so the roadway has light pools and moving-looking colour
+#   * a deferred decal over the whole city that makes street and sidewalk surfaces damp (lower roughness, darker) so pools read
+#   * AWHLookHeroLight (C++, Source/WebHomage/Look): rim + fill that follow the player's pawn on lighting channel 1
+NIGHT = LOOK + '/Look_NightLights'
+sds = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
+def add_component(actor, cls):
+    root = sds.k2_gather_subobject_data_for_instance(actor)[0]
+    h, fail = sds.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=root, new_class=cls, blueprint_context=None))
+    return unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(h))
+
+def cfg(obj, props, what=''):
+    for k, v in props.items(): setp(obj, k, v, what)
+
+def pick(rng, items, weights):
+    r, a = rng.random() * sum(weights), 0.0
+    for it, w in zip(items, weights):
+        a += w
+        if r <= a: return it
+    return items[-1]
+
+def make_mat(name, build, **props):
+    """(re)create /Game/Look/<name> as a Material; build(m, mel) wires the graph"""
+    path = LOOK + '/' + name
+    if EAL.does_asset_exist(path): EAL.delete_asset(path)
+    m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, LOOK, unreal.Material, unreal.MaterialFactoryNew())
+    for k, v in props.items(): setp(m, k, v, name)
+    mel = unreal.MaterialEditingLibrary
+    build(m, mel)
+    for u in (unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES,):
+        try: mel.set_material_usage(m, u)
+        except Exception as e: MISS.append('%s usage %s' % (name, str(e).split('\n')[0][:80]))
+    mel.recompile_material(m); EAL.save_asset(path)
+    return m
+
+def mat_emissive(m, mel):
+    """unlit-looking emissive: Color (vector param) x Gain (scalar param); black base"""
+    c = mel.create_material_expression(m, unreal.MaterialExpressionVectorParameter, -500, 0); c.set_editor_property('parameter_name', 'Color'); c.set_editor_property('default_value', unreal.LinearColor(1, 0.7, 0.4, 1))
+    g = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -500, 160); g.set_editor_property('parameter_name', 'Gain'); g.set_editor_property('default_value', 20.0)
+    mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -300, 0)
+    mel.connect_material_expressions(c, '', mul, 'A'); mel.connect_material_expressions(g, '', mul, 'B')
+    mel.connect_material_property(mul, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+def mat_car(m, mel):
+    """dark car paint: per-instance random colour from a palette, glossy so the lamps read as reflections"""
+    r = mel.create_material_expression(m, unreal.MaterialExpressionPerInstanceRandom, -700, 0)
+    code = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -450, 0)
+    code.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    ci = unreal.CustomInput(); ci.set_editor_property('input_name', 'R'); code.set_editor_property('inputs', [ci])
+    code.set_editor_property('code', r"""
+float3 c;
+if (R < 0.22) c = float3(0.012, 0.012, 0.014);
+else if (R < 0.42) c = float3(0.05, 0.052, 0.058);
+else if (R < 0.60) c = float3(0.30, 0.31, 0.33);
+else if (R < 0.72) c = float3(0.34, 0.34, 0.33);
+else if (R < 0.82) c = float3(0.02, 0.04, 0.11);
+else if (R < 0.90) c = float3(0.13, 0.015, 0.015);
+else if (R < 0.95) c = float3(0.6, 0.42, 0.02);
+else c = float3(0.08, 0.14, 0.1);
+return c;""")
+    mel.connect_material_expressions(r, '', code, 'R')
+    mel.connect_material_property(code, '', unreal.MaterialProperty.MP_BASE_COLOR)
+    rough = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -450, 200); rough.set_editor_property('r', 0.24)
+    mel.connect_material_property(rough, '', unreal.MaterialProperty.MP_ROUGHNESS)
+    met = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -450, 280); met.set_editor_property('r', 0.55)
+    mel.connect_material_property(met, '', unreal.MaterialProperty.MP_METALLIC)
+
+def mat_glass(m, mel):
+    c = mel.create_material_expression(m, unreal.MaterialExpressionConstant3Vector, -450, 0); c.set_editor_property('constant', unreal.LinearColor(0.006, 0.008, 0.012, 1))
+    mel.connect_material_property(c, '', unreal.MaterialProperty.MP_BASE_COLOR)
+    rough = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -450, 200); rough.set_editor_property('r', 0.05)
+    mel.connect_material_property(rough, '', unreal.MaterialProperty.MP_ROUGHNESS)
+    sp = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -450, 280); sp.set_editor_property('r', 0.9)
+    mel.connect_material_property(sp, '', unreal.MaterialProperty.MP_SPECULAR)
+
+def mat_screen(m, mel):
+    """(round 03) abstract LED video-wall content for the Times-Square-like screens (the ads of the port are IP-excluded, the screens' own emission is black):
+    1-3 x 1-2 "ad" cells per panel, each a two-colour gradient with a soft blob and fake text rows (bars, no glyphs), a per-cell brightness, an LED dot grid, a rare flash,
+    tinted by the instance's Tint; NO text, NO logos, NO imagery. Unlit (emissive only)."""
+    uv = mel.create_material_expression(m, unreal.MaterialExpressionTextureCoordinate, -900, 0)
+    tm = mel.create_material_expression(m, unreal.MaterialExpressionTime, -900, 120)
+    rn = mel.create_material_expression(m, unreal.MaterialExpressionPerInstanceRandom, -900, 240)
+    tint = mel.create_material_expression(m, unreal.MaterialExpressionVectorParameter, -600, 320); tint.set_editor_property('parameter_name', 'Tint'); tint.set_editor_property('default_value', unreal.LinearColor(1, 0.3, 0.6, 1))
+    gain = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -600, 420); gain.set_editor_property('parameter_name', 'Gain'); gain.set_editor_property('default_value', 8.0)
+    asp = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -900, 380); asp.set_editor_property('parameter_name', 'Aspect'); asp.set_editor_property('default_value', 1.0)
+    code = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -600, 0)
+    code.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    ins = []
+    for nm in ('UV', 'T', 'R', 'C', 'A'):
+        ci = unreal.CustomInput(); ci.set_editor_property('input_name', nm); ins.append(ci)
+    code.set_editor_property('inputs', ins)
+    code.set_editor_property('code', r"""
+float ar = max(A, 0.05);
+float tgt = 0.55 + 0.9 * frac(R * 5.17);
+float nx = 1.0 + floor(frac(R * 3.71) * 1.99);
+float ny = clamp(floor(ar * nx / tgt + 0.5), 1.0, 8.0);
+float2 g = UV * float2(nx, ny);
+float2 cell = floor(g);
+float2 f = frac(g);
+float ch = frac(sin(dot(cell + R * 13.7, float2(12.9898, 78.233))) * 43758.5453);
+float ch2 = frac(ch * 91.3 + 0.17);
+float ch3 = frac(ch2 * 47.1 + 0.53);
+float t = T * (0.15 + 0.2 * ch2);
+float3 pa = 0.5 + 0.5 * cos(6.2831 * (ch + float3(0.0, 0.33, 0.67)));
+float3 pb = 0.5 + 0.5 * cos(6.2831 * (ch2 + 0.4 + float3(0.0, 0.33, 0.67)));
+float3 bg = lerp(pa, pb, saturate(f.y * 0.9 + 0.1 * sin(t * 3.0 + f.x * 4.0)));
+float2 bc = float2(0.3 + 0.4 * ch3, 0.5) + 0.12 * float2(sin(t * 2.0), cos(t * 1.7));
+float blob = smoothstep(0.42, 0.10, length((f - bc) * float2(1.0, 1.4)));
+float3 fg = lerp(bg, lerp(C, float3(1.0, 1.0, 1.0), 0.65), blob);
+float rows = step(0.5, frac(f.y * 14.0)) * step(f.y, 0.34) * step(f.x, 0.25 + 0.55 * frac(floor(f.y * 14.0) * 0.618 + ch));
+fg = lerp(fg, float3(1.0, 1.0, 1.0), rows * 0.85);
+float edge = smoothstep(0.0, 0.03, f.x) * smoothstep(1.0, 0.97, f.x) * smoothstep(0.0, 0.03, f.y) * smoothstep(1.0, 0.97, f.y);
+float gain = 0.3 + 0.7 * ch3;
+float2 dg = frac(UV * float2(150.0, 150.0 * ar));
+float dots = smoothstep(0.05, 0.3, dg.x) * smoothstep(0.05, 0.3, dg.y);
+float flash = smoothstep(0.985, 1.0, sin(T * (0.6 + 0.4 * R) + R * 40.0)) * 1.6;
+float3 outc = fg * gain * edge * (0.7 + 0.3 * dots);
+outc = lerp(outc, outc * C * 2.0, 0.35);
+return outc + C * flash * 0.3;""")
+    mel.connect_material_expressions(uv, '', code, 'UV'); mel.connect_material_expressions(tm, '', code, 'T'); mel.connect_material_expressions(rn, '', code, 'R'); mel.connect_material_expressions(tint, '', code, 'C'); mel.connect_material_expressions(asp, '', code, 'A')
+    mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -300, 60)
+    mel.connect_material_expressions(code, '', mul, 'A'); mel.connect_material_expressions(gain, '', mul, 'B')
+    mel.connect_material_property(mul, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+
+def mat_wet(W):
+    def build(m, mel):
+        # world position + reconstructed geometric normal (from depth derivatives) -> puddle / damp mask
+        wp = mel.create_material_expression(m, unreal.MaterialExpressionWorldPosition, -900, 0)
+        code = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -600, 0)
+        code.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT4)
+        ci = unreal.CustomInput(); ci.set_editor_property('input_name', 'P'); code.set_editor_property('inputs', [ci])
+        code.set_editor_property('code', """
+float3 pm = P * 0.01;
+float3 dx = ddx(pm), dy = ddy(pm);
+float3 n = normalize(cross(dx, dy));
+float up = saturate((abs(n.z) - 0.86) / 0.1);
+float2 q = pm.xy;
+float h1 = frac(sin(dot(floor(q / 5.5), float2(12.9898, 78.233))) * 43758.5453);
+float h2 = frac(sin(dot(floor(q / 5.5) + float2(1, 0), float2(12.9898, 78.233))) * 43758.5453);
+float h3 = frac(sin(dot(floor(q / 5.5) + float2(0, 1), float2(12.9898, 78.233))) * 43758.5453);
+float h4 = frac(sin(dot(floor(q / 5.5) + float2(1, 1), float2(12.9898, 78.233))) * 43758.5453);
+float2 f = frac(q / 5.5); f = f * f * (3.0 - 2.0 * f);
+float n1 = lerp(lerp(h1, h2, f.x), lerp(h3, h4, f.x), f.y);
+float g1 = frac(sin(dot(floor(q / 1.4), float2(39.346, 11.135))) * 43758.5453);
+float g2 = frac(sin(dot(floor(q / 1.4) + float2(1, 0), float2(39.346, 11.135))) * 43758.5453);
+float g3 = frac(sin(dot(floor(q / 1.4) + float2(0, 1), float2(39.346, 11.135))) * 43758.5453);
+float g4 = frac(sin(dot(floor(q / 1.4) + float2(1, 1), float2(39.346, 11.135))) * 43758.5453);
+float2 f2 = frac(q / 1.4); f2 = f2 * f2 * (3.0 - 2.0 * f2);
+float n2 = lerp(lerp(g1, g2, f2.x), lerp(g3, g4, f2.x), f2.y);
+float pud = smoothstep(0.52, 0.72, n1 * 0.7 + n2 * 0.3);
+return float4(up, pud, 0, 0);""")
+        mel.connect_material_expressions(wp, '', code, 'P')
+        # opacity = up * (base + (puddle - base) * pud); roughness lerp(dry, wet, ...)
+        def k(v, y):
+            e = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -300, y); e.set_editor_property('r', float(v)); return e
+        def op(cls, a, b, x, y, ia='A', ib='B'):
+            e = mel.create_material_expression(m, cls, x, y); mel.connect_material_expressions(a, '', e, ia); mel.connect_material_expressions(b, '', e, ib); return e
+        mask = mel.create_material_expression(m, unreal.MaterialExpressionComponentMask, -450, -100); mask.set_editor_property('r', True); mask.set_editor_property('g', False); mask.set_editor_property('b', False); mask.set_editor_property('a', False)
+        mel.connect_material_expressions(code, '', mask, '')
+        maskp = mel.create_material_expression(m, unreal.MaterialExpressionComponentMask, -450, 60); maskp.set_editor_property('r', False); maskp.set_editor_property('g', True); maskp.set_editor_property('b', False); maskp.set_editor_property('a', False)
+        mel.connect_material_expressions(code, '', maskp, '')
+        lerp_o = mel.create_material_expression(m, unreal.MaterialExpressionLinearInterpolate, -250, 60)
+        mel.connect_material_expressions(k(W['base'], 0), '', lerp_o, 'A'); mel.connect_material_expressions(k(W['puddle'], 40), '', lerp_o, 'B'); mel.connect_material_expressions(maskp, '', lerp_o, 'Alpha')
+        opac = op(unreal.MaterialExpressionMultiply, mask, lerp_o, -100, 0)
+        mel.connect_material_property(opac, '', unreal.MaterialProperty.MP_OPACITY)
+        lerp_r = mel.create_material_expression(m, unreal.MaterialExpressionLinearInterpolate, -250, 200)
+        mel.connect_material_expressions(k(W['rough_dry'], 160), '', lerp_r, 'A'); mel.connect_material_expressions(k(W['rough_wet'], 200), '', lerp_r, 'B'); mel.connect_material_expressions(maskp, '', lerp_r, 'Alpha')
+        mel.connect_material_property(lerp_r, '', unreal.MaterialProperty.MP_ROUGHNESS)
+        bc = mel.create_material_expression(m, unreal.MaterialExpressionConstant3Vector, -250, 300); bc.set_editor_property('constant', unreal.LinearColor(0.012, 0.014, 0.02, 1))
+        mel.connect_material_property(bc, '', unreal.MaterialProperty.MP_BASE_COLOR)
+        sp = k(0.55, 340); mel.connect_material_property(sp, '', unreal.MaterialProperty.MP_SPECULAR)
+    return make_mat('M_LookWet', build, material_domain=unreal.MaterialDomain.MD_DEFERRED_DECAL, blend_mode=unreal.BlendMode.BLEND_TRANSLUCENT)
+
+def make_mi(name, parent, vec=None, scal=None):
+    path = LOOK + '/' + name
+    if EAL.does_asset_exist(path): EAL.delete_asset(path)
+    mi = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, LOOK, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    unreal.MaterialEditingLibrary.set_material_instance_parent(mi, parent)
+    for k, v in (vec or {}).items(): unreal.MaterialEditingLibrary.set_material_instance_vector_parameter_value(mi, k, unreal.LinearColor(*v))
+    for k, v in (scal or {}).items(): unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value(mi, k, float(v))
+    EAL.save_asset(path)
+    return mi
+
+def kelvin_rgb(t):
+    """approximate blackbody colour (linear-ish, max 1) for the emissive lamp heads"""
+    t = t / 100.0
+    r = 1.0 if t <= 66 else max(0.0, min(1.0, 1.2929 * ((t - 60) ** -0.1332)))
+    g = max(0.0, min(1.0, 0.39008 * math.log(t) - 0.63184)) if t <= 66 else max(0.0, min(1.0, 1.1298 * ((t - 60) ** -0.0755)))
+    b = 1.0 if t >= 66 else (0.0 if t <= 19 else max(0.0, min(1.0, 0.54321 * math.log(t - 10) - 1.19625)))
+    return (r ** 2.2, g ** 2.2, b ** 2.2, 1.0)
+
+def spawn_spot(loc, rot, label, folder, cd, outer, inner, radius, temp, vol=0.0, maxd=0.0, indirect=1.0, color=None):
+    a = spawn(unreal.SpotLight, loc, rot, label, folder)
+    lc = a.get_component_by_class(unreal.SpotLightComponent)
+    lc.set_mobility(unreal.ComponentMobility.MOVABLE)
+    cfg(lc, {'intensity_units': unreal.LightUnits.CANDELAS, 'intensity': float(cd), 'use_temperature': True, 'temperature': float(temp), 'attenuation_radius': float(radius),
+             'outer_cone_angle': float(outer), 'inner_cone_angle': float(inner), 'source_radius': 8.0, 'cast_shadows': False, 'volumetric_scattering_intensity': float(vol),
+             'indirect_lighting_intensity': float(indirect)}, 'SpotLight')
+    if color: cfg(lc, {'use_temperature': False, 'light_color': unreal.Color(r=int(255 * color[0]), g=int(255 * color[1]), b=int(255 * color[2]), a=255)}, 'SpotLight')
+    if maxd: cfg(lc, {'max_draw_distance': float(maxd), 'max_distance_fade_range': float(maxd) * 0.2}, 'SpotLight')
+    return a
+
+def spawn_point(loc, label, folder, cd, radius, temp=None, color=None, vol=0.0, maxd=0.0, indirect=1.0):
+    a = spawn(unreal.PointLight, loc, unreal.Rotator(0, 0, 0), label, folder)
+    lc = a.get_component_by_class(unreal.PointLightComponent)
+    lc.set_mobility(unreal.ComponentMobility.MOVABLE)
+    cfg(lc, {'intensity_units': unreal.LightUnits.CANDELAS, 'intensity': float(cd), 'attenuation_radius': float(radius), 'source_radius': 6.0, 'cast_shadows': False,
+             'volumetric_scattering_intensity': float(vol), 'indirect_lighting_intensity': float(indirect)}, 'PointLight')
+    if temp: cfg(lc, {'use_temperature': True, 'temperature': float(temp)}, 'PointLight')
+    if color: cfg(lc, {'light_color': unreal.Color(r=int(255 * color[0]), g=int(255 * color[1]), b=int(255 * color[2]), a=255)}, 'PointLight')
+    if maxd: cfg(lc, {'max_draw_distance': float(maxd), 'max_distance_fade_range': float(maxd) * 0.2}, 'PointLight')
+    return a
+
+def ism(label, mesh, mat, folder='NightLights', shadow=False):
+    a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label, folder=folder)
+    c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+    c.set_static_mesh(mesh); c.set_material(0, mat)
+    c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); c.set_collision_profile_name('NoCollision')
+    c.set_editor_property('cast_shadow', shadow)
+    return c
+
+def build_night():
+    L = PRE['night']['lights']
+    layout = json.load(open(os.path.join(EXPORT, 'layout.json')))
+    world = open_level(NIGHT)
+    CUBE, SPHERE, CYL = (unreal.load_asset('/Engine/BasicShapes/' + n) for n in ('Cube', 'Sphere', 'Cylinder'))
+    # ---- materials
+    m_em = make_mat('M_LookEmissive', mat_emissive, shading_model=unreal.MaterialShadingModel.MSM_UNLIT)
+    m_car = make_mat('M_LookCarPaint', mat_car)
+    m_glass = make_mat('M_LookCarGlass', mat_glass)
+    lc_ = L['lamps']
+    glow = {t: make_mi('MI_LookGlow_%d' % t, m_em, vec={'Color': kelvin_rgb(t)}, scal={'Gain': lc_['glow_gain']}) for t in lc_['temps']}
+    mi_head = make_mi('MI_LookHead', m_em, vec={'Color': (1.0, 0.92, 0.8, 1)}, scal={'Gain': L['cars']['head_gain']})
+    mi_tail = make_mi('MI_LookTail', m_em, vec={'Color': (1.0, 0.03, 0.01, 1)}, scal={'Gain': L['cars']['tail_gain']})
+    n_l = 0
+    # ---- street lamps
+    rng = random.Random(3)
+    glow_c = {t: ism('LampGlow_%d' % t, SPHERE, glow[t]) for t in lc_['temps']}
+    glow_x = {t: [] for t in lc_['temps']}
+    for i, it in enumerate(layout['instances']['lamp']['items']):
+        ry = it.get('ry', 0.0)
+        hx, hy, hz = it['x'] + lc_['arm'] * math.sin(ry), it['y'] + lc_['head_h'], it['z'] + lc_['arm'] * math.cos(ry)
+        t = pick(rng, lc_['temps'], lc_['weights'])
+        loc = U(hx, hy, hz)
+        spawn_spot(loc, unreal.Rotator(pitch=-90.0, yaw=0.0, roll=0.0), 'LampSpot_%d' % i, 'NightLights/Lamps', lc_['spot_cd'] * rng.uniform(0.85, 1.15), lc_['spot_outer'], lc_['spot_inner'],
+                   lc_['spot_radius'], t, vol=lc_['volumetric'], maxd=lc_['max_draw'], indirect=lc_.get('indirect', 1.0))
+        spawn_point(loc - unreal.Vector(0, 0, 30), 'LampHalo_%d' % i, 'NightLights/Lamps', lc_['halo_cd'], lc_['halo_radius'], temp=t, maxd=lc_.get('halo_max_draw', lc_['max_draw'] * 0.7))
+        s = lc_['glow_size_cm'] / 100.0
+        glow_x[t].append(unreal.Transform(loc - unreal.Vector(0, 0, 12), unreal.Rotator(0, 0, 0), unreal.Vector(s, s, s * 0.55)))
+        n_l += 1
+    for t in lc_['temps']: glow_c[t].add_instances(glow_x[t], False, True)
+    log('night: %d lamps' % n_l)
+    # ---- storefront spill
+    S = L['storefront']; n_s = 0
+    if S.get('enabled'):
+        rng = random.Random(11)
+        blocks = layout['blocks']
+        def block_of(f):
+            cx, cz = (f['x0'] + f['x1']) / 2, (f['z0'] + f['z1']) / 2
+            return next((b for b in blocks if b['x0'] <= cx <= b['x1'] and b['z0'] <= cz <= b['z1']), None)
+        for f in layout['footprints']:
+            b = block_of(f)
+            if not b: continue
+            faces = []   # (normal x, normal z, along-axis 'x'|'z', fixed coord, a0, a1)
+            if abs(f['x1'] - b['x1']) < S['face_tol']: faces.append((1, 0, 'z', f['x1'], f['z0'], f['z1']))
+            if abs(f['x0'] - b['x0']) < S['face_tol']: faces.append((-1, 0, 'z', f['x0'], f['z0'], f['z1']))
+            if abs(f['z1'] - b['z1']) < S['face_tol']: faces.append((0, 1, 'x', f['z1'], f['x0'], f['x1']))
+            if abs(f['z0'] - b['z0']) < S['face_tol']: faces.append((0, -1, 'x', f['z0'], f['x0'], f['x1']))
+            for nx, nz, ax, fixed, a0, a1 in faces:
+                if a1 - a0 < S['min_face']: continue
+                k = max(1, int((a1 - a0) / S['spacing']))
+                for j in range(k):
+                    a = a0 + (j + 0.5) * (a1 - a0) / k
+                    x, z = (fixed + nx * S['setback'], a) if ax == 'z' else (a, fixed + nz * S['setback'])
+                    if rng.random() > 0.8: continue
+                    t = pick(rng, S['temps'], S['weights'])
+                    yaw = math.degrees(math.atan2(nz, nx))
+                    spawn_spot(U(x, S['height'], z), unreal.Rotator(pitch=S['pitch'], yaw=yaw, roll=0.0), 'Shop_%d' % n_s, 'NightLights/Storefront', S['spot_cd'] * rng.uniform(0.6, 1.4),
+                               S['outer'], S['inner'], S['radius'], t, vol=0.2, maxd=S['max_draw'])
+                    n_s += 1
+    log('night: %d storefront lights' % n_s)
+    # ---- Times-Square-like screen glow (screen quads: look_ts_screens.json)
+    T = L.get('screens', {}); n_t = 0; n_q = 0
+    if T.get('enabled'):
+        rng = random.Random(29)
+        cols = T['palette']['colors']
+        plane = unreal.load_asset('/Engine/BasicShapes/Plane')
+        m_scr = make_mat('M_LookScreen', mat_screen, shading_model=unreal.MaterialShadingModel.MSM_UNLIT, two_sided=True) if T.get('content', {}).get('enabled') else None
+        quad_c, quad_x = {}, {}
+        def quad_group(i, b):   # one instanced component per (palette colour, aspect bin: panel height / width = 2 ** b)
+            if (i, b) not in quad_c:
+                col = cols[i]
+                mi_s = make_mi('MI_LookScreen_%d_%d' % (i, b + 4), m_scr, vec={'Tint': (col[0], col[1], col[2], 1.0)}, scal={'Gain': T['content']['gain'], 'Aspect': float(2.0 ** b)})
+                quad_c[(i, b)] = ism('ScreenContent_%d_%d' % (i, b + 4), plane, mi_s, folder='NightLights/Screens'); quad_x[(i, b)] = []
+            return quad_x[(i, b)]
+        for k, sc in enumerate(json.load(open(os.path.join(HERE, 'look_ts_screens.json')))['screens']):
+            nrm, c = sc['n'], sc['c']
+            if abs(nrm[1]) > 0.5: continue   # vertical screens only
+            col = pick(rng, cols, T['palette']['weights'])
+            pos = (c[0] + nrm[0] * T['offset'], c[1], c[2] + nrm[2] * T['offset'])
+            spawn_spot(U(*pos), unreal.Rotator(pitch=T['pitch'], yaw=math.degrees(math.atan2(nrm[2], nrm[0])), roll=0.0), 'TSScreen_%d' % k, 'NightLights/Screens', T['cd_per_sqrt_area'] * math.sqrt(sc['a']),
+                       T['outer'], T['inner'], T['radius'], 6500, vol=T['volumetric'], maxd=T['max_draw'], color=col)
+            n_t += 1
+            if m_scr and sc.get('w') and sc.get('h'):   # emissive stand-in content quad, 5 cm in front of the (black) screen, facing the same way
+                nu = unreal.Vector(nrm[0], nrm[2], nrm[1])                      # browser normal -> UE
+                tx = unreal.Vector(-nu.y, nu.x, 0.0); tl = math.hypot(tx.x, tx.y)
+                if tl < 1e-3: continue
+                tx = unreal.Vector(tx.x / tl, tx.y / tl, 0.0)
+                rot = unreal.MathLibrary.make_rot_from_zx(nu, tx)
+                loc = U(c[0] + nrm[0] * T['content']['offset'], c[1], c[2] + nrm[2] * T['content']['offset'])
+                quad_group(cols.index(col), max(-4, min(4, int(round(math.log2(max(sc['h'], 0.1) / max(sc['w'], 0.1))))))).append(unreal.Transform(loc, rot, unreal.Vector(sc['w'], sc['h'], 1.0)))
+                n_q += 1
+        for key, c_ in quad_c.items(): c_.add_instances(quad_x[key], False, True)
+    log('night: %d screen lights, %d content quads' % (n_t, n_q))
+    # ---- stand-in traffic
+    C = L['cars']; n_c = 0
+    if C.get('enabled'):
+        rng = random.Random(C['seed'])
+        clear = [(s['pos'][0], s['pos'][2]) for s in SHOTS] + [(s['player'][0], s['player'][2]) for s in SHOTS]
+        body = ism('CarBody', CUBE, m_car, shadow=False); cab = ism('CarCabin', CUBE, m_glass); whl = ism('CarWheels', CYL, m_glass); hl = ism('CarHeadlights', CUBE, mi_head); tl = ism('CarTaillights', CUBE, mi_tail)
+        bx, cx_, wx, hx_, tx_ = [], [], [], [], []
+        def add_car(px, pz, yaw_deg, idx):
+            rr = unreal.Rotator(0, 0, yaw_deg)
+            yaw = math.radians(yaw_deg); fx, fy = math.cos(yaw), math.sin(yaw); sx, sy = -fy, fx     # forward / right in UE XY
+            kind = rng.random()                                      # 0..0.2 SUV / van (taller, longer cabin), rest sedans of slightly different length
+            L_ = 4.3 + 0.5 * rng.random() + (0.35 if kind < 0.2 else 0.0)
+            Hb, Hc = (0.62, 0.66) if kind < 0.2 else (0.5, 0.5)
+            def at(f, r, z): return unreal.Vector((px + f * fx + r * sx) * 100.0, (pz + f * fy + r * sy) * 100.0, z * 100.0)
+            bx.append(unreal.Transform(at(0, 0, 0.30 + Hb / 2), rr, unreal.Vector(L_, 1.82, Hb)))                       # lower body (paint)
+            cl = L_ * (0.62 if kind < 0.2 else 0.5)
+            cx_.append(unreal.Transform(at(-0.12 * L_, 0, 0.30 + Hb + Hc / 2 - 0.02), rr, unreal.Vector(cl, 1.50, Hc)))    # greenhouse (glass)
+            bx.append(unreal.Transform(at(-0.12 * L_, 0, 0.30 + Hb + Hc + 0.02), rr, unreal.Vector(cl * 0.88, 1.46, 0.06)))  # roof (paint)
+            cx_.append(unreal.Transform(at(L_ / 2 - 0.02, 0, 0.42), rr, unreal.Vector(0.16, 1.80, 0.22)))                 # front bumper (dark)
+            cx_.append(unreal.Transform(at(-L_ / 2 + 0.02, 0, 0.42), rr, unreal.Vector(0.16, 1.80, 0.22)))                # rear bumper (dark)
+            for wf in (0.33 * L_, -0.31 * L_):
+                for wr in (-0.86, 0.86):
+                    wx.append(unreal.Transform(at(wf, wr, 0.32), unreal.Rotator(pitch=0, yaw=yaw_deg, roll=90), unreal.Vector(0.64, 0.64, 0.24)))
+            for wr in (-0.66, 0.66):
+                hx_.append(unreal.Transform(at(L_ / 2, wr, 0.62), rr, unreal.Vector(0.08, 0.40, 0.13)))
+                tx_.append(unreal.Transform(at(-L_ / 2, wr, 0.70), rr, unreal.Vector(0.08, 0.42, 0.12)))
+            spawn_spot(at(L_ / 2 + 0.1, 0, 0.66), unreal.Rotator(pitch=C['head_pitch'], yaw=yaw_deg, roll=0.0), 'CarHead_%d' % idx, 'NightLights/Cars', C['head_cd'] * rng.uniform(0.8, 1.2), C['head_outer'], C['head_inner'],
+                       C['head_radius'], 4300, vol=0.3, maxd=C['max_draw'])
+            spawn_point(at(-L_ / 2 - 0.4, 0, 0.72), 'CarTail_%d' % idx, 'NightLights/Cars', C['tail_cd'], C['tail_radius'], color=(1.0, 0.05, 0.02), maxd=C.get('tail_max_draw', C['max_draw'] * 0.7))
+        idx = 0
+        for st in layout['streets']:
+            if 'x1' not in st: continue   # the diagonal Broadway polygon: no stand-in traffic
+            w_x, w_z = st['x1'] - st['x0'], st['z1'] - st['z0']
+            if st['kind'] == 'avenue' and w_z > 40 and w_x > 15: # N-S avenue block segment: lanes along z
+                half = w_x / 2 - C['lane_edge_park']; n = 2; cxm = (st['x0'] + st['x1']) / 2
+                lanes = [(cxm + (k + 0.5) * half / n, -90.0, 'nb', 'z') for k in range(n)] + [(cxm - (k + 0.5) * half / n, 90.0, 'sb', 'z') for k in range(n)]
+                a0, a1 = st['z0'] + 8.0, st['z1'] - 8.0
+            elif st['kind'] == 'street' and w_x > 40:
+                half = w_z / 2 - C['lane_edge_park'] * 0.8; n = 1 if w_z < 14 else 2; czm = (st['z0'] + st['z1']) / 2
+                lanes = [(czm + (k + 0.5) * half / n, 0.0, 'eb', 'x') for k in range(n)] + [(czm - (k + 0.5) * half / n, 180.0, 'wb', 'x') for k in range(n)]
+                a0, a1 = st['x0'] + 8.0, st['x1'] - 8.0
+            else: continue
+            for (lane_c, yaw, _, axis) in lanes:
+                a = a0 + rng.uniform(0, C['gap_max'])
+                while a < a1 - 4.5:
+                    px, pz = (lane_c, a) if axis == 'z' else (a, lane_c)
+                    ok = rng.random() < C['fill'] and all(math.hypot(px - cx, pz - cz) > C['clear_radius'] for cx, cz in clear)
+                    if ok: add_car(px, pz, yaw, idx); idx += 1
+                    a += rng.uniform(C['gap_min'], C['gap_max'])
+        for c_, xs in ((body, bx), (cab, cx_), (whl, wx), (hl, hx_), (tl, tx_)): c_.add_instances(xs, False, True)
+        n_c = idx
+    log('night: %d stand-in cars' % n_c)
+    # ---- damp streets: one big deferred decal (roads + sidewalks), night only
+    W = L['wet']
+    if W.get('enabled'):
+        m_wet = mat_wet(W)
+        d = spawn(unreal.DecalActor, unreal.Vector(0, 0, W['z_center_cm']), unreal.Rotator(pitch=-90.0, yaw=0.0, roll=0.0), 'WetStreets', 'NightLights')
+        dc = d.get_component_by_class(unreal.DecalComponent)
+        cfg(dc, {'decal_material': m_wet, 'decal_size': unreal.Vector(W['half_depth_cm'], W['half_size_cm'], W['half_size_cm']), 'fade_screen_size': 0.0}, 'Decal')
+        d.set_actor_location(unreal.Vector(0, 0, W['z_center_cm']), False, False)
+        log('night: wet-street decal')
+    # ---- hero rim + fill (C++ actor)
+    Hh = L['hero']
+    if Hh.get('enabled'):
+        cls = unreal.load_class(None, '/Script/WebHomage.WHLookHeroLight')
+        if cls:
+            h = spawn(cls, unreal.Vector(0, 0, 0), label='HeroLights', folder='NightLights')
+            cfg(h, {'rim_intensity': float(Hh['rim_cd']), 'fill_intensity': float(Hh['fill_cd']), 'top_intensity': float(Hh['top_cd'])}, 'HeroLight')
+        else: MISS.append('AWHLookHeroLight class missing (build the C++ module)')
+    unreal.EditorLoadingAndSavingUtils.save_map(world, NIGHT)
+    log('night level saved', NIGHT)
+
 # ------------------------------------------------------------------------------------------------ step maps
 def rig_path(name): return '%s/Look_Rig_%s' % (RIGS, name)
 
 def add_sublevels(world, name, boxes=False):
-    for lp in (CITY_GEO, BOXES, rig_path(name)):
+    for lp in (CITY_GEO, BOXES, rig_path(name), NIGHT):
         if lp == BOXES and not (boxes and EAL.does_asset_exist(BOXES)): continue
+        if lp == NIGHT and not (name == 'night' and EAL.does_asset_exist(NIGHT)): continue
         if not any(lp.split('/')[-1] in l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)):
             unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
     les.set_current_level_by_name(str(world.get_name()))
@@ -311,6 +727,7 @@ EAL.make_directory(RIGS)
 if 'geo' in STEPS: build_geo()
 if 'rigs' in STEPS:
     for n in ORDER: build_rig(n)
+if 'night' in STEPS: build_night()
 if 'maps' in STEPS: build_maps()
 if MISS: log('WARNINGS (%d):' % len(MISS)); [print('   ', m) for m in MISS]
 log('DONE')
