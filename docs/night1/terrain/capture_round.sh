@@ -14,7 +14,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 UE_DIR="$(cd "$HERE/../../../unreal/WebHomage" && pwd)"
 SCR="$HERE/scripts"
 TMP=/Users/midir/sm2-n1/_scratch/terrain/capture
-GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
+GPU="${GPU_CMD:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"
 RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
