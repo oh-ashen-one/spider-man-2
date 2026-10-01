@@ -8,7 +8,7 @@ Inside the head box (the hair + upper face) it measures three things:
      CHROMA / hue difference (a*, b*) across 6 px exceeds 9 or the lightness difference exceeds 38, and both sides are hair (not skin, not
      background).  Straight runs are found with a probabilistic Hough transform (min length 40 px, max gap 4 px); reported: every straight
      colour-seam segment >= 40 px inside the hair.
-  2. flat cards: hair pixels whose 21 x 21 neighbourhood has a luminance std < 4.5 (a flat-shaded card has no strand texture); components of
+  2. flat cards: hair pixels whose 21 x 21 neighbourhood has a luminance std < 6 % of its mean (mean > 28; a flat-shaded card has no strand texture); components of
      those wider AND taller than 20 px are listed (bbox).
   3. background between hair and skin: pixels within 14 RGB units of the background colour (median of the box's top corners) that are NOT
      connected to the outer background (= enclosed by the head); components >= 6 px are listed.
@@ -62,7 +62,7 @@ segs.sort(key=lambda s: -s['len_px'])
 # 2. flat cards
 m1 = cv2.blur(luma, (21, 21)); m2 = cv2.blur(luma * luma, (21, 21))
 std = np.sqrt(np.maximum(m2 - m1 * m1, 0))
-flat = hair & (std < 4.5) & ndi.binary_erosion(hair, iterations=10) & (luma < 100)
+flat = hair & (std < 0.06 * np.maximum(m1, 1)) & (m1 > 28) & ndi.binary_erosion(hair, iterations=10)   # flat shading: coefficient of variation < 6 % over 21 x 21 (dark hair in shadow is not flat by this measure)
 lab_f, n = ndi.label(flat)
 cards = []
 for k, sl in enumerate(ndi.find_objects(lab_f)):

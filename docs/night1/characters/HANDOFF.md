@@ -4,6 +4,15 @@
 
 Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Author of round 10: Sonnet 5.5. Everything below is committed and pushed (`origin/night1/characters`); the content (`/Game/Characters`, `/Game/Tests/Characters`) is NOT committed (script-generated, rebuild with `build_fight.sh`, see Commands). Numbers: `round-10/SPEC_CHECK.md`; provenance: `round-10/CAPTURES.md`.
 
+## Round 11 IN PROGRESS (interim note, Opus 5.5, 2026-10-01 02:10)
+
+Target (critic r10, lowest axis image quality 4): one hair asset per head, no colour seam > 40 px inside the hair, no flat card > 20 px, no background between hair and skin
+(hood / beard / tee faces at 4K); thug collar: no skin-toned blob > 15 x 15 px.  Done on the CPU side (committed): `tools/ue_char/people/hair.py` (Hood blond -> maroon `unify_hair`;
+Beard / Tee hair shell: `tuck_hair` edges onto the head, `paint_scalp` (scalp under the shell + the shell's own baked-skin texels -> hair colour), Beard `compress_hair`; the r10
+`bridge_gap` flat card removed), `nape_fix.py` (strip -> the hood's own dark), checker `eval/hair_4k.py`, `crops_r11.py`, `make_pairs_r11.py`, `analyze_r11.sh`.
+Engine chain `$P2_SCRATCH/r11/chain.sh` (build -> gE faces -> F fight movie -> gF stills) was queued in the GPU lock at 02:00 (PID in `$P2_SCRATCH/r11/chain.pid`).
+If this note is still here, the round did not finish: rebuild with build_people.sh + build_fight.sh (full steps) and re-run the chain.
+
 ## Where the round stands
 
 Round-09 critic (`critic/round-09-CRITIC.md`, lowest axis 4 = image quality): biggest gap = in EVERY 8 s fight clip >= 4 hit reactions (head / torso >= 0.1 stature within 0.2 s of contact), >= 2 knockdowns with 2 enemies down together >= 1 s, >= 2 distinct get-ups, no enemy holding one guard > 2 s; plus an "untextured grey hero arm" at 1.30 - 1.50 s.
