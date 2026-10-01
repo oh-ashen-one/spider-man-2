@@ -41,6 +41,10 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Materials/MaterialInterface.h"
 #include "UnrealClient.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Widgets/SViewport.h"
+#include "HAL/PlatformTime.h"
+#include "GameFramework/PlayerInput.h"
 #include "UObject/ConstructorHelpers.h"
 
 // round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable; 2026-10-01 -> 0.0025
@@ -702,27 +706,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			I.bSwing = bAutoHeld || bKeepSwingThisFrame;
 		}
 	}
-	else
-	{
-		I.Move = LiveMove.Size() > 1 ? LiveMove.GetSafeNormal() : LiveMove;
-		I.bSwing = bRMB || (bR2 && !bL2);
-		I.bSprint = bShift || (bR2 && !bL2);
-		I.bZip = bZipKey || (bL2 && bR2);
-		I.bJump = bJumpKey; I.bDrop = bDropKey; I.bQuick = bQuickKey; I.bTrick = bTrickKey;
-		// look: mouse (yaw right +, pitch down +) and right stick rate
-		const float MSens = MouseRadPerUnit * FMath::Max(0.f, CVarWHMouseSensitivity.GetValueOnGameThread());
-		// owner playtest 2026-10-01: mouse look only while the game has the mouse (left click captures, Escape releases). With the cursor free,
-		// moving it over the window -- or the right-mouse capture warp when a swing starts -- produced huge one-frame deltas. Clamp spikes too.
-		const AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(GetController());
-		const bool bMouseLook = !WPC || WPC->IsMouseCaptured();
-		const FVector2D MouseD = bMouseLook ? FVector2D(FMath::Clamp(MouseAccum.X, -MaxMouseDeltaPx, MaxMouseDeltaPx), FMath::Clamp(MouseAccum.Y, -MaxMouseDeltaPx, MaxMouseDeltaPx)) : FVector2D::ZeroVector;
-		// 2026-10-01 settings menu: gamepad look sensitivity and Invert Y (mouse and stick). The right stick is never gated by mouse capture.
-		const FWHSettings& St = WHSettings();
-		const double YSign = St.bInvertY ? -1.0 : 1.0;
-		const double PadK = St.PadSens;
-		I.Look = FVector2D(MouseD.X * MSens, -MouseD.Y * MSens * YSign)
-			+ FVector2D(PadLook.X * PadLookRate.X * PadK, -PadLook.Y * PadLookRate.Y * PadK * YSign) * Dt;
-	}
+	else PollLiveInput(Cast<APlayerController>(GetController()), I, DeltaSeconds);
 	MouseAccum = FVector2D::ZeroVector;
 	I.ComputeEdges(PrevInput);
 	PrevInput = I;
@@ -747,6 +731,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		else if (T == TEXT("wall") && E.bRun) Cam.Shake(0.08);
 		else if (T == TEXT("swingWallKick")) Cam.Shake(0.1 + 0.3 * E.Severity);
 	}
+	if (!bPre && !(Script && Script->IsActive())) WatchInput(Cast<APlayerController>(GetController()), I, DeltaSeconds);
 	FTravCamInput CI;
 	CI.Pos = Traversal->PosM(); CI.Vel = Traversal->VelM(); CI.Mode = Traversal->Anim.Mode; CI.Sub = Traversal->Sub(); CI.ModeT = Traversal->ModeT();
 	CI.bHasAnchor = Traversal->IsSwinging(); CI.Anchor = Traversal->SwingAnchor();
@@ -1319,6 +1304,120 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	const double Gap = Traversal->FlowApexGap();
 	const FString Cols17 = FString::Printf(TEXT(",%.2f,%.2f"), Traversal->FlowApexWant, Gap < -1e8 ? -999.0 : Gap);
 	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17);
+}
+
+// ------------------------------------------------------------------ live input (round 19)
+void AWebTravCharacter::PollLiveInput(APlayerController* PC, FWebTravInput& I, float Dt)
+{
+	// a frame gap (pause menu, focus loss, hitch) longer than 0.3 s real time: every button still held counts as a fresh press
+	const double Now = FPlatformTime::Seconds();
+	if (LastLiveTickReal > 0.0 && Now - LastLiveTickReal > 0.3) PrevInput = FWebTravInput();
+	LastLiveTickReal = Now;
+	FVector2D Stick = LiveMove, RStick = PadLook;
+	if (PC)
+	{
+		auto Down = [PC](const FKey& K) { return PC->IsInputKeyDown(K); };
+		bRMB = Down(EKeys::RightMouseButton);
+		bR2 = Down(EKeys::Gamepad_RightTrigger);
+		bL2 = Down(EKeys::Gamepad_LeftTrigger);
+		bShift = Down(EKeys::LeftShift) || Down(EKeys::RightShift) || Down(EKeys::Gamepad_LeftThumbstick);
+		bZipKey = Down(EKeys::E) || Down(EKeys::MiddleMouseButton) || Down(EKeys::Gamepad_FaceButton_Top);
+		bDropKey = Down(EKeys::C) || Down(EKeys::LeftControl) || Down(EKeys::Gamepad_FaceButton_Right);
+		bQuickKey = Down(EKeys::Q) || Down(EKeys::Gamepad_LeftShoulder);
+		bJumpKey = Down(EKeys::SpaceBar) || Down(EKeys::Gamepad_FaceButton_Bottom);
+		bTrickKey = Down(EKeys::F) || Down(EKeys::Gamepad_FaceButton_Left);
+		const FVector2D Kb((Down(EKeys::D) || Down(EKeys::Right) ? 1.f : 0.f) - (Down(EKeys::A) || Down(EKeys::Left) ? 1.f : 0.f),
+			(Down(EKeys::W) || Down(EKeys::Up) ? 1.f : 0.f) - (Down(EKeys::S) || Down(EKeys::Down) ? 1.f : 0.f));
+		auto Dead = [](FVector2D V) { const float L = V.Size(); return L < 0.12f ? FVector2D::ZeroVector : V * (FMath::Min(1.f, (L - 0.12f) / 0.88f) / L); };
+		const FVector2D LS = Dead(FVector2D(PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftX), PC->GetInputAnalogKeyState(EKeys::Gamepad_LeftY)));
+		Stick = Kb.IsNearlyZero() ? LS : Kb;
+		RStick = Dead(FVector2D(PC->GetInputAnalogKeyState(EKeys::Gamepad_RightX), PC->GetInputAnalogKeyState(EKeys::Gamepad_RightY)));
+	}
+	I.Move = Stick.Size() > 1 ? Stick.GetSafeNormal() : Stick;
+	I.bSwing = bRMB || (bR2 && !bL2);
+	I.bSprint = bShift || (bR2 && !bL2);
+	I.bZip = bZipKey || (bL2 && bR2);
+	I.bJump = bJumpKey; I.bDrop = bDropKey; I.bQuick = bQuickKey; I.bTrick = bTrickKey;
+	// look: mouse (yaw right +, pitch down +) and right stick rate
+	const float MSens = MouseRadPerUnit * FMath::Max(0.f, CVarWHMouseSensitivity.GetValueOnGameThread());
+	// owner playtest 2026-10-01: mouse look only while the game has the mouse (left click captures, Escape releases). With the cursor free,
+	// moving it over the window -- or the right-mouse capture warp when a swing starts -- produced huge one-frame deltas. Clamp spikes too.
+	const AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(PC);
+	const bool bMouseLook = !WPC || WPC->IsMouseCaptured();
+	LookMagFrame = MouseAccum.Size();
+	const FVector2D MouseD = bMouseLook ? FVector2D(FMath::Clamp(MouseAccum.X, -MaxMouseDeltaPx, MaxMouseDeltaPx), FMath::Clamp(MouseAccum.Y, -MaxMouseDeltaPx, MaxMouseDeltaPx)) : FVector2D::ZeroVector;
+	// 2026-10-01 settings menu: gamepad look sensitivity and Invert Y (mouse and stick). The right stick is never gated by mouse capture.
+	const FWHSettings& St = WHSettings();
+	const double YSign = St.bInvertY ? -1.0 : 1.0;
+	const double PadK = St.PadSens;
+	I.Look = FVector2D(MouseD.X * MSens, -MouseD.Y * MSens * YSign)
+		+ FVector2D(RStick.X * PadLookRate.X * PadK, -RStick.Y * PadLookRate.Y * PadK * YSign) * Dt;
+}
+
+void AWebTravCharacter::WatchInput(APlayerController* PC, const FWebTravInput& I, float Dt)
+{
+	AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(PC);
+	UGameViewportClient* GVC = GetWorld() ? GetWorld()->GetGameViewport() : nullptr;
+	FViewport* VP = GVC ? GVC->Viewport : nullptr;
+	const bool bPcCap = WPC && WPC->IsMouseCaptured();
+	const bool bVpCap = VP && VP->HasMouseCapture();
+	const bool bVpFocus = VP && VP->HasFocus();
+	const bool bApp = FSlateApplication::IsInitialized() && FSlateApplication::Get().IsActive();
+	const bool bMenu = WPC && WPC->IsSettingsOpen();
+	const int32 St = (bPcCap ? 1 : 0) | (bVpCap ? 2 : 0) | (bVpFocus ? 4 : 0) | (bApp ? 8 : 0) | (bMenu ? 16 : 0);
+	if (St != InCapState)
+	{
+		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUT t %.2f state: player-captured %d, viewport capture %d, viewport focus %d, app active %d, menu %d (mode %s, rmb %d)"),
+			TravTime, bPcCap ? 1 : 0, bVpCap ? 1 : 0, bVpFocus ? 1 : 0, bApp ? 1 : 0, bMenu ? 1 : 0, ModeName(Traversal->Anim.Mode), I.bSwing ? 1 : 0);
+		InCapState = St;
+	}
+	// capture watchdog: the player has the game captured (no Escape), the app is in front, no menu, but the viewport lost its mouse
+	// capture (focus stolen by a window / widget, a click that landed outside) -> take it back (never while released, never in the background)
+	RecaptureCd = FMath::Max(0.f, RecaptureCd - Dt);
+	if (bPcCap && bApp && !bMenu && !bVpCap && GVC) CapLostT += Dt; else CapLostT = 0.f;
+	if (CapLostT > 0.3f && RecaptureCd <= 0.f)
+	{
+		ULocalPlayer* LP = PC ? PC->GetLocalPlayer() : nullptr;
+		TSharedPtr<SViewport> VW = GVC->GetGameViewportWidget();
+		if (LP && VW.IsValid())
+		{
+			const TSharedRef<SViewport> VR = VW.ToSharedRef();
+			LP->GetSlateOperations().SetUserFocus(VR, EFocusCause::SetDirectly).CaptureMouse(VR).LockMouseToWidget(VR).UseHighPrecisionMouseMovement(VR);
+			++NRecaptures; RecaptureCd = 1.f; CapLostT = 0.f;
+			UE_LOG(LogWebHomage, Warning, TEXT("WH_INPUT t %.2f recapture #%d: the game had the mouse but the viewport lost its capture (focus %d)"), TravTime, NRecaptures, bVpFocus ? 1 : 0);
+		}
+	}
+	// swing-press diagnosis: a press that has not attached a web 0.6 s later (in the air / on a wall) is logged with its reason
+	for (const FWebTravEvent& E : Traversal->Events)
+	{
+		if (E.Type == FName(TEXT("swingStart"))) { ++StatSwingStart; PressWatchT = 0.f; }
+		else if (E.Type == FName(TEXT("noAnchor"))) { ++StatNoAnchor; ++PressNoAnchor; }
+	}
+	if (I.bSwingPressed)
+	{
+		++StatPress; PressWatchT = 0.6f; PressNoAnchor = 0;
+		PressFrom = FString::Printf(TEXT("%s/%s"), ModeName(Traversal->Anim.Mode), *Traversal->Anim.Sub.ToString());
+	}
+	if (I.bZipPressed) ++StatZipPress;
+	if (PressWatchT > 0.f)
+	{
+		PressWatchT -= Dt;
+		const EWebTravMode M = Traversal->Anim.Mode;
+		if (M == EWebTravMode::Swing || M == EWebTravMode::Zip || Traversal->Anim.Sub == FName(TEXT("zipPull"))) PressWatchT = 0.f;
+		else if (PressWatchT <= 0.f && I.bSwing && M != EWebTravMode::Ground && M != EWebTravMode::Land && M != EWebTravMode::Perch)
+		{
+			UE_LOG(LogWebHomage, Display, TEXT("WH_INPUT t %.2f swing press from %s: no web after 0.6 s (now %s/%s, %d searches without an anchor, %.1f m over the floor)"),
+				TravTime, *PressFrom, ModeName(M), *Traversal->Anim.Sub.ToString(), PressNoAnchor, Traversal->HeightAboveFloor_());
+		}
+	}
+	StatLook += LookMagFrame; if (LookMagFrame > 0.0) ++StatLookFrames;
+	StatT += Dt;
+	if (StatT >= 10.f)
+	{
+		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUT 10 s: mouse %.0f px over %d frames (player-captured %d, viewport capture %d), rmb presses %d, swings %d, searches without anchor %d, zip presses %d, recaptures %d"),
+			StatLook, StatLookFrames, bPcCap ? 1 : 0, bVpCap ? 1 : 0, StatPress, StatSwingStart, StatNoAnchor, StatZipPress, NRecaptures);
+		StatT = 0.f; StatLook = 0.0; StatLookFrames = StatPress = StatSwingStart = StatNoAnchor = StatZipPress = 0;
+	}
 }
 
 // ------------------------------------------------------------------ game mode

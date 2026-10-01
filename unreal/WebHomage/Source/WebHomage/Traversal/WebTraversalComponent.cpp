@@ -565,6 +565,13 @@ void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 	S.bCharging = false; S.JumpCharge = 0;
 	S.Carry = FVector::ZeroVector;
 	Emit(N_land, S.Sub == N_idle ? 0.f : float(S.LandSeverity));
+	{ // round 19 (owner: "landing in mid-air"): log every landing whose floor is not a building box / the ground mesh
+		(void)TravWorld.GroundHeight(S.Pos.X, S.Pos.Y, F + 0.3);
+		LastLandSrc = TravWorld.LastGroundSrc;
+		if (LastLandSrc != 2 && LastLandSrc != 3)
+			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV landing on a non-traversal floor: (%.1f, %.1f) z %.2f src %d %s"), S.Pos.X, S.Pos.Y, F, LastLandSrc,
+				LastLandSrc == 4 ? *TravWorld.LastGroundComp : TEXT(""));
+	}
 }
 
 // ------------------------------------------------------------------ corridor keeping (swing / air chains stay in the street canyon)
@@ -720,7 +727,10 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	{ // round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
 		FVector HVg;
 		if (!HDir(S.Vel, HVg)) HVg = Fwd;
-		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0)
+		// round 19 (owner: "swing eventually breaks"): the behind-the-body rule only applies at speed (a slow fall / a hop off a wall or perch
+		// has no meaningful travel direction; it refused every web behind the drift)
+		const bool bBehind = HLen(S.Vel) > 6.0 && FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0;
+		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || bBehind)
 		{
 			Emit(N_noAnchor); S.NoAnchorT += 0.06;
 			return false;
@@ -2013,6 +2023,64 @@ void UWebTraversalComponent::StepKin(double Hs)
 }
 
 // ------------------------------------------------------------------ zip / perch / point launch
+// round 19: "the nearest place" when nothing is highlighted: on a wall the top edge of this facade (<= 58 m straight up), else the nearest
+// visible roof edge / corner / water tower within 58 m, preferring what the camera faces and what is not far below the hero
+bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
+{
+	const double ZipRange = 58.0;
+	const FVector Eye = S.Pos + FVector(0, 0, 0.5);
+	if (S.Mode == EWebTravMode::Wall)
+	{
+		const FVector N = S.W.Normal;
+		double LastHit = -1.0;
+		for (double DY = 0.5; DY <= ZipRange; DY += 1.0)
+		{
+			FTravHit Hit;
+			const bool bWall = TravWorld.Raycast(FVector(S.Pos.X, S.Pos.Y, S.Pos.Z + DY), -N, R + 2.5, Hit) && FMath::Abs(Hit.Normal.Z) < 0.5;
+			if (bWall) { LastHit = DY; continue; }
+			if (LastHit < 0.0 && DY < 4.0) continue; // a recess right at the body
+			// the facade ended: find its roof just inside the edge
+			FTravHit Top;
+			const FVector In = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + 0.6);
+			if (TravWorld.Raycast(FVector(In.X, In.Y, S.Pos.Z + DY + 3.0), FVector(0, 0, -1), 8.0, Top) && Top.Normal.Z > 0.5)
+			{
+				const FVector Edge = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + 0.25);
+				Out.Pos = FVector(Edge.X, Edge.Y, Top.Point.Z); Out.Normal = Flat(N).GetSafeNormal(); Out.Kind = FName(TEXT("roofEdge")); Out.Box = Top.Box;
+				Why = TEXT("facadeTop");
+				return true;
+			}
+			break;
+		}
+	}
+	TArray<FTravZipPoint> Pts;
+	Anchors->QueryZipPoints(Eye, ZipRange, Pts);
+	const FVector CF = Cam ? Cam->ForwardFlat() : YawDir(S.Facing);
+	const FVector Excl = S.Mode == EWebTravMode::Perch ? S.P.Pos : FVector(1e9);
+	const FTravZipPoint* Best = nullptr;
+	double BS = TNumericLimits<double>::Max();
+	for (const FTravZipPoint& P : Pts)
+	{
+		const FVector Rel = P.Pos - Eye;
+		const double Dist = Rel.Size();
+		if (Dist < 3.0 || Dist > ZipRange || FVector::DistSquared(P.Pos, Excl) < 4.0) continue;
+		const FVector RF = Flat(Rel).GetSafeNormal();
+		const double Face = RF.IsNearlyZero() ? 1.0 : FVector::DotProduct(RF, CF);
+		if (Face < -0.2) continue; // never behind the camera
+		const double Sc = Dist / ZipRange + (1.0 - Face) * 0.6 + (P.Pos.Z < Eye.Z - 4.0 ? 0.5 : 0.0) - (P.Kind == FName(TEXT("roofCorner")) ? 0.05 : 0.0);
+		if (Sc >= BS) continue;
+		FVector Tgt = P.Pos + P.Normal * 0.35; Tgt.Z += 0.35;
+		FVector D = Tgt - Eye;
+		const double L = D.Size();
+		FTravHit Hv;
+		if (TravWorld.Raycast(Eye, D / L, L, Hv) && Hv.Distance < L - 0.7) continue;
+		BS = Sc; Best = &P;
+	}
+	if (!Best) return false;
+	Out = *Best;
+	Why = TEXT("nearest");
+	return true;
+}
+
 // Insomniac web-zip (USER_FEEDBACK #8 / user r10: instant): zipFire -> zipFlight -> zipCatch -> perch
 void UWebTraversalComponent::StartZip(const FTravZipPoint& T)
 {
@@ -2558,6 +2626,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 	Events.Reset();
 	if (!bWorldReady || !Anchors) return;
 	LastInput = I;
+	if (I.bZipPressed) LastZipFrom = FString::Printf(TEXT("%d/%s"), int32(S.Mode), *S.Sub.ToString());
 	{ // round 17: route direction = horizontal velocity smoothed over ~1.5 s (the roofline capsule of FlowRoofTarget follows the route, not a
 	  // swing's sideways / vertical moment)
 		const FVector HVn(S.Vel.X, S.Vel.Y, 0.0);
@@ -2605,14 +2674,31 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 			S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing, bPerched ? &PerchOut : nullptr);
 	}
 	// E / MMB: zip to the highlighted point, or air web-dash
-	if (I.bZipPressed && S.ZipCooldown <= 0 && S.Kin.Type == EKin::None)
+	// round 19 (owner playtest 2026-10-01: "pressing E to go to the nearest place doesn't work when you're running on the side of the
+	// buildings"): E works from EVERY mode -- a vault / corner wrap / wall hop in progress is cut; a wall run, crawl or side run zips to the
+	// highlighted point, else to the nearest place (the top edge of this facade, else the nearest visible roof edge / corner), and only
+	// then bursts up the facade (WallZip); a roof run / perch with nothing highlighted zips to the nearest place too
+	if (I.bZipPressed && S.ZipCooldown <= 0 && S.Mode != EWebTravMode::Zip)
 	{
 		bLeaveSwingOK = true; // explicit button press: the only non-RMB way the held web is switched
-		const bool bHas = Anchors->HasTarget();
-		if (S.Mode == EWebTravMode::Wall && (S.Sub == N_wallRun || S.Sub == N_crawl)) WallZip(); // user r9w
-		else if (bHas) { if (S.Mode == EWebTravMode::Swing) WebRelease(); const FTravZipPoint T = Anchors->Best(); StartZip(T); S.ZipCooldown = 0.25; }
-		else if (S.Mode == EWebTravMode::Perch) { PointLaunch(S.P.Normal, FVector::ZeroVector); S.ZipCooldown = 0.25; } // never a dead button on a perch
-		else if (S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing) { if (S.Mode == EWebTravMode::Swing) WebRelease(); WebDash(); }
+		if (S.Kin.Type != EKin::None) { S.Kin.Type = EKin::None; S.Vel = FVector::ZeroVector; }
+		FTravZipPoint T;
+		bool bHas = Anchors->HasTarget();
+		FName Why = TEXT("highlighted");
+		if (bHas) T = Anchors->Best();
+		else if (S.Mode != EWebTravMode::Swing && NearestZip(T, Why)) bHas = true;
+		if (bHas)
+		{
+			if (S.Mode == EWebTravMode::Swing) WebRelease();
+			if (S.Mode == EWebTravMode::Wall) { S.W.bZipWeb = false; S.W.bLockDir = false; }
+			StartZip(T); S.ZipCooldown = 0.25;
+			LastZipWhy = Why;
+		}
+		else if (S.Mode == EWebTravMode::Wall) { WallZip(); LastZipWhy = TEXT("wallZip"); } // user r9w: burst up a facade taller than the zip range
+		else if (S.Mode == EWebTravMode::Perch) { PointLaunch(S.P.Normal, FVector::ZeroVector); S.ZipCooldown = 0.25; LastZipWhy = TEXT("pointLaunch"); } // never a dead button on a perch
+		else if (S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing) { if (S.Mode == EWebTravMode::Swing) WebRelease(); WebDash(); LastZipWhy = TEXT("webDash"); }
+		else LastZipWhy = TEXT("none");
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV zip press: %s -> %s"), *LastZipFrom, *LastZipWhy.ToString());
 		bLeaveSwingOK = false;
 	}
 	// Q / L1: quick web boost (air, or mid-swing); a press up to 0.25 s early is buffered until the cooldown ends

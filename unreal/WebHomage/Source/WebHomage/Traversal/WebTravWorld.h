@@ -59,6 +59,16 @@ public:
 	void Near(double X, double Y, double R, TArray<int32>& Out) const;
 
 	bool Ok() const { return Boxes.Num() > 0; }
+	/** Round 19 (owner playtest 2026-10-01, "landing in mid-air and being able to run is still around"): in a map with the browser's
+	 *  per-building boxes (WHBox cubes) only those boxes and the WHGround floor are traversal solids; every other collision primitive
+	 *  (props, trees, signage, street kit, landmark meshes with a simple-collision hull, traffic) is passed through by the traversal's
+	 *  rays and capsule push-out. */
+	bool BoxesOnly() const { return bBoxesOnly; }
+	bool Allowed(const UPrimitiveComponent* C) const { return !bBoxesOnly || (C && AllowedComps.Contains(C)); }
+	/** Last GroundHeight source (telemetry / landing log): 0 none, 1 ground box, 2 ground mesh hit, 3 building box hit, 4 other hit. */
+	mutable int32 LastGroundSrc = 0;
+	mutable FString LastGroundComp;
+	mutable int32 SkippedHits = 0;
 
 	TArray<FTravBox> Boxes;
 	/** Terrain (actors tagged WHGround): always a floor, even when a body has sunk below its top (browser terrain). */
@@ -73,6 +83,8 @@ private:
 	// giant invisible walls/floors (owner playtest 2026-10-01: landing / running in mid-air)
 	TMap<const UPrimitiveComponent*, TArray<int32>> InstToBox;
 	double Cell = 24.0;
+	bool bBoxesOnly = false;
+	TSet<const UPrimitiveComponent*> AllowedComps;
 	TWeakObjectPtr<UWorld> World;
 	FCollisionQueryParams Params;
 	FCollisionObjectQueryParams ObjParams;

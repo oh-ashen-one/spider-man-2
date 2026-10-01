@@ -122,6 +122,19 @@ private:
 	FVector2D LiveMove = FVector2D::ZeroVector, MouseAccum = FVector2D::ZeroVector, PadLook = FVector2D::ZeroVector;
 	bool bRMB = false, bR2 = false, bL2 = false, bShift = false, bZipKey = false, bDropKey = false, bQuickKey = false, bJumpKey = false, bTrickKey = false;
 	FWebTravInput PrevInput;
+	// round 19 (owner playtest 2026-10-01: RMB swing and mouse look "eventually stop working"): held buttons / sticks are POLLED from the
+	// player input key state every frame (the Started / Completed event latches stayed set when a release was lost to a pause, a menu
+	// or a focus change, so a new press was never an edge); a capture watchdog re-takes a lost mouse capture while the player has the
+	// game captured; WH_INPUT log lines + telemetry columns record every capture / focus / menu transition.
+	void PollLiveInput(class APlayerController* PC, FWebTravInput& I, float Dt);
+	void WatchInput(class APlayerController* PC, const FWebTravInput& I, float Dt);
+	double LastLiveTickReal = -1.0;
+	int32 InCapState = -1;          // packed pc_cap | vp_cap << 1 | vp_focus << 2 | app_active << 3 | menu << 4
+	float CapLostT = 0.f, RecaptureCd = 0.f;
+	int32 NRecaptures = 0;
+	double LookMagFrame = 0.0;      // this frame's mouse delta (px) before the capture gate
+	float StatT = 0.f; double StatLook = 0.0; int32 StatLookFrames = 0, StatPress = 0, StatSwingStart = 0, StatNoAnchor = 0, StatZipPress = 0, StatZipFail = 0;
+	float PressWatchT = 0.f; FString PressFrom; int32 PressNoAnchor = 0;
 
 	FWebTravCamera Cam;
 	int32 SunTries = 0; // round 15: frames spent looking for the level's sun light

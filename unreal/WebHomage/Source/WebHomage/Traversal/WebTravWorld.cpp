@@ -31,6 +31,9 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 	Grid.Reset();
 	CompToBox.Reset();
 	InstToBox.Reset();
+	AllowedComps.Reset();
+	bBoxesOnly = false;
+	LastGroundSrc = 0; SkippedHits = 0;
 	int32 NInstComps = 0, NInstBoxes = 0, NInstSkipped = 0, NFarSkipped = 0;
 	if (!InWorld)
 	{
@@ -47,7 +50,6 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 		const UStaticMesh* M = C ? C->GetStaticMesh() : nullptr;
 		return M && !C->IsVisible() && M->GetName() == TEXT("Cube") && M->GetPathName().StartsWith(TEXT("/Engine/BasicShapes/"));
 	};
-	bool bBoxesOnly = false;
 	for (TActorIterator<AActor> It(InWorld); It && !bBoxesOnly; ++It)
 	{
 		TInlineComponentArray<UPrimitiveComponent*> Ps(*It);
@@ -65,12 +67,17 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 		{
 			FVector Origin, Extent;
 			A->GetActorBounds(false, Origin, Extent);
-			GroundBoxes.Add({ (Origin - Extent) / 100.0, (Origin + Extent) / 100.0 });
+			// round 19: in the boxes-only city a ground actor is a floor box only when it is a thin slab (a tile whose bounds span a
+			// ramp / curb stack / anything taller would put an invisible floor over its whole footprint); its mesh is still hit by rays
+			if (!bBoxesOnly || Extent.Z * 2.0 <= 100.0) GroundBoxes.Add({ (Origin - Extent) / 100.0, (Origin + Extent) / 100.0 });
+			TInlineComponentArray<UPrimitiveComponent*> GPs(A);
+			for (UPrimitiveComponent* GP : GPs) { if (GP) AllowedComps.Add(GP); }
 			continue;
 		}
 		TInlineComponentArray<UPrimitiveComponent*> Prims(A);
 		for (UPrimitiveComponent* P : Prims)
 		{
+			if (bBoxesOnly && P && IsTravCube(P)) AllowedComps.Add(P);
 			if (bBoxesOnly && P && P->IsCollisionEnabled() && !IsTravCube(P))
 			{
 				const FBox VB = P->Bounds.GetBox();
@@ -153,7 +160,7 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 			}
 		}
 	}
-	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided; per-building boxes only %d, %d wide merged meshes made visual-only)"), Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped, bBoxesOnly ? 1 : 0, NVisualOnly);
+	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided; per-building boxes only %d, %d wide merged meshes made visual-only, %d traversal solids (boxes + ground), %d ground boxes)"), Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped, bBoxesOnly ? 1 : 0, NVisualOnly, AllowedComps.Num(), GroundBoxes.Num());
 }
 
 void FWebTravWorld::Near(double X, double Y, double R, TArray<int32>& Out) const
@@ -210,6 +217,20 @@ bool FWebTravWorld::Raycast(const FVector& O, const FVector& D, double MaxDist, 
 	{
 		return false;
 	}
+	if (bBoxesOnly && !Allowed(H.GetComponent()))
+	{ // round 19: pass through every non-traversal solid (re-trace with the hit components ignored; <= 8 layers)
+		FCollisionQueryParams P2 = Params;
+		bool bFound = false;
+		for (int32 K = 0; K < 8; ++K)
+		{
+			++SkippedHits;
+			if (H.GetComponent()) P2.AddIgnoredComponent(H.GetComponent());
+			++TraceCount;
+			if (!W->LineTraceSingleByObjectType(H, Start, End, ObjParams, P2) || H.bStartPenetrating) break;
+			if (Allowed(H.GetComponent())) { bFound = true; break; }
+		}
+		if (!bFound) return false;
+	}
 	Out.Distance = H.Distance / 100.0;
 	Out.Point = H.ImpactPoint / 100.0;
 	Out.Normal = H.ImpactNormal.GetSafeNormal();
@@ -253,14 +274,23 @@ bool FWebTravWorld::SphereOverlaps(const FVector& P, double Radius) const
 double FWebTravWorld::GroundHeight(double X, double Y, double FromZ) const
 {
 	double Best = -1000.0;
+	LastGroundSrc = 0;
 	for (const FTravBox& G : GroundBoxes)
 	{
-		if (X >= G.Min.X && X <= G.Max.X && Y >= G.Min.Y && Y <= G.Max.Y) Best = FMath::Max(Best, G.Max.Z);
+		if (X >= G.Min.X && X <= G.Max.X && Y >= G.Min.Y && Y <= G.Max.Y && G.Max.Z > Best) { Best = G.Max.Z; LastGroundSrc = 1; }
 	}
 	FTravHit H;
 	if (Raycast(FVector(X, Y, FromZ), FVector(0, 0, -1), 2000.0, H))
 	{
-		Best = FMath::Max(Best, H.Point.Z);
+		// round 19 (boxes-only city): the surface the ray actually finds (box roof or ground mesh) is the floor; the ground-tile boxes
+		// are only the fallback when the ray finds nothing (a body sunk below the ground top). max() put the 15 cm sidewalk tile top
+		// under the whole road.
+		if (bBoxesOnly || H.Point.Z >= Best)
+		{
+			Best = H.Point.Z;
+			LastGroundSrc = H.bGround ? 2 : H.Box >= 0 ? 3 : 4;
+			if (LastGroundSrc == 4 && H.Comp.IsValid()) LastGroundComp = H.Comp->GetOwner() ? H.Comp->GetOwner()->GetName() + TEXT("/") + H.Comp->GetName() : H.Comp->GetName();
+		}
 	}
 	return Best;
 }
@@ -312,7 +342,7 @@ bool FWebTravWorld::PushOutCapsule(FVector& Feet, double R, double H, double Ste
 		for (const FOverlapResult& O : Overlaps)
 		{
 			UPrimitiveComponent* C = O.GetComponent();
-			if (!C)
+			if (!C || !Allowed(C))
 			{
 				continue;
 			}

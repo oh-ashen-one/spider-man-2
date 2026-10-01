@@ -267,6 +267,12 @@ public:
 	void PosePreview() { FinalQ = Orient(1e-4); WriteAnim(FinalQ); }
 	int32 BuildingCount() const { return TravWorld.Boxes.Num(); }
 	int32 ZipKindCode() const;
+	/** Round 19: why the last E press did what it did (highlighted / facadeTop / nearest / wallZip / pointLaunch / webDash / none). */
+	FName LastZipWhy;
+	int32 LastLandSrc = 0;
+	int32 GroundSrcNow() const { (void)FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); return TravWorld.LastGroundSrc; }
+	FString LastZipFrom;
+	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
 
 private:
 	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop };
