@@ -45,3 +45,11 @@ sprint, jump and continuous swing chain up the avenue) at 3840x2160 output with 
 - `swing_night.mp4`: per frame, the mean luma inside the hero's pixel bounding box (telemetry `px_left/right/top/bottom` from the P3 hero-only depth capture) is written to `swing_night_hero_luma.json`.
 - Every clip is preceded by an unrecorded low-resolution shader warm-up render and starts after a 0.8 s pre-roll (exposure / Lumen / TSR settle) that is trimmed from the video and the telemetry.
 - All captures run inside `gpu_slot.sh capture`; perf under `gpu_slot.sh perf` (`round-02/perf_gpu*.json` sidecars).
+
+## Round 03 additions (shot tour, spec checker, presets v2)
+
+- Stills are now captured by `tools/perf_ue/capture_tour.py`: ONE game session per preset and resolution visits the eight poses of `Scripts/city_shots.json` (C++ `UWHLookTour`, `-WHLookTour=<file>`), waits 4 s (first pose 10 s, at least 90 frames) at each for exposure / TSR / Lumen, and saves a back-buffer PNG per pose
+  (same maps `Look_Midtown[_golden|_night]`, same traversal game mode and hero, the hero teleported to the view's `player` position). `capture_looks.py` still exists for the per-view maps and for the swing clips.
+- Live tuning: `capture_tour.py --variants <json>` sweeps many look variants in one session (`! set / post / cvar / exec` lines of the tour file, see `Source/WebHomage/Look/WHLookTour.h`); `tools/perf_ue/sweep_report.py` ranks them against the spec lines.
+- Spec checker: `tools/perf_ue/look_spec_check.py` (L1 / L2 / L3 / L5 means, near-black, clipped, B-R; L10 / L11 far field of S4 with P1's `spec_regions.json` boxes; L13 / L14 night pools; L17 glass p10) and
+  `tools/perf_ue/round_tests.py` (writes `round-NN/TESTS.md`, adds night_tests.py and clip_check.py numbers for the swing clips).

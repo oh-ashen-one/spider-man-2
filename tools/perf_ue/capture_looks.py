@@ -28,6 +28,7 @@ def main():
     ap.add_argument('--shot-times', default='12,20'); ap.add_argument('--clips', action='store_true'); ap.add_argument('--no-stills', action='store_true')
     ap.add_argument('--clip-seconds', type=float, default=12.0); ap.add_argument('--sp', default='100', help='r.ScreenPercentage for the captures')
     ap.add_argument('--jpeg-q', type=int, default=90); ap.add_argument('--redo', action='store_true', help='recapture stills that already exist')
+    ap.add_argument('--no-warmup', action='store_true', help='skip the unrecorded 960x540 shader warm-up render before each clip (the shaders are already in the DDC)')
     a = ap.parse_args()
     sys.path.insert(0, HERE)
     import ensure_boxes
@@ -76,14 +77,15 @@ def main():
         for preset in a.presets.split(','):
             name = 'swing_%s' % preset
             mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
-            wd = os.path.join(SCR, name + '_warmup'); shutil.rmtree(wd, ignore_errors=True)   # shader / texture warm-up render, not kept
-            subprocess.run(slot([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', '2400', '--', '-benchmark', '-fps=60',
-                            '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')]), capture_output=True, text=True)
-            shutil.rmtree(wd, ignore_errors=True)
+            if not a.no_warmup:
+                wd = os.path.join(SCR, name + '_warmup'); shutil.rmtree(wd, ignore_errors=True)   # shader / texture warm-up render, not kept
+                subprocess.run(slot([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', '2400', '--', '-benchmark', '-fps=60',
+                                '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')]), capture_output=True, text=True)
+                shutil.rmtree(wd, ignore_errors=True)
             d = os.path.join(SCR, name); shutil.rmtree(d, ignore_errors=True)
             u = util(); t0 = time.time()
             cmd = [RUN_GAME, d, '-map', mp, '-res', '1920x1080', '-quit', str(a.clip_seconds + PRE),
-                   '-name', name, '-movie', '-timeout', '3000', '-exec', 'r.ScreenPercentage %s' % a.sp,
+                   '-name', name, '-movie', '-timeout', '7000', '-exec', 'r.ScreenPercentage %s' % a.sp,
                    '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE]
             r = subprocess.run(slot(cmd), capture_output=True, text=True)
             mp4 = os.path.join(d, name + '.mp4')
