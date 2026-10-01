@@ -1170,7 +1170,8 @@ if 'skins' in STEPS:
                        'Normal': TD + '/T_HeroSuit_%s_Normal' % sid, 'DetailNormal': twill_p},
                   scal={'DetailTiling': tile_, 'DetailStrength': 0.8, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (fz[0], fz[1], fz[2], 1.0)}, switches={'HasORM': True})
         # lens: the suit's accent colour (linear, x 0.67 like Tessera's amber 0.50 / 0.13 / 0.01 of 0.745 / 0.188 / 0.004)
-        ac = e_.get('style', {}).get('palette', {}).get('accent', '#e0780c')
+        pal_ = e_.get('style', {}).get('palette', {})
+        ac = pal_.get('lens', pal_.get('accent', '#e0780c'))      # a suit may name its own lens colour (saffron: teal, not a pale lens)
         lin = [_lin(ac[i:i + 2]) for i in (1, 3, 5)]
         lens_ = None
         try:

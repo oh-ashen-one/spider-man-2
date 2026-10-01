@@ -350,7 +350,8 @@
           "accent": "#efe3c4",
           "accent_d": "#b9a77a",
           "stitch": "#f7e9c0",
-          "sole": "#1a1008"
+          "sole": "#1a1008",
+          "lens": "#1fae9e"
         },
         "net": {
           "kind": "square",
