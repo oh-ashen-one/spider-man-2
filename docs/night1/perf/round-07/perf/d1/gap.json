@@ -1,0 +1,668 @@
+[
+ {
+  "csv": "dasync/csv.csv",
+  "frames": 1799,
+  "p50": 16.41,
+  "p95": 18.55,
+  "p99": 20.03,
+  "hitches": 0,
+  "gpu_p50": 15.33,
+  "gpu_p95": 17.68,
+  "gap_mean": 1.04,
+  "gap_top5_samerow": 2.8,
+  "gap_mid_samerow": 0.91,
+  "gap_top5_aligned": 1.92,
+  "gap_mid_aligned": 1.01,
+  "corr_ft_gpu_same": 0.53,
+  "corr_ft_gpu_prev": 0.73,
+  "gpu_even_odd": [
+   14.66,
+   16.15
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.036
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.006,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.036
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 16.435,
+    "p95": 18.53,
+    "top5_mean": 17.54,
+    "top5_prev_mean": 19.617
+   },
+   "GameThreadTime": {
+    "mean": 4.356,
+    "p95": 8.003,
+    "top5_mean": 4.316,
+    "top5_prev_mean": 4.585
+   },
+   "RHIThreadTime": {
+    "mean": 2.886,
+    "p95": 3.439,
+    "top5_mean": 2.997,
+    "top5_prev_mean": 2.999
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dcr0/csv.csv",
+  "frames": 1799,
+  "p50": 16.25,
+  "p95": 18.34,
+  "p99": 19.37,
+  "hitches": 0,
+  "gpu_p50": 15.42,
+  "gpu_p95": 17.51,
+  "gap_mean": 0.8,
+  "gap_top5_samerow": 2.39,
+  "gap_mid_samerow": 0.65,
+  "gap_top5_aligned": 1.62,
+  "gap_mid_aligned": 0.81,
+  "corr_ft_gpu_same": 0.59,
+  "corr_ft_gpu_prev": 0.75,
+  "gpu_even_odd": [
+   14.9,
+   15.93
+  ],
+  "stalls": {
+   "RenderThreadTime": {
+    "mean": 16.209,
+    "p95": 18.336,
+    "top5_mean": 17.307,
+    "top5_prev_mean": 19.072
+   },
+   "GameThreadTime": {
+    "mean": 4.349,
+    "p95": 7.998,
+    "top5_mean": 4.412,
+    "top5_prev_mean": 4.55
+   },
+   "RHIThreadTime": {
+    "mean": 2.877,
+    "p95": 3.495,
+    "top5_mean": 3.004,
+    "top5_prev_mean": 2.989
+   },
+   "RenderThreadIdle/Total": {
+    "mean": 0.003,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.053
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.003,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.053
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dgts1/csv.csv",
+  "frames": 1799,
+  "p50": 16.47,
+  "p95": 18.75,
+  "p99": 20.43,
+  "hitches": 0,
+  "gpu_p50": 15.35,
+  "gpu_p95": 17.78,
+  "gap_mean": 1.04,
+  "gap_top5_samerow": 3.43,
+  "gap_mid_samerow": 0.96,
+  "gap_top5_aligned": 2.0,
+  "gap_mid_aligned": 1.08,
+  "corr_ft_gpu_same": 0.45,
+  "corr_ft_gpu_prev": 0.7,
+  "gpu_even_odd": [
+   14.69,
+   16.18
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.012,
+    "p95": 0.0,
+    "top5_mean": 0.089,
+    "top5_prev_mean": 0.123
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.012,
+    "p95": 0.0,
+    "top5_mean": 0.089,
+    "top5_prev_mean": 0.123
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 16.459,
+    "p95": 18.62,
+    "top5_mean": 17.177,
+    "top5_prev_mean": 19.642
+   },
+   "GameThreadTime": {
+    "mean": 4.452,
+    "p95": 7.932,
+    "top5_mean": 4.611,
+    "top5_prev_mean": 4.791
+   },
+   "RHIThreadTime": {
+    "mean": 2.887,
+    "p95": 3.445,
+    "top5_mean": 2.993,
+    "top5_prev_mean": 2.989
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dlife_a/csv.csv",
+  "frames": 1799,
+  "p50": 16.4,
+  "p95": 18.55,
+  "p99": 19.6,
+  "hitches": 0,
+  "gpu_p50": 15.36,
+  "gpu_p95": 17.72,
+  "gap_mean": 1.03,
+  "gap_top5_samerow": 2.83,
+  "gap_mid_samerow": 0.9,
+  "gap_top5_aligned": 1.74,
+  "gap_mid_aligned": 1.03,
+  "corr_ft_gpu_same": 0.53,
+  "corr_ft_gpu_prev": 0.72,
+  "gpu_even_odd": [
+   14.64,
+   16.13
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.038
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.001,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.008,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.038
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 16.409,
+    "p95": 18.533,
+    "top5_mean": 17.317,
+    "top5_prev_mean": 19.364
+   },
+   "GameThreadTime": {
+    "mean": 4.364,
+    "p95": 8.043,
+    "top5_mean": 4.29,
+    "top5_prev_mean": 4.491
+   },
+   "RHIThreadTime": {
+    "mean": 2.939,
+    "p95": 3.527,
+    "top5_mean": 3.057,
+    "top5_prev_mean": 3.064
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dlife_b/csv.csv",
+  "frames": 1799,
+  "p50": 16.48,
+  "p95": 18.65,
+  "p99": 19.75,
+  "hitches": 0,
+  "gpu_p50": 15.86,
+  "gpu_p95": 17.85,
+  "gap_mean": 0.61,
+  "gap_top5_samerow": 2.21,
+  "gap_mid_samerow": 0.47,
+  "gap_top5_aligned": 1.35,
+  "gap_mid_aligned": 0.6,
+  "corr_ft_gpu_same": 0.63,
+  "corr_ft_gpu_prev": 0.83,
+  "gpu_even_odd": [
+   15.52,
+   16.21
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.003,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.048
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.048
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 16.472,
+    "p95": 18.648,
+    "top5_mean": 17.553,
+    "top5_prev_mean": 19.423
+   },
+   "GameThreadTime": {
+    "mean": 4.352,
+    "p95": 7.899,
+    "top5_mean": 4.398,
+    "top5_prev_mean": 4.658
+   },
+   "RHIThreadTime": {
+    "mean": 2.922,
+    "p95": 3.51,
+    "top5_mean": 3.066,
+    "top5_prev_mean": 3.046
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "ds2/csv.csv",
+  "frames": 1799,
+  "p50": 14.7,
+  "p95": 15.97,
+  "p99": 17.09,
+  "hitches": 0,
+  "gpu_p50": 13.46,
+  "gpu_p95": 14.58,
+  "gap_mean": 1.26,
+  "gap_top5_samerow": 2.77,
+  "gap_mid_samerow": 1.26,
+  "gap_top5_aligned": 2.15,
+  "gap_mid_aligned": 1.35,
+  "corr_ft_gpu_same": 0.24,
+  "corr_ft_gpu_prev": 0.58,
+  "gpu_even_odd": [
+   13.28,
+   13.77
+  ],
+  "stalls": {
+   "RenderThreadTime": {
+    "mean": 14.781,
+    "p95": 15.979,
+    "top5_mean": 14.797,
+    "top5_prev_mean": 16.778
+   },
+   "GameThreadTime": {
+    "mean": 1.42,
+    "p95": 1.654,
+    "top5_mean": 1.467,
+    "top5_prev_mean": 1.458
+   },
+   "RHIThreadTime": {
+    "mean": 2.248,
+    "p95": 2.55,
+    "top5_mean": 2.302,
+    "top5_prev_mean": 2.306
+   },
+   "RenderThreadIdle/Total": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.004,
+    "top5_prev_mean": 0.004
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": true,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dship_a/csv.csv",
+  "frames": 1799,
+  "p50": 15.76,
+  "p95": 17.86,
+  "p99": 19.05,
+  "hitches": 0,
+  "gpu_p50": 15.1,
+  "gpu_p95": 17.12,
+  "gap_mean": 0.65,
+  "gap_top5_samerow": 2.72,
+  "gap_mid_samerow": 0.55,
+  "gap_top5_aligned": 1.3,
+  "gap_mid_aligned": 0.66,
+  "corr_ft_gpu_same": 0.5,
+  "corr_ft_gpu_prev": 0.86,
+  "gpu_even_odd": [
+   14.86,
+   15.41
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.004
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 15.786,
+    "p95": 17.85,
+    "top5_mean": 16.784,
+    "top5_prev_mean": 19.039
+   },
+   "GameThreadTime": {
+    "mean": 1.863,
+    "p95": 2.203,
+    "top5_mean": 2.0,
+    "top5_prev_mean": 1.954
+   },
+   "RHIThreadTime": {
+    "mean": 2.485,
+    "p95": 2.809,
+    "top5_mean": 2.574,
+    "top5_prev_mean": 2.572
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": true,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dsky1/csv.csv",
+  "frames": 1799,
+  "p50": 16.49,
+  "p95": 18.48,
+  "p99": 19.57,
+  "hitches": 0,
+  "gpu_p50": 15.34,
+  "gpu_p95": 17.6,
+  "gap_mean": 1.05,
+  "gap_top5_samerow": 2.86,
+  "gap_mid_samerow": 0.88,
+  "gap_top5_aligned": 1.65,
+  "gap_mid_aligned": 1.11,
+  "corr_ft_gpu_same": 0.5,
+  "corr_ft_gpu_prev": 0.77,
+  "gpu_even_odd": [
+   14.62,
+   16.18
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.034
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.034
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 16.438,
+    "p95": 18.492,
+    "top5_mean": 17.324,
+    "top5_prev_mean": 19.32
+   },
+   "GameThreadTime": {
+    "mean": 4.36,
+    "p95": 8.031,
+    "top5_mean": 4.196,
+    "top5_prev_mean": 4.437
+   },
+   "RHIThreadTime": {
+    "mean": 2.932,
+    "p95": 3.53,
+    "top5_mean": 3.036,
+    "top5_prev_mean": 3.001
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ },
+ {
+  "csv": "dwarm/csv.csv",
+  "frames": 1799,
+  "p50": 16.41,
+  "p95": 18.53,
+  "p99": 19.49,
+  "hitches": 0,
+  "gpu_p50": 15.33,
+  "gpu_p95": 17.66,
+  "gap_mean": 1.04,
+  "gap_top5_samerow": 2.51,
+  "gap_mid_samerow": 0.95,
+  "gap_top5_aligned": 2.0,
+  "gap_mid_aligned": 1.07,
+  "corr_ft_gpu_same": 0.55,
+  "corr_ft_gpu_prev": 0.7,
+  "gpu_even_odd": [
+   14.61,
+   16.12
+  ],
+  "stalls": {
+   "RenderThreadIdle/Total": {
+    "mean": 0.003,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.042
+   },
+   "RenderThreadIdle/CriticalPath": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.001,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadIdle/SwapBuffer": {
+    "mean": 0.005,
+    "p95": 0.007,
+    "top5_mean": 0.005,
+    "top5_prev_mean": 0.005
+   },
+   "RenderThreadIdle/NonCriticalPath": {
+    "mean": 0.002,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.041
+   },
+   "RenderThreadIdle/GPUQuery": {
+    "mean": 0.0,
+    "p95": 0.0,
+    "top5_mean": 0.0,
+    "top5_prev_mean": 0.0
+   },
+   "RenderThreadTime": {
+    "mean": 16.393,
+    "p95": 18.537,
+    "top5_mean": 17.459,
+    "top5_prev_mean": 19.379
+   },
+   "GameThreadTime": {
+    "mean": 4.323,
+    "p95": 7.843,
+    "top5_mean": 4.37,
+    "top5_prev_mean": 4.654
+   },
+   "RHIThreadTime": {
+    "mean": 2.942,
+    "p95": 3.666,
+    "top5_mean": 3.082,
+    "top5_prev_mean": 3.042
+   }
+  },
+  "pass_gap_le_1.2": false,
+  "pass_p95_le_18.0": false,
+  "pass_p50_le_16.67": true
+ }
+]

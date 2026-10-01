@@ -1,0 +1,7 @@
+/Users/midir/sm2-n1/perf/unreal/WebHomage/Scripts/run_game.sh /Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dcr0 -map /Game/PerfF/Life/Manhattan -res 3840x2160 -perf 15:45 -name dcr0 -timeout 900 -exec r.LumenScene.SurfaceCache.CardCaptureRefreshFraction 0 -- -WHTravScript=/Users/midir/sm2-n1/perf/docs/night1/manhattan/scripts/route_30s_warmup15.json -WHTravCsv=/Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dcr0/trav_telemetry.csv -csvGpuStats -benchmark -fps=60 -notraceserver -csvCategories=RHITStalls,RHITFlushes,VSM,GPUScene -dpcvars=r.LumenScene.SurfaceCache.CardCaptureRefreshFraction=0
+
+run_game: out=/Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dcr0 res=3840x2160 quit=46.0 window=0 movie=0
+WH_PERF_START t=15.00
+WH_PERF frames=1800 avg_ms=16.21 fps=61.7 p95_ms=18.79 p99_ms=19.96 gpu_avg_ms=15.41 out=3840x2160 internal=1920x1080 (manual) -> /Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dcr0/dcr0_perf.json
+WH_QUIT t=46.00
+

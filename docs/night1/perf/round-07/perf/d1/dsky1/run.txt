@@ -1,0 +1,7 @@
+/Users/midir/sm2-n1/perf/unreal/WebHomage/Scripts/run_game.sh /Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dsky1 -map /Game/PerfF/Life/Manhattan -res 3840x2160 -perf 15:45 -name dsky1 -timeout 900 -exec r.SkyLight.RealTimeReflectionCapture.TimeSlice.SkyCloudCubeFacePerFrame 1 -- -WHTravScript=/Users/midir/sm2-n1/perf/docs/night1/manhattan/scripts/route_30s_warmup15.json -WHTravCsv=/Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dsky1/trav_telemetry.csv -csvGpuStats -benchmark -fps=60 -notraceserver -csvCategories=RHITStalls,RHITFlushes,VSM,GPUScene -dpcvars=r.SkyLight.RealTimeReflectionCapture.TimeSlice.SkyCloudCubeFacePerFrame=1
+
+run_game: out=/Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dsky1 res=3840x2160 quit=46.0 window=0 movie=0
+WH_PERF_START t=15.00
+WH_PERF frames=1800 avg_ms=16.44 fps=60.8 p95_ms=18.99 p99_ms=20.92 gpu_avg_ms=15.40 out=3840x2160 internal=1920x1080 (manual) -> /Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dsky1/dsky1_perf.json
+WH_QUIT t=46.00
+

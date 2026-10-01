@@ -33,6 +33,8 @@
 #                 goes back INTO the ray-tracing scene, which rt_lite / rt_lite_trees had taken it out of: hardware-RT Lumen GI rays no longer pass through the shed roofs.
 #                 Run after rt_lite_trees (it only switches these components on).
 #                 Env SM2_PERF_PROXY_LUMEN_ORIG=0 also takes the original tree HISMs out of the Lumen scene (their surface-cache cards are never hit any more).
+#   rt_proxy_cards (round 07) Lumen mesh cards per proxy mesh = SM2_PERF_PROXY_CARDS (default 64; engine default 12): hardware-RT Lumen hits on a
+#                 proxy read its surface cache; 12 cards per 200 m tile cannot cover its median 89 crowns (S2 / S7 / S1 foliage lost its green).
 # `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
 import unreal, json, os, time
 
@@ -249,6 +251,23 @@ if 'rt_proxy_trees' in STEPS:
                        'orig_in_lumen_scene': lum_orig, 'report': json.load(open(os.path.join(PDIR, 'report.json'))) if os.path.exists(os.path.join(PDIR, 'report.json')) else None}
     if rep['rt_proxy']['report']: rep['rt_proxy']['report'].pop('meshes', None)
     if missing: rep.setdefault('errors', []).append('rt_proxy: %d tiles not imported' % len(missing))
+
+if 'rt_proxy_cards' in STEPS:   # round 07 (round-06 critic: S2 tree line / S7 reflected foliage / S1 canopy lost their green)
+    # The 402 per-tile proxy meshes (median 89 trees per 200 m tile) were built with the engine default of 12 Lumen mesh cards per mesh: a
+    # hardware-RT Lumen ray that hits a proxy reads the surface cache of those cards, and 12 axis-aligned cards cannot see most of 89 crowns, so the
+    # hit has no (black) radiance: less green bounce inside the canopy, no lit trees in glass reflections. Raise the card budget per proxy mesh.
+    NC = int(os.environ.get('SM2_PERF_PROXY_CARDS', '64'))
+    sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem) or unreal.new_object(unreal.StaticMeshEditorSubsystem)
+    PROOT = '/Game/PerfF/RTProxy'; n_c, olds = 0, set()
+    for ap_ in (EAL.list_assets(PROOT, recursive=False) if EAL.does_directory_exist(PROOT) else []):
+        sm = unreal.load_asset(ap_.split('.')[0])
+        if not isinstance(sm, unreal.StaticMesh): continue
+        bs = sms.get_lod_build_settings(sm, 0)
+        olds.add(int(bs.get_editor_property('max_lumen_mesh_cards')))
+        if int(bs.get_editor_property('max_lumen_mesh_cards')) == NC: continue
+        bs.set_editor_property('max_lumen_mesh_cards', NC)
+        sms.set_lod_build_settings(sm, 0, bs); EAL.save_asset(ap_.split('.')[0]); n_c += 1
+    rep['rt_proxy_cards'] = {'cards': NC, 'meshes_changed': n_c, 'old_values': sorted(olds)}
 
 ok = les.save_current_level()
 if 'cloud' in STEPS:  # the rigs are separate levels: load, change, save each (the geometry level above is already saved)

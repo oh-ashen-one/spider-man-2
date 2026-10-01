@@ -1,0 +1,219 @@
+{
+ "config": "dlife_a",
+ "spec": "dlife_a@ini+variant:Life",
+ "screen_percentage": "ini",
+ "cvars": {},
+ "flags": [],
+ "map": "/Game/PerfF/Life/Manhattan",
+ "res": "3840x2160",
+ "window_s": "15:45",
+ "script": "docs/night1/manhattan/scripts/route_30s_warmup15.json",
+ "wall_s": 62.6,
+ "command": "<wt>/unreal/WebHomage/Scripts/run_game.sh /Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dlife_a -map /Game/PerfF/Life/Manhattan -res 3840x2160 -perf 15:45 -name dlife_a -timeout 900 -exec  -- -WHTravScript=<wt>/docs/night1/manhattan/scripts/route_30s_warmup15.json -WHTravCsv=/Users/midir/sm2-n1/_scratch/perf/r07/perf/d1/dlife_a/trav_telemetry.csv -csvGpuStats -benchmark -fps=60 -notraceserver -csvCategories=RHITStalls,RHITFlushes,VSM,GPUScene",
+ "other_gpu": {
+  "wall_s": 62.6,
+  "top": [
+   {
+    "pid": 657,
+    "name": "WindowServer",
+    "gpu_ms": 2258.0,
+    "pct": 3.61
+   },
+   {
+    "pid": 1614,
+    "name": "Notion Helper",
+    "gpu_ms": 179.7,
+    "pct": 0.29
+   },
+   {
+    "pid": 1497,
+    "name": "ghostty",
+    "gpu_ms": 147.4,
+    "pct": 0.24
+   },
+   {
+    "pid": 1671,
+    "name": "Google Chrome He",
+    "gpu_ms": 112.3,
+    "pct": 0.18
+   },
+   {
+    "pid": 1650,
+    "name": "Codex (Service)",
+    "gpu_ms": 54.6,
+    "pct": 0.09
+   },
+   {
+    "pid": 1331,
+    "name": "NotificationCent",
+    "gpu_ms": 0.9,
+    "pct": 0.0
+   }
+  ],
+  "void": false,
+  "void_by": []
+ },
+ "void": false,
+ "wh_perf": {
+  "frames": 1800,
+  "seconds": 29.544,
+  "avg_ms": 16.413,
+  "avg_fps": 60.93,
+  "p50_ms": 16.405,
+  "p95_ms": 19.103,
+  "p99_ms": 20.38,
+  "max_ms": 29.438,
+  "frames_over_16_67ms": 534,
+  "gpu_avg_ms": 15.387,
+  "gpu_p95_ms": 17.722,
+  "output_w": 3840,
+  "output_h": 2160,
+  "r_ScreenPercentage": 50.0,
+  "screen_percentage_mode": "manual",
+  "internal_w": 1920,
+  "internal_h": 1080,
+  "rhi": "Metal"
+ },
+ "csv": {
+  "csv_frames": 1800,
+  "avg_ms": 16.415596611111113,
+  "p50_ms": 16.397550000000003,
+  "p95_ms": 18.554015,
+  "p99_ms": 19.599282,
+  "max_ms": 28.07,
+  "fps_avg": 60.91767626180195,
+  "over_16_7ms": 768,
+  "over_33_3ms": 0,
+  "hitches": 0,
+  "hitch_rule": "frame > 25 ms and > 2x the median frame",
+  "blocks_5s_avg_ms": [
+   16.07,
+   17.1,
+   17.15,
+   17.02,
+   16.27
+  ],
+  "best_5s_block_ms": 16.07,
+  "game_thread_ms": {
+   "avg": 4.363037777777778,
+   "p95": 8.043325000000001,
+   "max": 20.579
+  },
+  "render_thread_ms": {
+   "avg": 16.40782938888889,
+   "p95": 18.53251,
+   "max": 28.1151
+  },
+  "gpu_ms": {
+   "avg": 15.387233222222223,
+   "p95": 17.721980000000002,
+   "max": 25.3403
+  },
+  "rhi_thread_ms": {
+   "avg": 2.9383045555555554,
+   "p95": 3.526755,
+   "max": 4.8403
+  },
+  "gpu_passes_avg_ms": {
+   "GPU/LumenScreenProbeGather": 3.075194277777778,
+   "GPU/ShadowDepths": 2.1063852777777776,
+   "GPU/NaniteVisBuffer": 1.4752277266666667,
+   "GPU/Unaccounted": 1.278891883888889,
+   "GPU/Basepass": 1.228982815,
+   "GPU/Postprocessing": 1.1261144583333333,
+   "GPU/RenderDeferredLighting": 0.6709274444444444,
+   "GPU/LumenSceneLighting": 0.6546216666666667,
+   "GPU/LumenSceneUpdate": 0.5396088238888889,
+   "GPU/NaniteBasePass": 0.4628631988888889,
+   "GPU/Lights": 0.4260892777777778,
+   "GPU/VolumetricCloud": 0.36341559,
+   "GPU/LumenReflections": 0.24191805555555557,
+   "GPU/ShadowProjection": 0.19468683333333334,
+   "GPU/CaptureConvolveSkyEnvMap": 0.17670696277777778,
+   "GPU/VolumetricFog": 0.13230283333333334,
+   "GPU/RenderVelocities": 0.10040049333333333,
+   "GPU/TranslucentLighting": 0.062123299444444446,
+   "GPU/VolCloudComposeOverScene": 0.05683373388888889,
+   "GPU/SkyAtmosphereLUTs": 0.055551365,
+   "GPU/VolCloudReconstruction": 0.04801559888888889,
+   "GPU/RenderAnisotropyPass": 0.04789414277777778,
+   "GPU/HZB": 0.04733986,
+   "GPU/Fog": 0.041368782222222227,
+   "GPU/SkyAtmosphere": 0.039216695555555556
+  }
+ },
+ "breakdown": {
+  "render_thread_exclusive_ms": {
+   "EventWait/Visibility": 11.951,
+   "RenderOther": 1.441,
+   "RDG": 0.549,
+   "RenderLighting": 0.403,
+   "RenderThreadOther": 0.367,
+   "RenderShadows": 0.284,
+   "EventWait": 0.181,
+   "RenderPostProcessing": 0.148,
+   "RDG_CollectResources": 0.131,
+   "STAT_SkinningSceneExtension": 0.111,
+   "UpdatePrimitiveTransform": 0.105,
+   "RDG_Execute": 0.087,
+   "InitViews_Scene": 0.084,
+   "RemovePrimitiveSceneInfos": 0.071
+  },
+  "game_thread_exclusive_ms": {
+   "EventWait": 12.054,
+   "Animation": 1.14,
+   "TickActors": 0.997,
+   "EndOfFrameUpdates": 0.839,
+   "UI": 0.148,
+   "EventWait/EndPhysics": 0.146,
+   "ViewportMisc": 0.11,
+   "QueueTicks": 0.089
+  },
+  "all_workers_exclusive_ms": {
+   "FPrimitiveSceneInfo_CacheMeshDrawCommands": 0.383,
+   "RenderShadows": 0.226,
+   "RenderLighting": 0.157,
+   "Physics": 0.122,
+   "RenderPostProcessing": 0.077,
+   "FPrimitiveSceneInfo_CacheNaniteMaterialBins": 0.058,
+   "Slate": 0.044,
+   "ShadowInitDynamic": 0.025,
+   "PrepareDistanceFieldScene": 0.019,
+   "RenderBasePass": 0.014
+  },
+  "drawcalls_by_pass": {
+   "SlateUI": 0.0,
+   "Basepass": 0.0,
+   "CustomDepth": 0.0,
+   "Prepass": 0.0,
+   "Distortion": 0.0,
+   "Fog": 0.0,
+   "FrontLayerTranslucencyGBuffer": 0.0,
+   "Lights": 0.0,
+   "BeginOcclusionTests": 0.0,
+   "ScreenSpaceReflections": 0.0
+  },
+  "counters": {
+   "RHI/DrawCalls": 0.0,
+   "RHI/PrimitivesDrawn": 0.0,
+   "GPUSceneInstanceCount": 120494.329,
+   "SceneCulling/NumDynamicInstances": 57858.329,
+   "SceneCulling/NumStaticInstances": 2012.0,
+   "SceneCulling/NumUpdatedInstances": 223.517,
+   "RenderThreadIdle/Total": 0.002,
+   "RenderThreadIdle/CriticalPath": 0.001,
+   "RenderThreadIdle/SwapBuffer": 0.005,
+   "RenderThreadIdle/GPUQuery": 0.0,
+   "RenderThreadIdle/NonCriticalPath": 0.002,
+   "RenderThreadTime_CriticalPath": 16.408,
+   "GameThreadTime_CriticalPath": 4.363,
+   "ShadowCacheUsageMB": 0.0,
+   "LightCount/UpdatedShadowMaps": 0.0,
+   "RDGCount/Passes": 608.279,
+   "DrawSceneCommand_StartDelay": 12.755,
+   "Scheduler/Oversubscription": 3.133
+  }
+ },
+ "dpcvar_log": [],
+ "cvar_warnings": []
+}

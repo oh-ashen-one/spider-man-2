@@ -1,0 +1,7 @@
+/Users/midir/sm2-n1/perf/unreal/WebHomage/Scripts/run_game.sh /Users/midir/sm2-n1/_scratch/perf/r07/perf/e1/lccf -map /Game/PerfF/Life/Manhattan -res 3840x2160 -perf 15:45 -name lccf -timeout 900 -exec r.LumenScene.SurfaceCache.CardCaptureRefreshFraction 0,r.LumenScene.SurfaceCache.CardCaptureFactor 128 -- -WHTravScript=/Users/midir/sm2-n1/perf/docs/night1/manhattan/scripts/route_30s_warmup15.json -WHTravCsv=/Users/midir/sm2-n1/_scratch/perf/r07/perf/e1/lccf/trav_telemetry.csv -csvGpuStats -benchmark -fps=60 -notraceserver -dpcvars=r.LumenScene.SurfaceCache.CardCaptureRefreshFraction=0,r.LumenScene.SurfaceCache.CardCaptureFactor=128
+
+run_game: out=/Users/midir/sm2-n1/_scratch/perf/r07/perf/e1/lccf res=3840x2160 quit=46.0 window=0 movie=0
+WH_PERF_START t=15.00
+WH_PERF frames=1800 avg_ms=15.86 fps=63.0 p95_ms=18.44 p99_ms=19.65 gpu_avg_ms=15.44 out=3840x2160 internal=1920x1080 (manual) -> /Users/midir/sm2-n1/_scratch/perf/r07/perf/e1/lccf/lccf_perf.json
+WH_QUIT t=46.00
+

@@ -5,6 +5,8 @@
 # route stills (game t = 20 s / 28 s, -benchmark fixed step, 4K). Every view is a separate game launch (one Unreal process at a time).
 #   gpu_slot.sh capture --label perf -- tools/perf_ue2/stills2.sh <out_dir> "<spec>" ["S1 S2 route"]
 # env SM2_PERF_STILL_TWICE=1: launch each view twice and keep the second (first launch builds mesh distance fields / shaders into the DDC).
+# env SM2_PERF_STILL_FIXED=1 (round 07): the static views also run with the fixed 1/60 s step (-benchmark -fps=60), so the cloud / cloud-shadow state at
+#   t = SM2_PERF_SHOT_T is the same in every capture (real-time captures of the same config read S2 tree-tile foliage 2.7 or 5.0 % depending on it).
 set -uo pipefail
 WT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT="$1"; SPEC="$2"; VIEWS="${3:-S1 S2}"
@@ -24,6 +26,7 @@ DPA=(); [ -n "$DP" ] && DPA=(-dpcvars="$DP")
 echo "{\"spec\": \"$SPEC\", \"sp\": \"$SP\", \"cvars\": \"$DP\", \"variant\": \"$VAR\"}" > "$OUT/settings.json"
 PFX=/Game/Maps; VP=/Game/PerfF; [ -n "$VAR" ] && { PFX=/Game/PerfF/$VAR; VP=/Game/PerfF/$VAR; }
 REPS=1; [ "${SM2_PERF_STILL_TWICE:-0}" = 1 ] && REPS=2
+FIXED=""; [ "${SM2_PERF_STILL_FIXED:-0}" = 1 ] && FIXED="-benchmark -fps=60"
 for V in $VIEWS; do
   if [ "$V" = route ]; then
     for R in $(seq 1 $REPS); do
@@ -38,7 +41,7 @@ for V in $VIEWS; do
   for R in $(seq 1 $REPS); do
     rm -rf "$TMP/$V"
     "$WT/unreal/WebHomage/Scripts/run_game.sh" "$TMP/$V" -map $M -res 3840x2160 -shots ${SM2_PERF_SHOT_T:-14} -name view_$V -timeout 900 \
-      -exec "$EX" -- -notraceserver "${DPA[@]+"${DPA[@]}"}" "${FLAGS[@]+"${FLAGS[@]}"}" | tail -1
+      -exec "$EX" -- -notraceserver $FIXED "${DPA[@]+"${DPA[@]}"}" "${FLAGS[@]+"${FLAGS[@]}"}" | tail -1
   done
   p=$(ls "$TMP/$V/view_${V}_00_"*.png 2>/dev/null | head -1); [ -n "$p" ] && cp "$p" "$OUT/view_$V.png"
 done
