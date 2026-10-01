@@ -1,4 +1,4 @@
-# Director plan — FIRST PASS (Fable 5.1 max, 2026-10-01 ~10:30 EDT, planning only)
+# Director plan — FIRST PASS (Fable 5.1 xhigh, 2026-10-01 ~10:30 EDT, planning only)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
