@@ -5,11 +5,13 @@
 Branch `night1/combat`, worktree `~/sm2-n1/combat`. UE MCP port 8775, dev port 5206; nothing here uses the editor or MCP: everything is headless commandlets plus `-game`. P5 owns
 `Source/WebHomage/Combat`, `/Game/Combat`, `/Game/Tests/Combat`, `Scripts/build_combat.py`, `docs/night1/combat/`. Scratch: `/Users/midir/sm2-n1/_scratch/combat/` (r04 work: `r04/final1`).
 
-## State when this text was written (07:57 EDT)
+## State when this text was written (2026-10-01 01:25 EDT, round 04 resumed by Claude Opus 5.5)
 
-- Round 04 code is built and pushed (branch `night1/combat`): starburst flare + victim recoil lean + `WH_CMB_RES` / `WH_CMB_FLARE` log lines + `measure_r04.py` + `final_r04.sh` + `package_r04.sh` + `critic_pack_r04.sh`.
-- **No round-04 capture exists yet**: the GPU has been wedged since 06:54 (two other agents' `UnrealEditor` pids 17555 / 17831 stuck exiting in the driver, `?E`, GPU at 100 % with no engine running), so `gpu_slot.sh`
-  refuses every launch ("UnrealEditor pid 17555 stuck exiting"). My capture chain `final_r04.sh` is queued behind the lock (see below for how to run / cancel it).
+- Merged `origin/Opus-5.5-Loop-Night-1` (1fe4c46: Tessera suit, characters r8-r10, traversal r17) into `night1/combat` (bcaa11f), clean merge, `build_editor.sh` OK.
+- The GPU is healthy again (no `PAUSED`, cap 2). The one-hold capture chain is queued in `gpu_slot.sh` (FIFO):
+  `final_r04.sh /Users/midir/sm2-n1/_scratch/combat/r04b/final <15 still times>` (chain pid in `.../r04b/final/chain.pid`, log `chain.out`).
+  If a successor finds `.../r04b/final/movieA/fight.mp4` + `movieB` + `stills` complete, skip straight to `package_r04.sh` and `critic_pack_r04.sh`.
+- Still no round-04 frames when this was written: everything below is unverified on screen until `round-04/measure_r04.md` exists.
 
 ## What round 04 changed (all untested on screen until the capture exists)
 
