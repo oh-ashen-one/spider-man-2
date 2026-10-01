@@ -1144,42 +1144,54 @@ if 'skins' in STEPS:
     if EAL.does_directory_exist(SUITS_DIR):
         try: EAL.delete_directory(SUITS_DIR)
         except Exception as e: log('skins: delete failed', str(e)[:120])
+    def _lin(h):
+        c = int(h, 16) / 255.0
+        return ((c + 0.055) / 1.055) ** 2.4 if c > 0.04045 else c / 12.92
+    def make_suit(e_):
+        """-> (material, lens material) of one suit; textures NeverStream (a swap is one frame), BC7 base colour."""
+        sid = e_['id']
+        if e_.get('texture_set') == 'hero':
+            return load(ROOT + '/Hero/Materials/MI_Hero_Suit'), load(ROOT + '/Hero/Materials/MI_Hero_Lens')
+        D_ = ART + '/hero/suits/' + sid
+        if not all(os.path.exists(D_ + k) for k in ('_basecolor.png', '_normal.png', '_orm.png')):
+            raise RuntimeError('maps missing for %s (run tools/ue_char/suits/gen_suits.py)' % sid)
+        TD = SUITS_DIR + '/Textures'
+        tb = import_tex(D_ + '_basecolor.png', TD, 'T_HeroSuit_%s_BaseColor' % sid, 'srgb')
+        tn = import_tex(D_ + '_normal.png', TD, 'T_HeroSuit_%s_Normal' % sid, 'normal_gl')
+        to = import_tex(D_ + '_orm.png', TD, 'T_HeroSuit_%s_ORM' % sid, 'linear')
+        try: tb.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_BC7)
+        except Exception as ex: log('BC7 not set', sid, str(ex)[:100])
+        for t_ in (tb, tn, to):
+            try: t_.set_editor_property('never_stream', True)
+            except Exception as ex: log('never_stream not set', sid, str(ex)[:100])
+        fz = list(e_.get('style', {}).get('fuzz', [0.50, 0.62, 0.68]))
+        mat_ = mi('MI_HeroSuit_' + sid, SUITS_DIR + '/Materials', master,
+                  tex={'BaseColor': TD + '/T_HeroSuit_%s_BaseColor' % sid, 'ORM': TD + '/T_HeroSuit_%s_ORM' % sid,
+                       'Normal': TD + '/T_HeroSuit_%s_Normal' % sid, 'DetailNormal': twill_p},
+                  scal={'DetailTiling': tile_, 'DetailStrength': 0.8, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (fz[0], fz[1], fz[2], 1.0)}, switches={'HasORM': True})
+        # lens: the suit's accent colour (linear, x 0.67 like Tessera's amber 0.50 / 0.13 / 0.01 of 0.745 / 0.188 / 0.004)
+        ac = e_.get('style', {}).get('palette', {}).get('accent', '#e0780c')
+        lin = [_lin(ac[i:i + 2]) for i in (1, 3, 5)]
+        lens_ = None
+        try:
+            lens_ = mi('MI_HeroLens_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_HeroLens'),
+                       scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.67 * lin[0], 0.67 * lin[1], 0.67 * lin[2], 1.0)})
+        except Exception as ex: log('lens instance failed', sid, str(ex)[:120])
+        return mat_, lens_
     entries = []
     for e_ in SUITS_CFG['suits']:
-        sid = e_['id']; lens_ = None
-        if e_.get('texture_set') == 'hero':
-            mat_ = load(ROOT + '/Hero/Materials/MI_Hero_Suit')
-            if mat_ is None: log('skins: MI_Hero_Suit missing (run the mat step); skipping', sid); continue
-        else:
-            D_ = ART + '/hero/suits/' + sid
-            if not all(os.path.exists(D_ + k) for k in ('_basecolor.png', '_normal.png', '_orm.png')):
-                log('skins: maps missing for', sid, '(run tools/ue_char/suits/gen_suits.py); skipping'); continue
-            TD = SUITS_DIR + '/Textures'
-            tb = import_tex(D_ + '_basecolor.png', TD, 'T_HeroSuit_%s_BaseColor' % sid, 'srgb')
-            tn = import_tex(D_ + '_normal.png', TD, 'T_HeroSuit_%s_Normal' % sid, 'normal_gl')
-            to = import_tex(D_ + '_orm.png', TD, 'T_HeroSuit_%s_ORM' % sid, 'linear')
-            tb.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_BC7)
-            for t_ in (tb, tn, to):
-                try: t_.set_editor_property('never_stream', True)
-                except Exception as ex: log('never_stream not set', sid, str(ex)[:100])
-            fz = list(e_.get('style', {}).get('fuzz', [0.50, 0.62, 0.68]))
-            # lens: the suit's accent colour (linear, x 0.67 like Tessera's amber 0.50 / 0.13 / 0.01 of 0.745 / 0.188 / 0.004)
-            ac = e_.get('style', {}).get('palette', {}).get('accent', '#e0780c')
-            lin = [((int(ac[i:i + 2], 16) / 255.0 + 0.055) / 1.055) ** 2.4 if int(ac[i:i + 2], 16) / 255.0 > 0.04045 else int(ac[i:i + 2], 16) / 255.0 / 12.92 for i in (1, 3, 5)]
-            lens_ = None
-            try:
-                lens_ = mi('MI_HeroLens_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_HeroLens'),
-                           scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.67 * lin[0], 0.67 * lin[1], 0.67 * lin[2], 1.0)})
-            except Exception as ex: log('lens instance failed', sid, str(ex)[:120])
-            mat_ = mi('MI_HeroSuit_' + sid, SUITS_DIR + '/Materials', master,
-                      tex={'BaseColor': TD + '/T_HeroSuit_%s_BaseColor' % sid, 'ORM': TD + '/T_HeroSuit_%s_ORM' % sid,
-                           'Normal': TD + '/T_HeroSuit_%s_Normal' % sid, 'DetailNormal': twill_p},
-                      scal={'DetailTiling': tile_, 'DetailStrength': 0.8, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (fz[0], fz[1], fz[2], 1.0)}, switches={'HasORM': True})
-        en = unreal.WHHeroSuitEntry()
-        en.set_editor_property('id', sid); en.set_editor_property('display_name', e_.get('name', sid)); en.set_editor_property('material', mat_)
-        en.set_editor_property('lens_material', lens_ if e_.get('texture_set') != 'hero' else load(ROOT + '/Hero/Materials/MI_Hero_Lens'))
-        entries.append(en)
-        log('skins: suit', len(entries) - 1, sid, mat_.get_name())
+        sid = e_['id']
+        try:
+            mat_, lens_ = make_suit(e_)
+            if mat_ is None: raise RuntimeError('no material')
+            en = unreal.WHHeroSuitEntry()
+            en.set_editor_property('id', sid); en.set_editor_property('display_name', e_.get('name', sid)); en.set_editor_property('material', mat_)
+            if lens_ is not None: en.set_editor_property('lens_material', lens_)
+            entries.append(en)
+            log('skins: suit', len(entries) - 1, sid, mat_.get_name(), 'lens', lens_.get_name() if lens_ is not None else None)
+        except Exception as ex_:
+            import traceback
+            log('skins: suit', sid, 'FAILED:', str(ex_)[:300]); traceback.print_exc()
     if EAL.does_asset_exist(SUITS_DIR + '/DA_HeroSuits'): EAL.delete_asset(SUITS_DIR + '/DA_HeroSuits')
     da = AT.create_asset('DA_HeroSuits', SUITS_DIR, unreal.WHHeroSuitSet, unreal.DataAssetFactory())
     da.set_editor_property('suits', entries)

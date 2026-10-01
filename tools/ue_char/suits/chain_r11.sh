@@ -11,7 +11,7 @@ set -u
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
 export P2_SCRATCH="${P2_SCRATCH:-/Users/midir/sm2-n1/_scratch/characters}"
 OUT="${1:?out dir}"; mkdir -p "$OUT"
-STEPS="${STEPS:-build stills pawn persist orbit}"
+STEPS="${STEPS:-build stills pawn persist menu orbit}"
 T0=$(date +%s); LIMIT="${CHAIN_LIMIT_S:-2100}"
 left() { echo $(( LIMIT - ($(date +%s) - T0) )); }
 log() { echo "[chain $(date +%H:%M:%S) +$(( $(date +%s) - T0 ))s] $*" | tee -a "$OUT/chain.log"; }
@@ -29,6 +29,7 @@ if has build; then
   [ -f "$SJ" ] || { log "no skins_shots.json: build failed"; exit 3; }
 fi
 
+# (the pawn run starts in suit 2 through the real console command `wh.Suit 2`, then 7 T presses cycle 3 4 5 6 7 0 1: it ends in suit 1 = verdant, saved to GameUserSettings.ini)
 # stage times of the 32 still shots: shot k starts at 3 k (+1 s warm-up on the first), the still is taken 2.2 s into it
 if has stills && [ "$(left)" -gt 420 ] && [ -f "$SJ" ]; then
   TIMES=$(python3 - <<EOF
@@ -62,7 +63,7 @@ if has pawn && [ "$(left)" -gt 420 ] && [ -f "$SJ" ]; then
   FIRST=0
   find "$CFG" -name GameUserSettings.ini -delete 2>/dev/null
   log "pawn: the playable hero swaps suits on injected T key presses (1080p -movie, fixed 1/60 s), pawn shot $FIRST"
-  Scripts/run_game.sh "$OUT/pawn" -map $MAPP -res 1920x1080 -quit 11.5 -name pawn -movie -exec "r.MotionBlurQuality 0" -timeout 1500 \
+  Scripts/run_game.sh "$OUT/pawn" -map $MAPP -res 1920x1080 -quit 11.5 -name pawn -movie -exec "r.MotionBlurQuality 0,wh.Suit 2" -timeout 1500 \
       -- -WHCharShot=$FIRST $PAWN -WHSuitPersist -WHSuitKeyScript=1.5,2.7,3.9,5.1,6.3,7.5,8.7 < /dev/null | tail -8
   find "$CFG" -name GameUserSettings.ini -exec cp {} "$OUT/pawn/GameUserSettings_after_pawn.ini" \; 2>/dev/null
   grep -E "WH_SUIT|WH_SETTINGS|WH_TRAV hero" "$OUT/pawn/pawn.log" > "$OUT/pawn/suit_log.txt" 2>/dev/null
@@ -74,6 +75,13 @@ if has persist && [ "$(left)" -gt 300 ] && [ -f "$SJ" ]; then
   Scripts/run_game.sh "$OUT/persist" -map $MAPP -res 960x540 -shots 3 -quit 4.5 -name persist -exec "r.MotionBlurQuality 0" -timeout 900 \
       -- -WHCharShot=$FIRST $PAWN -WHSuitPersist < /dev/null | tail -6
   grep -E "WH_SUIT|WH_SETTINGS" "$OUT/persist/persist.log" > "$OUT/persist/suit_log.txt" 2>/dev/null
+fi
+
+if has menu && [ "$(left)" -gt 300 ]; then
+  log "menu: the settings menu with the HERO section (suit row), forced open (-WHShowSettings), 1080p still at 4 s, suit from GameUserSettings.ini"
+  Scripts/run_game.sh "$OUT/menu" -map $MAPP -res 1920x1080 -shots 4 -quit 5.5 -name menu -exec "r.MotionBlurQuality 0" -timeout 900 \
+      -- -WHCharShot=0 $PAWN -WHSuitPersist -WHShowSettings < /dev/null | tail -6
+  grep -E "WH_SUIT|WH_SETTINGS" "$OUT/menu/menu.log" > "$OUT/menu/suit_log.txt" 2>/dev/null
 fi
 
 if has orbit && [ "$(left)" -gt 300 ] && [ -f "$SJ" ]; then
