@@ -1248,7 +1248,7 @@ if 'skinsmap' in STEPS:
     # ---- Char_Skins
     hero_s = skins_stage('Skins', False)
     VIEWS = [('front', KS.FRONT, 0.0, 560.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 560.0, 92.0, 8.0, 40.0),
-             ('chest', KS.CLOSEUP, 0.0, 120.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, 0.0, 78.0, 160.0, 0.0, 26.0)]
+             ('chest', KS.CLOSEUP, 0.0, 150.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0)]
     shots = []
     SHOT_S = 3.0
     for i, nm in enumerate(names):
