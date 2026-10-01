@@ -27,7 +27,10 @@ Done and pushed (CPU side, verified on CPU renders and checkers):
   Ash 121 px, Verdant jog 69 px.
 - Engine side: `chain_r12.sh` (one gpu_slot hold: stills pawn orbit hero chase fight crowd lineup), `post_r12.sh` (fills round-12/ + every measure), `make_pairs_r12.py`.
 
-Next (if you resume here): the content build was queued in the GPU lock (`build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, needs prep outputs:
+Engine build DONE 2026-10-01 18:33 local (50 s, `build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, exit 0; weave-from-position connections all True; the
+nullrhi build compiles no shaders, so the custom weave node is first compiled by the -game run: check the first stills for the default grid material). The capture chain
+(`chain_r12.sh`, steps "stills pawn hero chase fight crowd lineup orbit", out `$P2_SCRATCH/r12/chain`) was queued in the lock right behind it (REQUIRE_BUILD_LOG guard).
+Next (if you resume here and the chain did not run): the content build was queued in the GPU lock (`build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, needs prep outputs:
 `python3 tools/ue_char/prep_glbs.py; python3 tools/ue_char/hero_lens_r8.py $P2_SCRATCH/ueimport/SK_Hero.glb; python3 tools/ue_char/suit8/hero_weights_r12.py $P2_SCRATCH/ueimport/SK_Hero.glb`
 and the maps: `python3 tools/ue_char/hero_suit_r8.py` (Tessera 8192) + `python3 tools/ue_char/suits/gen_suits.py`), then
 `EV=10.0 STEPS="stills pawn orbit" gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r12.sh $P2_SCRATCH/r12/chainA` and `STEPS="hero chase fight crowd lineup" ... chainB`,
