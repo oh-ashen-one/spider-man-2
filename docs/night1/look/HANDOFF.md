@@ -1,12 +1,19 @@
-# P4 Look / Sky: handoff (round 05 IN PROGRESS, resumed 2026-10-01 14:40 after the 14:26 Studio restart)
+# P4 Look / Sky: handoff (round 05, Opus 5.5; resumed 2026-10-01 17:06 after the 15:41 owner pause)
 
-## Round 05 (Sky, director PLAN-firstpass "D Sky") - resume here
-- Built + committed: C++ `AWHLookTimeOfDay` (`wh.TimeOfDay` 0-24 continuous, `wh.Weather`, live pins `exec wh.ToDSet <param> <v>` / `wh.ToDClear`), key table `Scripts/look_tod.py` (from the `tod` section of `Scripts/look_presets.json`),
-  map `/Game/Tests/Look/Look_Midtown_tod` (rebuild: `tools/perf_ue/rebuild_look.sh rigs,maps tod`), time-lapse `tools/perf_ue/capture_tod_lapse.py`, one-session sweep runner `tools/perf_ue/sweeps/run_r05.py --plan <json>`, `tools/perf_ue/tod_tests.py` (spec numbers per variant).
-- Session A (64 stills) = `round-05/sweeps/A_TESTS.md`. Session B (`sweeps/r05/plan_b.json`: golden key/fill gA..gF, night windows nA..nC, overcast oA/oB) and C (`plan_c.json`: cloud coverage per hour) were queued at 14:40 into `$SM2_LOOK_SCRATCH/r05/B|C`.
-- **17:06 resume (Opus 5.5, after the 15:41 owner pause):** `final_r05.sh build,tour` queued (log `$SM2_LOOK_SCRATCH/r05/final_bt.log`); then `chain_E.sh` runs sweep E (`sweeps/r05/plan_e.json`: night far band via fog start/density/max opacity, overcast + clear-day far band via aerial distance) into `r05/E`.
-  Session CD finding: night S4 far shore is 56 Y ABOVE the sky (lit far city, Y 92 vs sky 35), overcast/day far shore only 6..10 Y under the sky; golden gJ passes the PLAN band (-22.9, dBR -5.4). After E: fold winners into `look_presets.json`, `final_r05.sh build,tour,lapse,clips`, `tod_tests.py`, critic pack.
-- Next: pick winners into `look_presets.json` `tod` keys -> `rebuild_look.sh rigs,maps tod` -> `capture_tour.py --tod ...` stills + `capture_tod_lapse.py` + swing clip -> `tod_tests.py` -> critic pack `/Users/midir/sm2-n1/_scratch/critic-P4-r05/`.
+> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+
+## Where round 05 stands (update at the end of the round)
+- ONE map `/Game/Tests/Look/Look_Midtown_tod` with continuous time of day: C++ `AWHLookTimeOfDay` (`wh.TimeOfDay` 0-24, `wh.Weather`, live pins `exec wh.ToDSet <param> <v>` / `wh.ToDClear`),
+  key table `Scripts/look_tod.py` from the `tod` section of `Scripts/look_presets.json` (keys at 4.9 / 6.25 / 6.8 / 7.6 / 9.5 / 13 / 16.5 / 18.4 / 19.2 / 19.8 / 20.6 h). Rebuild: `tools/perf_ue/rebuild_look.sh rigs,maps midday,golden,night,tod`.
+- Final chain: `tools/perf_ue/sweeps/r05/final_r05.sh build,tour,lapse,clips` (each step its own `gpu_slot.sh capture` hold; log `$SM2_LOOK_SCRATCH/r05/final2.log`). Measure: `tools/perf_ue/tod_tests.py --dir docs/night1/look/round-05/stills --out docs/night1/look/round-05/TESTS_tod --map 'h18.4=golden,h22=night,h13w1=midday,h13=midday,h19.8=night,h7.6=golden'`.
+- Sweeps this session (one game session each, `sweeps/run_r05.py --plan sweeps/r05/plan_<x>.json`, results `round-05/sweeps/<X>_TESTS.md`):
+  T1 = first full hour tour after the rebuild (`sweeps/T1_TESTS.md`, sheet `T1_tour_sheet.jpg`); E = night far-band fog / overcast + day aerial / moon; F = blue hour after the sun fix, golden white temp, day exposure; G = blue-hour light diagnosis + fog cutoff.
+- Findings: (1) night S4 far shore was 47-56 Y ABOVE the sky (lit far masses): fog from 800 m (.08, max .98) takes it to the sky level, and only a fog CUTOFF (7 km: the sky is past it, so it stays un-fogged) puts it under the sky (G gN2: -21.5, dBR -2.6, L22 3.09 % / 34.2, L3 pass).
+  `fog.FogCutoffDistance` is NOT blended: C++ steps it at the middle of a key segment (an in-between cutoff would un-fog the near city). (2) The blue hour (19:48, sun -6.7 deg) looked sunlit: neither a lighting-channel switch nor a
+  diffuse/specular ramp of the sun changed it, `sun.Intensity 0` did (G gBsun0) -> it is the twilight sky glow through the sky light; blue key sun 30000 -> 5000 lux. The diffuse/specular ramp (+0.5..-2.5 deg) stays (correct for direct light).
+  (3) Golden white temp 7800 -> 6400 + saturation 1.2/1.15/1.08 (B-R into L6 on most views); golden S4 mean ~116-119 and S7 clipping 3.5-4 % remain (sky-dominated / sun-facing views under bright-region metering).
+  (4) Non-keyed params are sticky in a live session (G's golden group inherited the night fog cutoff): put every param a sweep touches in every group, or key it in the presets.
+- `unreal/WebHomage/Scripts/run_game.sh` carries an UNCOMMITTED orchestrator safety edit (18:12, frame caps for non-perf captures): not P4's file, leave it as is.
 
 # (older) P4 Look, lighting, post: handoff (round 03; round 04)
 

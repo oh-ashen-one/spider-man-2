@@ -1,0 +1,1996 @@
+{
+ "fB0": {
+  "preset": "night",
+  "spec": [
+   {
+    "file": "night_S1_1920x1080.jpg",
+    "mean": 51.66328811645508,
+    "near_black_pct": 3.4268904320987654,
+    "lt25_pct": 45.568962191358025,
+    "clipped_pct": 1.285108024691358,
+    "p99": 242.6298065185547,
+    "b_minus_r": -11.834894180297852,
+    "bottom_third_p90": 169.4534149169922,
+    "bottom_third_p10": 27.426401138305664,
+    "lit_blobs_bottom_half": 9,
+    "glass": {
+     "s1_left_glass": {
+      "p10": 20.641799926757812,
+      "mean": 51.5837287902832,
+      "BR": -7.895520210266113
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "night_S4_1920x1080.jpg",
+    "mean": 52.96719741821289,
+    "near_black_pct": 0.1513792438271605,
+    "lt25_pct": 36.609712577160494,
+    "clipped_pct": 0.27719907407407407,
+    "p99": 211.37332153320312,
+    "b_minus_r": -29.28700828552246,
+    "bottom_third_p90": 74.13059997558594,
+    "bottom_third_p10": 13.57759952545166,
+    "lit_blobs_bottom_half": 6,
+    "far": {
+     "sky": {
+      "Y": 45.24741744995117,
+      "BR": -20.265825271606445
+     },
+     "far_shore": {
+      "Y": 61.56396484375,
+      "BR": -31.669696807861328
+     },
+     "river": {
+      "Y": 18.751752853393555,
+      "BR": 2.4342856407165527
+     },
+     "horizon_far": {
+      "Y": 53.90361022949219,
+      "BR": -25.921497344970703
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "night_S8_1920x1080.jpg",
+    "mean": 55.028968811035156,
+    "near_black_pct": 0.18036265432098766,
+    "lt25_pct": 29.99266975308642,
+    "clipped_pct": 0.8617380401234567,
+    "p99": 230.7169952392578,
+    "b_minus_r": -25.055072784423828,
+    "bottom_third_p90": 63.51280212402344,
+    "bottom_third_p10": 12.64579963684082,
+    "lit_blobs_bottom_half": 2,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 20.4320011138916,
+      "mean": 49.877864837646484,
+      "BR": -24.98552894592285
+     },
+     "s8_pale_glass": {
+      "p10": 21.778200149536133,
+      "mean": 79.21668243408203,
+      "BR": -34.674659729003906
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   }
+  ],
+  "night_s4": {
+   "file": "night_S4_1920x1080.jpg",
+   "points_pct": 0.4513406635802469,
+   "median": 33.552398681640625,
+   "mean": 52.96719741821289
+  },
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fB0.jpg",
+   "sky_Y": 45.24741744995117,
+   "far_Y": 61.56396484375,
+   "river_Y": 18.751752853393555,
+   "near_Y": 32.886131286621094,
+   "box_mean_Y": 89.50814056396484,
+   "box_pct204": 4.142051282051282,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 28.062835780993446,
+    "first_Y_lt_sky_minus_12": 27.595058675668902
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 17.45,
+     "target": ">= 6.0",
+     "passed": true
+    },
+    "C11 flat8 %": {
+     "value": 0.0,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": -11.4,
+     "target": "+-10",
+     "passed": false
+    },
+    "C13 far-sky Y": {
+     "value": 16.32,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": 28.68,
+     "target": "> 0",
+     "passed": true
+    },
+    "C14 far-river Y": {
+     "value": 42.81,
+     "target": "5..35",
+     "passed": false
+    },
+    "C15 rms far/near": {
+     "value": 0.67,
+     "target": "0.25..0.45",
+     "passed": false
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 28.062835780993446,
+     "mean": 160.46692307692308,
+     "p5": 123.0,
+     "p95": 208.04999999999995
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 27.595058675668902,
+     "mean": 413.0346153846154,
+     "p5": 340.0,
+     "p95": 420.0
+    }
+   }
+  }
+ },
+ "fD1": {
+  "preset": "midday",
+  "spec": [
+   {
+    "file": "midday_S1_1920x1080.jpg",
+    "mean": 101.95172119140625,
+    "near_black_pct": 0.0018807870370370371,
+    "lt25_pct": 13.833670910493828,
+    "clipped_pct": 0.07243441358024691,
+    "p99": 235.6298065185547,
+    "b_minus_r": -20.802215576171875,
+    "bottom_third_p90": 199.2595977783203,
+    "bottom_third_p10": 62.774200439453125,
+    "lit_blobs_bottom_half": 5,
+    "glass": {
+     "s1_left_glass": {
+      "p10": 87.07595825195312,
+      "mean": 168.4733123779297,
+      "BR": -59.472877502441406
+     }
+    },
+    "spec_line": "L2",
+    "within": {
+     "mean": false,
+     "near_black": true,
+     "clipped": false,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "midday_S2_1920x1080.jpg",
+    "mean": 93.23220825195312,
+    "near_black_pct": 0.002604166666666667,
+    "lt25_pct": 10.403404706790123,
+    "clipped_pct": 0.001109182098765432,
+    "p99": 206.86761474609375,
+    "b_minus_r": -27.820236206054688,
+    "bottom_third_p90": 150.72900390625,
+    "bottom_third_p10": 22.855602264404297,
+    "lit_blobs_bottom_half": 7,
+    "glass": {
+     "s2_gold_glass": {
+      "p10": 42.40400314331055,
+      "mean": 82.78362274169922,
+      "BR": -55.653961181640625
+     }
+    },
+    "spec_line": "L2",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "midday_S3_1920x1080.jpg",
+    "mean": 99.55894470214844,
+    "near_black_pct": 0.0,
+    "lt25_pct": 3.001784336419753,
+    "clipped_pct": 2.0733506944444446,
+    "p99": 249.06820678710938,
+    "b_minus_r": -13.584896087646484,
+    "bottom_third_p90": 181.03900146484375,
+    "bottom_third_p10": 30.68239974975586,
+    "lit_blobs_bottom_half": 10,
+    "spec_line": "L2",
+    "within": {
+     "mean": false,
+     "near_black": true,
+     "clipped": false,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "midday_S4_1920x1080.jpg",
+    "mean": 83.54412841796875,
+    "near_black_pct": 0.0,
+    "lt25_pct": 1.408371913580247,
+    "clipped_pct": 0.0,
+    "p99": 150.20660400390625,
+    "b_minus_r": 8.929963111877441,
+    "bottom_third_p90": 112.81599426269531,
+    "bottom_third_p10": 32.577598571777344,
+    "lit_blobs_bottom_half": 19,
+    "far": {
+     "sky": {
+      "Y": 131.03477478027344,
+      "BR": 32.09602355957031
+     },
+     "far_shore": {
+      "Y": 123.01567840576172,
+      "BR": 18.569923400878906
+     },
+     "river": {
+      "Y": 74.4985580444336,
+      "BR": 42.484107971191406
+     },
+     "horizon_far": {
+      "Y": 125.17295837402344,
+      "BR": 25.856428146362305
+     }
+    },
+    "spec_line": "L2",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "midday_S5_1920x1080.jpg",
+    "mean": 95.40455627441406,
+    "near_black_pct": 0.0,
+    "lt25_pct": 2.3879726080246915,
+    "clipped_pct": 0.05145640432098766,
+    "p99": 240.49740600585938,
+    "b_minus_r": -11.337058067321777,
+    "bottom_third_p90": 140.9816131591797,
+    "bottom_third_p10": 30.846399307250977,
+    "lit_blobs_bottom_half": 11,
+    "glass": {
+     "s5_teal_glass": {
+      "p10": 97.01199340820312,
+      "mean": 142.11366271972656,
+      "BR": 13.762243270874023
+     }
+    },
+    "spec_line": "L2",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": false,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "midday_S6_1920x1080.jpg",
+    "mean": 96.85458374023438,
+    "near_black_pct": 0.0,
+    "lt25_pct": 7.1564911265432105,
+    "clipped_pct": 0.37871334876543206,
+    "p99": 232.5736083984375,
+    "b_minus_r": -12.886841773986816,
+    "bottom_third_p90": 132.556396484375,
+    "bottom_third_p10": 56.77419662475586,
+    "lit_blobs_bottom_half": 6,
+    "spec_line": "L2",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": false,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "midday_S7_1920x1080.jpg",
+    "mean": 67.2958984375,
+    "near_black_pct": 0.0032310956790123457,
+    "lt25_pct": 13.00757137345679,
+    "clipped_pct": 0.7159529320987654,
+    "p99": 246.36619567871094,
+    "b_minus_r": -0.13397039473056793,
+    "bottom_third_p90": 99.98159790039062,
+    "bottom_third_p10": 17.57360076904297,
+    "lit_blobs_bottom_half": 6,
+    "glass": {
+     "s7_left_glass": {
+      "p10": 18.076200485229492,
+      "mean": 33.80427551269531,
+      "BR": 0.5738734602928162
+     }
+    },
+    "spec_line": "L2",
+    "within": {
+     "mean": false,
+     "near_black": true,
+     "clipped": false,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "midday_S8_1920x1080.jpg",
+    "mean": 85.40433502197266,
+    "near_black_pct": 0.0,
+    "lt25_pct": 3.4275655864197527,
+    "clipped_pct": 0.0,
+    "p99": 189.7993927001953,
+    "b_minus_r": -0.4771040678024292,
+    "bottom_third_p90": 117.88679504394531,
+    "bottom_third_p10": 28.57360076904297,
+    "lit_blobs_bottom_half": 17,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 29.846399307250977,
+      "mean": 66.44243621826172,
+      "BR": 18.126689910888672
+     },
+     "s8_pale_glass": {
+      "p10": 38.960479736328125,
+      "mean": 74.44924926757812,
+      "BR": 12.195289611816406
+     }
+    },
+    "spec_line": "L2",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   }
+  ],
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fD1.jpg",
+   "sky_Y": 131.03477478027344,
+   "far_Y": 123.01567840576172,
+   "river_Y": 74.4985580444336,
+   "near_Y": 68.76248168945312,
+   "box_mean_Y": 110.79402923583984,
+   "box_pct204": 0.0,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 20.31284631566406,
+    "first_Y_lt_sky_minus_12": 0.0
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 9.13,
+     "target": ">= 6.0",
+     "passed": true
+    },
+    "C11 flat8 %": {
+     "value": 3.57,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": -13.53,
+     "target": "+-10",
+     "passed": false
+    },
+    "C13 far-sky Y": {
+     "value": -8.02,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": 54.25,
+     "target": "> 0",
+     "passed": true
+    },
+    "C14 far-river Y": {
+     "value": 48.52,
+     "target": "5..35",
+     "passed": false
+    },
+    "C15 rms far/near": {
+     "value": 0.36,
+     "target": "0.25..0.45",
+     "passed": true
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 20.31284631566406,
+     "mean": 152.25230769230768,
+     "p5": 126.0,
+     "p95": 191.0
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    }
+   }
+  }
+ },
+ "fG1": {
+  "preset": "golden",
+  "spec": [
+   {
+    "file": "golden_S1_1920x1080.jpg",
+    "mean": 83.3215560913086,
+    "near_black_pct": 9.589699074074073,
+    "lt25_pct": 26.231963734567902,
+    "clipped_pct": 0.05304783950617284,
+    "p99": 235.98800659179688,
+    "b_minus_r": -45.15092849731445,
+    "bottom_third_p90": 177.40859985351562,
+    "bottom_third_p10": 103.91679382324219,
+    "lit_blobs_bottom_half": 3,
+    "glass": {
+     "s1_left_glass": {
+      "p10": 12.138799667358398,
+      "mean": 53.061676025390625,
+      "BR": -34.566009521484375
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S2_1920x1080.jpg",
+    "mean": 92.25872802734375,
+    "near_black_pct": 3.4785879629629632,
+    "lt25_pct": 8.336130401234568,
+    "clipped_pct": 0.718798225308642,
+    "p99": 239.98797607421875,
+    "b_minus_r": -63.499183654785156,
+    "bottom_third_p90": 140.68939208984375,
+    "bottom_third_p10": 24.62980079650879,
+    "lit_blobs_bottom_half": 12,
+    "glass": {
+     "s2_gold_glass": {
+      "p10": 38.28700256347656,
+      "mean": 84.85533142089844,
+      "BR": -103.98065948486328
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "golden_S3_1920x1080.jpg",
+    "mean": 73.54769897460938,
+    "near_black_pct": 4.906057098765433,
+    "lt25_pct": 23.75371334876543,
+    "clipped_pct": 1.0863715277777777,
+    "p99": 247.92379760742188,
+    "b_minus_r": -42.18868637084961,
+    "bottom_third_p90": 145.6894073486328,
+    "bottom_third_p10": 13.194199562072754,
+    "lit_blobs_bottom_half": 7,
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S4_1920x1080.jpg",
+    "mean": 119.06726837158203,
+    "near_black_pct": 0.2513020833333333,
+    "lt25_pct": 2.7780671296296298,
+    "clipped_pct": 0.03351658950617284,
+    "p99": 198.32159423828125,
+    "b_minus_r": -58.80237579345703,
+    "bottom_third_p90": 127.44519805908203,
+    "bottom_third_p10": 30.960399627685547,
+    "lit_blobs_bottom_half": 12,
+    "far": {
+     "sky": {
+      "Y": 186.7823944091797,
+      "BR": -65.52497100830078
+     },
+     "far_shore": {
+      "Y": 167.86683654785156,
+      "BR": -54.79048156738281
+     },
+     "river": {
+      "Y": 144.92234802246094,
+      "BR": -53.95991134643555
+     },
+     "horizon_far": {
+      "Y": 172.5870819091797,
+      "BR": -52.250816345214844
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": false,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "golden_S5_1920x1080.jpg",
+    "mean": 70.46981811523438,
+    "near_black_pct": 9.878616898148149,
+    "lt25_pct": 27.952787422839503,
+    "clipped_pct": 0.15567129629629628,
+    "p99": 234.39199829101562,
+    "b_minus_r": -48.18675231933594,
+    "bottom_third_p90": 100.2750015258789,
+    "bottom_third_p10": 3.778200149536133,
+    "lit_blobs_bottom_half": 10,
+    "glass": {
+     "s5_teal_glass": {
+      "p10": 73.32880401611328,
+      "mean": 127.2811508178711,
+      "BR": -70.11251831054688
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S6_1920x1080.jpg",
+    "mean": 85.12439727783203,
+    "near_black_pct": 3.3631365740740744,
+    "lt25_pct": 19.69169560185185,
+    "clipped_pct": 0.019048996913580245,
+    "p99": 237.76620483398438,
+    "b_minus_r": -47.9833869934082,
+    "bottom_third_p90": 160.48880004882812,
+    "bottom_third_p10": 55.01020050048828,
+    "lit_blobs_bottom_half": 6,
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S7_1920x1080.jpg",
+    "mean": 67.03701782226562,
+    "near_black_pct": 15.003086419753087,
+    "lt25_pct": 35.88445216049383,
+    "clipped_pct": 3.5780767746913575,
+    "p99": 251.6337890625,
+    "b_minus_r": -48.60813903808594,
+    "bottom_third_p90": 107.28919982910156,
+    "bottom_third_p10": 5.0,
+    "lit_blobs_bottom_half": 3,
+    "glass": {
+     "s7_left_glass": {
+      "p10": 4.497400283813477,
+      "mean": 21.928604125976562,
+      "BR": -17.763486862182617
+     }
+    },
+    "spec_line": "L5",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": false,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S8_1920x1080.jpg",
+    "mean": 81.82836151123047,
+    "near_black_pct": 5.646942515432099,
+    "lt25_pct": 19.733796296296298,
+    "clipped_pct": 0.7472511574074074,
+    "p99": 221.8975830078125,
+    "b_minus_r": -48.644771575927734,
+    "bottom_third_p90": 106.25979614257812,
+    "bottom_third_p10": 8.778200149536133,
+    "lit_blobs_bottom_half": 17,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 8.556400299072266,
+      "mean": 65.10198974609375,
+      "BR": -16.4571475982666
+     },
+     "s8_pale_glass": {
+      "p10": 31.006420135498047,
+      "mean": 82.25968933105469,
+      "BR": -46.71355438232422
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   }
+  ],
+  "key_fill": [
+   {
+    "file": "golden_S1_1920x1080.jpg",
+    "mean": 83.3215560913086,
+    "p5": 5.778200149536133,
+    "p95": 208.87339782714844,
+    "ratio": 36.1485224501814,
+    "sat": 0.5387243032455444,
+    "near_black_pct": 9.589699074074073,
+    "clipped_pct": 0.05304783950617284,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": false,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S2_1920x1080.jpg",
+    "mean": 92.25872802734375,
+    "p5": 13.905400276184082,
+    "p95": 200.84539794921875,
+    "ratio": 14.443697697304598,
+    "sat": 0.5535030364990234,
+    "near_black_pct": 3.4785879629629632,
+    "clipped_pct": 0.718798225308642,
+    "ok": {
+     "p5": false,
+     "ratio": false,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S3_1920x1080.jpg",
+    "mean": 73.54769897460938,
+    "p5": 10.194199562072754,
+    "p95": 170.84300231933594,
+    "ratio": 16.758844211266254,
+    "sat": 0.5208481550216675,
+    "near_black_pct": 4.906057098765433,
+    "clipped_pct": 1.0863715277777777,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S4_1920x1080.jpg",
+    "mean": 119.06726837158203,
+    "p5": 34.03779983520508,
+    "p95": 187.5793914794922,
+    "ratio": 5.510914112770592,
+    "sat": 0.42357775568962097,
+    "near_black_pct": 0.2513020833333333,
+    "clipped_pct": 0.03351658950617284,
+    "ok": {
+     "p5": false,
+     "ratio": false,
+     "sat": false,
+     "mean": false,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S5_1920x1080.jpg",
+    "mean": 70.46981811523438,
+    "p5": 4.06820011138916,
+    "p95": 209.1862030029297,
+    "ratio": 51.41984102927997,
+    "sat": 0.6023109555244446,
+    "near_black_pct": 9.878616898148149,
+    "clipped_pct": 0.15567129629629628,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": false,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S6_1920x1080.jpg",
+    "mean": 85.12439727783203,
+    "p5": 11.633800506591797,
+    "p95": 209.2464141845703,
+    "ratio": 17.98607549321563,
+    "sat": 0.5485912561416626,
+    "near_black_pct": 3.3631365740740744,
+    "clipped_pct": 0.019048996913580245,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S7_1920x1080.jpg",
+    "mean": 67.03701782226562,
+    "p5": 5.068199634552002,
+    "p95": 200.20040893554688,
+    "ratio": 39.501287117953744,
+    "sat": 0.5242348909378052,
+    "near_black_pct": 15.003086419753087,
+    "clipped_pct": 3.5780767746913575,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": false,
+     "clipped": false
+    }
+   },
+   {
+    "file": "golden_S8_1920x1080.jpg",
+    "mean": 81.82836151123047,
+    "p5": 9.63379955291748,
+    "p95": 193.13299560546875,
+    "ratio": 20.04743762257133,
+    "sat": 0.4990478456020355,
+    "near_black_pct": 5.646942515432099,
+    "clipped_pct": 0.7472511574074074,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   }
+  ],
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fG1.jpg",
+   "sky_Y": 186.7823944091797,
+   "far_Y": 167.86683654785156,
+   "river_Y": 144.92234802246094,
+   "near_Y": 71.77232360839844,
+   "box_mean_Y": 164.31979370117188,
+   "box_pct204": 0.9497435897435896,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 28.836111852078155,
+    "first_Y_lt_sky_minus_12": 0.0
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 6.32,
+     "target": ">= 6.0",
+     "passed": true
+    },
+    "C11 flat8 %": {
+     "value": 9.64,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": 10.73,
+     "target": "+-10",
+     "passed": false
+    },
+    "C13 far-sky Y": {
+     "value": -18.92,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": 96.09,
+     "target": "> 0",
+     "passed": true
+    },
+    "C14 far-river Y": {
+     "value": 22.94,
+     "target": "5..35",
+     "passed": true
+    },
+    "C15 rms far/near": {
+     "value": 0.17,
+     "target": "0.25..0.45",
+     "passed": false
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 28.836111852078155,
+     "mean": 155.70615384615385,
+     "p5": 126.0,
+     "p95": 208.0
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    }
+   }
+  }
+ },
+ "fG2": {
+  "preset": "golden",
+  "spec": [
+   {
+    "file": "golden_S1_1920x1080.jpg",
+    "mean": 83.46102905273438,
+    "near_black_pct": 8.828944830246915,
+    "lt25_pct": 24.477912808641975,
+    "clipped_pct": 0.06751543209876543,
+    "p99": 241.6298065185547,
+    "b_minus_r": -33.19181442260742,
+    "bottom_third_p90": 172.41220092773438,
+    "bottom_third_p10": 97.30020141601562,
+    "lit_blobs_bottom_half": 3,
+    "glass": {
+     "s1_left_glass": {
+      "p10": 12.712400436401367,
+      "mean": 55.87787628173828,
+      "BR": -28.346450805664062
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S2_1920x1080.jpg",
+    "mean": 90.52901458740234,
+    "near_black_pct": 3.1138599537037037,
+    "lt25_pct": 8.321855709876544,
+    "clipped_pct": 0.6807966820987654,
+    "p99": 241.7742156982422,
+    "b_minus_r": -52.981056213378906,
+    "bottom_third_p90": 127.04161071777344,
+    "bottom_third_p10": 24.33060073852539,
+    "lit_blobs_bottom_half": 9,
+    "glass": {
+     "s2_gold_glass": {
+      "p10": 36.95640182495117,
+      "mean": 82.82332611083984,
+      "BR": -92.37165832519531
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S3_1920x1080.jpg",
+    "mean": 56.05242156982422,
+    "near_black_pct": 9.969907407407408,
+    "lt25_pct": 31.96547067901235,
+    "clipped_pct": 1.0472608024691359,
+    "p99": 247.92379760742188,
+    "b_minus_r": -23.434934616088867,
+    "bottom_third_p90": 96.66639709472656,
+    "bottom_third_p10": 7.976400375366211,
+    "lit_blobs_bottom_half": 2,
+    "spec_line": "L1",
+    "within": {
+     "mean": false,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S4_1920x1080.jpg",
+    "mean": 116.78641510009766,
+    "near_black_pct": 0.35151427469135804,
+    "lt25_pct": 3.043306327160494,
+    "clipped_pct": 0.02642746913580247,
+    "p99": 198.3203887939453,
+    "b_minus_r": -50.36589813232422,
+    "bottom_third_p90": 121.18439483642578,
+    "bottom_third_p10": 29.049800872802734,
+    "lit_blobs_bottom_half": 8,
+    "far": {
+     "sky": {
+      "Y": 187.6382293701172,
+      "BR": -54.80231857299805
+     },
+     "far_shore": {
+      "Y": 167.5403594970703,
+      "BR": -46.73714828491211
+     },
+     "river": {
+      "Y": 143.97836303710938,
+      "BR": -46.464820861816406
+     },
+     "horizon_far": {
+      "Y": 172.5897979736328,
+      "BR": -44.581974029541016
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": false,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S5_1920x1080.jpg",
+    "mean": 69.67434692382812,
+    "near_black_pct": 9.985243055555555,
+    "lt25_pct": 28.3227237654321,
+    "clipped_pct": 0.09905478395061727,
+    "p99": 235.39599609375,
+    "b_minus_r": -42.035621643066406,
+    "bottom_third_p90": 91.8709945678711,
+    "bottom_third_p10": 3.778200149536133,
+    "lit_blobs_bottom_half": 10,
+    "glass": {
+     "s5_teal_glass": {
+      "p10": 73.98900604248047,
+      "mean": 130.95997619628906,
+      "BR": -62.43631362915039
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S6_1920x1080.jpg",
+    "mean": 82.6459732055664,
+    "near_black_pct": 3.336853780864198,
+    "lt25_pct": 19.444685570987655,
+    "clipped_pct": 0.014467592592592591,
+    "p99": 239.2006072998047,
+    "b_minus_r": -38.908992767333984,
+    "bottom_third_p90": 147.22398376464844,
+    "bottom_third_p10": 49.18220138549805,
+    "lit_blobs_bottom_half": 6,
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S7_1920x1080.jpg",
+    "mean": 66.89923095703125,
+    "near_black_pct": 15.849488811728396,
+    "lt25_pct": 36.376157407407405,
+    "clipped_pct": 3.41772762345679,
+    "p99": 251.6337890625,
+    "b_minus_r": -45.184688568115234,
+    "bottom_third_p90": 105.79090118408203,
+    "bottom_third_p10": 4.502599716186523,
+    "lit_blobs_bottom_half": 3,
+    "glass": {
+     "s7_left_glass": {
+      "p10": 4.144400119781494,
+      "mean": 21.133031845092773,
+      "BR": -15.372950553894043
+     }
+    },
+    "spec_line": "L5",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": false,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "golden_S8_1920x1080.jpg",
+    "mean": 81.4520263671875,
+    "near_black_pct": 6.109375,
+    "lt25_pct": 20.340711805555557,
+    "clipped_pct": 0.664014274691358,
+    "p99": 222.2838134765625,
+    "b_minus_r": -44.590301513671875,
+    "bottom_third_p90": 105.95584106445312,
+    "bottom_third_p10": 8.497400283813477,
+    "lit_blobs_bottom_half": 17,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 7.774199962615967,
+      "mean": 64.52547454833984,
+      "BR": -12.250279426574707
+     },
+     "s8_pale_glass": {
+      "p10": 30.028600692749023,
+      "mean": 82.1570053100586,
+      "BR": -42.50556564331055
+     }
+    },
+    "spec_line": "L1",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   }
+  ],
+  "key_fill": [
+   {
+    "file": "golden_S1_1920x1080.jpg",
+    "mean": 83.46102905273438,
+    "p5": 6.3582000732421875,
+    "p95": 209.03781127929688,
+    "ratio": 32.87688478992827,
+    "sat": 0.44275787472724915,
+    "near_black_pct": 8.828944830246915,
+    "clipped_pct": 0.06751543209876543,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": false,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S2_1920x1080.jpg",
+    "mean": 90.52901458740234,
+    "p5": 13.556400299072266,
+    "p95": 202.39599609375,
+    "ratio": 14.929921780754807,
+    "sat": 0.4850109815597534,
+    "near_black_pct": 3.1138599537037037,
+    "clipped_pct": 0.6807966820987654,
+    "ok": {
+     "p5": false,
+     "ratio": false,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S3_1920x1080.jpg",
+    "mean": 56.05242156982422,
+    "p5": 5.904200077056885,
+    "p95": 135.77760314941406,
+    "ratio": 22.996782185114608,
+    "sat": 0.4186948537826538,
+    "near_black_pct": 9.969907407407408,
+    "clipped_pct": 1.0472608024691359,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": false,
+     "mean": false,
+     "near_black": false,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S4_1920x1080.jpg",
+    "mean": 116.78641510009766,
+    "p5": 32.18619918823242,
+    "p95": 187.86940002441406,
+    "ratio": 5.836955116250597,
+    "sat": 0.3790731430053711,
+    "near_black_pct": 0.35151427469135804,
+    "clipped_pct": 0.02642746913580247,
+    "ok": {
+     "p5": false,
+     "ratio": false,
+     "sat": false,
+     "mean": false,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S5_1920x1080.jpg",
+    "mean": 69.67434692382812,
+    "p5": 4.348999977111816,
+    "p95": 211.4080047607422,
+    "ratio": 48.61071645742773,
+    "sat": 0.5476901531219482,
+    "near_black_pct": 9.985243055555555,
+    "clipped_pct": 0.09905478395061727,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": false,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S6_1920x1080.jpg",
+    "mean": 82.6459732055664,
+    "p5": 11.923799514770508,
+    "p95": 210.63558959960938,
+    "ratio": 17.665140154250857,
+    "sat": 0.4866533577442169,
+    "near_black_pct": 3.336853780864198,
+    "clipped_pct": 0.014467592592592591,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   },
+   {
+    "file": "golden_S7_1920x1080.jpg",
+    "mean": 66.89923095703125,
+    "p5": 5.0,
+    "p95": 200.2501983642578,
+    "ratio": 40.05003967285156,
+    "sat": 0.48080679774284363,
+    "near_black_pct": 15.849488811728396,
+    "clipped_pct": 3.41772762345679,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": false,
+     "clipped": false
+    }
+   },
+   {
+    "file": "golden_S8_1920x1080.jpg",
+    "mean": 81.4520263671875,
+    "p5": 8.922600746154785,
+    "p95": 193.33358764648438,
+    "ratio": 21.667851464697883,
+    "sat": 0.4680439531803131,
+    "near_black_pct": 6.109375,
+    "clipped_pct": 0.664014274691358,
+    "ok": {
+     "p5": true,
+     "ratio": true,
+     "sat": true,
+     "mean": true,
+     "near_black": true,
+     "clipped": true
+    }
+   }
+  ],
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fG2.jpg",
+   "sky_Y": 187.6382293701172,
+   "far_Y": 167.5403594970703,
+   "river_Y": 143.97836303710938,
+   "near_Y": 66.25513458251953,
+   "box_mean_Y": 164.0533905029297,
+   "box_pct204": 0.9682051282051283,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 31.094695451267903,
+    "first_Y_lt_sky_minus_12": 0.0
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 6.09,
+     "target": ">= 6.0",
+     "passed": true
+    },
+    "C11 flat8 %": {
+     "value": 11.96,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": 8.07,
+     "target": "+-10",
+     "passed": true
+    },
+    "C13 far-sky Y": {
+     "value": -20.1,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": 101.29,
+     "target": "> 0",
+     "passed": true
+    },
+    "C14 far-river Y": {
+     "value": 23.56,
+     "target": "5..35",
+     "passed": true
+    },
+    "C15 rms far/near": {
+     "value": 0.16,
+     "target": "0.25..0.45",
+     "passed": false
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 31.094695451267903,
+     "mean": 156.47384615384615,
+     "p5": 126.0,
+     "p95": 211.0999999999999
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    }
+   }
+  }
+ },
+ "fN1": {
+  "preset": "night",
+  "spec": [
+   {
+    "file": "night_S1_1920x1080.jpg",
+    "mean": 41.912933349609375,
+    "near_black_pct": 4.822530864197531e-05,
+    "lt25_pct": 48.91652199074074,
+    "clipped_pct": 0.6655574845679012,
+    "p99": 231.114013671875,
+    "b_minus_r": 2.419748306274414,
+    "bottom_third_p90": 109.20306396484375,
+    "bottom_third_p10": 22.573598861694336,
+    "lit_blobs_bottom_half": 8,
+    "glass": {
+     "s1_left_glass": {
+      "p10": 21.79939842224121,
+      "mean": 41.746829986572266,
+      "BR": 7.552851676940918
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "night_S4_1920x1080.jpg",
+    "mean": 40.56184005737305,
+    "near_black_pct": 0.0,
+    "lt25_pct": 31.830729166666664,
+    "clipped_pct": 0.1744309413580247,
+    "p99": 203.17666625976562,
+    "b_minus_r": 8.479995727539062,
+    "bottom_third_p90": 71.985595703125,
+    "bottom_third_p10": 22.577600479125977,
+    "lit_blobs_bottom_half": 10,
+    "far": {
+     "sky": {
+      "Y": 34.91259765625,
+      "BR": 16.381757736206055
+     },
+     "far_shore": {
+      "Y": 33.222198486328125,
+      "BR": 14.295858383178711
+     },
+     "river": {
+      "Y": 23.16769027709961,
+      "BR": 16.011428833007812
+     },
+     "horizon_far": {
+      "Y": 31.96937370300293,
+      "BR": 15.35285758972168
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "night_S5_1920x1080.jpg",
+    "mean": 43.212276458740234,
+    "near_black_pct": 4.822530864197531e-05,
+    "lt25_pct": 34.69965277777778,
+    "clipped_pct": 0.3195408950617284,
+    "p99": 204.58485412597656,
+    "b_minus_r": 13.460283279418945,
+    "bottom_third_p90": 122.49685668945312,
+    "bottom_third_p10": 20.722000122070312,
+    "lit_blobs_bottom_half": 16,
+    "glass": {
+     "s5_teal_glass": {
+      "p10": 22.799400329589844,
+      "mean": 42.329925537109375,
+      "BR": 39.27295684814453
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "night_S8_1920x1080.jpg",
+    "mean": 43.61771011352539,
+    "near_black_pct": 0.0,
+    "lt25_pct": 21.43262924382716,
+    "clipped_pct": 0.2915702160493827,
+    "p99": 217.40399169921875,
+    "b_minus_r": 7.826965808868408,
+    "bottom_third_p90": 78.77642822265625,
+    "bottom_third_p10": 21.392301559448242,
+    "lit_blobs_bottom_half": 8,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 20.441200256347656,
+      "mean": 43.19396209716797,
+      "BR": 7.028881072998047
+     },
+     "s8_pale_glass": {
+      "p10": 29.79020118713379,
+      "mean": 54.168373107910156,
+      "BR": 6.484473705291748
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   }
+  ],
+  "night_s4": {
+   "file": "night_S4_1920x1080.jpg",
+   "points_pct": 3.5021219135802464,
+   "median": 30.287601470947266,
+   "mean": 40.56184005737305
+  },
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fN1.jpg",
+   "sky_Y": 34.91259765625,
+   "far_Y": 33.222198486328125,
+   "river_Y": 23.16769027709961,
+   "near_Y": 34.92193603515625,
+   "box_mean_Y": 32.042694091796875,
+   "box_pct204": 0.2569230769230769,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 78.60259341973197,
+    "first_Y_lt_sky_minus_12": 108.68923502380156
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 8.97,
+     "target": ">= 6.0",
+     "passed": true
+    },
+    "C11 flat8 %": {
+     "value": 32.32,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": -2.09,
+     "target": "+-10",
+     "passed": true
+    },
+    "C13 far-sky Y": {
+     "value": -1.69,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": -1.7,
+     "target": "> 0",
+     "passed": false
+    },
+    "C14 far-river Y": {
+     "value": 10.05,
+     "target": "5..35",
+     "passed": true
+    },
+    "C15 rms far/near": {
+     "value": 0.62,
+     "target": "0.25..0.45",
+     "passed": false
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 78.60259341973197,
+     "mean": 230.8,
+     "p5": 136.0,
+     "p95": 396.0
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 108.68923502380156,
+     "mean": 147.3376923076923,
+     "p5": 100.0,
+     "p95": 420.0
+    }
+   }
+  }
+ },
+ "fB1": {
+  "preset": "night",
+  "spec": [
+   {
+    "file": "night_S4_1920x1080.jpg",
+    "mean": 73.60725402832031,
+    "near_black_pct": 2.2005690586419755,
+    "lt25_pct": 11.477575231481481,
+    "clipped_pct": 0.06553819444444445,
+    "p99": 173.06019592285156,
+    "b_minus_r": -92.49553680419922,
+    "bottom_third_p90": 89.55840301513672,
+    "bottom_third_p10": 12.75979995727539,
+    "lit_blobs_bottom_half": 13,
+    "far": {
+     "sky": {
+      "Y": 91.58133697509766,
+      "BR": -126.40105438232422
+     },
+     "far_shore": {
+      "Y": 105.50067901611328,
+      "BR": -127.55704498291016
+     },
+     "river": {
+      "Y": 75.92561340332031,
+      "BR": -101.86785888671875
+     },
+     "horizon_far": {
+      "Y": 106.71653747558594,
+      "BR": -129.70166015625
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": false,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "night_S8_1920x1080.jpg",
+    "mean": 49.49148941040039,
+    "near_black_pct": 18.44487847222222,
+    "lt25_pct": 44.2950424382716,
+    "clipped_pct": 0.12336033950617284,
+    "p99": 202.61720275878906,
+    "b_minus_r": -56.48415756225586,
+    "bottom_third_p90": 46.54819869995117,
+    "bottom_third_p10": 3.985599994659424,
+    "lit_blobs_bottom_half": 3,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 6.556399822235107,
+      "mean": 65.03564453125,
+      "BR": -71.6309814453125
+     },
+     "s8_pale_glass": {
+      "p10": 8.053799629211426,
+      "mean": 54.626441955566406,
+      "BR": -53.18207931518555
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": false,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   }
+  ],
+  "night_s4": {
+   "file": "night_S4_1920x1080.jpg",
+   "points_pct": 0.6097125771604938,
+   "median": 74.92859649658203,
+   "mean": 73.60725402832031
+  },
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fB1.jpg",
+   "sky_Y": 91.58133697509766,
+   "far_Y": 105.50067901611328,
+   "river_Y": 75.92561340332031,
+   "near_Y": 38.24024963378906,
+   "box_mean_Y": 103.56147766113281,
+   "box_pct204": 0.6435897435897435,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 28.227992684672376,
+    "first_Y_lt_sky_minus_12": 65.11812254682769
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 5.9,
+     "target": ">= 6.0",
+     "passed": false
+    },
+    "C11 flat8 %": {
+     "value": 3.93,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": -1.16,
+     "target": "+-10",
+     "passed": true
+    },
+    "C13 far-sky Y": {
+     "value": 13.92,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": 67.26,
+     "target": "> 0",
+     "passed": true
+    },
+    "C14 far-river Y": {
+     "value": 29.58,
+     "target": "5..35",
+     "passed": true
+    },
+    "C15 rms far/near": {
+     "value": 0.3,
+     "target": "0.25..0.45",
+     "passed": true
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 28.227992684672376,
+     "mean": 184.4653846153846,
+     "p5": 132.0,
+     "p95": 228.0
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 65.11812254682769,
+     "mean": 305.95076923076925,
+     "p5": 186.0,
+     "p95": 391.04999999999995
+    }
+   }
+  }
+ },
+ "fN2": {
+  "preset": "night",
+  "spec": [
+   {
+    "file": "night_S4_1920x1080.jpg",
+    "mean": 40.65814971923828,
+    "near_black_pct": 0.0,
+    "lt25_pct": 20.702256944444443,
+    "clipped_pct": 0.15070408950617284,
+    "p99": 197.53640747070312,
+    "b_minus_r": 13.136713981628418,
+    "bottom_third_p90": 69.818359375,
+    "bottom_third_p10": 24.445199966430664,
+    "lit_blobs_bottom_half": 10,
+    "far": {
+     "sky": {
+      "Y": 31.976306915283203,
+      "BR": 18.366924285888672
+     },
+     "far_shore": {
+      "Y": 28.56171989440918,
+      "BR": 19.286970138549805
+     },
+     "river": {
+      "Y": 25.888845443725586,
+      "BR": 21.58571434020996
+     },
+     "horizon_far": {
+      "Y": 28.27349090576172,
+      "BR": 19.448333740234375
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   },
+   {
+    "file": "night_S8_1920x1080.jpg",
+    "mean": 44.81325149536133,
+    "near_black_pct": 0.0,
+    "lt25_pct": 12.36935763888889,
+    "clipped_pct": 0.24247685185185183,
+    "p99": 213.2138214111328,
+    "b_minus_r": 13.963788032531738,
+    "bottom_third_p90": 75.84639739990234,
+    "bottom_third_p10": 23.59079933166504,
+    "lit_blobs_bottom_half": 7,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 22.441200256347656,
+      "mean": 44.4419059753418,
+      "BR": 10.210163116455078
+     },
+     "s8_pale_glass": {
+      "p10": 33.38100051879883,
+      "mean": 54.559974670410156,
+      "BR": 16.409013748168945
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": false
+    }
+   }
+  ],
+  "night_s4": {
+   "file": "night_S4_1920x1080.jpg",
+   "points_pct": 3.1062403549382713,
+   "median": 30.87959861755371,
+   "mean": 40.65814971923828
+  },
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fN2.jpg",
+   "sky_Y": 31.976306915283203,
+   "far_Y": 28.56171989440918,
+   "river_Y": 25.888845443725586,
+   "near_Y": 36.1107292175293,
+   "box_mean_Y": 29.198558807373047,
+   "box_pct204": 0.19333333333333333,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 104.49109271231217,
+    "first_Y_lt_sky_minus_12": 158.98451366471863
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 3.52,
+     "target": ">= 6.0",
+     "passed": false
+    },
+    "C11 flat8 %": {
+     "value": 66.79,
+     "target": "<= 40",
+     "passed": false
+    },
+    "C12 dBR": {
+     "value": 0.92,
+     "target": "+-10",
+     "passed": true
+    },
+    "C13 far-sky Y": {
+     "value": -3.41,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": -7.55,
+     "target": "> 0",
+     "passed": false
+    },
+    "C14 far-river Y": {
+     "value": 2.67,
+     "target": "5..35",
+     "passed": false
+    },
+    "C15 rms far/near": {
+     "value": 0.28,
+     "target": "0.25..0.45",
+     "passed": true
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 104.49109271231217,
+     "mean": 314.0023076923077,
+     "p5": 141.0,
+     "p95": 420.0
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 158.98451366471863,
+     "mean": 253.02384615384616,
+     "p5": 100.0,
+     "p95": 420.0
+    }
+   }
+  }
+ },
+ "fN3": {
+  "preset": "night",
+  "spec": [
+   {
+    "file": "night_S4_1920x1080.jpg",
+    "mean": 44.055091857910156,
+    "near_black_pct": 0.0,
+    "lt25_pct": 22.2178337191358,
+    "clipped_pct": 0.17168209876543208,
+    "p99": 204.68600463867188,
+    "b_minus_r": 10.285441398620605,
+    "bottom_third_p90": 72.30054473876953,
+    "bottom_third_p10": 24.016000747680664,
+    "lit_blobs_bottom_half": 11,
+    "far": {
+     "sky": {
+      "Y": 37.05156707763672,
+      "BR": 18.612424850463867
+     },
+     "far_shore": {
+      "Y": 37.372859954833984,
+      "BR": 16.23318099975586
+     },
+     "river": {
+      "Y": 25.057714462280273,
+      "BR": 20.439285278320312
+     },
+     "horizon_far": {
+      "Y": 35.12446975708008,
+      "BR": 17.51761817932129
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   },
+   {
+    "file": "night_S8_1920x1080.jpg",
+    "mean": 43.907676696777344,
+    "near_black_pct": 0.0,
+    "lt25_pct": 20.69458912037037,
+    "clipped_pct": 0.279272762345679,
+    "p99": 216.2006072998047,
+    "b_minus_r": 11.78476619720459,
+    "bottom_third_p90": 77.41999816894531,
+    "bottom_third_p10": 21.44120216369629,
+    "lit_blobs_bottom_half": 8,
+    "glass": {
+     "s8_glass_right": {
+      "p10": 20.94379997253418,
+      "mean": 43.190162658691406,
+      "BR": 9.1675386428833
+     },
+     "s8_pale_glass": {
+      "p10": 30.589599609375,
+      "mean": 54.270992279052734,
+      "BR": 13.44726276397705
+     }
+    },
+    "spec_line": "L3",
+    "within": {
+     "mean": true,
+     "near_black": true,
+     "clipped": true,
+     "b_minus_r": true
+    }
+   }
+  ],
+  "night_s4": {
+   "file": "night_S4_1920x1080.jpg",
+   "points_pct": 3.931616512345679,
+   "median": 33.4452018737793,
+   "mean": 44.055091857910156
+  },
+  "s4_far": {
+   "file": "/Users/midir/sm2-n1/_scratch/look/r05/F/tod_S4_1920x1080_fN3.jpg",
+   "sky_Y": 37.05156707763672,
+   "far_Y": 37.372859954833984,
+   "river_Y": 25.057714462280273,
+   "near_Y": 36.764163970947266,
+   "box_mean_Y": 35.63050079345703,
+   "box_pct204": 0.3153846153846154,
+   "T1_std": {
+    "first_Y_lt_215": 0.0,
+    "first_absdY_gt_4": 60.04758272999818,
+    "first_Y_lt_sky_minus_12": 120.46805517297837
+   },
+   "T1_pass": false,
+   "T2_pass": true,
+   "lines": {
+    "C11 lap/sky": {
+     "value": 11.54,
+     "target": ">= 6.0",
+     "passed": true
+    },
+    "C11 flat8 %": {
+     "value": 29.11,
+     "target": "<= 40",
+     "passed": true
+    },
+    "C12 dBR": {
+     "value": -2.38,
+     "target": "+-10",
+     "passed": true
+    },
+    "C13 far-sky Y": {
+     "value": 0.32,
+     "target": "-35..-25",
+     "passed": false
+    },
+    "C13 far>near": {
+     "value": 0.61,
+     "target": "> 0",
+     "passed": true
+    },
+    "C14 far-river Y": {
+     "value": 12.32,
+     "target": "5..35",
+     "passed": true
+    },
+    "C15 rms far/near": {
+     "value": 0.73,
+     "target": "0.25..0.45",
+     "passed": false
+    }
+   },
+   "silhouette": {
+    "first_Y_lt_215": {
+     "std": 0.0,
+     "mean": 100.0,
+     "p5": 100.0,
+     "p95": 100.0
+    },
+    "first_absdY_gt_4": {
+     "std": 60.04758272999818,
+     "mean": 216.45076923076923,
+     "p5": 136.0,
+     "p95": 334.04999999999995
+    },
+    "first_Y_lt_sky_minus_12": {
+     "std": 120.46805517297837,
+     "mean": 155.82461538461538,
+     "p5": 100.0,
+     "p95": 420.0
+    }
+   }
+  }
+ }
+}
