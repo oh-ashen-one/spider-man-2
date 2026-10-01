@@ -235,25 +235,38 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SWant = FMath::Lerp(SWant, SkySFrame, SkyK);
 	// round 16 (TRICK_CAMERA_SPEC): the trick camera is chosen ONCE at the release frame (ChooseFlipView) and held on its world
 	// azimuth; an obstruction on the held axis dollies in (TC11), under FlipDistMin it blends to the plain chase
-	const bool bFlipCam = P.bFlip || P.bFlipSoon;
+	// round 18: also BEFORE a predicted flow-flip release (bFlipPre): the view is chosen and blended in ahead of the release, so the trick window
+	// (release .. catch + 0.5 s) opens on the held 3/4 view (critic r17 TC-A: the blend-in inside the window gave offset p5 20-29, range 34)
+	const bool bFlipCam = P.bFlip || P.bFlipSoon || P.bFlipPre;
 	if (bFlipCam && !bFlipWas)
 	{
+		const bool bStillIn = FlipK > 0.05 && !bFlipAbort; // the previous trick's view is still blended (a chain): keep its distance, move its azimuth
 		ChooseFlipView(P, World);
 		bFlipAbort = FlipTier >= 3;
-		FlipDistNow = FlipDistSel; FlipDistV = 0.0; FlipCompactS = FMath::Clamp(double(P.FlipCompact), 0.0, 1.0); FlipCompactV = 0.0; FlipSinceObs = 9.0;
+		if (!bStillIn) { FlipAzNow = FlipAz; FlipDistNow = FlipDistSel; FlipDistV = 0.0; FlipExtS = P.FlipExtent > 0.f ? double(P.FlipExtent) : 1.0; FlipExtV = 0.0; }
+		FlipCompactS = FMath::Clamp(double(P.FlipCompact), 0.0, 1.0); FlipCompactV = 0.0; FlipSinceObs = 9.0;
+	}
+	if (bFlipCam)
+	{ // round 18: a re-chosen view moves its azimuth at <= FlipAzRate deg/s (a fresh one starts on it)
+		const double DA = WrapA(FlipAz - FlipAzNow), MaxD = FMath::DegreesToRadians(FlipAzRate) * Dt;
+		FlipAzNow = WrapA(FlipAzNow + FMath::Clamp(DA, -MaxD, MaxD));
 	}
 	if (!bFlipCam) { bFlipAbort = false; FlipTier = -1; FlipObsT = 0.0; }
 	bFlipWas = bFlipCam;
 	if (bFlipCam && !bFlipAbort && bChaseInit)
 	{ // TC11: sweep hero chest -> the held spot; a hit dollies the camera in along the axis, never yaws / re-picks the side
 		const double Ec = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDist), 0.0, 0.6));
-		const FVector Uc(FMath::Cos(FlipAz) * FMath::Cos(Ec), FMath::Sin(FlipAz) * FMath::Cos(Ec), -FMath::Sin(Ec));
+		const FVector Uc(FMath::Cos(FlipAzNow) * FMath::Cos(Ec), FMath::Sin(FlipAzNow) * FMath::Cos(Ec), -FMath::Sin(Ec));
 		// the distance follows the pose: a compact shape (tuck / pike) is pulled in FlipTuckPull m so the tuck-dominated backDouble reads as big as
 		// the open shapes (TC-C p50 >= .18 with p90 <= .36: one constant distance cannot do both -- a tuck is ~.15, a layout ~.30 at the same range)
 		SD(FlipCompactS, FlipCompactV, FMath::Clamp(double(P.FlipCompact), 0.0, 1.0), FlipCompactT, Dt);
-		const double Want = FlipDistSel - FlipTuckPull * FMath::Clamp(FlipCompactS, 0.0, 1.0);
+		// round 18: distance = FlipExtK x the hero's extent (spring 0.12 s), inside FlipDistSel (5.0, or pulled in at the selection) .. FlipDistMax
+		if (P.FlipExtent > 0.f) SD(FlipExtS, FlipExtV, double(P.FlipExtent), 0.12, Dt);
+		const double Want = P.FlipExtent > 0.f || FlipExtS > 0.0
+			? FMath::Clamp(FlipExtK * FlipExtS, FlipDistSel, FMath::Max(FlipDistSel, FlipDistMax))
+			: FlipDistSel - FlipTuckPull * FMath::Clamp(FlipCompactS, 0.0, 1.0);
 		double HitD = 0.0, ObsGoal = 1e9;
-		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * FlipDistSel, 0.3, HitD)) ObsGoal = HitD - 0.25;
+		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * Want, 0.3, HitD)) ObsGoal = HitD - 0.25;
 		const double Goal = FMath::Min(Want, ObsGoal);
 		// TC11: no room to keep the trick view (under FlipDistMin for FlipAbortGrace s running -- a trunk or a canopy edge passing the
 		// axis for a few frames is dollied through, r16 probe: one tree at a 13 m flip ended the whole trick camera) -> plain chase over FlipOutT
@@ -302,7 +315,8 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			bFlipInRun = false;
 			if (!bFlipOutRun) { bFlipOutRun = true; FlipOutClock = 0.0; FlipOutK0 = FlipK; FlipOutZ0 = FlipZK; }
 			FlipOutClock += Dt;
-			const double X = FMath::Clamp(FlipOutClock / FMath::Max(0.05, FlipOutT), 0.0, 1.0), S = X * X * (3.0 - 2.0 * X), Dv = 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipOutT);
+			// round 18: the azimuth weight holds FlipAzHold s first (TC-A window = program + 0.5 s; the height / pitch settle below is unchanged)
+			const double X = FMath::Clamp((FlipOutClock - FlipAzHold) / FMath::Max(0.05, FlipOutT), 0.0, 1.0), S = X * X * (3.0 - 2.0 * X), Dv = X > 0.0 && X < 1.0 ? 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipOutT) : 0.0;
 			FlipK = FlipOutK0 * (1.0 - S); FlipKV = -FlipOutK0 * Dv;
 			// the height weight holds FlipZHold s after the catch before it follows (TC6: the lens stays under the hips through the 0.5 s tail)
 			const double Xz = FMath::Clamp((FlipOutClock - FlipZHold) / FMath::Max(0.05, FlipOutT), 0.0, 1.0), Sz = Xz * Xz * (3.0 - 2.0 * Xz);
@@ -349,7 +363,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	FVector FlipSpot = Hero;
 	{
 		const double FlipElevNow = FMath::Asin(FMath::Clamp(FlipDrop / FMath::Max(1.0, FlipDist), 0.0, 0.6));
-		FlipSpot = Hero + FVector(FMath::Cos(FlipAz) * FMath::Cos(FlipElevNow), FMath::Sin(FlipAz) * FMath::Cos(FlipElevNow), -FMath::Sin(FlipElevNow)) * FlipDistNow;
+		FlipSpot = Hero + FVector(FMath::Cos(FlipAzNow) * FMath::Cos(FlipElevNow), FMath::Sin(FlipAzNow) * FMath::Cos(FlipElevNow), -FMath::Sin(FlipElevNow)) * FlipDistNow;
 	}
 	if (!bChaseInit)
 	{
@@ -618,6 +632,7 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 	const double HS = VF.Size();
 	const double Head = HS > 1.5 ? FMath::Atan2(VF.Y, VF.X) : Yaw;   // travel heading (rad)
 	const double BackAz = Head + PI;
+	const bool bKeep = FlipK > 0.05 && !bFlipAbort;
 	double CurOff = 0.0; // the side the chase camera is on at the release (a tie-break: the blend-in moves the least)
 	{
 		const FVector Off = CamPos - Hero;
@@ -678,7 +693,9 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 		C.Tier = C.Sun >= SunMinDeg ? 0 : 1;
 		C.Cost = 2.0 * (1.0 - C.Open) + FlipSkyW * (1.0 - C.Sky) + 4.0 * (1.0 - C.ClearT / 1.5) + GlareW * C.Glare
 			+ 2.0 * FMath::Max(0.0, SunPrefDeg - C.Sun) / 40.0
-			+ 0.6 * FMath::Abs(OffDeg - FlipPrefYaw) / 5.0 + (FMath::Sign(CurOff) != double(Side) ? 0.25 : 0.0);
+			+ 0.6 * FMath::Abs(OffDeg - FlipPrefYaw) / 5.0 + (FMath::Sign(CurOff) != double(Side) ? 0.25 : 0.0)
+			// round 18: while the previous trick's view is still blended (a flip chain), stay near its azimuth (no swing across behind him)
+			+ (bKeep ? 0.08 * FMath::Abs(FMath::RadiansToDegrees(WrapA(C.Az - FlipAzNow))) : 0.0);
 		return true;
 	};
 	static const double OffsDeg[] = { 35.0, 40.0, 45.0, 50.0, 55.0 }; // round 17: 35 added (TC1 35-55)
@@ -715,7 +732,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 {
 	struct FT { const TCHAR* N; double* P; };
 	const FT Tab[] = { {TEXT("SunMinDeg"), &SunMinDeg}, {TEXT("SunPrefDeg"), &SunPrefDeg}, {TEXT("FlipDist"), &FlipDist}, {TEXT("FlipDistMin"), &FlipDistMin},
-		{TEXT("FlipDrop"), &FlipDrop}, {TEXT("FlipTuckPull"), &FlipTuckPull}, {TEXT("FlipCompactT"), &FlipCompactT}, {TEXT("FlipYawMin"), &FlipYawMin}, {TEXT("FlipYawMax"), &FlipYawMax}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
+		{TEXT("FlipDrop"), &FlipDrop}, {TEXT("FlipDistMax"), &FlipDistMax}, {TEXT("FlipExtK"), &FlipExtK}, {TEXT("FlipAzHold"), &FlipAzHold}, {TEXT("FlipAzRate"), &FlipAzRate}, {TEXT("FlipTuckPull"), &FlipTuckPull}, {TEXT("FlipCompactT"), &FlipCompactT}, {TEXT("FlipYawMin"), &FlipYawMin}, {TEXT("FlipYawMax"), &FlipYawMax}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
 		{TEXT("FlipLeadDeg"), &FlipLeadDeg}, {TEXT("FlipSFrame"), &FlipSFrame}, {TEXT("FlipPitchUpMax"), &FlipPitchUpMax}, {TEXT("MaxLookUpDeg"), &MaxLookUpDeg},
 		{TEXT("FlipInT"), &FlipInT}, {TEXT("FlipOutT"), &FlipOutT}, {TEXT("FlipZInT"), &FlipZInT}, {TEXT("FlipDollyInT"), &FlipDollyInT}, {TEXT("FlipDollyOutT"), &FlipDollyOutT},
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},

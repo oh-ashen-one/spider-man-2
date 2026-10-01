@@ -128,6 +128,9 @@ private:
 	double TravTime = 0.0;
 	bool bTravStarted = false;
 	bool bAutoSawDescent = false; // round 07: auto-chain rule, this swing has descended
+	// round 18: the auto-chain predicts its next flow-flip release FlipPreT s ahead (the trick camera pre-blends; critic r17 TC-A window)
+	bool bAutoFlipPre = false;
+	float FlipPreT = 0.38f;
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
 	int32 PrerollFrames = 0;

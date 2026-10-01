@@ -35,6 +35,10 @@ struct FTravCamInput
 	bool bFlip = false;      // round 11: a gymnast flip program is playing
 	bool bFlipSoon = false;  // round 12: an apex flip is armed and about to start (the flip camera moves into place first)
 	float FlipCompact = 0.f; // round 16: how compact the flip's upper-body shape is right now (tuck 1, pike 0.6, every open shape 0)
+	// round 18: the hero's vertical extent (m: joints + 0.2 m pad, max of the posed body now and the program's shape table 0.1-0.25 s ahead);
+	// 0 = unknown. The trick camera's distance follows it (FlipExtK x extent within FlipDist..FlipDistMax) so TC-C holds at TC4 distances.
+	float FlipExtent = 0.f;
+	bool bFlipPre = false;   // round 18: a flow flip release is predicted (autoChain rule / trick held while swinging): the trick camera pre-blends
 };
 
 class WEBHOMAGE_API FWebTravCamera
@@ -94,14 +98,19 @@ public:
 	double FlipSkyW = 4.0;   // round 17: weight of the ring sky share in the side choice (r16 1.5: the open-space term picked the street side)
 	double FlipObsT = 0.0, FlipSinceObs = 9.0, FlipAbortGrace = 0.20;   // seconds the held axis has been blocked under FlipDistMin / grace before the plain-chase fallback
 	double FlipOutClock = 0.0, FlipOutK0 = 0.0, FlipOutZ0 = 0.0;   // blend-out state (smoothstep over FlipOutT from the weights at its start)
-	double FlipDist = 4.4, FlipDistMin = 4.0, FlipTuckPull = 0.6, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
+	// round 18 (critic r17 TC-C "distance 4.1-4.4 m, h p90 .37-.46"): FlipDist 4.4 -> 5.0 (TC4 5.0-6.5) and the distance follows the hero's
+	// extent (FlipExtK m per m, up to FlipDistMax) instead of the r16 tuck pull-in; FlipAzHold: the held azimuth stays FlipAzHold s past the
+	// catch before it blends out (critic r17 TC-A "offset p5 20-29, range up to 34": the window runs to the catch + 0.5 s); FlipAzRate: a
+	// re-chosen view while the previous one is still blended moves its azimuth at <= this rate (deg/s) instead of jumping
+	double FlipDistMax = 6.4, FlipExtK = 2.6, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
+	double FlipDist = 5.0, FlipDistMin = 4.0, FlipTuckPull = 0.0, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
 	double FlipInT = 0.34, FlipOutT = 0.90, FlipZInT = 0.15, FlipZHold = 0.30, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
 	double FlipWallMargin = 1.5, FlipAheadT = 0.5;
 	double FlipAz = 0.0;        // rad, world azimuth hero -> camera (held for the trick)
 	double FlipOffDeg = 0.0;    // signed offset of that azimuth from the travel-behind direction at the release (deg, + = right of behind)
 	double FlipSide = 1.0;      // sign of FlipOffDeg
-	double FlipDistSel = 4.4, FlipDistNow = 4.4, FlipDistV = 0.0;   // chosen / current (dollied) distance
+	double FlipDistSel = 5.0, FlipDistNow = 5.0, FlipDistV = 0.0;   // chosen / current (dollied) distance
 	int32 FlipTier = -1;        // selection: 0 obstruction + sun ok, 1 sun rule failed (only side clear), 2 pulled in, 3 plain chase (no clear spot)
 	double FlipSkyShare = -1.0, FlipGlare = 0.0, FlipSunDeg = -1.0;   // telemetry: ring sky share / glare share / sun angle of the chosen view
 	// the sun: SunDir = unit vector TO the sun, set by the character from the level's atmosphere sun light (bHaveSun false = no sun term)

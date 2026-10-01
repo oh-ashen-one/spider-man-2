@@ -96,9 +96,13 @@ SHAPES = {
 # breathing key: how much further out the limbs go at 1 s (blend toward a slightly more open copy)
 BREATH = 0.07
 
-# round 13 (critic r12: "Layout is a rigid, identical plank"; "backDouble uses 5 shapes"): KEYED shapes -- a list of (frame at 30 fps,
-# shape) keys instead of one held pose + breathing. Arms lead, legs follow (their changes are keyed 3-6 frames later), so no two limbs
-# switch on the same frame.
+# round 13 (critic r12: "Layout is a rigid, identical plank"; "backDouble uses 5 shapes"): KEYED shapes -- a list of (u, shape) keys
+# (u = 0..1 of the 1 s clip, which the anim instance plays over the shape's hold) instead of one held pose + breathing.
+# round 18 (critic r17 single gap: "every trick holds a frozen inverted split"; test: in every trick window one limb_z component moves
+# >= 0.10 per 0.1 s sample): the keys are interpolated HERE, per bone (normalised lerp of the aim directions, linear in u) and keyed on
+# EVERY frame, so the motion runs at a steady speed between keys (r13-r17 keyed 4-5 frames and let Blender's auto-Bezier ease every key
+# to a standstill: the limbs stopped at each key). Each key moves at least one hand or foot >= ~0.25 m (body frame) from the previous one,
+# and the limbs are staggered so no two keys are reached by every limb at once.
 def _lay(ua, fa, th_l, sh_l, th_r, sh_r, sp=(0.04, 0.02, 0.0)):
     d = dict(spine=(sp[0], 1, 0), spine1=(sp[1], 1, 0), spine2=(sp[2], 1, 0), neck=(0.02, 1, 0), head=(0.05, 1, 0),
              upperArm=ua, forearm=fa, hand="follow", foot=POINT, toe=POINT)
@@ -106,35 +110,90 @@ def _lay(ua, fa, th_l, sh_l, th_r, sh_r, sp=(0.04, 0.02, 0.0)):
     return d
 
 
+def _pose(sp, arm_l, arm_r, leg_l, leg_r, neck=(0.02, 1, 0), head=(0.05, 1, 0)):
+    """Full body key: sp = (spine, spine1, spine2) forward leans; arm_* = (upperArm, forearm); leg_* = (thigh, shin)."""
+    return dict(spine=(sp[0], 1, 0), spine1=(sp[1], 1, 0), spine2=(sp[2], 1, 0), neck=neck, head=head,
+                upperArm_L=arm_l[0], forearm_L=arm_l[1], upperArm_R=arm_r[0], forearm_R=arm_r[1], hand="follow",
+                thigh_L=leg_l[0], shin_L=leg_l[1], thigh_R=leg_r[0], shin_R=leg_r[1], foot=POINT, toe=POINT)
+
+
+# the tuck grab (start of the kick-out, = flipTuck) and the catch reach (end of the kick-out, = flipReach) as keys
+_TUCK = _pose((0.35, 0.6, 0.8), ((1.0, -0.45, 0.32), (0.2, -1.0, 0.04)), ((1.0, -0.15, 0.5), (0.55, -0.85, -0.05)),
+              ((1.0, 0.95, 0.08), (-0.4, -1.0, 0.04)), ((1.0, 0.8, 0.2), (-0.2, -1.0, 0.08)), neck=(1.0, 0.9, 0), head=(1.0, 0.55, 0))
+_REACH = _pose((0.05, 0.02, 0.0), ((0.25, 0.05, 1.0), (0.35, 0.15, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
+               ((0.55, -0.85, 0.1), (-0.25, -1.0, 0.05)), ((0.3, -0.95, 0.08), (-0.1, -1.0, 0.04)), head=(0.1, 1, 0))
+
 KEYED = {
+    # round 18 pike: it STARTS at the release (frontPikeSwan) with the arms raised and the body long, and folds through the hold -- the arms
+    # reach forward and down while the straight legs lift -- into the r17 pike (left hand at the ankles, right arm swept wide and back)
+    "flipPike": [
+        (0.0, _pose((0.0, 0.0, 0.0), ((0.3, 1.0, 0.25), (0.25, 1.0, 0.18)), ((0.4, 1.0, 0.15), (0.35, 1.0, 0.1)),
+                    ((0.1, -1.0, 0.03), (0.05, -1.0, 0.02)), ((0.05, -1.0, 0.03), (0.0, -1.0, 0.02)))),
+        (0.45, _pose((0.15, 0.3, 0.5), ((1.0, 0.3, 0.15), (1.0, 0.1, 0.08)), ((0.6, 0.6, 0.6), (0.3, 0.5, 0.8)),
+                     ((1.0, -0.4, 0.03), (1.0, -0.3, 0.02)), ((0.8, -0.6, 0.03), (0.9, -0.5, 0.02)), neck=(0.6, 1, 0), head=(0.6, 0.8, 0))),
+        (1.0, SHAPES["flipPike"]),
+    ],
     # layout: the straight line breathes with overlapping limbs -- the arms float out and forward, the legs part a little behind them
     "flipLayout": [
-        (0, _lay((0.05, -1.0, 0.33), (0.05, -1.0, 0.22), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02))),
-        # round 17 (critic r16 "limbs symmetric"): the left arm floats higher and further forward than the right; the legs part more
-        (12, dict(_lay((0.3, -0.75, 0.55), (0.35, -0.6, 0.45), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02),
-                       sp=(0.0, -0.04, -0.06)), upperArm_L=(0.45, -0.45, 0.6), forearm_L=(0.55, -0.25, 0.5))),
-        (18, dict(_lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.2, -1.0, 0.04), (0.08, -1.0, 0.02), (-0.15, -1.0, 0.04), (-0.25, -1.0, 0.02),
-                       sp=(-0.02, -0.06, -0.08)), upperArm_L=(0.5, -0.25, 0.65), forearm_L=(0.6, -0.05, 0.55),
-                  upperArm_R=(0.1, -0.9, 0.5), forearm_R=(0.12, -0.85, 0.4))),
-        (30, dict(_lay((0.1, -0.9, 0.45), (0.12, -0.85, 0.35), (0.08, -1.0, 0.05), (0.03, -1.0, 0.03), (-0.05, -1.0, 0.05), (-0.1, -1.0, 0.03),
-                       sp=(0.02, 0.0, -0.03)), upperArm_L=(0.3, -0.6, 0.55), forearm_L=(0.35, -0.45, 0.45))),
+        # round 18: it opens from the release with the arms still raised (the swing's web arm) and sweeps them down to the sides through
+        # the first ~40 % of the hold, then the r17 breathing (left arm higher / further forward, legs part), then the arms gather in across
+        # the chest (into the corkscrew's twist wrap)
+        (0.0, dict(_lay((0.25, 0.9, 0.4), (0.2, 1.0, 0.3), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02)),
+                   upperArm_R=(0.35, 1.0, 0.2), forearm_R=(0.3, 1.0, 0.15))),
+        (0.4, _lay((0.05, -1.0, 0.33), (0.05, -1.0, 0.22), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02))),
+        (0.62, dict(_lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.2, -1.0, 0.04), (0.08, -1.0, 0.02), (-0.15, -1.0, 0.04), (-0.25, -1.0, 0.02),
+                         sp=(-0.02, -0.06, -0.08)), upperArm_L=(0.5, -0.25, 0.65), forearm_L=(0.6, -0.05, 0.55),
+                    upperArm_R=(0.1, -0.9, 0.5), forearm_R=(0.12, -0.85, 0.4))),
+        (1.0, dict(_lay((0.5, -0.6, 0.1), (0.4, 0.2, -0.6), (0.08, -1.0, 0.0), (0.03, -1.0, -0.02), (-0.05, -1.0, 0.0), (-0.1, -1.0, -0.02),
+                        sp=(0.02, 0.0, -0.03)))),
     ],
-    # kick-out (the double's open finish, then the catch): out of the tuck the arms swing up and forward, sweep wide and back while the
-    # body arches and the legs, still piked, straighten and scissor behind them; the web arm (right) comes up for the catch at the end
-    # round 17 (critic r16 "legs together in every kickout", "limbs symmetric"): a wide scissor (left leg forward, right leg back) and the
-    # arms out of step (left leads high, right sweeps low and back)
+    # round 18 kick-out (backDouble's open finish; critic r17 "kickouts freeze", "make the kickout a moving extension, not a held pose"):
+    # out of the tuck grab the legs SHOOT out (left forward, right back: a scissor), the left arm swings up overhead while the right opens
+    # wide, the body arches, then the web arm (right) swings up for the catch while the left sweeps down and out, the right knee folds and
+    # the scissor swaps -- it ends in the catch reach. No two keys hold every limb.
     "flipKickout": [
-        (0, _lay((0.45, 0.9, 0.3), (0.4, 1.0, 0.25), (0.35, -0.95, 0.05), (0.15, -1.0, 0.03), (0.35, -0.95, 0.05), (0.15, -1.0, 0.03),
-                 sp=(0.15, 0.12, 0.08))),
-        (8, dict(_lay((0.15, 0.55, 1.0), (0.1, 0.6, 1.0), (0.3, -1.0, 0.05), (0.15, -1.0, 0.03), (0.15, -1.0, 0.05), (0.0, -1.0, 0.03),
-                      sp=(0.0, -0.05, -0.08)), upperArm_L=(0.3, 0.8, 0.8), forearm_L=(0.3, 0.9, 0.7))),
-        (16, dict(_lay((-0.2, 0.15, 1.0), (-0.2, 0.25, 1.0), (0.32, -1.0, 0.06), (0.15, -1.0, 0.03), (-0.22, -1.0, 0.06), (-0.42, -1.0, 0.03),
-                       sp=(-0.14, -0.22, -0.26)), upperArm_L=(0.0, 0.45, 1.0), forearm_L=(0.05, 0.55, 0.9),
-                  upperArm_R=(-0.4, -0.1, 1.0), forearm_R=(-0.45, 0.0, 0.9))),
-        (22, dict(_lay((-0.05, 0.3, 1.0), (0.0, 0.4, 1.0), (0.42, -1.0, 0.06), (0.25, -1.0, 0.03), (-0.32, -1.0, 0.06), (-0.55, -1.0, 0.03),
-                       sp=(-0.1, -0.16, -0.18)), upperArm_R=(-0.3, 0.05, 1.0), forearm_R=(-0.3, 0.15, 0.95))),
-        (30, dict(_lay(None, None, (0.45, -0.9, 0.08), (-0.2, -1.0, 0.05), (0.15, -1.0, 0.07), (-0.4, -1.0, 0.04), sp=(0.05, 0.02, 0.0)),
-                  upperArm_R=(0.45, 1.0, 0.25), forearm_R=(0.45, 1.0, 0.18), upperArm_L=(0.25, 0.1, 1.0), forearm_L=(0.35, 0.2, 1.0))),
+        (0.0, _TUCK),
+        (0.22, _pose((0.12, 0.16, 0.2), ((0.9, 0.5, 0.3), (0.7, 0.8, 0.25)), ((0.5, -0.3, 1.0), (0.3, -0.2, 1.0)),
+                     ((0.6, -0.8, 0.06), (0.4, -1.0, 0.03)), ((0.15, -1.0, 0.1), (-0.3, -1.0, 0.05)))),
+        (0.42, _pose((-0.1, -0.2, -0.25), ((0.25, 1.0, 0.35), (0.1, 1.0, 0.3)), ((-0.1, 0.2, 1.0), (-0.2, 0.35, 1.0)),
+                     ((0.35, -1.0, 0.06), (0.25, -1.0, 0.03)), ((-0.25, -1.0, 0.08), (-0.5, -1.0, 0.04)), head=(-0.1, 1, 0))),
+        (0.62, _pose((-0.05, -0.1, -0.12), ((0.1, -0.1, 1.0), (0.15, 0.05, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
+                     ((0.15, -1.0, 0.06), (-0.2, -1.0, 0.03)), ((0.05, -1.0, 0.08), (-0.6, -0.9, 0.04)))),
+        (0.82, _pose((0.05, 0.03, 0.0), ((0.2, -0.65, 0.8), (0.35, -0.45, 0.8)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
+                     ((0.45, -0.9, 0.08), (-0.2, -1.0, 0.05)), ((0.15, -1.0, 0.07), (-0.4, -1.0, 0.04)), head=(0.1, 1, 0))),
+        (1.0, _REACH),
+    ],
+    # round 18 swan (frontPikeSwan's inverted shape; critic r17: "replace the frozen inverted split with a continuous unwind -- arms sweep from
+    # overhead to the sides, one knee bends, the body extends toward the catch"): out of the pike both arms reach overhead and the legs extend;
+    # the LEFT arm sweeps out to the side first, the right follows 0.15 later while the back arches and the right knee folds (stag); then the
+    # knee re-extends, the arms sweep on down past the hips and forward and the hips flex -- the body gathers into the tuck that follows.
+    "flipSwan": [
+        (0.0, _pose((0.0, -0.05, -0.08), ((0.3, 1.0, 0.2), (0.25, 1.0, 0.12)), ((0.35, 1.0, 0.25), (0.3, 1.0, 0.18)),
+                    ((0.05, -1.0, 0.03), (0.0, -1.0, 0.02)), ((0.05, -1.0, 0.03), (0.0, -1.0, 0.02)))),
+        (0.3, _pose((-0.15, -0.28, -0.35), ((0.0, 0.25, 1.0), (-0.05, 0.3, 1.0)), ((0.2, 0.85, 0.6), (0.15, 0.9, 0.5)),
+                    ((-0.2, -1.0, 0.04), (-0.25, -1.0, 0.02)), ((0.0, -1.0, 0.06), (-0.5, -1.0, 0.03)), head=(-0.15, 1, 0))),
+        (0.55, _pose((-0.2, -0.35, -0.42), ((-0.35, -0.3, 1.0), (-0.4, -0.2, 0.9)), ((-0.2, 0.0, 1.0), (-0.25, 0.1, 1.0)),
+                     ((-0.25, -1.0, 0.04), (-0.35, -1.0, 0.02)), ((0.05, -1.0, 0.08), (-0.95, -0.35, 0.04)), head=(-0.2, 1, 0))),
+        (0.8, _pose((-0.05, -0.08, -0.1), ((0.4, -0.6, 0.7), (0.55, -0.4, 0.6)), ((0.2, -0.45, 0.9), (0.3, -0.35, 0.85)),
+                    ((0.05, -1.0, 0.04), (-0.05, -1.0, 0.02)), ((0.1, -1.0, 0.06), (-0.4, -1.0, 0.03)))),
+        (1.0, _pose((0.15, 0.3, 0.4), ((0.85, -0.5, 0.3), (0.6, -0.7, 0.2)), ((0.8, -0.35, 0.45), (0.5, -0.75, 0.15)),
+                    ((0.55, -0.8, 0.05), (-0.2, -1.0, 0.03)), ((0.45, -0.9, 0.1), (-0.35, -1.0, 0.05)), neck=(0.5, 1, 0), head=(0.5, 0.9, 0))),
+    ],
+    # round 18 straddle (corkscrew's OWN inverted shape, distinct from the swan; critic r17 "f2, f3 and f4 share one inverted split"): out of
+    # the twist's chest wrap the arms fling out level and the straight legs split WIDE to the sides (an X, body straight, not arched), the
+    # arms rise on into a V over the head (left first), then the legs scissor shut -- right first -- and the knees bend while the arms come
+    # forward: into the tuck that follows.
+    "flipStraddle": [
+        (0.0, _pose((0.02, 0.02, 0.02), ((0.75, -0.55, -0.1), (0.25, 0.3, -1.0)), ((0.75, -0.55, -0.1), (0.25, 0.3, -1.0)),
+                    ((0.0, -1.0, -0.03), (0.0, -1.0, -0.05)), ((0.0, -1.0, -0.03), (0.0, -1.0, -0.05)), head=(0.06, 1, 0))),
+        (0.3, _pose((0.05, 0.05, 0.05), ((0.1, 0.35, 1.0), (0.05, 0.45, 1.0)), ((0.15, 0.05, 1.0), (0.1, 0.15, 1.0)),
+                    ((0.2, -0.65, 1.0), (0.2, -0.6, 1.0)), ((0.15, -0.75, 0.85), (0.15, -0.7, 0.85)))),
+        (0.58, _pose((0.08, 0.06, 0.04), ((0.15, 1.0, 0.65), (0.1, 1.0, 0.55)), ((0.05, 0.6, 1.0), (0.0, 0.75, 0.9)),
+                     ((0.25, -0.6, 1.0), (0.3, -0.55, 1.0)), ((0.3, -0.9, 0.35), (0.0, -1.0, 0.25)))),
+        (0.8, _pose((0.15, 0.2, 0.25), ((0.7, 0.4, 0.5), (0.65, 0.1, 0.4)), ((0.5, 0.75, 0.6), (0.4, 0.8, 0.5)),
+                    ((0.45, -0.85, 0.3), (-0.2, -1.0, 0.2)), ((0.55, -0.7, 0.12), (-0.3, -1.0, 0.08)))),
+        (1.0, _pose((0.3, 0.5, 0.7), ((1.0, -0.2, 0.35), (0.45, -0.85, 0.1)), ((0.95, 0.1, 0.45), (0.6, -0.7, 0.0)),
+                    ((0.85, 0.35, 0.1), (-0.35, -1.0, 0.05)), ((0.9, 0.25, 0.18), (-0.25, -1.0, 0.08)), neck=(0.7, 1, 0), head=(0.8, 0.7, 0))),
     ],
 }
 
@@ -206,15 +265,76 @@ def _clean(shape):
     return {k: v for k, v in shape.items() if v is not None}
 
 
+def resolve(shape):
+    """bone -> aim direction (Vector), 'follow', 'point' or None (rest) for every CHAIN bone of a shape dict."""
+    out = {}
+    for bone in CHAIN:
+        if bone == "hips" or bone.startswith("shoulder"):
+            continue
+        sp, side = spec_for(shape, bone)
+        if sp is None or sp == "follow" or sp == POINT:
+            out[bone] = sp
+        else:
+            f, u, o = sp
+            out[bone] = d(f, u, o, side if side in ("L", "R") else "L")
+    return out
+
+
+def apply_resolved(res):
+    reset_pose()
+    for bone in CHAIN:
+        if bone not in res or res[bone] is None:
+            continue
+        pb = arm.pose.bones[bone]
+        sp = res[bone]
+        side = bone.split(".")[1] if "." in bone else "C"
+        if sp == "follow":
+            par = arm.pose.bones[bone.replace("hand", "forearm")]
+            aim(pb, (par.tail - par.head))
+        elif sp == POINT:
+            src = "shin" if bone.startswith("foot") else "foot"
+            par = arm.pose.bones[src + "." + side]
+            aim(pb, (par.tail - par.head))
+        else:
+            aim(pb, sp)
+
+
+def lerp_resolved(r0, r1, t):
+    out = {}
+    for bone in set(r0) | set(r1):
+        a, b = r0.get(bone), r1.get(bone)
+        if hasattr(a, "lerp") and hasattr(b, "lerp"):
+            v = a.lerp(b, t)
+            out[bone] = v.normalized() if v.length > 1e-6 else (b if t > 0.5 else a)
+        else:
+            out[bone] = b if t > 0.5 else a
+    return out
+
+
+NFR = 30  # clip frames (1 s at 30 fps)
 for name, keys in KEYED.items():
     act = bpy.data.actions.new(name)
     act.use_fake_user = True
     arm.animation_data.action = act
-    for fr, shape in keys:
-        apply_shape(_clean(shape))
+    rk = [(u, resolve(_clean(shape))) for u, shape in keys]
+    for fr in range(NFR + 1):
+        u = fr / NFR
+        k = 0
+        while k + 1 < len(rk) - 1 and u > rk[k + 1][0]:
+            k += 1
+        u0, r0 = rk[k]; u1, r1 = rk[min(k + 1, len(rk) - 1)]
+        t = 0.0 if u1 <= u0 else min(1.0, max(0.0, (u - u0) / (u1 - u0)))
+        apply_resolved(lerp_resolved(r0, r1, t))
         key_all(fr)
+    try:  # every frame is keyed: the interpolation only matters between frames (UE resamples at 30 fps anyway)
+        fcs = list(act.fcurves) if hasattr(act, "fcurves") else [fc for ly in act.layers for st in ly.strips for cb in st.channelbags for fc in cb.fcurves]
+        for fc in fcs:
+            for kp in fc.keyframe_points:
+                kp.interpolation = "LINEAR"
+    except Exception as e:  # noqa: BLE001
+        print("FLIPSHAPE interpolation not set:", e)
     keep.add(name)
-    print("FLIPSHAPE", name, "keyed", [fr for fr, _ in keys])
+    print("FLIPSHAPE", name, "keyed dense", [u for u, _ in keys])
 
 for name, shape in SHAPES.items():
     if name in KEYED:
@@ -237,6 +357,27 @@ for name, shape in SHAPES.items():
     key_all(30)
     keep.add(name)
     print("FLIPSHAPE", name, json.dumps({k: v for k, v in rep.items() if k != "bones"}))
+
+# round 18: per-frame joint dump for the offline limb-motion estimator (flip_motion_sim.py): every bone head relative to the hips in the
+# BODY frame [forward, up, x(+L)] at frames 0..30 of every flip clip
+frames = {}
+for name in sorted(k for k in keep if k.startswith("flip")):
+    act = bpy.data.actions[name]
+    arm.animation_data.action = act
+    try:
+        if hasattr(arm.animation_data, "action_slot") and act.slots:
+            arm.animation_data.action_slot = act.slots[0]
+    except Exception:  # noqa: BLE001
+        pass
+    seq = []
+    for fr in range(0, 31):
+        scene.frame_set(fr)
+        bpy.context.view_layer.update()
+        hip = arm.pose.bones["hips"].head.copy()
+        seq.append({pb.name: [round((pb.head - hip).dot(F), 4), round((pb.head - hip).dot(U), 4), round((pb.head - hip).x, 4)]
+                    for pb in arm.pose.bones})
+    frames[name] = seq
+report["frames"] = frames
 
 # export only the flip actions + airApex (round-trip check)
 for a in list(bpy.data.actions):

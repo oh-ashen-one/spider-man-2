@@ -557,6 +557,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			I.Move = FVector2D(FVector::DotProduct(W, Cam.RightFlat()), FVector::DotProduct(W, Cam.ForwardFlat())) * Mag;
 		}
 		double RelPhase = 0.45, Gap = 0.3, RepressVz = 1e9;
+		bAutoFlipPre = false;
 		if (Script->AutoChainAt(TravTime, RelPhase, Gap, RepressVz))
 		{ // deterministic swing rhythm: hold through the arc, let go on the rising front, re-press after the gap
 			const bool bSwinging = Traversal->IsSwinging();
@@ -603,6 +604,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			const bool bRoofHold = bTrickNext && Traversal->bFlowApexSolve && bSwinging && Traversal->VelM().Z > 0.5 && !bStale
 				&& Traversal->FlowApexGap() > double(Traversal->FlowReadyGain)
 				&& Traversal->FlowApexGap() <= double(Traversal->FlowReadyGain + Traversal->FlowHoldMax);
+			// round 18: flow-flip release predicted within FlipPreT s (the LongCut clock, or the rising front nearing the release phase) and not
+			// held for the roofline -> the trick camera pre-blends to its held 3/4 view before the release
+			bAutoFlipPre = bTrickNext && bAutoHeld && bSwinging && bAutoSawDescent && !bRoofHold && !bStale
+				&& (A.ModeT > LongCut - FlipPreT || (Traversal->VelM().Z > 0 && A.Swing.Phase > RelPhaseEff - 0.3f));
 			if (bAutoHeld && bSwinging && !bRoofHold && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;
@@ -697,6 +702,8 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	CI.bSky = Traversal->IsSkyLaunch();
 	// round 12: the flip camera starts searching for a sky background ~0.35 s before an armed apex flip begins
 	CI.bFlipSoon = Traversal->IsFlipArmed() && Traversal->VelM().Z < double(Traversal->SkyTrickVz) + 5.0;
+	// round 18: a predicted flow-flip release (auto-chain), or (live) the trick button held while swinging = the trick is coming at the release
+	CI.bFlipPre = Traversal->IsSwinging() && (bAutoFlipPre || (!(Script && Script->IsActive()) && I.bTrick));
 	{ float Ft = 0.f; CI.bFlip = Traversal->Anim.Sub == N_trick && FlipProgramNow(Ft) != nullptr; } // round 11: flip camera
 	{ // round 16: compactness of the flip's upper-body shape (this frame's camera uses the previous frame's pose): the trick camera pulls in during a tuck / pike
 		float Ft = 0.f;
