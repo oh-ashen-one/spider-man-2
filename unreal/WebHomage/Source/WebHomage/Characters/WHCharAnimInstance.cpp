@@ -5,6 +5,7 @@
 #include "Animation/AnimationPoseData.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Characters/WHCharLoopWalker.h"
 
 void UWHCharAnimInstance::NativeInitializeAnimation()
 {
@@ -12,6 +13,9 @@ void UWHCharAnimInstance::NativeInitializeAnimation()
 	Loco.RemoveAll([](const FWHLocoSample& S) { return S.Clip == nullptr || S.Speed <= 0.f; });
 	Loco.Sort([](const FWHLocoSample& A, const FWHLocoSample& B) { return A.Speed < B.Speed; });
 	bHasLast = false;
+	// round 05: a walker's AnimOffset also seeds the locomotion phase (in cycles), so identical clips at identical speeds are not in lockstep (CH19)
+	if (const AWHCharLoopWalker* W = Cast<AWHCharLoopWalker>(GetOwningActor()))
+	{ IdleOffset = W->AnimOffset; Phase = FMath::Frac(W->AnimOffset); }
 }
 
 void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
@@ -62,22 +66,32 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 		Phase = FMath::Fmod(Phase + Dt * LocoRate, 1.f);
 	}
 	IdleTime += Dt;
-	const float MoveW = Idle ? FMath::Clamp((Speed - IdleSpeed) / FMath::Max(1.f, (Loco.Num() ? Loco[0].Speed : 150.f) * 0.5f - IdleSpeed), 0.f, 1.f) : 1.f;
+	const float MoveW = (Idle || Sequence.Num() > 0) ? FMath::Clamp((Speed - IdleSpeed) / FMath::Max(1.f, (Loco.Num() ? Loco[0].Speed : 150.f) * 0.5f - IdleSpeed), 0.f, 1.f) : 1.f;
 
 	// ---- air / land
-	if (bAir && !bWasInAir) AirTime = 0.f;
+	if (bAir && !bWasInAir) { AirTime = 0.f; if (Vz >= 50.f) ++JumpCount; if ((JumpUp || JumpVariants.Num() > 0) && Vz >= 50.f) FallAlpha = 0.f; }   // a jump starts on JumpUp, not on a stale fall weight
+	UAnimSequence* JumpClip = JumpVariants.Num() > 0 ? JumpVariants[FMath::Max(0, JumpCount - 1) % JumpVariants.Num()].Get() : JumpUp.Get();
 	if (!bAir && bWasInAir) LandTime = 0.f;
 	bWasInAir = bAir;
 	AirTime += Dt; LandTime += Dt;
-	AirAlpha = FMath::FInterpTo(AirAlpha, bAir ? 1.f : 0.f, Dt, bAir ? 14.f : 10.f);
-	FallAlpha = FMath::FInterpTo(FallAlpha, (Vz < 50.f || !JumpUp) ? 1.f : 0.f, Dt, 6.f);
+	AirAlpha = FMath::FInterpTo(AirAlpha, bAir ? 1.f : 0.f, Dt, bAir ? AirBlendIn : 10.f);
+	FallAlpha = FMath::FInterpTo(FallAlpha, ((Vz < 50.f && !bJumpHoldsThroughDescent) || !JumpClip) ? 1.f : 0.f, Dt, 6.f);
 	float LandW = 0.f;
 	if (Land && !bAir)
 	{
 		const float LL = Land->GetPlayLength();
 		if (LandTime < LL) LandW = FMath::Clamp(1.f - LandTime / (0.8f * LL), 0.f, 1.f) * FMath::Clamp(1.f - Speed / 600.f, 0.25f, 1.f);
 	}
-	const float GroundW = (1.f - AirAlpha) * (1.f - LandW);
+	// takeoff anticipation: weight ramps in over TakeoffBlendIn while grounded; after lift-off the clip's last sampled pose is held
+	// under the air blend so the crouch hands over to JumpUp (whose first frame is the same crouch) without a pop
+	float TakeW = 0.f;
+	if (Takeoff)
+	{
+		if (TakeoffTime >= 0.f) { LastTakeoff = TakeoffTime; TakeoffHold = 1.f; TakeW = FMath::Clamp(TakeoffTime / FMath::Max(0.01f, TakeoffBlendIn), 0.f, 1.f); }
+		else if (bAir && TakeoffHold > 0.f) { TakeoffHold = FMath::Max(0.f, TakeoffHold - Dt / FMath::Max(0.02f, TakeoffHoldTime)); TakeW = TakeoffHold; }
+		else TakeoffHold = 0.f;
+	}
+	const float GroundW = (1.f - AirAlpha) * (1.f - LandW) * (1.f - TakeW);
 
 	auto Push = [this](UAnimSequence* S, float T, float W, bool bLoop)
 	{
@@ -85,14 +99,34 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 		FWHAnimLayer L; L.Seq = S; L.Time = bLoop ? FMath::Fmod(T, S->GetPlayLength()) : FMath::Clamp(T, 0.f, S->GetPlayLength()); L.Weight = W; L.bLoop = bLoop;
 		GameLayers.Add(L);
 	};
-	if (Idle) Push(Idle, IdleTime, GroundW * (1.f - MoveW), true);
+	if (Sequence.Num() > 0)
+	{
+		// staged idle: clips back to back, each cross-faded into the next over SequenceBlend (segment k lasts len_k - Blend)
+		const int32 N = Sequence.Num();
+		float Total = 0.f;
+		TArray<float, TInlineAllocator<16>> Seg;
+		for (int32 i = 0; i < N; ++i) { const float L = Sequence[i] ? Sequence[i]->GetPlayLength() : 0.5f; const float B = FMath::Min(SequenceBlend, 0.45f * L); Seg.Add(FMath::Max(0.05f, L - B)); Total += Seg.Last(); }
+		float P = FMath::Fmod(FMath::Max(0.f, IdleTime + IdleOffset), Total), Start = 0.f;
+		int32 K = 0;
+		for (; K < N - 1 && P >= Start + Seg[K]; ++K) Start += Seg[K];
+		const float Tk = P - Start;
+		const int32 Prev = (K + N - 1) % N;
+		const float LenK = Sequence[K] ? Sequence[K]->GetPlayLength() : 0.5f;
+		const float Bk = FMath::Min(SequenceBlend, 0.45f * (Sequence[Prev] ? Sequence[Prev]->GetPlayLength() : 0.5f));
+		const float W = Bk > 1e-3f ? FMath::Clamp(Tk / Bk, 0.f, 1.f) : 1.f;
+		const float Ws = W * W * (3.f - 2.f * W);
+		Push(Sequence[K], FMath::Min(Tk, LenK), GroundW * (1.f - MoveW) * Ws, false);
+		if (Ws < 1.f) Push(Sequence[Prev], Seg[Prev] + Tk, GroundW * (1.f - MoveW) * (1.f - Ws), false);
+	}
+	else if (Idle) Push(Idle, IdleTime, GroundW * (1.f - MoveW), true);
 	if (I0 >= 0)
 	{
 		Push(Loco[I0].Clip, Phase * Loco[I0].Clip->GetPlayLength(), GroundW * MoveW * (I0 == I1 ? 1.f : 1.f - A), true);
 		if (I1 != I0) Push(Loco[I1].Clip, Phase * Loco[I1].Clip->GetPlayLength(), GroundW * MoveW * A, true);
 	}
 	Push(Land, LandTime, (1.f - AirAlpha) * LandW, false);
-	Push(JumpUp, AirTime, AirAlpha * (1.f - FallAlpha), false);
+	Push(Takeoff, FMath::Max(0.f, LastTakeoff), TakeW * (bAir ? 1.f : (1.f - AirAlpha)), false);
+	Push(JumpClip, AirTime, AirAlpha * (1.f - FallAlpha) * (1.f - (bAir ? TakeW : 0.f)), false);
 	Push(Fall, AirTime, AirAlpha * FallAlpha, true);
 }
 

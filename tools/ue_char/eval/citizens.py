@@ -11,12 +11,15 @@ fbx:    art/night1/characters/export/citizens/<NAME>.fbx (+ _basecolor.png), cli
         scales stay 1.0 and UE reads centimetres from the file's unit scale.
 """
 import bpy, sys, os, json
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import studio, citizen_rig
 import numpy as np
 
 ROOT = citizen_rig.ROOT
-SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'
+SCR = _scr('eval')
+if not os.path.isdir(SCR):   # legacy fallback; tools/life/citizens_fbx.py (P6 city life) redirects exactly this line (and EXP / DOCS below) by string substitution
+    SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'
 DOCS = os.path.join(ROOT, 'docs/night1/characters/round-01/assets')
 EXP = os.path.join(ROOT, 'art/night1/characters/export/citizens')
 
@@ -29,22 +32,22 @@ for name in names:
     var = next(x for x in meta['variants'] if x['name'] == name)
     walk = 'walkF' if var['female'] else 'walk'
     png = os.path.join(SCR, 'tiles', name + '.png')   # cropped by tiles.py (Blender's python has no Pillow)
+    png = citizen_rig.refit_tex(name) or png            # round 06: the refit citizen's own 2048 px texture (refit.py), else the atlas tile
     if mode == 'fbx':
         import shutil
         os.makedirs(EXP, exist_ok=True)
         shutil.copy(png, os.path.join(EXP, name + '_basecolor.png'))
         png = os.path.join(EXP, name + '_basecolor.png')
-    clips = (walk, 'run', 'idle') if mode == 'fbx' else (walk, 'run')
+    # round 04: every walk style goes into the FBX under its own take name (UE imports the takes of the first citizen only; all
+    # citizens share the 18-bone skeleton), so the crowd can mix walk / walkF / walkBrisk / walkStroll / walkOld
+    clips = ('walk', 'walkF', 'walkBrisk', 'walkStroll', 'walkOld', 'run', 'idle') if mode == 'fbx' else (walk, 'run')
     R = citizen_rig.build(name, clips=clips, tex=png)
-    err = citizen_rig.recon_error(R, clip=walk)
+    err = citizen_rig.recon_error(R, clip='idle' if mode == 'fbx' else 'run')   # idle / run keep its frame times (walks are time-warped since round 04)
     g = R['g']
     info = {'name': name, 'female': var['female'], 'verts': len(g['pos']), 'tris': len(g['idx']),
             'recon_err_m': err, 'fit_rms_cm': var.get('fit_rms_cm')}
     if mode == 'fbx':
         arm, ob = R['arm'], R['ob']
-        if walk != 'walk':                      # female gait exported under the common take name
-            R['acts'][walk].name = 'walk'
-            R['acts']['walk'] = R['acts'].pop(walk)
         # the mesh uses the exported PNG next to the FBX
         for o in bpy.context.scene.objects:
             o.select_set(o in (arm, ob))

@@ -23,6 +23,7 @@ Each piece has its own branch, worktree, Unreal content folder, MCP port and Ble
 | P6 City life: crowd, traffic, water (wave 2) | `night1/life` | `~/sm2-n1/life` | `/Game/Life`, `/Game/Water` | 8776 | 5207 |
 | C Integrated Manhattan map | `night1/manhattan` | `~/sm2-n1/manhattan` | `/Game/Maps/Manhattan`, `Scripts/build_manhattan.py`, `docs/night1/manhattan/` | 8777 | 5208 |
 | F 4K/60 perf (wave 2) | `night1/perf` | `~/sm2-n1/perf` | `tools/perf_ue/` successors, `docs/night1/perf/` | 8778 | — |
+| Water A/B (same brief, two models) | `night1/water-ab-sonnet` / `night1/water-ab-opus` | `~/sm2-n1/water-ab-sonnet` / `~/sm2-n1/water-ab-opus` | `/Game/Water`, `Scripts/build_water.py`, `docs/night1/water/` (each in its own worktree; the blind-critic winner merges) | 8779 / 8780 | — |
 | Integrator / regression playtester | `Opus-5.5-Loop-Night-1` | `~/spider-man-2-astra6` | `/Game/Maps/Manhattan` (main map), merges | 8765 | 5200 |
 
 Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, critic verdicts). Large videos are committed as mp4 ≤ 15 MB each.
@@ -48,3 +49,11 @@ Evidence goes to `docs/night1/<piece>/round-NN/` (captures, clips, perf CSV, cri
 | Direction: wave planning, reconciling contradictory critic demands, deciding what runs next and whether a piece is done | **Fable 5.1, high** (`fable-director`, or Workflow `{model:'fable', effort:'high'}`) — sparingly (own weekly limit): one pass per wave, stall/oscillation diagnosis, final acceptance |
 
 Continuity between fresh builders comes from `docs/night1/<piece>/HANDOFF.md`, rewritten at the end of every round.
+
+## Overnight resume (owner, 2026-09-29 23:55)
+
+Weekly usage was at 50 %. Builders lean on **Sonnet 5.5 xhigh** for every piece; **Opus 5.5 high** builds the traversal flips (owner priority, from round 11) and runs every critic (never skipped); **Fable 5.1** only for a stalled/oscillating piece or final acceptance. Up to 3 rounds per piece tonight (perf 2).
+
+## Day 2 resume (owner, 2026-09-30 ~10:30)
+
+Weekly usage at 80 %. Owner (corrected, same morning): quality first — **split building: Opus 5.5 high for traversal/flips, combat, perf, integration; Sonnet 5.5 xhigh for city, life, look, character assets, pipelines**; **Opus 5.5 high for every blind critic** (never skipped); Fable 5.1 only for stall diagnosis/final acceptance. The three rounds already started this morning keep their Sonnet builders. One round per piece, three pieces at a time (traversal r13 renders, characters r6 engine check, perf r3 shipped preset), engine cap hard 2, new safety rules from oh-ashen-one/agents-md#4 (merged).

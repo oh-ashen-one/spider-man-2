@@ -2,8 +2,9 @@
 """Extract embedded GLB images to PNG for Unreal (UE can't read WebP). Derived files, git-ignored.
 usage: extract_textures.py            -> hero/thug/suit/brute textures into art/night1/characters/<char>/tex/
 Fan homage project; not official Marvel/Sony/Insomniac."""
-import json, struct, os, subprocess, tempfile
-WT = '/Users/midir/sm2-n1/characters'
+import json, struct, os, subprocess, tempfile, sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '.')); from p2paths import WT as _P2WT, scr as _scr  # noqa: E402
+WT = _P2WT
 ART = WT + '/art/night1/characters'
 
 def images(glb):

@@ -47,7 +47,9 @@ line("T10", pct(cy, .95) - pct(cy, .05) >= 0.20 and pct(cy, .05) >= 0.20 - 1e-9 
 pd = [-float(r["pcm_pitch"]) for r in W]
 line("T11", 4 <= pct(pd, .5) <= 12 and 15 <= pct(pd, .95) <= 30 and -10 <= pct(pd, .05) <= 3,
      f"pitch down: p5 {pct(pd,.05):+.1f} p50 {pct(pd,.5):+.1f} p95 {pct(pd,.95):+.1f} deg")
-yo = [abs((float(r["pcm_yaw"]) + 90) % 180 - 90) for r in W]  # off the +/-X axis
+import os
+AX = float(os.environ.get("AVENUE_YAW", "0"))  # round 10: Manhattan avenue runs north-south (+/-Y): AVENUE_YAW=90
+yo = [abs((float(r["pcm_yaw"]) - AX + 90) % 180 - 90) for r in W]  # off the avenue axis
 line("T12", 2 <= pct(yo, .5) <= 10 and 10 <= pct(yo, .9) <= 25, f"|yaw| off the avenue axis: p50 {pct(yo,.5):.1f} p90 {pct(yo,.9):.1f} deg")
 ro = [abs(float(r["pcm_roll"])) for r in W if r.get("pcm_roll") not in (None, "") and r["sub"] != "dive"]
 if ro:

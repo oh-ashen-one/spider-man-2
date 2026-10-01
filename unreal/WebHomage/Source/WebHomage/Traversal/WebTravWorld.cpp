@@ -177,6 +177,27 @@ double FWebTravWorld::GroundHeight(double X, double Y, double FromZ) const
 	return Best;
 }
 
+double FWebTravWorld::StreetHeight(double X, double Y, double FromZ) const
+{
+	double Best = -1000.0;
+	for (const FTravBox& G : GroundBoxes)
+	{
+		if (X >= G.Min.X && X <= G.Max.X && Y >= G.Min.Y && Y <= G.Max.Y) Best = FMath::Max(Best, G.Max.Z);
+	}
+	double Z = FromZ;
+	for (int32 K = 0; K < 6; ++K)
+	{
+		FTravHit H;
+		if (!Raycast(FVector(X, Y, Z), FVector(0, 0, -1), 2000.0, H)) break;
+		// a building mass counts (a box > 4 m tall); awnings / canopies / fire escapes / ledges (thin boxes), props, trees and
+		// street-kit meshes do not: keep looking below them
+		const bool bMass = H.Box >= 0 && Boxes.IsValidIndex(H.Box) && Boxes[H.Box].Max.Z - Boxes[H.Box].Min.Z > 4.0;
+		if (H.bGround || bMass) { Best = FMath::Max(Best, H.Point.Z); break; }
+		Z = H.Point.Z - 0.05;
+	}
+	return Best;
+}
+
 bool FWebTravWorld::PushOutCapsule(FVector& Feet, double R, double H, double StepH, FTravContact& Out) const
 {
 	UWorld* W = World.Get();
