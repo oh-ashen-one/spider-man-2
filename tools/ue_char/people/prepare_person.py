@@ -48,7 +48,7 @@ CFG = {
     # round 04: three more raw Tripo people (owner's assets), landmarks from mask.auto_landmarks
     # hood: auto landmarks pick the sunglasses as the nose -> measured with ortho.py (side view, 2 cm grid)
     'hood': dict(src='human+figure+3d+model.glb', name='StreetHood', eye=1.630, nose=1.603, ear_lobe=1.582, chin=1.527, axis_z=-0.02,
-                 mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True,
+                 mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True, drop_loose=1.655,
                  tints={'Grey': dict(region='top', color=(104, 104, 108))}),
     'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
                 mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70)),
@@ -481,11 +481,13 @@ def main():
     if cfg.get('sink_neck'): P = M.sink_neck(P, F, cfg)             # round 08: slack for the neck skin under the collar (collar shards)
     nseethrough = 0
     if cfg.get('seethrough') and not os.environ.get('P2_NO_SEETHROUGH'): F, nseethrough = M.flip_seethrough(P, F, cfg)   # round 09: back-faced slivers of the lip crease = holes through the cloth (tee_face_4k 198 / 91 / 24 px)
+    nloose = 0
+    if cfg.get('drop_loose'): F, nloose = M.drop_loose_shells(P, F, y_min=cfg['drop_loose'])   # round 10: loose hair-ribbon shells of the head (hood_face_4k)
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
     N = M.cloth_normals(P, F, N, cfg)                            # round 05: smoothed cloth normals over the mask region
-    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), seethrough_flipped=int(nseethrough), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
+    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), seethrough_flipped=int(nseethrough), loose_shell_tris_dropped=int(nloose), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
                 drape_max_cm=round(float(moved.max() * 100), 2))
     # ---- texture
     im4 = np.asarray(im.resize((ATLAS, ATLAS), Image.LANCZOS))

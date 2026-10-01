@@ -303,7 +303,7 @@ def build_maskother():
     MEL.recompile_material(m)
     return m
 
-def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None):
+def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None, two_sided=False):
     full = path + '/' + name
     if EAL.does_asset_exist(full): EAL.delete_asset(full)
     i = AT.create_asset(name, path, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
@@ -312,6 +312,12 @@ def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None):
     for k, v in (scal or {}).items(): MEL.set_material_instance_scalar_parameter_value(i, k, v)
     for k, v in (vec or {}).items(): MEL.set_material_instance_vector_parameter_value(i, k, unreal.LinearColor(*v))
     for k, v in (switches or {}).items(): MEL.set_material_instance_static_switch_parameter_value(i, k, v)
+    if two_sided:   # round 10: hair-card gaps show the inside of the hair shell instead of the sky (critic r09: 'beard_face_4k: detached rear hair shell with a background gap')
+        try:
+            ov = i.get_editor_property('base_property_overrides')
+            ov.set_editor_property('override_two_sided', True); ov.set_editor_property('two_sided', True)
+            i.set_editor_property('base_property_overrides', ov)
+        except Exception as ex: log('two_sided override failed for', name, str(ex)[:160])
     MEL.update_material_instance(i)
     return i
 
@@ -360,7 +366,7 @@ if 'mat' in STEPS:
         mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal=sc_, vec=vc_, switches={'HasORM': True})
     for k in PEOPLE + [a + b for a, b in PEOPLE_TINTS]:   # street people: one 4096 atlas each (skin, cloth, mask, cap / weapon strip); Cloth shading, light sheen
         mi('MI_Street_' + k, ROOT + '/People/Materials', suit, tex={'BaseColor': ROOT + '/People/Textures/T_Street_%s_BaseColor' % k},
-           scal={'Roughness': 0.78, 'Cloth': 0.16, 'DetailStrength': 0.0, 'Specular': 0.35}, switches={'HasORM': False})
+           scal={'Roughness': 0.78, 'Cloth': 0.16, 'DetailStrength': 0.0, 'Specular': 0.35}, switches={'HasORM': False}, two_sided=(k in ('Beard', 'Hood', 'HoodGrey')))
     if EAL.does_asset_exist(ROOT + '/Thug/Textures/T_Brute_Regions'):
         mi('MI_BruteMask', ROOT + '/Thug/Materials', build_idmask(), tex={'Regions': ROOT + '/Thug/Textures/T_Brute_Regions'})
         mi('MI_MaskOther', ROOT + '/Shared/Materials', build_maskother())

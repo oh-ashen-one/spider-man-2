@@ -574,3 +574,23 @@ def paint_mask(img, cov, pos, cfg, seed):
     col = col * (1 + 0.10 * np.exp(-((phi / 0.35) ** 2)) * smoothstep(cfg['chin'], cfg['nose'], y))[..., None]
     out = img.astype(np.float32) * (1 - w[..., None]) + col * w[..., None]
     return np.clip(out, 0, 255).astype(np.uint8), w
+
+
+def drop_loose_shells(P, F, y_min=1.655, max_tris=320, z_max=0.02):
+    """Round 10 (critic r09: 'hood_face_4k has loose ribbon strands'): remove the small loose hair shells of the head -- connected components (welded at 0.1 mm) of at most max_tris triangles that lie
+    entirely above y_min metres (strands above the hair line) or entirely behind z_max (strands behind the head).  The Hood's SUNGLASSES (frame 289 triangles, lenses 2 x 40, arms,
+    nose pads: y 1.57 - 1.66, in front of z 0.02) are separate shells too and stay; so do the hair mass, the body and the hands.  Returns (F without those triangles, number of removed triangles)."""
+    from scipy import sparse
+    from scipy.sparse.csgraph import connected_components
+    key = np.round(P * 1e4).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); n = inv.max() + 1
+    e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]]])
+    g = sparse.coo_matrix((np.ones(len(e)), (inv[e[:, 0]], inv[e[:, 1]])), shape=(n, n))
+    nc, lab = connected_components(g, directed=False)
+    fl = lab[inv[F[:, 0]]]
+    sizes = np.bincount(fl, minlength=nc)
+    ymin = np.full(nc, 1e9); zmax = np.full(nc, -1e9)
+    np.minimum.at(ymin, fl, P[F].min(1)[:, 1]); np.maximum.at(zmax, fl, P[F].max(1)[:, 2])
+    drop = (sizes <= max_tris) & ((ymin >= y_min) | (zmax <= z_max))
+    keep = ~drop[fl]
+    return F[keep], int((~keep).sum())

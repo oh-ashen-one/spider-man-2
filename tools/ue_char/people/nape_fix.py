@@ -33,8 +33,8 @@ def main():
     # round 09b: the first version (y < 1.582, any r) left the strip right under the ear (triangles 3231 / 3234 / 4209 / 4212, y 1.572 - 1.585, r 6.4 - 6.6 cm): the engine capture still showed it.
     # The neck is r < 7 cm there; the ear sticks out beyond (r > 8 cm), so the height limit is lifted for neck-radius triangles only.
     r_lim = 0.095 + (0.072 - 0.095) * sm(1.572, 1.580, cen[:, 1])      # below the ear: the hood-collar triangles of the strip (r 7.8 - 8.1 cm); beside the ear lobe: neck radius only
-    # round 10: wider (|phi| from 80 deg, y from 1.515 m: the r09 strip left 1,790 px of lighter grey-brown = dim neck skin, mean 91 / 82 / 81 against the hood's 41 / 42 / 45 at 4K)
-    w_tri = sm(80, 92, np.abs(phi)) * sm(1.515, 1.532, cen[:, 1]) * (1 - sm(1.592, 1.602, cen[:, 1])) * (1 - sm(r_lim - 0.004, r_lim + 0.004, r))
+    # round 10: the r09 selection (a wider one, |phi| from 80 deg and y from 1.515 m, turned the whole neck under the ear into a flat dark-grey plate: tried and reverted)
+    w_tri = sm(88, 98, np.abs(phi)) * sm(1.535, 1.548, cen[:, 1]) * (1 - sm(1.592, 1.602, cen[:, 1])) * (1 - sm(r_lim - 0.004, r_lim + 0.004, r))
     sel = np.where(w_tri > 0.02)[0]
     print('nape_fix: %d triangles (bind pose |phi| > 88 deg, y 1.535 - 1.582)' % len(sel))
     for path in atlases:
@@ -51,10 +51,32 @@ def main():
         hue_skin = ((rgb[..., 0] > rgb[..., 1]) & (rgb[..., 1] >= rgb[..., 2]) & ((mx - mn) / (mx + 1e-6) > 0.12) & (mx > 0.18)) | (mx > 0.16)   # round 09b: dim skin too (78, 61, 58 = 0.31); round 10: every texel brighter than 0.16 under the selected triangles (the hood's own are 0.13 - 0.16)
         w = m * cv2.GaussianBlur(hue_skin.astype(np.float32), (0, 0), 1.0)
         hood = np.array([36, 35, 37], np.float32) / 255     # the hood's own dark (texels there measure 34 - 40)
+        # round 10: hue-preserving shade (x 0.40) with a 25 % pull to the hood's dark: the round-09 'hood colour' version read as a flat dark-grey plate on the neck (CPU render), the lift of the
+        # strip is the NORMALS (below), not the albedo
         k = (1.0 * w)[..., None]
-        out = rgb * (1 - k) + hood * k          # round 09b: the first version (x 0.22 of the mean) left a brownish-grey strip that the sun lifted above the hood; now it takes the hood colour
+        out = rgb * (1 - k) + (rgb * 0.40 * 0.75 + hood * 0.25) * k
         cv2.imwrite(path, (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)[..., ::-1])
         print('  %s: %d texels darkened (weight > 0.5)' % (os.path.basename(path), int((w > 0.5).sum())))
+    fix_normals(doc, glb, P, N, F, w_tri, cen)
+
+
+def fix_normals(doc, glb, P, N, F, w_tri, cen):
+    """Round 10: the strip's vertex normals point UP (triangle 4192: N = (-0.57, 0.73, 0.26)) = lit by the sun like a shoulder, while the cloth round it faces outward: they take the collar's
+    outward, slightly downward normal (weight = the triangle weight, per vertex the maximum), so the strip is shaded like the hood.  Writes the NORMAL accessor of the GLB in place."""
+    wv = np.zeros(len(P))
+    for t in np.where(w_tri > 0.02)[0]:
+        wv[F[t]] = np.maximum(wv[F[t]], w_tri[t])
+    rad = np.stack([P[:, 0], np.full(len(P), -0.12), P[:, 2] + 0.02], 1)
+    rad[:, [0, 2]] *= 1.0 / (np.hypot(P[:, 0], P[:, 2] + 0.02)[:, None] + 1e-9)
+    rad /= np.linalg.norm(rad, axis=1, keepdims=True) + 1e-12
+    N2 = N * (1 - wv[:, None]) + rad * wv[:, None]
+    N2 /= np.linalg.norm(N2, axis=1, keepdims=True) + 1e-12
+    pr = doc.j['meshes'][0]['primitives'][0]; a = doc.j['accessors'][pr['attributes']['NORMAL']]; v = doc.j['bufferViews'][a['bufferView']]
+    off = v.get('byteOffset', 0) + a.get('byteOffset', 0); st = v.get('byteStride', 12)
+    import struct
+    for i in np.where(wv > 1e-3)[0]: struct.pack_into('<fff', doc.bin, off + i * st, *[float(x) for x in N2[i]])
+    doc.write(glb)
+    print('nape_fix: normals of %d vertices turned to the collar direction (max change %.0f deg)' % (int((wv > 1e-3).sum()), float(np.degrees(np.arccos(np.clip((N * N2).sum(1), -1, 1))).max())))
 
 
 if __name__ == '__main__':
