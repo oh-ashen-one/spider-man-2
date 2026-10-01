@@ -38,6 +38,10 @@ SH = os.path.join(REPO, 'unreal', 'WebHomage', 'Shaders', 'Terrain'); os.makedir
 open(os.path.join(SH, 'ParkData.ush'), 'w').write(ush)
 print('ParkData.ush: %d meadows, %d ponds' % (len(md), len(pw)))
 
+# ------------------------------------------------------------------ leaf textures (ez-tree leaf sprays) under the names the UE build expects
+import shutil
+for n in ('oak', 'ash', 'aspen', 'pine'): shutil.copyfile(os.path.join(REPO, 'public', 'assets', 'eztree', 'leaves', n + '.png'), os.path.join(PREP, 'leaf_' + n + '.png'))
+
 # ------------------------------------------------------------------ path mask
 TEXEL = 0.5
 PX0, PZ0 = T['mask']['x0'], T['mask']['z0']                    # the grass mask rectangle (park + 2 m margin), 1 m texels

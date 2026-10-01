@@ -32,6 +32,20 @@ mel = unreal.MaterialEditingLibrary
 T0 = time.time()
 def log(*a): print('[build_terrain %5.0fs]' % (time.time() - T0), *a, flush=True)
 def load(p): return unreal.load_asset(p)
+import traceback
+def step(name):
+    """run a build step now if selected; a failure is logged with its traceback and the next steps still run (each step only needs the saved output of the earlier ones)"""
+    def deco(fn):
+        if name in STEPS:
+            try: fn()
+            except Exception:
+                log('STEP %s FAILED' % name); traceback.print_exc()
+        return fn
+    return deco
+def soft(label, fn, *a):
+    try: return fn(*a)
+    except Exception:
+        log('SECTION %s FAILED' % label); traceback.print_exc(); return None
 TJ = json.load(open(os.path.join(EXPORT, 'terrain.json')))
 MAN = json.load(open(os.path.join(EXPORT, 'manifest.json')))
 PM = json.load(open(os.path.join(PREP, 'pathmask.json')))
@@ -75,17 +89,19 @@ def finish_mesh(sm, mat, collide, nanite=False):
         bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE if collide else unreal.CollisionTraceFlag.CTF_USE_DEFAULT)
 
 # ------------------------------------------------------------------------------------------------ clean
-if 'clean' in STEPS:
+@step('clean')
+def _step_clean():
     unreal.EditorLoadingAndSavingUtils.new_blank_map(False)
     if EAL.does_directory_exist(ROOT): EAL.delete_directory(ROOT)
     log('cleaned')
 
 # ------------------------------------------------------------------------------------------------ textures
 TEXD = ROOT + '/Textures'
-if 'tex' in STEPS:
+@step('tex')
+def _step_tex():
     srcs = [(os.path.join(PUB, 'grass_col.png'), 'grass_col', True), (os.path.join(PUB, 'noise.png'), 'noise', False), (os.path.join(PUB, 'asphalt_col.png'), 'asphalt_col', True),
             (os.path.join(PUB, 'water_nrm.png'), 'water_nrm', False), (os.path.join(PREP, 'pathmask.png'), 'pathmask', False)] + \
-            [(os.path.join(WT, 'public', 'assets', 'eztree', 'leaves', n + '.png'), 'leaf_' + n, True) for n in ('oak', 'ash', 'aspen', 'pine')]
+            [(os.path.join(PREP, 'leaf_' + n + '.png'), 'leaf_' + n, True) for n in ('oak', 'ash', 'aspen', 'pine')]
     import_files([s[0] for s in srcs], TEXD)
     for f, n, srgb in srcs:
         t = load(f'{TEXD}/{n}')
@@ -178,7 +194,8 @@ def _materials_module():
     here = os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'terrain_materials.py')
     ns = {'__file__': here}; exec(compile(open(here).read(), here, 'exec'), ns); return ns
 
-if 'mat' in STEPS:
+@step('mat')
+def _step_mat():
     # the editor caches shader source files: reload the regenerated /Project/Terrain/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
     for d in _materials_module()['materials'](PM):
@@ -216,7 +233,8 @@ def mesh_material(rec):
     two = m.get('side') == 2 or n == 'park_reeds'
     return mi(n, 'M_TerrainVC2' if two else 'M_TerrainVC', {'usevc': vc, 'roughp': m.get('roughness') or 0.8, 'metalp': m.get('metalness') or 0.0}, {'tint': (col[0], col[1], col[2], 1.0)})
 
-if 'mesh' in STEPS:
+@step('mesh')
+def _step_mesh():
     recs = [r for r in MAN['meshes'] if keep(r)]
     import_files([os.path.join(EXPORT, r['file']) for r in recs], MESHD + '/_in', mesh_pipeline())
     n = 0
@@ -235,7 +253,8 @@ if 'mesh' in STEPS:
 # ------------------------------------------------------------------------------------------------ foliage prototypes
 PROD = ROOT + '/Props'
 PROTOS = ('parkReeds', 'park_blankets', 'parklamp')
-if 'foliage' in STEPS:
+@step('foliage')
+def _step_foliage():
     extra = ['tuft'] + (['shore_patch'] if os.path.exists(os.path.join(PREP, 'shore_patch.glb')) else [])
     files = [os.path.join(PREP, n + '.glb') for n in extra] + [os.path.join(EXPORT, p['file']) for p in MAN['protos'] if p['name'] in PROTOS]
     import_files(files, PROD + '/_in', mesh_pipeline())
@@ -263,7 +282,8 @@ TREE_RE = re.compile(r'^ez_(park|elm|conifer)\d_l[01]_(leaves|bark)$')
 def leaf_name(rec):
     u = (rec.get('mat') or {}).get('map') or ''
     return os.path.basename(u).split('.')[0] or 'oak'
-if 'trees' in STEPS:
+@step('trees')
+def _step_trees():
     recs = [p for p in MAN['protos'] if TREE_RE.match(p['name'])]
     for nan in (False, True):    # LOD1 (and only LOD1) is Nanite, like the city's ez-tree props
         grp = [p for p in recs if (p['name'].split('_')[2] == 'l1') == nan]
@@ -314,7 +334,9 @@ def hism(actor, mesh_path, transforms, cull=None, shadows=False, material=None, 
     c = add_component(actor, unreal.HierarchicalInstancedStaticMeshComponent)
     c.set_static_mesh(load(mesh_path))
     if material is not None: c.set_material(0, material)
-    if cull: c.set_editor_property('instance_end_cull_distance', int(cull))
+    if cull:
+        try: c.set_editor_property('instance_end_cull_distance', int(cull))
+        except Exception as ex: log('WARN instance_end_cull_distance', str(ex)[:100])
     c.set_cast_shadow(shadows)
     for i in range(0, len(transforms), 20000): c.add_instances(transforms[i:i + 20000], False, True)
     c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
@@ -322,83 +344,95 @@ def hism(actor, mesh_path, transforms, cull=None, shadows=False, material=None, 
 
 def build_land(path):
     world = open_level(path)
-    n = 0
-    # ground / water / lawns / furniture: one static-mesh actor per exported mesh (vertices are world-space: the actor sits at the origin)
-    for r in MAN['meshes']:
-        if not keep(r): continue
-        sp = f'{MESHD}/{r["kind"]}/SM_{r["name"]}'
-        if not EAL.does_asset_exist(sp): continue
-        # park lawn + city-park lawns sit 3 cm above the city's own flat ribbons / lawns (same height 0.17 m): they are covered, never z-fighting, and the city assets stay untouched
-        a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 3.0 if r['name'] in ('park', 'mapLawns') else 0.0), label=r['name'], folder='Terrain/' + r['kind'])
-        a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
-        if r['name'] == 'park' or r['name'].startswith(('mapLawns', 'coastLawn', 'parkWater')): a.tags = [unreal.Name('WHGround')]
-        if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
-        n += 1
-    log('land: %d mesh actors' % n)
-    if EAL.does_asset_exist(f'{PROD}/SM_shore_patch'):
-        a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='shore_patch', folder='Terrain/shore')
-        a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_shore_patch')); a.set_mobility(unreal.ComponentMobility.STATIC)
-        a.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
-    # grass tufts: browser grass.js density / height mask, scattered by prep_terrain.py (x, z, yaw, width scale, height m), three wind classes, culled at 45 m
-    tp = os.path.join(PREP, 'tufts.bin')
-    if os.path.exists(tp) and EAL.does_asset_exist(f'{PROD}/SM_tuft'):
-        import array
-        buf = array.array('f'); buf.frombytes(open(tp, 'rb').read())
-        recs = [buf[i:i + 5] for i in range(0, len(buf), 5)]          # x, z, yaw, width scale, height m
-        classes = [('TuftLow', [r for r in recs if r[4] < 0.11]), ('TuftMid', [r for r in recs if 0.11 <= r[4] < 0.2]), ('TuftHigh', [r for r in recs if r[4] >= 0.2])]
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_grass_tufts', folder='Terrain/Grass')
-        gy = TJ['GY']['GRASS'] + 0.03   # + the 3 cm the park ground is raised
-        for nm, S in classes:
-            xs = [unreal.Transform(U(x, gy - 0.01, z), unreal.Rotator(0.0, 0.0, -math.degrees(yw)), unreal.Vector(w, w, h / 0.85)) for x, z, yw, w, h in S]
-            hism(a, f'{PROD}/SM_tuft', xs, cull=4500, material=load(f'{MAT}/Inst/MI_{nm}'))
-            log('tufts', nm, len(xs))
-    # instanced props: reeds + picnic blankets (matrix records [x,y,z,ry,sx,sy,sz,(r,g,b)]), park lamps inside the park (pool items {x,y,z,ry,s})
     P = TJ['G']['PARK']; INS = TJ.get('instances') or {}
     def T_matrix(r): return unreal.Transform(U(r[0], r[1], r[2]), unreal.Rotator(0.0, 0.0, -math.degrees(r[3])), unreal.Vector(r[4], r[6], r[5]))
-    if 'parkReeds' in INS and EAL.does_asset_exist(f'{PROD}/SM_parkReeds'):
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkReeds', folder='Terrain/Props')
-        hism(a, f'{PROD}/SM_parkReeds', [T_matrix(r) for r in INS['parkReeds']['items']], cull=40000, shadows=False)
-    if 'park-blankets' in INS and EAL.does_asset_exist(f'{PROD}/SM_park_blankets'):
-        items = INS['park-blankets']['items']
-        hue = lambda r: math.atan2(math.sqrt(3) * (r[8] - r[9]), 2 * r[7] - r[8] - r[9]) if len(r) >= 10 else 0.0
-        items = sorted(items, key=hue); k = 6; a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkBlankets', folder='Terrain/Props')
-        for b in range(k):
-            chunk = items[b * len(items) // k:(b + 1) * len(items) // k]
-            if not chunk: continue
-            col = [sum(r[7 + q] for r in chunk) / len(chunk) if len(chunk[0]) >= 10 else 0.4 for q in range(3)]
-            m = mi('Blanket%d' % b, 'M_TerrainVC2', {'usevc': 0.0, 'roughp': 0.9}, {'tint': (col[0], col[1], col[2], 1.0)})
-            hism(a, f'{PROD}/SM_park_blankets', [T_matrix(r) for r in chunk], cull=15000, shadows=False, material=m)
-    if 'parklamp' in INS and EAL.does_asset_exist(f'{PROD}/SM_parklamp'):
-        sel = [it for it in INS['parklamp']['items'] if P['x0'] < it['x'] < P['x1'] and P['z0'] < it['z'] < P['z1']]
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parklamps', folder='Terrain/Props')
-        hism(a, f'{PROD}/SM_parklamp', [unreal.Transform(U(it['x'], it['y'], it['z']), unreal.Rotator(0.0, 0.0, -math.degrees(it.get('ry', 0.0))), unreal.Vector(*(it.get('s3') or [it.get('s', 1.0)] * 3))) for it in sel], cull=60000, shadows=True)
-        log('park lamps', len(sel))
-    # park woodland: the browser's ez-trees (LOD0 < 22 m, LOD1 to 520 m, the city's far crowns take over beyond), one HISM per archetype pool, aTintA / aTintB as custom data 0..5
-    nt = 0
-    for pool, d in INS.items():
-        sp = f'{TREED}/SM_' + pool.replace('-', '_')
-        if not re.match(r'^ez-(park|elm|conifer)\d-l[01]-(leaves|bark)$', pool) or not EAL.does_asset_exist(sp) or not d['items']: continue
-        l1 = '-l1-' in pool; leaves = pool.endswith('leaves')
-        rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + pool, folder='Terrain/Trees')
-        c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-        c.set_static_mesh(load(sp))
-        if leaves: c.set_editor_property('num_custom_data_floats', 6)
-        c.set_editor_property('instance_end_cull_distance', 52000 if l1 else 2200)
-        if l1: c.set_editor_property('instance_start_cull_distance', 2000)
-        c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
-        xs = []
-        for it in d['items']:
-            s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
-            rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
-            xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])))
-        ids = c.add_instances(xs, True, True)
-        if leaves:
-            for k, it in enumerate(d['items']):
-                e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
-                for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
-        nt += len(xs)
-    log('park woodland instances', nt)
+
+    def _sec_meshes():
+        n = 0
+        # ground / water / lawns / furniture: one static-mesh actor per exported mesh (vertices are world-space: the actor sits at the origin)
+        for r in MAN['meshes']:
+            if not keep(r): continue
+            sp = f'{MESHD}/{r["kind"]}/SM_{r["name"]}'
+            if not EAL.does_asset_exist(sp): continue
+            # park lawn + city-park lawns sit 3 cm above the city's own flat ribbons / lawns (same height 0.17 m): they are covered, never z-fighting, and the city assets stay untouched
+            a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 3.0 if r['name'] in ('park', 'mapLawns') else 0.0), label=r['name'], folder='Terrain/' + r['kind'])
+            a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
+            if r['name'] == 'park' or r['name'].startswith(('mapLawns', 'coastLawn', 'parkWater')): a.tags = [unreal.Name('WHGround')]
+            if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
+            n += 1
+        log('land: %d mesh actors' % n)
+        if EAL.does_asset_exist(f'{PROD}/SM_shore_patch'):
+            a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='shore_patch', folder='Terrain/shore')
+            a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_shore_patch')); a.set_mobility(unreal.ComponentMobility.STATIC)
+            a.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+
+    def _sec_tufts():
+            # grass tufts: browser grass.js density / height mask, scattered by prep_terrain.py (x, z, yaw, width scale, height m), three wind classes, culled at 45 m
+        tp = os.path.join(PREP, 'tufts.bin')
+        if os.path.exists(tp) and EAL.does_asset_exist(f'{PROD}/SM_tuft'):
+            import array
+            buf = array.array('f'); buf.frombytes(open(tp, 'rb').read())
+            recs = [buf[i:i + 5] for i in range(0, len(buf), 5)]          # x, z, yaw, width scale, height m
+            classes = [('TuftLow', [r for r in recs if r[4] < 0.11]), ('TuftMid', [r for r in recs if 0.11 <= r[4] < 0.2]), ('TuftHigh', [r for r in recs if r[4] >= 0.2])]
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_grass_tufts', folder='Terrain/Grass')
+            gy = TJ['GY']['GRASS'] + 0.03   # + the 3 cm the park ground is raised
+            for nm, S in classes:
+                xs = [unreal.Transform(U(x, gy - 0.01, z), unreal.Rotator(0.0, 0.0, -math.degrees(yw)), unreal.Vector(w, w, h / 0.85)) for x, z, yw, w, h in S]
+                hism(a, f'{PROD}/SM_tuft', xs, cull=4500, material=load(f'{MAT}/Inst/MI_{nm}'))
+                log('tufts', nm, len(xs))
+
+    def _sec_props():
+        # instanced props: reeds + picnic blankets (matrix records [x,y,z,ry,sx,sy,sz,(r,g,b)]), park lamps inside the park (pool items {x,y,z,ry,s})
+        if 'parkReeds' in INS and EAL.does_asset_exist(f'{PROD}/SM_parkReeds'):
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkReeds', folder='Terrain/Props')
+            hism(a, f'{PROD}/SM_parkReeds', [T_matrix(r) for r in INS['parkReeds']['items']], cull=40000, shadows=False)
+        if 'park-blankets' in INS and EAL.does_asset_exist(f'{PROD}/SM_park_blankets'):
+            items = INS['park-blankets']['items']
+            hue = lambda r: math.atan2(math.sqrt(3) * (r[8] - r[9]), 2 * r[7] - r[8] - r[9]) if len(r) >= 10 else 0.0
+            items = sorted(items, key=hue); k = 6; a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkBlankets', folder='Terrain/Props')
+            for b in range(k):
+                chunk = items[b * len(items) // k:(b + 1) * len(items) // k]
+                if not chunk: continue
+                col = [sum(r[7 + q] for r in chunk) / len(chunk) if len(chunk[0]) >= 10 else 0.4 for q in range(3)]
+                m = mi('Blanket%d' % b, 'M_TerrainVC2', {'usevc': 0.0, 'roughp': 0.9}, {'tint': (col[0], col[1], col[2], 1.0)})
+                hism(a, f'{PROD}/SM_park_blankets', [T_matrix(r) for r in chunk], cull=15000, shadows=False, material=m)
+        if 'parklamp' in INS and EAL.does_asset_exist(f'{PROD}/SM_parklamp'):
+            sel = [it for it in INS['parklamp']['items'] if P['x0'] < it['x'] < P['x1'] and P['z0'] < it['z'] < P['z1']]
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parklamps', folder='Terrain/Props')
+            hism(a, f'{PROD}/SM_parklamp', [unreal.Transform(U(it['x'], it['y'], it['z']), unreal.Rotator(0.0, 0.0, -math.degrees(it.get('ry', 0.0))), unreal.Vector(*(it.get('s3') or [it.get('s', 1.0)] * 3))) for it in sel], cull=60000, shadows=True)
+            log('park lamps', len(sel))
+
+    def _sec_trees():
+        # park woodland: the browser's ez-trees (LOD0 < 22 m, LOD1 to 520 m, the city's far crowns take over beyond), one HISM per archetype pool, aTintA / aTintB as custom data 0..5
+        nt = 0
+        for pool, d in INS.items():
+            sp = f'{TREED}/SM_' + pool.replace('-', '_')
+            if not re.match(r'^ez-(park|elm|conifer)\d-l[01]-(leaves|bark)$', pool) or not EAL.does_asset_exist(sp) or not d['items']: continue
+            l1 = '-l1-' in pool; leaves = pool.endswith('leaves')
+            rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + pool, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(load(sp))
+            if leaves: c.set_editor_property('num_custom_data_floats', 6)
+            try:
+                c.set_editor_property('instance_end_cull_distance', 52000 if l1 else 2200)
+                if l1: c.set_editor_property('instance_start_cull_distance', 2000)
+            except Exception as ex: log('WARN cull distance', str(ex)[:100])
+            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            xs = []
+            for it in d['items']:
+                s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])))
+            ids = c.add_instances(xs, True, True)
+            if leaves:
+                for k, it in enumerate(d['items']):
+                    e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
+                    for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
+            nt += len(xs)
+        log('park woodland instances', nt)
+
+    for nm_, fn_ in (('meshes', _sec_meshes), ('tufts', _sec_tufts), ('props', _sec_props), ('trees', _sec_trees)): soft(nm_, fn_)
     return world
 
 def city_geo_copy(src):
@@ -406,16 +440,20 @@ def city_geo_copy(src):
     LOD0, real ground); the original level (and the baseline maps VB_*) stay untouched"""
     dst = ROOT + '/City_Geo_T'
     if EAL.does_asset_exist(dst): return dst
-    if not EAL.duplicate_asset(src, dst): raise RuntimeError('could not duplicate ' + src)
-    unreal.EditorLoadingAndSavingUtils.load_map(dst)
-    hid = 0
-    for a in eas.get_all_level_actors():
-        lb = a.get_actor_label()
-        if lb.startswith(('ISM_ez_park', 'ISM_ez_elm', 'ISM_ez_conifer')) or (isinstance(a, unreal.StaticMeshActor) and lb.startswith(('parkPaths', 'mapLawns'))):
-            a.set_actor_hidden_in_game(True); hid += 1
-    les.save_current_level()
-    log('City_Geo_T: hid', hid, 'city actors (park ribbons / lawns / ez park trees)')
-    return dst
+    try:
+        if not EAL.duplicate_asset(src, dst): raise RuntimeError('could not duplicate ' + src)
+        unreal.EditorLoadingAndSavingUtils.load_map(dst)
+        hid = 0
+        for a in eas.get_all_level_actors():
+            lb = a.get_actor_label()
+            if lb.startswith(('ISM_ez_park', 'ISM_ez_elm', 'ISM_ez_conifer')) or (isinstance(a, unreal.StaticMeshActor) and lb.startswith(('parkPaths', 'mapLawns'))):
+                a.set_actor_hidden_in_game(True); hid += 1
+        les.save_current_level()
+        log('City_Geo_T: hid', hid, 'city actors (park ribbons / lawns / ez park trees)')
+        return dst
+    except Exception:
+        log('city_geo_copy FAILED: falling back to the original city geometry level (the city park trees stay visible)'); traceback.print_exc()
+        return src
 
 def build_persistent(path):
     """the integrated Manhattan map (golden) + the terrain sublevel (the terrain ground sits 3 cm above the city's flat park ribbons / lawns, which stay untouched)"""
@@ -460,11 +498,13 @@ def build_views():
             unreal.EditorLoadingAndSavingUtils.save_map(world, path)
         log('view', sh['id'])
 
-if 'map' in STEPS:
+@step('map')
+def _step_map():
     EAL.make_directory(ROOT + '/Maps')
     build_land(ROOT + '/Terrain_Land')
     unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), ROOT + '/Terrain_Land')
     log('Terrain_Land saved')
     build_persistent(ROOT + '/Maps/Manhattan_Terrain')
-if 'views' in STEPS: build_views()
+@step('views')
+def _step_views(): build_views()
 log('DONE')

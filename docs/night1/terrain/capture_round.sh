@@ -18,6 +18,7 @@ GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
 RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
+[ -f "$UE_DIR/Content/Terrain/Maps/V_p1_south.umap" ] || { echo "terrain content missing (Content/Terrain/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
 mkdir -p "$TMP" "$ROUND/stills"
 gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1; }
 IDS=$(python3 -c "import json;print(' '.join(s['id'] for s in json.load(open('$HERE/shots.json'))['shots']))")
