@@ -8,22 +8,29 @@ AppleDouble files next to every file, skip them in globs). Dev port 5208 (Vite, 
 Owns `tools/export/*`, `Scripts/build_city.py`, `Scripts/build_manhattan.py`, `Shaders/City/`, `/Game/City`, `/Game/Tests/City`,
 `/Game/Maps/Manhattan*`, `docs/night1/island/`.
 
-## State (17:31, WIP — being updated through the round)
-- **Collision fix this session:** `tools/export/island_boxes.py` rule 4: rooftop EQUIPMENT boxes (mechanical penthouses, >= 2 m both sides,
-  >= 0.8 m tall) become WHBox cubes. The 5.81 % hollow cells sat a near-constant 5.0 m above their box (the hero stood inside the penthouse).
-  Static audit now: hollow **0.22 %** (<= 2 %), phantom **0.26 %** (<= 1 %), 56,816 boxes (+3,411). `round-01/coll_audit_equip.json` + map.
-- WP map rebuild with the new boxes running: `SM2_ISLAND_CITY_STEPS=wp python3 unreal/WebHomage/Scripts/build_manhattan.py --steps city,map`
-  (log `_scratch/island/logs/build_manhattan4.log`, `city_pass1.log`). WHBox spawn slows with actor count (~19 actors/s at 47 k vs ~51/s average
-  in the 53 k run): per-tile collision bodies are the build-time fix.
-- Only the WP map (`/Game/Maps/Manhattan_WP`) has the new boxes; the classic `City_Midtown_Collision` level still has the 53,405 old ones.
-- Captures: a1 north/south 4K stills done (17:05, pre-fix build — penthouses are visual, the stills are unaffected). r1-r4 route videos to be
-  captured on the fixed build: `docs/night1/island/capture_round.sh docs/night1/island/round-01 r1 r2 r3 r4`.
+## State (19:20, WIP)
+- Round dir `docs/night1/island/round-01/`: `README.md` (round summary, being filled), `MEASURE.md` (Phase-0 numbers + the resume section),
+  a1 north/south 4K stills, r1 + r2 videos / telemetry / route checks (both 0 fall / stuck / mid-air / wall-air / web-air).
+- **Collision:** `island_boxes.py` rule 4 (rooftop equipment penthouses >= 2 m both sides -> WHBox): audit hollow 5.81 -> 0.22 %, phantom 0.26 %.
+  `/Game/Maps/Manhattan_WP` was rebuilt with it (56,816 actor boxes; game indexes 56,534: `AddBox` skips < 1.0 m tall).
+- **Build time:** `SM2_WHBOX_MODE=ism` (build_city.py) = one invisible Cube ISM per 256 m tile, no C++ change (WebTravWorld's ISM branch).
+  WP step 45 s vs 2,203 s. Built as the test map `/Game/Maps/Manhattan_WP_ism` (`SM2_ISLAND_WP_MAP=...`). **Not yet verified in game**:
+  queued `verify_map.sh /Game/Maps/Manhattan_WP_ism _scratch/island/verify_ism r1 r4` (log `_scratch/island/logs/verify_ism.log`).
+  If its box count (~56.5 k instance boxes) and route checks match the actor build, make `ism` the default (`SM2_WHBOX_MODE` default in
+  `spawn_boxes`) and rebuild `Manhattan_WP` with `SM2_ISLAND_CITY_STEPS=wp ... --steps city,map` (~2 min).
+- **Queued captures:** one GPU-slot hold for r3 + r4 (`ISLAND_IN_LOCK=1 gpu_slot.sh capture --label island -- capture_round.sh round-01 r3 r4`,
+  log `_scratch/island/logs/capture_r01d.log`), then the verify hold. Driver PID in `_scratch/island/capture.pid`.
+- Critic pack: `/Users/midir/sm2-n1/_scratch/critic-A-r01/prep_pairs.py` (copy: `docs/night1/island/critic_prep_r01.py`) writes pairs.json
+  once r3 / r4 exist; then `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py <pack> <pairs.json>`.
 
 ## Rebuild from scratch
-`python3 unreal/WebHomage/Scripts/build_manhattan.py` (all steps; editor closed; ~94 min; needs 150 GB free internal). Partial re-runs:
-`--steps a,b` and `SM2_ISLAND_CITY_STEPS=<build_city steps>` for the city step (e.g. `wp`). After editing `island_boxes.py`, regenerate
-`python3 tools/export/island_boxes.py <export>` then re-run the `wp` step.
+`python3 unreal/WebHomage/Scripts/build_manhattan.py` (all steps; editor closed; ~94 min with actor boxes, ~60 min expected with
+`SM2_WHBOX_MODE=ism`; needs 150 GB free internal). Partial: `--steps a,b`, `SM2_ISLAND_CITY_STEPS=<build_city steps>` (e.g. `wp`). After
+editing `island_boxes.py`: `python3 tools/export/island_boxes.py <export>` then the `wp` step.
 
 ## Next
-Route checks on the fixed build; build time (per-tile collision bodies instead of 57 k actors, drop the classic collision pass, 2 parallel
-import commandlets); M2 (whole island).
+1. ISM verification -> default + rebuild; drop the classic `City_Midtown_Collision` pass for the WP flow.
+2. I2 (no facadeLod within 1.2 km) cannot pass in M1 (region is 2.3 km north-south): M2 whole island. Mesh import (2,470 s for M1,
+   ~6,200 s island) is the long pole for the 90 min target: split per district across 2 `-nullrhi` commandlets.
+3. Swing steering drifts east into facades on the auto-chain routes (r2: wall-runs at x 267 / 289 / 318 from an avenue at x 250): traversal-piece
+   behaviour, not collision; reported, not touched.
