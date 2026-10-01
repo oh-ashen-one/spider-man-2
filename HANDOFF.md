@@ -19,7 +19,7 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 | Piece | Branch | Last judged round → verdict (lowest axis) | Next |
 |---|---|---|---|
 | P3 Traversal + flips | `night1/traversal` | r15 merged (flips 7, camera 5). r17 (branch): **no axis below 6**, camera 6, sky 79%, tricks above the roofs; flips 6 — not merged yet | **r18 running (Opus)**: limbs keep moving through every trick (pose.py 0 slow samples), distinct inverted shapes; flips ≥ 7 |
-| P2 Characters | `night1/characters` | r8 FAILS (all 5; merged). r9: enemies 6 (reactions + knockdowns) but new grey hero arm, IQ 4 — **r9 NOT merged** | **r10 running (Sonnet)**: fix grey arm first; ≥4 reactions, 2 knockdowns, 2 get-ups per fight clip |
+| P2 Characters | `night1/characters` | r8 merged (all 5). r10 (branch): fight fixed (6–7 reactions, 2 knockdowns, 2 get-ups), enemies 6, IQ 4 — not merged | **r11–r12 running (Opus)**: hair assets + collar wedge, IQ ≥ 5 |
 | F 4K/60 perf | `night1/perf` | r5 **APPROACHES** (merged). r6: life-on **median 61.5 fps PASS**, p95 53–54.5 fps fail; undisclosed foliage loss → **r6 NOT merged** | **r7 running (Opus)**: committed look_gate.py first; remove life-on frame-pacing bubble; restore foliage |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
 | P6 City life | `night1/life` | r2 FAILS (4); r3 code only (no renders) | r3 renders: both sidewalks populated at every camera height |

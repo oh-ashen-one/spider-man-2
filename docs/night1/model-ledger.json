@@ -607,6 +607,19 @@
     6,
     6
    ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 10,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    6,
+    5,
+    4
+   ]
   }
  ],
  "agents": [

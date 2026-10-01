@@ -1,5 +1,5 @@
 {
- "updated": "21:57",
+ "updated": "01:15",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "active",
-   "round": 9,
+   "round": 10,
    "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Fix the new grey untextured hero arm; >=4 reactions, 2 simultaneous knockdowns, 2 distinct get-ups and no 2 s idle guard in every fight clip."
+   "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar."
   },
   {
    "id": "P3",
@@ -816,6 +816,14 @@
    "verdict": "fails",
    "gap": "Bodies freeze mid-trick: limbs must keep moving every 0.1 s; replace the shared frozen inverted split with a continuous unwind; a distinct shape per program.",
    "notes": "Camera broke its stall (5\u21926) and no axis is below 6: tricks moved above the roofs (apex +3.2..+14.3 m), sky behind the hero 2%\u219279%, sun behind the camera on every flip, hero glare <1%. Flips 6 (below r15's 7) \u2014 not merged yet; integration keeps r15. Round 18 on Opus."
+  },
+  {
+   "t": "01:15",
+   "piece": "P2 Characters",
+   "round": 10,
+   "verdict": "fails",
+   "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar.",
+   "notes": "Fight fixed: the grey 'arm' was a pipe piercing the hero (weapon tilt fixed); every 8 s clip has 6\u20137 reactions, 2 knockdowns with two down together ~1.9 s, two get-ups, no guard hold > 2 s. Image quality still 4 (hair cards, collar wedge worse) \u2014 not merged; r11+ on Opus."
   }
  ],
  "perf": [
