@@ -32,14 +32,17 @@ route() {  # name script
     -- -WHTravScript="$SCR/$JSON" -WHTravCsv="$TMP/$NAME/${NAME}_telemetry.csv" | tail -4
   cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/" 2>/dev/null
   grep -h "WebTravWorld:\|LogWorldPartition.*[Ss]treaming\|WH_QUIT" "$TMP/$NAME/$NAME.log" | sed 's/^.*Display: //' | head -5 > "$ROUND/${NAME}_log_excerpt.txt"
-  # <= 15 MB: H.264 crf 23, raise crf until it fits
-  local CRF=23
-  while :; do
-    ffmpeg -loglevel error -y -framerate 60 -i "$TMP/$NAME/${NAME}_frames/MovieFrame%05d.png" -c:v libx264 -preset slow -pix_fmt yuv420p -crf $CRF -movflags +faststart "$ROUND/$NAME.mp4" || break
-    [ "$(stat -f %z "$ROUND/$NAME.mp4")" -le 15000000 ] && break
-    CRF=$((CRF + 2)); [ $CRF -gt 35 ] && break
-  done
-  echo "$NAME.mp4 crf $CRF $(stat -f %z "$ROUND/$NAME.mp4") bytes, $(ls "$TMP/$NAME/${NAME}_frames" | wc -l | tr -d ' ') frames"
+  # <= 15 MB: H.264 2-pass at the bitrate that fills ~14.6 MB, from run_game.sh's own ~29 Mbps master (<name>.mp4 in the scratch run dir;
+  # the frames as fallback). (r01) the old crf 23 -> 35 loop still gave 15.9 MB on a 30 s golden-hour swing.
+  local SRC="$TMP/$NAME/$NAME.mp4" IN=()
+  if [ -f "$SRC" ]; then IN=(-i "$SRC"); else IN=(-framerate 60 -i "$TMP/$NAME/${NAME}_frames/MovieFrame%05d.png"); fi
+  local DUR; DUR=$(ls "$TMP/$NAME/${NAME}_frames" 2>/dev/null | wc -l | tr -d ' '); DUR=$(python3 -c "print(max(int('${DUR:-0}' or 0), 60) / 60)")
+  local KB; KB=$(python3 -c "print(int(14.6e6 * 8 / $DUR / 1000) - 60)")
+  local PL; PL=$(mktemp -d "$TMP/pass.XXXX")
+  ( cd "$PL" && ffmpeg -loglevel error -y "${IN[@]}" -c:v libx264 -preset slow -b:v ${KB}k -pass 1 -an -f mp4 /dev/null && \
+    ffmpeg -loglevel error -y "${IN[@]}" -c:v libx264 -preset slow -b:v ${KB}k -pass 2 -pix_fmt yuv420p -movflags +faststart -an "$ROUND/$NAME.mp4" )
+  rm -rf "$PL"
+  echo "$NAME.mp4 2-pass ${KB}k $(stat -f %z "$ROUND/$NAME.mp4") bytes, $(ls "$TMP/$NAME/${NAME}_frames" | wc -l | tr -d ' ') frames"
   # contact frames for the critic pack (1080p jpg at 5 / 12 / 20 / 28 s)
   for s in 5 12 20 28; do f=$(printf "%05d" $((s * 60))); [ -f "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" ] && \
     ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" -q:v 3 "$ROUND/stills/${NAME}_t${s}s_1920x1080.jpg"; done
