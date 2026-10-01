@@ -30,6 +30,14 @@ Done and pushed (CPU side, verified on CPU renders and checkers):
 Engine build DONE 2026-10-01 18:33 local (50 s, `build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, exit 0; weave-from-position connections all True; the
 nullrhi build compiles no shaders, so the custom weave node is first compiled by the -game run: check the first stills for the default grid material). The capture chain
 (`chain_r12.sh`, steps "stills pawn hero chase fight crowd lineup orbit", out `$P2_SCRATCH/r12/chain`) was queued in the lock right behind it (REQUIRE_BUILD_LOG guard).
+First engine pass (v1, chain `$P2_SCRATCH/r12/chain`, 19:10-19:23): 4K stills + pawn + orbit captured (the hero / chase / fight / crowd / lineup steps were lost: chain_r12.sh was
+edited while bash was executing it -> bash re-read shifted bytes and died on a syntax error; LESSON: never edit a running script, the queued chain2 runs a snapshot `.chain_r12_run.sh`).
+v1 measures (`post_r12.sh` dry run): net no longer through the sash (Tessera probe (1412,1240) 135 vs panel 115, was 85 vs 110), CH1 0.541-0.545 PASS, swap 7/7 at 33 ms,
+but relief too weak (Tessera 41 % of cells >= 20) and the Verdant jog still 57 px (the CPU check showed the smoothing only MOVED the fold inward).
+v2/v3 (committed, maps regenerated): cord heights x2 (pipe 1.8 mm, net 1.3 mm) + mid-tone net cords (`relief.net_tone`), stage fills 0.8 -> 0.5, arm weights stripped from the chest side below the
+armpit (`strip_arm` in hero_weights_r12.py: CPU posed render shows no jog / notch on either side), crisp sash / chevron ends (the weight ramp smeared the cut end).
+chain2 (`$P2_SCRATCH/r12/chain2`, STEPS "build stills pawn orbit hero chase fight crowd lineup", build nested in the hold) is queued in the lock.
+NOTE: `unreal/WebHomage/Scripts/run_game.sh` has an uncommitted 18:12 change by someone else (frame cap for non-perf captures, WindowServer safety): left as is, not committed by P2.
 Next (if you resume here and the chain did not run): the content build was queued in the GPU lock (`build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, needs prep outputs:
 `python3 tools/ue_char/prep_glbs.py; python3 tools/ue_char/hero_lens_r8.py $P2_SCRATCH/ueimport/SK_Hero.glb; python3 tools/ue_char/suit8/hero_weights_r12.py $P2_SCRATCH/ueimport/SK_Hero.glb`
 and the maps: `python3 tools/ue_char/hero_suit_r8.py` (Tessera 8192) + `python3 tools/ue_char/suits/gen_suits.py`), then
