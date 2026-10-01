@@ -279,7 +279,7 @@ def shoreline():
     meshes = {}
     z_lo, z_hi = -5100.0, 2300.0
     zs = np.arange(z_lo, z_hi, 25.0)
-    wall_dark = (0.11, 0.115, 0.12); cap = (0.40, 0.395, 0.38); prom = (0.43, 0.42, 0.395); pave = (0.30, 0.30, 0.30)
+    wall_dark = (0.07, 0.072, 0.075); cap = (0.26, 0.255, 0.245); prom = (0.27, 0.265, 0.25); pave = (0.19, 0.19, 0.19)
     # edge normal (toward the river, +x): the shore runs along z, so n ~ (1, 0, -dx/dz)
     def edge(z):
         x = shore_x(z); dx = shore_x(z + 5) - shore_x(z - 5); n = np.array([1.0, -dx / 10.0]); n /= np.linalg.norm(n); return x, n
@@ -309,12 +309,12 @@ def shoreline():
             if k == 0 and False: continue
             nn = np.array([b[1] - a[1], -(b[0] - a[0])]); nn /= np.linalg.norm(nn)
             m.quad([[a[0], WATER_Y - 0.3, a[1]], [b[0], WATER_Y - 0.3, b[1]], [b[0], yd, b[1]], [a[0], yd, a[1]]], [nn[0], 0, nn[1]], [0.10, 0.10, 0.105, 1])
-        m.quad([[p[0][0], yd, p[0][1]], [p[1][0], yd, p[1][1]], [p[2][0], yd, p[2][1]], [p[3][0], yd, p[3][1]]], [0, 1, 0], [0.34, 0.335, 0.32, 1])
+        m.quad([[p[0][0], yd, p[0][1]], [p[1][0], yd, p[1][1]], [p[2][0], yd, p[2][1]], [p[3][0], yd, p[3][1]]], [0, 1, 0], [0.20, 0.197, 0.19, 1])
         if rg.random() < 0.72:
             sw = w * rg.uniform(0.55, 0.78); sl = ln * rg.uniform(0.62, 0.86); sh = rg.uniform(9, 14)
             q0 = c0 + n0 * (ln * 0.1 + 6)
-            wall = [(0.38, 0.39, 0.41, 1), (0.42, 0.26, 0.19, 1), (0.46, 0.45, 0.42, 1), (0.28, 0.33, 0.38, 1)][rg.integers(4)]
-            roof = [0.26, 0.26, 0.27, 1]
+            wall = [(0.20, 0.205, 0.22, 1), (0.25, 0.15, 0.11, 1), (0.25, 0.245, 0.23, 1), (0.15, 0.18, 0.21, 1)][rg.integers(4)]
+            roof = [0.14, 0.14, 0.15, 1]
             # shed body (axis-aligned footprint approximation: the shore is nearly N-S, so the pier points along +x)
             xa, xb = q0[0], q0[0] + sl * abs(n0[0]); za, zb = q0[1] - sw / 2, q0[1] + sw / 2
             m.box(xa, za, xb, zb, yd, yd + sh, wall[:3], roof[:3], 0.0)

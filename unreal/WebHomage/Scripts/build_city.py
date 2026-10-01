@@ -17,7 +17,7 @@ TEX = os.environ.get('SM2_CITY_TEX', os.path.join(SCRATCH, 'tex'))
 def asset_rel(u): return re.sub(r'^https?://[^/]+/', '', u).split('?')[0]
 try: ARGS = JOB_ARGS  # noqa: F821 (set by tools/export/ue/uejob.py)
 except NameError: ARGS = {}
-STEPS = set((ARGS.get('steps') or 'clean,tex,mat,mesh,proto,kit,map').split(','))   # (r07) 'kit' is a default step: one pass builds everything
+STEPS = set((ARGS.get('steps') or 'clean,tex,mat,mesh,proto,kit,fsky,map').split(','))   # (r07) 'kit' is a default step: one pass builds everything
 ROOT, TESTS = '/Game/City', '/Game/Tests/City'
 at = unreal.AssetToolsHelpers.get_asset_tools()
 EAL = unreal.EditorAssetLibrary
@@ -214,7 +214,7 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
                 ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 7.6), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ShadeFill', 0.12), ('GlassSky', 0.11))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('ShadeFill', 0.12), ('GlassSky', 0.11), ('FarSunK', 0.15))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -321,7 +321,7 @@ Rough = r; NormalW = n; return a;''',
 float r; float3 n;
 float3 a = CitySidewalk(tCol, tColSampler, tNrm, tNrmSampler, tNoise, tNoiseSampler, tCurb, tCurbSampler, float4(uv0, uv1), wpos, wn, cam, r, n);
 // (r10, critic r09: S6 curb 14.7 % > Y 204) sun-facing light stone is the brightest surface of a street under the test lighting (sun 6, +2 EV): luma knee at SunK x 2.4 on sun-facing pixels, far field untouched
-float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));
+float sunf = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));   // (n from CitySidewalk is the normal-map vector, not a world normal: the vertex normal is used)
 float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float capk = sunk * 2.4;
 float Lc = La > capk ? capk + (La - capk) * 0.08 : La;
@@ -370,7 +370,7 @@ if (UseMap < 0.5 && (P == 0 || P == 5 || P == 6 || P == 9 || (P >= 16 && P <= 22
   float gl = saturate(1.0 - 12.0 * length(dq));
   c *= (0.74 + 0.42 * nA) * (1.0 + 0.2 * (nB - 0.5)) * (1.0 + 0.3 * (nC - 0.5) * gl);
   float Lp = dot(c, float3(0.2126, 0.7152, 0.0722));
-  c *= min(1.0, 0.36 / max(Lp, 1e-4));
+  c *= min(1.0, 0.15 / max(Lp, 1e-4));
 }
 Rough = pR; Metal = pM; float3 nv = normalize(wn);
 Emis = pE * escale + CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
@@ -456,11 +456,17 @@ if (fl > 0.25) {
   }
   c *= 0.62 + 0.38 * smoothstep(0.0, 14.0, p.y - 1.2);
 }
+// (r10, critic r09: 'white box plateau', 38.8 % of the S4 band above Y 204) sun-facing far blocks are capped to a mid-grey luma (MPC FarSunK): under the test lighting (sun 6, +2 EV) any sunlit albedo above ~0.15 clips to white;
+// shaded faces, windows and dark blocks are untouched, tints survive (the cap scales the colour)
+float sunfF = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
+float LaF = dot(c, float3(0.2126, 0.7152, 0.0722));
+float LcF = LaF > farsunk ? farsunk + (LaF - farsunk) * 0.12 : LaF;
+c *= lerp(1.0, LcF / max(LaF, 1e-4), sunfF);
 Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * 1.4 * escale;
 if (dbgmode > 8.5 && dbgmode < 9.5) { Emis = float3(vca, 0, 1.0 - vca) * 0.05; c = float3(0, 0, 0); }
 if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0.05, 0); c = float3(0, 0, 0); Spec = 0.0; }   // window-test mask: far-shore blocks = green
 return c;""",
-        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit')],
+        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
     # (r06) coast (waterfront.js createCoastMaterial port): granite / riprap / planks / bulkhead atlas tiles, lawn, pavers, ribbed metal, picket cards;
     # UV0 = uv, UV1.x = aTile, vertex colour = tint (paint / solid tiles). Masked: picket cards discard between the bars.
@@ -767,8 +773,14 @@ float3 hp = wpos * 0.01; float fl = frac(hp.z / 3.4), u = frac((hp.x + hp.y) / 2
 float w = step(0.35, fl) * step(fl, 0.85) * step(0.3, u) * step(u, 0.75);
 float2 fw = fwidth(float2(hp.z / 3.4, (hp.x + hp.y) / 2.6)); w = lerp(w, 0.3, saturate(max(fw.x, fw.y) * 1.5));
 float3 wc = lerp(wall, float3(0.08, 0.09, 0.1), w * 0.85) * (0.65 + 0.35 * smoothstep(0.0, 12.0, hp.z));  // horizon.js windows + grime
-return wn.z > 0.5 ? roof : wc;''',
-        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None)],
+float3 hc = wn.z > 0.5 ? roof : wc;
+// (r10) same sun-facing luma cap as the far blocks (MPC FarSunK): the hinterland roofs / walls clip to white under the +2 EV test lighting
+float sunfH = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
+float LaH = dot(hc, float3(0.2126, 0.7152, 0.0722));
+float LcH = LaH > farsunk ? farsunk + (LaH - farsunk) * 0.12 : LaH;
+hc *= lerp(1.0, LcH / max(LaH, 1e-4), sunfH);
+return hc;''',
+        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
     make_material('M_CityCrown', None, '''
 float3 p = wpos * 0.01;
