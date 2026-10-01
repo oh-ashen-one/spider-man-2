@@ -6,6 +6,33 @@ Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, br
 Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `build_fight.sh`, see Commands).
 Scope since the director's first-pass plan (`git show origin/Opus-5.5-Loop-Night-1:docs/night1/director/PLAN-firstpass.md`, piece G): **the HERO ONLY**. Thugs, fight, crowd are PAUSED (their rounds 05 - 10 below stay as the record).
 
+## ROUND 12 IN PROGRESS (Opus 5.5, 2026-10-01 evening) - read this first
+
+Round target (critic r11): raised piping on all 8 suits, net / piping layered UNDER the sash and chevron, no faceted patches / weave flip / stair-step at the armpit, Verdant jog <= 2 px, Verdant + Saffron re-blocked, CH1-framed fronts, r8 hero run / chase + enemy lineup + fight + crowd re-shot.
+
+Done and pushed (CPU side, verified on CPU renders and checkers):
+- ROOT CAUSE of the jog / stair-step / weave-flip line / faceted patches: a FOLD of the side of the torso in the idle / run poses (neighbouring vertices weighted to different arm bones,
+  shoulder 0.12 vs upperArm 0.11). The suit textures are continuous across that UV seam. Fix: `tools/ue_char/suit8/hero_weights_r12.py` smooths the per-joint weights in the
+  torso-side region (1650 vertices, positions / UVs / normals untouched); `build_characters.py` 'prep' runs it after `hero_lens_r8.py`; `--check` prints fold counts (idle@0: 4 -> 2 folded faces,
+  CPU posed render: the notch is gone).
+- `design.py` style `relief` (default `piping`): every panel / net line is a raised rounded cord (heights 0.65 - 0.95 mm, roughness 0.36 / 0.42), sash / chevron border strips raised,
+  the accent panel a padded plateau, and every net / piping / stitch line laid after the sash is masked UNDER it (colour + height + roughness); cavity AO at the cord feet; normal map sigma 0.6
+  and per-texel smoothed metres-per-texel. `relief.kind = 'r8'` (`hero_suit_r8.py --legacy-r8`) still reproduces round 08 texel for texel; `test_regression.py` checks both (r8 + r12 md5s).
+- `M_Char_Suit`: the weave is laid out from the PRE-SKINNED local position (triplanar, whiteout blend, rotated onto the skinned normal, World -> Tangent), static switch `WeaveFromPosition`
+  (default on; off = the old UV twill). Unverified in the engine until the build runs.
+- `suits.json`: Verdant deep #4b4a22 olive-bronze (no black raglans), upper arm body, glyph `gate` (no ring); Saffron deep #2f3a36 slate, upper arm body, `sleeves: false` (no raglan pair).
+  IP guard palette PASS (min palette distance 52.3), seams PASS (worst run 4.3 px).
+- `tools/ue_char/suits/tangent_check.py`: normal map vs the mesh tangent frames per UV island (PASS: large islands cos >= 0.99, no island flipped; fingers 0.8).
+- Checkers for the critic's numbers: `relief_check_r12.py relief|sash|jog`, `loco_r12.py ch1|bob|pop`. Round-11 baselines: Tessera relief cells >= 20: 32 %, sash longest dark run 46 px,
+  Ash 121 px, Verdant jog 69 px.
+- Engine side: `chain_r12.sh` (one gpu_slot hold: stills pawn orbit hero chase fight crowd lineup), `post_r12.sh` (fills round-12/ + every measure), `make_pairs_r12.py`.
+
+Next (if you resume here): the content build was queued in the GPU lock (`build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, needs prep outputs:
+`python3 tools/ue_char/prep_glbs.py; python3 tools/ue_char/hero_lens_r8.py $P2_SCRATCH/ueimport/SK_Hero.glb; python3 tools/ue_char/suit8/hero_weights_r12.py $P2_SCRATCH/ueimport/SK_Hero.glb`
+and the maps: `python3 tools/ue_char/hero_suit_r8.py` (Tessera 8192) + `python3 tools/ue_char/suits/gen_suits.py`), then
+`EV=10.0 STEPS="stills pawn orbit" gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r12.sh $P2_SCRATCH/r12/chainA` and `STEPS="hero chase fight crowd lineup" ... chainB`,
+then `bash tools/ue_char/suits/post_r12.sh $P2_SCRATCH/r12/chainA $P2_SCRATCH/r12/chainB`. Check the build log for `M_Char_Suit` compile errors / the weave-from-position line first.
+
 ## STATE AT THE END OF ROUND 11 (read this first)
 
 Round 11 is DONE except the blind critic's verdict: all acceptance numbers are in `round-11/SPEC_CHECK.md`, what was captured (and how, at which resolution) in `round-11/CAPTURES.md`, the suits in `round-11/SUITS.md`, the owner's swatch sheet is `round-11/SWATCH_SHEET.jpg`.
