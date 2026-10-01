@@ -1,13 +1,22 @@
-# P1 City — handoff after round 09 (for the next builder)
+# P1 City — handoff after round 10 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
 Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port 8771 (editor not needed: everything runs as `-nullrhi` commandlets and `-game` captures), browser dev port **5202** (only for a full re-export).
 Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, plus (flagged to the integrator)
-`unreal/WebHomage/Shaders/City/` (now incl. the hand-written `ShadeFill.ush`) and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
-Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. This branch was NOT re-merged with `Opus-5.5-Loop-Night-1` (it is ~48 commits behind; nothing here needed it, the C++ module is unchanged).
+`unreal/WebHomage/Shaders/City/` (incl. the hand-written `ShadeFill.ush`) and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
+Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. **This branch was re-merged with `Opus-5.5-Loop-Night-1` at the start of round 10 (2026-10-01 00:10); the C++ module had to be rebuilt (`Scripts/build_editor.sh`, 50 s).**
 
-## Read this first: state at the end of round 09 (Sonnet 5.5, 2026-09-30 04:10-08:30)
+## Read this first: round 10 (Sonnet 5.5, 2026-10-01) — WORK IN PROGRESS NOTE, final numbers are in `round-10/README.md`
+Critic r09 (FAILS TARGET, lowest 4) named ONE gap: **the S4 far-shore band** (x 0-1300, y 150-300): white box plateau (silhouette-top row std 6.1 px, 38.8 % of the box above Y 204), grey wall embankment, no trees.
+Tests: T1 silhouette-top std >= 12 px, T2 <= 10 % of (0,150,1300,300) above Y 204, C11-C15 still pass. `tools/export/s4_far_check.py <frame>` measures T1 / T2 / C11-C15 (it reproduces the critic's numbers on the r08 / r09 frames: 6.0 / 6.1, 38.7 / 38.8 %); `city_spec_check.py` (regions v3) includes them plus the other critic boxes (S8 glass, S5 mid tower, S6 curb).
+- **What was built** (details: `EXPORT.md` "Far skyline ..."): `tools/export/far_skyline.py` (pure Python, seeded; writes `<export>/mesh/farsky`, `proto/farsky_clump.glb`, `farsky.json`): plateau towers, a hinterland skyline designed by screen row, a displaced wooded bluff replacing the flat `palisadesCliff` wall, seawall / promenade / piers, tree clumps (one HISM) incl. trees on the far-land lawns. `build_city.py` step `fsky` imports it, `build_geo_level` spawns it (folder `City/Far`), `arg farsky=0` builds without.
+- **Measured (hold 1, 1080p, e2.0 = the test-map default, old FarGain 7.6)**: T1 5.9 -> **19.6-20.4** (all three definitions). T2 38.6 % -> 29.1 %, C13 -33.6 -> -42.4 (the strip got darker): both still to fix. **Exposure response of the S4 map** (old content, `view_variants.py`): bias 2.0 / 1.0 / 0.5 -> sky Y 229 / 204 / 186, far shore 195 / 157 / 135: C13 (absolute -25..-35 below the sky) is a relative spec measured on refs whose sky is Y 120-130; at a lower exposure the far / sky RATIO stays ~0.73-0.77, so C13 fails; and at sky < 215 the 'first row with Y < 215' silhouette definition degenerates. => keep exposure 2.0 and fix the far band by albedo / haze instead.
+- **Root cause of the white plateau**: `M_CityFarMass` multiplies the exporter's block colour (0.10-0.33 linear) by MPC `FarGain` 7.6 and caps at 0.85, so nearly every far block was albedo 0.85 white; under sun 6 / +2 EV any sunlit albedo above ~0.15 clips to white anyway. New: MPC **`FarSunK`** (default 0.15) = luma cap of sun-facing far blocks / hinterland boxes (`M_CityFarMass`, `M_CityHinter`), FarGain to be lowered (4.0, sweep) so brick / stone tints survive.
+- Secondary r09 items touched (all unverified until the final frames are in the README): sidewalk albedo knee (`M_CitySidewalk`, SunK x 2.4; the first version used the normal-map vector of `CitySidewalk` and did nothing -> uses the vertex normal now), prop weathering + luma cap 0.15 (`M_CityProp`: S3 'white untextured props'), clear-coated car paint + generic licence plates (`M_CityCar`, `export_vehicles.py` writes plate UVs, `veh` step), TKTS steps (`MI_tsTKTS` FillK 0.2, rougher), F0Scale / DayEmisK sweep for S8 glass and S5.
+- **GPU queue reality**: the shared lock was 20-60 min per hold on 2026-10-01 (traversal / life / characters / perf holds of 20-25 min each). One of my queued holds lost its ticket (another agent's `reap_stale` removed it: `ps` call timed out under load, `gpu_slot.log` `stale-recovered dead_pid=<mine>`): watch `gpu_slot.log` and re-queue (kill the old waiter with SIGINT, not SIGTERM).
+
+## State at the end of round 09 (previous round, still valid below) (Sonnet 5.5, 2026-09-30 04:10-08:30)
 Critic r08 (facades 5, street 5, skyline 4, composition 5, image quality 4, FAILS) named ONE gap: **shadowed facades are crushed** (S1 crops (0,0,480,300) / (1360,0,1740,400) mean Y 22.5 / 19.7 against the C2 floor of 52; Y < 25 on 72.2 % of S3 and 62.5 % of S7).
 **Round 09 fixed it** (`round-09/README.md`, `round-09/shade_check.md`, `round-09/city_spec_check.md` + `.json`):
 | line | r08 | r09 (1080p, ShadeFill 0.12 / GlassSky 0.11) | target |

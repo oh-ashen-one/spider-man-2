@@ -60,7 +60,15 @@ def main():
         col = np.ones((len(P), 4), np.float32)
         for i in range(len(P)): col[i, :3] = np.array(PCOL.get(int(part[i]), (0.4, 0.4, 0.4))) * k[i]
         uv1 = np.stack([part.astype(np.float32), np.zeros(len(P), np.float32)], 1)
-        attrs = {'POSITION': P, 'NORMAL': N, 'TEXCOORD_0': np.zeros((len(P), 2), np.float32), 'TEXCOORD_1': uv1, 'COLOR_0': col}
+        # (r10, critic r09: 'blank plates') part 0 = the two licence-plate quads (front / rear): TEXCOORD_0 = (u, v) across each plate so M_CityCar can draw a generic plate (no real format, no wordmark); everything else keeps zero UVs (no atlas, IP)
+        uv0 = np.zeros((len(P), 2), np.float32)
+        for sgn in (1.0, -1.0):
+            sel = (part == 0) & (np.sign(P[:, 0]) == sgn)
+            if sel.any():
+                z0, z1, y0, y1 = P[sel, 2].min(), P[sel, 2].max(), P[sel, 1].min(), P[sel, 1].max()
+                u = (P[sel, 2] - z0) / max(z1 - z0, 1e-6); v = (P[sel, 1] - y0) / max(y1 - y0, 1e-6)
+                uv0[sel] = np.stack([1.0 - u if sgn > 0 else u, v], 1) * 0.98 + 0.01
+        attrs = {'POSITION': P, 'NORMAL': N, 'TEXCOORD_0': uv0, 'TEXCOORD_1': uv1, 'COLOR_0': col}
         fn = f'veh_{name}'
         write_glb(EXP + f'proto/{fn}.glb', attrs, g['index'], name=fn)
         mn, mx = P.min(0), P.max(0)
