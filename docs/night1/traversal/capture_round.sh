@@ -41,6 +41,7 @@ SEQS=(
   "w1_wallrun_tall_zip w1_wallrun_tall_zip.json ${W1Q:-7.5} 1.8,2.6"
   "w2_wallrun_side_zip w2_wallrun_side_zip.json ${W2Q:-6.5} 2.4,3.0"
   "r1_roofrun_zip r1_roofrun_zip.json ${R1Q:-9.5} 6.0,7.0"
+  "s1_high_swing s1_high_swing.json ${S1Q:-6.0} 0.6,1.2"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
