@@ -28,6 +28,7 @@ from scipy import ndimage as ndi
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import gltfio, skinfit, mask as M  # noqa: E402
+import hair as HR  # noqa: E402   round 11: one hair asset per head (tools/ue_char/people/hair.py)
 
 ROOT = os.path.abspath(os.path.join(HERE, '../../..'))
 RAW = _P2RAW
@@ -48,14 +49,14 @@ CFG = {
     # round 04: three more raw Tripo people (owner's assets), landmarks from mask.auto_landmarks
     # hood: auto landmarks pick the sunglasses as the nose -> measured with ortho.py (side view, 2 cm grid)
     'hood': dict(src='human+figure+3d+model.glb', name='StreetHood', eye=1.630, nose=1.603, ear_lobe=1.582, chin=1.527, axis_z=-0.02,
-                 mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True, drop_loose=1.655,
+                 mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True, drop_loose=1.635, unify_hair=True,   # round 11: drop_loose 1.655 -> 1.635 (the 14-tri curl on the right temple), blond -> maroon
                  tints={'Grey': dict(region='top', color=(104, 104, 108))}),
     'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
                 mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70)),
                 seethrough=True,   # round 09: flip the back-faced lip-crease slivers that are holes through the mask
-                hang=dict(uncover_mouth=True)),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
+                hang=dict(uncover_mouth=True), hair_shell=True),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
     'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
-                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True, bridge_gap=((0.05, 1.70, 0.08), 0.07)),
+                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True, hair_shell=True),   # round 11: bridge_gap ((0.05, 1.70, 0.08), 0.07) = the r10 flat card, replaced by hair.tuck_hair
 }
 
 
@@ -486,6 +487,12 @@ def main():
     moved = np.concatenate([moved, np.zeros(len(P) - len(moved))])      # the bridge strip adds duplicated vertices
     nloose = 0
     if cfg.get('drop_loose'): F, nloose = M.drop_loose_shells(P, F, y_min=cfg['drop_loose'])   # round 10: loose hair-ribbon shells of the head (hood_face_4k)
+    Hsh = None
+    if cfg.get('hair_shell'):   # round 11: the hair shell's open edges tucked onto the head (no background / skin gap, no bridge card)
+        Hsh = HR.hair_shell(P, F)
+        P0_ = P.copy(); P, tinfo = HR.tuck_hair(P, F, Hsh, axis_z=cfg['axis_z']); info.update(tinfo)
+        moved = moved + np.linalg.norm(P - P0_, axis=1)
+        info['hair_shell_tris'] = int(Hsh.sum())
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
@@ -523,6 +530,11 @@ def main():
         im4, ng = clear_graphic(im4, pos, cov); info['graphic_px'] = ng
     if cfg.get('clear_temple_text'):
         im4, nt = clear_temple_text(im4, pos, cov, cfg); info['temple_text_px'] = nt
+    if Hsh is not None:
+        im4, sinfo = HR.paint_scalp(im4, cov, pos, P, N, UV, F, Hsh, axis_z=cfg['axis_z']); info.update(sinfo)
+    if cfg.get('unify_hair'):
+        im4, uinfo = HR.unify_hair(im4, cov, pos, cfg); info.update(uinfo)
+        im4, finfo = HR.fringe_hairline(im4, cov, pos, P, F, cfg); info.update(finfo)
     im4 = fill_gutters(im4, cov, erode=1)
     im4, nbord = M.seam_blend(im4, cov, pos); info['seam_blend_px'] = nbord
     im4, mw = M.paint_mask(im4, cov, pos, cfg, cfg['seed']); info['mask_px'] = int((mw > 0.5).sum())

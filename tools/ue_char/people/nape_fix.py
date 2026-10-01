@@ -34,7 +34,9 @@ def main():
     # The neck is r < 7 cm there; the ear sticks out beyond (r > 8 cm), so the height limit is lifted for neck-radius triangles only.
     r_lim = 0.095 + (0.072 - 0.095) * sm(1.572, 1.580, cen[:, 1])      # below the ear: the hood-collar triangles of the strip (r 7.8 - 8.1 cm); beside the ear lobe: neck radius only
     # round 10: the r09 selection (a wider one, |phi| from 80 deg and y from 1.515 m, turned the whole neck under the ear into a flat dark-grey plate: tried and reverted)
-    w_tri = sm(88, 98, np.abs(phi)) * sm(1.535, 1.548, cen[:, 1]) * (1 - sm(1.592, 1.602, cen[:, 1])) * (1 - sm(r_lim - 0.004, r_lim + 0.004, r))
+    # round 11 (critic r10: the wedge = 72 x 151 px at 4K, triangles 4192 - 4216 / 2489 / 3227 found with pose_view's id buffer, |phi| 86 - 128 deg, y 1.538 - 1.578 m): the strip starts at
+    # |phi| 86 deg (was 88 - 98) and from y 1.528 m
+    w_tri = sm(84, 92, np.abs(phi)) * sm(1.522, 1.534, cen[:, 1]) * (1 - sm(1.592, 1.602, cen[:, 1])) * (1 - sm(r_lim - 0.004, r_lim + 0.004, r))
     sel = np.where(w_tri > 0.02)[0]
     print('nape_fix: %d triangles (bind pose |phi| > 88 deg, y 1.535 - 1.582)' % len(sel))
     for path in atlases:
@@ -48,13 +50,16 @@ def main():
         m = cv2.GaussianBlur(m, (0, 0), 2.0)
         rgb = im[..., ::-1].astype(np.float32) / 255
         mx, mn = rgb.max(-1), rgb.min(-1)
-        hue_skin = ((rgb[..., 0] > rgb[..., 1]) & (rgb[..., 1] >= rgb[..., 2]) & ((mx - mn) / (mx + 1e-6) > 0.12) & (mx > 0.18)) | (mx > 0.16)   # round 09b: dim skin too (78, 61, 58 = 0.31); round 10: every texel brighter than 0.16 under the selected triangles (the hood's own are 0.13 - 0.16)
+        hue_skin = np.ones(rgb.shape[:2], bool)   # round 11: every texel under the selected triangles (rounds 09 / 10 kept the dim ones, which still lit up as tan in the engine)
         w = m * cv2.GaussianBlur(hue_skin.astype(np.float32), (0, 0), 1.0)
         hood = np.array([36, 35, 37], np.float32) / 255     # the hood's own dark (texels there measure 34 - 40)
         # round 10: hue-preserving shade (x 0.40) with a 25 % pull to the hood's dark: the round-09 'hood colour' version read as a flat dark-grey plate on the neck (CPU render), the lift of the
         # strip is the NORMALS (below), not the albedo
+        # round 11: the round-10 hue-preserving shade (x 0.40 of the skin) still rendered as a lit tan plane in the engine (3,136 px, r > g + 8): the strip now takes the hood's own dark
+        # colour (neutral, 36 / 35 / 37) with 12 % of the texel's luminance detail, so a lit strip reads as the inside of the hood, never as skin
+        lum = (rgb @ np.array([0.299, 0.587, 0.114], np.float32))[..., None]
         k = (1.0 * w)[..., None]
-        out = rgb * (1 - k) + (rgb * 0.40 * 0.75 + hood * 0.25) * k
+        out = rgb * (1 - k) + (hood * (0.88 + 0.12 * lum / max(float(lum.mean()), 1e-3))) * k
         cv2.imwrite(path, (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)[..., ::-1])
         print('  %s: %d texels darkened (weight > 0.5)' % (os.path.basename(path), int((w > 0.5).sum())))
     fix_normals(doc, glb, P, N, F, w_tri, cen)
