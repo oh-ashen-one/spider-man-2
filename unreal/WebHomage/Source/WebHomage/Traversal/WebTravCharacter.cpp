@@ -592,7 +592,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// round 13 (T2 attach -> attach <= 3.3 s): a swing that ends in a flip program is let go at 1.05-1.2 s
 			const int32 EveryNext = Script->TrickEveryAt(TravTime);
 			// round 18 (critic r17 "f4's 4th flip missing its catch"): a flow flip is only pressed when a web is in reach where it ends
-			const bool bCatchOk = !bSwinging || Traversal->CatchGuard <= 0.f || Traversal->CatchReachable(double(Traversal->CatchFlightS));
+			// (canyons -- the lower roofline out of the flow climb's reach, the r13 "fires anyway" rule -- have webs on both sides all the way: the
+			// predictor gave false negatives there, r18 render a: both tricks dropped; it only judges the low-roofline routes where r17 f4 missed)
+			const bool bCanyon = Traversal->FlowApexGap() > double(Traversal->FlowReadyGain + Traversal->FlowHoldMax);
+			const bool bCatchOk = !bSwinging || Traversal->CatchGuard <= 0.f || bCanyon || Traversal->CatchReachable(double(Traversal->CatchFlightS));
 			const bool bTrickNext = EveryNext > 0 && (AutoReleases + 1) % EveryNext == 0 && !Traversal->bTrickLaunch && bCatchOk;
 			// (round 14: 1.05-1.2 -> 0.92-1.06 s: the eased backDouble catches 0.07 s later, T2 kept <= 2.65 s)
 			const float LongCut = bTrickNext ? 0.92f + 0.14f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
