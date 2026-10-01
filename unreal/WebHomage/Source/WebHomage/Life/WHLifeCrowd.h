@@ -63,6 +63,10 @@ public:
 	/** Walkers per km of sidewalk edge, by road kind (edge axis 0 = avenue sidewalks, 1 = street sidewalks). Two-way flow: half walk each way. */
 	UPROPERTY(EditAnywhere, Category="Life") float PerKmAvenue = 1600.f;
 	UPROPERTY(EditAnywhere, Category="Life") float PerKmStreet = 1100.f;
+	/** Density factor of the EAST sidewalks of the avenues (walk graph Side +1). The east side of a Midtown avenue is the shaded one in the afternoon sun of the test maps (and in S1 sits behind scaffolding
+	 *  sheds and pillars), and a street-level camera in the lanes sees it at a grazing angle across the whole roadway: with equal densities it reads as the thinner sidewalk (round 02: 0-17 % of the people
+	 *  the detector finds were on the right). 1 = both sides equal. Command line: -WHLifeEast=<factor>. */
+	UPROPERTY(EditAnywhere, Category="Life") float AvenueEastFactor = 1.3f;
 	/** Camera-centred population: walkers exist within this distance (cm) of the camera; farther ones are recycled to the far edge of the disc
 	 *  (out of view when possible), so the density around the camera stays high wherever it goes and the cost stays bounded. */
 	UPROPERTY(EditAnywhere, Category="Life") float SpawnRadius = 19000.f;
@@ -111,6 +115,9 @@ public:
 	UPROPERTY(EditAnywhere, Category="Life") float KeepRight = 0.78f;
 	/** Camera faster than this (cm/s): walkers recycled from behind reappear AHEAD of the camera's motion (a fast swing keeps a full sidewalk in front of it), not off-screen anywhere. */
 	UPROPERTY(EditAnywhere, Category="Life") float AheadSpeedCms = 500.f;
+	/** Cosine of the half angle of the sector ahead of a fast camera in which recycled walkers are placed (0.9 = 26 deg). A wide sector (round 03 first build: 0.5 = 60 deg) put four of five of them on cross-street sidewalks
+	 *  hundreds of metres to the side of the avenue the camera follows, so the avenue's own sidewalks thinned out in mid flight. Command line -WHLifeAheadCos=<cos>. */
+	UPROPERTY(EditAnywhere, Category="Life") float AheadCosMin = 0.9f;
 	/** Fixed camera for the live set (test rigs); ignored if zero. */
 	UPROPERTY(EditAnywhere, Category="Life") FVector FocusOverride = FVector::ZeroVector;
 
@@ -155,6 +162,7 @@ private:
 	TArray<TPair<float, float>> FillSteps;   // (game s, lux) sweep from -WHLifeFillSteps
 	TArray<int32> RespIdx; TArray<float> RespCum;   // sidewalk edges that reach the recycle ring around the camera (rebuilt at every refresh), cumulative length * density
 	void BuildRespawnEdges(const FVector& Cam);
+	float EdgeDensity(const FEdge& E) const { return E.Axis == 0 ? PerKmAvenue * (E.Side > 0 ? AvenueEastFactor : 1.f) : PerKmStreet; }   // walkers per km of this sidewalk edge
 	FVector PrevCam = FVector::ZeroVector, CamVel = FVector::ZeroVector; bool bHavePrevCam = false;   // camera velocity (cm/s), smoothed
 	void UpdateFill();
 	void UpdateShade();
