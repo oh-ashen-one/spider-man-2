@@ -1351,45 +1351,46 @@ double UWebTraversalComponent::RoofBesideAhead(const FVector& Dir, double Ahead)
 
 double UWebTraversalComponent::FlowRoofTarget(const FVector& Dir, double* OutRoofOverStreet) const
 {
-	// round 17 (TC8): per street side, the HIGHEST roof sample within FlowRoofR m (behind, beside and ahead of the hero, every 10 m); a sample
-	// = horizontal ray to that side's street wall (<= 40 m), then a down-ray 2.5 m inside it; samples under FlowRoofMinH m over the street are
-	// canopies / awnings (r15 probe) and are skipped. The LOWER side's value is the roofline the apex must clear.
+	// round 17 (TC8): per street side, the HIGHEST roof inside the FlowRoofR m half-disc on that side of the travel direction (down-rays on
+	// a 5 m grid, the same measure as roof_check.py on the engine heightmap); tops under FlowRoofMinH m over the street are street trees /
+	// awnings (r15 probe) and count as low. A side with nothing taller is "low" = FlowRoofMinH. The LOWER side is the roofline the apex
+	// must clear. (A first version sampled the street wall with horizontal rays: at 8 m they hit the tree canopy, found no roof on the
+	// low side and used the 90 m side.)
 	FVector F = Flat(Dir);
 	if (F.SizeSquared() < 1e-4) return -1.0;
 	F.Normalize();
 	const FVector Rt(-F.Y, F.X, 0);
 	const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
-	double Top[2] = { -1.0, -1.0 };
+	const double Low = Street + double(FlowRoofMinH);
+	double Top[2] = { Low, Low };
 	const double RR = double(FlowRoofR);
-	for (double D = -RR; D <= RR + 1e-3; D += 10.0)
+	// the flip travels ~1 s of horizontal speed before its apex: the region is the capsule of radius RR around that stretch
+	const double Dap = FMath::Min(40.0, HLen(S.Vel) * 1.0);
+	for (double A = -RR; A <= Dap + RR + 1e-3; A += 5.0)
 	{
-		const FVector P = S.Pos + F * D;
-		for (int32 Side = 0; Side < 2; ++Side)
+		const double Ac = FMath::Clamp(A, 0.0, Dap);
+		for (double L = -RR; L <= RR + 1e-3; L += 5.0)
 		{
-			const FVector SD = Rt * (Side ? 1.0 : -1.0);
-			FTravHit Hw;
-			if (!TravWorld.Raycast(P, SD, 40.0, Hw) || FMath::Abs(Hw.Normal.Z) > 0.5 || Hw.bGround) continue;
-			if (FMath::Sqrt(D * D + Hw.Distance * Hw.Distance) > RR + 2.5) continue; // outside the radius
-			const FVector Q = Hw.Point + SD * 2.5;
+			if ((A - Ac) * (A - Ac) + L * L > RR * RR || FMath::Abs(L) < 2.0) continue;
+			const FVector Q = S.Pos + F * A + Rt * L;
 			FTravHit Hr;
 			if (!TravWorld.Raycast(FVector(Q.X, Q.Y, S.Pos.Z + 250.0), FVector(0, 0, -1), 500.0, Hr) || Hr.bGround) continue;
-			if (Hr.Point.Z - Street < double(FlowRoofMinH)) continue;
+			const int32 Side = L > 0.0 ? 1 : 0;
 			Top[Side] = FMath::Max(Top[Side], Hr.Point.Z);
 		}
 	}
-	double Roof = -1.0;
-	if (Top[0] < 0.0) Roof = Top[1]; else if (Top[1] < 0.0) Roof = Top[0]; else Roof = FMath::Min(Top[0], Top[1]);
-	if (OutRoofOverStreet) *OutRoofOverStreet = Roof < 0.0 ? -1.0 : Roof - Street;
-	return Roof < 0.0 ? -1.0 : Roof + double(FlowRoofOver) + double(FlowApexMargin);
+	const double Roof = FMath::Min(Top[0], Top[1]);
+	if (OutRoofOverStreet) *OutRoofOverStreet = Roof - Street;
+	return Roof + double(FlowRoofOver) + double(FlowApexMargin);
 }
 
 double UWebTraversalComponent::FlowApexGap() const
 {
 	if (S.Clock - GapCacheT < 0.1) return GapCacheV;
 	GapCacheT = S.Clock;
-	FVector HV;
-	if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
-	const double T = FlowRoofTarget(HV);
+	// the route direction (facing), not the instantaneous velocity: on the rising front of a swing / a wall kick the velocity can point
+	// across the street and the capsule then lay over the tall blocks (r17 probe s2: "roofline 94 m" over a 20 m street side)
+	const double T = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir);
 	GapCacheV = T < 0.0 ? -1e9 : T - S.Pos.Z;
 	return GapCacheV;
 }
@@ -1572,7 +1573,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			{ // round 17 (TC8): solve the climb for the program's APEX: hips at the lower roofline within FlowRoofR + FlowRoofOver (+ margin);
 			  // no roofline here -> the r13 rule above. Gain at least FlowApexMin (the shape reads at the top of a rise, not on a fall).
 				double RoofOver = -1.0;
-				const double Target = FlowRoofTarget(HV, &RoofOver);
+				const double Target = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir, &RoofOver);
 				if (Target > 0.0)
 				{
 					FlowRoofUsed = RoofOver;
@@ -2523,6 +2524,13 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 	Events.Reset();
 	if (!bWorldReady || !Anchors) return;
 	LastInput = I;
+	{ // round 17: route direction = horizontal velocity smoothed over ~1.5 s (the roofline capsule of FlowRoofTarget follows the route, not a
+	  // swing's sideways / vertical moment)
+		const FVector HVn(S.Vel.X, S.Vel.Y, 0.0);
+		const double Hn = HVn.Size();
+		if (RouteDir.IsNearlyZero()) RouteDir = Hn > 1.0 ? HVn / Hn : YawDir(S.Facing);
+		else if (Hn > 4.0) RouteDir = FMath::Lerp(RouteDir, HVn / Hn, FMath::Clamp(Dt / 1.5, 0.0, 1.0)).GetSafeNormal();
+	}
 	S.JumpBuf = I.bJumpPressed ? 0.22 : FMath::Max(0.0, S.JumpBuf - Dt);
 	S.TrickBuf = I.bTrickPressed ? 0.4 : FMath::Max(0.0, S.TrickBuf - Dt);
 	S.SubT += Dt; S.ModeT += Dt;

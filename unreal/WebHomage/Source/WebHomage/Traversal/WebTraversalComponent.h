@@ -139,7 +139,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bFlowApexSolve = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofR = 30.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMargin = 1.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexVzMax = 16.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexVzMax = 20.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMin = 2.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowReadyGain = 9.0f;
 	/** Round 17: world Z the hips must reach at the flip apex (lower roofline within FlowRoofR + FlowRoofOver + FlowApexMargin); -1 = no roof. */
@@ -149,6 +149,7 @@ public:
 	/** Round 17: apex gain (m) of a flow flip released now with vertical speed Vz0 (program boost included). */
 	double FlowApexGain(double Vz0, const struct FWebFlipProgram* FP) const;
 	mutable double GapCacheT = -1e9, GapCacheV = -1e9;
+	FVector RouteDir = FVector::ZeroVector; // round 17: smoothed horizontal travel direction (unit)
 	double FlowApexWant = 0.0; // telemetry: apex hips Z the last flow flip was solved for (world m; 0 none)
 	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;

@@ -4,7 +4,7 @@
 #   * apex: the hips (z_m = body centre) at the program's highest row must be >= 3 m over the LOWER roofline within 30 m
 #     (roofline per street side = the highest roof >= 16 m over the street inside the 30 m half-disc on that side of the travel
 #     direction, from the engine heightmap city/heightmap_5m.csv.gz (5 m grid of the traversal world's tops, -WHTravHeightmap);
-#     cells under 16 m are street trees / awnings; the lower side wins);
+#     cells under 16 m are street trees / awnings; a side with nothing taller counts as 16 m; the lower side wins);
 #   * share of program rows with the hips >= roofline + 3;
 #   * flipcam_k at flip_t 0.35 (critic r16: >= 0.9);
 #   * view_sun_deg min over the trick window (program + 0.5 s; >= 100);
@@ -37,8 +37,8 @@ def lower_roof(x, y, vx, vy, R=30.0, minh=16.0):
             if z - street < minh: continue
             s = 0 if lat < 0 else 1
             top[s] = z if top[s] is None else max(top[s], z)
-    vals = [t for t in top if t is not None]
-    return (min(vals) if vals else None), top[0], top[1]
+    top = [minh if t is None else t for t in top]  # a side with nothing >= 16 m is low (= 16 m), as FlowRoofTarget
+    return min(top), top[0], top[1]
 T = list(csv.DictReader(open(path)))
 def f(r, k, d=float('nan')):
     try: return float(r[k])

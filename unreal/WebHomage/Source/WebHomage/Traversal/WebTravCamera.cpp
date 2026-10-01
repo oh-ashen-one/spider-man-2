@@ -671,8 +671,10 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 	static const double OffsDeg[] = { 35.0, 40.0, 45.0, 50.0, 55.0 }; // round 17: 35 added (TC1 35-55)
 	FCand Best; bool bHave = false;
 	FString Log;
-	int32 BestTier = 99;
-	for (int32 Stage = 0; Stage < 4 && !bHave; ++Stage)
+	int32 BestTier = 99, BestRank = 99;
+	// round 17 (critic r16 "at release pick the 35-55 deg side that already has view_sun >= 100"): rank 0 = clear at FlipDist + sun ok,
+	// 1 = sun ok but pulled in (TC11), 2 = only a sun-facing side is clear (r16 took that before pulling in: n1 probe 53 deg from the sun)
+	for (int32 Stage = 0; Stage < 4 && BestRank > 0; ++Stage)
 	{
 		const double Rd = Stage == 0 ? FlipDist : FMath::Lerp(FlipDist, FlipDistMin, double(Stage) / 3.0);
 		for (double O : OffsDeg)
@@ -683,11 +685,13 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 				FCand C;
 				if (!Eval(O, Side, Rd, C)) { Log += FString::Printf(TEXT(" [%+.0f@%.1f fail%d]"), Side * O, Rd, C.Why); continue; }
 				Log += FString::Printf(TEXT(" [%+.0f@%.1f sun%.0f open%.2f sky%.2f clr%.2f cost%.2f]"), Side * O, Rd, C.Sun, C.Open, C.Sky, C.ClearT, C.Cost);
-				if (Stage > 0) { C.Cost += C.Sun >= SunMinDeg ? 0.0 : 100.0; C.Tier = 2; } // pulled in along the same yaw (TC11): tier 2, sun-ok first
-				if (!bHave || C.Tier < BestTier || (C.Tier == BestTier && C.Cost < Best.Cost)) { Best = C; BestTier = C.Tier; bHave = true; }
+				if (Stage > 0) { C.Cost += C.Sun >= SunMinDeg ? 0.0 : 100.0; C.Tier = C.Sun >= SunMinDeg ? 2 : 1; } // pulled in along the same yaw (TC11)
+				const int32 Rank = C.Sun < SunMinDeg ? 2 : (Stage == 0 ? 0 : 1);
+				if (!bHave || Rank < BestRank || (Rank == BestRank && C.Cost < Best.Cost)) { Best = C; BestTier = C.Tier; BestRank = Rank; bHave = true; }
 			}
 		}
 	}
+	(void)BestTier;
 	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV trick camera choice at hero (%.1f, %.1f, %.1f) heading %.0f:%s"), Hero.X, Hero.Y, Hero.Z, FMath::RadiansToDegrees(Head), *Log);
 	if (!bHave) { FlipTier = 3; FlipDistSel = FlipDist; FlipSkyShare = -1.0; return; }
 	FlipAz = Best.Az; FlipSide = double(Best.Side); FlipOffDeg = Best.Side * Best.Off; FlipDistSel = Best.Rad; FlipTier = Best.Tier;
