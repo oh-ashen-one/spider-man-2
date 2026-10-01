@@ -1,4 +1,11 @@
-# P4 Look, lighting, post: handoff (round 03)
+# P4 Look, lighting, post: handoff (round 03; round 04 IN PROGRESS, see the next section)
+
+## Round 04 in progress (2026-10-01, Opus 5.5) - resume here
+- Target (critic round 03): golden S1-S8 1080p p5 Y <= 12, p95/p5 >= 16, HSV sat >= .44, L1 holding (S4 down), S1/S5/S6 sunlit/shaded facade pair ratio >= 3; night S4 window points >= 3 %, city median Y <= 42 (L21 / L22 in SPEC.md).
+- Done: merged integration (perf preset perf60_hwl2 = `tools/perf_ue/perf_preset_ini.py` writes untracked Config/Mac/MacEngine.ini; P1 canyon shade fill = MPC_City ShadeFill), clouds 20 km in all presets, tour commands `! sun <elev> <az>` and `! mpc <path> <name> <v>`,
+  headless `tools/perf_ue/rebuild_city.sh prep|ue`, sweeps `sweeps/gen_g7.py` (sun geometry, fill), `sweeps/gen_n7.py` (night windows), budgeted hold driver `sweeps/run_r04b.sh S|F|C`.
+- Order: `gpu_slot.sh capture --label look -- tools/perf_ue/rebuild_city.sh ue` -> `... run_r04b.sh S` (sweeps -> `$SCR/eval7/stills`, rank with sweep_report.py / key_fill_check.py / night_city_check.py) -> edit look_presets.json golden/night -> `run_r04b.sh F` (stills) -> `run_r04b.sh C` (clips) -> round_tests.py -> critic pack.
+
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
