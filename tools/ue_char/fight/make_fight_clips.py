@@ -46,7 +46,7 @@ def _smooth(x):
     x = min(max(x, 0.0), 1.0); return x * x * (3 - 2 * x)
 
 
-def compose_getup2(thug_src, fps=30.0, T1=0.42, X=0.55, lie_t=0.80, gu_start=0.80, floor=0.02):
+def compose_getup2(thug_src, fps=30.0, T1=0.40, X=0.55, lie_t=0.80, gu_start=0.80, floor=0.02):
     """Round 10: a sit-up get-up on the thug skeleton.  Phase 1 (0 - T1): from the knocked-down pose (thugKnockdown at lie_t) the three spine joints flex about their local X
     (+24 / +24 / +20 deg, neck -10: the torso props itself up on the elbows).  Phase 2: a smooth cross-fade (X s) into thugGetUp from gu_start (the crouch with the hands
     on the thighs) which then plays out to the guard stance.  A floor constraint lifts the pelvis so no foot / toe / hand / head joint goes below `floor` m.
@@ -56,8 +56,8 @@ def compose_getup2(thug_src, fps=30.0, T1=0.42, X=0.55, lie_t=0.80, gu_start=0.8
     for j, ang in (('spine', 24), ('spine1', 24), ('spine2', 20), ('neck', -10)):
         t_, q_, s_ = sit[j]; sit[j] = (t_, qmul(q_, qaxis((1, 0, 0), np.radians(ang))), s_)
     T = T1 + (thug_src.duration('thugGetUp') - gu_start)
-    times = np.arange(0.0, T + 1e-6, 1.0 / fps)
-    if times[-1] < T - 1e-6: times = np.append(times, T)
+    T = round(T * fps) / fps                       # Interchange refuses a clip whose length is not a whole number of 30 fps frames (r10: 1.02 s failed to import)
+    times = np.arange(0, int(round(T * fps)) + 1) / fps
     poses = []
     for t in times:
         P1 = _blend(lie, sit, _smooth(t / T1) if t < T1 else 1.0)
