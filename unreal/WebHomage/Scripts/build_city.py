@@ -341,12 +341,12 @@ if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured 
   float sm = 1.0 - smoothstep(0.012, 0.03, min(min(frac(q.x / 1.8), 1.0 - frac(q.x / 1.8)) * 1.8, min(frac(q.y / 1.2), 1.0 - frac(q.y / 1.2)) * 1.2)); // cast-panel joints
   c *= (0.82 + 0.34 * nA) * (1.0 + 0.16 * (nB - 0.5)) * (1.0 + 0.22 * (nC - 0.5) * gl) * (1.0 - 0.3 * sm * gl);
   float3 nv = normalize(wn);
-  Emis = CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
+  Emis = FillK * CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));   // (r10) FillK: per-instance scale of the shade fill (1.0 default; the red TKTS steps use 0.2: the fill's albedo^0.65 washes saturated colours out)
 }
 Rough = RoughP; Metal = MetalP; Op = t.a > AlphaCut ? 1.0 : 0.0;
 return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('vc', 'vc', None), ('Tint', 'vector', (1, 1, 1, 1)),
-         ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
+         ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('FillK', 'scalar', 1.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
          ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
@@ -385,9 +385,30 @@ return c;'''
     try:
         _cc0 = getattr(MP, 'MP_CUSTOM_DATA0', None) or getattr(MP, 'MP_CUSTOM_DATA_0', None); _cc1 = getattr(MP, 'MP_CUSTOM_DATA1', None) or getattr(MP, 'MP_CUSTOM_DATA_1', None)
         _car_code = PROP_CODE.replace('Rough = pR; Metal = pM; float3 nv = normalize(wn);', 'CC = (P == 1) ? 1.0 : 0.0; CCR = 0.03; if (P == 1) pR = 0.34; Rough = pR; Metal = pM; float3 nv = normalize(wn);')
+        _plate = '''
+if (P == 0) {
+  float2 pq = uv0; float band = step(0.8, pq.y);
+  float2 cell = floor(float2(pq.x * 8.0, (pq.y - 0.1) * 3.4)); float hc = frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453);
+  float ch = step(0.1, frac(pq.x * 8.0)) * step(frac(pq.x * 8.0), 0.8) * step(0.12, pq.y) * step(pq.y, 0.77) * step(0.4, hc);
+  float brd = 1.0 - step(0.07, min(min(pq.x, 1.0 - pq.x), min(pq.y, 1.0 - pq.y)));
+  float3 pc = float3(0.7, 0.69, 0.64);
+  pc = lerp(pc, float3(0.07, 0.11, 0.25), band);
+  pc = lerp(pc, float3(0.05, 0.05, 0.06), ch * (1.0 - band));
+  pc = lerp(pc, float3(0.14, 0.14, 0.15), brd);
+  c = pc; pR = 0.4;
+}
+'''
+        _car_code = _car_code.replace('if (nightk > 0.0) { if (P == 4)', _plate + 'if (nightk > 0.0) { if (P == 4)', 1)
+        assert 'float2 pq = uv0' in _car_code
         assert 'CCR = 0.03' in _car_code
+        _car_code = _car_code.replace('(P == 0 || P == 5 || P == 6', '(P == 5 || P == 6', 1)
         make_material('M_CityCar', None, _car_code, PROP_IN, PROP_OUT + [('CC', 1, _cc0), ('CCR', 1, _cc1)], world_normal=False, shading=unreal.MaterialShadingModel.MSM_CLEAR_COAT)
     except Exception as _ex: log('WARN M_CityCar not built:', _ex)
+    try:   # (r10, critic r09: S6 red steps sat 0.31 / V 227) the TKTS steps: no shade fill (it lifts G / B by albedo^0.65), rougher lacquer (less sun-sheen)
+        _mi = load(MAT + '/Inst/MI_tsTKTS')
+        if _mi:
+            mel.set_material_instance_scalar_parameter_value(_mi, 'FillK', 0.2); mel.set_material_instance_scalar_parameter_value(_mi, 'RoughP', 0.95); EAL.save_asset(MAT + '/Inst/MI_tsTKTS'); log('MI_tsTKTS tuned')
+    except Exception as _ex: log('WARN MI_tsTKTS:', _ex)
     try:   # (r10) the existing car instances (MI_veh_*, parent M_CityProp since r08) move to the clear-coated material
         if EAL.does_asset_exist(MAT + '/M_CityCar'):
             _cp = load(MAT + '/M_CityCar'); _nc = 0
