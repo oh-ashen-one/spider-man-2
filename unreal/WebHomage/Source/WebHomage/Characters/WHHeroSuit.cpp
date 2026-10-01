@@ -266,7 +266,8 @@ void UWHHeroSuitSubsystem::Tick(float DeltaTime)
 		{
 			const bool bT = PC->IsInputKeyDown(EKeys::T);
 			const bool bPad = PC->IsInputKeyDown(EKeys::Gamepad_DPad_Up);
-			const bool bShift = PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift);
+			// (macOS reports the GLOBAL modifier state: a Shift the owner holds in another game reached the first round-11 pawn run; a scripted run ignores modifiers)
+			const bool bShift = KeyScript.Num() == 0 && (PC->IsInputKeyDown(EKeys::LeftShift) || PC->IsInputKeyDown(EKeys::RightShift));
 			const bool bLB = PC->IsInputKeyDown(EKeys::Gamepad_LeftShoulder);
 			if (bT && !bPrevT) Cycle(bShift ? -1 : +1, bShift ? TEXT("key Shift+T") : TEXT("key T"));
 			if (bPad && !bPrevPad) Cycle(bLB ? -1 : +1, bLB ? TEXT("pad LB+D-pad Up") : TEXT("pad D-pad Up"));

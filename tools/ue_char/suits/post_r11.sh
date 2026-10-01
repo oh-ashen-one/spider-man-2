@@ -33,6 +33,7 @@ cp "$OUT/pawn/GameUserSettings_after_pawn.ini" "$E/" 2>/dev/null
 cp "$OUT/build_summary.txt" "$E/" 2>/dev/null; cp "$OUT/characters_build.log" "$E/characters_build.log" 2>/dev/null
 cp "$OUT/chain.log" "$E/" 2>/dev/null; cp "$OUT/gpu_util_before_stills.txt" "$E/" 2>/dev/null
 cp "$OUT"/stills/skins_perf.json "$E/stills_perf.json" 2>/dev/null
+grep -E "WH_SUIT|WH_STAGE_SHOT" "$OUT/stills/skins.log" > "$E/stills_suit_log.txt" 2>/dev/null
 cp "$P2_SCRATCH/r11/ipguard_4096.json" "$E/ipguard.json" 2>/dev/null; cp "$P2_SCRATCH/r11/seams_4096.json" "$E/seams.json" 2>/dev/null; cp "$P2_SCRATCH/r11/ocr_atlas.json" "$E/ocr_atlas.json" 2>/dev/null
 # --- swap latency on the pixels of the fixed-step movie
 [ -d "$OUT/pawn/pawn_frames" ] && python3 tools/ue_char/suits/analyze_swap.py "$OUT/pawn/pawn_frames" "$E/pawn_suit_log.txt" "$E/swap_latency.json"

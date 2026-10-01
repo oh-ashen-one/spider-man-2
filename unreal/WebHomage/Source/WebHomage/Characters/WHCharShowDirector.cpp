@@ -9,6 +9,7 @@
 #include "HAL/FileManager.h"
 #include "UnrealClient.h"
 #include "Camera/CameraActor.h"
+#include "Engine/PostProcessVolume.h"
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
@@ -29,6 +30,15 @@ void AWHCharShowDirector::BeginPlay()
 	FActorSpawnParameters P; P.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	Cam = GetWorld()->SpawnActor<ACameraActor>(ACameraActor::StaticClass(), GetActorTransform(), P);
 	if (Cam) Cam->GetCameraComponent()->bConstrainAspectRatio = false;
+	{   // round 11: -WHExposure=<EV bias> sets the exposure compensation of every post-process volume of the level (the skins stage runs a MANUAL exposure, so the bias is the only knob)
+		float EV = 0.f;
+		if (FParse::Value(FCommandLine::Get(), TEXT("WHExposure="), EV))
+			for (TActorIterator<APostProcessVolume> It(GetWorld()); It; ++It)
+			{
+				It->Settings.bOverride_AutoExposureBias = true; It->Settings.AutoExposureBias = EV;
+				UE_LOG(LogTemp, Display, TEXT("WH_EXPOSURE bias %.2f on %s"), EV, *It->GetName());
+			}
+	}
 	int32 Start = 0;
 	if (FParse::Value(FCommandLine::Get(), TEXT("WHCharShot="), Start))
 		for (int32 i = 0; i < FMath::Min(Start, Shots.Num()); ++i) T += Shots[i].Duration;

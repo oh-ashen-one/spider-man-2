@@ -38,7 +38,7 @@ def main():
         cv2.putText(lab, '%s' % e.get('name', sid).upper(), (14, 34), cv2.FONT_HERSHEY_DUPLEX, 1.0, (235, 235, 235), 1, cv2.LINE_AA)
         cv2.putText(lab, e.get('concept', '')[:78], (14, 62), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (170, 170, 170), 1, cv2.LINE_AA)
         for i, k in enumerate(('body', 'deep', 'accent', 'accent_d', 'stitch')):
-            c = pal[k]; x0 = body.shape[1] - 14 - (5 - i) * 34
+            c = design.srgb(pal[k]); x0 = body.shape[1] - 14 - (5 - i) * 34
             cv2.rectangle(lab, (x0, 14), (x0 + 28, 42), tuple(int(v * 255) for v in c[::-1]), -1)
         panels.append(np.concatenate([lab, body], 0))
     rows = []

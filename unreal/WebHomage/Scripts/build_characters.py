@@ -1216,7 +1216,13 @@ if 'skinsmap' in STEPS:
         skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
         spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
         ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
-        box((0, 0, -10), (600, 600, 0.2), 'M_Env_Sidewalk', 'Floor')                  # 600 m x 600 m: the pawn demo runs far
+        try:   # MANUAL exposure (EV100 0 + bias): auto exposure re-normalised every close-up (a dark suit filling the frame came out pastel); -WHExposure=<bias> overrides the bias at run time
+            ps = ppv.get_editor_property('settings')
+            ps.set_editor_property('override_auto_exposure_method', True); ps.set_editor_property('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL)
+            ps.set_editor_property('override_auto_exposure_bias', True); ps.set_editor_property('auto_exposure_bias', float(ARGS.get('skin_ev', -0.3)))
+            ppv.set_editor_property('settings', ps)
+        except Exception as ex: log('manual exposure not set', str(ex)[:120])
+        box((0, 0, -10), (4000, 4000, 0.2), 'M_Env_Sidewalk', 'Floor')                # 4 km x 4 km (the horizon is the floor's edge, not the sky atmosphere's ground); the pawn demo runs far
         if play:
             spawn(unreal.PlayerStart, (-4000, 0, 120), label='PlayerStart_Pawn')
             gm = unreal.load_class(None, '/Script/WebHomage.WebTravGameMode')
@@ -1261,8 +1267,9 @@ if 'skinsmap' in STEPS:
     ok1 = save_skins_map(TESTS + '/Char_Skins', shots)
     # ---- Char_SkinsPlay (the real pawn)
     skins_stage('SkinsPlay', True)
-    pshots = [sshot(None, KS.SIDE, 10.0, 520.0, 95.0, 10.0, 40.0, label='playable pawn, side (T swaps the suit)', player=True),
-              sshot(None, KS.THREE_QUARTER, 6.0, 480.0, 95.0, 20.0, 40.0, label='playable pawn, 3/4', player=True)]
+    # the pawn's origin is its capsule centre (0.95 m): aim 0; ORBIT with 0 deg/s = a world-fixed azimuth that follows the runner exactly (SIDE / THREE_QUARTER smooth the aim and lag a 9.8 m/s runner)
+    pshots = [sshot(None, KS.ORBIT, 10.0, 520.0, 0.0, 10.0, 40.0, 0.0, -90.0, label='playable pawn, side (T swaps the suit)', player=True),
+              sshot(None, KS.ORBIT, 6.0, 480.0, 0.0, 20.0, 40.0, 0.0, -45.0, label='playable pawn, front 3/4', player=True)]
     ok2 = save_skins_map(TESTS + '/Char_SkinsPlay', pshots)
     _json0.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,
                    first_still=0, first_orbit=N_STILL, first_pawn=0, map_stills=TESTS + '/Char_Skins', map_play=TESTS + '/Char_SkinsPlay'),

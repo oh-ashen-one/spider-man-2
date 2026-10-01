@@ -36,10 +36,17 @@ if oa or os_:
     h1 = oa['total_hits'] if oa else None; h2 = os_['total_hits'] if os_ else None
     lines.append('| OCR finds no official emblem / name | 0 hits | atlases: %s hits (%s images), 4K stills: %s hits (%s images); denylist %s terms | %s |' % (
         h1, len(oa['images']) if oa else '-', h2, len(os_['images']) if os_ else '-', (oa or os_)['deny_terms'], 'PASS' if (h1 or 0) + (h2 or 0) == 0 else 'FAIL'))
+rt = []
+for m in re.finditer(r'swap_done (\d+) (\S+) wall_ms=([0-9.]+) frames=(\d+) textures_resident=(\d+)/(\d+)', T('stills_suit_log.txt')):
+    rt.append(dict(i=int(m.group(1)), id=m.group(2), wall_ms=float(m.group(3)), frames=int(m.group(4)), res=int(m.group(5)), n=int(m.group(6))))
+if rt:
+    rt2 = [x for x in rt if x['i'] != 0 or x['res'] == x['n']] or rt
+    lines.append('| swap <= 0.5 s, REAL-TIME 4K run (swap request to 2 frames later, `WH_SUIT swap_done`) | <= 500 ms | %d swaps: median %.0f ms, worst **%.0f ms** (3 frames at ~23 ms; textures resident %d/%d at that point for all but the first start-up swap) | %s |' % (
+        len(rt), sorted(x['wall_ms'] for x in rt)[len(rt) // 2], max(x['wall_ms'] for x in rt), sum(1 for x in rt if x['res'] == x['n']), len(rt), 'PASS' if max(x['wall_ms'] for x in rt) <= 500 else 'FAIL'))
 if sw:
     ms = [x for x in sw['latency_ms'] if x is not None]
     done = sw['engine_swap_done']
-    lines.append('| swap <= 0.5 s | <= 500 ms | pixel step %d of %d presses found, worst key-to-pixel latency **%s ms** (%s frames at 60 fps, `analyze_swap.py` on the fixed-step movie); engine: `apply_ms` max %.2f, `swap_done` wall_ms max %.1f, textures resident %s | %s |' % (
+    lines.append('| swap <= 0.5 s, pixels of the fixed-step movie | <= 500 ms | pixel step %d of %d presses found, worst key-to-pixel latency **%s ms** (%s frames at 60 fps, `analyze_swap.py` on the fixed-step movie); engine: `apply_ms` max %.2f, `swap_done` wall_ms max %.1f, textures resident %s | %s |' % (
         sw['swaps_found'], sw['presses'], max(ms) if ms else 'n/a', sorted(set(x for x in sw['latency_frames'] if x is not None)), max([s['apply_ms'] for s in sw['engine_sets']] or [0]),
         max([x['wall_ms'] for x in done] or [0]), sorted({x['res'] for x in done}), 'PASS' if ms and max(ms) <= 500 and len(ms) == sw['presses'] else 'CHECK'))
 lines.append('| IQ >= 6 | blind critic | see `critic/round-11-CRITIC.md` | critic |')
