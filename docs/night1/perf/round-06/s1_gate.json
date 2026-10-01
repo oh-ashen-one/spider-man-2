@@ -1,0 +1,26 @@
+{
+ "ref": "/Users/midir/sm2-n1/_scratch/perf/r03/before",
+ "ref_recess_luma": 17.31,
+ "tests": {
+  "/Users/midir/sm2-n1/_scratch/perf/r06/final": {
+   "crop_ssim": 0.9294,
+   "recess_luma": 17.97,
+   "recess_ratio": 1.038,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.5,
+   "full_ssim": 0.9771,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r05/final": {
+   "crop_ssim": 0.9292,
+   "recess_luma": 29.63,
+   "recess_ratio": 1.712,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.7,
+   "full_ssim": 0.9709,
+   "pass_crop": false,
+   "pass_recess": false
+  }
+ }
+}

@@ -1,0 +1,186 @@
+{
+ "ref": "/Users/midir/sm2-n1/_scratch/perf/r03/before",
+ "ref_recess_luma": 17.31,
+ "tests": {
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/base": {
+   "crop_ssim": 0.9048,
+   "recess_luma": 18.0,
+   "recess_ratio": 1.04,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.8,
+   "full_ssim": 0.9733,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/base2": {
+   "crop_ssim": 0.917,
+   "recess_luma": 17.99,
+   "recess_ratio": 1.039,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.3,
+   "full_ssim": 0.9744,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/spga": {
+   "crop_ssim": 0.9101,
+   "recess_luma": 17.94,
+   "recess_ratio": 1.036,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.5,
+   "full_ssim": 0.9742,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/spgb": {
+   "crop_ssim": 0.9303,
+   "recess_luma": 18.0,
+   "recess_ratio": 1.039,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.6,
+   "full_ssim": 0.9766,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/spgc": {
+   "crop_ssim": 0.8936,
+   "recess_luma": 17.83,
+   "recess_ratio": 1.03,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.4,
+   "full_ssim": 0.9657,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/spgd": {
+   "crop_ssim": 0.929,
+   "recess_luma": 17.95,
+   "recess_ratio": 1.037,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.5,
+   "full_ssim": 0.9767,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/vsm0": {
+   "crop_ssim": 0.9289,
+   "recess_luma": 17.95,
+   "recess_ratio": 1.037,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.6,
+   "full_ssim": 0.9766,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/vsme": {
+   "crop_ssim": 0.9057,
+   "recess_luma": 18.03,
+   "recess_ratio": 1.041,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.6,
+   "full_ssim": 0.9735,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/tsr200": {
+   "crop_ssim": 0.908,
+   "recess_luma": 17.96,
+   "recess_ratio": 1.037,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.3,
+   "full_ssim": 0.9731,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/npe1": {
+   "crop_ssim": 0.9302,
+   "recess_luma": 18.06,
+   "recess_ratio": 1.043,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.8,
+   "full_ssim": 0.9829,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/asfl": {
+   "crop_ssim": 0.9396,
+   "recess_luma": 18.03,
+   "recess_ratio": 1.041,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.8,
+   "full_ssim": 0.9841,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/k0": {
+   "crop_ssim": 0.9273,
+   "recess_luma": 18.0,
+   "recess_ratio": 1.039,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 69.5,
+   "full_ssim": 0.9764,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/k0b": {
+   "crop_ssim": 0.913,
+   "recess_luma": 18.06,
+   "recess_ratio": 1.043,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 70.4,
+   "full_ssim": 0.9738,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/cut": {
+   "crop_ssim": 0.8827,
+   "recess_luma": 23.28,
+   "recess_ratio": 1.345,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 79.0,
+   "full_ssim": 0.9486,
+   "pass_crop": false,
+   "pass_recess": false
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/ktv0": {
+   "crop_ssim": 0.9298,
+   "recess_luma": 21.75,
+   "recess_ratio": 1.256,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 71.4,
+   "full_ssim": 0.9736,
+   "pass_crop": false,
+   "pass_recess": false
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/koct4": {
+   "crop_ssim": 0.8803,
+   "recess_luma": 19.16,
+   "recess_ratio": 1.107,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 77.0,
+   "full_ssim": 0.954,
+   "pass_crop": false,
+   "pass_recess": false
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/d48": {
+   "crop_ssim": 0.8703,
+   "recess_luma": 18.19,
+   "recess_ratio": 1.051,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 71.4,
+   "full_ssim": 0.9594,
+   "pass_crop": false,
+   "pass_recess": true
+  },
+  "/Users/midir/sm2-n1/_scratch/perf/r06/st/d64": {
+   "crop_ssim": 0.8522,
+   "recess_luma": 19.0,
+   "recess_ratio": 1.098,
+   "crop_meanY_ref": 71.0,
+   "crop_meanY_test": 73.3,
+   "full_ssim": 0.9502,
+   "pass_crop": false,
+   "pass_recess": true
+  }
+ }
+}
