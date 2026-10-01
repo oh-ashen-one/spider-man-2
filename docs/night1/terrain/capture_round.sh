@@ -21,6 +21,7 @@ want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 mkdir -p "$TMP" "$ROUND/stills"
 gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1; }
 IDS=$(python3 -c "import json;print(' '.join(s['id'] for s in json.load(open('$HERE/shots.json'))['shots']))")
+BASE_IDS="${BASE_IDS:-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"   # baseline (city alone) stills only for the pair views
 if want warm; then
   echo "== warm-up (shader compile, not kept)  $(gpu)"
   rm -rf "$TMP/warm"
@@ -30,7 +31,7 @@ still() {  # <prefix> <id>
   local PRE="$1" ID="$2" NAME="$1$2"
   echo "== still $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
-  RUN "$TMP/$NAME" -map "/Game/Terrain/Maps/$NAME" -res 3840x2160 -shots "${STILL_AT:-4}" -quit "${STILL_QUIT:-5.2}" -name "$NAME" -timeout 1500 -- -benchmark -fps=30 | tail -2
+  RUN "$TMP/$NAME" -map "/Game/Terrain/Maps/$NAME" -res 3840x2160 -shots "${STILL_AT:-2}" -quit "${STILL_QUIT:-3}" -name "$NAME" -timeout 1500 -- -benchmark -fps=30 | tail -2
   for p in "$TMP/$NAME"/${NAME}_*.png; do
     [ -f "$p" ] || continue
     local OUT="$ROUND/stills/$ID.jpg"; [ "$PRE" = VB_ ] && OUT="$ROUND/stills/base_$ID.jpg"
@@ -39,7 +40,7 @@ still() {  # <prefix> <id>
 }
 if want stills; then
   for ID in $IDS; do still V_ "$ID"; done
-  for ID in $IDS; do still VB_ "$ID"; done
+  for ID in $BASE_IDS; do still VB_ "$ID"; done
 fi
 movie() {  # <name> <script.json> <quit seconds>
   local NAME="$1" JSON="$2" Q="$3"
