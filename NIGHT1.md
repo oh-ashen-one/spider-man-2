@@ -53,3 +53,7 @@ Continuity between fresh builders comes from `docs/night1/<piece>/HANDOFF.md`, r
 ## Overnight resume (owner, 2026-09-29 23:55)
 
 Weekly usage was at 50 %. Builders lean on **Sonnet 5.5 xhigh** for every piece; **Opus 5.5 high** builds the traversal flips (owner priority, from round 11) and runs every critic (never skipped); **Fable 5.1** only for a stalled/oscillating piece or final acceptance. Up to 3 rounds per piece tonight (perf 2).
+
+## Day 2 resume (owner, 2026-09-30 ~10:30)
+
+Weekly usage at 80 %. Owner (corrected, same morning): quality first — **split building: Opus 5.5 high for traversal/flips, combat, perf, integration; Sonnet 5.5 xhigh for city, life, look, character assets, pipelines**; **Opus 5.5 high for every blind critic** (never skipped); Fable 5.1 only for stall diagnosis/final acceptance. The three rounds already started this morning keep their Sonnet builders. One round per piece, three pieces at a time (traversal r13 renders, characters r6 engine check, perf r3 shipped preset), engine cap hard 2, new safety rules from oh-ashen-one/agents-md#4 (merged).

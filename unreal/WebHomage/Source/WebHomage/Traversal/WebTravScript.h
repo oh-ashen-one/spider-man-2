@@ -48,6 +48,10 @@ public:
 	bool AutoChainAt(double T, double& OutReleasePhase, double& OutGap, double& OutRepressVz) const;
 	/** autoChain "trickEvery": N > 0 = press trick on every Nth release (counting from the first). */
 	int32 TrickEveryAt(double T) const;
+	/** Round 10 autoChain "skyEvery": N > 0 = every Nth release is a SKY LAUNCH (jump-release + trick), `skyTricks` tricks chained
+	 *  in the air, the next web pressed once falling below `skyRepressH` m over the floor (or `skyMax` s after the release);
+	 *  the sky release waits for swing phase `skyPhase` (higher on the rising front than `releasePhase`). */
+	int32 SkyEveryAt(double T, double& OutRepressH, int32& OutTricks, double& OutMax, double& OutPhase) const;
 	int32 Seed() const { return SeedValue; }
 
 	/** Held input at script time T (seconds since the first traversal tick). Look is returned as a rate (rad/s). */
@@ -66,7 +70,10 @@ private:
 		TOptional<FVector2D> Move, Look;
 		TOptional<double> Heading; // world yaw (deg) the stick steers toward; NaN-free: set "heading": null to clear
 		TOptional<bool> Swing, Jump, Sprint, Zip, Drop, Quick, AutoChain, Trick;
+		TOptional<FString> Flip; // round 11: flip program list for the next tricks ("backDouble,corkscrew"; "" = automatic)
 		int32 TrickEvery = 0;
+		int32 SkyEvery = 0, SkyTricks = 2;
+		double SkyRepressH = 18, SkyMax = 3.0, SkyPhase = 0.8;
 		double ReleasePhase = 0.45, Gap = 0.3, RepressVz = 1e9;
 	};
 	void Flush();
