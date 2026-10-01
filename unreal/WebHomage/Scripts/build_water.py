@@ -10,15 +10,20 @@
 #                  water_noise.png  4 tileable band-limited noise channels (gusts / slicks / streaks / foam cells / glitter facets)
 #                  shore_dist.png   distance (m, 0..400 -> 0..255) from every water point to the nearest land, 8 m/px, from the browser's
 #                                   own land polygons (tools/water/dump_shores.mjs: layout.js LAND_POLY + farshore.js FAR_LANDS)
+#                  water_slope.png  (r02) tileable random-phase wind-sea slope spectrum, 2 realizations (tools/water/water_inputs.py)
+#                  water_contact.png + .json  (r02) distance to the nearest place where the city export's geometry crosses the water plane
+#                                   (seawalls, bulkheads, pier piles, bridge piers), island shore box, ~0.9 m/px; export = $SM2_WATER_EXPORT
+#                                   (else $SM2_CITY_EXPORT / the Manhattan build's export)
 #       ue       headless commandlet (-nullrhi) running this file inside Unreal
 #   * inside Unreal (-run=pythonscript -script=<this file>):
 #       /Game/Water/Textures/T_WaterNoise, T_ShoreDist, /Game/Water/Meshes/SM_WaterGrid
 #       /Game/Water/Materials/M_RiverWater   Single Layer Water material:
 #           vertex: the browser's 12 Gerstner waves (src/world/waves.js, same constants), evaluated at the camera-centred grid vertex
 #                   (grid follows the camera through WPO; waves shorter than ~4 grid spacings fade out exactly like waves.js waveDisp)
-#           pixel:  analytic slopes of the same 12 waves + 12 short capillary waves, filtered by the pixel footprint (resolved -> normal,
-#                   unresolved slope variance -> roughness, Cox-Munk), wind gust / slick / streak fields, contact foam where the surface
-#                   meets anything below the water line (SceneDepthWithoutWater: seawalls, bulkheads, piles, piers), sparse whitecaps,
+#           pixel:  (r02) analytic slopes of the 5 longest waves + 4 layers of the baked wind-sea slope spectrum (rotated, scrolled at
+#                   their phase speed; mip bias +1), filtered by the pixel footprint (resolved -> normal, unresolved slope variance ->
+#                   roughness, Cox-Munk), facets whose reflection would point below the horizon bent up, wind gust / slick / streak fields,
+#                   contact foam where the surface meets geometry crossing the water line (baked contact map + SceneDepthWithoutWater), sparse whitecaps,
 #                   sun glitter facets (emissive, sun = SkyAtmosphere light 0), turbid-river optics as SLW scattering / absorption
 #                   coefficients (olive-grey Hudson, siltier within ~100 m of the shore)
 #       /Game/Water/Maps/Water_River        sublevel with the water actor (no shadows, not in Lumen scene / ray tracing, no collision)
@@ -26,7 +31,10 @@
 #       Water_River is added (always loaded) to /Game/Maps/Manhattan, _Midday, _Night, _View_S1|S2|S4
 #       /Game/Water/Maps/Water_View_RiverLow[_Midday]   golden / midday + the low river camera (docs/night1/water/views.json)
 #       /Game/Water/Maps/Water_View_RiverLow_Dolly      same camera on an InterpToMovement dolly (16 s, 2 m/s, at the view point at t = 6 s)
-#       /Game/Water/Maps/Water_Perf_<RiverLow|S4>_Base  perf baseline: same view, P1's old flat water instead of this water
+#       /Game/Water/Maps/Water_Perf_<RiverLow|S4|RiverSun>_Base  perf baseline: same view, P1's old flat water instead of this water
+#       (r02) /Game/Water/Maps/Water_View_RiverSun[_Dolly], Water_View_HarbourHigh; /Game/Maps/Manhattan_WP (island piece) gets the water
+#       actor directly (not spatially loaded); tuning variants: SM2_WATER_VARIANTS='{"A": {"ChopK": 1.4, "_views": ["river_sun"]}}' ->
+#       /Game/Water/Variants/MI_Water_A + Water_Var_A_<view>. Material scalar parameters: PARAMS below (+ GlitterK, Dbg).
 import os, sys, json, math, subprocess, time
 
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/water-ab-opus/unreal/WebHomage/Scripts'
