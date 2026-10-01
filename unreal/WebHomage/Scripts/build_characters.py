@@ -1232,7 +1232,7 @@ if 'skinsmap' in STEPS:
             if gm: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world().get_world_settings().set_editor_property('default_game_mode', gm)
             else: log('WebTravGameMode missing: the playable pawn will not spawn')
             return None
-        spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
+        spawn(unreal.PlayerStart, (-130000, -130000, 120), label='PlayerStart_OffStage')   # round 11: 1.8 km away (at 60 m the default pawn showed as a dark post on the horizon in the orbit movie)
         only1 = unreal.LightingChannels(); only1.set_editor_property('channel0', False); only1.set_editor_property('channel1', True)
         for fi, fyaw in enumerate((0, 90, 180, 270)):
             fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'HeroFill_%d' % fi)

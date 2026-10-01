@@ -3,45 +3,53 @@
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
 Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 11 author: Sonnet 5.5 (2026-10-01 afternoon).
-Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `tools/ue_char/suits/chain_r11.sh` / `build_fight.sh`, see Commands).
+Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `build_fight.sh`, see Commands).
 Scope since the director's first-pass plan (`git show origin/Opus-5.5-Loop-Night-1:docs/night1/director/PLAN-firstpass.md`, piece G): **the HERO ONLY**. Thugs, fight, crowd are PAUSED (their rounds 05 - 10 below stay as the record).
 
-## STATE AT THE END OF THIS ROUND (read this first)
+## STATE AT THE END OF ROUND 11 (read this first)
 
-**Interim (2026-10-01 15:15, session still running):** round 11 was resumed after the 14:22 interruption (the owner's GTA V froze WindowServer; the engine of the old final chain died with it). Findings since:
-- the manual-exposure stills of `chain_r11_final.sh` came out BLACK: AEM_Manual = camera EV100 9.9 minus the bias and the stage sun is 8 lux. Measured on the real map (1080p, tessera / cinder front): bias +9 -> bare-floor luma 121, bias +10 -> 172 (auto exposure's level, 170). The stage default is now **+10.0** (`build_characters.py`, `skin_ev`); every run also passes `-WHExposure=10.0`.
-- `tools/ue_char/suits/chain_r11_final2.sh` is the ONE hold that produces the final evidence (build skins + skinsmap, 4K stills, pawn swap movie, persistence relaunch, settings-menu shot, orbit movie; optional EV calibration; stops after 2 engine crashes). Output dir `$P2_SCRATCH/r11/chain4`. It was queued behind other agents and the owner's GTA V reservation (the lock refuses launches while a CrossOver game runs: by design).
-- the swap analyser was rewritten (`analyze_swap.py`: colour histogram of the hero's pixels): on the earlier pawn movie all 7 T presses were found 2 frames (33 ms) after the injection.
-- if `round-11/CAPTURES.md` does not exist yet, the hold has not run: start it again with
-  `EV=10.0 nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r11_final2.sh $P2_SCRATCH/r11/chain4 > $P2_SCRATCH/r11/chain4/gpu_wrapper.log 2>&1 < /dev/null &` (record the PID), then `STILLS=stills_a bash tools/ue_char/suits/post_r11.sh $P2_SCRATCH/r11/chain4`.
+Round 11 is DONE except the blind critic's verdict: all acceptance numbers are in `round-11/SPEC_CHECK.md`, what was captured (and how, at which resolution) in `round-11/CAPTURES.md`, the suits in `round-11/SUITS.md`, the owner's swatch sheet is `round-11/SWATCH_SHEET.jpg`.
 
-### What exists (all CPU-verified; the engine side is compiled but its first run is the chain above)
+| acceptance line (PLAN-firstpass section 4) | result |
+|---|---|
+| >= 6 ORIGINAL suits from the parameterised Tessera generator | **8** (tessera, verdant, plum, cinder, glacier, ash, saffron, sage); IP guard P1 - P7 pass, min palette distance 47.1, atlases OCR 0 hits |
+| in-game swap: key cycle + `wh.Suit`, persisted in WHSettings, <= 0.5 s | T / Shift+T, D-pad Up, console, settings-menu row; real-time 4K swaps 64 - 68 ms (3 frames), 7 of 7 injected T presses visible 2 frames (33 ms) later on the movie pixels; the pawn run ended in verdant, the relaunch and the menu both read verdant from `GameUserSettings.ini` |
+| swatch sheet for the owner | `round-11/SWATCH_SHEET.jpg` (front + back + chest of every suit) |
+| no seam > 40 px, 4K stills | texture-level seam runs <= 4.6 px; a small stair-step at the left-chest sash end is visible in the 4K chest close-ups (UV island boundary, see CAPTURES) |
+| critic pack | `/Users/midir/sm2-n1/_scratch/critic-P2-r11/pack` (+ `pack.key.json` outside it), built from `pairs.json` by `abpack.py`; no critic verdict yet: IQ >= 6 is the critic's line |
+
+What happened in the resume (2026-10-01 14:40 - 16:00): the owner's GTA V reservation blocked the lock twice (by design, never worked around); the manual-exposure stills of the interrupted chain were BLACK (AEM_Manual = camera EV100 9.9 minus the bias, stage sun 8 lux): measured bias +9 -> floor luma 121, +10 -> 172 (auto exposure's 170). The stage default is now **+10.0** (`build_characters.py`, `skin_ev`) and every run passes `-WHExposure=10.0` (`evidence/exposure_calib.txt`).
+`tools/ue_char/suits/chain_r11_final2.sh` is the ONE hold that produces all the evidence (build skins + skinsmap -> [EV calibration] -> 4K stills -> pawn swap movie -> persistence relaunch -> settings-menu shot -> orbit movie; stops after 2 engine crashes; 600 s of lock hold). `tools/ue_char/suits/post_r11.sh <chain dir>` then fills `round-11/` (stills, sheet, clips trimmed, evidence, swap analysis, OCR, `SPEC_CHECK.md`).
+The orbit movie of the main chain showed the default pawn of `Char_Skins` as a dark post on the horizon (its off-stage PlayerStart was 60 m away): the start is now 1.8 km away (`build_characters.py`) and the orbit was re-shot in a second hold (`$P2_SCRATCH/r11/chain5`, `STEPS="build orbit"`); see CAPTURES.md for whether that re-shot orbit is the committed one.
+
+### What exists (all verified in the real game this round)
 
 | piece | file |
 |---|---|
-| generator: Tessera's `paint(..., style)` (DEFAULT_STYLE = Tessera, bit-identical to round 08 at 1024 px: max diff 0) | `tools/ue_char/suit8/design.py` |
-| suit list, 8 original styles | `tools/ue_char/suits/suits.json` (tessera, verdant, plum, cinder, glacier, ash, saffron, sage) |
+| generator: Tessera's `paint(..., style)` (DEFAULT_STYLE = Tessera, bit-identical to round 08 at 1024 px: max diff 0, `test_regression.py`) | `tools/ue_char/suit8/design.py` |
+| suit list, 8 original styles | `tools/ue_char/suits/suits.json` |
 | maps per suit (4096 px, ~45 s each; Tessera 8192 from `hero_suit_r8.py`) | `python3 tools/ue_char/suits/gen_suits.py [--only id] [--hero] [--n 4096]` -> `art/night1/characters/hero/suits/<id>_{basecolor,normal,orm}.png` (git-ignored) |
 | IP guard: colour-blocking rules P1-P5, structural + palette uniqueness P6, glyph whitelist P7; OCR of atlases / stills | `tools/ue_char/suits/ip_guard.py palette|ocr` (numbers in `round-11/SPEC_CHECK.md`) |
-| UV seam check (spec CH18, "no seam > 40 px at 4K") | `tools/ue_char/eval/suit_seams.py` |
-| CPU design-aid renders / swatch | `tools/ue_char/suits/swatch_cpu.py` (not evidence: the engine sheet is `swatch_sheet.py`) |
+| UV seam check (spec CH18) | `tools/ue_char/eval/suit_seams.py` |
+| CPU design-aid renders / swatch | `tools/ue_char/suits/swatch_cpu.py` (not evidence); engine sheet: `swatch_sheet.py` |
 | engine content steps `skins` (textures NeverStream, `MI_HeroSuit_<id>`, `MI_HeroLens_<id>`, data asset `/Game/Characters/Hero/Suits/DA_HeroSuits`) and `skinsmap` (`Char_Skins`, `Char_SkinsPlay`) | `unreal/WebHomage/Scripts/build_characters.py` (end of file) |
 | the swap | `Source/WebHomage/Characters/WHHeroSuit.{h,cpp}`: `UWHHeroSuitSubsystem` (UTickableWorldSubsystem): T / Shift+T, gamepad D-pad Up (LB + D-pad Up = back), console `wh.Suit <n|id>` / `wh.SuitNext` / `wh.SuitPrev`, applies to the player pawn's `SpiderSuit` slot (+ `Lens`) and to every other mesh wearing a hero suit |
 | persistence | `Core/WHSettings.{h,cpp}`: `SuitIndex`, `SuitId`, `LoadSuit()`, `SaveSuit()`; keys `HeroSuit`, `HeroSuitId` in `GameUserSettings.ini [WebHomage.Settings]`; the in-play swap saves at once; "Reset defaults" keeps the suit |
 | settings menu row "Suit" (section HERO) | `Core/WHSettingsMenu.cpp` |
-| capture director: `FWHShot.Suit`, `FWHShot.bTargetPlayer` | `Characters/WHCharShowDirector.*` |
-| automation flags | `-WHSuit=<n|id>`, `-WHSuitScript=t:n,...`, `-WHSuitKeyScript=t,...` (real T key through the player controller), `-WHSuitPersist` (see the header of `WHHeroSuit.h`) |
+| capture director: `FWHShot.Suit`, `FWHShot.bTargetPlayer`, `-WHExposure=<EV bias>` | `Characters/WHCharShowDirector.*` |
+| automation flags | `-WHSuit=<n|id>`, `-WHSuitScript=t:n,...`, `-WHSuitKeyScript=t,...` (real T key through the player controller; a scripted run ignores the GLOBAL macOS Shift state, which leaked in from the owner's other game), `-WHSuitPersist` (see the header of `WHHeroSuit.h`) |
+| swap latency on pixels | `tools/ue_char/suits/analyze_swap.py` (colour histogram of the hero's pixels; matches each logged key injection with the first swap step) |
+| exposure calibration helper | `tools/ue_char/suits/ev_calib.py` (bare-floor luma, secant search for 170) |
 
 The playable pawn (`AWebTravCharacter`, P3) is NOT edited: its `SetupHeroMesh` still loads `MI_Hero_Suit`; the subsystem re-applies the chosen suit to the player's mesh every frame and scans the world every 0.5 s.
 Integration note for the integrator: the module needs no new Build.cs dependency (the suit list is a data asset, not an asset-registry scan). `Core/WHSettingsMenu.cpp` got one section (a `ChoiceRow`); `Core/WHSettings.*` got the two fields + two methods.
 
 ## Next steps (priority order)
 
-1. If the chain has not run: run it (above), then the post-processing list. Look at the 4K stills: IQ of every suit, any smear / seam, glyph legibility, lens tint.
-2. Critic verdict -> fix the single biggest gap (probably look: flat colour fields, hood-vs-body contrast on light suits `glacier` / `sage`, glyph size).
-3. Whole-mesh suits (PLAN: "whole-mesh suits later"): a style can already change colours / patterns only; a different silhouette (cape, collar, gauntlets) needs Blender geometry on the hero rig.
-4. Per-suit emissive trim (glow lines) needs an emissive input in `M_Char_Suit` (not built).
-5. Hero model / animation items from rounds 08 - 10 (head brow / nose volume, run start / stop / turn) are untouched; the hero-only first pass also owes P3 the section-5 clips of `SPEC.md`.
+1. Read the critic verdict for round 11 (`critic/round-11-CRITIC.md` once written) and fix its single biggest gap. Candidates I saw myself: (a) the stair-step at the left-chest sash end of every suit (a UV island boundary of the shared atlas, visible in the 4K chest close-ups: fix by making the sash / net layout continuous across that boundary in `design.py` or by padding the atlas islands), (b) the back views are dim (the key sun is in front: add a rim / back fill on the stage), (c) the first suit's 8192 px Tessera maps stream in visibly for ~0.4 s at game start (consider 4096 for Tessera, or touching the textures at subsystem init), (d) `glacier` / `sage` are close to the white end at the fixed exposure.
+2. Whole-mesh suits (PLAN: "whole-mesh suits later"): a style can already change colours / patterns only; a different silhouette (cape, collar, gauntlets) needs Blender geometry on the hero rig.
+3. Per-suit emissive trim (glow lines) needs an emissive input in `M_Char_Suit` (not built).
+4. Hero model / animation items from rounds 08 - 10 (head brow / nose volume, run start / stop / turn) are untouched; the hero-only first pass also owes P3 the section-5 clips of `SPEC.md`.
 
 ## Rules that still hold
 
@@ -64,16 +72,17 @@ python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2
 ```
 Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`; count engines with `pgrep -x UnrealEditor`.
 
-## Post-processing after the chain (CPU)
+## Re-running the evidence (one lock hold, ~10 min, only when the owner is not playing)
 
 ```
-OUT=$P2_SCRATCH/r11/chain; R=docs/night1/characters/round-11
-cp -r $OUT/stills/skin_*_4k.jpg $R/stills/            # (size-check: commit the front + chest 4K, the rest as 1080p)
-python3 tools/ue_char/suits/swatch_sheet.py $R/stills $R/SWATCH_SHEET.jpg
-python3 tools/ue_char/suits/analyze_swap.py $OUT/pawn/pawn_frames $OUT/pawn/suit_log.txt $R/evidence/swap_latency.json
-python3 tools/ue_char/suits/ip_guard.py ocr $R/evidence/ocr_stills.json $R/stills/skin_*_front_4k.jpg ...
-python3 tools/ue_char/suits/spec_check_r11.py $R > $R/SPEC_CHECK.md
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters
+OUT=$P2_SCRATCH/r11/chain4; mkdir -p $OUT
+EV=10.0 nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r11_final2.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &     # record the PID; STEPS="build orbit" runs a subset; without EV= the chain calibrates the exposure first
+# then (CPU): ORBIT_OUT=<dir whose orbit3/ is committed> STILLS=stills_a bash tools/ue_char/suits/post_r11.sh $OUT
+python3 tools/ue_char/suits/make_pairs_r11.py docs/night1/characters/round-11 /Users/midir/sm2-n1/_scratch/critic-P2-r11/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r11/pack /Users/midir/sm2-n1/_scratch/critic-P2-r11/pairs.json
 ```
+`round-11/evidence/ocr_review.txt` is hand-written (the one OCR false positive); re-check it after a new OCR run.
 
 ## Older rounds (hero / enemies / crowd, now paused)
 

@@ -116,7 +116,7 @@ fi
 if has orbit; then
   log "orbit movie (1080p -movie)"
   FIRST=$(python3 -c "import json;print(json.load(open('$SJ'))['first_orbit'])")
-  Scripts/run_game.sh "$OUT/orbit3" -map $MAP -res 1920x1080 -quit 12.6 -name orbit -movie -exec "r.MotionBlurQuality 0" -timeout 1200 -- -WHCharShot=$FIRST -WHExposure=$EV < /dev/null | tail -3
+  Scripts/run_game.sh "$OUT/orbit3" -map $MAP -res 1920x1080 -quit 12.6 -name orbit -movie -exec "r.MotionBlurQuality 0,r.ScreenPercentage 100" -timeout 1200 -- -WHCharShot=$FIRST -WHExposure=$EV < /dev/null | tail -3
   check "$OUT/orbit3" orbit
   grep -E "WH_SUIT" "$OUT/orbit3/orbit.log" > "$OUT/orbit3/suit_log.txt" 2>/dev/null
 fi

@@ -35,7 +35,8 @@ if sm:
 if oa or os_:
     h1 = oa['total_hits'] if oa else None; h2 = os_['total_hits'] if os_ else None
     lines.append('| OCR finds no official emblem / name | 0 hits | atlases: %s hits (%s images), 4K stills: %s hits (%s images); denylist %s terms | %s |' % (
-        h1, len(oa['images']) if oa else '-', h2, len(os_['images']) if os_ else '-', (oa or os_)['deny_terms'], 'PASS' if (h1 or 0) + (h2 or 0) == 0 else 'FAIL'))
+        h1, len(oa['images']) if oa else '-', h2, len(os_['images']) if os_ else '-', (oa or os_)['deny_terms'],
+        'PASS' if (h1 or 0) + (h2 or 0) == 0 else ('PASS after review (`evidence/ocr_review.txt`: %s)' % T('ocr_review.txt').strip().replace('\n', ' ') if T('ocr_review.txt').strip() else 'FAIL')))
 rt = []
 for m in re.finditer(r'swap_done (\d+) (\S+) wall_ms=([0-9.]+) frames=(\d+) textures_resident=(\d+)/(\d+)', T('stills_suit_log.txt')):
     rt.append(dict(i=int(m.group(1)), id=m.group(2), wall_ms=float(m.group(3)), frames=int(m.group(4)), res=int(m.group(5)), n=int(m.group(6))))

@@ -23,13 +23,16 @@ for f in "$S"/skin_*_4k.jpg; do
 done
 python3 tools/ue_char/suits/swatch_sheet.py "$S" "$R/SWATCH_SHEET.jpg"
 # --- clips (orbit trimmed to its 12 s: the director loops into the stills shots after that)
-[ -f "$OUT/pawn3/pawn.mp4" ] && cp "$OUT/pawn3/pawn.mp4" "$R/swap_pawn_T_key.mp4"
-[ -f "$OUT/orbit3/orbit.mp4" ] && ffmpeg -loglevel error -y -i "$OUT/orbit3/orbit.mp4" -t 12.0 -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart "$R/orbit_all_suits.mp4"
+# (the pawn movie: the first 0.1 s are the director's camera settling; the orbit movie: the first 0.6 s show the first suit's 8192 px maps still streaming in, so both are trimmed)
+[ -f "$OUT/pawn3/pawn.mp4" ] && ffmpeg -loglevel error -y -ss 0.1 -i "$OUT/pawn3/pawn.mp4" -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart "$R/swap_pawn_T_key.mp4"
+ORB="${ORBIT_OUT:-$OUT}"      # ORBIT_OUT = a later run dir whose orbit3/ replaces the orbit of this chain
+[ -f "$ORB/orbit3/orbit.mp4" ] && ffmpeg -loglevel error -y -ss 0.6 -i "$ORB/orbit3/orbit.mp4" -t 11.4 -c:v libx264 -pix_fmt yuv420p -crf 20 -movflags +faststart "$R/orbit_all_suits.mp4"
 ls -la "$R"/*.mp4 | awk '{print $5, $9}'
 for f in "$OUT"/persist3/persist_*.png; do [ -f "$f" ] && ffmpeg -loglevel error -y -i "$f" -q:v 3 "$R/persist_start.jpg" && break; done
 for f in "$OUT"/menu3/menu_*.png; do [ -f "$f" ] && ffmpeg -loglevel error -y -i "$f" -q:v 3 "$R/settings_menu_suit_row.jpg" && break; done
 # --- evidence copies
-for n in pawn3 persist3 menu3 orbit3; do [ -f "$OUT/$n/suit_log.txt" ] && cp "$OUT/$n/suit_log.txt" "$E/${n%3}_suit_log.txt"; done
+for n in pawn3 persist3 menu3; do [ -f "$OUT/$n/suit_log.txt" ] && cp "$OUT/$n/suit_log.txt" "$E/${n%3}_suit_log.txt"; done
+[ -f "$ORB/orbit3/suit_log.txt" ] && cp "$ORB/orbit3/suit_log.txt" "$E/orbit_suit_log.txt"
 cp "$OUT/pawn3/GameUserSettings_after_pawn.ini" "$E/" 2>/dev/null
 cp "$OUT/characters_build4.log" "$E/characters_build.log" 2>/dev/null || cp "$OUT/characters_build3.log" "$E/characters_build.log" 2>/dev/null
 for f in ev.txt calib.txt gpu_util_before_stills.txt gpu_wrapper.log; do cp "$OUT/$f" "$E/chain_$f" 2>/dev/null; done
