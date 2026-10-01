@@ -1574,10 +1574,17 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			  // no roofline here -> the r13 rule above. Gain at least FlowApexMin (the shape reads at the top of a rise, not on a fall).
 				double RoofOver = -1.0;
 				const double Target = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir, &RoofOver);
-				if (Target > 0.0)
+				const double WantRaw = FMath::Max(double(FlowApexMin), Target - S.Pos.Z);
+				// TC8 "else it fires anyway": a roofline the capped climb cannot clear (Midtown canyons, 45-300 m walls) keeps the r13/r15 rule
+				// (the r17 probe of a / b solved for 72-100 m rooflines and rocketed 20 m up for 2 s)
+				if (Target > 0.0 && WantRaw > FlowApexGain(double(FlowApexVzMax), FP) + 0.5)
+				{
+					UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: roofline %.1f m over the street out of reach (need %.1f m) -> r13 climb"), RoofOver, WantRaw);
+				}
+				else if (Target > 0.0)
 				{
 					FlowRoofUsed = RoofOver;
-					const double Want = FMath::Max(double(FlowApexMin), Target - S.Pos.Z);
+					const double Want = WantRaw;
 					double Lo = 0.0, Hi = double(FlowApexVzMax);
 					if (FlowApexGain(Hi, FP) <= Want) Lo = Hi;
 					else for (int32 It = 0; It < 30; ++It) { const double Md = 0.5 * (Lo + Hi); (FlowApexGain(Md, FP) < Want ? Lo : Hi) = Md; }

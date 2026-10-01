@@ -601,7 +601,8 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// its RISING front until the flip's apex can clear the lower roofline within 30 m (FlowApexGap <= FlowReadyGain); the front apex
 			// (vz <= 0) or a stale swing still lets go
 			const bool bRoofHold = bTrickNext && Traversal->bFlowApexSolve && bSwinging && Traversal->VelM().Z > 0.5 && !bStale
-				&& Traversal->FlowApexGap() > double(Traversal->FlowReadyGain);
+				&& Traversal->FlowApexGap() > double(Traversal->FlowReadyGain)
+				&& Traversal->FlowApexGap() <= double(Traversal->FlowReadyGain + Traversal->FlowHoldMax);
 			if (bAutoHeld && bSwinging && !bRoofHold && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;

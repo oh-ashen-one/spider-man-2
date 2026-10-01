@@ -142,6 +142,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexVzMax = 20.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMin = 2.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowReadyGain = 9.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowHoldMax = 12.0f; // the roof hold applies only while the gap is under FlowReadyGain + this (a canyon roofline is not waited for)
 	/** Round 17: world Z the hips must reach at the flip apex (lower roofline within FlowRoofR + FlowRoofOver + FlowApexMargin); -1 = no roof. */
 	double FlowRoofTarget(const FVector& Dir, double* OutRoofOverStreet = nullptr) const;
 	/** Round 17: target - hips now (m; <= 0 already above it); -1e9 when there is no roofline rule here. Cached 0.1 s. */
