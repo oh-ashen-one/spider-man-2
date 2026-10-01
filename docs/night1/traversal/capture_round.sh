@@ -68,7 +68,7 @@ for entry in "${SEQS[@]}"; do
   QUITP=$(python3 -c "print(round($QUIT + $PRE, 3))")
   wait_slot
   RUN "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
-    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE -WHTravMask ${EXTRA_ARGS:-} $( [ "$NAME" = m1_mouse_swing ] && echo -WHTravInputTest=mouseLook ) | tail -3
+    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE -WHTravMask ${EXTRA_ARGS:-} $( [ "$NAME" = m1_mouse_swing ] && echo -WHTravInputTest=mouseLook -WHMouseTestPx=${M1PX:-40} ) | tail -3
   FR="$TMP/$NAME/${NAME}_frames"
   if [ -d "$FR" ] && [ -f "$TMP/$NAME/${NAME}_telemetry.csv" ]; then
     NF=$(ls "$FR" | wc -l | tr -d ' '); NT=$(( $(wc -l < "$TMP/$NAME/${NAME}_telemetry.csv") - 1 ))

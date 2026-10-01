@@ -287,6 +287,7 @@ public:
 	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
 	/** Round 20: a fresh RMB press cancels a trick / top-out flip / wall run into a swing at once (-WHTrickCancel=0 = r19). */
 	bool bTrickCancel = true;
+	bool bFacadeWeb = true; // round 20: -WHFacadeWeb=0 = no facade web after a wall cancel (A/B)
 	/** Round 20: rope wrap guard (strand grazing its own facade near the anchor; re-anchor turn limit). -WHRopeGuard=0 = r19. */
 	bool bRopeGuard = true;
 	float RopeGuardNear = 6.f, RopeGuardDeg = 40.f;
@@ -362,6 +363,7 @@ private:
 		double ChargeT = 0, JumpCharge = 0, Coyote = 0, JumpBuf = 0;
 		double AirT = 0, ApexZ = 0, RelT = 99, NoAnchorT = 0, AirTapT = -9;
 		bool bDive = false, bGliding = false, bGroundSwing = false, bJumpRelHold = false, bAirTrickUsed = false;
+		bool bWallCancel = false; FVector WallCancelN = FVector::ZeroVector, WallCancelDir = FVector::ZeroVector; // round 20
 		FSwing Sw;
 		int32 Chain = 0;
 		double SinceSwing = 99;
@@ -431,6 +433,7 @@ private:
 	double FacadeAvoid(double H);
 	FVector TravelDir(const FWebTravInput& I) const;
 	bool TryStartSwing(const FWebTravInput& I);
+	bool FacadeAnchor(FTravAnchor& A) const; // round 20: RMB on a wall -- web up the facade ahead of the kick when the search finds nothing
 	void StartSwing(const FTravAnchor& A, const FVector& Fwd, const FVector* Turn, double HS);
 	double SwingPhase() const;
 	FVector PivotFor(const FVector& AnchorPoint) const;
