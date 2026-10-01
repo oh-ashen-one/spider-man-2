@@ -145,6 +145,13 @@ for f_, lab in (('probe_S2_4k.txt', '4K'), ('probe_S2_1080p.txt', '1080p')):
         if fr:
             g_ = fr[-1].groups()
             rows.append(('R03 S2 still (%s): pedestrians visible, engine count' % lab, '>= 15 on the nearest block (hand count below)', 'engine probe, still at t = %s s: %s people >= 20 px unoccluded (left of the view axis %s, right %s)' % (g_[0], g_[3], g_[4], g_[5]), ''))
+hsw = load_json('hand_counts_swing.json')   # [{"t": clip seconds, "total": n, "left": l, "right": r, "near": nearest-block count}] counted by eye on the 20 frames of the swing clip (0.5 s apart)
+if hsw:
+    tot = [x['total'] for x in hsw]; near = [x.get('near') for x in hsw if x.get('near') is not None]
+    rows.append(('R03 swing clip: HAND COUNT of pedestrians on the sidewalks of the nearest block(s), every 0.5 s frame', '>= 15 in EVERY sample (was 0 in 20 of 20)',
+                 'by eye on the %d frames of the clip (visible on the avenue sidewalks, both sides): min %d / median %g / max %d; samples below 15: %d%s' % (
+                     len(tot), min(tot), med(tot), max(tot), sum(1 for x in tot if x < 15), ('; counting only the first block ahead of the camera: min %d / median %g' % (min(near), med(near))) if near else ''),
+                 ok(min(tot) >= 15)))
 for k, v in sorted(hand.items()):
     rows.append(('R03 hand count: %s' % k, v.get('target', '>= 15 on the nearest block\'s sidewalks'), '%s (left %s, right %s; counted by eye on the 4K frame / crop: %s)' % (v['total'], v.get('left', '?'), v.get('right', '?'), v.get('note', '')), ok(v['total'] >= v.get('min', 15))))
 fj = os.path.join(R, 'feet_analysis.json')

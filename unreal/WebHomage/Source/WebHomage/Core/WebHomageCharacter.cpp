@@ -129,7 +129,13 @@ void AWebHomageCharacter::EnsureDefaultInput()
 	MapMoveKey(EKeys::S, true, true);
 	MapMoveKey(EKeys::D, false, false);
 	MapMoveKey(EKeys::A, false, true);
-	MappingContext->MapKey(MoveAction, EKeys::Gamepad_Left2D);
+	auto StickDeadZone = [this](FEnhancedActionKeyMapping& M)
+	{ // radial dead zone first in the modifier chain (worn sticks / DualSense drift)
+		UInputModifierDeadZone* DZ = NewObject<UInputModifierDeadZone>(MappingContext);
+		DZ->Type = EDeadZoneType::Radial; DZ->LowerThreshold = 0.12f; DZ->UpperThreshold = 1.f;
+		M.Modifiers.Insert(DZ, 0);
+	};
+	StickDeadZone(MappingContext->MapKey(MoveAction, EKeys::Gamepad_Left2D));
 
 	// Look: mouse XY; invert Y so mouse-up looks up.
 	{
@@ -140,6 +146,7 @@ void AWebHomageCharacter::EnsureDefaultInput()
 	}
 	{
 		FEnhancedActionKeyMapping& M = MappingContext->MapKey(LookAction, EKeys::Gamepad_Right2D);
+		StickDeadZone(M);
 		UInputModifierNegate* NegY = NewObject<UInputModifierNegate>(MappingContext);
 		NegY->bX = false; NegY->bY = true; NegY->bZ = false;
 		M.Modifiers.Add(NegY);

@@ -20,19 +20,18 @@ SEQ = [
      "wall-run up, top-out onto the roof, camera turn, web-zip to the roof edge over the avenue, perch."),
     ("d_sprint_jump_first_swing", "Ground sprint -> jump -> first swing",
      "Street start on the avenue; run north, charged jump, first swing, then the round-10 chain rule (as a)."),
-    ("f1_flow_backDouble", "Round 13 flow flip: swing, web release, backDouble program from the release, next web in its final reach",
-     "West avenue (x -250), airborne start 28 m over the street at y 170 heading south (24 m/s); chain rule from 0.4 s (release phase 0.55); a trick "
-     "pressed at every 2nd release starts the flip program AT the release (flow flip: the climb is solved so the catch window opens ~2 m over the "
-     "release height); program backDouble = tuck + keyed kick-out, the next web is searched in its final reach (catch window 1.5 s)."),
-    ("f2_flow_pikeSwan", "Round 13 flow flip: frontPikeSwan program from the release",
-     "As f1 from y 180, program frontPikeSwan (pike, pencil, swan, tuck, reach)."),
-    ("f3_flow_corkscrew", "Round 13 flow flip: corkscrew program from the release",
-     "As f1 from y 190, program corkscrew (layout with a full twist, swan, tuck, reach); a flip on every release (trickEvery 1): on every 2nd "
-     "release the corkscrew did not fit at the low 2nd release and the 4th landed on a roof 0.3 s in."),
-    ("f4_chain_flips", "Round 13 flows: 13 s swing chain, a flip on every release",
-     "West avenue from y 120 heading south, 24 m over the street; chain rule, trickEvery 1; requested programs cycle backDouble, frontPikeSwan, corkscrew."),
-    ("f5_canyon_backDouble", "Round 13 check: the Midtown avenue (x 250, towers 140-250 m)",
-     "Avenue x 250 from y 170 heading north, same rule as f1: flow flips inside the canyon."),
+    ("f1_flow_backDouble", "Round 17 flow flips over the roofline: backDouble on every release",
+     "Northern cross street (y -560), airborne start 30 m over the street at x -225 heading EAST (26 m/s); chain rule from 0.4 s; a trick at every "
+     "release starts the flip program AT the release, its climb solved for an apex >= 4 m over the lower roofline within 30 m; program backDouble = "
+     "tuck double + keyed kick-out, the next web in its final reach."),
+    ("f2_flow_pikeSwan", "Round 17 flow flips over the roofline: frontPikeSwan on every release",
+     "As f1 from x -200, program frontPikeSwan (pike, swan, tuck, reach)."),
+    ("f3_flow_corkscrew", "Round 17 flow flips over the roofline: corkscrew on every release",
+     "As f1 from x -250, program corkscrew (layout with a full twist, swan, tuck, reach)."),
+    ("f4_chain_flips", "Round 17 chain: 12.2 s, a flip on every release",
+     "As f1 from x -240; programs cycle backDouble, frontPikeSwan, corkscrew (4 flips; a 5th starts after the clip end)."),
+    ("f5_canyon_backDouble", "Round 17: backDouble on every release from x -160 (name kept; no longer the Midtown canyon)",
+     "As f1 from x -160 (rounds 13-16: the Midtown avenue x 250, flips inside a 140-250 m canyon)."),
 ]
 FIELD = {"trick": "F trick", "move": "stick (x right, y fwd)", "swing": "RMB swing", "jump": "Space", "sprint": "Shift", "zip": "E zip",
          "drop": "C drop/dive", "quick": "Q boost", "look": "look (deg/s yaw, pitch-down)", "heading": "heading (world yaw deg)"}
@@ -163,6 +162,25 @@ if RN >= 4:
           "is inside a street-tree canopy the camera spot is lifted out of the foliage. A flow flip's rise targets 3 m over the lower street "
           "wall's roofline (buildings >= 16 m) when that needs <= 14 m of rise, else the round-13 3 m rise. While the trick camera frames a flip "
           "the zip reticle aims along the chase heading (b: zip fired from the final Reach at 2.88 s).")
+    if RN >= 16:
+        w("- Round 16 (director's TRICK_CAMERA_SPEC.md, replacing the r11-r15 sky search / side-on orbit): while a flip program plays the camera is a "
+          "HELD 3/4-behind chase. At the release frame ONE yaw offset of 40-55 deg from the travel-behind direction is chosen (obstruction first: "
+          "the spot must be sweep-reachable with 1.5 m free beyond it and a clear path 0.5 s along the travel; then the sun rule, view >= 100 deg "
+          "from the level's sun; then open space) and is never re-searched; it is held on its WORLD azimuth. The camera sits 4.4 m from the hero "
+          "(0.6 m closer while his shape is a tuck / pike; pulled in along the same axis by an obstruction, to 4.0 m, else blended to the plain chase), "
+          "1.0 m under his body centre, hero framed at 0.36 of the frame height with a 3 deg lead-room yaw bias toward his travel; look-up capped at 7.5 deg; no roll, no attach yaw beat; "
+          "FOV / kick / punch / shake untouched. Blend in: critically damped springs (0.35 s horizontal, 0.15 s height), blend out: smoothstep "
+          "over 0.9 s from the web attach, the chase camera keeps running underneath (polar blend about the hero). No other flip or swing rule "
+          "changed; scripts are the r15 ones.")
+    if RN >= 17:
+        w("- Round 17 (flips above the rooftops): the f-series runs EAST along the northern cross street (y -560): north side a park / 2-6 storey "
+          "strip (10-30 m) with open sky and the far skyline behind it, south side 46-466 m blocks to web onto; the sun (due west) is behind every "
+          "view. Arcs bottom >= 14 m over the street there (script tuning; over the 10-14 m street trees) and the hero keeps >= 9 m from the south "
+          "facades. A flip on every release; each flow flip's climb is solved so its APEX puts the hips >= 4 m over the lower roofline within 30 m "
+          "(highest top >= 16 m per street side, lower side; unreachable rooflines keep the round-13 climb), and a swing that ends in a flip is held on "
+          "its rising front until that apex is reachable. Trick camera (round 16 held 3/4 view kept): the side is chosen sun-first (35-55 deg, view "
+          ">= 100 deg from the sun), then by background sky share; the blend-in follows a minimum-time profile (<= 140 deg/s, k >= 0.9 at ~0.3 s). "
+          "Asymmetric keyed shapes (tuck grab, pike with one arm swept back, stag swan, layout, scissor kick-out).")
 else:
     w("- Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter` (placeholder block figure; web strands = chain of thin cylinders).")
 w("")
@@ -178,9 +196,11 @@ w("")
 w("The video frames are rendered offline at a fixed step; they say nothing about real-time frame rate.")
 if not glob.glob(os.path.join(ROUND, "stills", "*.jpg")):
     w("No 4K stills were captured this round (the stills column above does not apply): only the 1920x1080 movies (internal = output, "
-      "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). "
-      "All nine movies were captured with the final build of this round (see Build above), in two GPU holds (f1-f5, then a-d); warm-up pass skipped "
-      "(shader cache warm).")
+      "`r.ScreenPercentage 100`). Every run went through `gpu_slot.sh capture` on a GPU shared with other sessions (`contaminated`: no perf claim). " +
+      ("Seven movies (f1-f5, a, b) were captured with the final build of this round (see Build above) in one GPU hold; c and d come from the first round-16 hold "
+       "(wall camera / no trick camera: untouched by the later trick-camera edits); warm-up pass skipped (shader cache warm)." if RN >= 16 else
+       "All nine movies were captured with the final build of this round (see Build above), in two GPU holds (f1-f5, then a-d); warm-up pass skipped "
+       "(shader cache warm)."))
 w("")
 if RN >= 5:
     w("Camera (round 05 chase camera): 3.8 m behind the hero along the lagged heading yaw (horizontal spring 0.07 s, held 3.5-5.0 m), "

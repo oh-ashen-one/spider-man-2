@@ -56,7 +56,7 @@ protected:
 
 	/** Mouse look: radians per Mouse2D unit (browser 0.0023 rad / px; Mouse2D arrives pre-scaled by 0.07). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
-	float MouseRadPerUnit = 0.011f; // round 11: 0.033 (browser) -> 0.011; scaled at run time by the console variable wh.MouseSensitivity
+	float MouseRadPerUnit = 0.0025f; // 2026-10-01 owner playtest ("tiny move = seizure"): Enhanced Input mouse = raw pixels, so 0.011 rad/px (0.6 deg) spun the camera; 0.0025 rad/px (~0.14 deg, typical PC TPS); x wh.MouseSensitivity
 
 	/** Right stick look rate (rad/s) at full deflection (browser 900 px/s x 0.0023). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
@@ -128,6 +128,9 @@ private:
 	double TravTime = 0.0;
 	bool bTravStarted = false;
 	bool bAutoSawDescent = false; // round 07: auto-chain rule, this swing has descended
+	// round 18: the auto-chain predicts its next flow-flip release FlipPreT s ahead (the trick camera pre-blends; critic r17 TC-A window)
+	bool bAutoFlipPre = false;
+	float FlipPreT = 0.38f;
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
 	int32 PrerollFrames = 0;

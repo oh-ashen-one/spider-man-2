@@ -61,3 +61,11 @@ Weekly usage at 80 %. Owner (corrected, same morning): quality first — **split
 ## Model policy update (owner, 2026-10-01 ~00:15)
 
 Weekly limit reset. **Opus 5.5 high for every builder** (all pieces, every new round) and Opus 5.5 high for every critic; Sonnet only if a specific task is purely mechanical. Fable 5.1 still only for stalls / final acceptance. Rounds already running finish on their current model.
+
+## Model policy correction (owner, 2026-10-01 ~01:30)
+
+NOT all-Opus: **mostly Opus 5.5 high with a healthy share of Sonnet 5.5 xhigh** (Opus for hard engineering: traversal/flips, perf, combat, character animation/fight; Sonnet for content/pipelines: city, life, look, assets). Critics always Opus 5.5 high. **Fable 5.1 high is the orchestrator/director** (wave plans, model assignment from the ledger, stall diagnosis, acceptance) — night-2 plan in docs/night1/director/PLAN-night2.md.
+
+## Orchestration locked in (owner, 2026-10-01 ~01:40)
+
+**Fable 5.1 at MAX thinking makes every high-level call**: wave plans, per-round next target, builder model per round, merge decisions, stall diagnosis, morning acceptance. It is built into the loop script (a director agent after every critic). The work: a healthy mix of **Opus 5.5 high (mostly)** and **Sonnet 5.5 xhigh**; critics Opus 5.5 high. The executing session (Claude Code) only carries the director decisions out (launch, merge, push, safety). Global rule: PR oh-ashen-one/agents-md (fable-max-orchestrator).

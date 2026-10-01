@@ -54,6 +54,10 @@ Scripts/run_game.sh <out_dir> -res 3840x2160 -shots 20,30,40 -perf 20:40 -name f
 - The underlying flags are implemented by `UWebHomageAutomation` (GameInstanceSubsystem) and work with any launch:
   `-WHShotAt=t1,t2 -WHShotDir= -WHShotName= -WHPerfFrom= -WHPerfTo= -WHCsv -WHQuitAt= -WHNoMouseCapture`.
   Times are game seconds.
+- Settings menu (2026-10-01, `Core/WHSettings*`): Escape / P / gamepad Options open it in interactive play; saved to
+  `Saved/Config/<platform>/GameUserSettings.ini` `[WebHomage.Settings]`. Automated runs (any flag above) never open it and never
+  load the saved look / FOV / shake / graphics values, so captures and perf runs are unchanged. `-WHShowSettings` forces it open
+  (no pause, no mouse capture) and makes the `-WHShotAt` shots include the UI, for verifying the menu.
 
 ## Video / frame sequences
 

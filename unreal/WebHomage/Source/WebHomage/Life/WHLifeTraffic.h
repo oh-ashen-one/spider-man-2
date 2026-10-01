@@ -87,6 +87,10 @@ public:
 	 *  are not drawn, so a stills camera standing in a lane is not filled by a delivery truck that happens to arrive on its frame. Gameplay leaves it off. */
 	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadM = 0.f;
 	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadHalfWidthM = 12.5f;
+	/** Fixed street-level shots only (command line -WHLifeClearCurb=<m>[:<offset m>], default 0 = off): the corridor above is extended to this many metres ahead for the curb lanes only (lateral offset from the view axis between
+	 *  ClearCurbOffsetM and the corridor half width), so a truck or a car queued in the curb lane 30-60 m ahead does not hide the whole near sidewalk of a still (the centre lanes keep their traffic from ClearAheadM on). */
+	UPROPERTY(EditAnywhere, Category="Life") float ClearCurbAheadM = 0.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ClearCurbOffsetM = 5.f;
 	UPROPERTY(EditAnywhere, Category="Life") float ReactionMin = 0.35f;
 	UPROPERTY(EditAnywhere, Category="Life") float ReactionMax = 1.25f;
 	/** >= 0: the signal clock reads this phase (s in the 40 s cycle) when the pre-roll ends, i.e. game time 0. Fixed-camera signal clips. */

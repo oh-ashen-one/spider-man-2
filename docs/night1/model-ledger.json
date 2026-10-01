@@ -620,6 +620,85 @@
     5,
     4
    ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 2,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 3,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 18,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 10,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P6 City life",
+   "round": 3,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    6,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 4,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    6,
+    5,
+    5,
+    4,
+    4
+   ]
   }
  ],
  "agents": [

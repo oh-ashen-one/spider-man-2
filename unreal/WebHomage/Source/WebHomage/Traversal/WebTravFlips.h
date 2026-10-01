@@ -61,6 +61,8 @@ namespace WebFlips
 	const TCHAR* ShapeName(EWebFlipShape S);
 	/** Round 14: hips->head lean of a keyed shape off the body frame (deg, + = head forward), measured on the rendered r14 probe. */
 	float ShapeAxisDeg(EWebFlipShape S);
+	/** Round 18: vertical extent (m) a shape reaches during its hold (trick-camera distance anticipation). */
+	float ShapeExtent(EWebFlipShape S);
 	/** Program by name (backDouble, frontPikeSwan, corkscrew, backSingle, wallFront); nullptr if unknown. */
 	const FWebFlipProgram* Find(FName Name);
 	/** All program names (for cycling). */

@@ -1,66 +1,40 @@
-# P5 Combat: handoff after round 01
+# P5 Combat: handoff after round 04 (PROVISIONAL: written while the capture was still waiting for the GPU; the final version replaces it)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/combat`, worktree `~/sm2-n1/combat`. The UE MCP port is 8775 and the dev port is 5206; round 01 used neither editor nor MCP, and everything ran as headless commandlets plus `-game`. P5 owns `Source/WebHomage/Combat`,
-`/Game/Combat`, `/Game/Tests/Combat`, `Scripts/build_combat.py` and `docs/night1/combat/`. Scratch: `/Users/midir/sm2-n1/_scratch/combat/`. Round evidence: `round-01/`
-(`NOTES.md`, `COMPARE.md`, video, telemetry). No critic has scored it yet.
+Branch `night1/combat`, worktree `~/sm2-n1/combat`. UE MCP port 8775, dev port 5206; nothing here uses the editor or MCP: everything is headless commandlets plus `-game`. P5 owns
+`Source/WebHomage/Combat`, `/Game/Combat`, `/Game/Tests/Combat`, `Scripts/build_combat.py`, `docs/night1/combat/`. Scratch: `/Users/midir/sm2-n1/_scratch/combat/` (r04 work: `r04/final1`).
 
-## Build and run (your editor closed)
+## Update 2026-10-01 07:10 EDT (Claude Sonnet 5.5): round 04 captured
+
+The queued chain never ran (the 02:02 WindowServer reset). Re-run by hand with cap 1: `final_r04.sh /Users/midir/sm2-n1/_scratch/combat/r04c/final <15 still times>` (06:47-07:05, ~18 min, hero = HeroDev proxy), `package_r04.sh`, `critic_pack_r04.sh /Users/midir/sm2-n1/_scratch/critic-P5-r04`
+(13 pairs, pairs.json beside `pack/`). Evidence in `round-04/` (facts in `round-04/NOTES.md`). Open items: `final_r04_tessera.sh` (P2's Tessera hero) not run; movie B (no-flare control) diverges from the record at 11.05 s (381 vs 377 events);
+`replay_diff.py` cannot read the stills run (`still_events.jsonl`, 15 extra marker events). No critic verdict exists for r04 yet.
+
+## State when this text was written (2026-10-01 01:25 EDT, round 04 resumed by Claude Opus 5.5)
+
+- Merged `origin/Opus-5.5-Loop-Night-1` (1fe4c46: Tessera suit, characters r8-r10, traversal r17) into `night1/combat` (bcaa11f), clean merge, `build_editor.sh` OK.
+- The GPU is healthy again (no `PAUSED`, cap 2). The one-hold capture chain is queued in `gpu_slot.sh` (FIFO):
+  `final_r04.sh /Users/midir/sm2-n1/_scratch/combat/r04b/final <15 still times>` (chain pid in `.../r04b/final/chain.pid`, log `chain.out`).
+  If a successor finds `.../r04b/final/movieA/fight.mp4` + `movieB` + `stills` complete, skip straight to `package_r04.sh` and `critic_pack_r04.sh`.
+- Still no round-04 frames when this was written: everything below is unverified on screen until `round-04/measure_r04.md` exists.
+
+## What round 04 changed (all untested on screen until the capture exists)
+
+See `round-04/NOTES.md` when it exists; the code map is unchanged from r03 except:
+- `WHCombatFx::Impact`: no disc, no halo sphere, no `Hit()` sparks. N = 6 / 7 / 8 tapered streaks (6 stacked cylinders each, `M_CmbFlare`, additive, no depth test) in the camera image plane, hollow centre (start 0.03 frame widths out),
+  length 0.098-0.127 frame widths, hot core 3.5 % of the frame width. `SetCam(P, fov, rot)`; own RNG (`-WHCmbFlare=0` = no starburst, everything else identical: the A/B rerun for `measure_r04.py`).
+- `WHEnemy`: `StartTwist` also starts a recoil lean about the knees (`RecAmp` 0.62-0.88 rad = 35-50 deg, 65 % in the contact frame, gone by 0.56 s, biased sideways on the screen by the camera's right axis, passed in `FWHHitIn::CamRight`).
+  `SyncActor` composes `Rec * Twist * Tilt`. `TiltNow` is logged per enemy in `fight_frames.jsonl` (16th field).
+- `WHCombatDirector::LogRenderRes` (`WH_CMB_RES` log line at frame 40), `WH_CMB_FLARE` per starburst.
+- The sim is unchanged since r03 (frozen script `scripts/fight30.json`, record `round-03/ue/record`): the movie must replay 381 / 381 events.
+
+## Run the capture (one hold, ~15-20 min once it has the slot)
 
 ```
-python3 unreal/WebHomage/Scripts/build_combat.py                    # cpp, traversal (P3 script), characters (P2 script, staged P2 inputs), combat map; ~3 min
-python3 unreal/WebHomage/Scripts/build_combat.py --steps combat     # only /Game/Combat + Combat_Street
-docs/night1/combat/run_fight.sh logic  <out> docs/night1/combat/scripts/fight25.json          # -game -nullrhi, telemetry only (~40 s)
-docs/night1/combat/run_fight.sh movie  <out> docs/night1/combat/scripts/fight25.json          # 1080p60 -dumpmovie, inside gpu_slot.sh capture
-docs/night1/combat/run_fight.sh stills <out> docs/night1/combat/scripts/fight25.json 2.2,15.2 # native 4K stills, inside gpu_slot.sh capture
-node docs/night1/combat/browser_fight.mjs docs/night1/combat/scripts/fight25.json <out>        # browser reference (port 5206, SwiftShader)
-python3 docs/night1/combat/compare_logs.py <ue_out> <browser_out> COMPARE.md compare.json
-python3 docs/night1/combat/freeze_script.py scripts/fight25_record.json <record_out>/fight_beats.jsonl scripts/fight25.json
+docs/night1/combat/final_r04.sh /Users/midir/sm2-n1/_scratch/combat/r04/final1 1.87,2.66,3.05,4.34,7.01,7.78,8.22,9.37,10.25,12.52,15.42,15.65,20.04,22.14,26.68   # map rebuild, movie A (starburst), movie B (-WHCmbFlare=0), 15 native 4K stills
+docs/night1/combat/package_r04.sh /Users/midir/sm2-n1/_scratch/combat/r04/final1     # -> round-04/ (mp4 <= 15 MB, measurements, stills, strips)
+docs/night1/combat/critic_pack_r04.sh /Users/midir/sm2-n1/_scratch/critic-P5-r04     # blind pack
 ```
-Scripts: `fight25_record.json` contains reactive beats (`react: threat` = dodge when a threat is 0.08-0.25 s from contact, `react: free` = press once the hero is free).
-`freeze_script.py` turns a record run into the fixed-time playback `fight25.json`. The replay is deterministic, and its event log is identical to the record run's.
-Director flags: `-WHCmbScript= -WHCmbFight=mgb -WHCmbDist= -WHCmbOut= -WHCmbShots= -WHCmbShotName= -WHCmbQuit=`. All times are real seconds.
-Live keys in `Combat_Street`: LMB attack (hold = launcher / air slam), F web shooter, E / MMB web strike, Q finisher, Z heal, R throw (not ported), C / Ctrl dodge.
-
-## Code map (`Source/WebHomage/Combat`, port of `src/game/combat`)
-
-| file | browser | what |
-|---|---|---|
-| `WHCombatDirector` | index.js + input.js | fight lifecycle, melee / gun tokens, slots, threats + spider-sense, hit-stop / slow-mo (global time dilation, real-time based), playerHit / enemyStrike / enemyShoot, web shots, combat camera layer + cinematic, script beats, telemetry |
-| `WHCombatSpidey` | spidey.js | MOVES / POOLS / AIR / DASH_MAX 5.2 / NEAR 9, strike dash + flying kick, launcher, air combo, slam + ground pound, dive, web strike / yank, dodge (perfect = counter), web shooter, finisher, heal, hit / knockdown / get-up |
-| `WHEnemy` | enemy.js | melee 50 / gunman 38 / brute 150 (scale 1.24), all 14 states, HIT_T / TELE, stumbles with hips root motion, yank, juggle, knock, wall / ground web pin, disarm (swap to the unarmed P2 mesh) |
-| `WHClipStack` | poselayer.js | cross-fading clip stack (full-body cover pruning, upper-body mask) |
-| `WHCombatAnim` | poselayer.js + enemy late() | `UWHCombatHeroAnim` (subclass of P3's `UWebTravAnimInstance`: combat stack over the traversal pose), `UWHEnemyAnim` (hips pinned, flinch / aim pitch) |
-| `WHCombatFx` | fx.js | pooled basic-shape FX: flash / sparks / ring, dust, web strands, pellets, tracer / muzzle, splats, spider-sense streaks, heal |
-| `WHCombatHero` | (C5 override) | `AWHCombatHero : AWebTravCharacter` (P3 file untouched) + `AWHCombatGameMode` |
-
-Clips: hero `/Game/Traversal/HeroDev/<clip>` (P3's import of `spiderman.glb`), thugs `/Game/Characters/Thug/Anims/A_Thug_*`, loco `A_Street_walkStreet` + `A_Hero_jog/run`.
-Meshes: P2 `SK_Street_{Thug_Bat,Tee_Bat,Beard_Pipe,Hood}` (melee), `SK_Street_{Thug,Hood}_Pistol` (gunmen), `SK_Street_Brute_Pipe` (brute).
-
-## Integration with traversal (no P3 file edited): changes P3 should make
-
-Currently the director ticks after the traversal pawn. While a combat move runs, it re-places the body every frame with `UWebTraversalComponent::Teleport`, and when a
-move ends in the air it hands the fall back with `SetVelocityM`. It moves the P3 follow camera after the chase camera, and it binds its own keys. What P3 should add:
-1. **Control-override hook** (browser `player.setControlOverride`): a delegate called before traversal integrates, returning the input and optionally an externally
-   owned body (ground XY, or a kinematic air segment with collision). The per-frame `Teleport` now resets sub-state, ModeT, webs and velocity each frame.
-2. **Public `ToAir(VelM)`** (browser `traversal.toAir`) and **`LaunchJump`**, for the Space jump-evade / jump-cancel. Also expose the sampled input (jumpPressed): the Space rules
-   are not ported.
-3. **Input swallowing**: combat must be able to consume E (strike vs zip), Q (finisher vs quick boost), C / Ctrl (dodge vs drop) and F (web shooter vs trick) on the frames it uses
-   them. Now both fire in live play. Add an `I.combat` flag as well (fight-ready stance, no drop near enemies).
-4. **Camera access**: a writable orbit yaw / pitch (`AddYaw`) plus `Shake` / `Impact`. Combat now keeps its own yaw offset and trauma on top of the chase camera.
-5. Keep `UWebTravAnimInstance::CreateAnimInstanceProxy`, `FWebTravAnimProxy::Evaluate` / `PreUpdate` virtual, and keep `ClipRoot` public: combat subclasses them.
-6. When P2's hero replaces HeroDev, the combat clip path follows `ClipRoot`. The `A_Hero_` prefix would need a name map.
-
-## Manhattan (C)
-
-The fight runs on the test street because the Manhattan build is about 12 minutes plus the city export. To add combat there, set `AWHCombatGameMode` as the map's game mode, or subclass
-it in C's map. Start fights with `-WHCmbFight=` / a script, with the player start on the avenue. The director only needs P3's traversal world index (WHGround + building boxes).
-
-## Known problems / next
-
-- Visual: flat, hazy lighting on the test street; the camera sometimes gets too close to the hero; there is an abrupt cut into the finisher cinematic; the wall-pinned body reads poorly; the FX are basic shapes, not Niagara.
-- Not ported: throwables, the Space jump-evade, the HUD, audio, the crime / reinforcement flow (fights come only from the script or the flag).
-- The browser comparison diverges early (different world and RNG). A same-seed, same-layout comparison would need the browser fight moved onto a matching street.
-- Round-01 gotchas: the module cannot use the `Json` module (Build.cs is integrator-owned; the Engine does not export it for linking), so there is a tiny JSON reader in the director.
-  `build_editor.sh` sometimes leaves the manifest on a missing dylib (`ERROR ... missing`). Running it again fixes it.
+Rules that bit (RULES.md): never SIGKILL a rendering engine; `stop_ue.sh` only; one engine at a time; the wrapper's max hold is raised to 5400 s in `final_r04.sh` so that it never SIGKILLs an engine on a timer; watch the movie and
+`SIGSTOP` the wrapper before `SIGTERM`-ing a wedged engine (r03 recipe).

@@ -69,6 +69,9 @@ private:
 	int64 Key(int32 CX, int32 CY) const { return (int64(CX) << 32) ^ int64(uint32(CY)); }
 	TMap<int64, TArray<int32>> Grid;
 	TMap<const UPrimitiveComponent*, int32> CompToBox;
+	// instanced meshes (ISM/HISM): one box per instance (index = instance index, -1 = skipped); a component-wide bounds box made
+	// giant invisible walls/floors (owner playtest 2026-10-01: landing / running in mid-air)
+	TMap<const UPrimitiveComponent*, TArray<int32>> InstToBox;
 	double Cell = 24.0;
 	TWeakObjectPtr<UWorld> World;
 	FCollisionQueryParams Params;

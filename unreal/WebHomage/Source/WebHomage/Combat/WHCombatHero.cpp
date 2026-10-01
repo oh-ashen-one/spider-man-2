@@ -16,6 +16,11 @@ AWHCombatHero::AWHCombatHero()
 
 void AWHCombatHero::BeginPlay()
 {
+	// The traversal pawn's hero-only fill (5000 / 18000 cd point light 1.8 m from the hero, ~1500 lux) is tuned for the Manhattan look
+	// (sun 26000-44000 lux). Combat_Street's sun is 10 lux, so the same fill was ~150x the key: auto-exposure adapts to the street and the
+	// hero rendered as a blown-out white figure (its glossy-street reflection = the yellow streaks at its feet). No fill in combat;
+	// -WHHeroFill=<cd>,<cd> on the command line still overrides (parsed in Super::BeginPlay).
+	HeroFillCd = 0.f; HeroFillFlipCd = 0.f;
 	Super::BeginPlay();
 	// combat animation on top of the traversal animation: same clips / proxy, plus the combat clip stack
 	if (USkeletalMeshComponent* M = GetMesh())
@@ -66,6 +71,14 @@ void AWHCombatHero::SetupPlayerInputComponent(UInputComponent* IC)
 	IC->BindKey(EKeys::C, IE_Pressed, this, &AWHCombatHero::KDodge);
 	IC->BindKey(EKeys::LeftControl, IE_Pressed, this, &AWHCombatHero::KDodge);
 	IC->BindKey(EKeys::Gamepad_FaceButton_Right, IE_Pressed, this, &AWHCombatHero::KDodge);
+	// 2026-10-01 owner ("connect a PS5 controller and play"): every combat action on the pad (DualSense via the macOS
+	// GameController framework = standard Gamepad_* keys). Square attack (above), Circle dodge (above), Triangle web strike
+	// (also traversal zip, like keyboard E), R1 finisher, D-pad left web shooter, D-pad right throw, D-pad down heal.
+	IC->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AWHCombatHero::KStrike);
+	IC->BindKey(EKeys::Gamepad_RightShoulder, IE_Pressed, this, &AWHCombatHero::KFinisher);
+	IC->BindKey(EKeys::Gamepad_DPad_Left, IE_Pressed, this, &AWHCombatHero::KWeb);
+	IC->BindKey(EKeys::Gamepad_DPad_Right, IE_Pressed, this, &AWHCombatHero::KThrow);
+	IC->BindKey(EKeys::Gamepad_DPad_Down, IE_Pressed, this, &AWHCombatHero::KHeal);
 }
 
 void AWHCombatHero::KAttackDown() { if (Dir) Dir->LmbDown(); }

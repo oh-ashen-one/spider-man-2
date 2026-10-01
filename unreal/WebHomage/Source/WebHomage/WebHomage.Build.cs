@@ -31,6 +31,7 @@ public class WebHomage : ModuleRules
 			"Slate",
 			"SlateCore",
 			"RHI",
+			"ApplicationCore", // FDisplayMetrics (settings menu: window mode at desktop resolution)
 		});
 	}
 }

@@ -1,5 +1,5 @@
 {
- "updated": "01:15",
+ "updated": "2026-10-01T07:13",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -36,9 +36,9 @@
    "name": "City: export, facades, streets",
    "branch": "night1/city",
    "state": "active",
-   "round": 9,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall."
+   "round": 10,
+   "verdict": "fails \u2014 lowest 5 (sonnet)",
+   "gap": "S4 far-shore towers need a distant facade with window grid, mid-grey albedo: far-band \u226410% px >204 (now 29.5%)"
   },
   {
    "id": "P2",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 17,
-   "verdict": "fails \u2014 lowest 6 (Opus 5.5)",
-   "gap": "Bodies freeze mid-trick: limbs must keep moving every 0.1 s; replace the shared frozen inverted split with a continuous unwind; a distinct shape per program."
+   "round": 18,
+   "verdict": "fails \u2014 lowest 6 (opus)",
+   "gap": "Every trick is a canned replay and the tuck is loose: vary duration/peak spin \u00b110-20% per trick, hold a tight tuck \u22650.25 s (wrists \u22640.15 m from shins)"
   },
   {
    "id": "P4",
@@ -71,19 +71,19 @@
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (impact 3, moves 4, enemies 3, camera 3, spectacle 3)",
-   "gap": "No visible hit-stop (0% frozen frames), passive enemies without tells, camera crops the hero"
+   "state": "active",
+   "round": 4,
+   "verdict": "fails \u2014 lowest 4 (opus)",
+   "gap": "Combat camera + lighting: hero \u226535% frame height at contacts, opening not backlit (\u226415% px < gray 30), no blown-out hero, no snaps > 25 except cuts"
   },
   {
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
    "state": "active",
-   "round": 2,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1."
+   "round": 3,
+   "verdict": "fails \u2014 lowest 4 (sonnet)",
+   "gap": "Plant the feet: stance foot speed \u226410 cm/s (now 47-54), ankle lift \u226420 cm, stride times spread \u22650.25 s"
   },
   {
    "id": "A",
@@ -824,6 +824,54 @@
    "verdict": "fails",
    "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar.",
    "notes": "Fight fixed: the grey 'arm' was a pipe piercing the hero (weapon tilt fixed); every 8 s clip has 6\u20137 reactions, 2 knockdowns with two down together ~1.9 s, two get-ups, no guard hold > 2 s. Image quality still 4 (hair cards, collar wedge worse) \u2014 not merged; r11+ on Opus."
+  },
+  {
+   "t": "01:27",
+   "piece": "P5 Combat",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Hit-stops freeze the whole frame; T-pose enemy; hero passes through enemies; dark opening seconds.",
+   "notes": "Recorded late (director ledger gap). Critic also flagged the copied chest emblem on the old hero suit \u2014 replaced by the original Tessera suit (characters r8)."
+  },
+  {
+   "t": "01:27",
+   "piece": "P5 Combat",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Additive impact burst that keeps the victim readable; every blow moves the victim.",
+   "notes": "Recorded late. Local hit-stop fixed the global freeze (0.2% frozen frames); launcher/air hit/slam read. Camera and spectacle still 4."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "piece": "P3 Traversal",
+   "round": 18,
+   "verdict": "fails",
+   "gap": "Every trick is a canned replay and the tuck is loose: vary duration/peak spin \u00b110-20% per trick, hold a tight tuck \u22650.25 s (wrists \u22640.15 m from shins)",
+   "notes": "Merged (flips 7, camera 5\u21926, no axis below r15). Hero suit switched to the original Tessera material at merge."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "piece": "P1 City",
+   "round": 10,
+   "verdict": "fails",
+   "gap": "S4 far-shore towers need a distant facade with window grid, mid-grey albedo: far-band \u226410% px >204 (now 29.5%)",
+   "notes": "Merged (rooftops/skyline 4\u21925). Guard: S4 far-band check after rebuild."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "piece": "P6 City life",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Plant the feet: stance foot speed \u226410 cm/s (now 47-54), ankle lift \u226420 cm, stride times spread \u22650.25 s",
+   "notes": "Merged (pedestrian density 5\u21926)."
+  },
+  {
+   "t": "2026-10-01T07:13",
+   "piece": "P5 Combat",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "Combat camera + lighting: hero \u226535% frame height at contacts, opening not backlit (\u226415% px < gray 30), no blown-out hero, no snaps > 25 except cuts",
+   "notes": "Merged (impact 5\u21926: additive streak bursts; every blow moves the victim in telemetry). Proxy hero emblem replaced by Tessera suit in integration."
   }
  ],
  "perf": [
@@ -1125,6 +1173,10 @@
   {
    "t": "10:07",
    "text": "Owner merged the safety rules (agents-md#4: hard cap 2, no OS dialogs unattended, dead-session protocol). Firewall already allows every Unreal tool. Usage at 80%: all builders now Sonnet 5.5 xhigh, Opus only for blind critics. Resumed: traversal r13 renders + critic, characters r6 engine check + critic, perf r3 (preset into the shipped map)."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "text": "02:02 WindowServer reset with only 2 engines (GPU pinned, WS starved) killed the orchestrator; loop idle 02:05-06:37. Engine cap now 1 with an automatic starvation governor. Fable 5.1 morning triage: merged combat r3, look r3, traversal r18, city r10, life r3."
   }
  ]
 }

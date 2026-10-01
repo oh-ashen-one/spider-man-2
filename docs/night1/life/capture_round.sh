@@ -38,13 +38,13 @@ fi
 
 if has stills; then
   for V in ${VIEWS:-S1 S2}; do      # VIEWS=S1: only the street view (a crowd-only change does not affect the avenue view)
-    for RES in 1920x1080 3840x2160; do
+    for RES in ${RESES:-1920x1080 3840x2160}; do   # RESES=1920x1080: skip the 4K pass (a verification hold)
       TAG=$([ "$RES" = 1920x1080 ] && echo 1080p || echo 4k)
       SHOTS=$([ "$TAG" = 1080p ] && echo 12,16,20,24,28 || echo 28)
       echo "== $V $RES  GPU $(util) %"
       rm -rf "$TMP/${V}_$TAG"
       cap "$UE_DIR/Scripts/run_game.sh" "$TMP/${V}_$TAG" -map /Game/Tests/Life/Life_View_$V -res $RES -shots $SHOTS -name $V -timeout 2400 \
-        -exec "r.ScreenPercentage $SP" -- -WHLifeSample=8:30:1 $([ "$V" = S1 ] && echo -WHLifeClearAhead=24) | tail -2
+        -exec "r.ScreenPercentage $SP" -- -WHLifeSample=8:30:1 $([ "$V" = S1 ] && echo -WHLifeClearAhead=24 ${S1_EXTRA:-}) | tail -2
       for p in "$TMP/${V}_$TAG/${V}_"*.png; do sips -s format jpeg -s formatOptions 92 "$p" --out "${p%.png}.jpg" > /dev/null; done
       p=$(ls "$TMP/${V}_$TAG/${V}_"*_t028.0.jpg 2>/dev/null | head -1)
       NAME=$([ "$V" = S1 ] && echo S1_street || echo S2_avenue)
