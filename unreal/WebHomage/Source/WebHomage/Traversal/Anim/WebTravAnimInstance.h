@@ -52,6 +52,12 @@ struct FWebTravAnimFrame
 	// round 20 (critic r19: "on a zip the hero hangs limp"): both arms reach for the zip target through the flight (component space, cm)
 	float ZipReachW = 0.f;
 	FVector ZipTargetCS = FVector::ZeroVector;
+	// round 20 (critic r19: "the air pose does not change with speed", "fallCalm stands upright at 43-51 m/s"): procedural sky-dive arch
+	// (arms up and out, knees bent, legs apart) from 20 m/s blending into a streamlined track (arms swept back along the sides, legs
+	// straight and together, toes pointed) by 30-44 m/s. AirFastW = layer weight, AirTrackK = arch (0) .. track (1)
+	float AirFastW = 0.f, AirTrackK = 0.f;
+	// round 20: swing pose by speed (0 slow .. 1 >= 55 m/s): legs trail further and straighter, the free arm sweeps back
+	float SwingSpeedK = 0.f;
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy
@@ -123,6 +129,9 @@ private:
 public:
 	/** Round 19: procedural wall-run stride on (default) -- -WHWallGait=0 restores the round-06 sprint-clip wall run (A/B). */
 	static bool bWallGait;
+	/** Round 20: speed-dependent air pose + swing shaping (-WHAirSpeedPose=0 = r19); ChestSign flips the body-front axis if a rig needs it. */
+	static bool bAirSpeedPose;
+	static double ChestSign;
 private:
 	// air cycle
 	bool bInAirCycle = false;

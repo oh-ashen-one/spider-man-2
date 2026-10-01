@@ -706,7 +706,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 				{
 					float Ft = 0.f;
 					if (const FWebFlipProgram* FP = bTrickNow ? FlipProgramNow(Ft) : nullptr)
-						bInReach = FP->Segs.Num() > 0 && Ft >= FP->CatchT() - 0.1f; // round 13: the program's catch window
+						bInReach = FP->Segs.Num() > 0 && Ft >= FP->CatchT() - 0.02f; // round 13: the program's catch window (r20: -0.02, a fresh press cancels)
 				}
 				if (bSkyWasTrick && !bTrickNow && SkyTricksLeft > 0 && Traversal->VelM().Z > -12.0) { I.bTrick = true; --SkyTricksLeft; }
 				bSkyWasTrick = bTrickNow;
@@ -719,7 +719,20 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 					bAutoHeld = true; bSkyAuto = false;
 				}
 			}
-			else if (!bAutoHeld) { AutoGapT += Dt; if (AutoGapT >= Gap && Traversal->VelM().Z <= RepressVz) bAutoHeld = true; }
+			else if (!bAutoHeld)
+			{
+				AutoGapT += Dt;
+				// round 20: a fresh RMB press now cancels a running flip into a swing at once (owner bug 1), so the scripted player re-presses
+				// only once the program reaches its catch window (as a player who wants to see the flip does); old canned tricks: last 0.35 s
+				bool bFlipHold = Traversal->IsFlipArmed();
+				if (A.Sub == FName(TEXT("trick")) || A.Sub == FName(TEXT("topOut")))
+				{
+					float Ft = 0.f;
+					if (const FWebFlipProgram* FP = FlipProgramNow(Ft)) bFlipHold = FP->Segs.Num() > 0 && Ft < FP->CatchT() - 0.02f;
+					else if (A.Sub == FName(TEXT("trick"))) bFlipHold = A.T < FMath::Max(0.62f, A.TrickDur - 0.35f);
+				}
+				if (AutoGapT >= Gap && Traversal->VelM().Z <= RepressVz && !bFlipHold) bAutoHeld = true;
+			}
 			bAutoWasSwinging = bSwinging;
 			I.bSwing = bAutoHeld || bKeepSwingThisFrame;
 		}
@@ -972,8 +985,11 @@ void AWebTravCharacter::PoseFigure(float Dt)
 			{
 				const double Tc = AI->AirCycleTime(), Ph = AI->AirCycleCount() * 1.7;
 				const double Ramp = FMath::Clamp(Tc / 0.3, 0.0, 1.0) * Smooth01(SwayW); // round 09: dives sway too
-				const double RollA = 0.6 * Ramp * FMath::Sin(2 * PI * 1.05 * Tc + Ph) * (AI->AirCycleCount() % 2 ? 1.0 : -1.0);
-				const double PitchA = 0.35 * Ramp * FMath::Sin(2 * PI * 0.8 * Tc + Ph * 0.5);
+				// round 20: at speed the body holds the streamlined line (sway down to 20 % from 22 to 32 m/s)
+				const double FastK = UWebTravAnimInstance::bAirSpeedPose ? Smooth01((A.Speed - 22.0) / 10.0) : 0.0;
+				const double SwayAmp = 1.0 - 0.8 * FastK;
+				const double RollA = 0.6 * Ramp * SwayAmp * FMath::Sin(2 * PI * 1.05 * Tc + Ph) * (AI->AirCycleCount() % 2 ? 1.0 : -1.0);
+				const double PitchA = 0.35 * Ramp * SwayAmp * FMath::Sin(2 * PI * 0.8 * Tc + Ph * 0.5);
 				const FQuat Q2 = Q * FQuat(FVector(1, 0, 0), RollA) * FQuat(FVector(0, 1, 0), PitchA);
 				const FVector Centre = Traversal->PosM() * 100.0;
 				Root = Centre - Q2.RotateVector(FVector(0, 0, 95));

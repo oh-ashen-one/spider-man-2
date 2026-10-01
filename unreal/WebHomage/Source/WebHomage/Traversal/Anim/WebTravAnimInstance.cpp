@@ -14,6 +14,8 @@
 FString UWebTravAnimInstance::ClipRoot = TEXT("/Game/Traversal/HeroDev");
 FString UWebTravAnimInstance::ClipPrefix;
 bool UWebTravAnimInstance::bWallGait = true;
+bool UWebTravAnimInstance::bAirSpeedPose = true;
+double UWebTravAnimInstance::ChestSign = 1.0;
 // round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
 static double GaitTop = 0.55, GaitBot = 0.86, GaitLift = 0.04, GaitKneeOffT = 8.0, GaitLatT = 4.0, GaitKneeOutT = 0.10;
 
@@ -31,6 +33,8 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
 	{ int32 G = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHWallGait="), G)) bWallGait = G != 0; }
+	{ int32 G = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHAirSpeedPose="), G)) bAirSpeedPose = G != 0; } // round 20 A/B
+	{ double C = 1.0; if (FParse::Value(FCommandLine::Get(), TEXT("-WHChestSign="), C)) ChestSign = C; }
 	{ // round 20: -WHGaitTune=Top=,Bot=,Lift=,KneeOff=,Lat=,KneeOut=
 		FString T;
 		if (FParse::Value(FCommandLine::Get(), TEXT("-WHGaitTune="), T, false))
@@ -473,6 +477,19 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		Frame.SwingTuck = FMath::FInterpTo(Frame.SwingTuck, TuckWant, Dt, 8.f);
 		if (Mesh && !A.Velocity.IsNearlyZero()) Frame.VelCS = Mesh->GetComponentTransform().InverseTransformVectorNoScale(A.Velocity).GetSafeNormal();
 	}
+	// round 20: speed-dependent air pose (sky-dive arch -> streamlined track) and swing speed shaping
+	{
+		static const FName NTrick(TEXT("trick")), NTop(TEXT("topOut")), NZipPull(TEXT("zipPull")), NJL(TEXT("jumpLaunch")), NWJ(TEXT("wallJump")),
+			NPL(TEXT("pointLaunch")), NVault(TEXT("vault"));
+		const bool bAirOk = bAirSpeedPose && A.Mode == EWebTravMode::Air && Mesh && A.Sub != NTrick && A.Sub != NTop && A.Sub != NZipPull && A.Sub != NJL
+			&& A.Sub != NWJ && A.Sub != NPL && A.Sub != NVault;
+		const float Sp = A.Speed;
+		const float Want = bAirOk ? Smooth01((Sp - 20.f) / 10.f) * (1.f - FMath::Clamp(Frame.TuckW * 1.5f, 0.f, 1.f)) : 0.f;
+		const float Step = Dt / 0.22f;
+		Frame.AirFastW = Want > Frame.AirFastW ? FMath::Min(Want, Frame.AirFastW + Step) : FMath::Max(Want, Frame.AirFastW - Step);
+		Frame.AirTrackK = FMath::FInterpTo(Frame.AirTrackK, Smooth01((Sp - 30.f) / 14.f), Dt, 6.f);
+		Frame.SwingSpeedK = FMath::FInterpTo(Frame.SwingSpeedK, A.Mode == EWebTravMode::Swing && bAirSpeedPose ? Smooth01((Sp - 22.f) / 30.f) : 0.f, Dt, 5.f);
+	}
 	// round 19 (owner: between-swing tuck must read at speed): the release-cycle tuck flavor closes into the tight tuck too
 	if (CurNode == FName(TEXT("air_tuck"))) PendingTuckW = FMath::Max(PendingTuckW, 0.85f * Smooth01(NodeT / 0.12f) * (1.f - Smooth01((NodeT - 0.33f) / 0.12f)));
 		// round 19 (r18 critic): tight tuck weight from the flip program's current shapes
@@ -823,9 +840,11 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const double Ll = (CS(BS).GetLocation() - Hip).Size() + (CS(BF).GetLocation() - CS(BS).GetLocation()).Size();
 			// trail direction: down the body, swept back against the velocity; legs slightly apart in a scissor (one a little ahead)
 			const FVector Down = -BodyUp;
-			const FVector Trail = (Down - V * 0.55).GetSafeNormal();
-			const double Tuck = Frame.SwingTuck;
-			const double Len = Ll * FMath::Lerp(0.97, 0.55, Tuck) * (L == 0 ? 1.0 : 0.96);
+			// round 20: speed shaping -- at 55 m/s the legs stream straight back along the arc (trail 1.1, tuck mostly gone), slow arcs hang
+			const double SK = Frame.SwingSpeedK;
+			const FVector Trail = (Down - V * FMath::Lerp(0.45, 1.1, SK)).GetSafeNormal();
+			const double Tuck = Frame.SwingTuck * (1.0 - 0.6 * SK);
+			const double Len = Ll * FMath::Lerp(FMath::Lerp(0.93, 0.99, SK), 0.55, Tuck) * (L == 0 ? 1.0 : 0.96);
 			const FVector Lat = (Hip - HipC) - BodyUp * FVector::DotProduct(Hip - HipC, BodyUp);
 			const FVector Tgt = Hip + Trail * Len + V * (Tuck * 0.25 * Ll) - Lat * 0.35 + V * ((L == 0 ? 0.06 : -0.04) * Ll);
 			const FVector Pole = (V * 1.0 - Down * 0.2).GetSafeNormal(); // knees forward (with the motion)
@@ -844,8 +863,61 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const double La = (CS(BF).GetLocation() - Sh).Size() + (CS(BH).GetLocation() - CS(BF).GetLocation()).Size();
 			FVector Out = (Sh - HipC) - BodyUp * FVector::DotProduct(Sh - HipC, BodyUp);
 			Out = Out.GetSafeNormal();
-			const FVector Dir = (Out * 0.8 - V * 0.45 - BodyUp * 0.15).GetSafeNormal();
-			TwoBone(UA, FA, HA, Sh + Dir * (0.88 * La), (-BodyUp - V * 0.3).GetSafeNormal(), 0.55f * Frame.SwingFreeArmW, nullptr, 0.f);
+			// round 20: slow arcs open the arm out for balance; fast arcs sweep it back along the body (streamlined)
+			const double SK = Frame.SwingSpeedK;
+			const FVector Dir = (Out * FMath::Lerp(0.8, 0.35, SK) - V * FMath::Lerp(0.45, 0.9, SK) - BodyUp * FMath::Lerp(0.15, 0.55, SK)).GetSafeNormal();
+			TwoBone(UA, FA, HA, Sh + Dir * (FMath::Lerp(0.88, 0.95, SK) * La), (-BodyUp - V * 0.3).GetSafeNormal(), FMath::Lerp(0.55f, 0.8f, float(SK)) * Frame.SwingFreeArmW, nullptr, 0.f);
+		}
+	}
+	// ---- round 20: air pose by speed -- sky-dive arch (20-30 m/s) blending into a streamlined track (30-44 m/s)
+	if (Frame.AirFastW > 0.01f && BHips.IsValid())
+	{
+		const float W = Frame.AirFastW;
+		const double K = Frame.AirTrackK;
+		const FCompactPoseBoneIndex BHead = Idx(TEXT("head")), BUL = Idx(TEXT("upperArm_L")), BUR = Idx(TEXT("upperArm_R"));
+		if (BHead.IsValid() && BUL.IsValid() && BUR.IsValid())
+		{
+			const FVector HipC = CS(BHips).GetLocation();
+			const FVector Up = (CS(BHead).GetLocation() - HipC).GetSafeNormal();
+			FVector Lat = CS(BUR).GetLocation() - CS(BUL).GetLocation(); Lat = (Lat - Up * FVector::DotProduct(Lat, Up)).GetSafeNormal(); // left -> right
+			const FVector Chest = FVector::CrossProduct(Lat, Up).GetSafeNormal() * UWebTravAnimInstance::ChestSign; // body front
+			for (int32 L = 0; L < 2; ++L)
+			{
+				const double Sd = L == 0 ? -1.0 : 1.0;
+				const TCHAR* UA = L == 0 ? TEXT("upperArm_L") : TEXT("upperArm_R");
+				const TCHAR* FA = L == 0 ? TEXT("forearm_L") : TEXT("forearm_R");
+				const TCHAR* HA = L == 0 ? TEXT("hand_L") : TEXT("hand_R");
+				const FCompactPoseBoneIndex BU = Idx(UA), BFa = Idx(FA), BH = Idx(HA);
+				if (BU.IsValid() && BFa.IsValid() && BH.IsValid())
+				{
+					const FVector Sh = CS(BU).GetLocation();
+					const double La = (CS(BFa).GetLocation() - Sh).Size() + (CS(BH).GetLocation() - CS(BFa).GetLocation()).Size();
+					// arch: hands out and up beside the head, elbows bent ~90 deg; track: arms straight back along the hips, a little out, palms down
+					const FVector DArch = (Lat * (Sd * 0.85) + Up * 0.45 - Chest * 0.15).GetSafeNormal();
+					const FVector DTrack = (-Up * 0.92 + Lat * (Sd * 0.32) - Chest * 0.12).GetSafeNormal();
+					const FVector D = FMath::Lerp(DArch, DTrack, K).GetSafeNormal();
+					const double Reach = FMath::Lerp(0.72, 0.96, K) * La;
+					const FVector Pole = FMath::Lerp((-Up * 0.4 - Chest * 0.6 + Lat * (Sd * 0.2)), (Lat * (Sd * 0.6) - Chest * 0.4), K).GetSafeNormal();
+					TwoBone(UA, FA, HA, Sh + D * Reach, Pole, W, nullptr, 0.f);
+				}
+				const TCHAR* Th = L == 0 ? TEXT("thigh_L") : TEXT("thigh_R");
+				const TCHAR* Sh2 = L == 0 ? TEXT("shin_L") : TEXT("shin_R");
+				const TCHAR* Ft = L == 0 ? TEXT("foot_L") : TEXT("foot_R");
+				const FCompactPoseBoneIndex BT = Idx(Th), BS = Idx(Sh2), BF = Idx(Ft);
+				if (BT.IsValid() && BS.IsValid() && BF.IsValid())
+				{
+					const FVector Hip = CS(BT).GetLocation();
+					const double Ll = (CS(BS).GetLocation() - Hip).Size() + (CS(BF).GetLocation() - CS(BS).GetLocation()).Size();
+					// arch: knees bent, shins back, feet a shoulder width apart; track: legs straight and together, toes pointed
+					const FVector DArch = (-Up * 0.75 - Chest * 0.55 + Lat * (Sd * 0.22)).GetSafeNormal();
+					const FVector DTrack = (-Up - Lat * (Sd * 0.03)).GetSafeNormal();
+					const FVector D = FMath::Lerp(DArch, DTrack, K).GetSafeNormal();
+					const double Len = FMath::Lerp(0.72, 0.98, K) * Ll;
+					const FVector Pole = (Chest * 0.9 - Up * 0.1 + Lat * (Sd * 0.15)).GetSafeNormal(); // knees forward / down
+					const FVector Toe = (-Up * 0.8 - Chest * 0.6).GetSafeNormal();
+					TwoBone(Th, Sh2, Ft, Hip + D * Len, Pole, W, &Toe, 0.5f * W);
+				}
+			}
 		}
 	}
 	// ---- tight tuck (r18 critic: wrists <= 0.15 m from the shins, knees <= 0.25 m apart, held >= 0.25 s)

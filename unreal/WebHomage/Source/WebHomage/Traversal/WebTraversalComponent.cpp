@@ -74,6 +74,7 @@ void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 	FlipRng.Initialize(RandomSeed * 31 + 7);
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFlipVar="), V)) WebFlips::bVariants = V != 0; } // round 19 A/B
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHighFix="), V)) FWebTravAnchors::bHighFix = V != 0; } // round 19 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTrickCancel="), V)) bTrickCancel = V != 0; } // round 20 A/B
 	bWorldReady = true;
 }
 
@@ -507,7 +508,17 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		const FWebFlipProgram* FP = S.Sub == N_trick ? WebFlips::Find(S.Trick) : nullptr;
 		// round 13: from CatchOpen s before the end (inside the final reach) -- critic r12 "attach a web within 0.3 s of Reach"
 		const double BusyUntil = FP ? double(FP->CatchT()) - 0.02 : FMath::Max(0.62, S.TrickDur - 0.35);
-		const bool bTrickBusy = S.Sub == N_trick && S.SubT < BusyUntil; // let the flip finish
+		// round 20 (critic r19 owner bug 1: "a held RMB during a trick waits 0.47-1.08 s"): a FRESH press always cancels the trick / top-out
+		// flip / armed flip into a swing at once (the program's rotation springs back to the body frame in 0.07 s, PoseFigure); only a
+		// button that was already held lets the flip finish into its catch window
+		const bool bCancelTrick = I.bSwingPressed && bTrickCancel && ((S.Sub == N_trick && S.SubT < BusyUntil) || S.Sub == N_topOut || !S.ArmedFlip.IsNone());
+		const bool bTrickBusy = S.Sub == N_trick && S.SubT < BusyUntil && !bCancelTrick; // let the flip finish
+		if (bCancelTrick)
+		{
+			FlipCancels++;
+			S.ArmedFlip = NAME_None;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV trick cancel: RMB pressed in %s at %.2f s of it -> swing search now"), *S.Sub.ToString(), S.SubT);
+		}
 		// round 07 (critic r06, swing cadence): after a web release a held button searches again from 0.22 s on, even while
 		// still rising (was: only once vz < 5.5 m/s -> 1-1.7 s web-less falls); a fresh press always searches at once (the
 		// throttle left over from the previous search used to swallow the press)
@@ -1792,7 +1803,8 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	W.Phase += S.Vel.Size() * Hs / (W.bFast ? 2.6 : 1.2);
 	const FName Sub2 = W.bFast ? (FMath::Abs(VY) >= FMath::Abs(VX) ? N_wallRun : N_wallRunSide) : N_crawl;
 	if (S.Sub != N_wallZip && (S.Sub != N_cornerWrap || S.SubT > 0.3)) SetSub(Sub2);
-	if (S.Vel.SizeSquared() > 0.04) W.Up = FMath::Lerp(W.Up, S.Vel.GetSafeNormal(), 1 - FMath::Exp(-8 * Hs)).GetSafeNormal();
+	// round 20 (critic r19 side-run: body within 20 deg of the run direction, head leading): the body axis follows the run direction 2x faster
+	if (S.Vel.SizeSquared() > 0.04) W.Up = FMath::Lerp(W.Up, S.Vel.GetSafeNormal(), 1 - FMath::Exp(-(bTrickCancel ? 18 : 8) * Hs)).GetSafeNormal();
 	else W.Up = FMath::Lerp(W.Up, ZUP, 1 - FMath::Exp(-4 * Hs)).GetSafeNormal();
 	if (W.Up.Z < -0.2) W.Up = FMath::Lerp(W.Up, ZUP, 0.5).GetSafeNormal();
 	if (I.bJumpPressed)
@@ -1806,6 +1818,17 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	{ // RMB on a wall: kick off it and swing away
 		FVector CF = Cam ? Cam->ForwardFlat() : -N;
 		CF -= N * FVector::DotProduct(CF, N);
+		if (bTrickCancel)
+		{ // round 20 (critic r19: "a held RMB during a wall-run waits 0.47-1.08 s"): the kick and the web are one move -- the web is
+		  // fired in this same step (ground-swing rule: no rise-pending), a wall-jump hop + 0.06 s re-search only when no anchor is in range
+			S.Vel = N * 8 + ZUP * 3 + CF * 8;
+			SetMode(EWebTravMode::Air, N_wallJump); S.AirT = 0; S.ApexZ = FeetZ(); S.WallCooldown = 0.5; S.SwingCooldown = 0; S.bGroundSwing = true;
+			S.Facing = Yaw(S.Vel); Emit(N_wallJump);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall cancel: RMB pressed in %s -> swing search now"), *S.Sub.ToString());
+			FlipCancels++;
+			if (!TryStartSwing(I)) { S.Vel.Z += 4; S.SwingCooldown = 0.06; }
+			return;
+		}
 		S.Vel = N * 9 + ZUP * 7 + CF * 6;
 		SetMode(EWebTravMode::Air, N_wallJump); S.AirT = 0; S.ApexZ = FeetZ(); S.WallCooldown = 0.5; S.SwingCooldown = 0.1; S.bGroundSwing = true;
 		S.Facing = Yaw(S.Vel); Emit(N_wallJump);
@@ -2710,6 +2733,7 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		Along.Normalize();
 		Fwd = -N; Up = Along;
 		S.Pitch = -(bGait ? double(WallGaitLeanR) : WallRunLean) * W.RunK; // round 19: the IK stride leans further off the wall (hands reach it)
+		if (bTrickCancel && S.Sub == N_wallRunSide) S.Pitch *= 0.4; // round 20: a side run keeps the head on the run line (lean 40 %)
 		Rate = 14;
 		break;
 	}

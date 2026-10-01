@@ -285,6 +285,9 @@ public:
 	FString LastZipFrom;
 	/** Round 20 telemetry: setback mantles and top-outs of this run. */
 	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
+	/** Round 20: a fresh RMB press cancels a trick / top-out flip / wall run into a swing at once (-WHTrickCancel=0 = r19). */
+	bool bTrickCancel = true;
+	int32 FlipCancels = 0;
 	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
 	bool TryMantleSetback(const FVector& N0);
 	/** Round 20: wall normal on real facade triangles -- the face of the building box under the contact when one is within 1.5 m (window
