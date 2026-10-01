@@ -18,6 +18,10 @@
 // UE import (Interchange glTF): UE = (x, z, y) * 100 cm -> X east, Y south (north = -Y), Z up; see docs/night1/city/EXPORT.md
 //
 // usage: node tools/export/export_city.mjs [--tiles ix0,iz0,ix1,iz1] [--out dir] [--url http://127.0.0.1:<SM2_CITY_PORT, default 5202>/]
+//          [--measure] [--nofar] [--lodtiles ix0,iz0,ix1,iz1]
+// (island r01) --measure: nothing but <out>/measure.json is written (per tile: meshes, verts, tris, GLB bytes; JSON bytes; timings), so a
+//   district / the whole island can be sized without the disk. --nofar: no far field (far shores, land polygons, hinterland, far-ring facadeLod
+//   masses, ez-tree LOD1 outside the region) -- a district export that another pass supplies the far layer for.
 import { chromium } from 'playwright-core';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -31,6 +35,7 @@ const SCRATCH = process.env.SM2_CITY_SCRATCH || '/Users/midir/sm2-n1/_scratch/ci
 const OUT = path.resolve(arg('out', process.env.SM2_CITY_EXPORT || path.join(SCRATCH, 'export', 'midtown3x3')));
 const URL0 = arg('url', `http://127.0.0.1:${process.env.SM2_CITY_PORT || '5202'}/`);
 const PROFILE = arg('profile', path.join(SCRATCH, 'chrome-profile'));
+const MEASURE = process.argv.includes('--measure'), NOFAR = process.argv.includes('--nofar');
 const T = 256;
 const region = { x0: tx0 * T, z0: tz0 * T, x1: (tx1 + 1) * T, z1: (tz1 + 1) * T };
 const [lx0, lz0, lx1, lz1] = arg('lodtiles', '-4,-14,3,13').split(',').map(Number); // far ring (facade LOD masses)
@@ -79,7 +84,7 @@ function packAttrs(kind, A, n) {
   return { uv, chan, color, colorNote };
 }
 
-function writeGLB(file, name, kind, A, index) {
+function writeGLB(file, name, kind, A, index, dry = false) {
   const n = A.position.k ? A.position.data.length / 3 : 0;
   const pk = packAttrs(kind, A, n);
   const views = [], accessors = [], chunks = []; let off = 0;
@@ -103,24 +108,34 @@ function writeGLB(file, name, kind, A, index) {
   const jsonChunk = Buffer.concat([js, Buffer.alloc(jpad, 0x20)]), bin = Buffer.concat(chunks);
   const hdr = Buffer.alloc(12); hdr.writeUInt32LE(0x46546c67, 0); hdr.writeUInt32LE(2, 4); hdr.writeUInt32LE(12 + 8 + jsonChunk.length + 8 + bin.length, 8);
   const ch = (len, type) => { const b = Buffer.alloc(8); b.writeUInt32LE(len, 0); b.writeUInt32LE(type, 4); return b; };
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, Buffer.concat([hdr, ch(jsonChunk.length, 0x4e4f534a), jsonChunk, ch(bin.length, 0x004e4942), bin]));
-  return { verts: n, tris: index.length / 3, uv: pk.chan, color: !!pk.color, colorNote: pk.colorNote ?? null };
+  const bytes = 12 + 8 + jsonChunk.length + 8 + bin.length;
+  if (!dry) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, Buffer.concat([hdr, ch(jsonChunk.length, 0x4e4f534a), jsonChunk, ch(bin.length, 0x004e4942), bin]));
+  }
+  return { verts: n, tris: index.length / 3, bytes, uv: pk.chan, color: !!pk.color, colorNote: pk.colorNote ?? null };
 }
 
 // ------------------------------------------------------------------ receiver
 const manifest = { region, tiles: [tx0, tz0, tx1, tz1], created: new Date().toISOString(), transform: 'UE = (x, z, y) * 100', meshes: [], protos: [] };
 const USED = new Set();
+const JSON_BYTES = {};
+const TIMES = { start: Date.now() };
 function handle(buf) {
   const hl = buf.readUInt32LE(0), header = JSON.parse(buf.subarray(4, 4 + hl).toString());
-  if (header.type === 'json') { fs.writeFileSync(path.join(OUT, header.file), JSON.stringify(header.data)); console.log('wrote', header.file); return; }
+  if (header.type === 'json') {
+    const js = JSON.stringify(header.data); JSON_BYTES[header.file] = js.length;
+    if (header.file === 'collision.json') JSON_BYTES.collision_solids = header.data.solids.length;
+    if (!MEASURE) { fs.writeFileSync(path.join(OUT, header.file), js); console.log('wrote', header.file); }
+    return;
+  }
   let o = 4 + hl; const A = {};
   for (const [k, a] of Object.entries(header.attrs)) { const len = a.n * a.k * 4; const ab = new ArrayBuffer(len); new Uint8Array(ab).set(buf.subarray(o, o + len)); A[k] = { k: a.k, data: new Float32Array(ab) }; o += len; }
   const il = header.nIndex * 4, ib = new ArrayBuffer(il); new Uint8Array(ib).set(buf.subarray(o, o + il)); const index = new Uint32Array(ib);
   let rel = header.proto ? path.join('proto', header.name + '.glb') : path.join('mesh', header.kind, `${header.name}__t${header.tile[0]}_${header.tile[1]}.glb`);
   const rel0 = rel.slice(0, -4); for (let k = 2; USED.has(rel); k++) rel = rel0 + '_n' + k + '.glb'; // same-named meshes in one tile
   USED.add(rel);
-  const info = writeGLB(path.join(OUT, rel), path.basename(rel, '.glb'), header.kind, A, index);
+  const info = writeGLB(path.join(OUT, rel), path.basename(rel, '.glb'), header.kind, A, index, MEASURE);
   const rec = { file: rel, name: header.name, src: header.src, kind: header.kind, tile: header.tile, center: header.center, mat: header.mat, attrs: Object.keys(header.attrs), ...info };
   (header.proto ? manifest.protos : manifest.meshes).push(rec);
 }
@@ -155,16 +170,36 @@ try {
     return window.__pools.size;
   }).then(n => console.log('pools registered:', n));
   await page.addScriptTag({ content: fs.readFileSync(path.join(HERE, 'collect_page.js'), 'utf8') });
-  const res = await page.evaluate(o => window.__cityExport(o), { region, lodRegion, farRegion: { x0: -30000, z0: -30000, x1: 30000, z1: 30000 }, url: recvURL });
+  TIMES.ready = Date.now();
+  const res = await page.evaluate(o => window.__cityExport(o), { region, lodRegion: NOFAR ? null : lodRegion, farRegion: NOFAR ? null : { x0: -30000, z0: -30000, x1: 30000, z1: 30000 }, url: recvURL });
+  TIMES.collected = Date.now();
   console.log(JSON.stringify(res.log), 'pools with instances in region:', res.nInstances);
   manifest.stats = res.stats;
   // (r06) the baked far-land ground map (farshore.js CanvasTexture: land / lot colours, waterfront aprons, parks): far-shore land meshes carry only UV0 into it
   const png = await page.evaluate(() => { let out = null; window.__ctx.scene.traverse(o => { if (!out && o.isMesh && /^farLand-/.test(o.name) && o.material?.map?.image?.toDataURL) out = o.material.map.image.toDataURL('image/png'); }); return out; });
-  if (png) { fs.writeFileSync(path.join(OUT, 'farland_map.png'), Buffer.from(png.split(',')[1], 'base64')); console.log('wrote farland_map.png'); }
+  if (png && !MEASURE) { fs.writeFileSync(path.join(OUT, 'farland_map.png'), Buffer.from(png.split(',')[1], 'base64')); console.log('wrote farland_map.png'); }
   else console.log('WARN: far-land map canvas not found');
 } finally {
   await ctx.close();
-  fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1));
+  if (!MEASURE) fs.writeFileSync(path.join(OUT, 'manifest.json'), JSON.stringify(manifest, null, 1));
+  TIMES.end = Date.now();
+  {
+    // (island r01) per-tile sizing (also written for a real export): meshes / verts / tris / GLB bytes per tile and kind, JSON bytes, timings
+    const per = {}, kinds = {};
+    for (const m of manifest.meshes) {
+      const k = (m.tile || ['?']).join(','), t = (per[k] ||= { meshes: 0, verts: 0, tris: 0, bytes: 0, lodTris: 0 });
+      t.meshes++; t.verts += m.verts; t.tris += m.tris; t.bytes += m.bytes || 0; if (/lod/i.test(m.name) || m.kind === 'far' || m.kind === 'land') t.lodTris += m.tris;
+      const q = (kinds[m.kind] ||= { meshes: 0, tris: 0, bytes: 0 }); q.meshes++; q.tris += m.tris; q.bytes += m.bytes || 0;
+    }
+    const sum = (f) => manifest.meshes.reduce((a, m) => a + (f(m) || 0), 0);
+    const meas = { tiles: [tx0, tz0, tx1, tz1], region, measure: MEASURE, nofar: NOFAR, created: manifest.created,
+      seconds: { city_ready: (TIMES.ready - TIMES.start) / 1000, collect: (TIMES.collected - TIMES.ready) / 1000, total: (TIMES.end - TIMES.start) / 1000 },
+      totals: { meshes: manifest.meshes.length, protos: manifest.protos.length, verts: sum(m => m.verts), tris: sum(m => m.tris), glb_bytes: sum(m => m.bytes),
+        proto_bytes: manifest.protos.reduce((a, m) => a + (m.bytes || 0), 0), json_bytes: Object.entries(JSON_BYTES).filter(([k]) => k.endsWith('.json')).reduce((a, [, v]) => a + v, 0) },
+      json: JSON_BYTES, kinds, per_tile: per };
+    fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'measure.json'), JSON.stringify(meas, null, 1));
+    console.log('measure:', JSON.stringify(meas.totals), JSON.stringify(meas.seconds));
+  }
   server.close();
 }
 const tot = manifest.meshes.reduce((a, m) => { a.v += m.verts; a.t += m.tris; return a; }, { v: 0, t: 0 });
