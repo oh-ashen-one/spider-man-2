@@ -41,7 +41,7 @@ for k in range(d['stills']):
 print(','.join(out), end='')
 EOF
 )
-  QUIT=$(python3 -c "print(int(float('${TIMES##*,}') + 4))")
+  QUIT=$(python3 -c "print(int(float('${TIMES##*,}') + 6))")   # the stage clock trails the automation clock by up to ~2.4 s in a real-time run
   log "stills: 4K, internal 3840x2160 (r.ScreenPercentage 100), stage shots at $TIMES, quit $QUIT"
   ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' > "$OUT/gpu_util_before_stills.txt" || true
   Scripts/run_game.sh "$OUT/stills" -map $MAP -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -perf 3:$(( QUIT - 1 )) -quit $QUIT -name skins -timeout 1500 \
