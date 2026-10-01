@@ -14,10 +14,13 @@
 #ifndef CITY_SHADEFILL_USH
 #define CITY_SHADEFILL_USH
 
-// height field extents (UE X / Y in metres = browser x / z), must match tools/export/bake_sunmask.py
-#define CITY_SM_X0 (-384.0)
-#define CITY_SM_Y0 (-640.0)
-#define CITY_SM_SIZE 1024.0
+// height field extents (UE X / Y in metres = browser x / z), must match tools/export/bake_sunmask.py (SM2_SUNMASK default)
+// (island r01) island-wide: 2048 x 8192 texels of 1 m from (-1024, -4096) (was 1024 x 1024 from (-384, -640): the 3 x 3 block only)
+#define CITY_SM_X0 (-1024.0)
+#define CITY_SM_Y0 (-4096.0)
+#define CITY_SM_W 2048.0
+#define CITY_SM_H 8192.0
+#define CITY_SM_SIZE2 float2(CITY_SM_W, CITY_SM_H)
 
 // 1 = the surface faces the sun AND no building blocks the ray, 0 = shaded (facing away or in a canyon shadow). Soft edge ~ +-(0.03 t + 0.75) m around the occluder's top.
 float CitySunLit(Texture2D tH, SamplerState sH, float3 wpos, float3 n, float3 sunDir)
@@ -31,7 +34,7 @@ float CitySunLit(Texture2D tH, SamplerState sH, float3 wpos, float3 n, float3 su
     [loop] for (int i = 0; i < 28; i++)
     {
         float3 q = P + L * t;
-        float2 uv = (q.xy - float2(CITY_SM_X0, CITY_SM_Y0)) * (1.0 / CITY_SM_SIZE);
+        float2 uv = (q.xy - float2(CITY_SM_X0, CITY_SM_Y0)) / CITY_SM_SIZE2;
         float4 h4 = Texture2DSampleLevel(tH, sH, uv, 0.0);
         float hh = (h4.r * 255.0 * 256.0 + h4.g * 255.0) * 0.02;
         vis = min(vis, saturate((q.z - hh) / (0.06 * t + 1.5) + 0.5));
@@ -43,7 +46,7 @@ float CitySunLit(Texture2D tH, SamplerState sH, float3 wpos, float3 n, float3 su
 // mean building height (m) around the point in a 32 m and a 128 m window (mips 5 / 7 of the B channel, manual bilinear because the asset is point-filtered)
 float CityMeanH(Texture2D tH, SamplerState sH, float2 uv, float mip)
 {
-    float sz = CITY_SM_SIZE / exp2(mip);
+    float2 sz = CITY_SM_SIZE2 / exp2(mip);
     float2 f = uv * sz - 0.5;
     float2 i0 = floor(f);
     float2 w = f - i0;
@@ -60,7 +63,7 @@ float CityMeanH(Texture2D tH, SamplerState sH, float2 uv, float mip)
 // for what a narrow canyon hides
 float CityEnclosure(Texture2D tH, SamplerState sH, float3 wpos)
 {
-    float2 uv = (wpos.xy * 0.01 - float2(CITY_SM_X0, CITY_SM_Y0)) * (1.0 / CITY_SM_SIZE);
+    float2 uv = (wpos.xy * 0.01 - float2(CITY_SM_X0, CITY_SM_Y0)) / CITY_SM_SIZE2;
     float hm = 0.5 * (CityMeanH(tH, sH, uv, 5.0) + CityMeanH(tH, sH, uv, 7.0));
     float h = wpos.z * 0.01;
     return saturate(1.0 - (h - 0.3 * hm) / (0.9 * hm + 8.0));

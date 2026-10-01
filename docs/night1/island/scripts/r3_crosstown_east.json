@@ -1,0 +1,43 @@
+{
+ "name": "r3_crosstown_east",
+ "note": "Island r01 route 3 (30 s): airborne swing chain EAST along the cross street at y 640 m (new tiles: Chelsea -> Flatiron), from x -560 at 30 m.",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   -560,
+   640,
+   30
+  ],
+  "yaw": 0,
+  "camPitch": 0.12,
+  "vel": [
+   24,
+   0,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": 0,
+   "swing": false
+  },
+  {
+   "t": 0.4,
+   "autoChain": true,
+   "releasePhase": 0.55,
+   "gap": 0.8,
+   "repressVz": 99.0,
+   "trickEvery": 0,
+   "skyEvery": 0,
+   "skyTricks": 1,
+   "skyRepressH": 30,
+   "skyPhase": 0.8,
+   "skyMax": 2.8
+  }
+ ]
+}
