@@ -4,6 +4,7 @@
 # Optional rebuild first (only if /Users/midir/sm2-n1/_scratch/terrain/turn2_rebuild_steps exists: its content = build_terrain steps, e.g. "mat,mesh,foliage,trees,map,views"),
 # then warm-up + all stills (terrain build V_*, baseline VB_* for the pair views).
 set -uo pipefail
+export HOLD_START=$(date +%s)
 HERE="$(cd "$(dirname "$0")" && pwd)"; S=/Users/midir/sm2-n1/_scratch/terrain; M=$S/manhattan
 UE="/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor"
 WT="$(cd "$HERE/../../.." && pwd)"

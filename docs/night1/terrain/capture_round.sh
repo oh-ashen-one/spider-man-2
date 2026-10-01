@@ -15,6 +15,8 @@ UE_DIR="$(cd "$HERE/../../../unreal/WebHomage" && pwd)"
 SCR="$HERE/scripts"
 TMP=/Users/midir/sm2-n1/_scratch/terrain/capture
 GPU="${GPU_CMD:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"
+HOLD_START="${HOLD_START:-$(date +%s)}"; HOLD_BUDGET="${HOLD_BUDGET:-2100}"   # the lock kills a hold after 40 min: stop launching new runs after 35 min
+time_ok() { [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
 RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
@@ -30,6 +32,7 @@ if want warm; then
 fi
 still() {  # <prefix> <id>
   local PRE="$1" ID="$2" NAME="$1$2"
+  time_ok || { echo "== SKIP still $NAME (hold budget used up)"; return; }
   echo "== still $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
   RUN "$TMP/$NAME" -map "/Game/Terrain/Maps/$NAME" -res 3840x2160 -shots "${STILL_AT:-2}" -quit "${STILL_QUIT:-3}" -name "$NAME" -timeout 1500 -- -benchmark -fps=30 | tail -2
@@ -40,11 +43,14 @@ still() {  # <prefix> <id>
   done
 }
 if want stills; then
-  for ID in $IDS; do still V_ "$ID"; done
+  PRIO="${PRIO_IDS:-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"      # the pair views first (terrain, then baseline), then the rest
+  for ID in $PRIO; do still V_ "$ID"; done
   for ID in $BASE_IDS; do still VB_ "$ID"; done
+  for ID in $IDS; do [[ " $PRIO " =~ " $ID " ]] || still V_ "$ID"; done
 fi
 movie() {  # <name> <script.json> <quit seconds>
   local NAME="$1" JSON="$2" Q="$3"
+  time_ok || { echo "== SKIP movie $NAME (hold budget used up)"; return; }
   echo "== movie $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
   RUN "$TMP/$NAME" -map /Game/Terrain/Maps/Manhattan_Terrain -res 1920x1080 -quit "$Q" -name "$NAME" -movie -timeout 2300 -exec "r.ScreenPercentage 100" \
