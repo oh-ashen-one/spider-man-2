@@ -3,7 +3,7 @@
 
 ## Scores (r15 merged in brackets)
 - **Swing: 7 [7].** T1 passes: holds 0.88–1.38 s (a). T7 fails: the arc bottoms inside the tree canopy (f4 3.5–3.9 s).
-- **Camera: 6 [5].** TC-A/B/D/E/F/H pass: yaw offset 31–50°, range ≤6°. The telemetry box matches pixels (f1 1.8 s: 156 vs 168 px). Fails:
+- **Camera: 6 [5].** TC-A/B/D/E/F/H pass: yaw offset 31–50°, range ≤6°. Fails:
   - TC-C: f3 p90 .370.
   - TC-G: canopy hides his legs at f4 3.75 s, but hero_occl reads 0.
   - So the camera stays below 7 (TRICK_CAMERA_SPEC L51).
@@ -23,7 +23,7 @@
 | wallrun-flip | B | Stride. A crawls. |
 | progress-chain | B | Arms unwind. A holds a split (4.03–4.37 s). |
 
-Identity was guessed afterwards: the reference won 5 of 6, and the newer build won progress.
+Identity, guessed afterwards: the reference won 5 of 6.
 
 ## Biggest gap
 Each trick is a canned playback with a loose tuck.
