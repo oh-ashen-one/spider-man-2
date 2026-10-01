@@ -17,7 +17,7 @@ T_START=$SECONDS; DEADLINE=${CAPTURE_DEADLINE_S:-2100}
 IDS=("$@"); [ ${#IDS[@]} -eq 0 ] && IDS=($(python3 -c "import json;print(' '.join(s['id'] for s in json.load(open('Scripts/city_shots.json'))))"))
 mkdir -p "$OUT/raw"
 for id in $IDS; do
-  for res in 1920x1080 3840x2160; do
+  for res in ${=RES_LIST:-1920x1080 3840x2160}; do   # (r10) RES_LIST="1920x1080" for a 1080p-only round
     w=0; while sick; do echo "capture_round: an UnrealEditor is stuck exiting, not launching ($w s)"; sleep 20; w=$((w+20)); [ $w -gt 1500 ] && { echo "capture_round: ABORT, GPU driver still wedged"; exit 6; }; done
     "$HERE/ue/wait_slot.sh"
     [ $((SECONDS - T_START)) -gt $DEADLINE ] && { echo "capture_round: deadline reached before $id $res (rerun with the remaining ids)"; exit 8; }
