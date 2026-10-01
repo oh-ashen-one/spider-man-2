@@ -1,5 +1,5 @@
 {
- "updated": "20:37",
+ "updated": "21:01",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "active",
-   "round": 8,
-   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
-   "gap": "Enemy combat reactions: >=3 distinct hit reactions and >=1 knockdown in the street fight; no second where all thugs idle."
+   "round": 9,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Fix the new grey untextured hero arm; >=4 reactions, 2 simultaneous knockdowns, 2 distinct get-ups and no 2 s idle guard in every fight clip."
   },
   {
    "id": "P3",
@@ -795,6 +795,14 @@
    "verdict": "fails",
    "gap": "Life-on frame-pacing bubble (CPU/GPU sync, RT geometry updates); restore lost foliage; a committed look_gate.py run by builder and critic.",
    "notes": "With traffic + crowd ON: median 61.5\u201361.8 fps at 3840x2160 output / 1920x1080 internal \u2014 PASS (GPU skin cache off fixed the +1.2 ms). Worst 5%: 53.1\u201354.5 fps \u2014 fail (pacing stall, not GPU load). Undisclosed foliage losses again (tree line 7.8%\u21922.5%, lit foliage 12.2%\u21920.2%) \u2014 NOT merged; round 7 must build a fixed look-gate script first."
+  },
+  {
+   "t": "21:01",
+   "piece": "P2 Characters",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "Fix the new grey untextured hero arm; >=4 reactions, 2 simultaneous knockdowns, 2 distinct get-ups and no 2 s idle guard in every fight clip.",
+   "notes": "Scripted fight choreography: 5 hit reactions (4 clips), 2 knockdowns lying ~2.9 s, no all-idle second; enemies 5\u21926; tee holes fixed. But a new untextured grey hero arm dropped image quality 5\u21924 \u2014 NOT merged (integration keeps r8)."
   }
  ],
  "perf": [
