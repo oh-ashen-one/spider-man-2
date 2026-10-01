@@ -438,6 +438,14 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		}
 		Frame.GaitPh = WallGaitPh;
 	}
+	// round 20: zip-flight reach (both arms toward the target until the catch)
+	{
+		const bool bZ = A.Mode == EWebTravMode::Zip && (A.Sub == FName(TEXT("zipFlight")) || A.Sub == FName(TEXT("zipCatch"))) && Mesh;
+		const float Want = bZ ? (A.Sub == FName(TEXT("zipCatch")) ? 0.55f : 1.f) : 0.f;
+		const float Step = Dt / (bZ ? 0.1f : 0.18f);
+		Frame.ZipReachW = Want > Frame.ZipReachW ? FMath::Min(Want, Frame.ZipReachW + Step) : FMath::Max(Want, Frame.ZipReachW - Step);
+		if (Mesh && bZ) Frame.ZipTargetCS = Mesh->GetComponentTransform().InverseTransformPosition(A.Zip.Target);
+	}
 	// round 19: swing leg shaping (legs trail the velocity at the arc bottom, knees tuck on the rising front) + the free arm
 	{
 		const bool bSw = A.Mode == EWebTravMode::Swing && Mesh;
@@ -675,6 +683,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 	// ---- wall-run stride
 	if (Frame.WallW > 0.01f && BHips.IsValid())
 	{
+		static const double GaitLat = 4.0, GaitKneeOff = 14.0, GaitKneeOut = 0.12; // round 20 (cm / pole weight)
 		const float W = Frame.WallW;
 		const FVector N = Frame.WallN, U = Frame.WallU;
 		const FVector Sd = FVector::CrossProduct(U, N).GetSafeNormal(); // lateral axis (sign fixed per limb below)
@@ -707,20 +716,21 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const double Ll = (CS(BS).GetLocation() - Hip).Size() + (CS(BF).GetLocation() - CS(BS).GetLocation()).Size();
 			const double DH = FVector::DotProduct(Hip - Frame.WallP, N);
 			const FVector Base = Hip - N * DH; // hip projected onto the wall
-			const double OTd = -0.26 * Ll, OTo = -FMath::Min(0.9 * Ll, FMath::Sqrt(FMath::Max(1.0, FMath::Square(0.97 * Ll) - FMath::Square(DH - 7.0))));
+			const double OTd = -0.30 * Ll, OTo = -FMath::Min(0.9 * Ll, FMath::Sqrt(FMath::Max(1.0, FMath::Square(0.97 * Ll) - FMath::Square(DH - 7.0))));
 			const float Phi = FMath::Fmod(Ph + (L == 0 ? 0.f : 0.5f), 1.f);
 			const float Sig = 0.42f;
 			double O, Off, Lat;
 			bool bStance = Phi < Sig;
-			if (bStance) { const float K = Phi / Sig; O = FMath::Lerp(OTd, OTo, double(K)); Off = 7.0; Lat = 9.0; }
+			// round 20 (critic r19 "splayed-knee frog scramble", w/h .73): narrow track, knees forward (off the wall) not out, shorter knee drive
+			if (bStance) { const float K = Phi / Sig; O = FMath::Lerp(OTd, OTo, double(K)); Off = 6.0; Lat = GaitLat; }
 			else
 			{
 				const float K = (Phi - Sig) / (1.f - Sig);
-				O = FMath::Lerp(OTo, OTd, double(Ease(K))) + 0.14 * Ll * FMath::Square(FMath::Sin(PI * K));
-				Off = 7.0 + 24.0 * FMath::Sin(PI * K); Lat = 9.0 + 7.0 * FMath::Sin(PI * K);
+				O = FMath::Lerp(OTo, OTd, double(Ease(K))) + 0.08 * Ll * FMath::Square(FMath::Sin(PI * K));
+				Off = 6.0 + GaitKneeOff * FMath::Sin(PI * K); Lat = GaitLat + 1.5 * FMath::Sin(PI * K);
 			}
 			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
-			const FVector Pole = U * 1.0 + Sd * (Sg * 0.75) + N * 0.55;
+			const FVector Pole = U * 1.0 + Sd * (Sg * GaitKneeOut) + N * 0.7;
 			const FVector ToeUp = (U * 0.9 - N * 0.25).GetSafeNormal();
 			TwoBone(Th, Sh, Ft, Tgt, Pole, W, &ToeUp, bStance ? 0.85f * W : 0.3f * W);
 		}
@@ -743,17 +753,39 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const float Sig = 0.42f;
 			double O, Off, Lat;
 			const bool bPlant = Phi < Sig;
-			if (bPlant) { const float K = Phi / Sig; O = FMath::Lerp(OUp, ODn, double(Ease(K))); Off = 4.0; Lat = 6.0; }
+			if (bPlant) { const float K = Phi / Sig; O = FMath::Lerp(OUp, ODn, double(Ease(K))); Off = 4.0; Lat = 3.0; }
 			else
 			{
 				const float K = (Phi - Sig) / (1.f - Sig);
 				O = FMath::Lerp(ODn, OUp, double(Ease(K)));
-				Off = 4.0 + 20.0 * FMath::Sin(PI * K); Lat = 6.0 + 12.0 * FMath::Sin(PI * K);
+				Off = 4.0 + 16.0 * FMath::Sin(PI * K); Lat = 3.0 + 4.0 * FMath::Sin(PI * K);
 			}
 			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
-			const FVector Pole = Sd * (Sg * 1.0) - U * 0.55 + N * 0.45;
+			const FVector Pole = Sd * (Sg * 0.35) - U * 0.85 + N * 0.5; // round 20: elbows down / back, not out
 			const FVector Fingers = (U * 0.85 + Sd * (Sg * 0.2) - N * 0.15).GetSafeNormal();
 			TwoBone(UA, FA, HA, Tgt, Pole, W, &Fingers, bPlant ? 0.8f * W : 0.25f * W);
+		}
+	}
+	// ---- round 20: zip-flight reach -- both arms extended toward the target, hands a shoulder-width apart, elbows soft
+	if (Frame.ZipReachW > 0.01f && BHips.IsValid())
+	{
+		const float W = Frame.ZipReachW;
+		const FCompactPoseBoneIndex BHead = Idx(TEXT("head"));
+		const FVector BodyUp = BHead.IsValid() ? (CS(BHead).GetLocation() - CS(BHips).GetLocation()).GetSafeNormal() : FVector::UpVector;
+		for (int32 L = 0; L < 2; ++L)
+		{
+			const TCHAR* UA = L == 0 ? TEXT("upperArm_L") : TEXT("upperArm_R");
+			const TCHAR* FA = L == 0 ? TEXT("forearm_L") : TEXT("forearm_R");
+			const TCHAR* HA = L == 0 ? TEXT("hand_L") : TEXT("hand_R");
+			const FCompactPoseBoneIndex BU = Idx(UA), BF = Idx(FA), BH = Idx(HA);
+			if (!BU.IsValid() || !BF.IsValid() || !BH.IsValid()) continue;
+			const FVector Sh = CS(BU).GetLocation();
+			const double La = (CS(BF).GetLocation() - Sh).Size() + (CS(BH).GetLocation() - CS(BF).GetLocation()).Size();
+			FVector Dir = (Frame.ZipTargetCS - Sh).GetSafeNormal();
+			if (Dir.IsNearlyZero()) Dir = BodyUp;
+			const FVector Tgt = Sh + Dir * (0.93 * La);
+			const FVector Pole = -BodyUp;
+			TwoBone(UA, FA, HA, Tgt, Pole, W, &Dir, 0.6f * W);
 		}
 	}
 	// ---- swing: legs trail the velocity at the arc bottom (straight, together), knees tuck on the rising front; the free arm opens

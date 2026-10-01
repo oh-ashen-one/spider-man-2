@@ -51,6 +51,15 @@ public:
 	float ReleaseBoostMul = 1.f;
 	/** Round 07: a held swing button re-searches for the next anchor this long (s) after a web release, even while rising. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReattachAfter = 0.22f;
+	// round 20 tunables (-WHTravTune=Name=V): wall-gait torso lean off the facade (rad), air body-to-velocity alignment speed band (m/s),
+	// setback look-ahead above a ledge (m), E-from-wall facade-top search range (m)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitLeanR = 0.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV0 = 22.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV1 = 28.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipRange = 260.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
@@ -274,10 +283,13 @@ public:
 	FRandomStream FlipRng{ 20261001 }; // round 19: own stream (the swing solver's Rng sequence and the r18 routes stay unchanged)
 	int32 GroundSrcNow() const { (void)FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); return TravWorld.LastGroundSrc; }
 	FString LastZipFrom;
+	/** Round 20 telemetry: setback mantles and top-outs of this run. */
+	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
 	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
+	bool TryMantleSetback(const FVector& N0);
 
 private:
-	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop };
+	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop, Mantle };
 
 	struct FSwing
 	{
@@ -479,7 +491,6 @@ public:
 	static constexpr double JUMP = 11.2, JUMP_MAX = 19.5;
 	// round 06 wall-run body: lean back off the wall (rad) and feet offset from the wall plane (m) while running
 	static constexpr double WallRunLean = 0.16, WallRunFootOff = 0.42;
-	// round 19: procedural IK stride -- hips 0.28 m off the facade, torso leaned 0.28 rad back (shoulders ~0.40 m: the hands reach the wall)
-	static constexpr double WallGaitLean = 0.28, WallGaitFootOff = 0.28;
+	// round 19: procedural IK stride -- hips off the facade, torso leaned back (round 20: UPROPERTYs WallGaitLeanR / WallGaitFootOffR)
 	static constexpr double WEB_MASS = 80;
 };

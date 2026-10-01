@@ -183,7 +183,10 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		const double K = Dt * 60.0;
 		const FVector D = CamPos - LastOutPos;
 		const double Lm = MaxStepPosM * K;
-		if (D.Size() > Lm)
+		// round 20: the position slew never leaves the lens behind a wall (T19 beats "never a cut")
+		const bool bSlewHidden = D.Size() > Lm && World.LineBlocked(P.Pos + FVector(0, 0, 0.3), LastOutPos + D.GetSafeNormal() * Lm);
+		if (bSlewHidden) SlewFlags |= 8;
+		else if (D.Size() > Lm)
 		{
 			const FVector NewPos = LastOutPos + D.GetSafeNormal() * Lm;
 			const FRotator A0 = (P.Pos - CamPos).Rotation(), A1 = (P.Pos - NewPos).Rotation();
@@ -202,6 +205,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		if (CamRot.Pitch > CapUpDeg + 0.5) CamRot.Pitch = CapUpDeg + 0.5;
 	}
 	bLensTouch = World.SphereOverlaps(CamPos, 0.25);
+	bCamEnclosed = World.Enclosed(CamPos);
 	LastOutPos = CamPos; LastOutRot = CamRot; bOutInit = true;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
 	const bool bGroundish = M == EWebTravMode::Ground || M == EWebTravMode::Land || M == EWebTravMode::Wall;
@@ -530,6 +534,40 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			ClearFrom(From, WallCam, WallClear);
 			Cam = FMath::Lerp(Cam, WallClear, Smooth(WallK, 0.0, 1.0));
 		}
+	}
+	// ---- round 20 (critic r19 camera 4: after a zip a parapet hides the perched hero for 1.3 s; frames inside facades): the camera must SEE the
+	// body, not only clear a sphere from the chest. Four probe points (head .. knees) are line-traced from the lens against all visible
+	// collision; under 3 visible -> lift the camera (then pull it in) to the first spot that sees >= 3, fast (0.08 s spring), held 0.8 s.
+	{
+		const FVector Pts[4] = { Hero + FVector(0, 0, 0.6), Hero + FVector(0, 0, 0.2), Hero - FVector(0, 0, 0.3), Hero - FVector(0, 0, 0.7) };
+		auto Vis = [&](const FVector& C) { int32 Nv = 0; for (const FVector& Q : Pts) { if (!World.LineBlocked(C, Q)) ++Nv; } return Nv; };
+		const FVector Base = Cam;
+		FVector Lifted = Base + FVector(0, 0, VisUp);
+		ClearFrom(From, Lifted, Lifted);
+		const int32 V0 = Vis(Lifted);
+		if (V0 < 3 && !bFlipCam)
+		{
+			double Found = -1.0;
+			for (double Up : { 0.0, 0.6, 1.2, 1.8, 2.6, 3.5, 4.5, 6.0 })
+			{
+				FVector C2 = Base + FVector(0, 0, Up);
+				ClearFrom(From, C2, C2);
+				if (Vis(C2) >= 3) { Found = Up; break; }
+			}
+			if (Found >= 0.0) { VisUpGoal = Found; VisHold = 0.8; }
+		}
+		else if (V0 >= 3)
+		{
+			VisHold -= Dt;
+			if (VisHold <= 0.0)
+			{ // relax only when the unlifted spot also sees the body
+				FVector C0 = Base; ClearFrom(From, C0, C0);
+				if (Vis(C0) >= 3) VisUpGoal = 0.0;
+			}
+		}
+		SD(VisUp, VisUpV, VisUpGoal, VisUpGoal > VisUp ? 0.07 : 0.4, Dt);
+		if (VisUp > 0.01) { FVector C3 = Base + FVector(0, 0, VisUp); ClearFrom(From, C3, Cam); }
+		VisPts = Vis(Cam);
 	}
 	CamPos = Cam;
 	LastComposeHero = Hero; bHaveComposeHero = true;

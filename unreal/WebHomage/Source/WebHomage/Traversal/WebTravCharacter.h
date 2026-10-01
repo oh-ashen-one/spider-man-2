@@ -148,6 +148,17 @@ private:
 	int32 InputTestStep = 0, InputTestPresses = 0, InputTestSwings = 0;
 	double InputTestPressT = -1.0;
 	bool InputTestTick(float Dt);
+	// round 20: -WHTravInputTest=mouseLook injects real mouse-axis events (MouseX / MouseY, IE_Axis) through the player controller; the
+	// automated run cannot capture the OS mouse (run_game.sh passes -WHNoMouseCapture: never trap the owner's mouse), so the capture gate
+	// is bypassed for injected look only while this test runs
+	bool bInputTestMouse = false;
+	double InjectedPx = 0.0, MouseTestYaw0 = 0.0;
+	bool bMouseTestYaw0 = false;
+	// round 20: -WHTravDepthAudit=<csv>: top-down orthographic scene-depth render of the city (all visible / without the name-excluded
+	// signs, screens, props, foliage) vs the traversal floor (GroundHeight) on the 5 m audit grid
+	int32 DepthAuditFrames = 0;
+	bool bDepthAuditDone = false;
+	void RunDepthAudit(const FString& Path);
 	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
 	FWebTravCamera Cam;

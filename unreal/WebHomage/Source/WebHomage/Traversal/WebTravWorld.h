@@ -59,6 +59,20 @@ public:
 	void Near(double X, double Y, double R, TArray<int32>& Out) const;
 
 	bool Ok() const { return Boxes.Num() > 0; }
+	/** Round 20: is the hit point on / inside a building box (index, margin m)? -1 if none. Used to tag visual-mesh hits with their building. */
+	int32 BoxAt(const FVector& P, double Margin = 1.0) const;
+	/** Round 20: sphere sweep A -> B (m) against traversal solids only (props / signs / foliage passed through); false when the sweep starts
+	 *  inside something. OutDist = distance before the hit, OutN = hit normal. */
+	bool SweepSolid(const FVector& A, const FVector& B, double Radius, double& OutDist, FVector& OutN) const;
+	/** Round 20: line A -> B (m) blocked by any visible collision (camera visibility; props included)? */
+	bool LineBlocked(const FVector& A, const FVector& B) const;
+	/** Round 20: is P (m) enclosed by geometry (the camera inside a building)? 4 horizontal rays all hit within 70 m and the up ray hits. */
+	bool Enclosed(const FVector& P) const;
+	/** Round 20 collision mode: 2 = visual triangles (merged visual meshes are traversal solids, traced complex; WHBox cubes only index
+	 *  buildings for the canyon / anchor logic), 1 = round-19 boxes-only, 0 = every collision primitive (690dfa7). */
+	int32 SolidMode = 0;
+	/** Round 20: visible components excluded by name (signs / screens / props / foliage) -- the depth audit renders with and without them. */
+	TArray<TWeakObjectPtr<UPrimitiveComponent>> ExcludedComps;
 	/** Round 19 (owner playtest 2026-10-01, "landing in mid-air and being able to run is still around"): in a map with the browser's
 	 *  per-building boxes (WHBox cubes) only those boxes and the WHGround floor are traversal solids; every other collision primitive
 	 *  (props, trees, signage, street kit, landmark meshes with a simple-collision hull, traffic) is passed through by the traversal's
@@ -85,6 +99,7 @@ private:
 	double Cell = 24.0;
 	bool bBoxesOnly = false;
 	TSet<const UPrimitiveComponent*> AllowedComps;
+	bool IsExcludedName(const FString& LowerName) const;
 	TWeakObjectPtr<UWorld> World;
 	FCollisionQueryParams Params;
 	FCollisionObjectQueryParams ObjParams;

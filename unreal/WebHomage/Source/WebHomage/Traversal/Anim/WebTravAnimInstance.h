@@ -49,6 +49,9 @@ struct FWebTravAnimFrame
 	FVector VelCS = FVector::ZeroVector;  // component-space velocity direction (unit)
 	// round 19 (r18 critic): tight tuck (wrists to the shins, knees together) while a flip program is in a Tuck shape
 	float TuckW = 0.f;
+	// round 20 (critic r19: "on a zip the hero hangs limp"): both arms reach for the zip target through the flight (component space, cm)
+	float ZipReachW = 0.f;
+	FVector ZipTargetCS = FVector::ZeroVector;
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy
