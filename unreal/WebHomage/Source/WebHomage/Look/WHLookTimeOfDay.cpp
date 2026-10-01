@@ -188,6 +188,7 @@ FRotator AWHLookTimeOfDay::LightRot(float Elev, float Az)
 
 TMap<FName, FVector4f> AWHLookTimeOfDay::Evaluate(float H, float Wx, float SunElev) const
 {
+	static const FName CutoffName(TEXT("fog.FogCutoffDistance"));
 	TMap<FName, FVector4f> Out;
 	const int32 N = Keys.Num();
 	// segment i -> i+1 (cyclic) containing H
@@ -218,6 +219,9 @@ TMap<FName, FVector4f> AWHLookTimeOfDay::Evaluate(float H, float Wx, float SunEl
 			const float v = b0 * V1[c] + b1 * m1 + b2 * V2[c] + b3 * m2;
 			R[c] = FMath::Clamp(v, FMath::Min(V1[c], V2[c]), FMath::Max(V1[c], V2[c]));
 		}
+		// (round 05) the fog cutoff is a switch, not a blend: 0 = fog everywhere incl. the sky, > 0 = no height fog past that distance (the night sky stays clear
+		// above a fogged far shore). An in-between value would un-fog the near city, so it steps at the middle of the segment (a dark hour at night).
+		if (It.Key == CutoffName) R = t < 0.5f ? V1 : V2;
 		Out.Add(It.Key, R);
 	}
 	// weather: daylight params blend toward the overcast set (night is untouched)
