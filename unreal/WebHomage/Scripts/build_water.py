@@ -37,6 +37,7 @@ UE = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Conte
 SCR = os.environ.get('SM2_WATER_SCR', '/Users/midir/sm2-n1/_scratch/water')
 VIEWS_JSON = os.path.join(WT, 'docs', 'night1', 'water', 'views.json')
 STEPS_ALL = ['inputs', 'ue']
+GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'   # every Unreal launch goes through the GPU lock (RULES.md)
 
 WATER_Y = -1.6                                  # browser G.WATER_Y (m)
 SHORE_BOX = (-6400.0, -8000.0, 12800.0, 17600.0)  # x0, z0, w, h (browser metres; UE X = x, Y = z)
@@ -51,29 +52,22 @@ SPEC = [
     [5.6, 0.042, -47, 0.55, 2.3], [4.3, 0.03, -2, 0.5, 3.9], [3.3, 0.026, -71, 0.55, 5.6], [2.45, 0.019, -28, 0.5, 0.9],
     [1.8, 0.014, -104, 0.45, 3.3], [1.33, 0.01, -52, 0.4, 6.0], [0.97, 0.0072, 8, 0.35, 2.0], [0.71, 0.005, -66, 0.3, 4.6],
 ]
-# capillary / short chop (pixel shader only; replaces the browser's tiled normal-map layers): [wavelength m, steepness kA, direction deg, phase]
-CAPS = [
-    [0.52, 0.050, -44, 0.7], [0.41, 0.048, -69, 2.9], [0.33, 0.046, -25, 5.2], [0.27, 0.045, -58, 1.4], [0.22, 0.043, -8, 3.8],
-    [0.18, 0.042, -83, 0.2], [0.15, 0.040, -37, 4.4], [0.125, 0.038, -95, 2.1], [0.105, 0.036, -15, 5.9], [0.088, 0.034, -62, 1.0],
-    [0.074, 0.032, -30, 3.3], [0.062, 0.030, -77, 4.8],
-]
 def waves():
     out = []
     for L, A, dd, q, ph in SPEC:
         k = 2 * math.pi / L; d = math.radians(dd)
         out.append(dict(L=L, A=A, k=k, w=math.sqrt(GRAV * k), dx=math.cos(d), dy=math.sin(d), Q=q / (k * A * len(SPEC)), ph=ph))
     return out
-def caps():
-    out = []
-    for L, kA, dd, ph in CAPS:
-        k = 2 * math.pi / L; d = math.radians(dd)
-        w = math.sqrt(GRAV * k + 7.28e-5 * k ** 3)  # capillary-gravity dispersion
-        out.append(dict(L=L, A=CAP_K * kA / k, k=k, w=w, dx=math.cos(d), dy=math.sin(d), ph=ph))
-    return out
 WAVE_MAX = sum(w[1] for w in SPEC)
 VAR_K = 1.2   # filtered slope variance -> GGX alpha^2 (Cox-Munk: alpha^2 ~ 2 sigma^2 per axis; 1.2 keeps the far river glossy)
-CAP_K = 0.45   # capillary steepness scale (sheltered river chop; tuned on CITY-SPEC C14 at S4)
-WIND = (math.cos(math.radians(-50)), math.sin(math.radians(-50)))
+# round 02: wind-sea slope spectrum layers (T_WaterSlope, tools/water/water_inputs.py) replace the 12 capillary sinusoids:
+#   [tile size m, angle of realization A / B to the wind (deg), RMS slope per axis]   bands: tile/24 .. tile/3
+LAYERS = [(21.0, 8.0, -47.0, 0.050), (6.7, -19.0, 38.0, 0.055), (2.2, 27.0, -33.0, 0.055), (0.73, -11.0, 52.0, 0.050)]
+PS_WAVE_MIN_L = 5.5   # analytic Gerstner slopes in the pixel shader: only the waves >= 5.5 m (the vertex geometry); shorter = spectrum layers
+WIND_DEG = -50.0
+SLOPE_ENC = 6.0       # water_inputs.SLOPE_ENC
+CONTACT_MAX = 32.0    # water_inputs.CONTACT_MAX
+WIND = (math.cos(math.radians(WIND_DEG)), math.sin(math.radians(WIND_DEG)))
 
 
 # ================================================================================================ orchestrator (plain python3)
@@ -132,6 +126,24 @@ def step_inputs():
     dist = cv2.distanceTransform((land == 0).astype(np.uint8), cv2.DIST_L2, 5) * SHORE_PX
     cv2.imwrite(os.path.join(SCR, 'shore_dist.png'), np.clip(dist / 400.0 * 255 + 0.5, 0, 255).astype(np.uint8))
     log('shore map %dx%d (%.0f %% water), noise %dx%d' % (nw, nh, (land == 0).mean() * 100, S, S))
+    # ---- round 02: wind-sea slope spectrum + contact-distance map (tools/water/water_inputs.py)
+    sys.path.insert(0, os.path.join(WT, 'tools', 'water'))
+    import water_inputs
+    st = water_inputs.slope_texture(os.path.join(SCR, 'water_slope.png'))
+    log('slope spectrum texture', st)
+    exp = export_dir()
+    cm = water_inputs.contact_map(exp, os.path.join(SCR, 'water_contact.png'))
+    json.dump(dict(cm, export=exp), open(os.path.join(SCR, 'water_contact.json'), 'w'), indent=1)
+    log('contact map from %s: box %s, %.2f m/px, %d segments, %d files' % (exp, [round(v, 1) for v in cm['box']], cm['px'], cm['segments'], len(cm['files'])))
+
+
+def export_dir():
+    """the city export whose geometry defines the contact (water line) map: $SM2_WATER_EXPORT, else the export the Manhattan build used"""
+    for c in (os.environ.get('SM2_WATER_EXPORT'), os.environ.get('SM2_CITY_EXPORT'),
+              os.path.join(os.environ.get('SM2_MANHATTAN_SCR', ''), 'export', 'midtown3x3') if os.environ.get('SM2_MANHATTAN_SCR') else None,
+              os.path.join(SCR, 'manhattan', 'export', 'midtown3x3')):
+        if c and os.path.exists(os.path.join(c, 'manifest.json')): return c
+    raise SystemExit('no city export found for the contact map: set SM2_WATER_EXPORT=<export dir with manifest.json>')
 
 
 def step_ue():
@@ -145,7 +157,7 @@ def step_ue():
     lg = os.path.join(SCR, 'logs', 'water_ue.log')
     t0 = time.time()
     with open(lg + '.stdout', 'w') as so:
-        r = subprocess.run([UE, UPROJECT, '-run=pythonscript', '-script=' + os.path.abspath(__file__), '-unattended', '-nullrhi', '-nosplash',
+        r = subprocess.run([GPU_SLOT, 'capture', '--label', 'water', '--', UE, UPROJECT, '-run=pythonscript', '-script=' + os.path.abspath(__file__), '-unattended', '-nullrhi', '-nosplash',
                             '-RenderOffScreen', '-NoSound', '-NoCrashReports', '-abslog=' + lg], env={**os.environ, 'SM2_WATER_SCR': SCR},
                            stdout=so, stderr=subprocess.STDOUT, timeout=5400)
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
@@ -180,15 +192,41 @@ def hlsl_vs():
 
 
 def hlsl_ps():
-    W = waves(); C = caps()
+    """round 02: the 5 longest Gerstner waves analytically (they match the vertex geometry) + 4 layers of a baked random-phase wind-sea slope
+    spectrum (T_WaterSlope, two realizations each, rotated / scrolled at the layer's phase speed) instead of round 01's 12 capillary sinusoids
+    (their sum formed a lattice: the ring artifact). Unresolved slope variance -> GGX roughness; contact foam from the baked contact-distance
+    map (T_WaterContact) + the SLW depth test; facets whose reflection would point below the horizon are bent up (Lumen would trace into the
+    void -> dark speckle at grazing angles)."""
+    CONTACT = json.load(open(os.path.join(SCR, 'water_contact.json')))
+    W = [w for w in waves() if w['L'] >= PS_WAVE_MIN_L]
     big = '\n'.join('sincos(%.6f * dot(float2(%.6f, %.6f), p) - %.6f * t + %.4f, s, c); f = 1.0 - smoothstep(0.12, 0.35, foot * %.6f); '
                     'sl2 += float2(%.6f, %.6f) * (%.6f * c / max(1.0 - %.6f * s, 0.35)) * f; varU += %.8f * (1.0 - f); h += %.6f * s;'
                     % (w['k'], w['dx'], w['dy'], w['w'], w['ph'], w['k'] / math.pi, w['dx'], w['dy'], w['k'] * w['A'], w['Q'] * w['k'] * w['A'],
                        0.5 * (w['k'] * w['A']) ** 2, w['A']) for w in W)
-    cap = '\n'.join('sincos(%.5f * dot(float2(%.6f, %.6f), p) - %.5f * t + %.4f, s, c); f = 1.0 - smoothstep(0.12, 0.35, foot * %.5f); '
-                    'sl3 += float2(%.6f, %.6f) * (%.6f * c) * f; var3 += %.8f * (1.0 - f);'
-                    % (w['k'], w['dx'], w['dy'], w['w'], w['ph'], w['k'] / math.pi, w['dx'], w['dy'], w['k'] * w['A'], 0.5 * (w['k'] * w['A']) ** 2) for w in C)
-    return r'''
+    lay = []
+    for i, (sc, aA, aB, amp) in enumerate(LAYERS):
+        lc = sc / 8.5                                   # band-centre wavelength of the layer (3..24 cycles per tile)
+        kc = 2 * math.pi / lc
+        spd = math.sqrt(GRAV / kc + 7.28e-5 * kc)       # phase speed (capillary-gravity)
+        tA, tB = math.radians(WIND_DEG + aA), math.radians(WIND_DEG + aB)
+        cA, sA, cB, sB = math.cos(tA), math.sin(tA), math.cos(tB), math.sin(tB)
+        sc2 = sc * 0.87
+        lay.append(('{ float2 qa = float2(dot(p, float2(%(cA).6f, %(sA).6f)), dot(p, float2(%(nsA).6f, %(cA).6f))) / %(sc).4f - float2(%(va).6f * t, 0.0);\n'
+                    '  float2 qb = float2(dot(p, float2(%(cB).6f, %(sB).6f)), dot(p, float2(%(nsB).6f, %(cB).6f))) / %(sc2).4f - float2(%(vb).6f * t, 0.0) + float2(0.37, %(off).3f);\n'
+                    '  float2 ga = (Texture2DSampleBias(tW, tWSampler, qa, 1.0).rg - 0.5) * %(enc).2f;\n'
+                    '  float2 gb = (Texture2DSampleBias(tW, tWSampler, qb, 1.0).ba - 0.5) * %(enc).2f;\n'
+                    '  ga = float2(ga.x * %(cA).6f - ga.y * %(sA).6f, ga.x * %(sA).6f + ga.y * %(cA).6f);\n'
+                    '  gb = float2(gb.x * %(cB).6f - gb.y * %(sB).6f, gb.x * %(sB).6f + gb.y * %(cB).6f);\n'
+                    '  float rf = saturate(log2(%(sc).4f / (12.0 * foot)) / 3.0);\n'
+                    '  slT += (ga + gb) * %(amp).5f; varT += %(amp2).7f * (1.0 - rf); }')
+                   % dict(cA=cA, sA=sA, nsA=-sA, cB=cB, sB=sB, nsB=-sB, sc=sc, sc2=sc2, va=spd / sc, vb=spd * 1.07 / sc2, off=0.61 * (i + 1), enc=SLOPE_ENC,
+                          amp=amp * 0.7071, amp2=amp * amp))
+    return PS_TEMPLATE % dict(wx=WIND[0], wy=WIND[1], sx=SHORE_BOX[0], sz=SHORE_BOX[1], sw=SHORE_BOX[2], sh=SHORE_BOX[3], big=big, lay='\n'.join(lay),
+                              hmax=WAVE_MAX * 0.5, ss='%(SCAT)s', sa='%(ABS)s', cx=CONTACT['box'][0], cz=CONTACT['box'][1], cw=CONTACT['box'][2],
+                              ch=CONTACT['box'][3], cmax=CONTACT_MAX)
+
+
+PS_TEMPLATE = r'''
 #define NZ(uv) Texture2DSample(tN, tNSampler, (uv))
 float2 p = Lag.xy; float t = T;
 float3 wp = WPos * 0.01, cm = Cam * 0.01;
@@ -206,31 +244,42 @@ float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleLevel(tS, tSSampler, su, 0).r * 400.0 : 400.0;
 float nearS = 1.0 - smoothstep(6.0, 70.0, shore);
 slick = saturate(slick + nearS * 0.3);
-float rough = lerp(0.55, 1.45, gust) * (1.0 - slick * 0.7) * (1.0 - streak * 0.3);
-// ---- the 12 Gerstner waves (waves.js waveSlope: resolved -> slope, unresolved -> slope variance) + 12 capillary waves
-float2 sl2 = 0, sl3 = 0; float varU = 0, var3 = 0, h = 0, s, c, f;
+float rough = lerp(0.6, 1.35, gust) * (1.0 - slick * 0.6) * (1.0 - streak * 0.3);
+// ---- the long Gerstner waves (waves.js waveSlope: resolved -> slope, unresolved -> slope variance)
+float2 sl2 = 0; float varU = 0, h = 0, s, c, f;
 %(big)s
-%(cap)s
 float crest = h / %(hmax).5f;
 float wk = lerp(0.8, 1.15, gust) * (1.0 - 0.3 * slick);
-sl2 *= wk; varU *= wk * wk; sl3 *= rough; var3 *= rough * rough;
-float2 slope = sl2 + sl3;
+sl2 *= wk; varU *= wk * wk;
+// ---- wind-sea spectrum layers (baked random-phase slopes; mip bias +1 drops waves under ~4 px, their variance goes to roughness)
+float2 slT = 0; float varT = 0;
+%(lay)s
+float ck = ChopK * rough;
+slT *= ck; varT *= ck * ck;
+float2 slope = sl2 + slT;
 // ---- foam: contact (the water line against anything below it), whitecaps in the gusts, wind streaks
+float fn = NZ(p / 7.0 + float2(t * 0.01, -t * 0.007)).b;
+float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest + 0.15 * (slT.x - slT.y);
 float dnw = max(DNW - PD, 0.0) * 0.01;                                 // view-depth of water in front of what lies below it (m)
 float lr = dnw / max(dot(-V, View.ViewForward), 0.2);                  // -> distance along the view ray under the surface
-float fn = NZ(p / 7.0 + float2(t * 0.01, -t * 0.007)).b;
-float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest;
-float cf = (1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr)) * (1.0 - smoothstep(1500.0, 3000.0, dist));
-float foam = cf * (0.35 + 0.45 * lap) * smoothstep(0.25, 0.6, NZ(p / 3.1 + float2(-t * 0.02, t * 0.013)).r + 0.25 * lap);
+float cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
+float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
+float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSampler, cu, 0).r * %(cmax).1f : %(cmax).1f;
+cf = max(cf, 1.0 - smoothstep(0.12, 0.45 + 1.5 * fn + 0.9 * lap, cdm));
+cf *= 1.0 - smoothstep(500.0, 2000.0, dist);
+float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZ(p / 3.1 + float2(-t * 0.02, t * 0.013)).r + 0.25 * lap) * FoamK;
 foam = max(foam, streak * 0.12 * smoothstep(0.4, 1.0, gust + 0.3));
-foam = max(foam, smoothstep(0.62, 0.95, crest) * gust * 0.35);
+foam = max(foam, smoothstep(0.62, 0.95, crest) * gust * 0.3);
 float cov = saturate(foam);
 float pat = NZ(p / 1.9 + float2(t * 0.004, 0.0)).r * 0.62 + NZ(p / 0.63 + float2(0.0, t * 0.006)).g * 0.5;
 float wf = smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov) * (1.0 - smoothstep(600.0, 2500.0, dist)) + cov * 0.35 * smoothstep(300.0, 2500.0, dist);
 wf = saturate(wf);
-// ---- normal / roughness (GGX alpha^2 = base + filtered wave variance + foam)
+// ---- normal / roughness (GGX alpha^2 = base + filtered wave variance + foam); far water may keep a smoother sheen (FarVarK)
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
-float a2 = 0.028 * 0.028 + VARK * (varU + var3) + wf * 0.2;
+{ float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
+  Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
+float vk = VARK * lerp(1.0, FarVarK, smoothstep(250.0, 1500.0, dist));
+float a2 = 0.028 * 0.028 + vk * (varU + 2.0 * varT) + wf * 0.2;
 Rough = clamp(pow(a2, 0.25), 0.04, 0.7);
 NormalW = normalize(lerp(N, float3(0, 0, 1), wf * 0.6));
 Spec = 0.25 * lerp(0.9, 1.12, slick) * (1.0 + 0.1 * streak);     // F0 = 0.02 (IOR 1.333); slicks mirror a little more, gust patches less
@@ -239,11 +288,11 @@ Opac = wf * 0.92;
 float fn2 = NZ(p / 23.0 + float2(t * 0.002, -t * 0.003)).g;
 float silt = (1.0 - smoothstep(10.0, 120.0, shore)) * (0.55 + 0.45 * fn2);
 float turb = 0.85 + 0.3 * NZ(p / 900.0 + float2(0.0, t * 0.0015)).r;
-float3 sS = float3(%(ss)s) * turb * (1.0 + 0.25 * streak) * (1.0 + float3(0.9, 0.6, 0.3) * silt);
+float3 sS = float3(%(ss)s) * ScatK * turb * (1.0 + 0.25 * streak) * (1.0 + float3(0.9, 0.6, 0.3) * silt);
 float3 sA = float3(%(sa)s) * (1.0 + float3(0.1, 0.2, 0.5) * silt);
 Scat = sS * 0.01; Abs = sA * 0.01;
-// ---- sun glitter: sparse facets of a finer chop that face the sun get their normal tilted onto the sun half-vector and a smoother
-//      micro-roughness, so the engine's own (shadowed) GGX sun specular lights them as glints (emissive does not reach the SLW output)
+// ---- sun glitter: sparse facets that face the sun get their normal tilted onto the sun half-vector and a smoother micro-roughness,
+//      so the engine's own (shadowed) GGX sun specular lights them as glints (emissive does not reach the SLW output)
 float3 Ls = normalize(SunDir);
 float3 Hh = normalize(Ls + V);
 float2 gn = (NZ(p / 2.3 + float2(t * 0.05, t * 0.034)).ga - 0.5) * 2.0 + 0.8 * (NZ(float2(-p.y, p.x) / 3.7 + float2(-t * 0.041, t * 0.02)).ga - 0.5) * 2.0;
@@ -258,8 +307,7 @@ Emis = 0;
 if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : Lag.zzz))); Emis = 0; Opac = 1.0; return dv; }
 return float3(0.74, 0.76, 0.75);   // foam albedo (SLW: base colour covers the water by Opacity)
 #undef NZ
-''' % dict(wx=WIND[0], wy=WIND[1], sx=SHORE_BOX[0], sz=SHORE_BOX[1], sw=SHORE_BOX[2], sh=SHORE_BOX[3], big=big, cap=cap, hmax=WAVE_MAX * 0.5,
-           ss='%(SCAT)s', sa='%(ABS)s')
+'''
 
 
 # body optics per metre (tuned against CITY-SPEC C14 and the refs; see docs/night1/water/HANDOFF.md)
@@ -267,6 +315,10 @@ SCAT = (0.07, 0.09, 0.078)
 ABS = (0.50, 0.34, 0.56)
 PHASE_G = 0.55
 GLITTER = 1.0
+# material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
+WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
+PARAMS = {'ChopK': 1.0, 'ScatK': 0.55, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 1.0}
+if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
 def build_in_unreal():
@@ -317,15 +369,19 @@ def build_in_unreal():
     # imported in place under their final names (re-import replaces the asset; no rename / delete of referenced assets)
     import shutil
     stage = os.path.join(SCR, 'ue_import'); os.makedirs(stage, exist_ok=True)
-    for src, name in (('water_noise.png', 'T_WaterNoise.png'), ('shore_dist.png', 'T_ShoreDist.png'), ('water_grid.glb', 'SM_WaterGrid.glb')):
-        shutil.copyfile(os.path.join(SCR, src), os.path.join(stage, name))
-    import_files([os.path.join(stage, 'T_WaterNoise.png'), os.path.join(stage, 'T_ShoreDist.png')], ROOT + '/Textures')
-    for name in ('T_WaterNoise', 'T_ShoreDist'):
+    TEXS = (('water_noise.png', 'T_WaterNoise'), ('shore_dist.png', 'T_ShoreDist'), ('water_slope.png', 'T_WaterSlope'), ('water_contact.png', 'T_WaterContact'))
+    for src, name in TEXS + (('water_grid.glb', 'SM_WaterGrid'),):
+        shutil.copyfile(os.path.join(SCR, src), os.path.join(stage, name + os.path.splitext(src)[1]))
+    import_files([os.path.join(stage, n + '.png') for _, n in TEXS], ROOT + '/Textures')
+    for _, name in TEXS:
         tx = load(f'{ROOT}/Textures/{name}')
         tx.set_editor_property('srgb', False)
-        tx.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP if name == 'T_WaterNoise' else unreal.TextureCompressionSettings.TC_GRAYSCALE)
-        if name == 'T_ShoreDist':
+        vec = name in ('T_WaterNoise', 'T_WaterSlope')
+        tx.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP if vec else unreal.TextureCompressionSettings.TC_GRAYSCALE)
+        if not vec:
             tx.set_editor_property('address_x', unreal.TextureAddress.TA_CLAMP); tx.set_editor_property('address_y', unreal.TextureAddress.TA_CLAMP)
+        if name == 'T_WaterContact':   # non-power-of-two distance map, sampled at level 0 only
+            tx.set_editor_property('mip_gen_settings', unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS)
         EAL.save_asset(f'{ROOT}/Textures/{name}')
     wlog('textures')
 
@@ -408,11 +464,14 @@ def build_in_unreal():
     except Exception as e: WARN.append('fallback_depth: %s' % str(e)[:60])
     pd = expr(unreal.MaterialExpressionPixelDepth, -1400, 900)
     gk = expr(unreal.MaterialExpressionScalarParameter, -1400, 1000, parameter_name='GlitterK', default_value=GLITTER)
+    tW = expr(unreal.MaterialExpressionTextureObject, -1600, 400, texture=load(ROOT + '/Textures/T_WaterSlope'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    tC = expr(unreal.MaterialExpressionTextureObject, -1600, 500, texture=load(ROOT + '/Textures/T_WaterContact'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+    prm = {k: expr(unreal.MaterialExpressionScalarParameter, -1600, 600 + 100 * i, parameter_name=k, default_value=float(v)) for i, (k, v) in enumerate(PARAMS.items())}
     dbg = expr(unreal.MaterialExpressionScalarParameter, -1400, 1100, parameter_name='Dbg', default_value=float(os.environ.get('SM2_WATER_DBG', '0')))
     dbgk = expr(unreal.MaterialExpressionScalarParameter, -1400, 1200, parameter_name='DbgK', default_value=float(os.environ.get('SM2_WATER_DBGK', '3000')))
     code = hlsl_ps().replace('VARK', '%.3f' % VAR_K) % dict(SCAT='%.4f, %.4f, %.4f' % SCAT, ABS='%.4f, %.4f, %.4f' % ABS)
     ps = custom('WaterPS', code, [('Lag', vi), ('WPos', wpos_ps), ('Cam', cam2), ('T', tim2), ('tN', tN), ('tS', tS), ('SunDir', sund), ('SunE', sune),
-                                  ('DNW', dnw), ('PD', pd), ('GlitterK', gk), ('Dbg', dbg), ('DbgK', dbgk)],
+                                  ('DNW', dnw), ('PD', pd), ('GlitterK', gk), ('Dbg', dbg), ('DbgK', dbgk), ('tW', tW), ('tC', tC)] + list(prm.items()),
                 [('NormalW', 3), ('Rough', 1), ('Opac', 1), ('Emis', 3), ('Spec', 1), ('Scat', 3), ('Abs', 3)], -900, 200)
     for out, prop in (('', MP.MP_BASE_COLOR), ('NormalW', MP.MP_NORMAL), ('Rough', MP.MP_ROUGHNESS), ('Opac', MP.MP_OPACITY), ('Emis', MP.MP_EMISSIVE_COLOR),
                       ('Spec', MP.MP_SPECULAR)):
@@ -484,9 +543,10 @@ def build_in_unreal():
         ca.camera_component.set_editor_property('constrain_aspect_ratio', False)
         ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
         return ca
-    def view_map(path, rig, v, water=True, dolly=None):
+    def view_map(path, rig, v, water=True, dolly=None, mat=None):
         world = open_level(path)
-        add_sublevels(world, [CITY_GEO, BOXES, RIG % rig, ACTORS] + ([LEVEL] if water else []))
+        add_sublevels(world, [CITY_GEO, BOXES, RIG % rig, ACTORS] + ([LEVEL] if water and mat is None else []))
+        if mat is not None: water_actor('RiverWater_Variant', mat)   # tuning variant: its own water actor with a material instance
         if not water:  # perf baseline: P1's previous flat water (M_CityWater plane at G.WATER_Y), as the city had it before this piece
             g = eas.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector(0, 0, WATER_Y * 100.0), unreal.Rotator(0, 0, 0))
             g.set_actor_label('BaselineWaterPlane')
@@ -529,6 +589,43 @@ def build_in_unreal():
     view_map(ROOT + '/Maps/Water_Perf_RiverLow_Base', 'golden', rl, water=False)
     view_map(ROOT + '/Maps/Water_Perf_S4_Base', 'golden', s4, water=False)
     view_map(ROOT + '/Maps/Water_Perf_S4', 'golden', s4)   # = Manhattan_View_S4 with the same camera construction as the baseline
+    rs = views['river_sun']
+    view_map(ROOT + '/Maps/Water_View_RiverSun', 'golden', rs)
+    view_map(ROOT + '/Maps/Water_View_RiverSun_Dolly', 'golden', rs, dolly=views['river_sun_dolly'])
+    view_map(ROOT + '/Maps/Water_View_HarbourHigh', 'golden', views['harbour_high'])
+    view_map(ROOT + '/Maps/Water_Perf_RiverSun_Base', 'golden', rs, water=False)
+    # ---------------------------------------------------------------- tuning variants (SM2_WATER_VARIANTS = {"name": {param: value}, ...})
+    var = json.loads(os.environ.get('SM2_WATER_VARIANTS') or '{}')
+    if EAL.does_directory_exist(ROOT + '/Variants'): EAL.delete_directory(ROOT + '/Variants')
+    for vn, pv in var.items():
+        mi = at.create_asset('MI_Water_' + vn, ROOT + '/Variants', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        mi.set_editor_property('parent', m)
+        for k, val in pv.items():
+            if k.startswith('_'): continue
+            unreal.MaterialEditingLibrary.set_material_instance_scalar_parameter_value(mi, k, float(val))
+        EAL.save_asset(mi.get_path_name().split('.')[0])
+        for key in pv.get('_views', ['river_low', 'river_sun', 'S4_perch_skyline']):
+            view_map(ROOT + '/Variants/Water_Var_%s_%s' % (vn, key), 'golden', views[key], mat=mi)
+    # ---------------------------------------------------------------- World Partition Manhattan (island piece): the water actor goes straight
+    # into the persistent WP level, not spatially loaded (a classic sublevel cannot be added to a WP map)
+    for mp in WP_MAPS:
+        if not EAL.does_asset_exist(mp): continue
+        try:
+            unreal.EditorLoadingAndSavingUtils.load_map(mp)
+            for a in eas.get_all_level_actors():
+                if a.get_actor_label() in ('RiverWater', 'RiverWater_WP'): eas.destroy_actor(a)
+            hid = 0
+            for a in eas.get_all_level_actors():
+                if a.get_actor_label() == 'WaterPlane':
+                    a.static_mesh_component.set_visibility(False, False); a.set_actor_hidden_in_game(True); hid += 1
+            wa = water_actor('RiverWater_WP')
+            try: wa.set_editor_property('is_spatially_loaded', False)
+            except Exception as e: WARN.append('WP is_spatially_loaded: %s' % str(e)[:60])
+            unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
+            wlog('water added to WP map', mp, '(flat WaterPlane actors hidden: %d)' % hid)
+            if hid == 0: WARN.append('%s: no loaded WaterPlane actor hidden (hide or drop the flat plane in the city build when /Game/Water exists)' % mp)
+        except Exception as e:
+            WARN.append('WP map %s: %s' % (mp, str(e)[:120]))
     if WARN:
         wlog('WARNINGS (%d):' % len(WARN))
         for w in WARN: print('    ', w)
