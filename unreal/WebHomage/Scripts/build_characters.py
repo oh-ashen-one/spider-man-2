@@ -1208,7 +1208,7 @@ if 'skinsmap' in STEPS:
     def skins_stage(tag, play):
         les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
         les.new_level('/Temp/Char_%s_Build_%d' % (tag, int(time.time())))
-        sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-38, 150, 0), 'Sun')       # rot = (yaw, pitch, roll); light travels toward -X: front-left of a hero that faces +X
+        sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (150, -38, 0), 'Sun')       # spawn() rot = (yaw, pitch, roll): yaw 150, pitch -38 = the light travels toward -X, front-lighting a hero that faces +X
         sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
         sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True); sc.set_editor_property('light_source_angle', 3.0)
         spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
@@ -1264,7 +1264,7 @@ if 'skinsmap' in STEPS:
     pshots = [sshot(None, KS.SIDE, 10.0, 520.0, 95.0, 10.0, 40.0, label='playable pawn, side (T swaps the suit)', player=True),
               sshot(None, KS.THREE_QUARTER, 6.0, 480.0, 95.0, 20.0, 40.0, label='playable pawn, 3/4', player=True)]
     ok2 = save_skins_map(TESTS + '/Char_SkinsPlay', pshots)
-    json.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,
+    _json0.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,
                    first_still=0, first_orbit=N_STILL, first_pawn=0, map_stills=TESTS + '/Char_Skins', map_play=TESTS + '/Char_SkinsPlay'),
               open(SCRATCH + '/skins_shots.json', 'w'), indent=1)
     log('skinsmap saved', ok1, ok2, 'stills', N_STILL, 'orbit', len(shots) - N_STILL)

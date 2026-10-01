@@ -1,75 +1,85 @@
-# P2 Characters: handoff (end of round 10)
+# P2 Characters: handoff (round 11, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Author of round 10: Sonnet 5.5. Everything below is committed and pushed (`origin/night1/characters`); the content (`/Game/Characters`, `/Game/Tests/Characters`) is NOT committed (script-generated, rebuild with `build_fight.sh`, see Commands). Numbers: `round-10/SPEC_CHECK.md`; provenance: `round-10/CAPTURES.md`.
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 11 author: Sonnet 5.5 (2026-10-01 afternoon).
+Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `tools/ue_char/suits/chain_r11.sh` / `build_fight.sh`, see Commands).
+Scope since the director's first-pass plan (`git show origin/Opus-5.5-Loop-Night-1:docs/night1/director/PLAN-firstpass.md`, piece G): **the HERO ONLY**. Thugs, fight, crowd are PAUSED (their rounds 05 - 10 below stay as the record).
 
-## Round 11 IN PROGRESS (interim note, Opus 5.5, 2026-10-01 02:10)
+## STATE AT THE END OF THIS ROUND (read this first)
 
-Target (critic r10, lowest axis image quality 4): one hair asset per head, no colour seam > 40 px inside the hair, no flat card > 20 px, no background between hair and skin
-(hood / beard / tee faces at 4K); thug collar: no skin-toned blob > 15 x 15 px.  Done on the CPU side (committed): `tools/ue_char/people/hair.py` (Hood blond -> maroon `unify_hair`;
-Beard / Tee hair shell: `tuck_hair` edges onto the head, `paint_scalp` (scalp under the shell + the shell's own baked-skin texels -> hair colour), Beard `compress_hair`; the r10
-`bridge_gap` flat card removed), `nape_fix.py` (strip -> the hood's own dark), checker `eval/hair_4k.py`, `crops_r11.py`, `make_pairs_r11.py`, `analyze_r11.sh`.
-Engine chain `$P2_SCRATCH/r11/chain.sh` (build -> gE faces -> F fight movie -> gF stills) was queued in the GPU lock at 02:00 (PID in `$P2_SCRATCH/r11/chain.pid`).
-If this note is still here, the round did not finish: rebuild with build_people.sh + build_fight.sh (full steps) and re-run the chain.
+**Status line is in `round-11/CAPTURES.md`** (what was actually captured and what was not). If `round-11/stills/` or `round-11/swap_pawn_T_key.mp4` are missing, the engine chain did not run: the GPU lock refuses launches while the owner plays a game (log `gpu-unhealthy-wait ... owner game running (CrossOver) ... GTA5.exe`) or while `PAUSED` exists. Then run, from the worktree:
 
-## Where the round stands
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters
+OUT=$P2_SCRATCH/r11/chain; mkdir -p $OUT
+nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r11.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &     # record the PID
+```
+One lock hold (<= 40 min): rebuild of /Game/Characters (+ suits + `Char_Skins` + `Char_SkinsPlay`) -> 4K stills of 8 suits x 4 views -> playable-pawn swap movie (7 real T presses) -> persistence re-launch -> settings-menu shot -> orbit movie.
+`STEPS="stills pawn"` etc. selects steps; each step skips itself when the hold is nearly used up (CHAIN_LIMIT_S). After it: the post-processing list at the end of this file.
 
-Round-09 critic (`critic/round-09-CRITIC.md`, lowest axis 4 = image quality): biggest gap = in EVERY 8 s fight clip >= 4 hit reactions (head / torso >= 0.1 stature within 0.2 s of contact), >= 2 knockdowns with 2 enemies down together >= 1 s, >= 2 distinct get-ups, no enemy holding one guard > 2 s; plus an "untextured grey hero arm" at 1.30 - 1.50 s.
+### What exists (all CPU-verified; the engine side is compiled but its first run is the chain above)
 
-Round 10 (measured on the real game's bone log, `fight/r10_check.py`; YOLO cross-check `fight/video_grounded.py`):
+| piece | file |
+|---|---|
+| generator: Tessera's `paint(..., style)` (DEFAULT_STYLE = Tessera, bit-identical to round 08 at 1024 px: max diff 0) | `tools/ue_char/suit8/design.py` |
+| suit list, 8 original styles | `tools/ue_char/suits/suits.json` (tessera, verdant, plum, cinder, glacier, ash, saffron, sage) |
+| maps per suit (4096 px, ~45 s each; Tessera 8192 from `hero_suit_r8.py`) | `python3 tools/ue_char/suits/gen_suits.py [--only id] [--hero] [--n 4096]` -> `art/night1/characters/hero/suits/<id>_{basecolor,normal,orm}.png` (git-ignored) |
+| IP guard: colour-blocking rules P1-P5, structural + palette uniqueness P6, glyph whitelist P7; OCR of atlases / stills | `tools/ue_char/suits/ip_guard.py palette|ocr` (numbers in `round-11/SPEC_CHECK.md`) |
+| UV seam check (spec CH18, "no seam > 40 px at 4K") | `tools/ue_char/eval/suit_seams.py` |
+| CPU design-aid renders / swatch | `tools/ue_char/suits/swatch_cpu.py` (not evidence: the engine sheet is `swatch_sheet.py`) |
+| engine content steps `skins` (textures NeverStream, `MI_HeroSuit_<id>`, `MI_HeroLens_<id>`, data asset `/Game/Characters/Hero/Suits/DA_HeroSuits`) and `skinsmap` (`Char_Skins`, `Char_SkinsPlay`) | `unreal/WebHomage/Scripts/build_characters.py` (end of file) |
+| the swap | `Source/WebHomage/Characters/WHHeroSuit.{h,cpp}`: `UWHHeroSuitSubsystem` (UTickableWorldSubsystem): T / Shift+T, gamepad D-pad Up (LB + D-pad Up = back), console `wh.Suit <n|id>` / `wh.SuitNext` / `wh.SuitPrev`, applies to the player pawn's `SpiderSuit` slot (+ `Lens`) and to every other mesh wearing a hero suit |
+| persistence | `Core/WHSettings.{h,cpp}`: `SuitIndex`, `SuitId`, `LoadSuit()`, `SaveSuit()`; keys `HeroSuit`, `HeroSuitId` in `GameUserSettings.ini [WebHomage.Settings]`; the in-play swap saves at once; "Reset defaults" keeps the suit |
+| settings menu row "Suit" (section HERO) | `Core/WHSettingsMenu.cpp` |
+| capture director: `FWHShot.Suit`, `FWHShot.bTargetPlayer` | `Characters/WHCharShowDirector.*` |
+| automation flags | `-WHSuit=<n|id>`, `-WHSuitScript=t:n,...`, `-WHSuitKeyScript=t,...` (real T key through the player controller), `-WHSuitPersist` (see the header of `WHHeroSuit.h`) |
 
-| | wide | 3/4 | orbit |
-|---|---|---|---|
-| hit reactions >= 0.1 stature in 0.2 s | 6 / 6 | 7 / 7 | 7 / 7 |
-| knockdowns (>= 1 s) | 2 | 2 | 2 |
-| two enemies down together | 1.84 s (YOLO 2.0) | 1.84 s (1.6) | 1.94 s (2.4) |
-| distinct get-ups | 2 | 2 | 2 |
-| longest guard hold | 1.40 s | 1.82 s | 1.98 s |
+The playable pawn (`AWebTravCharacter`, P3) is NOT edited: its `SetupHeroMesh` still loads `MI_Hero_Suit`; the subsystem re-applies the chosen suit to the player's mesh every frame and scans the world every 0.5 s.
+Integration note for the integrator: the module needs no new Build.cs dependency (the suit list is a data asset, not an asset-registry scan). `Core/WHSettingsMenu.cpp` got one section (a `ChoiceRow`); `Core/WHSettings.*` got the two fields + two methods.
 
-Round 09 on the same instrument: 0 knockdowns in wide, 0.00 s together in 3/4, guard holds 3.6 - 4.4 s, one get-up kind.
+## Next steps (priority order)
 
-- **The "grey arm" was the Brute's steel pipe** passing through the hero's back (grey elbow fitting sticking out of his flank); the Thug's bat also went through him. The gunmetal pipe colour of the first round-10 pass was not enough. Fix: `weapons/add_weapon.py` tilt +58 -> -10 deg (bat / pipe rise beside the fist instead of pointing at the hero). CPU check `fight/weapon_clip_check.py`: bat 5.8 s -> 0 s, pipe 1.4 s -> 0 s of 24 s inside the hero's body. Proof: `round-10/captures/crops_3x/r10_arm.jpg`, `r10_hero_*.jpg`.
-- **Two strikes were aimed the wrong way** (found only on the engine log, not on the script's predicted log): `enemy_hit` made the hero face its attacker before his own previous punch landed (165 deg away from the Tee at 3.97 s). Re-timed in `choreo.py`; worst facing error at the contact over 23 strikes is now 3.9 deg (`evidence/facing_check.json`).
-- Secondary: Hood hair ribbons removed (a 40 px wisp above the crown remains), Beard temple gap bridged with a dark card, tee holes 0 (>= 20 px). **Thug collar wedge NOT fixed** (3,136 px at 4K, round 09 1,790, round 08 7,336: the round-10 normals / shade change made it worse by the metric). Hijab walker's rear shin NOT changed. Hero head brow / nose volume NOT done.
+1. If the chain has not run: run it (above), then the post-processing list. Look at the 4K stills: IQ of every suit, any smear / seam, glyph legibility, lens tint.
+2. Critic verdict -> fix the single biggest gap (probably look: flat colour fields, hood-vs-body contrast on light suits `glacier` / `sage`, glyph size).
+3. Whole-mesh suits (PLAN: "whole-mesh suits later"): a style can already change colours / patterns only; a different silhouette (cape, collar, gauntlets) needs Blender geometry on the hero rig.
+4. Per-suit emissive trim (glow lines) needs an emissive input in `M_Char_Suit` (not built).
+5. Hero model / animation items from rounds 08 - 10 (head brow / nose volume, run start / stop / turn) are untouched; the hero-only first pass also owes P3 the section-5 clips of `SPEC.md`.
 
-## Open items for the next round (priority order)
+## Rules that still hold
 
-1. Thug collar wedge: the strip of nape skin between the hair line and the hood collar (`people/nape_fix.py`). Albedo darkening (round 09), then normals + hue-preserving shade (round 10) did not remove a lit tan plane in the engine. Ideas not tried: shade the strip's texels to the hood's own hue and saturation (not a darker skin), or move the strip's three triangles' vertices into the hood collar. Iterate on `people/pose_view.py` first (CPU, no engine), then measure with `eval/wedge_4k.py` on a real `thug_face_4k.jpg`.
-2. Hijab walker's rear shin: the five crowd walks have a swing shin >= 30 deg from horizontal after `crowd/lift_cap.py` (knee 0.38 - 0.40 m, ankle 0.17 m above the planted ankle). A flatter-looking toe-off needs a shorter stride, which means foot slide unless the walkers' speeds are scaled with it.
-3. Hero head: brow and nose volume (critic r08 / r09), hero showcase framing (CH1), run start / stop / turn / idle (CH10, section 5 of the spec).
-4. Orbit guard hold is 1.98 s (limit 2.0): add a filler for the Tee between 17.2 and 18.6 s (`choreo.py _fillers` leaves gaps below its 1.7 s threshold) if the critic measures stricter.
-5. Hood's stray wisp above the crown (`people/mask.py drop_loose_shells` threshold).
+- ORIGINAL suits only (never an official suit, emblem, web-line pattern or recognisable colour blocking; no image generation for suit art; never write "Spider-Man" or "spider" in a generation prompt). The guard + critic read it every round.
+- Every Unreal launch through `gpu_slot.sh` (cap 1), `stop_ue.sh` only, never kill -9 an engine, no listeners, one engine at a time. The lock waits while the owner plays a game: that is by design, not a bug to work around.
+- Content is script-generated (`/Content` never committed, no LFS).
 
 ## Commands
 
 ```
 export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters UE_WAIT_SKIP=1
-bash tools/ue_char/people/build_people.sh                          # street enemies + weapon fit (CPU, ~3 min)
-python3 tools/ue_char/fight/make_fight_clips.py                    # in-place clip GLB incl. getUp2 + clip_motion.json (only when the clips change)
-python3 tools/ue_char/fight/choreo.py --check                      # writes fight_script.json + timeline
-python3 tools/ue_char/fight/preview_cpu.py --bones OUT.csv && python3 tools/ue_char/fight/r10_check.py OUT.csv OUT.json    # PREDICTED numbers (CPU, ~40 s); then ALWAYS look at an engine capture: the prediction cannot see aim or weapon problems
-python3 tools/ue_char/fight/weapon_clip_check.py OUT.json         # weapons through the hero's body (CPU, ~13 s, real skinned meshes)
-python3 tools/ue_char/fight/preview_cpu.py OUT.png 2.4,3.6 --cam wide|34|orbit --size 960x540                              # CPU render of the real meshes (matches the engine frame closely)
-BUILD_STDOUT=$P2_SCRATCH/rN/build.stdout bash tools/ue_char/fight/build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,mapkey,mapavoid   # wipes /Game/Characters first, then waits for the lock: never launch a capture while it is queued
-tools/ue_char/capture_r5.sh <out> F "" ""                                                  # fight movies (3 x 8 s) + bone log (needs an EMPTY <out>/segF_frames; ~7 min run, 3 GB of frames)
-STAGE_SHOTS=1 GF_TIMES=4.6,12.0,20.8 tools/ue_char/capture_r5.sh <out> "" gF ""            # 3 stage-exact 4K stills (two enemies down in each)
-tools/ue_char/capture_r5.sh <out> "" gE ""                                                 # enemy faces (2 launches)
-tools/ue_char/analyze_r10.sh <out> <evidence> <round09 captures>                           # r10_check, contact_check, video activity, YOLO counts, face metrics
-$P2_SCRATCH/r4/yv/bin/python tools/ue_char/fight/video_grounded.py clip.mp4 out.json        # pixel check of the knockdowns
-python3 tools/ue_char/crops_r10.py <captures> <round09 captures> <out>                      # 3x crops (hero-centred strips at 1.30 / 1.40 / 1.50 s, faces)
-python3 tools/ue_char/make_pairs_r10.py <captures> <abs round09 captures> <abs crops dir> <pairs.json>; python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py <pack dir> <pairs.json>
+python3 tools/ue_char/suits/gen_suits.py --hero --n 4096                    # all suits (CPU, ~6 min); --only cinder for one
+python3 tools/ue_char/suits/ip_guard.py palette art/night1/characters/hero/suits OUT.json
+python3 tools/ue_char/eval/suit_seams.py art/night1/characters/hero/suits OUT.json
+python3 tools/ue_char/suits/swatch_cpu.py art/night1/characters/hero/suits OUT.jpg --views front,three,back   # design aid
+unreal/WebHomage/Scripts/build_editor.sh                                    # C++ (close your own editor first)
+bash tools/ue_char/fight/build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,skins,skinsmap      # content (needs the lock)
+python3 tools/ue_char/suits/make_pairs_r11.py docs/night1/characters/round-11 $P2_SCRATCH/../critic-P2-r11/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r11/pack /Users/midir/sm2-n1/_scratch/critic-P2-r11/pairs.json
 ```
-Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`; never kill -9 a rendering engine; count engines with `pgrep -x UnrealEditor`. Every launch waits in the lock's FIFO (cap 1 - 2 slots; 7 - 26 min per launch this round): start the chain in the background (`nohup`, record the PID) and do CPU work meanwhile.
+Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`; count engines with `pgrep -x UnrealEditor`.
 
-## How the fight script works (`tools/ue_char/fight/`)
+## Post-processing after the chain (CPU)
 
-- `choreo.py` writes `fight_script.json`: hero + 6 enemies, a pure function of the stage clock (`Source/WebHomage/Characters/WHCharStage.h`, `FWHScriptBeat`, `FWHPathKey`). `strike(t0, hero_clip, target, reaction)` = the target steps in, the hero turns (`face`), strikes, the target reacts 20 ms after the contact (`down` = knockdown held on the ground until `getup=`); `enemy_hit(t0, who, clip)` = an enemy blow that lands (the hero flinches). **A hero turn belongs 0.05 s after the previous punch's contact at the earliest: `enemy_hit` turns the hero from t0 - 0.35 s.** `_fillers()` inserts feints / shuffles into idle gaps (guard hold <= ~2 s).
-- Three 8 s windows: stage 0.65 - 8.65 (wide) | 8.65 - 16.65 (3/4) | 16.65 - 24.65 (orbit). Per window: 2 knockdowns (two enemies down together), 2 different get-ups (`getUp` = backward roll, `getUp2` = sit-up), 4 - 5 more reactions, one enemy blow that lands.
-- `r10_check.py` = the critic's numbers on a bone log (`-WHBoneLog`), `contact_check.py` = fist / foot to the victim's head, `weapon_clip_check.py` = weapons through the hero, `video_activity.py` / `video_grounded.py` = pixels.
+```
+OUT=$P2_SCRATCH/r11/chain; R=docs/night1/characters/round-11
+cp -r $OUT/stills/skin_*_4k.jpg $R/stills/            # (size-check: commit the front + chest 4K, the rest as 1080p)
+python3 tools/ue_char/suits/swatch_sheet.py $R/stills $R/SWATCH_SHEET.jpg
+python3 tools/ue_char/suits/analyze_swap.py $OUT/pawn/pawn_frames $OUT/pawn/suit_log.txt $R/evidence/swap_latency.json
+python3 tools/ue_char/suits/ip_guard.py ocr $R/evidence/ocr_stills.json $R/stills/skin_*_front_4k.jpg ...
+python3 tools/ue_char/suits/spec_check_r11.py $R > $R/SPEC_CHECK.md
+```
 
-## Rules that still hold
+## Older rounds (hero / enemies / crowd, now paused)
 
-- The hero is the ORIGINAL "Tessera" suit (procedural, 8192 maps); never revert to or imitate an official suit. Sealed lenses, round-07 crowd avoidance, stencil key, round-06 seam fixes, round-09 scripted fight + its 4 reaction clips all stay.
-- No copied IP: enemies / civilians are the owner's own Tripo generations; the fight clips are the browser game's own; weapons are generic primitives. No reference image or footage is committed.
-- Never `kill -9` a rendering engine, never launch UnrealInsights / TraceServer-style listeners, never pkill by pattern: PIDs only. After any engine crash twice: stop and report.
+Round 10 numbers (fight clips, hit reactions, knockdowns) and the open items (thug collar wedge, hijab walker shin, hero brow / nose volume, orbit guard hold, hood wisp) are in `round-10/SPEC_CHECK.md` and `critic/round-10-CRITIC.md`. The round-11 hair work of an earlier session
+(`tools/ue_char/people/hair.py`, `eval/hair_4k.py`, `crops_r11.py`, `make_pairs_r11.py`... that interim round was superseded by the first-pass plan) is committed but was never rebuilt or captured.
+How the fight script works (`tools/ue_char/fight/choreo.py`, `fight_script.json`, `r10_check.py`) is unchanged; commands for it: `git show 69afb4b:docs/night1/characters/HANDOFF.md`.
