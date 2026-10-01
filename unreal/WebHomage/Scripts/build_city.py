@@ -845,6 +845,16 @@ def keep_mesh(rec):
     return not m.get('transparent')  # additive / multiply overlays (spill, halos, AO, grime) are left out for now
 
 sms = ueditor = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+# (island r01) collision policy, built in (no runtime patching needed): only GROUND meshes collide (complex-as-simple, actors tagged WHGround: the
+# traversal's floor that never holds a web); every other city mesh (facade / roofs / detail / signage / kit / far / props) is visual-only; buildings
+# collide through one invisible WHBox cube per browser collision box (collision.json), the traversal's only building boxes (WebTravWorld.cpp).
+GROUND_KINDS = ('asphalt', 'sidewalk', 'land')
+WP_TILE = 256.0
+def tile_key(x, z): return '%d_%d' % (math.floor(x / WP_TILE), math.floor(z / WP_TILE))
+def set_spatial(a, on, wp):
+    if wp: a.set_editor_property('is_spatially_loaded', bool(on))
+def no_collision(c):
+    c.set_collision_profile_name('NoCollision'); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
 def finish_mesh(sm, mat, collide, nanite=False):
     sm.set_material(0, mat)
     ns = sm.get_editor_property('nanite_settings')  # Nanite quantises UVs: the facade / roof data channels need full precision
@@ -853,9 +863,15 @@ def finish_mesh(sm, mat, collide, nanite=False):
     bs.set_editor_property('use_full_precision_u_vs', True); bs.set_editor_property('generate_lightmap_u_vs', False)
     bs.set_editor_property('recompute_normals', False); bs.set_editor_property('recompute_tangents', False)
     sms.set_lod_build_settings(sm, 0, bs)
+    bsetup = sm.get_editor_property('body_setup')
     if collide:
-        bsetup = sm.get_editor_property('body_setup')
         if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
+    else:
+        # (island r01) visual-only mesh: no simple shapes and no cooked render-mesh (complex) collision. The traversal's solids are the per-building
+        # WHBox cubes (step 'coll' / 'wp'); a merged 256 m tile with collision was one giant invisible block (owner: landing / running in mid-air).
+        try: sms.remove_collisions(sm)
+        except Exception as ex: log('WARN remove_collisions', sm.get_name(), ex)
+        if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX)
 
 if 'mesh' in STEPS:
     recs = [r for r in man['meshes'] if keep_mesh(r)]
@@ -872,7 +888,7 @@ if 'mesh' in STEPS:
         EAL.rename_asset(src, dst)
         sm = load(dst)
         mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
-        finish_mesh(sm, mat, r['kind'] in ('facade', 'roofs', 'asphalt', 'sidewalk', 'detail') and not r.get('lod'), nanite=r['kind'] == 'detail')
+        finish_mesh(sm, mat, r['kind'] in GROUND_KINDS, nanite=r['kind'] == 'detail')   # (island r01) only the ground collides (was facade / roofs / detail too)
         EAL.save_asset(dst); n += 1
     EAL.delete_directory(ROOT + '/Meshes/_in')
     log('meshes', n)
@@ -1019,8 +1035,8 @@ def open_level(path):
     return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
 KIT_DIR = ROOT + '/Meshes/streetkit'
-def kit_spawn():
-    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level"""
+def kit_spawn(wp=False):
+    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level (island r01: visual-only)"""
     kp = os.path.join(EXPORT, 'streetkit.json')
     if not os.path.exists(kp): return 0
     n = 0
@@ -1029,6 +1045,7 @@ def kit_spawn():
         if not EAL.does_asset_exist(sp): continue
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/streetkit')
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC); n += 1
+        no_collision(a.static_mesh_component); set_spatial(a, True, wp)
     return n
 
 def kit_import():
@@ -1097,7 +1114,7 @@ def fsky_import():
     else: log('MISSING farsky clump proto')
     if EAL.does_directory_exist(ROOT + '/Props/_in'): EAL.delete_directory(ROOT + '/Props/_in')
     log('farsky meshes', len(recs))
-def fsky_spawn():
+def fsky_spawn(wp=False):
     D = fsky_data(); n = 0
     if not D: return 0
     for r in D['files']:
@@ -1106,13 +1123,14 @@ def fsky_spawn():
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label='farsky__' + r['name'], folder='City/Far')
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
         a.static_mesh_component.set_editor_property('cast_shadow', r['mat'] == 'towers'); n += 1
+        no_collision(a.static_mesh_component); set_spatial(a, False, wp)
     cp = ROOT + '/Props/SM_farsky_clump'
     if D['clumps'] and EAL.does_asset_exist(cp):
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_farsky_clumps', folder='City/Far')
         c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-        c.set_static_mesh(load(cp)); c.set_editor_property('cast_shadow', False)
+        c.set_static_mesh(load(cp)); c.set_editor_property('cast_shadow', False); no_collision(c)
         xs = [unreal.Transform(U(q[0], q[1], q[2]), unreal.Rotator(0, 0, (q[5] * 997.0) % 360.0), unreal.Vector(q[3], q[3], q[3] * q[4])) for q in D['clumps']]
-        c.add_instances(xs, False, True); n += len(xs)
+        c.add_instances(xs, False, True); n += len(xs); set_spatial(a, False, wp)
     return n
 
 if 'fsky' in STEPS:
@@ -1127,10 +1145,38 @@ if 'fsky' in STEPS:
     else:
         fsky_import()
 
-def build_geo_level(path):
-    open_level(path)
+# (island r01) one populate() for both map kinds: the classic always-loaded geometry level (City_Midtown_Geo, a sublevel of /Game/Maps/Manhattan) and the
+# World Partition map (step 'wp'): there every actor goes into the WP world itself, with
+#   spatially loaded (256 m cells, ~1.2 km loading range): the detailed per-tile meshes, street kit, per-tile prop / tree / car HISMs;
+#   always loaded (is_spatially_loaded = False): the far layer (facadeLod masses outside the detailed region, far shores / land, far skyline,
+#   hinterland, water plane), the ground (asphalt / sidewalks / land: WHGround, the traversal indexes it once at start) and the WHBox cubes.
+def mesh_is_far(r): return bool(r.get('lod')) or r['kind'] in ('far', 'land') or r['name'].startswith(('facadeLod', 'farsky'))
+
+BOX_KINDS = {0: 'wall', 7: 'bulkhead', 8: 'watertower', 13: 'spire', 14: 'hero', 17: 'glass'}
+def spawn_boxes(wp=False):
+    """the browser's own collision boxes (collision.json: wall / glass / hero / spire / bulkhead / watertower; >= 3 m tall, >= 1.2 m wide) as invisible
+    /Engine/BasicShapes/Cube actors "WHBox_<n>" = the traversal's building boxes (anchors, wall-run, perch, capsule push-out, web targets).
+    Same selection as P4's build_look.py geo step (Look_Boxes), which this replaces."""
+    C = json.load(open(os.path.join(EXPORT, 'collision.json')))
+    cube = load('/Engine/BasicShapes/Cube')
+    n = 0
+    for sd in C['solids']:
+        if sd['t'] != 0 or sd['k'] not in BOX_KINDS: continue
+        x0, y0, z0, x1, y1, z1 = sd['bb']  # browser metres: x east, y up, z south
+        if (y1 - y0) < 3.0 or ((x1 - x0) < 1.2 and (z1 - z0) < 1.2): continue
+        a = spawn(unreal.StaticMeshActor, U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), label='WHBox_%d' % n, folder='City/TraversalBoxes')
+        c = a.static_mesh_component; c.set_static_mesh(cube)
+        a.set_actor_scale3d(unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))  # the cube is 100 cm: scale = size in metres
+        c.set_collision_profile_name('BlockAll'); c.set_visibility(False); c.set_cast_shadow(False)
+        a.set_mobility(unreal.ComponentMobility.STATIC); set_spatial(a, False, wp)
+        n += 1
+    return n
+
+def populate(wp=False):
+    """spawn the whole city into the CURRENT level (classic geometry sublevel, or the WP world)"""
     recs = [r for r in man['meshes'] if keep_mesh(r)]
     _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
+    n_gnd = n_vis = 0
     for r in recs:
         if _fb and r['name'] == 'palisadesCliff': continue
         base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
@@ -1140,8 +1186,14 @@ def build_geo_level(path):
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
         smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
         a.set_mobility(unreal.ComponentMobility.STATIC)
-    kit_spawn()
-    log('farsky instances', fsky_spawn())   # (r10)
+        if r['kind'] in GROUND_KINDS:   # (island r01) the floor: collides, tagged, always loaded (indexed once by the traversal)
+            smc.set_collision_profile_name('BlockAll'); a.tags = [unreal.Name('WHGround')]; n_gnd += 1
+            set_spatial(a, False, wp)
+        else:
+            no_collision(smc); n_vis += 1
+            set_spatial(a, not mesh_is_far(r), wp)
+    n_kit = kit_spawn(wp)
+    log('farsky instances', fsky_spawn(wp))   # (r10)
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
     ni = 0
@@ -1153,20 +1205,26 @@ def build_geo_level(path):
                 if _pool == '_remove': REMOVE_AT.update((round(q[0], 1), round(q[1], 1)) for q in _its)   # (r08) existing trees / pits within 16 m of a street-level shot camera
                 else: EXTRA_PROPS.setdefault(_pool, []).extend(_its)
     def make_ism(label, folder, sm_path, items, cast_shadow=True):
-        """one HISM actor with per-instance custom data 0..2 = tint, 3 = state (M_CityProp / M_CityLeaves); items in the layout.json pool-item format"""
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label, folder=folder)
-        c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-        c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
-        xs = []
-        for it in items:
-            s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
-            # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
-            rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
-            xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
-        ids = c.add_instances(xs, True, True)
-        for k, it in enumerate(items):
-            tint = ((it.get('e') or {}).get('aTint')) or [1, 1, 1]; st = (it.get('e') or {}).get('aState', 0)
-            for j, v in enumerate((tint[0], tint[1], tint[2], st if isinstance(st, (int, float)) else 0)): c.set_custom_data_value(k, j, float(v), False)
+        """HISM actors (one per 256 m tile: streams with its cell, culls per tile) with per-instance custom data 0..2 = tint, 3 = state (M_CityProp /
+        M_CityLeaves); items in the layout.json pool-item format. (island r01) visual-only: NoCollision (a region-wide HISM was de-collided at runtime anyway)."""
+        by_tile = {}
+        for it in items: by_tile.setdefault(tile_key(it['x'], it['z']), []).append(it)
+        for tk, its in sorted(by_tile.items()):
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label + '__t' + tk, folder=folder)
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
+            no_collision(c)
+            xs = []
+            for it in its:
+                s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
+            c.add_instances(xs, True, True)
+            for k, it in enumerate(its):
+                tint = ((it.get('e') or {}).get('aTint')) or [1, 1, 1]; st = (it.get('e') or {}).get('aState', 0)
+                for j, v in enumerate((tint[0], tint[1], tint[2], st if isinstance(st, (int, float)) else 0)): c.set_custom_data_value(k, j, float(v), False)
+            set_spatial(a, True, wp)
         return len(items)
     for p in protos:
         pool = p['src']; items = (L['instances'].get(pool) or {}).get('items') or []
@@ -1190,6 +1248,7 @@ def build_geo_level(path):
     g = spawn(unreal.StaticMeshActor, U(0, -1.6, 0), label='WaterPlane', folder='City')
     g.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Plane')); g.set_actor_scale3d(unreal.Vector(60000, 60000, 1))
     g.static_mesh_component.set_material(0, load(MAT + '/M_CityWater'))
+    g.tags = [unreal.Name('WHGround')]; set_spatial(g, False, wp)   # (island r01) was tagged by build_look.py's geo step
     # (r02) hinterland (horizon.js): 5-sided boxes to the horizon, per-instance colours
     hp = os.path.join(EXPORT, 'hinterland.json')
     if os.path.exists(hp) and EAL.does_asset_exist(ROOT + '/Props/SM_hinterland'):
@@ -1199,13 +1258,20 @@ def build_geo_level(path):
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_hinterland', folder='City/Far')
         c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
         c.set_static_mesh(load(ROOT + '/Props/SM_hinterland')); c.set_editor_property('num_custom_data_floats', 6)
-        c.set_editor_property('cast_shadow', False)
+        c.set_editor_property('cast_shadow', False); no_collision(c)
         c.add_instances([unreal.Transform(U(h[0], h[1], h[2]), unreal.Rotator(0, 0, -math.degrees(h[6])), unreal.Vector(h[3], h[5], h[4])) for h in H], False, True)
         for k, h in enumerate(H):
             for j in range(6): c.set_custom_data_value(k, j, float(h[7 + j]), False)
+        set_spatial(a, False, wp)
         log('hinterland', len(H))
+    log('populate%s: %d meshes (%d ground, %d visual-only), %d kit, %d instances' % (' (WP)' if wp else '', len(recs), n_gnd, n_vis, n_kit, ni))
+    return len(recs), ni
+
+def build_geo_level(path):
+    open_level(path)
+    nm, ni = populate(False)
     les.save_current_level()
-    log('geo level', path, len(recs), 'meshes', ni, 'instances')
+    log('geo level', path, nm, 'meshes', ni, 'instances')
 
 # (r06) view-map atmosphere, tuned against CITY-SPEC C11-C15 (far shore takes the sky's tint, sits 25-35 luma below the sky band, river darker than the far shore).
 # The sky is blown out (Y ~ 229) because the test maps use manual exposure +2 EV: P4 owns exposure; the far-shore / sky RATIO is what these values fix.
@@ -1259,4 +1325,34 @@ if 'map' in STEPS:
             ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
         unreal.EditorLoadingAndSavingUtils.save_map(world, f'{TESTS}/{mp}')
         log('map', mp)
+# (island r01) step 'coll': the traversal's building boxes for the classic map, its own always-loaded level (replaces P4's /Game/Look/Look_Boxes)
+COLL_LEVEL = TESTS + '/City_Midtown_Collision'
+if 'coll' in STEPS:
+    open_level(COLL_LEVEL)
+    nb = spawn_boxes(False)
+    les.save_current_level()
+    log('collision level', COLL_LEVEL, nb, 'WHBox cubes')
+
+# (island r01) step 'wp': the World Partition skeleton of the island map. One WP world (runtime hash set, main partition = 2D grid of 256 m cells,
+# loading range ARGS wp_range cm, default 120000 = 1.2 km, block on slow streaming) holding the whole city: detailed tiles stream per cell, the far
+# layer + ground + WHBox cubes are always loaded (populate(True)). build_manhattan.py's map step adds the player start, game mode and look rig.
+# A clean rebuild deletes the map files first (build_manhattan.py does: WP external-actor packages); here an existing map is emptied.
+if 'wp' in STEPS:
+    WPM = ARGS.get('wp_map') or os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+    rng = int(float(ARGS.get('wp_range') or os.environ.get('SM2_ISLAND_WP_RANGE', '120000')))
+    cell = int(float(ARGS.get('wp_cell') or os.environ.get('SM2_ISLAND_WP_CELL', '25600')))
+    if EAL.does_asset_exist(WPM): open_level(WPM)
+    elif not les.new_level(WPM, True): raise RuntimeError('could not create the WP map ' + WPM)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    wpo = world.get_world_settings().get_editor_property('world_partition')
+    if not wpo: raise RuntimeError(WPM + ' is not a World Partition map')
+    rh = unreal.find_object(None, wpo.get_path_name() + '.WorldPartitionRuntimeHashSet_0')
+    grid = unreal.find_object(None, rh.get_path_name() + '.RuntimePartitionLHGrid_0') if rh else None
+    if not grid: raise RuntimeError('runtime hash set / main LH grid not found under ' + wpo.get_path_name())
+    grid.set_editor_property('CellSize', cell); grid.set_editor_property('LoadingRange', rng); grid.set_editor_property('bBlockOnSlowStreaming', True)
+    log('WP main grid: cell %d cm, loading range %d cm, block on slow streaming' % (grid.get_editor_property('CellSize'), grid.get_editor_property('LoadingRange')))
+    nm, ni = populate(True)
+    nb = spawn_boxes(True)
+    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
+    log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', nm, 'meshes', ni, 'instances', nb, 'WHBox cubes')
 log('DONE')

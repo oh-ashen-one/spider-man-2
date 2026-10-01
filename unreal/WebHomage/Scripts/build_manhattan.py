@@ -32,8 +32,15 @@ PROJ = os.path.dirname(HERE)
 WT = os.path.dirname(os.path.dirname(PROJ))
 UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
 UE = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor'
-SCR = os.environ.get('SM2_MANHATTAN_SCR', '/Users/midir/sm2-n1/_scratch/manhattan')
-EXPORT = os.path.join(SCR, 'export', 'midtown3x3')
+# (island r01) piece A (Island) owns this file: one scratch, the detailed region is a tile rectangle (default Midtown 7 x 9 = M1), env:
+#   SM2_MANHATTAN_SCR (default _scratch/island), SM2_ISLAND_TILES ix0,iz0,ix1,iz1 (default -3,-5,3,3), SM2_ISLAND_REGION export folder name
+#   (default midtown; the old 3 x 3 = -1,-2,1,0 / midtown3x3), SM2_ISLAND_MIN_FREE_GB (default 150: the export refuses to start below it)
+SCR = os.environ.get('SM2_MANHATTAN_SCR', '/Users/midir/sm2-n1/_scratch/island')
+TILES = os.environ.get('SM2_ISLAND_TILES', '-3,-5,3,3')
+REGION = os.environ.get('SM2_ISLAND_REGION', 'midtown')
+MIN_FREE_GB = float(os.environ.get('SM2_ISLAND_MIN_FREE_GB', '150'))
+EXPORT = os.path.join(SCR, 'export', REGION)
+WP_MAP = '/Game/Maps/Manhattan_WP'
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
@@ -120,8 +127,13 @@ def step_city_export():
         if not os.path.isdir(os.path.join(WT, 'node_modules')): sh('npm ci', log_name='npm.log')
         subprocess.Popen('nohup npx vite --port %d --host 127.0.0.1 --strictPort > %s/logs/vite.log 2>&1 &' % (DEV_PORT, SCR), shell=True, cwd=WT)
         time.sleep(6)
-    sh(['node', 'tools/export/export_city.mjs', '--url', 'http://127.0.0.1:%d/' % DEV_PORT, '--out', EXPORT,
+    st = os.statvfs('/Users/midir'); free = st.f_bavail * st.f_frsize / 1e9
+    if free < MIN_FREE_GB:
+        raise SystemExit('ABORT city_export: %.0f GB free < %.0f GB (PLAN-firstpass §5 disk rule)' % (free, MIN_FREE_GB))
+    t0 = time.time()
+    sh(['node', 'tools/export/export_city.mjs', '--tiles', TILES, '--url', 'http://127.0.0.1:%d/' % DEV_PORT, '--out', EXPORT,
         '--profile', os.path.join(SCR, 'chrome-profile')], log_name='city_export.log')
+    log('city_export: tiles %s -> %s in %.0f s (%.0f GB free before)' % (TILES, EXPORT, time.time() - t0, free))
 
 
 def step_city_prep():
@@ -155,7 +167,16 @@ def step_city():
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}
     bc = os.path.join(HERE, 'build_city.py')
     # one pass in build_city.py's own default order (tools/export/build_city.sh): the map step spawns the kit + far-skyline actors
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map"}'), env)
+    # (island r01) + 'coll' (WHBox level, replaces Look_Boxes) + 'wp' (the World Partition map); the WP map's files are deleted first (clean,
+    # idempotent: a commandlet cannot delete external-actor packages of a loaded WP world without a modal / source-control step)
+    content = os.path.join(PROJ, 'Content')
+    name = WP_MAP.split('/')[-1]
+    for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name):
+        f = os.path.join(content, rel)
+        if os.path.exists(f): os.remove(f)
+    for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
+        safe_rmtree(os.path.join(content, rel))
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp", "wp_map": %r}' % WP_MAP), env)
 
 
 def step_traversal():
@@ -198,7 +219,9 @@ def step_characters():
 
 
 def step_look():
-    env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': 'geo,rigs,maps', 'SM2_LOOK_PRESETS': 'midday,golden,night'}
+    # (island r01) rigs only: the city build now produces its own collision (City_Midtown_Collision: WHBox cubes; ground tagged WHGround; every
+    # other city mesh visual-only), so P4's geo step (Look_Boxes, components -> WorldDynamic) and its test maps are not needed
+    env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': 'rigs', 'SM2_LOOK_PRESETS': 'midday,golden,night'}
     ue_python('look', exec_wrapper(os.path.join(HERE, 'build_look.py'), ''), env)
 
 
@@ -240,7 +263,7 @@ def build_maps():
     MAPS = '/Game/Maps'
     ACTORS = MAPS + '/Manhattan_Actors'
     CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'
-    BOXES = '/Game/Look/Look_Boxes'
+    BOXES = '/Game/Tests/City/City_Midtown_Collision'   # (island r01) was P4's /Game/Look/Look_Boxes
     RIG = '/Game/Look/Rigs/Look_Rig_%s'
     CH = '/Game/Characters'
     SHOTS = {s['id'].split('_')[0]: s for s in json.load(open(os.path.join(HERE, 'city_shots.json')))}
@@ -357,6 +380,27 @@ def build_maps():
         make_map(MAPS + ('/Manhattan' if rig == 'golden' else '/Manhattan_' + rig.capitalize()), rig)
     for v in VIEWS:
         make_map(MAPS + '/Manhattan_View_' + v, 'golden', game_mode=False, cam=SHOTS[v])
+
+    # ---------------------------------------------------------------- (island r01) the World Partition map (city actors placed by build_city.py step 'wp')
+    if EAL.does_asset_exist(WP_MAP):
+        unreal.EditorLoadingAndSavingUtils.load_map(WP_MAP)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        for a in eas.get_all_level_actors():
+            if a.get_actor_label().startswith(('PlayerStart', 'WP_Rig_')): eas.destroy_actor(a)
+        ps = SHOTS['S1']['player']
+        st = spawn(unreal.PlayerStart, U(ps[0], ps[2], ps[1] + 1.0), -90.0, 'PlayerStart', 'Manhattan')
+        st.set_editor_property('is_spatially_loaded', False)
+        rig = presets[0] if 'golden' not in presets else 'golden'
+        li = spawn(unreal.LevelInstance, U(0, 0, 0), 0.0, 'WP_Rig_' + rig, 'Manhattan')
+        li.set_world_asset(unreal.load_asset(RIG % rig))
+        li.set_editor_property('is_spatially_loaded', False)
+        beh = getattr(unreal.LevelInstanceRuntimeBehavior, 'LEVEL_STREAMING', None)
+        if beh is not None: li.set_editor_property('desired_runtime_behavior', beh)
+        if trav_gm: world.get_world_settings().set_editor_property('default_game_mode', trav_gm)
+        ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WP_MAP)
+        mlog('WP map', WP_MAP, 'player start + rig level instance', rig, 'behaviour', li.get_editor_property('desired_runtime_behavior'), 'saved' if ok else 'SAVE FAILED')
+    else:
+        MISS.append('WP map %s missing (build_city.py step wp)' % WP_MAP)
 
     # ---------------------------------------------------------------- hero swap check (P2 /Game/Characters hero vs P3 HeroDev)
     dev = unreal.load_asset('/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/SpiderMan')
