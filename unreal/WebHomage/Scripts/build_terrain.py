@@ -276,9 +276,9 @@ def hism(actor, mesh_path, transforms, cull=None, shadows=False, material=None, 
     c = add_component(actor, unreal.HierarchicalInstancedStaticMeshComponent)
     c.set_static_mesh(load(mesh_path))
     if material is not None: c.set_material(0, material)
-    for i in range(0, len(transforms), 20000): c.add_instances(transforms[i:i + 20000], False, True)
     if cull: c.set_editor_property('instance_end_cull_distance', int(cull))
     c.set_cast_shadow(shadows)
+    for i in range(0, len(transforms), 20000): c.add_instances(transforms[i:i + 20000], False, True)
     c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
     return c
 
@@ -293,20 +293,20 @@ def build_land(path):
         a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label=r['name'], folder='Terrain/' + r['kind'])
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
         if r['name'] == 'park' or r['name'].startswith(('mapLawns', 'coastLawn', 'parkWater')): a.tags = [unreal.Name('WHGround')]
-        if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False) if r['kind'] == 'water' else None
+        if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
         n += 1
     log('land: %d mesh actors' % n)
     # grass tufts: browser grass.js density / height mask, scattered by prep_terrain.py (x, z, yaw, width scale, height m), three wind classes, culled at 45 m
     tp = os.path.join(PREP, 'tufts.bin')
     if os.path.exists(tp) and EAL.does_asset_exist(f'{PROD}/SM_tuft'):
-        import numpy as np
-        R = np.fromfile(tp, np.float32).reshape(-1, 5)
-        classes = [('TuftLow', R[:, 4] < 0.11), ('TuftMid', (R[:, 4] >= 0.11) & (R[:, 4] < 0.2)), ('TuftHigh', R[:, 4] >= 0.2)]
+        import array
+        buf = array.array('f'); buf.frombytes(open(tp, 'rb').read())
+        recs = [buf[i:i + 5] for i in range(0, len(buf), 5)]          # x, z, yaw, width scale, height m
+        classes = [('TuftLow', [r for r in recs if r[4] < 0.11]), ('TuftMid', [r for r in recs if 0.11 <= r[4] < 0.2]), ('TuftHigh', [r for r in recs if r[4] >= 0.2])]
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_grass_tufts', folder='Terrain/Grass')
         gy = TJ['GY']['GRASS']
-        for nm, sel in classes:
-            S = R[sel]
-            xs = [unreal.Transform(U(float(x), gy - 0.01, float(z)), unreal.Rotator(0.0, 0.0, -math.degrees(float(yw))), unreal.Vector(float(w), float(w), float(h) / 0.85)) for x, z, yw, w, h in S]
+        for nm, S in classes:
+            xs = [unreal.Transform(U(x, gy - 0.01, z), unreal.Rotator(0.0, 0.0, -math.degrees(yw)), unreal.Vector(w, w, h / 0.85)) for x, z, yw, w, h in S]
             hism(a, f'{PROD}/SM_tuft', xs, cull=4500, material=load(f'{MAT}/Inst/MI_{nm}'))
             log('tufts', nm, len(xs))
     # instanced props: reeds + picnic blankets (matrix records [x,y,z,ry,sx,sy,sz,(r,g,b)]), park lamps inside the park (pool items {x,y,z,ry,s})
