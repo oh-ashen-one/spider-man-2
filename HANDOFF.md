@@ -23,8 +23,8 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 | F 4K/60 perf | `night1/perf` | r5 **APPROACHES** (merged). r6: life-on **median 61.5 fps PASS**, p95 53–54.5 fps fail; undisclosed foliage loss → **r6 NOT merged** | **r7 running (Opus)**: committed look_gate.py first; remove life-on frame-pacing bubble; restore foliage |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
 | P6 City life | `night1/life` | r2 FAILS (4); r3 code only (no renders) | r3 renders: both sidewalks populated at every camera height |
-| P5 Combat | `night1/combat` | r2 FAILS (4); r3 judged, r4 WIP | resume r4 from HANDOFF (local hit-stop, starburst FX) |
-| P4 Look | `night1/look` | r2 FAILS (4); r3 presets v2 captured | r3 critic / r4 |
+| P5 Combat | `night1/combat` | r3 FAILS (4) | **r4–r5 running (Opus)**: additive impact burst, every blow moves the victim |
+| P4 Look | `night1/look` | r3 FAILS (4) | **r4–r5 running (Opus)**: golden key/fill contrast, night windows |
 | Water | merged (Opus A/B winner) | — | — |
 
 Merged into integration so far: traversal ≤ r15, city ≤ r9, life ≤ r3, perf ≤ r5. Characters ≤ r8 and traversal ≤ r13 merged after their critics.
@@ -63,3 +63,5 @@ After a workflow finishes: `git merge origin/night1/<piece>` into integration, `
 - Running: traversal r18 (Opus, living flips), perf r7 (Opus, life-on pacing + look_gate.py), characters r10 (Sonnet, reactions + grey arm), city r10–r11 (Sonnet, far-shore band), life r3–r4 (Sonnet, sidewalk crowds). Relaunch each piece's next round from its latest critic when it finishes; merge only rounds with no regression.
 - Engine cap is 1 while the owner's Steam/CrossOver is open; `_scratch/gpu/cap_restore.sh` returns it to 2 after 15 quiet minutes.
 - **Before the owner wakes:** stop launching new rounds ~1 h ahead, merge judged rounds, rebuild the combined map headless (`~/sm2-n1/_scratch/showcase/build.sh`, plus `build_combat.py --steps combat` if combat moved), and DO NOT open a window — the owner will say when to launch the playable build (standalone `-game -windowed -ResX=1920 -ResY=1080`, mouse sensitivity via `wh.MouseSensitivity`).
+
+- 2026-10-01 01:25: owner asleep, asked for max safe load: engine cap 2 (hard rule), seven pieces running in parallel (CPU-side work fills the gaps). Fixed a health_monitor bug where STRAIN raised the cap from 1 to 2 (min was hard-coded 2; now min 1, max 2).
