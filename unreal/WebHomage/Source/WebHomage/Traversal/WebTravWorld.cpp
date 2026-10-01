@@ -36,6 +36,24 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 	{
 		return;
 	}
+	// owner playtest 2026-10-01: the integrated Manhattan map carries per-TILE merged visual meshes (SM_facade / SM_roofs / SM_detail /
+	// SM_facadeLod / SM_signage / SM_streetkit / Times Square / bridges / seawalls / far skyline) with collision; as traversal boxes (and as
+	// web-trace targets) each was a 256 m-2 km solid block -> landing / running in mid-air, webs on nothing. When the map has the browser's
+	// per-building boxes (build_look.py: hidden /Engine/BasicShapes/Cube actors "WHBox_*"), those are the ONLY building boxes, and every
+	// other wide (> 60 m) collision primitive becomes visual-only.
+	auto IsTravCube = [](const UPrimitiveComponent* P)
+	{
+		const UStaticMeshComponent* C = Cast<UStaticMeshComponent>(P);
+		const UStaticMesh* M = C ? C->GetStaticMesh() : nullptr;
+		return M && !C->IsVisible() && M->GetName() == TEXT("Cube") && M->GetPathName().StartsWith(TEXT("/Engine/BasicShapes/"));
+	};
+	bool bBoxesOnly = false;
+	for (TActorIterator<AActor> It(InWorld); It && !bBoxesOnly; ++It)
+	{
+		TInlineComponentArray<UPrimitiveComponent*> Ps(*It);
+		for (UPrimitiveComponent* P : Ps) { if (P && IsTravCube(P) && P->IsCollisionEnabled()) { bBoxesOnly = true; break; } }
+	}
+	int32 NVisualOnly = 0;
 	for (TActorIterator<AActor> It(InWorld); It; ++It)
 	{
 		AActor* A = *It;
@@ -53,6 +71,16 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 		TInlineComponentArray<UPrimitiveComponent*> Prims(A);
 		for (UPrimitiveComponent* P : Prims)
 		{
+			if (bBoxesOnly && P && P->IsCollisionEnabled() && !IsTravCube(P))
+			{
+				const FBox VB = P->Bounds.GetBox();
+				if (FMath::Max(VB.GetSize().X, VB.GetSize().Y) > 6000.0)
+				{
+					P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					++NVisualOnly;
+				}
+				continue;   // only the per-building boxes are traversal boxes
+			}
 			if (!P || !P->IsCollisionEnabled() || P->GetCollisionObjectType() != ECC_WorldStatic)
 			{
 				continue;
@@ -125,7 +153,7 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 			}
 		}
 	}
-	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided)"), Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped);
+	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided; per-building boxes only %d, %d wide merged meshes made visual-only)"), Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped, bBoxesOnly ? 1 : 0, NVisualOnly);
 }
 
 void FWebTravWorld::Near(double X, double Y, double R, TArray<int32>& Out) const
