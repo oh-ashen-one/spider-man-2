@@ -14,7 +14,9 @@ SCR="$HERE/scripts"
 TMP=/Users/midir/sm2-n1/_scratch/island/capture
 MAP="${ISLAND_MAP:-/Game/Maps/Manhattan_WP}"
 GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
-RUN() { "$GPU" capture --label island -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
+# ISLAND_IN_LOCK=1: the caller already holds the GPU slot for the whole batch (gpu_slot.sh capture --label island -- capture_round.sh ...):
+# several runs in one hold instead of one queue cycle each (max hold 2400 s: ~2 movie routes).
+RUN() { if [ -n "${ISLAND_IN_LOCK:-}" ]; then "$UE_DIR/Scripts/run_game.sh" "$@"; else "$GPU" capture --label island -- "$UE_DIR/Scripts/run_game.sh" "$@"; fi; }
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warmup r1 r2 r3 r4 a1)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 mkdir -p "$TMP" "$ROUND/stills"

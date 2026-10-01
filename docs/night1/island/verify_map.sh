@@ -14,7 +14,8 @@ for R in "$@"; do
   J=$(ls "$SCR"/${R}_*.json | head -1); N=$(basename "${J%.json}")
   echo "== $N on $MAP"
   rm -rf "$OUT/$N"
-  "$GPU" capture --label island -- "$UE_DIR/Scripts/run_game.sh" "$OUT/$N" -map "$MAP" -res 960x540 -shots 12 -quit 30.4 -name "$N" -timeout 1500 \
+  LOCK=("$GPU" capture --label island --); [ -n "${ISLAND_IN_LOCK:-}" ] && LOCK=()   # caller holds the slot for the batch
+  "${LOCK[@]}" "$UE_DIR/Scripts/run_game.sh" "$OUT/$N" -map "$MAP" -res 960x540 -shots 12 -quit 30.4 -name "$N" -timeout 1500 \
      -- -benchmark -fps=60 -WHTravScript="$J" -WHTravCsv="$OUT/$N/${N}_telemetry.csv" | tail -2
   grep -h "WebTravWorld:" "$OUT/$N/$N.log" | sed 's/^.*Display: //' | head -3
   [ -f "$OUT/$N/${N}_telemetry.csv" ] && CSVS+=("$OUT/$N/${N}_telemetry.csv")
