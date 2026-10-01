@@ -9,7 +9,7 @@ palette rules (all measured on the covered texels of the hero atlas, hue bands a
   P1 no red-and-blue colour blocking: NOT (red >= 6 % and blue >= 6 %)       P2 red <= 6 %       P3 blue <= 6 %
   P4 no near-black body with white or red: NOT (black >= 35 % and (white >= 5 % or red >= 3 %))
   P5 no white-dominant body: white <= 25 %
-  P6 distinct from every other suit: structural key (net kind, sash kind, glyph kind) unique AND k-means palette distance to every other suit >= 38 (RGB units of the 3 heaviest clusters)
+  P6 distinct from every other suit: structural key (net kind, sash kind, glyph kind) unique AND palette distance to every other suit >= 38 (RGB units, weighted nearest centroid of the 3 heaviest non-dark k-means clusters)
   P7 glyph kind is on the allowed list (abstract marks only: no animal, letter, star, shield, crescent, bolt)
 Exit code 1 when any rule fails.
 """
@@ -48,8 +48,16 @@ def hue_stats(path, cov, n):
     return r
 
 
+def lit(p):
+    """The palette without its near-black clusters (every dark suit has ~50 % ink / deep panels: they say nothing about the design); shares renormalised."""
+    q = [c for c in p if max(c['rgb']) > 70]
+    t = sum(c['share'] for c in q) or 1.0
+    return [dict(rgb=c['rgb'], share=c['share'] / t) for c in q][:3]
+
+
 def pal_dist(a, b):
-    """Weighted nearest-centroid distance between two palettes (symmetric)."""
+    """Weighted nearest-centroid distance between the lit parts of two palettes (symmetric, RGB units)."""
+    a, b = lit(a), lit(b)
     def one(p, q):
         qa = np.array([c['rgb'] for c in q], float)
         return sum(c['share'] * np.min(np.linalg.norm(qa - np.array(c['rgb'], float), axis=1)) for c in p)
@@ -85,7 +93,7 @@ def palette_cmd(maps, out):
     pairs = {}
     for i, a in enumerate(ids):
         for b in ids[i + 1:]:
-            d = pal_dist(res[a]['palette'][:3], res[b]['palette'][:3])
+            d = pal_dist(res[a]['palette'], res[b]['palette'])
             pairs['%s|%s' % (a, b)] = round(d, 1)
             if d < 38: fails.append(('%s,%s' % (a, b), 'P6 palette distance %.1f < 38' % d))
     json.dump(dict(suits=res, palette_distance=pairs, fails=[list(f) for f in fails], n_suits=len(ids)), open(out, 'w'), indent=1)

@@ -1,5 +1,8 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-"""ORIGINAL hero suit, round 08 ("Tessera").  Procedural, evaluated per texel in rest-pose object space (x = character's left,
+"""ORIGINAL hero suit, round 08 ("Tessera"); round 11 turned it into a generator: paint(..., style) takes a style dict (DEFAULT_STYLE = Tessera, texel for texel)
+and tools/ue_char/suits/gen_suits.py evaluates the JSON styles of tools/ue_char/suits/suits.json (palette, net kind, sash kind, glyph, hood pattern, accent placement).
+
+ORIGINAL hero suit, round 08 ("Tessera").  Procedural, evaluated per texel in rest-pose object space (x = character's left,
 y up, z forward, metres), so there is no hand-drawn source art and nothing is copied from any existing suit.
 
 Design language (written up in docs/night1/characters/round-08/SUIT_ORIGINALITY.md):

@@ -137,16 +137,16 @@
     {
       "id": "cinder",
       "name": "Cinder",
-      "concept": "dark umber with gold: curved yoke, brick net, nested rhombus mark, plain hood",
+      "concept": "dark umber with cyan: curved yoke, brick net, nested rhombus mark, plain hood",
       "style": {
         "palette": {
-          "body": "#725649",
-          "crown": "#4a372e",
-          "deep": "#241915",
-          "ink": "#0d0807",
-          "accent": "#e2b24c",
-          "accent_d": "#a67b26",
-          "stitch": "#d9c4a4",
+          "body": "#4d423c",
+          "crown": "#2f2824",
+          "deep": "#171210",
+          "ink": "#0a0706",
+          "accent": "#46d3e0",
+          "accent_d": "#2a98a6",
+          "stitch": "#bfeaf0",
           "sole": "#120c0a"
         },
         "net": {

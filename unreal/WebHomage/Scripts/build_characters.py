@@ -1146,7 +1146,7 @@ if 'skins' in STEPS:
         except Exception as e: log('skins: delete failed', str(e)[:120])
     entries = []
     for e_ in SUITS_CFG['suits']:
-        sid = e_['id']
+        sid = e_['id']; lens_ = None
         if e_.get('texture_set') == 'hero':
             mat_ = load(ROOT + '/Hero/Materials/MI_Hero_Suit')
             if mat_ is None: log('skins: MI_Hero_Suit missing (run the mat step); skipping', sid); continue
@@ -1163,18 +1163,28 @@ if 'skins' in STEPS:
                 try: t_.set_editor_property('never_stream', True)
                 except Exception as ex: log('never_stream not set', sid, str(ex)[:100])
             fz = list(e_.get('style', {}).get('fuzz', [0.50, 0.62, 0.68]))
+            # lens: the suit's accent colour (linear, x 0.67 like Tessera's amber 0.50 / 0.13 / 0.01 of 0.745 / 0.188 / 0.004)
+            ac = e_.get('style', {}).get('palette', {}).get('accent', '#e0780c')
+            lin = [((int(ac[i:i + 2], 16) / 255.0 + 0.055) / 1.055) ** 2.4 if int(ac[i:i + 2], 16) / 255.0 > 0.04045 else int(ac[i:i + 2], 16) / 255.0 / 12.92 for i in (1, 3, 5)]
+            lens_ = None
+            try:
+                lens_ = mi('MI_HeroLens_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_HeroLens'),
+                           scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.67 * lin[0], 0.67 * lin[1], 0.67 * lin[2], 1.0)})
+            except Exception as ex: log('lens instance failed', sid, str(ex)[:120])
             mat_ = mi('MI_HeroSuit_' + sid, SUITS_DIR + '/Materials', master,
                       tex={'BaseColor': TD + '/T_HeroSuit_%s_BaseColor' % sid, 'ORM': TD + '/T_HeroSuit_%s_ORM' % sid,
                            'Normal': TD + '/T_HeroSuit_%s_Normal' % sid, 'DetailNormal': twill_p},
                       scal={'DetailTiling': tile_, 'DetailStrength': 0.8, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (fz[0], fz[1], fz[2], 1.0)}, switches={'HasORM': True})
         en = unreal.WHHeroSuitEntry()
         en.set_editor_property('id', sid); en.set_editor_property('display_name', e_.get('name', sid)); en.set_editor_property('material', mat_)
+        en.set_editor_property('lens_material', lens_ if e_.get('texture_set') != 'hero' else load(ROOT + '/Hero/Materials/MI_Hero_Lens'))
         entries.append(en)
         log('skins: suit', len(entries) - 1, sid, mat_.get_name())
     if EAL.does_asset_exist(SUITS_DIR + '/DA_HeroSuits'): EAL.delete_asset(SUITS_DIR + '/DA_HeroSuits')
     da = AT.create_asset('DA_HeroSuits', SUITS_DIR, unreal.WHHeroSuitSet, unreal.DataAssetFactory())
     da.set_editor_property('suits', entries)
     EAL.save_directory(SUITS_DIR, only_if_is_dirty=False, recursive=True)
+    EAL.save_directory(ROOT, only_if_is_dirty=True, recursive=True)      # everything the data asset references (MI_Hero_Suit, MI_Hero_Lens) is on disk
     log('skins ok:', len(entries), 'suits in', SUITS_DIR + '/DA_HeroSuits')
 
 if 'skinsmap' in STEPS:
@@ -1225,7 +1235,7 @@ if 'skinsmap' in STEPS:
         return unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
     # ---- Char_Skins
     hero_s = skins_stage('Skins', False)
-    VIEWS = [('front', KS.FRONT, 0.0, 430.0, 92.0, 8.0, 36.0), ('back', KS.FRONT, 180.0, 430.0, 92.0, 8.0, 36.0),
+    VIEWS = [('front', KS.FRONT, 0.0, 560.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 560.0, 92.0, 8.0, 40.0),
              ('chest', KS.CLOSEUP, 0.0, 120.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, 0.0, 78.0, 160.0, 0.0, 26.0)]
     shots = []
     SHOT_S = 3.0
@@ -1235,7 +1245,7 @@ if 'skinsmap' in STEPS:
     N_STILL = len(shots)
     ORBIT_S, ORBIT_RATE = 1.5, 40.0
     for i, nm in enumerate(names):          # continuous 40 deg/s orbit across the suit changes (the azimuth continues from shot to shot)
-        shots.append(sshot(hero_s, KS.ORBIT, ORBIT_S, 430.0, 92.0, 20.0, 36.0, ORBIT_RATE, ORBIT_RATE * ORBIT_S * i, label='orbit %s' % nm, suit=i))
+        shots.append(sshot(hero_s, KS.ORBIT, ORBIT_S, 560.0, 92.0, 20.0, 40.0, ORBIT_RATE, ORBIT_RATE * ORBIT_S * i, label='orbit %s' % nm, suit=i))
     ok1 = save_skins_map(TESTS + '/Char_Skins', shots)
     # ---- Char_SkinsPlay (the real pawn)
     skins_stage('SkinsPlay', True)

@@ -20,7 +20,7 @@ cd "$WT/unreal/WebHomage"
 MAP=/Game/Tests/Characters/Char_Skins; MAPP=/Game/Tests/Characters/Char_SkinsPlay
 SJ="$P2_SCRATCH/skins_shots.json"
 PAWN="-WHHeroMesh=/Game/Characters/Hero/SK_Hero -WHHeroLens=none -WHHeroClips=/Game/Characters/Hero/Anims -WHHeroClipPrefix=A_Hero_ -WHTravScript=$WT/tools/ue_char/suits/pawn_run.json"
-INI="$WT/unreal/WebHomage/Saved/Config/Mac/GameUserSettings.ini"
+CFG="$WT/unreal/WebHomage/Saved/Config"   # GameUserSettings.ini lands in Saved/Config/<MacEditor|Mac>/ of THIS worktree
 
 if has build; then
   log "build: clean,tex,mat,mesh,citizens,rename,fightclips,abp,skins,skinsmap"
@@ -60,11 +60,11 @@ fi
 
 if has pawn && [ "$(left)" -gt 420 ] && [ -f "$SJ" ]; then
   FIRST=0
-  rm -f "$INI"
+  find "$CFG" -name GameUserSettings.ini -delete 2>/dev/null
   log "pawn: the playable hero swaps suits on injected T key presses (1080p -movie, fixed 1/60 s), pawn shot $FIRST"
   Scripts/run_game.sh "$OUT/pawn" -map $MAPP -res 1920x1080 -quit 11.5 -name pawn -movie -exec "r.MotionBlurQuality 0" -timeout 1500 \
       -- -WHCharShot=$FIRST $PAWN -WHSuitPersist -WHSuitKeyScript=1.5,2.7,3.9,5.1,6.3,7.5,8.7 < /dev/null | tail -8
-  cp "$INI" "$OUT/pawn/GameUserSettings_after_pawn.ini" 2>/dev/null
+  find "$CFG" -name GameUserSettings.ini -exec cp {} "$OUT/pawn/GameUserSettings_after_pawn.ini" \; 2>/dev/null
   grep -E "WH_SUIT|WH_SETTINGS|WH_TRAV hero" "$OUT/pawn/pawn.log" > "$OUT/pawn/suit_log.txt" 2>/dev/null
 fi
 
