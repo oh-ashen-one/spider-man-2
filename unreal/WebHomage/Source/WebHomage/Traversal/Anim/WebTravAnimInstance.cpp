@@ -17,7 +17,7 @@ bool UWebTravAnimInstance::bWallGait = true;
 bool UWebTravAnimInstance::bAirSpeedPose = true;
 double UWebTravAnimInstance::ChestSign = 1.0;
 // round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
-static double GaitTop = 0.55, GaitBot = 0.86, GaitLift = 0.04, GaitKneeOffT = 8.0, GaitLatT = 4.0, GaitKneeOutT = 0.10;
+static double GaitTop = 0.66, GaitBot = 0.78, GaitLift = 0.03, GaitKneeOffT = 4.0, GaitLatT = 4.0, GaitKneeOutT = 0.03; // r20 probe g2: knee gap .43-.46 m (was .55-.59)
 
 namespace
 {

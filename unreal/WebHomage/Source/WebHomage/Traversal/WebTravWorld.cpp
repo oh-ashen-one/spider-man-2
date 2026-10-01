@@ -76,6 +76,7 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 	// filter made every building without a WHBox cube pass-through for the hero, the web search and the camera): collision = visual triangles.
 	//   -WHTravCollide=visual (default with WHBox boxes) | boxes (round 19) | all (every collision primitive, 690dfa7 floor-audit A/B)
 	SolidMode = bHasBoxes ? 2 : 0;
+	{ int32 V = 0; bIsmSolid = FParse::Value(FCommandLine::Get(), TEXT("-WHTravIsmSolid="), V) && V != 0; } // round 20 A/B: instanced props / trees solid again
 	{
 		FString CM;
 		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravCollide="), CM)) SolidMode = CM == TEXT("boxes") ? (bHasBoxes ? 1 : 0) : CM == TEXT("all") ? 0 : (bHasBoxes ? 2 : 0);
@@ -165,7 +166,7 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 					}
 					else Role = TEXT("other");
 				}
-				else if (Cast<UInstancedStaticMeshComponent>(P) && !(MeshName == TEXT("SM_shed") || MeshName == TEXT("SM_shedtop") || MeshName == TEXT("SM_subway")))
+				else if (!bIsmSolid && Cast<UInstancedStaticMeshComponent>(P) && !(MeshName == TEXT("SM_shed") || MeshName == TEXT("SM_shedtop") || MeshName == TEXT("SM_subway")))
 				{ // instanced street / roof props and trees (benches, carts, posts, hvac, antennas, trunks, hedges): visible, not solids.
 				  // Sidewalk sheds and subway entrances are structures and stay solid.
 					++NExcluded; Role = TEXT("excluded-ism"); ExcludedComps.Add(P);

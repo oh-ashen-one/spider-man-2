@@ -71,6 +71,7 @@ public:
 	/** Round 20 collision mode: 2 = visual triangles (merged visual meshes are traversal solids, traced complex; WHBox cubes only index
 	 *  buildings for the canyon / anchor logic), 1 = round-19 boxes-only, 0 = every collision primitive (690dfa7). */
 	int32 SolidMode = 0;
+	bool bIsmSolid = false;
 	/** Round 20: visible components excluded by name (signs / screens / props / foliage) -- the depth audit renders with and without them. */
 	TArray<TWeakObjectPtr<UPrimitiveComponent>> ExcludedComps;
 	/** Round 19 (owner playtest 2026-10-01, "landing in mid-air and being able to run is still around"): in a map with the browser's

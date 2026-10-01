@@ -522,7 +522,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		// round 07 (critic r06, swing cadence): after a web release a held button searches again from 0.22 s on, even while
 		// still rising (was: only once vz < 5.5 m/s -> 1-1.7 s web-less falls); a fresh press always searches at once (the
 		// throttle left over from the previous search used to swallow the press)
-		const bool bReady = I.bSwingPressed || (S.bGroundSwing && S.AirT > 0.14) || (S.AirT > 0.1 && S.Vel.Z < 5.5 && !bTrickBusy) || S.Vel.Z < -6
+		const bool bReady = I.bSwingPressed || (S.bGroundSwing && S.AirT > (bTrickCancel && S.Sub == N_wallJump ? 0.0 : 0.14)) || (S.AirT > 0.1 && S.Vel.Z < 5.5 && !bTrickBusy) || S.Vel.Z < -6
 			|| (S.RelT > ReattachAfter && !bTrickBusy);
 		if (I.bSwingPressed) S.SearchT = 0;
 		S.SearchT -= Hs;
@@ -1821,7 +1821,11 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 		if (bTrickCancel)
 		{ // round 20 (critic r19: "a held RMB during a wall-run waits 0.47-1.08 s"): the kick and the web are one move -- the web is
 		  // fired in this same step (ground-swing rule: no rise-pending), a wall-jump hop + 0.06 s re-search only when no anchor is in range
-			S.Vel = N * 8 + ZUP * 3 + CF * 8;
+			// along the camera's view off the wall (the next anchor lies ahead of the velocity -- TryStartSwing refuses webs behind it), a small
+			// push off the facade; a camera looking straight at the wall uses the run direction instead
+			if (CF.SizeSquared() < 0.09) { CF = Flat(S.W.Up); if (CF.SizeSquared() < 0.09) CF = Right; }
+			CF = CF.GetSafeNormal();
+			S.Vel = N * 4 + ZUP * 3 + CF * 12;
 			SetMode(EWebTravMode::Air, N_wallJump); S.AirT = 0; S.ApexZ = FeetZ(); S.WallCooldown = 0.5; S.SwingCooldown = 0; S.bGroundSwing = true;
 			S.Facing = Yaw(S.Vel); Emit(N_wallJump);
 			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall cancel: RMB pressed in %s -> swing search now"), *S.Sub.ToString());
