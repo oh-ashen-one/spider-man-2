@@ -1,4 +1,12 @@
-# P4 Look, lighting, post: handoff (round 03; round 04 IN PROGRESS, see the next section)
+# P4 Look / Sky: handoff (round 05 IN PROGRESS, resumed 2026-10-01 14:40 after the 14:26 Studio restart)
+
+## Round 05 (Sky, director PLAN-firstpass "D Sky") - resume here
+- Built + committed: C++ `AWHLookTimeOfDay` (`wh.TimeOfDay` 0-24 continuous, `wh.Weather`, live pins `exec wh.ToDSet <param> <v>` / `wh.ToDClear`), key table `Scripts/look_tod.py` (from the `tod` section of `Scripts/look_presets.json`),
+  map `/Game/Tests/Look/Look_Midtown_tod` (rebuild: `tools/perf_ue/rebuild_look.sh rigs,maps tod`), time-lapse `tools/perf_ue/capture_tod_lapse.py`, one-session sweep runner `tools/perf_ue/sweeps/run_r05.py --plan <json>`, `tools/perf_ue/tod_tests.py` (spec numbers per variant).
+- Session A (64 stills) = `round-05/sweeps/A_TESTS.md`. Session B (`sweeps/r05/plan_b.json`: golden key/fill gA..gF, night windows nA..nC, overcast oA/oB) and C (`plan_c.json`: cloud coverage per hour) were queued at 14:40 into `$SM2_LOOK_SCRATCH/r05/B|C`.
+- Next: pick winners into `look_presets.json` `tod` keys -> `rebuild_look.sh rigs,maps tod` -> `capture_tour.py --tod ...` stills + `capture_tod_lapse.py` + swing clip -> `tod_tests.py` -> critic pack `/Users/midir/sm2-n1/_scratch/critic-P4-r05/`.
+
+# (older) P4 Look, lighting, post: handoff (round 03; round 04)
 
 ## Round 04 in progress (2026-10-01, Opus 5.5) - resume here
 - Target (critic round 03): golden S1-S8 1080p p5 Y <= 12, p95/p5 >= 16, HSV sat >= .44, L1 holding (S4 down), S1/S5/S6 sunlit/shaded facade pair ratio >= 3; night S4 window points >= 3 %, city median Y <= 42 (L21 / L22 in SPEC.md).
