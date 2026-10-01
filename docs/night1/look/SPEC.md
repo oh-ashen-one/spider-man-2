@@ -26,6 +26,13 @@ Round-1 critic night targets (mean ≥ 35, ≤ 3 % < 10) are consistent with L3;
 | L21d | golden S1, S5, S6 | a **sunlit / shaded facade pair with mean-luma ratio ≥ 3** (boxes in `facade_pairs.json`) | critic pass |
 L1 keeps binding next to L21 (mean 61–100, Y<10 ≤ 8 %, clipped ≤ 1.8 %). Checker: `tools/perf_ue/key_fill_check.py` (same formulas as the critic's instrument; reproduces the round-03 numbers p5 17.6–39.6, p95/p5 4.6–11.3, saturation 0.28–0.43).
 
+### L22 night skyline (added round 04, from the round-03 critic verdict, secondary 1)
+| id | preset / view | target | measured from |
+|---|---|---|---|
+| L22a | night S4 | **window points >= 3 % of the frame** (Y >= 120 and Y - median9x9(Y) >= 35, 1920-wide frame) | critic: round 03 0.96 %, reference 4.38 % (this instrument reads 1.10 % on round 03) |
+| L22b | night S4 | **city median Y <= 42** (and frame mean <= 42: the critic's round-03 "58" equals this instrument's frame mean 58.1, median 51.9) | reference 37 |
+Checker: `tools/perf_ue/night_city_check.py`. L3 (night means 37..60 on every view) keeps binding.
+
 ## 2. Colour by time of day (L-A)
 | id | target (frame mean B−R, 8-bit) | measured from (median [p10, p90]) |
 |---|---|---|
