@@ -166,81 +166,16 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
     return m
 
 MP = unreal.MaterialProperty
-TEXA = lambda n: f'{TEXD}/{n}'
-def pathmask_consts():
-    return 'float2 mo = float2(%.4f, %.4f); float2 ms = float2(%.4f, %.4f);' % (PM['x0'], PM['z0'], PM['w_m'], PM['h_m'])
+def _materials_module():
+    here = os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'terrain_materials.py')
+    ns = {'__file__': here}; exec(compile(open(here).read(), here, 'exec'), ns); return ns
 
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/Terrain/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
-    PARK_INC = '/Project/Terrain/Park.ush'
-    # park ground: the browser's park lawn shader (meadows / groves / ball fields / pond banks / Reservoir track / schist) + the path overlay and the dark park drives
-    # (the browser draws the paths as alpha-blended ribbons; here they are a baked mask so there is no z-fight and the edges stay soft)
-    make_material('M_TerrainPark', PARK_INC, '''
-float r; float3 n;
-float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 0.0, r, n);
-float2 p = wpos.xy * 0.01;
-''' + pathmask_consts() + '''
-float4 pm = Texture2DSample(tPath, tPathSampler, (p - mo) / ms);
-float3 n1 = Texture2DSample(tNoise, tNoiseSampler, fl2(p / 9.0)).rgb, n2 = Texture2DSample(tNoise, tNoiseSampler, fl2(p / 2.3)).rgb;
-float e = pm.r * 0.5;
-float edge = smoothstep(0.02, 0.2 + 0.12 * n1.r, e + 0.08 * (n2.g - 0.5)) * smoothstep(0.0, 0.6, pm.g);
-float3 pc = Texture2DSample(tAsph, tAsphSampler, fl2(p / 4.0)).rgb * float3(0.7157, 0.6514, 0.5395);
-pc *= lerp(float3(1.0, 1.0, 1.0), float3(1.08, 1.0, 0.86), n1.b) * (0.9 + 0.2 * n2.r);
-pc = lerp(pc, float3(0.4, 0.38, 0.34) * (0.9 + 0.2 * n1.r), 0.45);
-c = lerp(c, pc, edge);
-float dr = smoothstep(0.35, 0.65, pm.b);
-c = lerp(c, float3(0.0742, 0.0704, 0.0648) * (0.9 + 0.2 * n2.r), dr);
-r = lerp(r, 0.9, max(edge, dr));
-Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); return c * gain;''',
-        [('tCol', 'tex', TEXA('grass_col')), ('tNoise', 'tex', TEXA('noise')), ('tAsph', 'tex', TEXA('asphalt_col')), ('tPath', 'tex', TEXA('pathmask')), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
-    # coast / plaza lawns: the same lawn shader, lawn variant (meadow everywhere, no ball fields / ponds / woodland floor)
-    make_material('M_TerrainLawn', PARK_INC, '''
-float r; float3 n;
-float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n);
-Rough = r; NormalW = n; return c * gain;''',
-        [('tCol', 'tex', TEXA('grass_col')), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
-    # City Hall Park / Bowling Green / Battery lawns (ground.js 'mapLawns': grass_col at 7 m x tint 0xb4b89a)
-    make_material('M_TerrainMapLawn', None, '''
-float2 p = wpos.xy * 0.01;
-float3 c = Texture2DSample(tCol, tColSampler, fl2(p / 7.0)).rgb * float3(0.4564, 0.4793, 0.3231) * (0.85 + 0.3 * Texture2DSample(tNoise, tNoiseSampler, fl2(p / 53.0)).r);
-Rough = 0.95; NormalW = float3(0.0, 0.0, 1.0); return c * gain;''',
-        [('tCol', 'tex', TEXA('grass_col')), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
-    # still tannin-green pond / Reservoir water (browser: createRiverMaterial body (0.045, 0.06, 0.05), roughness 0.06): glossy, two drifting normal layers
-    make_material('M_TerrainPond', None, '''
-float2 p = wpos.xy * 0.01;
-float2 q1 = p / 7.0 + float2(0.011, 0.007) * t, q2 = p / 2.3 - float2(0.013, 0.009) * t;
-float3 a = Texture2DSample(tNrm, tNrmSampler, q1).rgb * 2.0 - 1.0, b = Texture2DSample(tNrm, tNrmSampler, q2).rgb * 2.0 - 1.0;
-float2 d = (a.xy + b.xy) * 0.5 * 0.28;
-Rough = 0.05; NormalW = normalize(float3(d.x, d.y, 1.0));
-return float3(0.045, 0.06, 0.05) * gain;''',
-        [('tNrm', 'tex', TEXA('water_nrm')), ('wpos', 'wpos', None), ('t', 'time', None), ('gain', 'scalar', 1.0)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
-    # vertex-coloured / flat-coloured furniture (benches, lamps, fences, posts, coping)
-    for nm, two in (('M_TerrainVC', False), ('M_TerrainVC2', True)):
-        make_material(nm, None, '''
-float3 c = lerp(tint.rgb, vc.rgb * tint.rgb, usevc);
-Rough = roughp; Metal = metalp; return c;''',
-            [('vc', 'vc', None), ('tint', 'vector', (1, 1, 1, 1)), ('usevc', 'scalar', 0.0), ('roughp', 'scalar', 0.8), ('metalp', 'scalar', 0.0)],
-            [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC)], two_sided=two)
-    # grass tuft (grass.js: darker root, sunlit tips, olive / yellow-green mix with the odd straw blade, lit like the lawn, wind sways the tips)
-    make_material('M_TerrainGrass', None, '''
-float2 p = wpos.xy * 0.01;
-float ph = 0.5 + 0.5 * sin(p.x * 0.43 + 1.7 * sin(p.y * 0.31)) * cos(p.y * 0.37 + 0.9 * sin(p.x * 0.29));
-float3 g = lerp(float3(0.17, 0.2, 0.045), float3(0.23, 0.26, 0.06), ph) * lerp(0.85, 1.12, frac(rnd * 3.7));
-g = lerp(g, float3(0.34, 0.27, 0.1), step(0.92, frac(rnd * 11.3)) * 0.8);
-float h = vc.r;
-float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27));
-float gust = 0.5 + 0.5 * sin(p.x * 0.1 - t * 0.5) * cos(p.y * 0.08);
-float sway = h * h * windamp * (0.4 + 0.9 * gust) * sin(t * 1.6 + wo);
-Wpo = float3(sway, sway * 0.7, 0.0);
-Rough = 0.85; NormalW = float3(0.0, 0.0, 1.0);
-return g * lerp(0.8, 1.04, h) * gain;''',
-        [('vc', 'vc', None), ('wpos', 'wpos', None), ('t', 'time', None), ('rnd', 'pir', None), ('windamp', 'scalar', 10.0), ('gain', 'scalar', 1.0)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL), ('Wpo', 3, MP.MP_WORLD_POSITION_OFFSET)], two_sided=True)
+    for d in _materials_module()['materials'](PM):
+        make_material(d['name'], d['include'], d['code'], [(n, k, (f'{TEXD}/{a}' if k == 'tex' else a)) for n, k, a in d['inputs']],
+                      [(n, k, getattr(MP, p)) for n, k, p in d['outputs']], two_sided=d.get('two_sided', False))
     log('materials done')
 
 def mi(name, parent, scalars=None, vectors=None):
