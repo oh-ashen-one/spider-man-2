@@ -881,7 +881,23 @@
    }
   ],
   "overcast": {
-   "base": "midday"
+   "base": "midday",
+   "set": {
+    "atm.SkyLuminanceFactor": [
+     1.9,
+     1.9,
+     1.9,
+     1.0
+    ],
+    "atm.AerialPespectiveViewDistanceScale": 3.0,
+    "pp.AutoExposureBias": -0.8,
+    "pp.ColorGainHighlights": [
+     0.85,
+     0.85,
+     0.85,
+     1.0
+    ]
+   }
   }
  }
 }
