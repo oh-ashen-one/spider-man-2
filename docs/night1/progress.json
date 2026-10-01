@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-01T06:55",
+ "updated": "2026-10-01T07:13",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -72,9 +72,9 @@
    "name": "Combat",
    "branch": "night1/combat",
    "state": "active",
-   "round": 3,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Additive impact burst that keeps the victim readable; every blow moves the victim."
+   "round": 4,
+   "verdict": "fails \u2014 lowest 4 (opus)",
+   "gap": "Combat camera + lighting: hero \u226535% frame height at contacts, opening not backlit (\u226415% px < gray 30), no blown-out hero, no snaps > 25 except cuts"
   },
   {
    "id": "P6",
@@ -864,6 +864,14 @@
    "verdict": "fails",
    "gap": "Plant the feet: stance foot speed \u226410 cm/s (now 47-54), ankle lift \u226420 cm, stride times spread \u22650.25 s",
    "notes": "Merged (pedestrian density 5\u21926)."
+  },
+  {
+   "t": "2026-10-01T07:13",
+   "piece": "P5 Combat",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "Combat camera + lighting: hero \u226535% frame height at contacts, opening not backlit (\u226415% px < gray 30), no blown-out hero, no snaps > 25 except cuts",
+   "notes": "Merged (impact 5\u21926: additive streak bursts; every blow moves the victim in telemetry). Proxy hero emblem replaced by Tessera suit in integration."
   }
  ],
  "perf": [

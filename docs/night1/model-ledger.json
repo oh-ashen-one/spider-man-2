@@ -686,6 +686,19 @@
     4,
     4
    ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 4,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    6,
+    5,
+    5,
+    4,
+    4
+   ]
   }
  ],
  "agents": [
