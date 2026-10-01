@@ -1171,6 +1171,25 @@ def spawn_boxes(wp=False):
     log('WHBox source', 'whboxes.json' if os.path.exists(wp_) else 'collision.json', len(rows))
     cube = load('/Engine/BasicShapes/Cube')
     n = 0
+    # (island r01) SM2_WHBOX_MODE=ism: one always-loaded actor per 256 m tile holding an invisible, BlockAll InstancedStaticMeshComponent of
+    # /Engine/BasicShapes/Cube (one instance per box). WebTravWorld.cpp needs no change: IsTravCube() accepts any invisible Cube static-mesh
+    # component and its ISM branch indexes one box per instance. One actor per box ('actor', the default) spawned at ~51 -> ~19 actors/s
+    # (53 k boxes 1,077 s, 57 k boxes 2,203 s): it cannot scale to the whole island (~140 k boxes).
+    if os.environ.get('SM2_WHBOX_MODE', 'actor') == 'ism':
+        by_tile = {}
+        for b in rows: by_tile.setdefault(tile_key((b[0] + b[3]) / 2, (b[2] + b[5]) / 2), []).append(b)
+        for tk, bs in sorted(by_tile.items()):
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='WHBoxes__t' + tk, folder='City/TraversalBoxes')
+            c = add_component(a, unreal.InstancedStaticMeshComponent)
+            c.set_static_mesh(cube)
+            xs = [unreal.Transform(U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), unreal.Rotator(0, 0, 0), unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))
+                  for x0, y0, z0, x1, y1, z1 in bs]
+            c.add_instances(xs, False, True)
+            c.set_collision_profile_name('BlockAll'); c.set_visibility(False); c.set_cast_shadow(False)
+            c.set_mobility(unreal.ComponentMobility.STATIC); set_spatial(a, False, wp)
+            n += len(bs)
+        log('WHBox ISM tiles', len(by_tile), 'instances', n)
+        return n
     for x0, y0, z0, x1, y1, z1 in rows:
         a = spawn(unreal.StaticMeshActor, U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), label='WHBox_%d' % n, folder='City/TraversalBoxes')
         c = a.static_mesh_component; c.set_static_mesh(cube)
