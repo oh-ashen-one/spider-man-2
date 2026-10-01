@@ -1,0 +1,142 @@
+{
+ "groups": [
+  {
+   "name": "gG",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.1",
+    "exec wh.ToDSet sky.Intensity 2.5",
+    "exec wh.ToDSet fill.E 5",
+    "exec wh.ToDSet fill.S 1.5",
+    "exec wh.ToDSet fill.N 1.5",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.8",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.1 1.08 1.05 1",
+    "exec wh.ToDSet pp.FilmToe 0.58",
+    "exec wh.ToDSet pp.AutoExposureBias 1.15",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.72 0.72 0.72 1"
+   ]
+  },
+  {
+   "name": "gH",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.1",
+    "exec wh.ToDSet sky.Intensity 2.5",
+    "exec wh.ToDSet fill.E 5",
+    "exec wh.ToDSet fill.S 1.5",
+    "exec wh.ToDSet fill.N 1.5",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.8",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.1 1.08 1.05 1",
+    "exec wh.ToDSet pp.FilmToe 0.58",
+    "exec wh.ToDSet pp.AutoExposureBias 1.4",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.72 0.72 0.72 1",
+    "exec wh.ToDSet pp.AutoExposureLowPercent 80",
+    "exec wh.ToDSet pp.AutoExposureHighPercent 99"
+   ]
+  },
+  {
+   "name": "gI",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.1",
+    "exec wh.ToDSet sky.Intensity 2.5",
+    "exec wh.ToDSet fill.E 5",
+    "exec wh.ToDSet fill.S 1.5",
+    "exec wh.ToDSet fill.N 1.5",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.8",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.1 1.08 1.05 1",
+    "exec wh.ToDSet pp.FilmToe 0.58",
+    "exec wh.ToDSet pp.AutoExposureBias 1.4",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.62 0.62 0.62 1",
+    "exec wh.ToDSet pp.AutoExposureLowPercent 80",
+    "exec wh.ToDSet pp.AutoExposureHighPercent 99",
+    "exec wh.ToDSet pp.FilmShoulder 0.3"
+   ]
+  },
+  {
+   "name": "gJ",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14",
+    "exec wh.ToDSet sky.Intensity 2.5",
+    "exec wh.ToDSet fill.E 5",
+    "exec wh.ToDSet fill.S 1.5",
+    "exec wh.ToDSet fill.N 1.5",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.8",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.14 1.1 1.06 1",
+    "exec wh.ToDSet pp.FilmToe 0.58",
+    "exec wh.ToDSet pp.AutoExposureBias 1.4",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.72 0.72 0.72 1",
+    "exec wh.ToDSet pp.AutoExposureLowPercent 80",
+    "exec wh.ToDSet pp.AutoExposureHighPercent 99"
+   ]
+  },
+  {
+   "name": "oB",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.Weather 1",
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 2.2 2.2 2.2 1",
+    "exec wh.ToDSet fog.FogDensity 0.0022",
+    "exec wh.ToDSet pp.AutoExposureBias -0.75",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.85 0.85 0.85 1",
+    "exec wh.ToDSet pp.AutoExposureLowPercent 30"
+   ]
+  }
+ ]
+}
