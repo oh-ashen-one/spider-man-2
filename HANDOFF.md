@@ -37,7 +37,7 @@ Args: `{P, name, wt, branch, docs, startRound, maxRounds, resume, opusFrom?, kin
 
 After a workflow finishes: `git merge origin/night1/<piece>` into integration, `record_round.py`, regenerate + republish the progress page, push.
 
-**Model policy (owner, 2026-09-30 latest):** split building between **Opus 5.5 high** (traversal/flips, combat, perf, integration — hard engineering) and **Sonnet 5.5 xhigh** (city, life, look, character assets, pipelines); **critics always Opus 5.5 high, never skipped**; Fable 5.1 only for stall diagnosis / final acceptance (own weekly limit). Weekly usage was 80 % — prefer one round per piece at a time.
+**Model policy (owner, 2026-10-01 latest): Opus 5.5 high builds everything new; superseded note follows —** split building between **Opus 5.5 high** (traversal/flips, combat, perf, integration — hard engineering) and **Sonnet 5.5 xhigh** (city, life, look, character assets, pipelines); **critics always Opus 5.5 high, never skipped**; Fable 5.1 only for stall diagnosis / final acceptance (own weekly limit). Weekly usage was 80 % — prefer one round per piece at a time.
 
 ## Safety (read `docs/night1/RULES.md`; global rules merged in oh-ashen-one/agents-md#4)
 
