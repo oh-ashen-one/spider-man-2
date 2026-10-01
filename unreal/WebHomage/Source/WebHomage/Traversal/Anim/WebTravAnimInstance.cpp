@@ -17,7 +17,7 @@ bool UWebTravAnimInstance::bWallGait = true;
 bool UWebTravAnimInstance::bAirSpeedPose = true;
 double UWebTravAnimInstance::ChestSign = 1.0;
 // round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
-static double GaitTop = 0.66, GaitBot = 0.78, GaitLift = 0.03, GaitKneeOffT = 4.0, GaitLatT = 4.0, GaitKneeOutT = 0.03; // r20 probe g2: knee gap .43-.46 m (was .55-.59)
+static double GaitTop = 0.76, GaitBot = 0.90, GaitLift = 0.04, GaitKneeOffT = 2.0, GaitLatT = -2.0, GaitKneeOutT = 0.0; // r20 probe g6: knee gap med .17 max .32 m in the run (g2 .43-.46, r19 .55-.59): longer legs under the hips, feet on the body line
 
 namespace
 {
@@ -442,7 +442,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	{
 		const bool bGait = bWallGait && A.Mode == EWebTravMode::Wall && (A.Sub == NA_wallRun || A.Sub == FName(TEXT("wallRunSide"))) && Mesh;
 		const float Want = bGait ? 1.f : 0.f;
-		const float Step = Dt / (bGait ? 0.12f : 0.15f);
+		const float Step = Dt / (bGait ? 0.07f : 0.15f); // r20: 0.12 -> 0.07 s (the entry frames carried the clip's .40-.48 m knee gap)
 		Frame.WallW = Want > Frame.WallW ? FMath::Min(Want, Frame.WallW + Step) : FMath::Max(Want, Frame.WallW - Step);
 		if (bGait)
 		{

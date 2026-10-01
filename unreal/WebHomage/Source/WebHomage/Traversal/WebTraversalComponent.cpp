@@ -747,27 +747,25 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	const double Fl = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 	FTravAnchor A;
 	bool bFound = Anchors->Find(S.Pos, FwdSearch, Turn, S.Vel.Size(), Fl, A);
+	// round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
+	// round 19 (owner: "swing eventually breaks"): the behind-the-body rule only applies at speed (a slow fall / a hop off a wall or perch
+	// has no meaningful travel direction; it refused every web behind the drift)
+	if (bFound)
+	{
+		FVector HVg;
+		if (!HDir(S.Vel, HVg)) HVg = Fwd;
+		const bool bBehind = HLen(S.Vel) > 6.0 && FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0;
+		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || bBehind) bFound = false;
+	}
 	// round 20 (probe x2 / s1: RMB on a wall kicked off but the street search found nothing for 0.5-1 s, so he re-stuck to the wall):
 	// right after a wall cancel the web goes up the facade ahead of the kick
 	bool bFacade = false;
-	if ((!bFound || A.Point.Z < S.Pos.Z + AnchorMinAbove) && bFacadeWeb && S.bWallCancel && S.Mode == EWebTravMode::Air && S.AirT < 0.8)
+	if (!bFound && bFacadeWeb && S.bWallCancel && S.Mode == EWebTravMode::Air && S.AirT < 0.8)
 		bFound = bFacade = FacadeAnchor(A);
 	if (!bFound)
 	{
 		Emit(N_noAnchor); S.NoAnchorT += 0.06;
 		return false;
-	}
-	{ // round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
-		FVector HVg;
-		if (!HDir(S.Vel, HVg)) HVg = Fwd;
-		// round 19 (owner: "swing eventually breaks"): the behind-the-body rule only applies at speed (a slow fall / a hop off a wall or perch
-		// has no meaningful travel direction; it refused every web behind the drift)
-		const bool bBehind = !bFacade && HLen(S.Vel) > 6.0 && FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0;
-		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || bBehind)
-		{
-			Emit(N_noAnchor); S.NoAnchorT += 0.06;
-			return false;
-		}
 	}
 	S.NoAnchorT = 0;
 	{
@@ -791,7 +789,7 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	}
 	if (bFacade)
 	{ // swing along the facade in the kick direction
-		Fwd = S.WallCancelDir; Turn = nullptr;
+		Fwd = FVector::DotProduct(Flat(A.Point - S.Pos), S.WallCancelDir) >= -1.0 ? S.WallCancelDir : -S.WallCancelDir; Turn = nullptr;
 		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall cancel: facade web at (%.1f, %.1f, %.1f), %.1f m up, %.1f m ahead"), A.Point.X, A.Point.Y, A.Point.Z,
 			A.Point.Z - S.Pos.Z, FVector::DotProduct(Flat(A.Point - S.Pos), S.WallCancelDir));
 	}
@@ -805,16 +803,17 @@ bool UWebTraversalComponent::FacadeAnchor(FTravAnchor& A) const
 {
 	const FVector N = S.WallCancelN, D = S.WallCancelDir;
 	if (N.SizeSquared() < 0.5 || D.SizeSquared() < 0.5) return false;
-	for (double Ahead : { 12.0, 9.0, 16.0, 6.0 })
+	// (probe s1: a vertical run 4-14 m from the tower's corner found nothing ahead -- closer points, straight up, then back along the facade)
+	for (double Ahead : { 12.0, 9.0, 16.0, 6.0, 3.0, 0.0, -6.0, -10.0 })
 		for (double Up : { 11.0, 8.0, 15.0, 6.0 })
 		{
 			const FVector Q = S.Pos + D * Ahead + FVector(0, 0, Up) + N * 2.5;
 			FTravHit FH;
 			if (!TravWorld.Raycast(Q, -N, 6.0, FH) || FH.bGround || FVector::DotProduct(FH.Normal, N) < 0.7) continue;
 			if (FH.Point.Z < S.Pos.Z + AnchorMinAbove) continue;
-			const FVector From = S.Pos + N * 0.6, To = FH.Point + N * 0.1, Dd = To - From;
+			const FVector From = S.Pos + N * 1.0, To = FH.Point + N * 0.3, Dd = To - From;
 			FTravHit FH2;
-			if (TravWorld.Raycast(From, Dd.GetSafeNormal(), FMath::Max(0.1, Dd.Size() - 0.4), FH2)) continue; // the strand must reach it
+			if (TravWorld.Raycast(From, Dd.GetSafeNormal(), FMath::Max(0.1, Dd.Size() - 0.8), FH2)) continue; // the strand must reach it
 			A.Point = FH.Point; A.Normal = FH.Normal; A.Kind = FName(TEXT("wall")); A.L = FVector::Dist(S.Pos, FH.Point); A.Lat = 0.0;
 			return true;
 		}
@@ -1876,7 +1875,14 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 		  // fired in this same step (ground-swing rule: no rise-pending), a wall-jump hop + 0.06 s re-search only when no anchor is in range
 			// along the camera's view off the wall (the next anchor lies ahead of the velocity -- TryStartSwing refuses webs behind it), a small
 			// push off the facade; a camera looking straight at the wall uses the run direction instead
-			if (CF.SizeSquared() < 0.09) { CF = Flat(S.W.Up); if (CF.SizeSquared() < 0.09) CF = Right; }
+			{ // round 20 (probe x2: a camera facing the wall left a tiny sideways residue that kicked him BACK along the run): a side run kicks
+			  // along its run direction unless the camera clearly looks along the wall; a vertical run uses the camera's side, else Right
+				// the DISPLAYED view (the wall camera faces the facade; the look yaw underneath can point anywhere)
+				if (Cam) { CF = FRotator(0.0, Cam->CamRot.Yaw, 0.0).Vector(); CF -= N * FVector::DotProduct(CF, N); }
+				const FVector RunD = Flat(S.W.Up);
+				if (RunD.SizeSquared() >= 0.09 && (CF.SizeSquared() < 0.25 || FVector::DotProduct(CF, RunD) > 0.0)) CF = RunD;
+				else if (CF.SizeSquared() < 0.09) CF = Right;
+			}
 			CF = CF.GetSafeNormal();
 			S.Vel = N * 4 + ZUP * 3 + CF * 12;
 			SetMode(EWebTravMode::Air, N_wallJump); S.AirT = 0; S.ApexZ = FeetZ(); S.WallCooldown = 0.5; S.SwingCooldown = 0; S.bGroundSwing = true;
