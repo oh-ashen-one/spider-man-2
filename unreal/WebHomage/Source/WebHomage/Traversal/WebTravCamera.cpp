@@ -260,10 +260,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		// the distance follows the pose: a compact shape (tuck / pike) is pulled in FlipTuckPull m so the tuck-dominated backDouble reads as big as
 		// the open shapes (TC-C p50 >= .18 with p90 <= .36: one constant distance cannot do both -- a tuck is ~.15, a layout ~.30 at the same range)
 		SD(FlipCompactS, FlipCompactV, FMath::Clamp(double(P.FlipCompact), 0.0, 1.0), FlipCompactT, Dt);
-		// round 18: distance = FlipExtK x the hero's extent (spring 0.12 s), inside FlipDistSel (5.0, or pulled in at the selection) .. FlipDistMax
+		// round 18: distance = FlipExtK x the hero's extent (spring 0.12 s), inside FlipDistCompact (4.5: a tuck, extent ~1 m, reads .15 of the frame at
+		// 5.0 m -- r18 render f1 mask p50 .167 -- and ~.19 at 4.5) .. FlipDistMax; open shapes (>= 1.9 m) stay >= 5.0 (TC4), so p90 <= .36 holds
 		if (P.FlipExtent > 0.f) SD(FlipExtS, FlipExtV, double(P.FlipExtent), 0.12, Dt);
 		const double Want = P.FlipExtent > 0.f || FlipExtS > 0.0
-			? FMath::Clamp(FlipExtK * FlipExtS, FlipDistSel, FMath::Max(FlipDistSel, FlipDistMax))
+			? FMath::Clamp(FlipExtK * FlipExtS, FMath::Min(FlipDistSel, FlipDistCompact), FMath::Max(FlipDistSel, FlipDistMax))
 			: FlipDistSel - FlipTuckPull * FMath::Clamp(FlipCompactS, 0.0, 1.0);
 		double HitD = 0.0, ObsGoal = 1e9;
 		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * Want, 0.3, HitD)) ObsGoal = HitD - 0.25;
@@ -733,7 +734,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 {
 	struct FT { const TCHAR* N; double* P; };
 	const FT Tab[] = { {TEXT("SunMinDeg"), &SunMinDeg}, {TEXT("SunPrefDeg"), &SunPrefDeg}, {TEXT("FlipDist"), &FlipDist}, {TEXT("FlipDistMin"), &FlipDistMin},
-		{TEXT("FlipDrop"), &FlipDrop}, {TEXT("FlipDistMax"), &FlipDistMax}, {TEXT("FlipExtK"), &FlipExtK}, {TEXT("FlipAzHold"), &FlipAzHold}, {TEXT("FlipAzRate"), &FlipAzRate}, {TEXT("FlipTuckPull"), &FlipTuckPull}, {TEXT("FlipCompactT"), &FlipCompactT}, {TEXT("FlipYawMin"), &FlipYawMin}, {TEXT("FlipYawMax"), &FlipYawMax}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
+		{TEXT("FlipDrop"), &FlipDrop}, {TEXT("FlipDistMax"), &FlipDistMax}, {TEXT("FlipDistCompact"), &FlipDistCompact}, {TEXT("FlipExtK"), &FlipExtK}, {TEXT("FlipAzHold"), &FlipAzHold}, {TEXT("FlipAzRate"), &FlipAzRate}, {TEXT("FlipTuckPull"), &FlipTuckPull}, {TEXT("FlipCompactT"), &FlipCompactT}, {TEXT("FlipYawMin"), &FlipYawMin}, {TEXT("FlipYawMax"), &FlipYawMax}, {TEXT("FlipPrefYaw"), &FlipPrefYaw},
 		{TEXT("FlipLeadDeg"), &FlipLeadDeg}, {TEXT("FlipSFrame"), &FlipSFrame}, {TEXT("FlipPitchUpMax"), &FlipPitchUpMax}, {TEXT("MaxLookUpDeg"), &MaxLookUpDeg},
 		{TEXT("FlipInT"), &FlipInT}, {TEXT("FlipOutT"), &FlipOutT}, {TEXT("FlipZInT"), &FlipZInT}, {TEXT("FlipDollyInT"), &FlipDollyInT}, {TEXT("FlipDollyOutT"), &FlipDollyOutT},
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},

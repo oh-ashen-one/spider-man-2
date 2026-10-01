@@ -102,7 +102,7 @@ public:
 	// extent (FlipExtK m per m, up to FlipDistMax) instead of the r16 tuck pull-in; FlipAzHold: the held azimuth stays FlipAzHold s past the
 	// catch before it blends out (critic r17 TC-A "offset p5 20-29, range up to 34": the window runs to the catch + 0.5 s); FlipAzRate: a
 	// re-chosen view while the previous one is still blended moves its azimuth at <= this rate (deg/s) instead of jumping
-	double FlipDistMax = 6.4, FlipExtK = 2.6, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
+	double FlipDistMax = 6.4, FlipDistCompact = 4.5, FlipExtK = 2.6, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
 	double FlipDist = 5.0, FlipDistMin = 4.0, FlipTuckPull = 0.0, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
 	double FlipInT = 0.34, FlipOutT = 0.90, FlipZInT = 0.15, FlipZHold = 0.30, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
