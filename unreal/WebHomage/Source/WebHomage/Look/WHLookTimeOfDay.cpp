@@ -283,12 +283,16 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 		S->SetTemperature(G(TEXT("sun.Temperature"), 5500.f));
 		S->SetLightSourceAngle(G(TEXT("sun.LightSourceAngle"), 0.53f));
 		const float Dk = G(TEXT("sun.DiskScale"), 1.f); S->SetAtmosphereSunDiskColorScale(FLinearColor(Dk, Dk, Dk, 1.f));
-		// UE's per-pixel transmittance still lights meshes from a sun a few degrees under the horizon (round 05 first tour: a sunlit city at 19:48,
-		// sun -6.7 deg). Below -0.5 deg the sun keeps lighting the sky, the aerial perspective and the clouds (twilight) but leaves lighting channel 0
-		// (the world); the transmittance has taken it to a dim red by then, so the switch does not pop.
-		const bool bLitWorld = SunElev > -0.5f;
-		if (bLitWorld != bSunLitWorld) { S->SetLightingChannels(bLitWorld, false, false); bSunLitWorld = bLitWorld; }
-		S->SetCastShadows(bLitWorld);
+		// UE's per-pixel transmittance still lights meshes from a sun a few degrees under the horizon (round 05 tours: a sunlit city with cast shadows at 19:48,
+		// sun -6.7 deg; switching the light off lighting channel 0 did NOT stop it). Under the horizon the sun keeps its intensity for the sky, the aerial
+		// perspective and the clouds (twilight glow), but its diffuse / specular contribution to surfaces ramps to 0 between +0.5 and -2.5 deg (no pop).
+		const float WorldK = FMath::SmoothStep(-2.5f, 0.5f, SunElev);
+		if (FMath::Abs(WorldK - SunWorldK) > 1e-3f || (WorldK == 0.f) != (SunWorldK == 0.f))
+		{
+			S->SetDiffuseScale(WorldK); S->SetSpecularScale(WorldK); SunWorldK = WorldK;
+			if (!bSunLitWorld) { S->SetLightingChannels(true, false, false); bSunLitWorld = true; }   // undo the round-05 channel switch if a map still carries it
+		}
+		S->SetCastShadows(WorldK > 0.01f);
 	}
 	if (UDirectionalLightComponent* M = MoonL.Get())
 	{

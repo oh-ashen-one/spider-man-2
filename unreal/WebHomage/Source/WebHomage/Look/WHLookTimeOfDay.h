@@ -82,6 +82,7 @@ private:
 	float LastLightsK = -1.f;
 	bool bNightHidden = false;
 	bool bSunLitWorld = true;
+	float SunWorldK = -1.f;   // last diffuse/specular scale given to the sun (-1 = never set)
 
 	void Bind();
 	TMap<FName, FVector4f> Evaluate(float H, float W, float SunElev) const;

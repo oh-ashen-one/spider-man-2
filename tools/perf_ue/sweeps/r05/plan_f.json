@@ -1,0 +1,128 @@
+{
+ "groups": [
+  {
+   "name": "fB0",
+   "shots": [
+    "S4",
+    "S8",
+    "S1"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 19.8",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ]
+  },
+  {
+   "name": "fB1",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 19.3",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ]
+  },
+  {
+   "name": "fN1",
+   "shots": [
+    "S4",
+    "S8",
+    "S1",
+    "S5"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 80000",
+    "exec wh.ToDSet fog.FogDensity 0.08",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.98",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.006 0.01 0.022 1"
+   ]
+  },
+  {
+   "name": "fN2",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 80000",
+    "exec wh.ToDSet fog.FogDensity 0.12",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.99",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.004 0.007 0.016 1"
+   ]
+  },
+  {
+   "name": "fN3",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 120000",
+    "exec wh.ToDSet fog.FogDensity 0.08",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.98",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.006 0.01 0.022 1"
+   ]
+  },
+  {
+   "name": "fG1",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14",
+    "exec wh.ToDSet pp.WhiteTemp 6600"
+   ]
+  },
+  {
+   "name": "fG2",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14",
+    "exec wh.ToDSet pp.WhiteTemp 6200"
+   ]
+  },
+  {
+   "name": "fD1",
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet pp.AutoExposureBias -0.7"
+   ]
+  }
+ ]
+}
