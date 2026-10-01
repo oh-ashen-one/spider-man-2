@@ -8,15 +8,12 @@ Scope since the director's first-pass plan (`git show origin/Opus-5.5-Loop-Night
 
 ## STATE AT THE END OF THIS ROUND (read this first)
 
-**Status line is in `round-11/CAPTURES.md`** (what was actually captured and what was not). If `round-11/stills/` or `round-11/swap_pawn_T_key.mp4` are missing, the engine chain did not run: the GPU lock refuses launches while the owner plays a game (log `gpu-unhealthy-wait ... owner game running (CrossOver) ... GTA5.exe`) or while `PAUSED` exists. Then run, from the worktree:
-
-```
-export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters
-OUT=$P2_SCRATCH/r11/chain; mkdir -p $OUT
-nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r11.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &     # record the PID
-```
-One lock hold (<= 40 min): rebuild of /Game/Characters (+ suits + `Char_Skins` + `Char_SkinsPlay`) -> 4K stills of 8 suits x 4 views -> playable-pawn swap movie (7 real T presses) -> persistence re-launch -> settings-menu shot -> orbit movie.
-`STEPS="stills pawn"` etc. selects steps; each step skips itself when the hold is nearly used up (CHAIN_LIMIT_S). After it: the post-processing list at the end of this file.
+**Interim (2026-10-01 15:15, session still running):** round 11 was resumed after the 14:22 interruption (the owner's GTA V froze WindowServer; the engine of the old final chain died with it). Findings since:
+- the manual-exposure stills of `chain_r11_final.sh` came out BLACK: AEM_Manual = camera EV100 9.9 minus the bias and the stage sun is 8 lux. Measured on the real map (1080p, tessera / cinder front): bias +9 -> bare-floor luma 121, bias +10 -> 172 (auto exposure's level, 170). The stage default is now **+10.0** (`build_characters.py`, `skin_ev`); every run also passes `-WHExposure=10.0`.
+- `tools/ue_char/suits/chain_r11_final2.sh` is the ONE hold that produces the final evidence (build skins + skinsmap, 4K stills, pawn swap movie, persistence relaunch, settings-menu shot, orbit movie; optional EV calibration; stops after 2 engine crashes). Output dir `$P2_SCRATCH/r11/chain4`. It was queued behind other agents and the owner's GTA V reservation (the lock refuses launches while a CrossOver game runs: by design).
+- the swap analyser was rewritten (`analyze_swap.py`: colour histogram of the hero's pixels): on the earlier pawn movie all 7 T presses were found 2 frames (33 ms) after the injection.
+- if `round-11/CAPTURES.md` does not exist yet, the hold has not run: start it again with
+  `EV=10.0 nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r11_final2.sh $P2_SCRATCH/r11/chain4 > $P2_SCRATCH/r11/chain4/gpu_wrapper.log 2>&1 < /dev/null &` (record the PID), then `STILLS=stills_a bash tools/ue_char/suits/post_r11.sh $P2_SCRATCH/r11/chain4`.
 
 ### What exists (all CPU-verified; the engine side is compiled but its first run is the chain above)
 
