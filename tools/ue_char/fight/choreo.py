@@ -285,17 +285,16 @@ def _script(fillers):
     strike(1.60, 'hero:uppercut', Th, 'down', getup=5.05, getup_clip='fight:getUp')        # knockdown 1: on the ground 2.5 - 5.0 s, rolls up
     strike(2.65, 'hero:kick', Ox, 'down', getup=6.15, getup_clip='fight:getUp2')           # knockdown 2: on the ground 3.6 - 6.2 s, sits up (1.4 s together with the Thug)
     strike(3.70, 'hero:punch2', Te, 'fight:hitLeft')
-    enemy_hit(4.03, Hd, 'thug:thugPunch2')                                                    # the pistol-whip lands: hero flinch 4.35 - 4.9
-    strike(5.05, 'hero:punch1', Br, 'fight:hitBack')
-    strike(6.10, 'hero:punch3', Be, 'fight:hitRight')
-    strike(7.15, 'hero:kick', Hd, 'fight:hitBack')
-    strike(8.20, 'hero:punch2', Th, 'fight:hitLeft')                                          # the Thug is up again (5.05 + 1.0 s)
+    enemy_hit(4.50, Hd, 'thug:thugPunch2')                                                    # the pistol-whip lands: hero flinch 4.82 - 5.4 (round 10: was 4.03, which spun the hero away from the Tee mid-punch: facing error 165 deg at the contact)
+    strike(5.55, 'hero:punch1', Br, 'fight:hitBack')
+    strike(6.55, 'hero:punch3', Be, 'fight:hitRight')
+    strike(7.55, 'hero:kick', Hd, 'fight:hitBack')
     # ------------------------------------------------------------------ shot 1, 3/4 (8.65 - 16.65 s): Hood and Beard go down
     strike(9.25, 'hero:uppercut', Hd, 'down', getup=12.7, getup_clip='fight:getUp')
     strike(10.30, 'hero:kick', Be, 'down', getup=13.4, getup_clip='fight:getUp2')
     strike(11.35, 'hero:punch2', Br, 'fight:hitLeft')
     strike(12.40, 'hero:punch1', Te, 'fight:hitBack')
-    enemy_hit(13.05, Th, 'thug:thugPunch1')                                                   # a bat swing lands (the Thug, near the 3/4 camera): hero flinch ~13.4 - 13.9
+    enemy_hit(13.15, Th, 'thug:thugPunch1')                                                   # a bat swing lands (the Thug, near the 3/4 camera): hero flinch ~13.5 - 14.0 (round 10: was 13.05: the hero began to turn 0.03 s before the contact of the punch at 12.73)
     strike(14.10, 'hero:punch3', Ox, 'fight:hitRight')
     strike(15.15, 'hero:punch2', Th, 'fight:hitLeft')
     strike(16.10, 'hero:kick', Hd, 'fight:hitBack')
