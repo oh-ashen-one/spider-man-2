@@ -56,7 +56,7 @@ CFG = {
                 seethrough=True,   # round 09: flip the back-faced lip-crease slivers that are holes through the mask
                 hang=dict(uncover_mouth=True), hair_shell=True),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
     'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
-                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True, hair_shell=True),   # round 11: bridge_gap ((0.05, 1.70, 0.08), 0.07) = the r10 flat card, replaced by hair.tuck_hair
+                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True, hair_shell=True, hair_compress=True, scalp_side=0.014),   # round 11: bridge_gap ((0.05, 1.70, 0.08), 0.07) = the r10 flat card, replaced by hair.tuck_hair
 }
 
 
@@ -491,6 +491,7 @@ def main():
     if cfg.get('hair_shell'):   # round 11: the hair shell's open edges tucked onto the head (no background / skin gap, no bridge card)
         Hsh = HR.hair_shell(P, F)
         P0_ = P.copy(); P, tinfo = HR.tuck_hair(P, F, Hsh, axis_z=cfg['axis_z']); info.update(tinfo)
+        if cfg.get('hair_compress'): P, cinfo_ = HR.compress_hair(P, F, Hsh); info.update(cinfo_)
         moved = moved + np.linalg.norm(P - P0_, axis=1)
         info['hair_shell_tris'] = int(Hsh.sum())
     N2 = M.vertex_normals(P, F)
@@ -531,10 +532,10 @@ def main():
     if cfg.get('clear_temple_text'):
         im4, nt = clear_temple_text(im4, pos, cov, cfg); info['temple_text_px'] = nt
     if Hsh is not None:
-        im4, sinfo = HR.paint_scalp(im4, cov, pos, P, N, UV, F, Hsh, axis_z=cfg['axis_z']); info.update(sinfo)
+        im4, sinfo = HR.paint_scalp(im4, cov, pos, P, N, UV, F, Hsh, axis_z=cfg['axis_z'], side_reach=cfg.get('scalp_side', 0.0), ear_y=cfg['ear_lobe'] + 0.03); info.update(sinfo)
     if cfg.get('unify_hair'):
         im4, uinfo = HR.unify_hair(im4, cov, pos, cfg); info.update(uinfo)
-        im4, finfo = HR.fringe_hairline(im4, cov, pos, P, F, cfg); info.update(finfo)
+        if cfg.get('fringe_hairline'): im4, finfo = HR.fringe_hairline(im4, cov, pos, cfg); info.update(finfo)   # round 11: tried on the Hood, read as a dark stain on the forehead (CPU render): off
     im4 = fill_gutters(im4, cov, erode=1)
     im4, nbord = M.seam_blend(im4, cov, pos); info['seam_blend_px'] = nbord
     im4, mw = M.paint_mask(im4, cov, pos, cfg, cfg['seed']); info['mask_px'] = int((mw > 0.5).sum())

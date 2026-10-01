@@ -99,6 +99,23 @@ def tuck_hair(P, F, H, axis_z=-0.02, y_min=1.50, reach=0.016, falloff=0.006, lif
                     tuck_mean_mm=round(float(np.linalg.norm(disp[tv], axis=1).mean() * 1000), 1) if len(tv) else 0.0)
 
 
+def compress_hair(P, F, H, dc=0.020, k=0.25, y_min=1.40):
+    """Loose ribbon loops of the shell stick out 2.5 - 4.4 cm from the head (the background shows between them): every shell vertex farther than
+    dc from the head surface is moved toward its nearest head point so that its distance becomes dc + k (d - dc).  Returns (P, info)."""
+    w = weld(P); nw = w.max() + 1
+    head = (~H) & (P[F][:, :, 1].min(1) > y_min)
+    S, _ = _surface_samples(P, F[head])
+    rep = np.zeros((nw, 3)); rep[w] = P
+    hv = np.unique(w[F[H]])
+    d, i = cKDTree(S).query(rep[hv])
+    far = d > dc
+    disp = np.zeros((nw, 3))
+    dirv = (rep[hv[far]] - S[i[far]]) / d[far][:, None]
+    newd = dc + k * (d[far] - dc)
+    disp[hv[far]] = S[i[far]] + dirv * newd[:, None] - rep[hv[far]]
+    return P + disp[w], dict(compressed_verts=int(far.sum()), compress_max_mm=round(float(np.linalg.norm(disp, axis=1).max() * 1000), 1))
+
+
 def _uv_mask(UV, F, n):
     m = np.zeros((n, n), np.uint8)
     pts = (UV[F] * n).astype(np.int32)
@@ -107,7 +124,7 @@ def _uv_mask(UV, F, n):
     return m.astype(bool)
 
 
-def paint_scalp(img, cov, pos, P, N, UV, F, H, axis_z=-0.02, y_min=1.50, reach=0.045, seed=7):
+def paint_scalp(img, cov, pos, P, N, UV, F, H, axis_z=-0.02, y_min=1.50, reach=0.045, seed=7, side_reach=0.0, ear_y=1.60):
     """Head-surface texels (not the shell's own) whose surface point is covered by the shell (a ray along the head normal hits it within
     `reach`) take the shell's own dark hair colour with a fine strand noise.  Returns (img, info)."""
     n = img.shape[0]
@@ -128,7 +145,15 @@ def paint_scalp(img, cov, pos, P, N, UV, F, H, axis_z=-0.02, y_min=1.50, reach=0
     dd, j = tree.query(pos[ys, xs].astype(np.float64), k=4)
     wk = 1.0 / (dd + 1e-4)
     cvr = (hit[j] * wk).sum(1) / wk.sum(1)
-    W = np.zeros(region.shape, np.float32); W[ys, xs] = np.clip((cvr - 0.25) / 0.5, 0, 1)
+    cvr = np.clip((cvr - 0.25) / 0.5, 0, 1)
+    if side_reach > 0:     # round 11: the temple / side / back of the head within side_reach of the shell (the curtain's strips leave gaps the ray test misses)
+        Sh, _ = _surface_samples(P, F[H], k=3)
+        ds, _ = cKDTree(Sh).query(pos[ys, xs].astype(np.float64))
+        pp = pos[ys, xs]
+        phi = np.degrees(np.abs(np.arctan2(pp[:, 0], pp[:, 2] - axis_z)))
+        side = np.clip((phi - 40.0) / 15.0, 0, 1) * (pp[:, 1] > ear_y)
+        cvr = np.maximum(cvr, side * (1 - np.clip((ds - 0.6 * side_reach) / (0.4 * side_reach), 0, 1)))
+    W = np.zeros(region.shape, np.float32); W[ys, xs] = cvr
     W = ndi.gaussian_filter(W, 1.2) * region
     a = img.astype(np.float32)
     hair_px = a[Hm & cov]
@@ -138,8 +163,14 @@ def paint_scalp(img, cov, pos, P, N, UV, F, H, axis_z=-0.02, y_min=1.50, reach=0
     rng = np.random.RandomState(seed)
     g = ndi.gaussian_filter(rng.randn(n, n).astype(np.float32), (0.7, 2.5)); g /= g.std() + 1e-6
     col = base[None, None, :] * np.clip(0.9 + 0.18 * g, 0.6, 1.4)[..., None]
+    # round 11: the shell's OWN texels that carry baked skin (the Beard's front curtain strip has the forehead painted on its inner face, uv ~(0.35, 0.19 - 0.55)):
+    # skin hue on the shell -> hair colour as well
+    hh, ss, vv = _rgb2hsv(img)
+    sk = Hm & cov & (hh > 4) & (hh < 38) & (ss > 0.12) & (vv > 0.36)
+    Ws = ndi.gaussian_filter(sk.astype(np.float32), 1.0) * Hm
+    W = np.maximum(W, Ws)
     out = a * (1 - W[..., None]) + col * W[..., None]
-    return np.clip(out, 0, 255).astype(np.uint8), dict(scalp_verts_covered=int(hit.sum()), scalp_verts=int(len(vids)), scalp_texels=int((W > 0.5).sum()),
+    return np.clip(out, 0, 255).astype(np.uint8), dict(shell_skin_texels=int(sk.sum()), scalp_verts_covered=int(hit.sum()), scalp_verts=int(len(vids)), scalp_texels=int((W > 0.5).sum()),
                                                        scalp_colour=[int(x) for x in base])
 
 
@@ -151,59 +182,67 @@ def unify_hair(img, cov, pos, cfg, y_lo=None):
     az = cfg.get('axis_z', -0.02)
     r = np.hypot(x, z - az)
     ylo = cfg['ear_lobe'] - 0.01 if y_lo is None else y_lo
-    headz = cov & (y > ylo) & (r < 0.16)
-    face = (z - az > 0.045) & (y < cfg['eye'] + 0.035) & (np.abs(x) < 0.075)     # eyes / brows / glasses / nose bridge
+    headz = cov & (y > ylo) & (r < 0.22)       # the fringe curl reaches 16 - 20 cm in front of the head axis
+    face = (z - az > 0.03) & (y < cfg['eye'] + 0.04) & (np.abs(x) < 0.10)     # eyes / brows / sunglasses (frame reaches |x| 8.8 cm) / nose bridge
     a = img.astype(np.float32)
     lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
-    maroon = headz & ~face & ((h > 330) | (h < 24)) & (s > 0.22) & (v < 0.62)
+    maroon = headz & ~face & ((h > 330) | (h < 14)) & (s > 0.22) & (v < 0.62)
     # light (blond) hair = pale-warm AND strand-textured (the skin of the forehead / ears is smooth): local luminance std over 9 x 9 texels, averaged over 15 x 15
     l1 = cv2.blur(lum, (9, 9)); l2 = cv2.blur(lum * lum, (9, 9)); tex = cv2.blur(np.sqrt(np.maximum(l2 - l1 * l1, 0)), (15, 15))
     hue_w = np.clip((h - 12) / 6, 0, 1) * np.clip((68 - h) / 6, 0, 1)
     W = hue_w * (headz & ~face & (s < 0.62) & (lum > 95) & ~maroon) * np.clip((tex - 5.0) / 3.0, 0, 1)
+    W = np.maximum(W, ndi.grey_dilation(W, size=5) * (headz & ~face & ~maroon))       # the darker strands between the blond ones
+    # smooth light curls (the pale tip of the fringe curl: h ~21, s ~0.35, v ~0.67) next to maroon hair in the atlas, above the brow line
+    lightc = headz & ~face & ~maroon & (y > cfg['eye'] + 0.035) & (h > 8) & (h < 62) & (v > 0.42)
+    my, mxx = np.nonzero(maroon)
+    if len(my) and lightc.any():
+        k_ = max(1, len(my) // 40000)
+        ly, lx = np.nonzero(lightc)
+        dm, _ = cKDTree(pos[my[::k_], mxx[::k_]].astype(np.float64)).query(pos[ly, lx].astype(np.float64))
+        near = np.zeros(lightc.shape, np.float32); near[ly, lx] = (1.0 - np.clip((dm - 0.02) / 0.01, 0, 1)) * ((r[ly, lx] > 0.159) | (tex[ly, lx] > 6.0))    # within 2 - 3 cm of maroon hair (3D), and either standing off the skull (the curl) or strand-textured: never the smooth forehead
+        W = np.maximum(W, near)
+    W = np.maximum(W, (headz & ~face & (h >= 28) & (h < 75) & (s > 0.06) & ~((v > 0.80) & (s < 0.12))).astype(np.float32))     # olive / khaki shadow strands of the blond
+    # the skin of the forehead / temples is never hair: pale-warm, smooth, on the skull (the forehead is 7.5 - 15.7 cm from the head axis, the fringe curl 16 - 20 cm)
+    skinlike = (h > 4) & (h < 25.5) & (s > 0.12) & (s < 0.58) & (v > 0.52) & (tex < 7.0) & (r < 0.159)
+    W = W * ~ndi.binary_dilation(skinlike, iterations=2)
     W = ndi.gaussian_filter(W.astype(np.float32), 0.8) * headz
+    import os
+    if os.environ.get('P2_HAIR_DEBUG'): np.savez_compressed(os.environ['P2_HAIR_DEBUG'], tex=tex.astype(np.float16), r=r.astype(np.float16), s=s.astype(np.float16), W=W.astype(np.float16), maroon=maroon, headz=headz, face=face, y=y.astype(np.float16), h=h.astype(np.float16), v=v.astype(np.float16))
     ml = lum[maroon]; bl = lum[W > 0.5]
     qs = np.linspace(0, 100, 101)
     mq = np.percentile(ml, qs); bq = np.percentile(bl, qs)
-    lum_new = np.interp(lum, bq, mq)
+    lum_new = 0.88 * np.interp(lum, bq, mq)     # a little darker: the blond's broad highlights otherwise read pink
     mc = np.median(a[maroon], 0); mc_l = float(mc @ np.array([0.299, 0.587, 0.114]))
     col = mc[None, None, :] * (lum_new / max(mc_l, 1.0))[..., None]
     out = a * (1 - W[..., None]) + col * W[..., None]
     return np.clip(out, 0, 255).astype(np.uint8), dict(unify_blond_texels=int((W > 0.5).sum()), unify_maroon_texels=int(maroon.sum()), unify_target=[int(x_) for x_ in mc])
 
 
-def fringe_hairline(img, cov, pos, P, F, cfg, band=0.009, seed=5):
-    """Hood: the maroon fringe overhangs the forehead with a straight 45-cm-long edge (critic r10: '570 px seam').  Forehead texels UNDER the overhang
-    (a ray along the head normal hits the head's own fringe within 4 cm) and a band of `band` metres beyond it (noisy, feathered edge) take the
-    maroon hair palette, so the fringe edge lies on hair and the hairline below it is soft and irregular."""
+def fringe_hairline(img, cov, pos, cfg, band=0.008, seed=5):
+    """Hood: the maroon fringe folds over the forehead with a straight edge (critic r10: '570 px seam').  Forehead / temple texels within `band`
+    (3D, modulated +-35 % by a smooth noise) of the hair texels take the maroon palette with a feathered, irregular edge, so the fold's edge lies on
+    hair and the hairline below it is soft.  The brows / eyes / sunglasses band (y < eye + 1.2 cm) is not touched."""
     az = cfg.get('axis_z', -0.02); eye = cfg['eye']
-    wv = weld(P)
-    T = P[F]; fn = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])
-    vn = np.zeros((wv.max() + 1, 3)); np.add.at(vn, wv[F].ravel(), np.repeat(fn, 3, 0)); vn /= np.linalg.norm(vn, axis=1, keepdims=True) + 1e-12
-    used = np.unique(F)
-    q = P[used]
-    zone_v = (q[:, 1] > eye + 0.004) & (q[:, 1] < eye + 0.10) & (q[:, 2] - az > 0.02) & (np.hypot(q[:, 0], q[:, 2] - az) < 0.16)
-    vid = used[zone_v]
-    headF = F[(T[:, :, 1].min(1) > eye - 0.02) & (np.hypot(T[:, :, 0], T[:, :, 2] - az).max(1) < 0.17)]
-    from mask import _ray_hits_any
-    hit = _ray_hits_any(P[vid] + vn[wv[vid]] * 0.0005, vn[wv[vid]], P, headF, 0.04, skip_verts=vid)
-    cv_ = vid[hit]
-    if not len(cv_): return img, dict(fringe_covered_verts=0)
-    a = img.astype(np.float32); lum = a @ np.array([0.299, 0.587, 0.114], np.float32)
+    a = img.astype(np.float32)
     h, s_, v = _rgb2hsv(img)
     x, y, z = pos[..., 0], pos[..., 1], pos[..., 2]
-    region = cov & (y > eye + 0.004) & (y < eye + 0.10) & (z - az > 0.0) & (np.hypot(x, z - az) < 0.16)
-    ys, xs = np.nonzero(region)
-    d, _ = cKDTree(P[cv_]).query(pos[ys, xs].astype(np.float64))
+    r = np.hypot(x, z - az)
+    hairm = cov & (y > eye + 0.02) & (r < 0.22) & ((h > 330) | (h < 14)) & (s_ > 0.22) & (v < 0.62)
+    region = cov & ~hairm & (y > eye + 0.012) & (y < eye + 0.12) & (r < 0.22) & (z - az > -0.02)
+    hy, hx = np.nonzero(hairm); ys, xs = np.nonzero(region)
+    if not len(hy) or not len(ys): return img, dict(fringe_texels=0)
+    k_ = max(1, len(hy) // 60000)
+    d, _ = cKDTree(pos[hy[::k_], hx[::k_]].astype(np.float64)).query(pos[ys, xs].astype(np.float64))
     rng = np.random.RandomState(seed); n = img.shape[0]
     nz = ndi.gaussian_filter(rng.randn(n // 8, n // 8).astype(np.float32), 1.5); nz /= nz.std() + 1e-6
     nz = cv2.resize(nz, (n, n), interpolation=cv2.INTER_LINEAR)
     lim = band * (1.0 + 0.35 * nz[ys, xs])
-    w = 1.0 - np.clip((d - 0.6 * lim) / (0.4 * lim + 1e-6), 0, 1)
+    w = 1.0 - np.clip((d - 0.45 * lim) / (0.55 * lim + 1e-6), 0, 1)
     W = np.zeros(region.shape, np.float32); W[ys, xs] = w
-    W = ndi.gaussian_filter(W, 1.0) * region
-    maroon = cov & (y > eye) & ((h > 330) | (h < 24)) & (s_ > 0.22) & (v < 0.62)
-    mc = np.median(a[maroon], 0)
+    yf = np.clip((y - (eye + 0.012)) / 0.012, 0, 1)        # no hard cut at the zone's lower edge
+    W = ndi.gaussian_filter(W, 1.0) * region * yf
+    mc = np.median(a[hairm], 0)
     g = ndi.gaussian_filter(rng.randn(n, n).astype(np.float32), (0.6, 2.2)); g /= g.std() + 1e-6
-    col = mc[None, None, :] * np.clip(0.80 + 0.22 * g, 0.5, 1.3)[..., None]
+    col = mc[None, None, :] * np.clip(0.85 + 0.25 * g, 0.5, 1.4)[..., None]
     out = a * (1 - W[..., None]) + col * W[..., None]
-    return np.clip(out, 0, 255).astype(np.uint8), dict(fringe_covered_verts=int(len(cv_)), fringe_zone_verts=int(len(vid)), fringe_texels=int((W > 0.5).sum()))
+    return np.clip(out, 0, 255).astype(np.uint8), dict(fringe_texels=int((W > 0.5).sum()), fringe_colour=[int(c) for c in mc])
