@@ -38,6 +38,7 @@ def build(n, log=print, style=None, pre=None):
     mpt_tri = np.clip(mpt_tri, 2e-5, 2e-3)
     gi = {g: i for i, g in enumerate(meshio.GROUPS)}
     jp = {k: tuple(float(x) for x in v) for k, v in m['jpos'].items()}
+    cavity = 0.0
     col = np.zeros((n, n, 3), np.float32); hgt = np.zeros((n, n), np.float32)
     rough = np.full((n, n), 0.8, np.float32); ao = np.ones((n, n), np.float32); mptm = np.full((n, n), 2e-4, np.float32)
     step = 256
@@ -51,8 +52,24 @@ def build(n, log=print, style=None, pre=None):
         mp = mpt_tri[np.where(tri[sl] >= 0, tri[sl], 0)]
         o = design.paint(Pp, Nn, G, mp, gi, jp, style)
         col[sl] = o['col']; hgt[sl] = o['h']; rough[sl] = o['rough']; ao[sl] = o['ao']; mptm[sl] = mp
+        cavity = o.get('cavity', cavity)
     log('paint %.1fs' % (time.time() - t0))
-    return dict(col=col, h=hgt, rough=rough, ao=ao, mpt=mptm, cov=cov, tri=tri)
+    if cavity > 0:
+        ao = cavity_ao(hgt, ao, mptm, cov, cavity)
+    return dict(col=col, h=hgt, rough=rough, ao=ao, mpt=mptm, cov=cov, tri=tri, relief=cavity > 0)
+
+
+def cavity_ao(h, ao, mpt, cov, k):
+    """Round 12: occlusion at the foot of the raised cords: where the local height is below its 2.5 mm neighbourhood average the AO darkens (k per mm)."""
+    sig = float(np.clip(0.0025 / np.median(mpt[cov]), 1.0, 8.0))
+    hb = ndi.gaussian_filter(h, sig)
+    return np.clip(ao - k * np.clip(hb - h, 0, 1) * cov, 0.55, 1.0).astype(np.float32)
+
+
+def smooth_mpt(mpt, cov):
+    """Round 12: per-texel metres-per-texel without the per-triangle steps (a step in the slope scale at every triangle edge shades the normal map in facets)."""
+    w = ndi.gaussian_filter(cov.astype(np.float32), 3.0)
+    return (ndi.gaussian_filter(mpt * cov, 3.0) / np.maximum(w, 1e-4)).astype(np.float32)
 
 
 def save_png(arr, path):
@@ -71,6 +88,8 @@ def gutters(img, cov, px):
 
 
 def normal_from_height(h_mm, mpt, strength=1.0, sigma=0.9):
+    """Tangent-space (OpenGL: +X = +u, +Y = -v row = image up) normal of the height map; tools/ue_char/suits/tangent_check.py verifies it against the mesh's
+    per-island tangent frames."""
     hm = ndi.gaussian_filter(h_mm, sigma) * 1e-3
     gy, gx = np.gradient(hm)
     nx = -gx / mpt * strength; ny = gy / mpt * strength
@@ -83,14 +102,15 @@ def main():
     n = int(arg('--n', 8192))
     out = arg('--out', WT + '/art/night1/characters/hero/tex')
     os.makedirs(out, exist_ok=True)
-    r = build(n)
+    legacy = '--legacy-r8' in sys.argv          # round-08 flat print (test_regression.py proves it texel for texel)
+    r = build(n, style={'relief': {'kind': 'r8'}} if legacy else None)
     cov = r['cov']
     col8 = (np.clip(r['col'], 0, 1) * 255 + 0.5).astype(np.uint8)
     col8, keep = gutters(col8, cov, 24)
     save_png(col8, out + '/suit_basecolor_r8.png')
     if '--no-normal' not in sys.argv:
         hh, _ = gutters(r['h'], cov, 24)
-        mp, _ = gutters(r['mpt'], cov, 24)
+        mp, _ = gutters(smooth_mpt(r['mpt'], cov) if r['relief'] else r['mpt'], cov, 24)
         nn = normal_from_height(hh, mp)
         save_png(((nn * 0.5 + 0.5) * 255 + 0.5).astype(np.uint8), out + '/suit_normal_r8.png')
         ro, _ = gutters(r['rough'], cov, 24); ao, _ = gutters(r['ao'], cov, 24)

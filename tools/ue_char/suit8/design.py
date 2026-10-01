@@ -48,6 +48,10 @@ DEFAULT_STYLE = dict(
     hood='deep', glove='deep', boot='deep',            # colour role of the mask, gloves and boots: deep | body | accent_d
     mott=1.0,
     fuzz=[0.50, 0.62, 0.68],                           # cloth sheen tint (material parameter, not painted)
+    # round 12: relief.kind 'piping' = every panel / net line is a RAISED rounded cord (height profile, glossier roughness) and the net / piping / panel
+    # lines are layered UNDER the sash and chevron panels (colour, height and roughness); 'r8' = the round-08 flat print (grooves, net over the sash),
+    # kept so tools/ue_char/suits/test_regression.py can still prove the round-08 maps texel for texel.
+    relief=dict(kind='piping', net=0.65, pipe=0.95, ring=0.95, glyph=0.85, sash=0.40, border=0.85, rough_pipe=0.36, rough_net=0.42, cavity=0.55),
 )
 
 
@@ -98,6 +102,14 @@ def stitch(d, along, aa, off=0.0030, period=0.0048, hw=0.00038, duty=0.58):
     ph = np.abs((along / period) % 1.0 - 0.5) * 2.0                                # 0 at the dash centre, 1 at the gap centre
     on = 1.0 - ss(ph, duty - 0.12, duty + 0.04)
     return band(np.abs(d) - off, hw, aa) * on
+
+
+def cord(dist, hw, aa, H):
+    """Round-12 raised piping: (coverage, height mm) of a rounded cord of half width hw (metres) centred on dist = 0: the height is a half-ellipse
+    profile (H at the centre, 0 at the edge), so the normal map gets a lit flank and a shadowed flank on every line."""
+    a = band(dist, hw, aa)
+    u = np.clip(np.abs(dist) / max(hw, 1e-6), 0, 1)
+    return a, (H * np.sqrt(np.clip(1.0 - u * u, 0.0, 1.0)) * 0.85 + 0.15 * H).astype(np.float32)
 
 
 def mix(a, b, t):
@@ -314,6 +326,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     gi = {group name: index}; jp = {joint name: (x, y, z)}; style = override dict of DEFAULT_STYLE (None = Tessera).
     Returns dict(col (r, n, 3) sRGB 0..1, h mm, rough, ao)."""
     S = resolve(style)
+    RL = S['relief']; PIPE = RL['kind'] == 'piping'
     pal = {k: srgb(v) for k, v in S['palette'].items()}
     TEAL, TEAL_D, DEEP, INK = pal['body'], pal['crown'], pal['deep'], pal['ink']
     AMBER, AMBER_D, STITCH, SOLE = pal['accent'], pal['accent_d'], pal['stitch'], pal['sole']
@@ -385,8 +398,26 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         offs = [0.0] if sa['kind'] != 'double' else [-sa['gap'] * 0.5, sa['gap'] * 0.5]
         t_s = np.asarray(sa['along'], np.float32)
         for o in offs:
-            C.lay(zone_s * band(d_s - o, hw, aa), DEEP, rough=0.8)
-            C.lay(zone_s * band(d_s - o, hw - 0.004, aa), AMBER, h=0.25, rough=0.50)
+            if PIPE:     # round 12: the DEEP border strips are raised cords, the accent panel a padded plateau
+                a_b, h_b = cord(np.abs(d_s - o) - (hw - 0.002), 0.0021, aa, RL['border'])
+                C.lay(zone_s * band(d_s - o, hw, aa), DEEP, h=np.where(np.abs(d_s - o) > hw - 0.0042, h_b, RL['sash']), rough=RL['rough_pipe'] + 0.06)
+                C.lay(zone_s * band(d_s - o, hw - 0.004, aa), AMBER, h=RL['sash'], rough=0.50)
+            else:
+                C.lay(zone_s * band(d_s - o, hw, aa), DEEP, rough=0.8)
+                C.lay(zone_s * band(d_s - o, hw - 0.004, aa), AMBER, h=0.25, rough=0.50)
+    # round 12: everything laid after this point that is not part of the sash goes UNDER it (colour, height, roughness): sash_cov masks it
+    sash_cov = np.zeros(x.shape, np.float32)
+    if PIPE and zone_s is not None:
+        for o in offs:
+            sash_cov = np.maximum(sash_cov, zone_s * band(d_s - o, sa['half'] + 0.0006, aa))
+    under = (1.0 - sash_cov) if PIPE else 1.0
+    def L(alpha, c, h=None, rough=None, ao=None, H=None, dist=None, hw=None, r_pipe=None):
+        """lay a line: round 08 = flat print with the given h / rough; round 12 = a raised cord of height H (dist / hw = its distance field) with the piping
+        roughness, masked UNDER the sash"""
+        if not PIPE or H is None:
+            C.lay(alpha * under if PIPE else alpha, c, h=h, rough=rough, ao=ao); return
+        _, hp = cord(dist, hw, aa, H)
+        C.lay(alpha * under, c, h=hp, rough=r_pipe if r_pipe is not None else RL['rough_pipe'], ao=ao)
     # 5. arms.  Right arm = the amber "light" side, left arm = teal / dark side
     ar = S['arm']
     Rb = (x < 0)
@@ -404,13 +435,13 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         C.lay(arm_w * R_ * (armF / arm_tot) * ss(t_fore, -0.02, 0.02), DEEP, rough=0.78)
     if ar['other_fore'] == 'bands':
         for tc in (0.66, 0.76, 0.86):                                                  # left forearm: three amber wrist bands (cord wraps)
-            C.lay(arm_w * L_ * armF * band(t_fore - tc, 0.0034, aa), AMBER, h=0.40, rough=0.5)
+            L(arm_w * L_ * armF * band(t_fore - tc, 0.0034, aa), AMBER, h=0.40, rough=0.5, H=RL['ring'], dist=(t_fore - tc) * float(np.linalg.norm(W_L - E_L)), hw=0.0034)
     elif ar['other_fore'] == 'sleeve':
         C.lay(arm_w * L_ * (armF / arm_tot) * ss(t_fore, 0.30, 0.34), AMBER_D, rough=0.55)
     ROLE = dict(deep=DEEP, body=TEAL, accent_d=AMBER_D, crown=TEAL_D)
     C.lay(hand * body_w, ROLE[S['glove']], rough=0.68)                                         # gloves
     for nm_, tw in (('R', t_fore_R), ('L', t_fore_L)):                                # amber wrist ring between sleeve and glove
-        C.lay(band(tw - 1.02, 0.0042, aa) * arm_w * (x < 0 if nm_ == 'R' else x > 0), AMBER, h=0.4, rough=0.5)
+        L(band(tw - 1.02, 0.0042, aa) * arm_w * (x < 0 if nm_ == 'R' else x > 0), AMBER, h=0.4, rough=0.5, H=RL['ring'], dist=(tw - 1.02) * 0.25, hw=0.0042)
     # 6. legs.  Left leg = amber side accents, right leg = dark side
     y_top = 0.40 + 0.5 * z
     greave_on = 1.0 if S['greave'] == 'accent' else 0.0
@@ -420,15 +451,15 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         C.lay(thigh * L_ * ss(y, 0.52, 0.56), DEEP, rough=0.80)
     lat = np.abs(z - 0.0) - 0.011                                                   # outer seam stripe
     m_stripe = leg_w * np.clip(thigh + shin * ss(y, 0.42, 0.50), 0, 1) * cover(lat, aa) * ss(-sgn * nx, 0.4, 0.8)
-    C.lay(m_stripe * R_ * (1 - m_greaveR), AMBER, h=0.35, rough=0.5)
-    C.lay(m_stripe * L_, TEAL, h=0.35, rough=0.7)
+    L(m_stripe * R_ * (1 - m_greaveR), AMBER, h=0.35, rough=0.5, H=RL['pipe'], dist=lat + 0.011, hw=0.011)
+    L(m_stripe * L_, TEAL, h=0.35, rough=0.7, H=RL['pipe'] * 0.8, dist=lat + 0.011, hw=0.011, r_pipe=0.55)
     for yc in (0.175, 0.205):                                                       # left shin ankle bands
-        C.lay(shin * L_ * band(y - yc, 0.0040, aa), AMBER, h=0.4, rough=0.5)
+        L(shin * L_ * band(y - yc, 0.0040, aa), AMBER, h=0.4, rough=0.5, H=RL['ring'], dist=y - yc, hw=0.0040)
     m_boot = foot * body_w                                                          # boots: DEEP upper, INK toe cap, sole, amber welt
     C.lay(m_boot, ROLE[S['boot']], rough=0.72)
     C.lay(m_boot * ss(z, 0.085, 0.092), INK, rough=0.6)
     C.lay(foot * cover(y - 0.022, aa), SOLE, h=0.0, rough=0.88)
-    C.lay(foot * band(y - 0.0265, 0.0015, aa), AMBER, h=0.3, rough=0.5)
+    L(foot * band(y - 0.0265, 0.0015, aa), AMBER, h=0.3, rough=0.5, H=RL['pipe'] * 0.7, dist=y - 0.0265, hw=0.0015)
 
     # ------------------------------------------------------------------ joint sleeves: DEEP slabs between planes perpendicular to the limb axis + amber rings
     # (plane slices, not sphere cuts: a plane slice of the faceted mesh is a clean curve, a sphere cut zig-zags +-1.5 mm on the low-poly shoulder)
@@ -439,7 +470,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         inside = cover(np.abs(s_ - 0.5 * (s0 + s1)) - 0.5 * (s1 - s0), aa)
         C.lay(inside * zone, DEEP, h=0.35, rough=0.60, ao=0.85)
         for sb in (s0 - 0.0035, s1 + 0.0035):
-            C.lay(band(s_ - sb, 0.0017, aa) * zone, AMBER, h=0.55, rough=0.45)
+            L(band(s_ - sb, 0.0017, aa) * zone, AMBER, h=0.55, rough=0.45, H=RL['ring'], dist=s_ - sb, hw=0.0017)
             C.lay(stitch(s_ - sb, th_ * 0.055, aa, off=0.0042) * zone, STITCH, h=0.12, rough=0.7)
         plate_m = np.maximum(plate_m, inside * zone)
     for side_, nm in ((1.0, 'L'), (-1.0, 'R')):
@@ -450,7 +481,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         if S['sleeves']:
             z_sh = sidew * body_w * (1 - is_head) * cover(rr - 0.108, aa) * 1.0
             sleeve('deltoid.' + nm, 'forearm.' + nm, -0.050, 0.075, z_sh)
-            C.lay(band(rr - 0.108, 0.0010, aa) * sidew * body_w * (1 - is_head) * cover(np.abs(s_a - 0.0125) - 0.0625, aa), INK, h=-0.3, rough=0.9)
+            L(band(rr - 0.108, 0.0010, aa) * sidew * body_w * (1 - is_head) * cover(np.abs(s_a - 0.0125) - 0.0625, aa), INK, h=-0.3, rough=0.9, H=RL['net'], dist=rr - 0.108, hw=0.0010, r_pipe=RL['rough_net'])
             z_el = sidew * body_w * np.clip(armU + armF, 0, 1)
             sleeve('deltoid.' + nm, 'forearm.' + nm, 0.262, 0.322, z_el)
             z_kn = sidew * body_w * np.clip(thigh + shin, 0, 1)
@@ -472,26 +503,29 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     knots = nk in ('diamond', 'square', 'brick', 'hex')
     # amber net on the DEEP right upper arm; DEEP hairline net on the amber right forearm
     zR = arm_w * R_ * (armU + shoulder_arm) * ss(ax, 0.17, 0.22) * (1 - plate_m) * (1.0 if upper_deep else 0.0)
-    C.lay(cover(nd_armU_R - netw_a, aa) * zR, AMBER, h=0.30, rough=0.5)
-    if knots: C.lay(cover(nn_armU_R - 0.0032, aa) * zR, AMBER, h=0.55, rough=0.42)
+    L(cover(nd_armU_R - netw_a, aa) * zR, AMBER, h=0.30, rough=0.5, H=RL['net'] * 1.1, dist=nd_armU_R, hw=netw_a)
+    if knots: L(cover(nn_armU_R - 0.0032, aa) * zR, AMBER, h=0.55, rough=0.42, H=RL['net'] * 1.5, dist=nn_armU_R, hw=0.0032)
     sF_R, thF_R = seg_coords(P, J('forearm.R'), J('hand.R'))
     if ar['fore'] == 'sleeve':
         top_R = cover(np.abs((thF_R - np.pi / 2 + np.pi) % (2 * np.pi) - np.pi) * 0.040 - 0.0035, aa)             # dorsal DEEP stripe on the amber forearm
-        C.lay(top_R * arm_w * R_ * (armF / arm_tot) * ss(t_fore, 0.03, 0.08) * (1 - plate_m), DEEP, h=-0.30, rough=0.8)
+        _dR = np.abs((thF_R - np.pi / 2 + np.pi) % (2 * np.pi) - np.pi) * 0.040
+        L(top_R * arm_w * R_ * (armF / arm_tot) * ss(t_fore, 0.03, 0.08) * (1 - plate_m), DEEP, h=-0.30, rough=0.8, H=RL['net'], dist=_dR, hw=0.0035, r_pipe=RL['rough_net'])
         for tc in (0.25, 0.50):                                                                                  # two DEEP cross seams
-            C.lay(band(t_fore - tc, 0.0016, aa) * arm_w * R_ * (armF / arm_tot) * (1 - plate_m), DEEP, h=-0.30, rough=0.8)
+            L(band(t_fore - tc, 0.0016, aa) * arm_w * R_ * (armF / arm_tot) * (1 - plate_m), DEEP, h=-0.30, rough=0.8, H=RL['net'], dist=(t_fore - tc) * float(np.linalg.norm(W_R - E_R)), hw=0.0016, r_pipe=RL['rough_net'])
     # dark hairline net on the TEAL panels: upper chest / shoulders / back yoke, the whole left arm, left shin, right thigh
-    C.lay(cover(nd_tor - netw_d, aa) * z_up * 0.85, DEEP, h=-0.25, rough=0.82)
-    C.lay(cover(nd_armU_L - netw_d, aa) * arm_w * L_ * (armU + shoulder_arm) * (1 - plate_m) * 0.85, DEEP, h=-0.25, rough=0.82)
-    C.lay(cover(nd_armF_L - netw_d, aa) * arm_w * L_ * armF * (1 - plate_m) * 0.85 * (1 - ss(t_fore, 0.55, 0.6)), DEEP, h=-0.25, rough=0.82)
-    C.lay(cover(nd_shL - netw_d, aa) * shin * L_ * (1 - plate_m) * ss(y, 0.22, 0.26) * 0.85, DEEP, h=-0.25, rough=0.82)
-    C.lay(cover(nd_thR - netw_d, aa) * thigh * R_ * (1 - plate_m) * ss(y, 0.60, 0.66) * 0.85, DEEP, h=-0.25, rough=0.82)
+    NK = dict(h=-0.25, rough=0.82, H=RL['net'], hw=netw_d, r_pipe=RL['rough_net'])
+    L(cover(nd_tor - netw_d, aa) * z_up * 0.85, DEEP, dist=nd_tor, **NK)
+    L(cover(nd_armU_L - netw_d, aa) * arm_w * L_ * (armU + shoulder_arm) * (1 - plate_m) * 0.85, DEEP, dist=nd_armU_L, **NK)
+    L(cover(nd_armF_L - netw_d, aa) * arm_w * L_ * armF * (1 - plate_m) * 0.85 * (1 - ss(t_fore, 0.55, 0.6)), DEEP, dist=nd_armF_L, **NK)
+    L(cover(nd_shL - netw_d, aa) * shin * L_ * (1 - plate_m) * ss(y, 0.22, 0.26) * 0.85, DEEP, dist=nd_shL, **NK)
+    L(cover(nd_thR - netw_d, aa) * thigh * R_ * (1 - plate_m) * ss(y, 0.60, 0.66) * 0.85, DEEP, dist=nd_thR, **NK)
     # amber net on the DEEP left thigh and dark net on the amber greave
     zL = thigh * L_ * ss(y, 0.56, 0.60) * (1 - plate_m) * ss(0.78 - y, -0.03, 0.03) * (1.0 if S['thigh_deep'] else 0.0)
-    C.lay(cover(nd_thL - netw_a * 0.9, aa) * zL, AMBER_D, h=0.25, rough=0.55)
-    if knots: C.lay(cover(nn_thL - 0.0034, aa) * zL, AMBER, h=0.55, rough=0.42)
+    L(cover(nd_thL - netw_a * 0.9, aa) * zL, AMBER_D, h=0.25, rough=0.55, H=RL['net'] * 1.1, dist=nd_thL, hw=netw_a * 0.9)
+    if knots: L(cover(nn_thL - 0.0034, aa) * zL, AMBER, h=0.55, rough=0.42, H=RL['net'] * 1.5, dist=nn_thL, hw=0.0034)
     sS_R, thS_R = seg_coords(P, J('shin.R'), J('foot.R'))
-    C.lay(cover(np.abs((thS_R - 0.0 + np.pi) % (2 * np.pi) - np.pi) * 0.045 - 0.0035, aa) * m_greaveR * (1 - plate_m), DEEP, h=-0.30, rough=0.8)   # shin-front DEEP stripe
+    _dS = np.abs((thS_R - 0.0 + np.pi) % (2 * np.pi) - np.pi) * 0.045
+    L(cover(_dS - 0.0035, aa) * m_greaveR * (1 - plate_m), DEEP, h=-0.30, rough=0.8, H=RL['net'], dist=_dS, hw=0.0035, r_pipe=RL['rough_net'])   # shin-front DEEP stripe
 
     # ------------------------------------------------------------------ chest badge (front) and back mark
     gl = S['glyph']
@@ -516,15 +550,17 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     b_ = back * tors_w * body_w
     if gl['kind'] == 'hexvane':
         ring, vanes, core = badge(gl['x'], gl['y'], 0.046 * gl['size'])
-        C.lay(f_ * ring, AMBER, h=0.45, rough=0.40)
-        C.lay(f_ * np.maximum(vanes, core), AMBER, h=0.40, rough=0.40)
+        gh = (RL['glyph'], RL['glyph'] * 0.9) if PIPE else (0.45, 0.40)
+        C.lay(f_ * ring, AMBER, h=gh[0], rough=0.40)
+        C.lay(f_ * np.maximum(vanes, core), AMBER, h=gh[1], rough=0.40)
         ring_b, _, core_b = badge(0.0, gl['y'] + 0.023, 0.042 * gl['size'])
         C.lay(b_ * ring_b, AMBER, h=0.45, rough=0.40)
         C.lay(b_ * core_b, AMBER, h=0.40, rough=0.40)
     else:
         ln, so = glyph(gl['kind'], x, y, gl['x'], gl['y'], gl['size'], aa)
-        C.lay(f_ * ln, AMBER, h=0.45, rough=0.40)
-        C.lay(f_ * so, AMBER, h=0.40, rough=0.40)
+        gh = (RL['glyph'], RL['glyph'] * 0.9) if PIPE else (0.45, 0.40)
+        C.lay(f_ * ln, AMBER, h=gh[0], rough=0.40)
+        C.lay(f_ * so, AMBER, h=gh[1], rough=0.40)
         ln_b, so_b = glyph(gl['kind'], x, y, 0.0, gl['y'] + 0.023, gl['size'] * 0.8, aa)
         C.lay(b_ * ln_b, AMBER, h=0.45, rough=0.40)
         C.lay(b_ * so_b, AMBER, h=0.40, rough=0.40)
@@ -544,21 +580,22 @@ def paint(P, N, G, mpt, gi, jp, style=None):
 
     # ------------------------------------------------------------------ piping (amber hairlines) along the main cuts
     pip = 0.0014
-    C.lay(body_w * tors_w * band(y - 1.0795, pip, aa), AMBER, h=0.45, rough=0.45)
-    C.lay(body_w * tors_w * band(y - 1.0305, pip, aa), AMBER, h=0.45, rough=0.45)
+    PK = dict(h=0.45, rough=0.45, H=RL['pipe'], hw=pip)
+    L(body_w * tors_w * band(y - 1.0795, pip, aa), AMBER, dist=y - 1.0795, **PK)
+    L(body_w * tors_w * band(y - 1.0305, pip, aa), AMBER, dist=y - 1.0305, **PK)
     if tk['on']:
-        C.lay(body_w * np.clip(tors_w + thigh, 0, 1) * band(cut_d, pip * 1.3, aa) * ss(1.03 - y, -0.002, 0.004), AMBER, h=0.45, rough=0.45)
-    C.lay(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12), AMBER_D, h=0.35, rough=0.5)
+        L(body_w * np.clip(tors_w + thigh, 0, 1) * band(cut_d, pip * 1.3, aa) * ss(1.03 - y, -0.002, 0.004), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=cut_d, hw=pip * 1.3)
+    L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12), AMBER_D, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
     # top-stitching beside the piping (dashed, light teal): belt, hip-wrap cut, sash edges, side wedge
     STa = 0.85
-    C.lay(body_w * tors_w * np.maximum(stitch(y - 1.0795, x, aa), stitch(y - 1.0305, x, aa)) * STa, STITCH, h=0.12, rough=0.7)
+    L(body_w * tors_w * np.maximum(stitch(y - 1.0795, x, aa), stitch(y - 1.0305, x, aa)) * STa, STITCH, h=0.12, rough=0.7)
     if tk['on']:
-        C.lay(body_w * np.clip(tors_w + thigh, 0, 1) * stitch(cut_d, cut_along, aa, off=0.0034) * ss(1.03 - y, -0.002, 0.004) * STa, STITCH, h=0.12, rough=0.7)
+        L(body_w * np.clip(tors_w + thigh, 0, 1) * stitch(cut_d, cut_along, aa, off=0.0034) * ss(1.03 - y, -0.002, 0.004) * STa, STITCH, h=0.12, rough=0.7)
     if zone_s is not None:
         for o in offs:
             hw_ = sa['half']
             C.lay(zone_s * np.maximum(stitch(d_s - o - hw_, P @ t_s, aa, off=0.0030) * (d_s - o > 0.0), stitch(d_s - o + hw_, P @ t_s, aa, off=0.0030) * (d_s - o < 0.0)) * STa, STITCH, h=0.12, rough=0.7)
-    C.lay(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * STa, STITCH, h=0.12, rough=0.7)
+    L(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * STa, STITCH, h=0.12, rough=0.7)
 
     # ------------------------------------------------------------------ mask / hood
     yb = 1.662 + 0.46 * z
@@ -566,7 +603,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     C.lay(is_head, ROLE[S['hood']], rough=0.80)
     C.lay(crown, TEAL_D, rough=0.74)
     if S['crown']['edge']:
-        C.lay(is_head * band(y - yb, 0.0018, aa), AMBER, h=0.5, rough=0.45)
+        L(is_head * band(y - yb, 0.0018, aa), AMBER, h=0.5, rough=0.45, H=RL['pipe'], dist=y - yb, hw=0.0018)
     ck = S['crown']['kind']
     if ck == 'honeycomb':           # crown honeycomb (hairline, projected from above)
         hc = hex_cell_edge(x, z, 0.014)
@@ -605,10 +642,12 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         vent_zone = is_head * front * cover(ell - 1.0, aa / 0.02)
         for yc_ in (1.596, 1.606, 1.616):
             C.lay(vent_zone * band(y - yc_, 0.0017, aa), AMBER_D, h=0.3, rough=0.5)
-    C.lay(neck_ok * ss(head, 0.05, 0.15) * band(y - 1.4765, 0.0013, aa), AMBER, h=0.4, rough=0.45)                                   # collar piping
+    L(neck_ok * ss(head, 0.05, 0.15) * band(y - 1.4765, 0.0013, aa), AMBER, h=0.4, rough=0.45, H=RL['pipe'], dist=y - 1.4765, hw=0.0013)                                   # collar piping
 
     # ------------------------------------------------------------------ fabric mottling and occlusion in the grooves
     mott = 0.035 * noise3(P, 22.0, 1) + 0.02 * noise3(P, 140.0, 2)
     C.col = np.clip(C.col * (1 + S['mott'] * mott[..., None]), 0, 1)
     C.ao = np.clip(C.ao - 0.25 * np.clip(-C.h, 0, 1), 0, 1)
-    return dict(col=C.col, h=C.h, rough=C.rough, ao=C.ao)
+    out = dict(col=C.col, h=C.h, rough=C.rough, ao=C.ao)
+    if PIPE: out['cavity'] = float(RL['cavity'])      # the map writer darkens the AO at the foot of every cord (needs the whole atlas: hero_suit_r8.cavity_ao)
+    return out

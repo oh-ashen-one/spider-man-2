@@ -40,7 +40,7 @@ def write_suit(entry, n, out, pre, log=print):
     cov = r['cov']
     col8 = (np.clip(r['col'], 0, 1) * 255 + 0.5).astype(np.uint8)
     col8, _ = hs.gutters(col8, cov, max(8, int(24 * n / 8192)))
-    hh, _ = hs.gutters(r['h'], cov, 24); mp, _ = hs.gutters(r['mpt'], cov, 24)
+    hh, _ = hs.gutters(r['h'], cov, 24); mp, _ = hs.gutters(hs.smooth_mpt(r['mpt'], cov) if r['relief'] else r['mpt'], cov, 24)
     nn = hs.normal_from_height(hh, mp)
     ro, _ = hs.gutters(r['rough'], cov, 24); ao, _ = hs.gutters(r['ao'], cov, 24)
     os.makedirs(out, exist_ok=True)
