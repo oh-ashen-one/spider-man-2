@@ -62,7 +62,8 @@ def wrap(d):
     """the function UE generates for a Custom node: inputs as parameters (texture objects + samplers), additional outputs as locals"""
     params, args, g = [], [], []
     for n, k, a in d['inputs']:
-        if k == 'tex': params += ['Texture2D %s' % n, 'SamplerState %sSampler' % n]; g.append('Texture2D g_%s; SamplerState g_%sSampler;' % (n, n)); args += ['g_%s' % n, 'g_%sSampler' % n]
+        if k in ('tex', 'texparam'): params += ['Texture2D %s' % n, 'SamplerState %sSampler' % n]; g.append('Texture2D g_%s; SamplerState g_%sSampler;' % (n, n)); args += ['g_%s' % n, 'g_%sSampler' % n]
+        elif k == 'uv': params.append('float2 %s' % n); args.append('float2(0.3, 0.7)')
         elif k == 'wpos': params.append('float3 wpos'); args.append('float3(%s)' % '12345.0, -67890.0, 55.0')
         elif k == 'vc': params.append('float3 vc'); args.append('float3(0.3, 0.4, 0.5)')
         elif k == 'vector': params.append('float4 %s' % n); args.append('float4(1, 1, 1, 1)')

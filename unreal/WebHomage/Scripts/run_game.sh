@@ -41,7 +41,11 @@ if [ -z "$QUIT" ]; then
   elif [ -n "$SHOTS" ]; then QUIT=$(python3 -c "print(max(map(float,'$SHOTS'.split(',')))+2)"); else QUIT=20; fi
 fi
 ARGS+=(-WHQuitAt="$QUIT")
-EXECS="t.MaxFPS 0"; [ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
+# 2026-10-01 18:12 (WindowServer starvation probe failing with one 1080p capture at GPU 100 %): non-perf captures are frame-capped so the
+# GPU idles between frames and WindowServer gets its slice. Movie captures use a fixed 1/60 s step, so their frames are unchanged.
+# Perf runs stay uncapped. Override with WH_CAPTURE_MAXFPS.
+if [ -n "$PERF" ]; then EXECS="t.MaxFPS 0"; elif [ "$MOVIE" = 1 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-30}"; else EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-45}"; fi
+[ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
 ARGS+=(-ExecCmds="$EXECS")
 if [ "$MOVIE" = 1 ]; then rm -f "$PROJ_DIR"/Saved/Screenshots/MacEditor/MovieFrame*.png; ARGS+=(-benchmark -fps=60 -dumpmovie); fi
 ARGS+=("${EXTRA[@]+"${EXTRA[@]}"}")

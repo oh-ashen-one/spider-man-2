@@ -80,4 +80,22 @@ Rough = 0.85; NormalW = float3(0.0, 0.0, 1.0);
 return g * lerp(0.8, 1.04, h) * gain;''',
         inputs=[('vc', 'vc', None), ('wpos', 'wpos', None), ('t', 'time', None), ('rnd', 'pir', None), ('windamp', 'scalar', 10.0), ('gain', 'scalar', 1.0)],
         outputs=BASE + [('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True))
+    # ez-tree leaf cards (eztrees.js ezLeafMaterial): the photo spray becomes a value map + twig mask, recoloured per instance with the autumn palette (aTintA -> aTintB,
+    # custom data 0..2 / 3..5), crown self-occlusion from the per-leaf exposure (uv1.x), the odd dry brown spray; two-sided foliage (light passes through the leaves)
+    M.append(dict(name='M_TerrainLeaves', include=None, code='''
+float4 tx = Texture2DSample(tLeaf, tLeafSampler, float2(uv0.x, 1.0 - uv0.y));
+float lum = dot(tx.rgb, float3(0.3, 0.59, 0.11));
+float twig = 1.0 - smoothstep(-0.03, 0.02, tx.g - max(tx.r, tx.b) - 0.015);
+float hsel = uv1.y * 0.7 + lum * 0.6 - 0.2;
+float3 leaf = lerp(float3(a0, a1, a2), float3(b0, b1, b2), smoothstep(0.15, 0.85, hsel));
+float odd = frac(uv1.y * 13.7);
+leaf = lerp(leaf, float3(0.13, 0.06, 0.025), step(0.95, odd));
+leaf *= 0.5 + 1.25 * lum;
+float expo = saturate(uv1.x);
+float occ = lerp(0.36, 1.05, pow(expo, 1.3));
+float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
+Op = tx.a; Sub = c * 0.85; Rough = 0.78;
+return c;''',
+        inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5), ('gain', 'scalar', 1.0)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')], two_sided=True, blend='masked', foliage=True))
     return M

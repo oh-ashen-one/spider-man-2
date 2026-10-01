@@ -4,7 +4,7 @@
 #            prep            tools/terrain/prep_terrain.py     -> <PREP>/pathmask.png, tuft.glb, tufts.bin, stats.json, Shaders/Terrain/ParkData.ush
 #            shaders         tools/export/gen_terrain_shaders.mjs -> Shaders/Terrain/Park.ush (GLSL of ground.js createGrassMaterial, translated)
 #            textures        public/assets/city/tex (grass_col, noise, asphalt_col, water_nrm)
-#   steps (default all, in this order):  clean, tex, mat, mesh, foliage, map
+#   steps (default all, in this order):  clean, tex, mat, mesh, foliage, trees, map, views
 #     clean     delete /Game/Terrain
 #     tex       textures + the path mask
 #     mat       Custom-HLSL materials (park lawn / path / drive overlay, coast lawn, pond, vertex-coloured furniture, grass tuft)
@@ -24,7 +24,7 @@ PREP = os.environ.get('SM2_TERRAIN_PREP', os.path.join(SCR, 'prep'))
 PUB = os.path.join(WT, 'public', 'assets', 'city', 'tex')
 try: ARGS = JOB_ARGS  # noqa: F821 (set by a job wrapper)
 except NameError: ARGS = {}
-STEPS = set((ARGS.get('steps') or os.environ.get('SM2_TERRAIN_STEPS') or 'clean,tex,mat,mesh,foliage,map,views').split(','))
+STEPS = set((ARGS.get('steps') or os.environ.get('SM2_TERRAIN_STEPS') or 'clean,tex,mat,mesh,foliage,trees,map,views').split(','))
 ROOT = '/Game/Terrain'
 at = unreal.AssetToolsHelpers.get_asset_tools()
 EAL = unreal.EditorAssetLibrary
@@ -52,20 +52,20 @@ def tex_settings(t, srgb, comp=unreal.TextureCompressionSettings.TC_BC7, wrap=Tr
     if not wrap:
         t.set_editor_property('address_x', unreal.TextureAddress.TA_CLAMP); t.set_editor_property('address_y', unreal.TextureAddress.TA_CLAMP)
 
-def mesh_pipeline():
+def mesh_pipeline(nanite=False):
     p = unreal.InterchangeGenericAssetsPipeline()
     p.common_meshes_properties.set_editor_properties({'recompute_normals': False, 'recompute_tangents': False, 'use_full_precision_u_vs': True,
         'remove_degenerates': False, 'vertex_color_import_option': unreal.InterchangeVertexColorImportOption.IVCIO_REPLACE})
-    p.mesh_pipeline.set_editor_properties({'generate_lightmap_u_vs': False, 'build_nanite': False})
+    p.mesh_pipeline.set_editor_properties({'generate_lightmap_u_vs': False, 'build_nanite': nanite})
     p.material_pipeline.set_editor_property('import_materials', False)
     p.material_pipeline.texture_pipeline.set_editor_property('import_textures', False)
     return p
 
 sms = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
-def finish_mesh(sm, mat, collide):
+def finish_mesh(sm, mat, collide, nanite=False):
     sm.set_material(0, mat)
     ns = sm.get_editor_property('nanite_settings')
-    if ns.enabled: ns.enabled = False; sm.set_editor_property('nanite_settings', ns)
+    if ns.enabled != nanite: ns.enabled = nanite; sm.set_editor_property('nanite_settings', ns)
     bs = sms.get_lod_build_settings(sm, 0)
     bs.set_editor_property('use_full_precision_u_vs', True); bs.set_editor_property('generate_lightmap_u_vs', False)
     bs.set_editor_property('recompute_normals', False); bs.set_editor_property('recompute_tangents', False)
@@ -84,7 +84,8 @@ if 'clean' in STEPS:
 TEXD = ROOT + '/Textures'
 if 'tex' in STEPS:
     srcs = [(os.path.join(PUB, 'grass_col.png'), 'grass_col', True), (os.path.join(PUB, 'noise.png'), 'noise', False), (os.path.join(PUB, 'asphalt_col.png'), 'asphalt_col', True),
-            (os.path.join(PUB, 'water_nrm.png'), 'water_nrm', False), (os.path.join(PREP, 'pathmask.png'), 'pathmask', False)]
+            (os.path.join(PUB, 'water_nrm.png'), 'water_nrm', False), (os.path.join(PREP, 'pathmask.png'), 'pathmask', False)] + \
+            [(os.path.join(WT, 'public', 'assets', 'eztree', 'leaves', n + '.png'), 'leaf_' + n, True) for n in ('oak', 'ash', 'aspen', 'pine')]
     import_files([s[0] for s in srcs], TEXD)
     for f, n, srgb in srcs:
         t = load(f'{TEXD}/{n}')
@@ -92,6 +93,7 @@ if 'tex' in STEPS:
         if n == 'noise': tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
         elif n == 'pathmask':
             tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP, wrap=False); t.set_editor_property('never_stream', True)
+        elif n.startswith('leaf_'): tex_settings(t, True, wrap=False)
         else: tex_settings(t, srgb)
     EAL.save_directory(TEXD, only_if_is_dirty=False, recursive=True)
     log('textures done')
@@ -106,7 +108,7 @@ def fix_literals(code):
 def sampler_for(t):
     return unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if t.get_editor_property('srgb') else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
 
-def make_material(name, include, code, inputs, outputs, two_sided=False, world_normal=True, blend='opaque'):
+def make_material(name, include, code, inputs, outputs, two_sided=False, world_normal=True, blend='opaque', foliage=False):
     """inputs: list of (name, kind, arg): kind in tex|uv|vc|wpos|wn|cam|scalar|vector|time|pir.  outputs: list of (name, n, property); the first is the return value."""
     path = f'{MAT}/{name}'
     if EAL.does_asset_exist(path):
@@ -116,6 +118,7 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
     m.set_editor_property('tangent_space_normal', not world_normal)
     m.set_editor_property('two_sided', two_sided)
     if blend == 'masked': m.set_editor_property('blend_mode', unreal.BlendMode.BLEND_MASKED)
+    if foliage: m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
     c = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -400, 0)
     c.set_editor_property('code', fix_literals(code))
     c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
@@ -137,8 +140,13 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
         if kind == 'tex':
             e = mel.create_material_expression(m, unreal.MaterialExpressionTextureObject, -900, y)
             t = load(arg); e.set_editor_property('texture', t); e.set_editor_property('sampler_type', sampler_for(t))
+        elif kind == 'texparam':
+            e = mel.create_material_expression(m, unreal.MaterialExpressionTextureObjectParameter, -900, y)
+            e.set_editor_property('parameter_name', n); t = load(arg); e.set_editor_property('texture', t); e.set_editor_property('sampler_type', sampler_for(t))
         elif kind == 'uv':
             e = mel.create_material_expression(m, unreal.MaterialExpressionTextureCoordinate, -900, y); e.set_editor_property('coordinate_index', arg)
+        elif kind == 'pcd':
+            e = mel.create_material_expression(m, unreal.MaterialExpressionPerInstanceCustomData, -900, y); e.set_editor_property('data_index', arg)
         elif kind == 'vc':
             e = mel.create_material_expression(m, unreal.MaterialExpressionVertexColor, -900, y)
         elif kind == 'wpos':
@@ -174,8 +182,8 @@ if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/Terrain/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
     for d in _materials_module()['materials'](PM):
-        make_material(d['name'], d['include'], d['code'], [(n, k, (f'{TEXD}/{a}' if k == 'tex' else a)) for n, k, a in d['inputs']],
-                      [(n, k, getattr(MP, p)) for n, k, p in d['outputs']], two_sided=d.get('two_sided', False))
+        make_material(d['name'], d['include'], d['code'], [(n, k, (f'{TEXD}/{a}' if k in ('tex', 'texparam') else a)) for n, k, a in d['inputs']],
+                      [(n, k, getattr(MP, p)) for n, k, p in d['outputs']], two_sided=d.get('two_sided', False), blend='masked' if d.get('blend') == 'masked' else 'opaque', foliage=bool(d.get('foliage')))
     log('materials done')
 
 def mi(name, parent, scalars=None, vectors=None):
@@ -248,6 +256,34 @@ if 'foliage' in STEPS:
     # three wind classes of the tuft material (tall tufts sway more)
     for nm, amp in (('TuftLow', 3.0), ('TuftMid', 7.0), ('TuftHigh', 12.0)): mi(nm, 'M_TerrainGrass', {'windamp': amp})
     log('foliage prototypes done')
+
+# ------------------------------------------------------------------------------------------------ park woodland (ez-trees, per-instance autumn tints)
+TREED = ROOT + '/Trees'
+TREE_RE = re.compile(r'^ez_(park|elm|conifer)\d_l[01]_(leaves|bark)$')
+def leaf_name(rec):
+    u = (rec.get('mat') or {}).get('map') or ''
+    return os.path.basename(u).split('.')[0] or 'oak'
+if 'trees' in STEPS:
+    recs = [p for p in MAN['protos'] if TREE_RE.match(p['name'])]
+    for nan in (False, True):    # LOD1 (and only LOD1) is Nanite, like the city's ez-tree props
+        grp = [p for p in recs if (p['name'].split('_')[2] == 'l1') == nan]
+        import_files([os.path.join(EXPORT, p['file']) for p in grp], TREED + '/_in', mesh_pipeline(nan))
+    for p in recs:
+        nm = p['name']; src = f'{TREED}/_in/{nm}/StaticMeshes/{nm}'; dst = f'{TREED}/SM_{nm}'
+        if not EAL.does_asset_exist(src): log('MISSING tree proto', src); continue
+        EAL.rename_asset(src, dst); sm = load(dst)
+        if nm.endswith('_leaves'):
+            ln = leaf_name(p); mp = f'{MAT}/Inst/MI_Leaves_{ln}'
+            if not EAL.does_asset_exist(mp):
+                m = at.create_asset('MI_Leaves_' + ln, MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+                mel.set_material_instance_parent(m, load(f'{MAT}/M_TerrainLeaves'))
+                mel.set_material_instance_texture_parameter_value(m, 'tLeaf', load(f'{TEXD}/leaf_{ln}')); EAL.save_asset(mp)
+            finish_mesh(sm, load(mp), False, nanite=nm.split('_')[2] == 'l1')
+        else:
+            finish_mesh(sm, mi('Bark', 'M_TerrainVC', {'usevc': 1.0, 'roughp': 0.92}, {'tint': (0.33, 0.29, 0.25, 1.0)}), False, nanite=nm.split('_')[2] == 'l1')
+        EAL.save_asset(dst)
+    if EAL.does_directory_exist(TREED + '/_in'): EAL.delete_directory(TREED + '/_in')
+    log('tree prototypes', len(recs))
 
 # ------------------------------------------------------------------------------------------------ maps
 def U(x, y, z): return unreal.Vector(x * 100.0, z * 100.0, y * 100.0)   # browser metres -> UE cm
@@ -337,13 +373,56 @@ def build_land(path):
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parklamps', folder='Terrain/Props')
         hism(a, f'{PROD}/SM_parklamp', [unreal.Transform(U(it['x'], it['y'], it['z']), unreal.Rotator(0.0, 0.0, -math.degrees(it.get('ry', 0.0))), unreal.Vector(*(it.get('s3') or [it.get('s', 1.0)] * 3))) for it in sel], cull=60000, shadows=True)
         log('park lamps', len(sel))
+    # park woodland: the browser's ez-trees (LOD0 < 22 m, LOD1 to 520 m, the city's far crowns take over beyond), one HISM per archetype pool, aTintA / aTintB as custom data 0..5
+    nt = 0
+    for pool, d in INS.items():
+        sp = f'{TREED}/SM_' + pool.replace('-', '_')
+        if not re.match(r'^ez-(park|elm|conifer)\d-l[01]-(leaves|bark)$', pool) or not EAL.does_asset_exist(sp) or not d['items']: continue
+        l1 = '-l1-' in pool; leaves = pool.endswith('leaves')
+        rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]
+        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + pool, folder='Terrain/Trees')
+        c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+        c.set_static_mesh(load(sp))
+        if leaves: c.set_editor_property('num_custom_data_floats', 6)
+        c.set_editor_property('instance_end_cull_distance', 52000 if l1 else 2200)
+        if l1: c.set_editor_property('instance_start_cull_distance', 2000)
+        c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        xs = []
+        for it in d['items']:
+            s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+            rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+            xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])))
+        ids = c.add_instances(xs, True, True)
+        if leaves:
+            for k, it in enumerate(d['items']):
+                e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
+                for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
+        nt += len(xs)
+    log('park woodland instances', nt)
     return world
+
+def city_geo_copy(src):
+    """a private copy of the city geometry level in which the city's flat park ribbons / lawns and its ez-tree LOD1 park woodland are hidden in game (terrain supersedes them: tinted trees,
+    LOD0, real ground); the original level (and the baseline maps VB_*) stay untouched"""
+    dst = ROOT + '/City_Geo_T'
+    if EAL.does_asset_exist(dst): return dst
+    if not EAL.duplicate_asset(src, dst): raise RuntimeError('could not duplicate ' + src)
+    unreal.EditorLoadingAndSavingUtils.load_map(dst)
+    hid = 0
+    for a in eas.get_all_level_actors():
+        lb = a.get_actor_label()
+        if lb.startswith(('ISM_ez_park', 'ISM_ez_elm', 'ISM_ez_conifer')) or (isinstance(a, unreal.StaticMeshActor) and lb.startswith(('parkPaths', 'mapLawns'))):
+            a.set_actor_hidden_in_game(True); hid += 1
+    les.save_current_level()
+    log('City_Geo_T: hid', hid, 'city actors (park ribbons / lawns / ez park trees)')
+    return dst
 
 def build_persistent(path):
     """the integrated Manhattan map (golden) + the terrain sublevel (the terrain ground sits 3 cm above the city's flat park ribbons / lawns, which stay untouched)"""
     MAPS = '/Game/Maps'; CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'; BOXES = '/Game/Look/Look_Boxes'; RIG = '/Game/Look/Rigs/Look_Rig_golden'; ACTORS = MAPS + '/Manhattan_Actors'
     for need in (CITY_GEO, BOXES, RIG, ACTORS):
         if not EAL.does_asset_exist(need): raise RuntimeError('missing base content %s: run the base Manhattan build first (build_manhattan.py)' % need)
+    CITY_GEO = city_geo_copy(CITY_GEO)
     world = open_level(path)
     have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
     for lp in (CITY_GEO, BOXES, RIG, ACTORS, ROOT + '/Terrain_Land'):
@@ -360,12 +439,13 @@ def build_views():
     """still maps for the shot list: golden Manhattan sublevels (+ Terrain_Land for V_*, without it for the baseline VB_*) + a shot camera (no game mode: the camera is the view)"""
     SH = json.load(open(os.path.join(WT, 'docs', 'night1', 'terrain', 'shots.json')))['shots']
     CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'; BOXES = '/Game/Look/Look_Boxes'; RIG = '/Game/Look/Rigs/Look_Rig_golden'; ACTORS = '/Game/Maps/Manhattan_Actors'
+    CITY_GEO_V = city_geo_copy(CITY_GEO)
     for sh in SH:
         for pre, land in (('V_', True), ('VB_', False)):
             path = ROOT + '/Maps/' + pre + sh['id']
             world = open_level(path)
             have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
-            for lp in [CITY_GEO, BOXES, RIG, ACTORS] + ([ROOT + '/Terrain_Land'] if land else []):
+            for lp in [CITY_GEO_V if land else CITY_GEO, BOXES, RIG, ACTORS] + ([ROOT + '/Terrain_Land'] if land else []):
                 if not any(('/' + lp.split('/')[-1] + ':') in h or h.endswith(lp.split('/')[-1]) for h in have):
                     unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
             les.set_current_level_by_name(str(world.get_name()))
