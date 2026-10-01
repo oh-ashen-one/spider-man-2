@@ -75,6 +75,7 @@ void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFlipVar="), V)) WebFlips::bVariants = V != 0; } // round 19 A/B
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHighFix="), V)) FWebTravAnchors::bHighFix = V != 0; } // round 19 A/B
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTrickCancel="), V)) bTrickCancel = V != 0; } // round 20 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHRopeGuard="), V)) bRopeGuard = V != 0; } // round 20 A/B
 	bWorldReady = true;
 }
 
@@ -1178,13 +1179,30 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 	D /= L;
 	FTravHit Hit;
 	if (!TravWorld.Raycast(S.Pos, D, L - 1.5, Hit) || Hit.Distance < 1.5) return;
+	// round 20 (probe f4 8.0 s: with visual-triangle solids a cornice / balcony 3-5 m below the anchor on its own facade "blocked" the strand ->
+	// re-anchor onto a low point that turned a 37 m/s eastward swing 70 deg north, out of the city): the strand grazing the anchor's own facade
+	// within RopeGuardNear m of the anchor is not a wrap, and a re-anchor may not turn the travel more than RopeGuardDeg
+	if (bRopeGuard && Hit.Distance > L - double(RopeGuardNear)) return;
 	{
 		const double Fl = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 		FTravAnchor A;
 		if (Anchors->Find(S.Pos, Flat(Sw.Dir).GetSafeNormal(), nullptr, S.Vel.Size(), Fl, A) && A.Point.Z > S.Pos.Z + 3)
 		{
-			Reanchor(A); Emit(N_ropeReanchor);
-			return;
+			bool bOk = true;
+			if (bRopeGuard && S.Vel.SizeSquared() > 25.0)
+			{ // predicted velocity on the new arc (same projection as Reanchor)
+				const FVector Pv = PivotFor(A.Point);
+				FVector V2 = S.Vel;
+				ProjectPerpendicular(V2, (Pv - S.Pos).GetSafeNormal());
+				const double Cos = FVector::DotProduct(V2.GetSafeNormal(), S.Vel.GetSafeNormal());
+				bOk = Cos >= FMath::Cos(FMath::DegreesToRadians(double(RopeGuardDeg)));
+				if (!bOk) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV rope guard: re-anchor refused (would turn the travel %.0f deg)"), FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Cos, -1.0, 1.0))));
+			}
+			if (bOk)
+			{
+				Reanchor(A); Emit(N_ropeReanchor);
+				return;
+			}
 		}
 	}
 	if (Hit.bGround) return; // the strand may only wrap on a model, never on bare terrain

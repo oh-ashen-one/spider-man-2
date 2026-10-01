@@ -287,6 +287,9 @@ public:
 	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
 	/** Round 20: a fresh RMB press cancels a trick / top-out flip / wall run into a swing at once (-WHTrickCancel=0 = r19). */
 	bool bTrickCancel = true;
+	/** Round 20: rope wrap guard (strand grazing its own facade near the anchor; re-anchor turn limit). -WHRopeGuard=0 = r19. */
+	bool bRopeGuard = true;
+	float RopeGuardNear = 6.f, RopeGuardDeg = 40.f;
 	int32 FlipCancels = 0;
 	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
 	bool TryMantleSetback(const FVector& N0);
