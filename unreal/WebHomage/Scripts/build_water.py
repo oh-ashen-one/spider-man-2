@@ -244,7 +244,7 @@ float foot = max(length(fwidth(p)), 1e-4);
 float2 wdir = float2(%(wx).6f, %(wy).6f);
 float4 nA = NZ(p / 620.0), nB = NZ(p / 230.0 + float2(t * 0.0009, 0.37));
 float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
-float along = dot(p, wdir), across = dot(p, float2(-wdir.y, wdir.x)) + (nB.g - 0.5) * 5.0;   // r02: warp 26 -> 5 m (the warped streaks closed into loops: the 'ring' artifact)
+float along = dot(p, wdir), across = dot(p, float2(-wdir.y, wdir.x)) + (nB.g - 0.5) * 5.0;   // r02: warp 26 -> 5 m (warped streaks closed into loops = the ring artifact)
 float slick = smoothstep(0.62, 0.76, NZ(float2(along / 1100.0, across / 70.0)).b) * (1.0 - gust * 0.8) * 0.9;
 float streak = smoothstep(0.66, 0.82, NZ(float2(along / 380.0, across / 11.0) + float2(0.13, 0.71)).r) * smoothstep(0.4, 0.62, NZ(float2(along / 140.0, across / 40.0) + float2(0.51, 0.29)).g) * 0.7;
 streak = max(streak, smoothstep(0.6, 0.82, NZ(float2(p.x / 34.0, p.y / 520.0) + float2(t * 0.0008, t * 0.003)).g) * 0.45);
@@ -286,7 +286,7 @@ wf = saturate(wf);
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
 { float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
   Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
-float vk = VarKP * lerp(1.0, FarVarK, smoothstep(250.0, 1500.0, dist));
+float vk = VARK * lerp(1.0, FarVarK, smoothstep(250.0, 1500.0, dist));
 float a2 = 0.028 * 0.028 + vk * (varU + 2.0 * varT) + wf * 0.2;
 Rough = clamp(pow(a2, 0.25), 0.04, 0.7);
 NormalW = normalize(lerp(N, float3(0, 0, 1), wf * 0.6));
@@ -325,7 +325,7 @@ PHASE_G = 0.55
 GLITTER = 1.0
 # material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
-PARAMS = {'ChopK': 1.0, 'ScatK': 0.55, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 1.0, 'VarKP': VAR_K}
+PARAMS = {'ChopK': 1.0, 'ScatK': 0.55, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
