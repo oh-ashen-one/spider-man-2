@@ -60,8 +60,12 @@ run_group() { # map start_shot "still times" quit tag names...
   local map="$1" start="$2" shots="$3" quit="$4" tag="$5"; shift 5
   if [ -n "$ONLY" ]; then case " $ONLY " in *" $tag "*) ;; *) return 0;; esac; fi
   "$WT/tools/ue_char/ue_wait.sh"
+  # round 09: STAGE_SHOTS=1 takes the stills at STAGE times of the scripted fight (director clock, -WHStageShot): the automation clock of a real-time run leads the stage clock by a
+  # varying 0.4 - 2.4 s (measured), so -shots would show another moment of a choreography than the one named; the run then needs a later quit (stage + 8 s)
+  local SHOTARG=(-shots "$shots") XS=()
+  if [ "${STAGE_SHOTS:-0}" = 1 ]; then SHOTARG=(); XS=("-WHStageShot=$shots"); quit=$(( quit + 6 )); fi
   "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map "$map" -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0${XEXEC:-}" \
-    -shots "$shots" -perf 3:$(( quit - 1 )) -quit "$quit" -name "$tag" -timeout 3600 -- -WHCharShot="$start" ${XARGS:-} < /dev/null | tail -12
+    "${SHOTARG[@]}" -perf 3:$(( quit - 1 )) -quit "$quit" -name "$tag" -timeout 3600 -- -WHCharShot="$start" ${XARGS:-} "${XS[@]}" < /dev/null | tail -12
   for f in "$OUT"/${tag}_[0-9][0-9]_t*.png; do
     if [ "${STILL_PNG:-0}" = 1 ]; then mv "$f" "$OUT/${1}_4k.png"   # keyed / id stills stay lossless (4:2:0 JPEG bleeds the key colour into edge pixels)
     else ffmpeg -loglevel error -y -i "$f" -q:v 2 "$OUT/${1}_4k.jpg"; rm -f "$f"; fi
