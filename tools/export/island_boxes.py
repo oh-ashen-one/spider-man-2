@@ -18,7 +18,11 @@ Rules here:
      nothing outside it), radius = the smaller of the two end radii (no overhang on a taper);
   3. drawn-coverage test on a 1 m raster of the drawn geometry (roof / detail up-facing triangles + facade / detail edge tops):
      a box >= 4 m in both dimensions whose footprint is < 15 % drawn near its top (drawn top >= box top - 2.5 m) is DROPPED (phantom);
-     15-85 % drawn and >= 8 m in both dimensions -> SPLIT into the maximal rectangles of the drawn cells (min 2 x 2 m), same height.
+     15-85 % drawn and >= 8 m in both dimensions -> SPLIT into the maximal rectangles of the drawn cells (min 2 x 2 m), same height;
+  4. (round 1, resumed) BOX solids of kind EQUIPMENT (rooftop mechanical penthouses / plant rooms, drawn in the roofs mesh) >= 2 m in
+     BOTH horizontal dimensions and >= 0.8 m tall.  Without them the audit found 5.81 % hollow cells whose drawn top sat a near-constant
+     5.0 m (median 5.02 m) above the box: the hero stood inside the penthouse.  Simulated on Midtown 7 x 9: +3,411 boxes, hollow
+     5.81 -> 0.22 %, phantom 0.21 -> 0.26 %.  Smaller units (AC boxes, vents; median 0.7 m) stay visual-only.
 Output rows: [x0, y0, z0, x1, y1, z1, kind, source] in browser metres (x east, y up, z south); build_city.py spawn_boxes() reads it."""
 import json, math, os, sys, time
 import numpy as np
@@ -26,6 +30,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from glbio import read_glb
 
 KEEP_KINDS = {0: 'wall', 7: 'bulkhead', 8: 'watertower', 13: 'spire', 14: 'hero', 17: 'glass'}
+EQUIP_KIND, EQUIP_MIN_SIDE, EQUIP_MIN_H = 6, 2.0, 0.8
 NEAR_TOP = 2.5
 
 
@@ -126,8 +131,13 @@ def max_rects(mask, min_side=2, max_rects=16, stop_frac=0.08):
 
 def select(E, use_raster=True):
     C = json.load(open(os.path.join(E, 'collision.json')))
-    rows, stats = [], {'box_in': 0, 'tiers_kept': 0, 'cyl': 0, 'dropped_phantom': 0, 'split': 0, 'split_rects': 0}
+    rows, stats = [], {'box_in': 0, 'tiers_kept': 0, 'cyl': 0, 'equipment': 0, 'dropped_phantom': 0, 'split': 0, 'split_rects': 0}
     for s in C['solids']:
+        if s['k'] == EQUIP_KIND and s['t'] == 0:
+            x0, y0, z0, x1, y1, z1 = s['bb']
+            if min(x1 - x0, z1 - z0) >= EQUIP_MIN_SIDE and (y1 - y0) >= EQUIP_MIN_H:
+                rows.append([x0, y0, z0, x1, y1, z1, 'equipment', 'equip']); stats['equipment'] += 1
+            continue
         if s['k'] not in KEEP_KINDS: continue
         x0, y0, z0, x1, y1, z1 = s['bb']
         if s['t'] == 0:
