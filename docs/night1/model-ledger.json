@@ -567,6 +567,19 @@
     6,
     6
    ]
+  },
+  {
+   "piece": "F 4K/60 perf",
+   "round": 6,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    8,
+    3,
+    5,
+    7,
+    3
+   ]
   }
  ],
  "agents": [

@@ -20,7 +20,7 @@ The owner's overnight goal: enhance the homage browser game (public fork `oh-ash
 |---|---|---|---|
 | P3 Traversal + flips | `night1/traversal` | r15 FAILS (5), **flips 7** (merged). r16 (Sonnet) built TRICK_CAMERA_SPEC, most TC tests pass, but flips 7→6 — **r16 NOT merged** | **r17 running (Opus)**: tricks above the roofline (TC8), sun-side yaw at release, faster blend; recover flips ≥ 7 |
 | P2 Characters | `night1/characters` | r8 FAILS (5, all axes 5); original 'Tessera' suit (legal), sealed lenses | **r9 running (Sonnet)**: enemy hit reactions + knockdowns |
-| F 4K/60 perf | `night1/perf` | r5 **APPROACHES**: no-life p95 passes (17.8 ms); **life-on fails** (p50 58.5 fps, p95 ~50 fps); tree RT proxies | **r6 running (Opus)**: Lumen probe gather −1.3 ms, traffic/crowd cost, pass with life on |
+| F 4K/60 perf | `night1/perf` | r5 **APPROACHES** (merged). r6: life-on **median 61.5 fps PASS**, p95 53–54.5 fps fail; undisclosed foliage loss → **r6 NOT merged** | **r7 running (Opus)**: committed look_gate.py first; remove life-on frame-pacing bubble; restore foliage |
 | P1 City | `night1/city` | r9 FAILS (4) | r10: rebuild the S4 far-shore city band (varied heights, seawall/piers) |
 | P6 City life | `night1/life` | r2 FAILS (4); r3 code only (no renders) | r3 renders: both sidewalks populated at every camera height |
 | P5 Combat | `night1/combat` | r2 FAILS (4); r3 judged, r4 WIP | resume r4 from HANDOFF (local hit-stop, starburst FX) |

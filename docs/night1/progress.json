@@ -1,5 +1,5 @@
 {
- "updated": "19:51",
+ "updated": "20:37",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -117,9 +117,9 @@
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
    "state": "active",
-   "round": 5,
-   "verdict": "approaches \u2014 lowest 3 (Opus 5.5)",
-   "gap": "Cut Lumen screen-probe gather >=1.3 ms and the +1.24 ms traffic+crowd cost; pass with life ON: p95 <= 18.0 ms, p50 <= 16.67 ms; S1 SSIM >= 0.97."
+   "round": 6,
+   "verdict": "fails \u2014 lowest 3 (Opus 5.5)",
+   "gap": "Life-on frame-pacing bubble (CPU/GPU sync, RT geometry updates); restore lost foliage; a committed look_gate.py run by builder and critic."
   },
   {
    "id": "G",
@@ -787,6 +787,14 @@
    "verdict": "fails",
    "gap": "Tricks fire from street level into dark facades: flip from >= 3 m above the roofline, pick the sun-side yaw at release, faster camera blend-in; sky behind the hero in >= 35% of trick frames (now 2%).",
    "notes": "Built the director's held 3/4-behind trick camera: most TC tests pass (yaw held 32\u201347\u00b0, rate p95 <= 25\u00b0/s, hero 18\u201326% of frame). Flips regressed 7\u21926 \u2014 NOT merged (integration keeps r15). Round 17 back on Opus: move the tricks above the roofs."
+  },
+  {
+   "t": "20:37",
+   "piece": "F 4K/60 perf",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Life-on frame-pacing bubble (CPU/GPU sync, RT geometry updates); restore lost foliage; a committed look_gate.py run by builder and critic.",
+   "notes": "With traffic + crowd ON: median 61.5\u201361.8 fps at 3840x2160 output / 1920x1080 internal \u2014 PASS (GPU skin cache off fixed the +1.2 ms). Worst 5%: 53.1\u201354.5 fps \u2014 fail (pacing stall, not GPU load). Undisclosed foliage losses again (tree line 7.8%\u21922.5%, lit foliage 12.2%\u21920.2%) \u2014 NOT merged; round 7 must build a fixed look-gate script first."
   }
  ],
  "perf": [
