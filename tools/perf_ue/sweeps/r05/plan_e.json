@@ -173,6 +173,140 @@
     "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5",
     "exec wh.ToDSet fog.FogDensity 0.0013"
    ]
+  },
+  {
+   "name": "eN6",
+   "shots": [
+    "S4",
+    "S8",
+    "S1"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet moon.Intensity 3"
+   ]
+  },
+  {
+   "name": "eN7",
+   "shots": [
+    "S4",
+    "S8",
+    "S1"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet moon.Intensity 1.5"
+   ]
+  },
+  {
+   "name": "eN8",
+   "shots": [
+    "S4",
+    "S8",
+    "S1"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet moon.Intensity 3",
+    "exec wh.ToDSet fog.StartDistance 80000",
+    "exec wh.ToDSet fog.FogDensity 0.08",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.98",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.02 0.03 0.07 1"
+   ]
+  },
+  {
+   "name": "eB0",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 19.8",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ]
+  },
+  {
+   "name": "eB1",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 19.8",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet moon.Intensity 1"
+   ]
+  },
+  {
+   "name": "eB2",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 19.8",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet moon.Intensity 0.3"
+   ]
+  },
+  {
+   "name": "eG0",
+   "shots": [
+    "S2",
+    "S4",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14"
+   ]
+  },
+  {
+   "name": "eG1",
+   "shots": [
+    "S2",
+    "S4",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14",
+    "exec wh.ToDSet pp.WhiteTemp 7000"
+   ]
+  },
+  {
+   "name": "eG2",
+   "shots": [
+    "S2",
+    "S4",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14",
+    "exec wh.ToDSet pp.WhiteTemp 6600"
+   ]
+  },
+  {
+   "name": "eG3",
+   "shots": [
+    "S2",
+    "S4",
+    "S7",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.14",
+    "exec wh.ToDSet pp.WhiteTemp 7000",
+    "exec wh.ToDSet atm.MieScatteringScale 0.02"
+   ]
   }
  ]
 }

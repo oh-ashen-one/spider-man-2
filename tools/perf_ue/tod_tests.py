@@ -44,7 +44,7 @@ def main():
         d = os.path.join(a.scratch, v); os.makedirs(d)
         links = []
         for sid, f in items:
-            l = os.path.join(d, '%s_%s_%s.jpg' % (pre, sid, a.res)); os.symlink(f, l); links.append((sid, l))
+            l = os.path.join(d, '%s_%s_%s.jpg' % (pre, sid, a.res)); os.symlink(os.path.abspath(f), l); links.append((sid, l))
         rows = [LS.stats(l) for _, l in links]
         for r in rows:
             vv = LS.verdict(r['file'], r); r['spec_line'] = vv[0] if vv else None; r['within'] = vv[1] if vv else None
