@@ -22,7 +22,7 @@ add('fight-orbit', c('street_fight_orbit.mp4'), R + 'combat/clips/street-fight-c
 add('enemy-knockdowns-still', c('street_fight_34_4k.jpg'), R + 'combat/enemy-launched-og__og_0149.jpg', 'enemies knocked to the ground by the hero: judge the poses, the contact with the ground, how many are down')
 add('thugs-group', c('street_fight_wide_4k.jpg'), R + 'characters/thugs-group-nm__nm_0049.jpg', 'a group of street criminals around the hero')
 add('thug-close', c('thug_face_4k.jpg'), R + 'characters/thug-closeup-dn__dn_0523.jpg', 'street criminal close-up')
-add('citizens-clip', c('crowd_tracking.mp4'), R + 'characters/clips/street-npcs-idle__dn_0600-0608.mp4', 'pedestrians near the camera')
+add('citizens-clip', p('crowd_tracking.mp4'), R + 'characters/clips/street-npcs-idle__dn_0600-0608.mp4', 'pedestrians near the camera')
 add('hero-run', R8 + 'hero_run_side.mp4', R + 'animation/clips/run-crosswalk__dn_0329-0337.mp4', 'masked acrobat hero running, full body')
 add('hero-standing', R8 + 'hero_turntable_4k.jpg', R + 'characters/hero-idle-street-og__og_0000.jpg', 'hero full body on a street')
 # previous round vs this round (same views)
@@ -32,6 +32,10 @@ add('progress-fight-still', c('street_fight_34_4k.jpg'), p('street_fight_34_4k.j
 add('progress-thug-collar', c('thug_face_4k.jpg'), p('thug_face_4k.jpg'), 'two versions of the same street criminal close-up: judge a skin-coloured / pale wedge at the jacket collar')
 add('progress-beard', c('beard_face_4k.jpg'), p('beard_face_4k.jpg'), 'two versions of the same face close-up: judge the side hair (a gap between face and hair showing the background)')
 add('progress-hood', c('hood_face_4k.jpg'), p('hood_face_4k.jpg'), 'two versions of the same face close-up: judge loose ribbon strands on the hair')
+# the regression of round 09: the hero's limbs at the instants of the 'untextured grey arm' (hero-centred 3x crops of each clip, two versions)
+for clip in ('34', 'wide', 'orbit'):
+    add('hero-limbs-%s' % clip, os.path.join(crops, 'r10_hero_%s.jpg' % clip), os.path.join(crops, 'r9_hero_%s.jpg' % clip),
+        'the masked hero in the staged street fight at three instants 0.1 s apart, 3x crop, two versions: is any limb of the hero untextured, grey or pale, or is any object passing through his body?')
 for n, note in (('arm-3x', 'the region at 1.30 / 1.40 / 1.50 s of the 3/4 fight clip where a pale untextured limb showed in the previous round, 3x crop, two versions'),
                 ('thug-collar-3x', 'street criminal collar, 3x crop, two versions: judge a pale wedge'),
                 ('beard-hair-3x', 'beard face temple hair, 3x crop, two versions: judge a gap showing the background'),

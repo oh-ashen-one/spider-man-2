@@ -12,7 +12,7 @@ os.makedirs(out, exist_ok=True)
 S = 3
 ARM_BOX = (700, 330, 1100, 630)                       # 1080p region of the r09 grey limb (about 860 - 930, 450 - 520 inside it)
 ARM_T = (1.30, 1.40, 1.50)
-STILLS = {'thug-collar': ('thug_face_4k.jpg', (1550, 1250, 1950, 1600)), 'beard-hair': ('beard_face_4k.jpg', (2420, 330, 2820, 680)), 'hood-hair': ('hood_face_4k.jpg', (1300, 100, 1900, 500))}
+STILLS = {'thug-collar': ('thug_face_4k.jpg', (1550, 1250, 1950, 1600)), 'beard-hair': ('beard_face_4k.jpg', (2330, 280, 2830, 680)), 'hood-hair': ('hood_face_4k.jpg', (1250, 0, 2250, 650))}
 
 
 def frame(mp4, t):
