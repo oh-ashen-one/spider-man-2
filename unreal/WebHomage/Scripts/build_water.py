@@ -244,7 +244,7 @@ float foot = max(length(fwidth(p)), 1e-4);
 float2 wdir = float2(%(wx).6f, %(wy).6f);
 float4 nA = NZ(p / 620.0), nB = NZ(p / 230.0 + float2(t * 0.0009, 0.37));
 float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
-float along = dot(p, wdir), across = dot(p, float2(-wdir.y, wdir.x)) + (nB.g - 0.5) * 26.0;
+float along = dot(p, wdir), across = dot(p, float2(-wdir.y, wdir.x)) + (nB.g - 0.5) * 5.0;   // r02: warp 26 -> 5 m (the warped streaks closed into loops: the 'ring' artifact)
 float slick = smoothstep(0.62, 0.76, NZ(float2(along / 1100.0, across / 70.0)).b) * (1.0 - gust * 0.8) * 0.9;
 float streak = smoothstep(0.66, 0.82, NZ(float2(along / 380.0, across / 11.0) + float2(0.13, 0.71)).r) * smoothstep(0.4, 0.62, NZ(float2(along / 140.0, across / 40.0) + float2(0.51, 0.29)).g) * 0.7;
 streak = max(streak, smoothstep(0.6, 0.82, NZ(float2(p.x / 34.0, p.y / 520.0) + float2(t * 0.0008, t * 0.003)).g) * 0.45);
@@ -276,8 +276,8 @@ float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSample
 cf = max(cf, 1.0 - smoothstep(0.12, 0.45 + 1.5 * fn + 0.9 * lap, cdm));
 cf *= 1.0 - smoothstep(500.0, 2000.0, dist);
 float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZ(p / 3.1 + float2(-t * 0.02, t * 0.013)).r + 0.25 * lap) * FoamK;
-foam = max(foam, streak * 0.12 * smoothstep(0.4, 1.0, gust + 0.3));
-foam = max(foam, smoothstep(0.62, 0.95, crest) * gust * 0.3);
+// r02: no streak foam (thin bright streak lines read as rings / loops); streaks only modulate roughness and body
+foam = max(foam, smoothstep(0.75, 1.0, crest) * smoothstep(0.5, 0.9, gust) * 0.25);   // r02: rarer whitecaps (round-02 harbour still: dotted)
 float cov = saturate(foam);
 float pat = NZ(p / 1.9 + float2(t * 0.004, 0.0)).r * 0.62 + NZ(p / 0.63 + float2(0.0, t * 0.006)).g * 0.5;
 float wf = smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov) * (1.0 - smoothstep(600.0, 2500.0, dist)) + cov * 0.35 * smoothstep(300.0, 2500.0, dist);
@@ -286,7 +286,7 @@ wf = saturate(wf);
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
 { float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
   Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
-float vk = VARK * lerp(1.0, FarVarK, smoothstep(250.0, 1500.0, dist));
+float vk = VarKP * lerp(1.0, FarVarK, smoothstep(250.0, 1500.0, dist));
 float a2 = 0.028 * 0.028 + vk * (varU + 2.0 * varT) + wf * 0.2;
 Rough = clamp(pow(a2, 0.25), 0.04, 0.7);
 NormalW = normalize(lerp(N, float3(0, 0, 1), wf * 0.6));
@@ -325,7 +325,7 @@ PHASE_G = 0.55
 GLITTER = 1.0
 # material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
-PARAMS = {'ChopK': 1.0, 'ScatK': 0.55, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 1.0}
+PARAMS = {'ChopK': 1.0, 'ScatK': 0.55, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 1.0, 'VarKP': VAR_K}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
