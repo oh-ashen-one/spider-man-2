@@ -1362,8 +1362,9 @@ void AWebTravCharacter::PollLiveInput(APlayerController* PC, FWebTravInput& I, f
 {
 	// a frame gap (pause menu, focus loss, hitch) longer than 0.3 s real time: every button still held counts as a fresh press
 	const double Now = FPlatformTime::Seconds();
-	if (!bLatchInput && LastLiveTickReal > 0.0 && Now - LastLiveTickReal > 0.3) PrevInput = FWebTravInput();
-	LastLiveTickReal = Now;
+	// (a skipped engine frame = the pawn did not tick = the game was paused; fixed-step benchmark runs pause in very little real time)
+	if (!bLatchInput && LastLiveTickReal > 0.0 && (Now - LastLiveTickReal > 0.3 || GFrameCounter > LastLiveFrame + 1)) PrevInput = FWebTravInput();
+	LastLiveTickReal = Now; LastLiveFrame = GFrameCounter;
 	FVector2D Stick = LiveMove, RStick = PadLook;
 	if (PC && !bLatchInput)
 	{
@@ -1481,7 +1482,9 @@ bool AWebTravCharacter::InputTestTick(float Dt)
 {
 	APlayerController* PC = Cast<APlayerController>(GetController());
 	if (!PC || !bTravStarted) return true;
-	const double Now = FPlatformTime::Seconds();
+	// engine-step clock (the ticker's Dt is the fixed step in -benchmark runs; it keeps running while the game is paused)
+	InputTestClock += FMath::Clamp(double(Dt), 0.0, 0.1);
+	const double Now = InputTestClock;
 	if (InputTestT0 < 0.0) InputTestT0 = Now;
 	const double T = Now - InputTestT0;
 	enum EOp { Press, Release, Pause, Unpause, Report, End };
@@ -1498,7 +1501,7 @@ bool AWebTravCharacter::InputTestTick(float Dt)
 	if (InputTestPressT >= 0.0 && Traversal->IsSwinging())
 	{
 		++InputTestSwings;
-		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST press %d -> swing after %.2f s real time"), InputTestPresses, Now - InputTestPressT);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST press %d -> swing after %.2f s"), InputTestPresses, Now - InputTestPressT);
 		InputTestPressT = -1.0;
 	}
 	while (InputTestStep < int32(UE_ARRAY_COUNT(Steps)) && T >= Steps[InputTestStep].T)

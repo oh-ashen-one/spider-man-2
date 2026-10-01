@@ -130,6 +130,8 @@ private:
 	void PollLiveInput(class APlayerController* PC, FWebTravInput& I, float Dt);
 	void WatchInput(class APlayerController* PC, const FWebTravInput& I, float Dt);
 	double LastLiveTickReal = -1.0;
+	uint64 LastLiveFrame = 0;
+	double InputTestClock = 0.0;
 	int32 InCapState = -1;          // packed pc_cap | vp_cap << 1 | vp_focus << 2 | app_active << 3 | menu << 4
 	float CapLostT = 0.f, RecaptureCd = 0.f;
 	int32 NRecaptures = 0;

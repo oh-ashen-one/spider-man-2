@@ -449,7 +449,9 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		Frame.SwingTuck = FMath::FInterpTo(Frame.SwingTuck, TuckWant, Dt, 8.f);
 		if (Mesh && !A.Velocity.IsNearlyZero()) Frame.VelCS = Mesh->GetComponentTransform().InverseTransformVectorNoScale(A.Velocity).GetSafeNormal();
 	}
-	// round 19 (r18 critic): tight tuck weight from the flip program's current shapes
+	// round 19 (owner: between-swing tuck must read at speed): the release-cycle tuck flavor closes into the tight tuck too
+	if (CurNode == FName(TEXT("air_tuck"))) PendingTuckW = FMath::Max(PendingTuckW, 0.85f * Smooth01(NodeT / 0.12f) * (1.f - Smooth01((NodeT - 0.33f) / 0.12f)));
+		// round 19 (r18 critic): tight tuck weight from the flip program's current shapes
 	{
 		const float Step = Dt / 0.08f;
 		Frame.TuckW = PendingTuckW > Frame.TuckW ? FMath::Min(PendingTuckW, Frame.TuckW + Step) : FMath::Max(PendingTuckW, Frame.TuckW - Step);

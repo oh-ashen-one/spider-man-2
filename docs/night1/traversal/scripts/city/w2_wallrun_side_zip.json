@@ -1,11 +1,11 @@
 {
  "name": "w2_wallrun_side_zip",
- "note": "Round 19: swing into the x 266 facade, run up briefly, then hold the stick sideways (wallRunSide, horizontal stride along the facade), E -> zip to the nearest place.",
+ "note": "Round 19: as w1, then stick sideways on the wall from 2.4 s (horizontal side run along the facade, IK stride), E at 3.5 s -> zip to the nearest place.",
  "seed": 1234,
  "spawn": {
   "pos": [
    250,
-   150,
+   145,
    22
   ],
   "yaw": -90,
@@ -27,15 +27,15 @@
    "swing": true
   },
   {
-   "t": 0.45,
+   "t": 0.9,
    "heading": 0
   },
   {
-   "t": 1.3,
+   "t": 1.7,
    "swing": false
   },
   {
-   "t": 2.0,
+   "t": 2.4,
    "move": [
     1,
     0
@@ -44,15 +44,15 @@
    "sprint": true
   },
   {
-   "t": 3.6,
+   "t": 3.5,
    "zip": true
   },
   {
-   "t": 3.7,
+   "t": 3.6,
    "zip": false
   },
   {
-   "t": 3.8,
+   "t": 3.7,
    "move": [
     0,
     0

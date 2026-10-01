@@ -19,6 +19,9 @@ def P(*a):
     s = ' '.join(str(x) for x in a); out.append(s); print(s)
 
 def rows(path):
+    import gzip
+    if not os.path.exists(path) and os.path.exists(path + '.gz'):
+        with gzip.open(path + '.gz', 'rt') as f: return list(csv.DictReader(f))
     with open(path) as f:
         return list(csv.DictReader(f))
 def fl(r, k, d=float('nan')):
@@ -42,13 +45,18 @@ for name, p in clips.items():
     anyc = sum(1 for r in W if min(fl(r, c, 9) for c in ('foot_wall_l', 'foot_wall_r', 'hand_wall_l', 'hand_wall_r')) <= 0.15) / n
     far = max(max(fl(r, c, 0) for c in ('foot_wall_l', 'foot_wall_r', 'hand_wall_l', 'hand_wall_r')) for r in W)
     # cadence: gait phase wraps
-    ph = [fl(r, 'gait_ph', 0) for r in W]; wraps = sum(1 for a, b in zip(ph, ph[1:]) if b < a - 0.5)
     dur = fl(W[-1], 't') - fl(W[0], 't')
+    adv = 0.0; tt = 0.0
+    for a_, b_ in zip(W, W[1:]):
+        dt_ = fl(b_, 't') - fl(a_, 't')
+        if 0 < dt_ < 0.05:
+            d_ = (fl(b_, 'gait_ph', 0) - fl(a_, 'gait_ph', 0)) % 1.0; adv += d_; tt += dt_
+    wraps = adv; dur = tt
     hh = [fl(r, 'head_hip_dz', 0) for r in W if r['sub'] == 'wallRun']
     spd = sum(fl(r, 'speed_mps', 0) for r in W) / n
     P(f'{name}: {n} rows {dur:.2f} s, speed {spd:.1f} m/s | contact share feet L {fl_:.2f} R {fr_:.2f}, hands L {hl:.2f} R {hr:.2f}; '
       f'>= 1 limb on the wall {anyc:.2f}; L-foot+R-hand together {both:.2f}; farthest limb {far:.2f} m | '
-      f'cycles {wraps} -> {2 * wraps / max(dur, 1e-3):.1f} steps/s | head above hips (vertical rows) {sum(1 for v in hh if v > 0.3)}/{len(hh)}')
+      f'cycles {wraps:.1f} -> {2 * wraps / max(dur, 1e-3):.1f} steps/s | head above hips (vertical rows) {sum(1 for v in hh if v > 0.3)}/{len(hh)}')
 
 # ---------------- Z: E from every mode
 P('\n== Z  zip presses (in_zip rising edge) -> mode 0.4 s later, zip_why')
@@ -132,7 +140,7 @@ for lg in sorted(glob.glob(os.path.join(R, 'inputtest_*.log'))):
 
 # ---------------- F: floor audit
 on, off = os.path.join(R, 'floor_on.csv'), os.path.join(R, 'floor_off.csv')
-if os.path.exists(on) and os.path.exists(off):
+if (os.path.exists(on) or os.path.exists(on + '.gz')) and (os.path.exists(off) or os.path.exists(off + '.gz')):
     P('\n== F  floor audit (5 m grid, traversal floor = GroundHeight from 600 m): solid filter ON (r19) vs OFF (690dfa7)')
     A = {(r['x'], r['y']): r for r in rows(on)}; B = {(r['x'], r['y']): r for r in rows(off)}
     ks = set(A) & set(B)

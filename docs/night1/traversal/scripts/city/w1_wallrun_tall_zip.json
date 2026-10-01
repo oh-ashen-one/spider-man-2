@@ -1,11 +1,11 @@
 {
  "name": "w1_wallrun_tall_zip",
- "note": "Round 19 (owner: wall-run 'super cooked'; E does nothing while running on the side of buildings): airborne swing north up the x 250 avenue, steer east into the 97 m tower facade at x 266 (y 88-122): the swing lets go onto the wall and runs up it (procedural IK stride: feet + hands on the facade); E pressed mid-wall -> zip to the top edge of this facade (nearest place) -> perch; E again on the perch.",
+ "note": "Round 19 (owner: wall-run 'super cooked'; E does nothing while running on the side of buildings): c's swing-to-wall shifted 95 m south onto the 97 m tower facade at x 266 (y 88-122): the long vertical wall-run shows the procedural IK stride (feet + hands on the facade); E mid-wall at 3.6 s -> zip to this facade's top edge (nearest place) -> perch; E on the perch at 6.2 s.",
  "seed": 1234,
  "spawn": {
   "pos": [
    250,
-   150,
+   145,
    22
   ],
   "yaw": -90,
@@ -27,11 +27,11 @@
    "swing": true
   },
   {
-   "t": 0.45,
+   "t": 0.9,
    "heading": 0
   },
   {
-   "t": 1.3,
+   "t": 1.7,
    "swing": false
   },
   {
@@ -43,7 +43,7 @@
    "zip": false
   },
   {
-   "t": 4.4,
+   "t": 4.6,
    "move": [
     0,
     0
@@ -51,11 +51,11 @@
    "heading": false
   },
   {
-   "t": 5.6,
+   "t": 6.2,
    "zip": true
   },
   {
-   "t": 5.7,
+   "t": 6.3,
    "zip": false
   }
  ]
