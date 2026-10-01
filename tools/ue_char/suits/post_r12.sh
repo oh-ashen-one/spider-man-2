@@ -60,6 +60,7 @@ python3 tools/ue_char/suits/loco_r12.py ch1 "$S"/skin_*_front_4k.png > "$M/ch1_f
 [ -f "$R/hero_run_side.mp4" ] && { python3 tools/ue_char/eval/video_checks.py hero_run "$R/hero_run_side.mp4" 0.3 5.3 > "$M/ch6_ch7_side.json"; python3 tools/ue_char/eval/video_checks.py lean_belt "$R/hero_run_side.mp4" 0.3 5.3 > "$M/ch7_side_leanbelt.json" 2>/dev/null; }
 [ -f "$R/hero_run_leap_side.mp4" ] && python3 tools/ue_char/eval/video_checks.py takeoff "$R/hero_run_leap_side.mp4" 0 6.4 > "$M/ch10_takeoff.json" 2>/dev/null
 [ -f "$R/swap_pawn_T_key.mp4" ] && { python3 tools/ue_char/suits/loco_r12.py bob "$R/swap_pawn_T_key.mp4" 2 9.5 > "$M/pawn_cadence.json"; python3 tools/ue_char/suits/loco_r12.py pop "$R/swap_pawn_T_key.mp4" 0 2.5 > "$M/pawn_start_pop.json"; }
+[ -f "$A/pawn/pawn_telemetry.csv" ] && { cp "$A/pawn/pawn_telemetry.csv" "$E/pawn_telemetry.csv"; python3 tools/ue_char/suits/loco_r12.py tpop "$A/pawn/pawn_telemetry.csv" 0.5 2.0 > "$M/pawn_start_telemetry.json"; }
 # --- CPU checks of the maps (IP guard palette, seams, per-island tangent basis), OCR of the 4K stills, regression
 python3 tools/ue_char/suits/ip_guard.py palette art/night1/characters/hero/suits "$E/ipguard.json" | tail -3
 python3 tools/ue_char/eval/suit_seams.py art/night1/characters/hero/suits "$E/seams.json" | tail -2
