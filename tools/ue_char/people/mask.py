@@ -594,3 +594,95 @@ def drop_loose_shells(P, F, y_min=1.655, max_tris=320, z_max=0.02):
     drop = (sizes <= max_tris) & ((ymin >= y_min) | (zmax <= z_max))
     keep = ~drop[fl]
     return F[keep], int((~keep).sum())
+
+
+def bridge_hair_gap(P, N, UV, F, center, radius=0.07, max_gap=0.022, min_gap=0.0015, tex=None):
+    """Round 10 (critic r09: 'beard_face_4k has a detached rear hair shell with a background gap'): the Beard's side-hair curtain hangs 3 - 15 mm off the edge of the head surface at the
+    temple, and the sky shows through the wedge between them.  Both are open boundary chains of the (welded) mesh: the chain Y (the shorter) is bridged to the chain X whose vertices are
+    nearest to it (gap between min_gap and max_gap) with a strip of triangles: for every edge of Y the two nearest X vertices (and the X vertices between them) form a fan.  The X-side
+    vertices are DUPLICATED with the UV of the matching Y vertex, so the strip is hair-coloured instead of smearing skin into hair across the atlas; positions / normals are unchanged
+    (skinfit gives the duplicates their weights).  Returns (P, N, UV, F, number of triangles added)."""
+    from collections import defaultdict
+    key = np.round(P * 1e4).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); nv = inv.max() + 1
+    rep = np.zeros((nv, 3)); rep[inv] = P
+    ridx = np.zeros(nv, int); ridx[inv] = np.arange(len(P))
+    e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+    a = inv[e[:, 0]]; b = inv[e[:, 1]]
+    lo = np.minimum(a, b); hi = np.maximum(a, b); ek = lo.astype(np.int64) * nv + hi
+    u, c = np.unique(ek, return_counts=True)
+    be = [(int(k // nv), int(k % nv)) for k in u[c == 1]]
+    center = np.asarray(center, float)
+    near = [(x, y) for x, y in be if np.linalg.norm(rep[x] - center) < radius and np.linalg.norm(rep[y] - center) < radius]
+    adj = defaultdict(list)
+    for x, y in near: adj[x].append(y); adj[y].append(x)
+    seen = set(); chains = []
+    for s0 in adj:
+        if s0 in seen: continue
+        ends = None; comp = []; st = [s0]
+        while st:
+            v = st.pop()
+            if v in seen: continue
+            seen.add(v); comp.append(v); st += [w for w in adj[v] if w not in seen]
+        # order the chain as a path: start from a degree-1 vertex when there is one
+        deg1 = [v for v in comp if len(adj[v]) == 1]
+        cur = deg1[0] if deg1 else comp[0]; order = [cur]; prev = None
+        while True:
+            nxt = [w for w in adj[cur] if w != prev and w not in order]
+            if not nxt: break
+            prev, cur = cur, nxt[0]; order.append(cur)
+        chains.append(order)
+    best = None
+    for yi, Y in enumerate(chains):
+        for xi, X in enumerate(chains):
+            if xi == yi or len(Y) > len(X) or len(Y) < 3: continue
+            d = np.linalg.norm(rep[Y][:, None, :] - rep[X][None, :, :], axis=2)
+            m = d.min(1); ok = (m > min_gap) & (m < max_gap)
+            score = int(ok.sum())
+            if best is None or score > best[0]: best = (score, yi, xi)
+    if best is None or best[0] < 3: return P, N, UV, F, 0
+    _, yi, xi = best; Y, X = chains[yi], chains[xi]
+    pos = {v: i for i, v in enumerate(X)}
+    d = np.linalg.norm(rep[Y][:, None, :] - rep[X][None, :, :], axis=2); nn = d.argmin(1)
+    newP, newN, newUV, newF = [], [], [], []
+    base = len(P); dup = {}
+    uv_flat = np.median(UV[[int(ridx[v]) for v in Y]], axis=0)      # one hair texel for the whole strip (no skin-to-hair smear across the atlas)
+    if tex is not None:      # ... the darkest hair texel among the curtain's own vertices (the strip sits in the shadow between face and curtain)
+        t_ = np.asarray(tex.convert('RGB'), np.float32); H_, W_ = t_.shape[:2]
+        cand = UV[[int(ridx[v]) for v in Y]]
+        lum = []
+        for uvc in cand:
+            x_, y_ = int(np.clip(uvc[0] * W_, 3, W_ - 4)), int(np.clip(uvc[1] * H_, 3, H_ - 4))
+            lum.append(t_[y_ - 3:y_ + 4, x_ - 3:x_ + 4].mean())
+        uv_flat = cand[int(np.argmin(lum))]
+    def dupvertex(xv, uv):
+        k = (xv, round(float(uv[0]), 5), round(float(uv[1]), 5))
+        if k not in dup:
+            dup[k] = base + len(newP); newP.append(P[ridx[xv]]); newN.append(N[ridx[xv]]); newUV.append(uv)
+        return dup[k]
+    def tri(a_, b_, c_):
+        n_ = np.cross(P_[b_] - P_[a_], P_[c_] - P_[a_]); nn_ = N_[a_] + N_[b_] + N_[c_]
+        newF.append([a_, b_, c_] if n_ @ nn_ >= 0 else [a_, c_, b_])
+    P_ = lambda i: None
+    allP = lambda i: P[i] if i < base else newP[i - base]
+    allN = lambda i: N[i] if i < base else newN[i - base]
+    def tri(a_, b_, c_):
+        n_ = np.cross(allP(b_) - allP(a_), allP(c_) - allP(a_)); nn_ = allN(a_) + allN(b_) + allN(c_)
+        newF.append([a_, b_, c_] if n_ @ nn_ >= 0 else [a_, c_, b_])
+    for i in range(len(Y) - 1):
+        y0, y1 = Y[i], Y[i + 1]
+        if not (min_gap < d[i, nn[i]] < max_gap and min_gap < d[i + 1, nn[i + 1]] < max_gap): continue
+        iy0, iy1 = int(ridx[y0]), int(ridx[y1]); uv0 = uv1 = uv_flat
+        x0, x1 = X[nn[i]], X[nn[i + 1]]
+        iy0 = dupvertex(y0, uv_flat); iy1 = dupvertex(y1, uv_flat)
+        p0, p1 = pos[x0], pos[x1]
+        step = 1 if p1 >= p0 else -1
+        xs = [X[k] for k in range(p0, p1 + step, step)] if p0 != p1 else [x0]
+        # fan: Y0 .. X(p0..p1) .. Y1  (the X vertices take the UV of the closer Y end)
+        dv = [dupvertex(xv, uv0 if k < (len(xs) + 1) // 2 else uv1) for k, xv in enumerate(xs)]
+        tri(iy0, iy1, dv[0] if len(dv) == 1 else dv[len(dv) // 2])
+        for k in range(len(dv) - 1): tri(iy0 if k < len(dv) // 2 else iy1, dv[k], dv[k + 1])
+    if not newF: return P, N, UV, F, 0
+    P2 = np.concatenate([P, np.array(newP)]); N2 = np.concatenate([N, np.array(newN)]); UV2 = np.concatenate([UV, np.array(newUV)])
+    F2 = np.concatenate([F, np.array(newF, dtype=F.dtype)])
+    return P2, N2, UV2, F2, len(newF)

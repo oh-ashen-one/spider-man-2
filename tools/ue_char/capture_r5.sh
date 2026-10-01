@@ -44,8 +44,9 @@ for m in $MOVIES; do
        cut_clip H hero_run_side $D 6; cut_clip H hero_run_34 $(python3 -c "print($D+6)") 5; cut_clip H hero_run_leap_side $(python3 -c "print($D+11)") 6.5 ;;
     G) seg_run G /Game/Tests/Characters/Char_Hero 6 12.5     # round 05 gameplay cameras: chase (behind) 6 s, then toward the camera 6 s
        cut_clip G hero_run_chase $D 6; cut_clip G hero_run_toward $(python3 -c "print($D+6)") 6 ;;
-    F) BONELOG=${BONELOG:-$OUT/fight_bones.csv} seg_run F /Game/Tests/Characters/Char_Fight 0 24.5     # round 09: bone log of the scripted fight (-WHBoneLog)
-       cut_clip F street_fight_wide $D 8; cut_clip F street_fight_34 $(python3 -c "print($D+8)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16)") 8
+    F) BONELOG=${BONELOG:-$OUT/fight_bones.csv} seg_run F /Game/Tests/Characters/Char_Fight 0 25.4     # round 09: bone log of the scripted fight (-WHBoneLog)
+       # round 10: shot 0 lasts 8.6 s (0.6 s of texture-streaming warm-up + a full 8 s clip), the three clips are 8.0 s each: stage 0.65 - 8.65 | 8.65 - 16.65 | 16.65 - 24.65
+       cut_clip F street_fight_wide $(python3 -c "print($D+0.6)") 8; cut_clip F street_fight_34 $(python3 -c "print($D+8.6)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16.6)") 8
        cut_still F street_fight_1080 $(python3 -c "print($D+3)") ;;
     A) WLOG="$OUT/avoid_demo_walkers.csv" seg_run A /Game/Tests/Characters/Char_CrowdAvoid 0 9.5     # round 07: the OLD (colliding) layout with avoidance on: the A/B of the avoidance alone
        cut_clip A crowd_avoidance_demo $D 8 ;;

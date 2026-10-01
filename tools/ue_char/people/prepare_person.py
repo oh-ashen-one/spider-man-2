@@ -55,7 +55,7 @@ CFG = {
                 seethrough=True,   # round 09: flip the back-faced lip-crease slivers that are holes through the mask
                 hang=dict(uncover_mouth=True)),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
     'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
-                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True),
+                  mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True, bridge_gap=((0.05, 1.70, 0.08), 0.07)),
 }
 
 
@@ -481,13 +481,16 @@ def main():
     if cfg.get('sink_neck'): P = M.sink_neck(P, F, cfg)             # round 08: slack for the neck skin under the collar (collar shards)
     nseethrough = 0
     if cfg.get('seethrough') and not os.environ.get('P2_NO_SEETHROUGH'): F, nseethrough = M.flip_seethrough(P, F, cfg)   # round 09: back-faced slivers of the lip crease = holes through the cloth (tee_face_4k 198 / 91 / 24 px)
+    nbridge = 0
+    if cfg.get('bridge_gap'): P, N, UV, F, nbridge = M.bridge_hair_gap(P, N, UV, F, *cfg['bridge_gap'], tex=im)   # round 10: the side-hair curtain's gap to the head surface (beard_face_4k)
+    moved = np.concatenate([moved, np.zeros(len(P) - len(moved))])      # the bridge strip adds duplicated vertices
     nloose = 0
     if cfg.get('drop_loose'): F, nloose = M.drop_loose_shells(P, F, y_min=cfg['drop_loose'])   # round 10: loose hair-ribbon shells of the head (hood_face_4k)
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
     N = M.cloth_normals(P, F, N, cfg)                            # round 05: smoothed cloth normals over the mask region
-    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), seethrough_flipped=int(nseethrough), loose_shell_tris_dropped=int(nloose), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
+    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), seethrough_flipped=int(nseethrough), loose_shell_tris_dropped=int(nloose), bridge_tris=int(nbridge), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
                 drape_max_cm=round(float(moved.max() * 100), 2))
     # ---- texture
     im4 = np.asarray(im.resize((ATLAS, ATLAS), Image.LANCZOS))
