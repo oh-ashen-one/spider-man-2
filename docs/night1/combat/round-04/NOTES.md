@@ -14,7 +14,7 @@ written on 2026-09-30 when the GPU was wedged and no longer applies; the section
 - Replay of the frozen `fight30.json` against `round-03/ue/record`: movie A 381 / 381 events identical (`ue/movieA_diff.txt`). Movie B 381 vs 377 events, identical up to the first difference at 11.05 s (`ue/movieB_diff.txt`): the no-flare control diverges from the record there, so
   the "vs no-flare" columns of `measure_r04.md` for contacts after 11 s compare two slightly different fights. Stills run: 381 / 381 once the 15 `still ...` marker events are excluded (`replay_diff.py` itself cannot read `still_events.jsonl`; the `ue/stills_diff.txt` line is from a manual copy of that file).
 - Published `fight30_1080p60.mp4` = 14,718,996 bytes (crf 30; crf 22-28 were above 15 MB). Measurements: `measure.md` / `measure_r04.md` (master pair A/B) / `measure_r04_published.md` (heuristic mask on the x264 file), `measure_master.md`, `sim_metrics.json`.
-- Not run: a GPU perf pass, any browser comparison. The GPU read 10-12 % before the launch; `gpu_ok.sh` exit 0; no UnrealEditor of this worktree running afterwards.
+- Not run: a GPU perf pass, any browser comparison. The GPU read 10-12 % before the launch; `gui_ok.sh` exit 0; no UnrealEditor of this worktree running afterwards.
 
 ## What was implemented (unverified on screen)
 
