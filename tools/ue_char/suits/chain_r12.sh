@@ -39,6 +39,12 @@ movie() {   # name map shot quit
   check "$D" "$1"
 }
 log "steps: $STEPS, EV $EV"
+if [ -n "${REQUIRE_BUILD_LOG:-}" ]; then      # queued behind its own content build: refuse to render stale / broken content
+  if ! grep -q "skinsmap saved True True" "$REQUIRE_BUILD_LOG" 2>/dev/null || ! grep -q "map saved /Game/Tests/Characters/Char_Fight True" "$REQUIRE_BUILD_LOG" 2>/dev/null \
+     || { [ -n "${REQUIRE_NEWER:-}" ] && [ ! "$REQUIRE_BUILD_LOG" -nt "$REQUIRE_NEWER" ]; }; then
+    log "content build not finished OK ($REQUIRE_BUILD_LOG): no render"; exit 4; fi
+  if grep -q "M_Char_Suit weave-from-position FAILED" "$REQUIRE_BUILD_LOG"; then log "NOTE: weave-from-position failed in the build, UV weave in use"; fi
+fi
 
 if has stills; then
   TIMES=$(python3 - <<PY
