@@ -79,6 +79,17 @@ def check_facades(cfg, frames, res_list, out):
                                            p99=round(s['p99'], 1), mean_Y=round(s['Y'], 1), C1_pass=bool(c1), C2_pass=bool(c2)))
 
 
+def check_crit(cfg, frames, res_list, out):
+    """(r10) the critic's r09 boxes: share of pixels above Y 204 (C1 1.5 %, the S4 far band 10 %)"""
+    for view, vcfg in cfg['views'].items():
+        for name, boxes in (vcfg.get('crit_boxes') or {}).items():
+            for res in res_list:
+                im, path = frames[view][res]
+                if im is None: continue
+                s = region_stats(im, to1080(im), boxes, res); lim = boxes.get('max_pct204', 1.5)
+                out['crit'].append(dict(view=view, region=name, res=res, box=boxes[res], pct_above_204=round(s['pct204'], 2), max_pct204=lim, p95=round(s['p95'], 1), mean_Y=round(s['Y'], 1), passed=bool(s['pct204'] <= lim)))
+
+
 def check_far(cfg, frames, res_list, out):
     view = 'S4_perch_skyline'; F = cfg['views'][view]['C11_C15_far']; th = cfg['thresholds']
     for res in res_list:
@@ -96,6 +107,11 @@ def check_far(cfg, frames, res_list, out):
             'C14 far_shore Y - river Y': (fs['Y'] - rv['Y'], '%d..%d' % tuple(th['C14']['river_below_far_Y']), ok(fs['Y'] - rv['Y'], *th['C14']['river_below_far_Y'])),
             'C15 rms far_shore / near_city': (fs['rms'] / max(nc['rms'], 1e-6), '%.2f..%.2f' % tuple(th['C15']['rms_far_over_near']), ok(fs['rms'] / max(nc['rms'], 1e-6), *th['C15']['rms_far_over_near'])),
         }
+        try:
+            import s4_far_check as _S4
+            _t = {k: v['std'] for k, v in _S4.silhouette_tops(luma(im1080)).items()}
+            lines['T1 silhouette-top std (min of 3 defs, px)'] = (min(_t.values()), '>= 12', min(_t.values()) >= 12.0)
+        except Exception as _ex: print('T1 silhouette skipped:', _ex, file=sys.stderr)
         out['far'].append(dict(res=res, regions={k: {kk: round(vv, 3) for kk, vv in v.items()} for k, v in S.items()},
                                lines={k: dict(value=round(float(v[0]), 2), target=v[1], passed=bool(v[2])) for k, v in lines.items()}))
 
@@ -182,6 +198,11 @@ def render(out, res_list):
             day = [f for f in out['facades'] if f['res'] == res and f['daylight']]
             if day: P(f'- {res}: daylight crops C1 pass {sum(f["C1_pass"] for f in day)}/{len(day)}, C2 pass {sum(f["C2_pass"] for f in day)}/{len(day)}')
         P()
+    if out.get('crit'):
+        P('## Critic r09 boxes (share of pixels above Y 204; C1 limit 1.5 %, S4 far band 10 %)'); P()
+        P('| region | res | box | > 204 % | limit | p95 | mean Y | result |'); P('|---|---|---|---|---|---|---|---|')
+        for f in out['crit']: P(f'| {f["region"]} | {f["res"]} | {tuple(f["box"])} | {f["pct_above_204"]:.2f} | {f["max_pct204"]} | {f["p95"]:.0f} | {f["mean_Y"]:.1f} | {"pass" if f["passed"] else "FAIL"} |')
+        P()
     if isinstance(out['yolo'], str): P('## C4 / C6 (YOLO): ' + out['yolo']); P()
     elif out['yolo']:
         P(f'## C4 / C6 vehicle and person counts (YOLO11x-seg, conf {YOLO_CONF}, 1080p frame; the count at conf 0.35 is in the json as vehicles_c35)'); P()
@@ -219,10 +240,10 @@ def main():
     if a.yolo_worker: yolo_worker(a.yolo_worker); return
     cfg = json.load(open(REGFILE)); res_list = ['1080', '4k'] if a.res == 'both' else [a.res]
     frames = {v: {r: load(v, a.round_dir, r) for r in ('1080', '4k')} for v in cfg['views']}
-    out = dict(round=os.path.abspath(a.round_dir), regions_version=cfg['version'], facades=[], far=[], yolo={}, ip={}, manual=cfg['manual_lines'])
+    out = dict(round=os.path.abspath(a.round_dir), regions_version=cfg['version'], facades=[], far=[], crit=[], yolo={}, ip={}, manual=cfg['manual_lines'])
     missing = [f'{v} {r}' for v in cfg['views'] for r in res_list if frames[v][r][0] is None]
     if missing: print('missing frames:', ', '.join(missing), file=sys.stderr)
-    check_facades(cfg, frames, res_list, out); check_far(cfg, frames, res_list, out)
+    check_facades(cfg, frames, res_list, out); check_far(cfg, frames, res_list, out); check_crit(cfg, frames, res_list, out)
     if a.yolo: check_yolo(cfg, frames, out)
     if a.ip: check_ip(cfg, a.round_dir, out)
     if a.overlay: draw_overlays(cfg, frames, a.overlay)

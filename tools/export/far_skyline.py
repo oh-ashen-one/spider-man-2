@@ -153,24 +153,41 @@ HIN = []   # [x, y, z, sx, sy, sz, rot, wall rgb, roof rgb]
 def hin_box(x, z, w, d, h, wall, roof): HIN.append([x, 0.7, z, w, h, d, 0.0, *wall, *roof])
 HWALL = [(0.34, 0.34, 0.35), (0.30, 0.30, 0.32), (0.38, 0.36, 0.33), (0.26, 0.27, 0.30), (0.42, 0.38, 0.33), (0.30, 0.25, 0.22), (0.22, 0.25, 0.30), (0.46, 0.45, 0.43)]
 HROOF = [(0.30, 0.30, 0.30), (0.36, 0.35, 0.33), (0.25, 0.25, 0.27), (0.40, 0.39, 0.37)]
-# (screen column at 1080p of the S4 view, distance m, tower count, tall max m, mid m)
-HCL = [(60, 6200, 22, 210, 110), (250, 9000, 30, 270, 130), (430, 7000, 20, 170, 95), (600, 12500, 34, 330, 150), (780, 8200, 26, 240, 120),
-       (930, 15500, 36, 330, 160), (1090, 10500, 30, 280, 140), (1240, 7600, 22, 190, 100), (1400, 13500, 28, 260, 130), (1560, 6600, 16, 150, 90)]
+FP = (1920 / 2) / math.tan(math.radians(S4_FOV / 2))
+def top_to_height(y_top, D):
+    """height (m above the ground at y = 0.7) that puts a roof at screen row y_top of the S4 view at horizontal distance D (camera altitude 306 m, horizon row ~136)"""
+    return 306.0 - (y_top - 136.0) * D / FP
 def hinterland():
+    """skyline by design: the S4 columns 0..1560 are cut into regimes (downtown / mid-rise / gap) and filled with buildings whose roofs land on a chosen screen row (the far sprawl keeps the rest)"""
     rg = np.random.default_rng(777); n = 0
-    for px, D, cnt, hmax, hmid in HCL:
-        d0 = s4_ray(px); c = S4_POS[[0, 2]] + d0[[0, 2]] * D; R = 0.085 * D
-        for i in range(cnt):
-            a = rg.uniform(0, 2 * math.pi); r = R * math.sqrt(rg.random())
-            x, z = c[0] + math.cos(a) * r * 1.3, c[1] + math.sin(a) * r * 0.6
-            u = rg.random(); h = hmid * (0.45 + 0.9 * u * u) if u < 0.8 else hmax * rg.uniform(0.55, 1.0)
-            wd = rg.uniform(26, 58) * (1 + D / 30000); dp = rg.uniform(26, 58) * (1 + D / 30000)
+    x = -40.0; bands = []
+    while x < 1580:
+        kind = rg.choice(['down', 'mid', 'gap'], p=[0.42, 0.36, 0.22]); w = {'down': rg.uniform(110, 250), 'mid': rg.uniform(80, 190), 'gap': rg.uniform(40, 120)}[kind]
+        bands.append((kind, x, x + w)); x += w
+    landmarks = 0
+    for kind, xa, xb in bands:
+        if kind == 'gap': continue
+        px = xa
+        while px < xb:
+            bw = rg.uniform(7, 20)                        # screen width of one building (px)
+            D = rg.uniform(5000, 9800) if kind == 'down' else rg.uniform(5000, 12500)
+            y_t = rg.uniform(136, 163) if kind == 'down' else rg.uniform(160, 184)
+            if kind == 'down' and rg.random() < 0.10: y_t = rg.uniform(124, 140)     # a spire / supertall
+            h = float(np.clip(top_to_height(y_t, D), 28, 470))
+            d0 = s4_ray(px + bw / 2); c = S4_POS[[0, 2]] + d0[[0, 2]] * D
+            wd = max(24.0, bw * D / FP * rg.uniform(0.8, 1.1)); dp = wd * rg.uniform(0.8, 1.3)
             wall = HWALL[rg.integers(len(HWALL))]; roof = HROOF[rg.integers(len(HROOF))]
-            hin_box(x, z, wd, dp, h, wall, roof)
-            if h > 110 and rg.random() < 0.55:  # setback crown
-                hin_box(x, z, wd * 0.6, dp * 0.6, h * 0.12, wall, roof); HIN[-1][1] = 0.7 + h; n += 1
-            n += 1
-    stats['hinterland_boxes'] = n
+            hin_box(c[0], c[1], wd, dp, h, wall, roof); n += 1
+            if h > 120 and rg.random() < 0.6:   # setback crown
+                hin_box(c[0], c[1], wd * 0.62, dp * 0.62, h * rg.uniform(0.1, 0.2), wall, roof); HIN[-1][1] = 0.7 + h; n += 1
+            if h > 300 and rg.random() < 0.7:   # slender mast
+                hin_box(c[0], c[1], max(6.0, wd * 0.12), max(6.0, dp * 0.12), h * 0.14, (0.2, 0.2, 0.22), (0.2, 0.2, 0.22)); HIN[-1][1] = 0.7 + h * 1.1; n += 1; landmarks += 1
+            # neighbours of lower height behind / beside (cluster depth)
+            for _ in range(rg.integers(0, 3)):
+                D2 = D * rg.uniform(0.9, 1.25); c2 = S4_POS[[0, 2]] + s4_ray(px + bw / 2 + rg.uniform(-0.6, 0.6) * bw)[[0, 2]] * D2
+                h2 = h * rg.uniform(0.3, 0.8); hin_box(c2[0], c2[1], wd * rg.uniform(0.8, 1.3), dp * rg.uniform(0.8, 1.2), max(24.0, h2), HWALL[rg.integers(len(HWALL))], HROOF[rg.integers(len(HROOF))]); n += 1
+            px += bw * rg.uniform(0.9, 1.5)
+    stats['hinterland_boxes'] = n; stats['hinterland_landmarks'] = landmarks
 hinterland()
 
 # ================================================================ 3. bluff (displaced Palisades face)

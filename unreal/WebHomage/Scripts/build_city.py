@@ -320,8 +320,14 @@ Rough = r; NormalW = n; return a;''',
     make_material('M_CitySidewalk', '/Project/City/Sidewalk.ush', '''
 float r; float3 n;
 float3 a = CitySidewalk(tCol, tColSampler, tNrm, tNrmSampler, tNoise, tNoiseSampler, tCurb, tCurbSampler, float4(uv0, uv1), wpos, wn, cam, r, n);
+// (r10, critic r09: S6 curb 14.7 % > Y 204) sun-facing light stone is the brightest surface of a street under the test lighting (sun 6, +2 EV): luma knee at SunK x 2.4 on sun-facing pixels, far field untouched
+float sunf = smoothstep(0.0, 0.4, dot(n, ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));
+float La = dot(a, float3(0.2126, 0.7152, 0.0722));
+float capk = sunk * 2.4;
+float Lc = La > capk ? capk + (La - capk) * 0.08 : La;
+a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 Rough = r; NormalW = n; return a;''',
-        [('tCol', 'tex', TEXA('sidewalk_col')), ('tNrm', 'tex', TEXA('sidewalk_nrm')), ('tNoise', 'tex', TEXA('noise')), ('tCurb', 'tex', TEXA('curb_col')), ('uv0', 'uv', 0), ('uv1', 'uv', 1)] + WORLD,
+        [('tCol', 'tex', TEXA('sidewalk_col')), ('tNrm', 'tex', TEXA('sidewalk_nrm')), ('tNoise', 'tex', TEXA('noise')), ('tCurb', 'tex', TEXA('curb_col')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('sunk', 'mpc', 'SunK')] + WORLD,
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
     # generic vertex-colour / atlas material (Times Square dressing, signage, markings): masked by the map alpha
     make_material('M_CityVC', None, '''
@@ -345,7 +351,7 @@ return c;''',
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
     # props (partmat.js port): per-part roughness / metal / emission, per-instance tint in custom data 0..2, state in 3
-    make_material('M_CityProp', None, '''
+    PROP_CODE = '''
 float4 t = UseMap > 0.5 ? Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y)) : float4(1, 1, 1, 1);
 float3 c = vc.rgb * t.rgb; int P = (int)(uv1.x + 0.5); float3 tint = (t0 + t1 + t2) > 0.0 ? float3(t0, t1, t2) : float3(1, 1, 1); float st = t3;
 float pR = 0.7, pM = 0.0; float3 pE = 0;
@@ -356,13 +362,41 @@ else if (P >= 10 && P <= 12) { float on = abs(float(P - 10) - st) < 0.5 ? 1.0 : 
 else if (P == 13) { float3 lc = st > 1.5 ? float3(0.9, 0.95, 1.0) : float3(1.0, 0.45, 0.05); c = lc * 0.05; pE = lc * 10.0; }
 else if (P == 14) { pR = 0.1; pE = c * 3.0; } else if (P == 15) { pR = 0.3; pE = c * 0.25; } else if (P >= 16 && P <= 22) pR = 0.8;
 if (nightk > 0.0) { if (P == 4) pE += float3(1.0, 0.78, 0.5) * 9.0 * nightk; else if (P == 7) pE += float3(1.0, 0.93, 0.8) * 7.0 * nightk; }
+// (r10, critic r09: S3 roof props 'white untextured primitives') weathering of the plain parts: tone variation at three scales (world space, fine speckle fades with distance) and a luma cap (painted vents / caps are never white)
+float3 pw = wpos * 0.01; float3 an = abs(normalize(wn)); float2 wq = an.x > max(an.y, an.z) ? pw.yz : (an.y > an.z ? pw.xz : pw.xy);
+float2 dq = max(abs(ddx(wq)), abs(ddy(wq)));
+if (UseMap < 0.5 && (P == 0 || P == 5 || P == 6 || P == 9 || (P >= 16 && P <= 22))) {
+  float nA = Texture2DSampleLevel(tNoise, tNoiseSampler, wq / 9.0, 0.0).g, nB = Texture2DSampleLevel(tNoise, tNoiseSampler, wq / 1.7, 0.0).r, nC = Texture2DSampleLevel(tNoise, tNoiseSampler, wq / 0.21, 0.0).b;
+  float gl = saturate(1.0 - 12.0 * length(dq));
+  c *= (0.74 + 0.42 * nA) * (1.0 + 0.2 * (nB - 0.5)) * (1.0 + 0.3 * (nC - 0.5) * gl);
+  float Lp = dot(c, float3(0.2126, 0.7152, 0.0722));
+  c *= min(1.0, 0.36 / max(Lp, 1e-4));
+}
 Rough = pR; Metal = pM; float3 nv = normalize(wn);
 Emis = pE * escale + CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
-return c;''',
-        [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None),
+return c;'''
+    PROP_IN = [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None),
          ('t0', 'pcd', (0, 1.0)), ('t1', 'pcd', (1, 1.0)), ('t2', 'pcd', (2, 1.0)), ('t3', 'pcd', (3, 0.0)), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'),
-         ('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
+         ('wpos', 'wpos', None), ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h')), ('tNoise', 'tex', TEXA('noise'))]
+    PROP_OUT = [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Emis', 3, MP.MP_EMISSIVE_COLOR)]
+    make_material('M_CityProp', None, PROP_CODE, PROP_IN, PROP_OUT, world_normal=False)
+    # (r10, critic r09: 'toy-like cars, flat paint, no reflections') the parked / stopped cars use the same part table with a clear-coated paint (glossy lacquer reflecting the sky / street, rough base coat under it);
+    # failure here (property enum names differ between engine versions) only logs: the cars keep M_CityProp
+    try:
+        _cc0 = getattr(MP, 'MP_CUSTOM_DATA0', None) or getattr(MP, 'MP_CUSTOM_DATA_0', None); _cc1 = getattr(MP, 'MP_CUSTOM_DATA1', None) or getattr(MP, 'MP_CUSTOM_DATA_1', None)
+        _car_code = PROP_CODE.replace('Rough = pR; Metal = pM; float3 nv = normalize(wn);', 'CC = (P == 1) ? 1.0 : 0.0; CCR = 0.03; if (P == 1) pR = 0.34; Rough = pR; Metal = pM; float3 nv = normalize(wn);')
+        assert 'CCR = 0.03' in _car_code
+        make_material('M_CityCar', None, _car_code, PROP_IN, PROP_OUT + [('CC', 1, _cc0), ('CCR', 1, _cc1)], world_normal=False, shading=unreal.MaterialShadingModel.MSM_CLEAR_COAT)
+    except Exception as _ex: log('WARN M_CityCar not built:', _ex)
+    try:   # (r10) the existing car instances (MI_veh_*, parent M_CityProp since r08) move to the clear-coated material
+        if EAL.does_asset_exist(MAT + '/M_CityCar'):
+            _cp = load(MAT + '/M_CityCar'); _nc = 0
+            for _p in EAL.list_assets(MAT + '/Inst', recursive=False, include_folder=False):
+                _n = str(_p).split('/')[-1].split('.')[0]
+                if _n.startswith('MI_veh_'):
+                    _mi = load(MAT + '/Inst/' + _n); mel.set_material_instance_parent(_mi, _cp); EAL.save_asset(MAT + '/Inst/' + _n); _nc += 1
+            log('car instances re-parented to M_CityCar:', _nc)
+    except Exception as _ex: log('WARN re-parent cars:', _ex)
     make_leaves()   # (r08) tree leaves: defined above the mat block so the light 'leaves' step can rebuild only this material
     # (r06) far field. M_CityFarMass = farshore.js createMassMaterial port (far-shore blocks: window grid, spandrels, glass towers, night lights);
     # vertex alpha = window flag from the exporter (0 none / 0.5 windows / 1 glass), colour = block tone.
@@ -744,7 +778,7 @@ def mi_for(rec):
     path = f'{MAT}/Inst/MI_{key}'
     if EAL.does_asset_exist(path): return load(path)
     mi = at.create_asset('MI_' + key, MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-    mel.set_material_instance_parent(mi, load(MAT + ('/M_CityProp' if rec.get('proto') and 'aPart.x' in rec.get('uv', []) else '/M_CityVC')))
+    mel.set_material_instance_parent(mi, load(MAT + ('/M_CityCar' if key.startswith('veh_') and EAL.does_asset_exist(MAT + '/M_CityCar') else '/M_CityProp' if rec.get('proto') and 'aPart.x' in rec.get('uv', []) else '/M_CityVC')))   # (r10) cars: clear coat
     col = mat.get('color') or [1, 1, 1]
     if key.endswith('_bark'): col = [0.33, 0.29, 0.25]  # ez-tree bark (browser: bark texture + vertex AO)
     if key.endswith('_bark'): mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(*col, 1))
