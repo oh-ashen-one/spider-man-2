@@ -23,9 +23,9 @@ bottom half 64 portrait cells 256 x 512 (16 x 4, index = row * 16 + col). `ts_si
 | L 26 | FROSTED HALOS, "Part of a Heavenly Breakfast" | L 43 (Citrus & Co) |
 | L 33 | BOTANICA, "Now Playing, Majestic Theatre" | L 46 (Dinosaurs Alive) |
 | L 34 | FROSTED HALOS, "Start Bright" | L 20 (Big Apple Burger) |
-| L 39 | HELL'S KITCHEN BLUES, "New Season Streaming" | L 41 (Neon Racers) |
+| L 39 | HELL'S KITCHEN BLUES, "New Season Streaming"; its round-05 donor L41 was the "NEON RACERS - OUT NOW" game key art (round-06 critic) | **original art**: NIGHT LANTERN MARKET (paper lanterns over a pier) |
 | L 27 | COLTEX SPORT (sneaker brand; round-04 critic: too close to the real game's COLEXCO) | L 4 (Lumen X5) |
-| P 27 | COLTEX - "Own the Court" (same brand, portrait cell) | P 8 (Kinetix, "Rise Above") |
+| P 27 | COLTEX - "Own the Court" (same brand, portrait cell); its round-04 donor P8 was a basketball-shoe photo | **original art**: PLANT A TREE leaf poster |
 | P 38 | COLEXCO - "Run the City" (near-copy of the real game's brand) | P 15 (Skyward Air) |
 | L 35 | COLEXCO SPORT (red-on-white sneaker ad; the "COLEX SPOR..." banner in S6, found after the round-04 critic note) | L 47 (Big Apple Tours) |
 | L 32 | HAUTE UNLIMITED, "New York - Paris - Milan" (fictional brand copied from the real game; round-05 critic) | L 7 (Vantor) |
@@ -40,6 +40,14 @@ bottom half 64 portrait cells 256 x 512 (16 x 4, index = row * 16 + col). `ts_si
 | P 13 | ROXXON, "Fueling Tomorrow" | P 31 (Sol Airways) |
 | P 39 | FROSTED HALOS | P 49 (Chasing Waves) |
 | P 41 | HYDRA PRO | P 18 (Glacier Spring) |
+| L 23 | "SEE SOMETHING? SAY SOMETHING." + a call number, police-light strip (the real transit-authority slogan; round-06 critic, S6 near x 1270 y 210) | **original art**: RIVERSIDE GARDEN WEEKEND (flat hills, sun, flowers) |
+| L 41 | "NEON RACERS - OUT NOW" (racing-franchise key art; round-06 critic, S5 / S6) | **original art**: HARBOR POOL (waves and a sun disc) |
+| L 61 | "STAR RAIDERS 3 - OUT NOW" (game key art, same pattern; not named by the critic, removed with L39 / L41) | **original art**: LATE NIGHT BAKERY (crescent moon, bread) |
+| P 8 | KINETIX "RISE ABOVE": basketball-shoe photograph, the S3 wall mural (round-06 critic: "looks like real product photography") | **original art**: GOOD MORNING, CITY (painted skyline sunrise, no photograph, no shoe) |
+
+The six `original art` cells are drawn from scratch by `tools/export/ip_original_art.py` (PIL shapes and system fonts, no source imagery, no
+generated-image prompt): `ip_sanitize.py` calls it for every table row whose donor is `art`. Round 07 additions: L23, L41, L61, P8 and the rewritten
+L39 / P27 rows above.
 
 Reasons: Oscorp, Osborn, Roxxon, Daily Bugle, Empire State University and Hydra are Marvel-universe names; Frosted Halos and Botanica are
 brands from the real game (named by the critic, round 03); "Hell's Kitchen Blues" points at the Marvel / Netflix Hell's Kitchen material.
@@ -77,7 +85,7 @@ real or fictional franchise. If any of these turns out to collide with a real br
 ## Verification (re-run each round)
 
 `python3 tools/export/ip_ocr_check.py docs/night1/city/round-NN [_scratch/city/tex]` OCRs the eight 4K frames of the round and every cell of the sanitised atlases against the denylist
-(Oscorp, Osborn, Roxxon, Bugle, Frosted Halos, Botanica, Mira, Hydra, Empire State, Coltex, Colexco, Haute, Astor, Madison, Boreal, Outdoor, Knights ...). Round 06: 0 hits.
+(Oscorp, Osborn, Roxxon, Bugle, Frosted Halos, Botanica, Mira, Hydra, Empire State, Coltex, Colexco, Haute, Astor, Madison, Boreal, Outdoor, Knights, see something / say something, neo / neon racer, out now ...; the list lives in `docs/night1/city/spec_regions.json`, key `ip_denylist`, shared with `tools/export/city_spec_check.py --ip`).
 
 ### How the exclusions were built
 

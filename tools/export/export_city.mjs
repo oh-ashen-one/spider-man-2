@@ -17,7 +17,7 @@
 //   other    UV0 uv (or 0) | COLOR color (if any) | further attributes packed two floats per UV channel (see manifest)
 // UE import (Interchange glTF): UE = (x, z, y) * 100 cm -> X east, Y south (north = -Y), Z up; see docs/night1/city/EXPORT.md
 //
-// usage: node tools/export/export_city.mjs [--tiles ix0,iz0,ix1,iz1] [--out dir] [--url http://127.0.0.1:5202/]
+// usage: node tools/export/export_city.mjs [--tiles ix0,iz0,ix1,iz1] [--out dir] [--url http://127.0.0.1:<SM2_CITY_PORT, default 5202>/]
 import { chromium } from 'playwright-core';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -27,9 +27,10 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const [tx0, tz0, tx1, tz1] = arg('tiles', '-1,-2,1,0').split(',').map(Number); // inclusive tile index range
-const OUT = path.resolve(arg('out', '/Users/midir/sm2-n1/_scratch/city/export/midtown3x3'));
-const URL0 = arg('url', 'http://127.0.0.1:5202/');
-const PROFILE = arg('profile', '/Users/midir/sm2-n1/_scratch/city/chrome-profile');
+const SCRATCH = process.env.SM2_CITY_SCRATCH || '/Users/midir/sm2-n1/_scratch/city';   // (r07) parameterised: SM2_CITY_SCRATCH, SM2_CITY_PORT
+const OUT = path.resolve(arg('out', process.env.SM2_CITY_EXPORT || path.join(SCRATCH, 'export', 'midtown3x3')));
+const URL0 = arg('url', `http://127.0.0.1:${process.env.SM2_CITY_PORT || '5202'}/`);
+const PROFILE = arg('profile', path.join(SCRATCH, 'chrome-profile'));
 const T = 256;
 const region = { x0: tx0 * T, z0: tz0 * T, x1: (tx1 + 1) * T, z1: (tz1 + 1) * T };
 const [lx0, lz0, lx1, lz1] = arg('lodtiles', '-4,-14,3,13').split(',').map(Number); // far ring (facade LOD masses)

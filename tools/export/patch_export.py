@@ -11,7 +11,9 @@ usage: patch_export.py [export_dir]      (default _scratch/city/export/midtown3x
 import glob, json, os, struct, sys
 import numpy as np
 
-EXPORT = sys.argv[1] if len(sys.argv) > 1 else '/Users/midir/sm2-n1/_scratch/city/export/midtown3x3'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from citypaths import EXPORT as _EXPORT
+EXPORT = sys.argv[1] if len(sys.argv) > 1 else _EXPORT
 SHOTS = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../unreal/WebHomage/Scripts/city_shots.json')))
 CLEAR = 25.0
 

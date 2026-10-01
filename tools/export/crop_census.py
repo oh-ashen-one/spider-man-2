@@ -8,7 +8,7 @@ sid, W, H, x0, y0, x1, y1 = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), *[i
 here = os.path.dirname(os.path.abspath(__file__))
 shots = {s['id']: s for s in json.load(open(os.path.join(here, '../../unreal/WebHomage/Scripts/city_shots.json')))}
 s = shots[sid]
-E = json.load(open('/Users/midir/sm2-n1/_scratch/city/export/midtown3x3/streetkit.json'))['elements']
+E = json.load(open(os.path.join(__import__('citypaths').EXPORT, 'streetkit.json')))['elements']
 pos = np.array(s['pos'], float); tgt = np.array(s['target'], float)
 f = tgt - pos; f /= np.linalg.norm(f); r = np.cross(f, [0, 1.0, 0]); r /= np.linalg.norm(r); u = np.cross(r, f)
 focal = (W / 2) / math.tan(math.radians(s.get('fov', 70)) / 2)
