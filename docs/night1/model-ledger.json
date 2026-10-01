@@ -593,6 +593,20 @@
     5,
     4
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 17,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
   }
  ],
  "agents": [

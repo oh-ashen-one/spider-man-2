@@ -1,5 +1,5 @@
 {
- "updated": "21:01",
+ "updated": "21:57",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 16,
-   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
-   "gap": "Tricks fire from street level into dark facades: flip from >= 3 m above the roofline, pick the sun-side yaw at release, faster camera blend-in; sky behind the hero in >= 35% of trick frames (now 2%)."
+   "round": 17,
+   "verdict": "fails \u2014 lowest 6 (Opus 5.5)",
+   "gap": "Bodies freeze mid-trick: limbs must keep moving every 0.1 s; replace the shared frozen inverted split with a continuous unwind; a distinct shape per program."
   },
   {
    "id": "P4",
@@ -803,6 +803,14 @@
    "verdict": "fails",
    "gap": "Fix the new grey untextured hero arm; >=4 reactions, 2 simultaneous knockdowns, 2 distinct get-ups and no 2 s idle guard in every fight clip.",
    "notes": "Scripted fight choreography: 5 hit reactions (4 clips), 2 knockdowns lying ~2.9 s, no all-idle second; enemies 5\u21926; tee holes fixed. But a new untextured grey hero arm dropped image quality 5\u21924 \u2014 NOT merged (integration keeps r8)."
+  },
+  {
+   "t": "21:57",
+   "piece": "P3 Traversal",
+   "round": 17,
+   "verdict": "fails",
+   "gap": "Bodies freeze mid-trick: limbs must keep moving every 0.1 s; replace the shared frozen inverted split with a continuous unwind; a distinct shape per program.",
+   "notes": "Camera broke its stall (5\u21926) and no axis is below 6: tricks moved above the roofs (apex +3.2..+14.3 m), sky behind the hero 2%\u219279%, sun behind the camera on every flip, hero glare <1%. Flips 6 (below r15's 7) \u2014 not merged yet; integration keeps r15. Round 18 on Opus."
   }
  ],
  "perf": [
