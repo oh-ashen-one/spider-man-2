@@ -147,9 +147,16 @@ public:
 	double FlowRoofTarget(const FVector& Dir, double* OutRoofOverStreet = nullptr) const;
 	/** Round 17: target - hips now (m; <= 0 already above it); -1e9 when there is no roofline rule here. Cached 0.1 s. */
 	double FlowApexGap() const;
+	/** Round 18 (critic r17: f4's 4th flip missed its catch over a plaza): is a web in reach where a flow flip released now ends (Dur s of flight at the
+	 *  current horizontal speed x CatchSpeedK)? The auto-chain only presses the trick when it is (else a plain release). Cached 0.1 s. */
+	bool CatchReachable(double Dur) const;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchSpeedK = 1.05f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchFlightS = 1.6f; // release -> catch press of the longest flow program
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchGuard = 1.f;    // 0 = off
 	/** Round 17: apex gain (m) of a flow flip released now with vertical speed Vz0 (program boost included). */
 	double FlowApexGain(double Vz0, const struct FWebFlipProgram* FP) const;
 	mutable double GapCacheT = -1e9, GapCacheV = -1e9;
+	mutable double CatchCacheT = -1e9; mutable bool bCatchCacheV = true;
 	FVector RouteDir = FVector::ZeroVector; // round 17: smoothed horizontal travel direction (unit)
 	double FlowApexWant = 0.0; // telemetry: apex hips Z the last flow flip was solved for (world m; 0 none)
 	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)

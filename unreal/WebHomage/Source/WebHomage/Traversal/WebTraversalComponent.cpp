@@ -1395,6 +1395,21 @@ double UWebTraversalComponent::FlowApexGap() const
 	return GapCacheV;
 }
 
+bool UWebTraversalComponent::CatchReachable(double Dur) const
+{
+	if (!Anchors) return true;
+	if (S.Clock - CatchCacheT < 0.1) return bCatchCacheV;
+	CatchCacheT = S.Clock;
+	const FVector Vh(S.Vel.X, S.Vel.Y, 0.0);
+	if (Vh.Size() < 2.0) { bCatchCacheV = true; return true; }
+	// a flow flip's climb (apex solve) and fall roughly cancel over the program: the catch is searched from the release height
+	const FVector P = S.Pos + Vh * (Dur * double(CatchSpeedK));
+	const double Fl = FloorAt(P.X, P.Y, P.Z - H + 0.1);
+	FTravAnchor A;
+	bCatchCacheV = Anchors->Find(P, Vh.GetSafeNormal(), nullptr, S.Vel.Size(), Fl, A);
+	return bCatchCacheV;
+}
+
 double UWebTraversalComponent::FlowApexGain(double Vz0, const FWebFlipProgram* FP) const
 {
 	// under FlowFlipGK x G; the program's Up boost lands at 0.3 x its first segment

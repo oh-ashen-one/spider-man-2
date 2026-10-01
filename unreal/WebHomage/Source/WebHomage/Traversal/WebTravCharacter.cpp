@@ -592,7 +592,9 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// (the cut varies 1.25-1.55 s by release count so consecutive swings differ in length)
 			// round 13 (T2 attach -> attach <= 3.3 s): a swing that ends in a flip program is let go at 1.05-1.2 s
 			const int32 EveryNext = Script->TrickEveryAt(TravTime);
-			const bool bTrickNext = EveryNext > 0 && (AutoReleases + 1) % EveryNext == 0 && !Traversal->bTrickLaunch;
+			// round 18 (critic r17 "f4's 4th flip missing its catch"): a flow flip is only pressed when a web is in reach where it ends
+			const bool bCatchOk = !bSwinging || Traversal->CatchGuard <= 0.f || Traversal->CatchReachable(double(Traversal->CatchFlightS));
+			const bool bTrickNext = EveryNext > 0 && (AutoReleases + 1) % EveryNext == 0 && !Traversal->bTrickLaunch && bCatchOk;
 			// (round 14: 1.05-1.2 -> 0.92-1.06 s: the eased backDouble catches 0.07 s later, T2 kept <= 2.65 s)
 			const float LongCut = bTrickNext ? 0.92f + 0.14f * float((AutoReleases * 37) % 7) / 6.f : 1.25f + 0.3f * float((AutoReleases * 37) % 7) / 6.f;
 			// round 14: a swing that ends in a flow flip is let go at LongCut even before it rises (the flip solves its own climb; a flat
@@ -617,6 +619,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 					LastSkyRelease = AutoReleases; LastSkyT = TravTime; SkyPeakH = 0.0; // round 10: sky launch = jump pressed while the web is still held (jump-release) + trick pressed with it
 					I.bJump = true; I.bTrick = true; bKeepSwingThisFrame = true;
 					bSkyAuto = true; bSkyWasTrick = false; SkyTricksLeft = FMath::Max(0, SkyTricks - 1); SkyAutoT = 0.0;
+				}
+				else if (Every > 0 && AutoReleases % Every == 0 && !bCatchOk)
+				{
+					UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV catch guard: no web in reach %.1f s ahead at t %.2f -> plain release"), Traversal->CatchFlightS, TravTime);
 				}
 				else if (Every > 0 && AutoReleases % Every == 0)
 				{ // trick pressed together with this release (round 12: with bTrickLaunch that release is a sky launch: same bookkeeping)
@@ -718,6 +724,27 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			const FWebFlipPose Ahead = WebFlips::Sample(*FPc, FMath::Min(Ft + 0.22f, FPc->Dur()));
 			const float Fut = Ahead.bValid ? FMath::Lerp(Cmp(Ahead.A), Cmp(Ahead.B), Ahead.W) : Now;
 			CI.FlipCompact = FMath::Min(Now, Fut);
+		}
+		// round 18: the hero's vertical extent for the trick camera's distance (critic r17 TC-C "distance 4.1-4.4 m, h p90 .37-.46"): the posed body
+		// now (joints of the previous frame's pose + 0.2 m pad) and the program's shape table 0.1 / 0.25 s ahead -- the larger wins, so the
+		// camera backs out ahead of an opening shape and only comes in once a compact one has begun
+		CI.FlipExtent = 0.f;
+		if (FPc && bHeroMesh)
+		{
+			const USkeletalMeshComponent* M = GetMesh();
+			double Zmin = 1e9, Zmax = -1e9;
+			for (const TCHAR* Bn : { TEXT("head"), TEXT("hips"), TEXT("hand_L"), TEXT("hand_R"), TEXT("foot_L"), TEXT("foot_R") })
+			{
+				const double Z = M->GetBoneLocation(FName(Bn)).Z / 100.0;
+				Zmin = FMath::Min(Zmin, Z); Zmax = FMath::Max(Zmax, Z);
+			}
+			float Ext = Zmax > Zmin ? float(Zmax - Zmin) + 0.2f : 0.f;
+			for (const float Ah : { 0.1f, 0.25f })
+			{
+				const FWebFlipPose Pa = WebFlips::Sample(*FPc, FMath::Min(Ft + Ah, FPc->Dur()));
+				if (Pa.bValid) Ext = FMath::Max(Ext, FMath::Lerp(WebFlips::ShapeExtent(Pa.A), WebFlips::ShapeExtent(Pa.B), Pa.W));
+			}
+			CI.FlipExtent = Ext;
 		}
 	}
 	// round 15: the direction to the sun for the sun-aware trick camera (the level's atmosphere sun light 0; retried for the first
