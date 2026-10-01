@@ -108,7 +108,7 @@ void AWHLifeCrowd::Populate(const FVector& Cam)
 	for (int32 EI = 0; EI < Edges.Num(); ++EI)
 	{
 		const FEdge& E = Edges[EI];
-		if (E.Kind == 0 && E.Len >= 3.f) Cum += E.Len * (E.Axis == 0 ? PerKmAvenue : PerKmStreet);
+		if (E.Kind == 0 && E.Len >= 3.f) Cum += E.Len * EdgeDensity(E);
 		EdgeCum.Add(Cum);
 	}
 	uint32 R = 0xC0FFEE ^ (uint32)(Seed * 2654435761u); if (!R) R = 1;
@@ -121,13 +121,13 @@ void AWHLifeCrowd::Populate(const FVector& Cam)
 		const FEdge& E = Edges[EI]; if (E.Kind != 0 || E.Len < 3.f) continue;
 		const FVector2D Mid = (Pts[E.A] + Pts[E.B]) * 0.5f * 100.f;
 		if ((Mid - C2).SizeSquared() > R2 * 1.2f) continue;
-		Expect += E.Len / 1000.f * (E.Axis == 0 ? PerKmAvenue : PerKmStreet);
+		Expect += E.Len / 1000.f * EdgeDensity(E);
 	}
 	const float Thin = Expect > (float)MaxWalkers ? (float)MaxWalkers / Expect : 1.f;
 	for (int32 EI = 0; EI < Edges.Num(); ++EI)
 	{
 		const FEdge& E = Edges[EI]; if (E.Kind != 0 || E.Len < 3.f) continue;
-		const float Dens = (E.Axis == 0 ? PerKmAvenue : PerKmStreet) * Thin;
+		const float Dens = EdgeDensity(E) * Thin;
 		const float Target = E.Len / 1000.f * Dens;
 		int32 N = FMath::FloorToInt(Target); if (Ff(R) < Target - N) ++N;
 		for (int32 I = 0; I < N && Walkers.Num() < MaxWalkers; ++I)
@@ -159,7 +159,7 @@ void AWHLifeCrowd::BuildRespawnEdges(const FVector& Cam)
 			if (D >= Lo && D <= Hi) bIn = true;
 		}
 		if (!bIn) continue;
-		Cum += E.Len * (E.Axis == 0 ? PerKmAvenue : PerKmStreet);
+		Cum += E.Len * EdgeDensity(E);
 		RespIdx.Add(EI); RespCum.Add(Cum);
 	}
 }
@@ -187,7 +187,7 @@ bool AWHLifeCrowd::Respawn(FWalker& W, const FVector& Cam, bool bPreferOffscreen
 		const FVector2D Off(P.X * 100.f - C2.X, P.Y * 100.f - C2.Y);
 		const float D = Off.Size();
 		if (D < DMin || D > DMax) continue;
-		if (bAhead && Try < 40 && FVector2D::DotProduct(Off / D, Dir) < 0.5f) continue;
+		if (bAhead && Try < 40 && FVector2D::DotProduct(Off / D, Dir) < AheadCosMin) continue;
 		if (PC && VW > 0 && Try < 30)
 		{
 			FVector2D Sc; if (PC->ProjectWorldLocationToScreen(FVector(P.X * 100.f, P.Y * 100.f, SidewalkZ + 90.f), Sc, false) && Sc.X > -80 && Sc.Y > -80 && Sc.X < VW + 80 && Sc.Y < VH + 80) continue;
@@ -230,6 +230,7 @@ void AWHLifeCrowd::BeginPlay()
 		if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeFill="), V)) FillLux = V;
 		if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeFillPitch="), V)) FillPitchDeg = V;
 		if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeFillAll"))) bFillShadeOnly = false;
+		if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeAheadCos="), V)) AheadCosMin = V;
 		if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeAheadSpeed="), V)) AheadSpeedCms = V;   // cm/s; 1e9 = the round 02 behaviour (recycle off-screen only)
 		if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeBand="), S)) { TArray<FString> P; S.ParseIntoArray(P, TEXT(":"), true); if (P.Num() >= 4) { AvenueBandMin = FCString::Atof(*P[0]); AvenueBandMax = FCString::Atof(*P[1]); StreetBandMin = FCString::Atof(*P[2]); StreetBandMax = FCString::Atof(*P[3]); } }
 		FillSteps.Reset();
@@ -254,7 +255,7 @@ void AWHLifeCrowd::BeginPlay()
 		FillLight->RegisterComponent();
 		UE_LOG(LogWHCrowd, Log, TEXT("[crowd] fill light %.0f lux (steps %d), pitch %.0f, lighting channel 1"), FillLux, FillSteps.Num(), FillPitchDeg);
 	}
-	UE_LOG(LogWHCrowd, Log, TEXT("[crowd] density %.0f / %.0f per km, near-all %.0f m, margin %.0f deg, band av %.2f..%.2f st %.2f..%.2f"), PerKmAvenue, PerKmStreet, NearAllRadius / 100.f, ViewMarginDeg, AvenueBandMin, AvenueBandMax, StreetBandMin, StreetBandMax);
+	UE_LOG(LogWHCrowd, Log, TEXT("[crowd] density %.0f / %.0f per km (east avenue sidewalks x %.2f), near-all %.0f m, margin %.0f deg, band av %.2f..%.2f st %.2f..%.2f"), PerKmAvenue, PerKmStreet, AvenueEastFactor, NearAllRadius / 100.f, ViewMarginDeg, AvenueBandMin, AvenueBandMax, StreetBandMin, StreetBandMax);
 	ParseWalk();
 	Pool.Reset(); PoolModel.Reset(); SlotOwner.Reset(); FreeSlots.SetNum(Meshes.Num());
 	for (int32 M = 0; M < Meshes.Num(); ++M)

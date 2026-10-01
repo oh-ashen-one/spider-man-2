@@ -486,6 +486,7 @@ return rgb * lerp(0.02, 0.15, on);''')
         cr.set_editor_property('seed', 11)
         cr.set_editor_property('per_km_avenue', float(os.environ.get('SM2_LIFE_PERKM_AV', '1600')))     # walkers per km of sidewalk edge (round 03: 1600 / 1100; round 02 1300 / 860; round 01 950 / 640). Keep equal to the C++ default (a value equal to the default is not serialised)
         cr.set_editor_property('per_km_street', float(os.environ.get('SM2_LIFE_PERKM_ST', '1100')))
+        cr.set_editor_property('avenue_east_factor', float(os.environ.get('SM2_LIFE_EAST', '1.3')))      # density factor of the east avenue sidewalks (round 03). Keep equal to the C++ default
         cr.set_editor_property('num_variants', 5)
         cr.set_editor_property('pool_per_model', 6)
         pr = spawn(unreal.WHLifeProbe, unreal.Vector(0, 0, 0), label='LifeProbe')

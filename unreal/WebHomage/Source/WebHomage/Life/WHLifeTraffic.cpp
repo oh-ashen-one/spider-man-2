@@ -266,6 +266,7 @@ void AWHLifeTraffic::BeginPlay()
 	Super::BeginPlay();
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeStats="), StatsInterval);
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeClearAhead="), ClearAheadM);
+	{ FString G; if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeClearCurb="), G)) { TArray<FString> P; G.ParseIntoArray(P, TEXT(":"), true); if (P.Num() >= 1) ClearCurbAheadM = FCString::Atof(*P[0]); if (P.Num() >= 2) ClearCurbOffsetM = FCString::Atof(*P[1]); } }
 	FParse::Value(FCommandLine::Get(), TEXT("WHLifeDensity="), DensityScale);
 	{ FString G; if (FParse::Value(FCommandLine::Get(), TEXT("WHLifeParkGap="), G)) { TArray<FString> P; G.ParseIntoArray(P, TEXT(":"), true); if (P.Num() >= 1) ParkedGapEveryM = FCString::Atof(*P[0]); if (P.Num() >= 2) ParkedGapLenM = FCString::Atof(*P[1]); if (P.Num() >= 3) ParkedGapSeed = FCString::Atoi(*P[2]); if (P.Num() >= 4) ParkedGapStartM = FCString::Atof(*P[3]); } }
 	if (FParse::Param(FCommandLine::Get(), TEXT("WHLifeRT"))) bVisibleInRayTracing = true;
@@ -815,6 +816,7 @@ void AWHLifeTraffic::PushInstances()
 				const FVector2D Dv = Ctr - ClearM; const float Ah = FVector2D::DotProduct(Dv, ClearFwd), Cr = FMath::Abs(FVector2D::DotProduct(Dv, FVector2D(-ClearFwd.Y, ClearFwd.X)));
 				const float Reach = FMath::Max(C.Len, C.Wid) * 0.5f;
 				bHide = Ah > -Reach && Ah < ClearAheadM + Reach && Cr < ClearAheadHalfWidthM + C.Wid * 0.5f;
+				if (!bHide && ClearCurbAheadM > ClearAheadM) bHide = Ah > -Reach && Ah < ClearCurbAheadM + Reach && Cr + C.Wid * 0.5f > ClearCurbOffsetM && Cr < ClearAheadHalfWidthM + C.Wid * 0.5f;   // curb lanes reach farther
 			}
 		}
 		Xf[C.Type][C.Inst] = bHide ? FTransform(FRotator::ZeroRotator, FVector(0, 0, -5000.f), FVector(0.001f)) : FTransform(FRotator(Pitch, Yaw, 0.f), FVector(Ctr.X * 100.f, Ctr.Y * 100.f, 1.f));
