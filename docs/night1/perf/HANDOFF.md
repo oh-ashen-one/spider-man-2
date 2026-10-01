@@ -7,6 +7,12 @@ Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. 
 Spec `SPEC.md` (P1-P11), shot list `SHOTLIST.md` (round-06 update at the end), evidence `round-01` .. `round-06/` (`NOTES.md` = every fact of the round, `TABLE.md`, `CLIPS.md`, `s1_gate*.json`, `LOOK_GATE_raw.md`, `crops_r02.json`, `perf/<session>/`, `stills/`, `cmp/`, `route_30s.mp4`, `route_life_30s.mp4`).
 Critics: r01 FAILS, r02 APPROACHES, r03 FAILS, r04 APPROACHES, r05 APPROACHES (`critic/`). Round-06 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r06/pack` (10 pairs incl. a traffic + crowd still and clip; key `pack.key.json` next to it, `pairs.json`), NOT scored yet.
 
+## ROUND 07 IN PROGRESS (Opus 5.5, started 2026-09-30 20:37) - if you are a fresh session, resume from here
+- Committed first, unchanged for the round: `tools/perf_ue2/look_gate.py` (round-07 edition: fixed views / crops / metrics / pass lines; `python3 tools/perf_ue2/look_gate.py <stills dir>`; exit 0 = PASS). On `r06/final` it FAILS (S1 canopy tile foliage 0.57x, S2 tree line 0.83x, S2 tile 0.33x, S7 tile 0.02x vs as found).
+- New checkers: `tools/perf_ue2/frame_gap.py <csv>` (critic's same-row top-5 % FT-GPU gap + previous-row alignment + RHIT stall columns), `tools/perf_ue2/gpu_procs.py` (per-process GPU time from ioreg; perf_route.py now records `other_gpu` per config and marks it VOID).
+- Finding so far (CPU-side, round-06 CSVs): CSV GPUTime is the PREVIOUS frame's (corr FT[n]~GPU[n-1] 0.74-0.86 vs same row 0.48-0.51); static S2 (GPU-bound, mean gap 0.03) still reads a same-row top-5 % gap of 1.15. Route runs carry a ~1 ms mean gap while moving (ship 1.15-1.72, life 0.78-1.01).
+- Running: `_scratch/perf/r07/chain_d1.sh` (exclusive perf, RHITStalls/RHITFlushes CSV categories, candidate levers), `chain_l1.sh` (look probes: hit lighting, round-04 content). Scratch `_scratch/perf/r07/`.
+
 ## State at the end of round 06 (all numbers `round-06/NOTES.md`; official exclusive session `round-06/perf/f1`, 3840x2160 output, internal 1920x1080, fixed step)
 Build: same as round 05 (integration 3aa92ba; traversal r15/r16 + characters r7 NOT merged this round).
 Shipped path: preset **`overrides/perf60_hwl3.cvars` = `perf60_hwl2` + `r.SkinCache.Mode=0`** + `r.ScreenPercentage 50` in `Config/Mac/MacEngine.ini` (`build_map.py` default now); content = rebuilt + `perf_apply rt_lite_trees,rt_proxy_trees,rt_occluders,cloud` (`rt_occluders` new: sidewalk sheds / shelters / kiosks / subway entrances / dumpsters back in ray tracing).
