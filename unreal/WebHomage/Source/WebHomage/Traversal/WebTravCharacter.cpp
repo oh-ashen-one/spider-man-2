@@ -42,12 +42,13 @@
 #include "UnrealClient.h"
 #include "UObject/ConstructorHelpers.h"
 
-// round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable
+// round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable; 2026-10-01 -> 0.0025
 static TAutoConsoleVariable<float> CVarWHMouseSensitivity(TEXT("wh.MouseSensitivity"), 1.0f,
 	TEXT("Mouse look sensitivity multiplier for the traversal hero (1 = default, radians per mouse unit = MouseRadPerUnit x this)."), ECVF_Default);
 
 namespace
 {
+	constexpr float MaxMouseDeltaPx = 120.f;   // per-frame mouse delta clamp (capture warps / focus changes)
 	const FName N_swingLow(TEXT("swingLow")), N_trick(TEXT("trick")), N_tuckFlip(TEXT("tuckFlip")), N_layout(TEXT("layout")),
 		N_corkscrew(TEXT("corkscrew")), N_scissor(TEXT("scissor")), N_rise(TEXT("rise")), N_dive(TEXT("dive")), N_zipPull(TEXT("zipPull")),
 		N_release(TEXT("release")), N_jumpLaunch(TEXT("jumpLaunch")), N_wallRun(TEXT("wallRun")), N_wallRunSide(TEXT("wallRunSide")),
@@ -699,7 +700,12 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		I.bJump = bJumpKey; I.bDrop = bDropKey; I.bQuick = bQuickKey; I.bTrick = bTrickKey;
 		// look: mouse (yaw right +, pitch down +) and right stick rate
 		const float MSens = MouseRadPerUnit * FMath::Max(0.f, CVarWHMouseSensitivity.GetValueOnGameThread());
-		I.Look = FVector2D(MouseAccum.X * MSens, -MouseAccum.Y * MSens)
+		// owner playtest 2026-10-01: mouse look only while the game has the mouse (left click captures, Escape releases). With the cursor free,
+		// moving it over the window -- or the right-mouse capture warp when a swing starts -- produced huge one-frame deltas. Clamp spikes too.
+		const AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(GetController());
+		const bool bMouseLook = !WPC || WPC->IsMouseCaptured();
+		const FVector2D MouseD = bMouseLook ? FVector2D(FMath::Clamp(MouseAccum.X, -MaxMouseDeltaPx, MaxMouseDeltaPx), FMath::Clamp(MouseAccum.Y, -MaxMouseDeltaPx, MaxMouseDeltaPx)) : FVector2D::ZeroVector;
+		I.Look = FVector2D(MouseD.X * MSens, -MouseD.Y * MSens)
 			+ FVector2D(PadLook.X * PadLookRate.X, -PadLook.Y * PadLookRate.Y) * Dt;
 	}
 	MouseAccum = FVector2D::ZeroVector;
