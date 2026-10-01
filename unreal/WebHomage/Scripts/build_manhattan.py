@@ -107,6 +107,9 @@ def ue_python(name, code, env=None, timeout=7200):
     if bad:
         print('\n'.join(bad[:30]))
         raise SystemExit('python error in ' + name + ' (log ' + lg + ')')
+    # (island r01) a commandlet killed by a signal / system quit can still return rc 0 (the 14:24 reboot): require the success line
+    if 'Python script executed successfully' not in txt:
+        raise SystemExit('commandlet %s did not finish its script (rc %d; log %s)' % (name, r.returncode, lg))
     return txt
 
 
@@ -177,7 +180,10 @@ def step_city():
         if os.path.exists(f): os.remove(f)
     for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
         safe_rmtree(os.path.join(content, rel))
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp", "wp_map": %r}' % WP_MAP), env)
+    # (island r01 resume) SM2_ISLAND_CITY_STEPS re-runs only some build_city.py steps on the existing /Game/City content, e.g. "wp" after the
+    # 2026-10-01 14:24 reboot killed the pass in the WP step (the 64 min import before it had saved everything else)
+    steps = os.environ.get('SM2_ISLAND_CITY_STEPS', 'clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp')
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), env)
 
 
 def step_traversal():

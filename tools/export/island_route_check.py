@@ -8,6 +8,8 @@ city export the map was built from.  Answers the M1 acceptance questions for one
   mid-air       a SUPPORTED mode (ground / perch / land) with no surface under the feet: neither a WHBox top (footprint contains the feet,
                 top within 0.45 m) nor the street (feet <= 0.5 m) -- or a box top that is a phantom (drawn roof > 1.5 m lower, coll_audit grid)
   wall-air      wall mode with no box face within 1.2 m of the feet
+  web-air       a web anchor (anchor_x/y/z while swinging, zt_x/y/z zip target) farther than 1.0 m from every WHBox and above the street
+                (z > 0.5 m): a web stuck to nothing; counted once per distinct anchor
   facadeLod     distance from every hero position to the nearest facadeLod (bare-mass) tile of the build (target: none within 1.2 km)
 
     python3 tools/export/island_route_check.py <export_dir> <telemetry.csv> [more.csv ...] [--out report.json]
@@ -38,7 +40,8 @@ def lod_tiles(E):
 def check(E, csv_path, B, L, audit_hv=None, reg=None):
     rows = list(csv.DictReader(open(csv_path)))
     f = lambda r, k: float(r[k]) if r.get(k) not in (None, '') else 0.0
-    ev = {'fall_through': [], 'stuck': [], 'mid_air': [], 'wall_air': []}
+    ev = {'fall_through': [], 'stuck': [], 'mid_air': [], 'wall_air': [], 'web_air': []}
+    seen_anchor = set(); n_anchor = 0
     inside_t = 0.0; stuck_t = 0.0; prev_t = None; lod_min = math.inf
     n_sup = 0
     for r in rows:
@@ -77,6 +80,17 @@ def check(E, csv_path, B, L, audit_hv=None, reg=None):
                     phantom = float(audit_hv[rw, c]) < z - 1.5
             if not (near_box or street) or phantom:
                 ev['mid_air'].append([round(t, 3), mode, r['sub'], round(x, 1), round(y, 1), round(z, 2), 'phantom box' if phantom else 'no surface'])
+        for kx, ky, kz in (('anchor_x', 'anchor_y', 'anchor_z'), ('zt_x', 'zt_y', 'zt_z')):
+            ax, ay, az = f(r, kx), f(r, ky), f(r, kz)
+            if ax == 0.0 and ay == 0.0 and az == 0.0: continue
+            k = (round(ax, 1), round(ay, 1), round(az, 1))
+            if k in seen_anchor: continue
+            seen_anchor.add(k); n_anchor += 1
+            if az <= 0.5: continue
+            dx = np.maximum(np.maximum(B[:, 0] - ax, ax - B[:, 3]), 0); dy = np.maximum(np.maximum(B[:, 1] - ay, ay - B[:, 4]), 0)
+            dz = np.maximum(np.maximum(B[:, 2] - az, az - B[:, 5]), 0)
+            dmin = float(np.min(np.sqrt(dx * dx + dy * dy + dz * dz))) if len(B) else math.inf
+            if dmin > 1.0: ev['web_air'].append([round(t, 3), kx[:-2], round(ax, 1), round(ay, 1), round(az, 1), round(dmin, 2)])
         if mode == 'wall':
             near = (B[:, 0] - 1.2 <= x) & (x <= B[:, 3] + 1.2) & (B[:, 1] - 1.2 <= y) & (y <= B[:, 4] + 1.2) & (B[:, 2] - 0.5 <= z) & (z <= B[:, 5] + 0.5)
             if not near.any(): ev['wall_air'].append([round(t, 3), round(x, 1), round(y, 1), round(z, 2)])
@@ -86,7 +100,7 @@ def check(E, csv_path, B, L, audit_hv=None, reg=None):
     for r in rows: modes[r['mode']] = modes.get(r['mode'], 0) + 1
     return {'csv': os.path.basename(csv_path), 'frames': len(rows), 'seconds': round(dur, 2), 'path_m': round(path, 1), 'modes': modes,
             'supported_frames': n_sup, 'fall_through': len(ev['fall_through']), 'stuck': len(ev['stuck']), 'mid_air_frames': len(ev['mid_air']),
-            'wall_air_frames': len(ev['wall_air']), 'facadeLod_min_dist_m': None if lod_min == math.inf else round(lod_min, 1), 'events': ev,
+            'wall_air_frames': len(ev['wall_air']), 'anchors': n_anchor, 'web_air': len(ev['web_air']), 'facadeLod_min_dist_m': None if lod_min == math.inf else round(lod_min, 1), 'events': ev,
             'start': [f(rows[0], 'x_m'), f(rows[0], 'y_m'), f(rows[0], 'z_m')] if rows else None,
             'end': [f(rows[-1], 'x_m'), f(rows[-1], 'y_m'), f(rows[-1], 'z_m')] if rows else None}
 
@@ -103,13 +117,14 @@ def main():
     res = [check(E, c, B, L, hv, reg) for c in csvs]
     summ = {'routes': len(res), 'seconds': round(sum(r['seconds'] for r in res), 1), 'fall_through': sum(r['fall_through'] for r in res),
             'stuck': sum(r['stuck'] for r in res), 'mid_air_frames': sum(r['mid_air_frames'] for r in res), 'wall_air_frames': sum(r['wall_air_frames'] for r in res),
+            'anchors': sum(r['anchors'] for r in res), 'web_air': sum(r['web_air'] for r in res),
             'facadeLod_min_dist_m': min((r['facadeLod_min_dist_m'] for r in res if r['facadeLod_min_dist_m'] is not None), default=None),
             'boxes': len(B), 'facadeLod_tiles': len(L)}
     rep = {'summary': summ, 'routes': res}
     if out: json.dump(rep, open(out, 'w'), indent=1)
     for r in res:
-        print('%-34s %5.1f s %6.0f m  fall %d  stuck %d  mid-air %d  wall-air %d  lod-dist %s  modes %s' % (r['csv'], r['seconds'], r['path_m'], r['fall_through'], r['stuck'],
-              r['mid_air_frames'], r['wall_air_frames'], r['facadeLod_min_dist_m'], r['modes']))
+        print('%-34s %5.1f s %6.0f m  fall %d  stuck %d  mid-air %d  wall-air %d  web-air %d/%d  lod-dist %s  modes %s' % (r['csv'], r['seconds'], r['path_m'], r['fall_through'], r['stuck'],
+              r['mid_air_frames'], r['wall_air_frames'], r['web_air'], r['anchors'], r['facadeLod_min_dist_m'], r['modes']))
     print('TOTAL', json.dumps(summ))
 
 
