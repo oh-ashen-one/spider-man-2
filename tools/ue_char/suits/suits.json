@@ -13,17 +13,17 @@
     {
       "id": "verdant",
       "name": "Verdant",
-      "concept": "forest green with brass: V-yoke, ring net, eclipse mark, racing stripes",
+      "concept": "forest green with olive-bronze and brass (round 12 re-block: no black raglans, no chest ring): V-yoke, ring net, arch mark, racing stripes",
       "style": {
         "palette": {
           "body": "#2e5233",
           "crown": "#244128",
-          "deep": "#0f1d12",
-          "ink": "#070d08",
+          "deep": "#4b4a22",
+          "ink": "#1b1a0c",
           "accent": "#d4a843",
           "accent_d": "#9a7a2a",
           "stitch": "#a9c79a",
-          "sole": "#0c110d"
+          "sole": "#17160b"
         },
         "flip": true,
         "net": {
@@ -55,8 +55,8 @@
           "buckle": "round"
         },
         "glyph": {
-          "kind": "orbit",
-          "size": 1.45
+          "kind": "gate",
+          "size": 1.3
         },
         "crown": {
           "kind": "racing"
@@ -67,7 +67,12 @@
           0.45,
           0.62,
           0.45
-        ]
+        ],
+        "arm": {
+          "upper": "body",
+          "fore": "sleeve",
+          "other_fore": "bands"
+        }
       }
     },
     {
@@ -340,17 +345,17 @@
     {
       "id": "saffron",
       "name": "Saffron",
-      "concept": "ochre with umber and bone: leaning slash, square net, ladder mark, ringed sleeves",
+      "concept": "ochre with slate and bone (round 12 re-block: no tan / brown raglan pair, no dark shoulder caps): leaning slash, square net, ladder mark, banded forearm",
       "style": {
         "palette": {
           "body": "#b8791c",
-          "crown": "#2a1a0a",
-          "deep": "#2a1a0a",
-          "ink": "#120a04",
+          "crown": "#2f3a36",
+          "deep": "#2f3a36",
+          "ink": "#141a18",
           "accent": "#efe3c4",
           "accent_d": "#b9a77a",
           "stitch": "#f7e9c0",
-          "sole": "#1a1008",
+          "sole": "#161b19",
           "lens": "#1fae9e"
         },
         "net": {
@@ -386,7 +391,7 @@
           "buckle": "round"
         },
         "arm": {
-          "upper": "deep",
+          "upper": "body",
           "fore": "sleeve",
           "other_fore": "bands"
         },
@@ -404,7 +409,8 @@
           0.78,
           0.62,
           0.38
-        ]
+        ],
+        "sleeves": false
       }
     },
     {

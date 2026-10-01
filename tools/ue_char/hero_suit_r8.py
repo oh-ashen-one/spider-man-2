@@ -111,7 +111,7 @@ def main():
     if '--no-normal' not in sys.argv:
         hh, _ = gutters(r['h'], cov, 24)
         mp, _ = gutters(smooth_mpt(r['mpt'], cov) if r['relief'] else r['mpt'], cov, 24)
-        nn = normal_from_height(hh, mp)
+        nn = normal_from_height(hh, mp, sigma=0.6) if r['relief'] else normal_from_height(hh, mp)     # round 12: sharper cord flanks (tangent_check: sigma 0.9 halved the slope)
         save_png(((nn * 0.5 + 0.5) * 255 + 0.5).astype(np.uint8), out + '/suit_normal_r8.png')
         ro, _ = gutters(r['rough'], cov, 24); ao, _ = gutters(r['ao'], cov, 24)
         orm = np.stack([ao, ro, np.zeros_like(ao)], -1)

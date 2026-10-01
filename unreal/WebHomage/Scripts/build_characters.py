@@ -72,6 +72,8 @@ if 'prep' in STEPS:
     # bezel ring sealed to a lens conformed to the mask) in the UE-only hero GLB; replaces the round-05 browser-suit quality pass (hero_hand_fix / hero_suit_r5 / hero_lens_r5)
     subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r8.py'], check=True, capture_output=True, env=_ENV)
     subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r8.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    # round 12: smooth the torso-side / armpit skin weights (the idle / run poses folded the side of the chest: the sash jog, weave flip and faceted patches)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_weights_r12.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
     subprocess.run(['python3', WT + '/tools/ue_char/eval/underlayer.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
@@ -230,7 +232,59 @@ def build_suit_master():
     blend = E(m, unreal.MaterialExpressionMaterialFunctionCall, -250, 500)
     blend.set_editor_property('material_function', load('/Engine/Functions/Engine_MaterialFunctions02/Utility/BlendAngleCorrectedNormals'))
     MEL.connect_material_expressions(nrm, 'RGB', blend, 'BaseNormal')
-    MEL.connect_material_expressions(dmul, '', blend, 'AdditionalNormal')
+    detail_out = dmul
+    # round 12: the fabric weave is laid out from the PRE-SKINNED 3D position (triplanar, whiteout blend), not from the UV atlas: one continuous weave over
+    # every UV island (the round-11 weave flipped direction and scale at island edges and per stretched triangle).  The local-space weave normal is
+    # rotated onto the skinned vertex normal and converted to tangent space for the blend.  Static switch WeaveFromPosition (default on) keeps the UV path.
+    try:
+        lp = E(m, unreal.MaterialExpressionLocalPosition, -2000, 1200)
+        try: lp.set_editor_property('local_origin', unreal.LocalPositionOrigin.INSTANCE_PRE_SKINNING)
+        except Exception as e_: log('LocalPosition origin enum:', str(e_)[:120]); lp = E(m, unreal.MaterialExpressionPreSkinnedPosition, -2000, 1200)
+        ln = E(m, unreal.MaterialExpressionPreSkinnedNormal, -2000, 1320)
+        vi_p = E(m, unreal.MaterialExpressionVertexInterpolator, -1800, 1200); vi_n = E(m, unreal.MaterialExpressionVertexInterpolator, -1800, 1320)
+        okc = [MEL.connect_material_expressions(lp, '', vi_p, ''), MEL.connect_material_expressions(ln, '', vi_n, '')]
+        vn = E(m, unreal.MaterialExpressionVertexNormalWS, -1800, 1440)
+        wtex = E(m, unreal.MaterialExpressionTextureObjectParameter, -1800, 1560); wtex.set_editor_property('parameter_name', 'WeaveNormal')
+        wt_def = ROOT + '/Shared/Textures/T_Fabric_Twill_N'
+        wtex.set_editor_property('texture', load(wt_def) if EAL.does_asset_exist(wt_def) else load('/Engine/EngineMaterials/FlatNormal'))
+        wtex.set_editor_property('sampler_type', ST.SAMPLERTYPE_NORMAL)
+        wsc = scalar(m, 'WeaveTilesPerCm', 0.694, -1800, 1680)
+        cw = E(m, unreal.MaterialExpressionCustom, -1500, 1300)
+        cw.set_editor_property('description', 'WeaveFromPreSkinnedPosition'); cw.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+        cw.set_editor_property('code', '''
+float3 N0 = normalize(LN);
+float3 bw = pow(abs(N0), 4.0); bw /= (bw.x + bw.y + bw.z + 1e-5);
+float3 tx, ty, tz;
+tx.xy = (Texture2DSample(Tex, TexSampler, LP.yz * Scale).rg * 2.0 - 1.0) * Strength; tx.z = sqrt(saturate(1.0 - dot(tx.xy, tx.xy)));
+ty.xy = (Texture2DSample(Tex, TexSampler, LP.xz * Scale).rg * 2.0 - 1.0) * Strength; ty.z = sqrt(saturate(1.0 - dot(ty.xy, ty.xy)));
+tz.xy = (Texture2DSample(Tex, TexSampler, LP.xy * Scale).rg * 2.0 - 1.0) * Strength; tz.z = sqrt(saturate(1.0 - dot(tz.xy, tz.xy)));
+tx = float3(tx.xy + N0.zy, abs(tx.z) * N0.x);
+ty = float3(ty.xy + N0.xz, abs(ty.z) * N0.y);
+tz = float3(tz.xy + N0.xy, abs(tz.z) * N0.z);
+float3 nl = normalize(tx.zyx * bw.x + ty.xzy * bw.y + tz.xyz * bw.z);
+float3 b = normalize(VN);
+float c = dot(N0, b); float3 k = cross(N0, b); float s = length(k);
+float3 r = nl;
+if (s > 1e-4) { k /= s; r = nl * c + cross(k, nl) * s + k * dot(k, nl) * (1.0 - c); }
+else if (c < 0.0) { r = -nl; }
+return r;''')
+        ins = []
+        for n_ in ('LP', 'LN', 'VN', 'Tex', 'Scale', 'Strength'):
+            ci = unreal.CustomInput(); ci.set_editor_property('input_name', n_); ins.append(ci)
+        cw.set_editor_property('inputs', ins)
+        okc += [MEL.connect_material_expressions(vi_p, '', cw, 'LP'), MEL.connect_material_expressions(vi_n, '', cw, 'LN'), MEL.connect_material_expressions(vn, '', cw, 'VN'),
+                MEL.connect_material_expressions(wtex, '', cw, 'Tex'), MEL.connect_material_expressions(wsc, '', cw, 'Scale'), MEL.connect_material_expressions(ds, '', cw, 'Strength')]
+        tr = E(m, unreal.MaterialExpressionTransform, -1250, 1300)
+        tr.set_editor_property('transform_source_type', unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+        tr.set_editor_property('transform_type', unreal.MaterialVectorCoordTransform.TRANSFORM_TANGENT)
+        okc.append(MEL.connect_material_expressions(cw, '', tr, ''))
+        sw_w = E(m, unreal.MaterialExpressionStaticSwitchParameter, -450, 1000); sw_w.set_editor_property('parameter_name', 'WeaveFromPosition'); sw_w.set_editor_property('default_value', True)
+        okc += [MEL.connect_material_expressions(tr, '', sw_w, 'True'), MEL.connect_material_expressions(dmul, '', sw_w, 'False')]
+        detail_out = sw_w
+        log('M_Char_Suit weave from pre-skinned position: connections', okc)
+    except Exception as e:
+        log('M_Char_Suit weave-from-position FAILED, UV weave kept:', str(e)[:200])
+    MEL.connect_material_expressions(detail_out, '', blend, 'AdditionalNormal')
     MEL.connect_material_property(blend, '', unreal.MaterialProperty.MP_NORMAL)
     # cloth sheen
     fz = vector(m, 'FuzzColor', (0.55, 0.45, 0.45, 1), -350, -600)
@@ -1256,7 +1310,8 @@ if 'skinsmap' in STEPS:
         return unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
     # ---- Char_Skins
     hero_s = skins_stage('Skins', False)
-    VIEWS = [('front', KS.FRONT, 0.0, 560.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 560.0, 92.0, 8.0, 40.0),
+    # round 12: front / back framed for CH1 (hero 0.48 - 0.62 of the frame height): 7.85 m at FOV 40 (round 11's 5.6 m gave 0.77H)
+    VIEWS = [('front', KS.FRONT, 0.0, 785.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 785.0, 92.0, 8.0, 40.0),
              ('chest', KS.CLOSEUP, 0.0, 150.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0)]
     shots = []
     SHOT_S = 3.0

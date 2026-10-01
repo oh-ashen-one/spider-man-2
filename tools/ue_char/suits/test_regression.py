@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
-"""Regression guard of the suit generator (round 11): the DEFAULT style must reproduce the round-08 Tessera maps texel for texel.
-The three md5 sums are those of the 1024 px base colour / normal / ORM written by the ROUND-08 code (before design.py got a style argument).
-  python3 tools/ue_char/suits/test_regression.py        (CPU, ~15 s)  -> exit 1 on a mismatch"""
+"""Regression guard of the suit generator.
+  1. LEGACY (round 08): design.py with relief.kind 'r8' (hero_suit_r8.py --legacy-r8) must reproduce the round-08 Tessera maps texel for texel
+     (md5 of the 1024 px base colour / normal / ORM written by the ROUND-08 code, before design.py got a style argument).
+  2. DEFAULT (round 12, Tessera stays the default suit): raised piping, net / piping under the sash, torso-side cavity AO: the 1024 px maps of round 12.
+     A deliberate design change updates EXPECT_R12 in the same commit (and says so in the round's HANDOFF).
+  python3 tools/ue_char/suits/test_regression.py        (CPU, ~20 s)  -> exit 1 on a mismatch"""
 import sys, os, hashlib, tempfile, subprocess
 import cv2
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
-EXPECT = {'suit_basecolor_r8.png': '66e3b691813cc83cd9dc7bd20bdf0c59', 'suit_normal_r8.png': '09f0c6554c3a706529387e78ea4ff2e8', 'suit_orm_r8.png': 'ad1be27f39d2b4d5bb77f124125d5a8f'}
-out = tempfile.mkdtemp()
-subprocess.run([sys.executable, os.path.join(WT, 'tools', 'ue_char', 'hero_suit_r8.py'), '--n', '1024', '--out', out, '--legacy-r8'], check=True, capture_output=True)
+EXPECT_R8 = {'suit_basecolor_r8.png': '66e3b691813cc83cd9dc7bd20bdf0c59', 'suit_normal_r8.png': '09f0c6554c3a706529387e78ea4ff2e8', 'suit_orm_r8.png': 'ad1be27f39d2b4d5bb77f124125d5a8f'}
+EXPECT_R12 = {'suit_basecolor_r8.png': 'c421301c3579f539fb22fee4aceb740e', 'suit_normal_r8.png': 'b5180f09c67a9ea9e7464077a1fdaca3', 'suit_orm_r8.png': '93fed825af9bcc4bfeeae4a8313e7a8a'}
 bad = 0
-for f, h in EXPECT.items():
-    got = hashlib.md5(cv2.imread(os.path.join(out, f)).tobytes()).hexdigest()
-    ok = got == h; bad += not ok
-    print('%-24s %s %s' % (f, got, 'OK' if ok else 'MISMATCH (expected %s)' % h))
+for tag, extra, expect in (('legacy r8', ['--legacy-r8'], EXPECT_R8), ('default r12', [], EXPECT_R12)):
+    out = tempfile.mkdtemp()
+    subprocess.run([sys.executable, os.path.join(WT, 'tools', 'ue_char', 'hero_suit_r8.py'), '--n', '1024', '--out', out] + extra, check=True, capture_output=True)
+    for f, h in expect.items():
+        got = hashlib.md5(cv2.imread(os.path.join(out, f)).tobytes()).hexdigest()
+        ok = got == h; bad += not ok
+        print('%-12s %-24s %s %s' % (tag, f, got, 'OK' if ok else 'MISMATCH (expected %s)' % h))
 print('REGRESSION', 'PASS' if not bad else 'FAIL')
 sys.exit(1 if bad else 0)
