@@ -213,8 +213,8 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 # emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
-                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 7.6), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ShadeFill', 0.12), ('GlassSky', 0.11), ('FarSunK', 0.15))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
+                ('ShadeFill', 0.12), ('GlassSky', 0.11), ('FarSunK', 0.22))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -320,10 +320,10 @@ Rough = r; NormalW = n; return a;''',
     make_material('M_CitySidewalk', '/Project/City/Sidewalk.ush', '''
 float r; float3 n;
 float3 a = CitySidewalk(tCol, tColSampler, tNrm, tNrmSampler, tNoise, tNoiseSampler, tCurb, tCurbSampler, float4(uv0, uv1), wpos, wn, cam, r, n);
-// (r10, critic r09: S6 curb 14.7 % > Y 204) sun-facing light stone is the brightest surface of a street under the test lighting (sun 6, +2 EV): luma knee at SunK x 2.4 on sun-facing pixels, far field untouched
+// (r10, critic r09: S6 curb 14.7 % > Y 204) sun-facing light stone is the brightest surface of a street under the test lighting (sun 6, +2 EV): luma knee at SunK x 1.15 on sun-facing pixels (x 2.4 changed nothing: at +2 EV an albedo of 0.19 still clips), far field untouched
 float sunf = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz)) * (1.0 - smoothstep(900.0, 2200.0, length(wpos - cam) * 0.01));   // (n from CitySidewalk is the normal-map vector, not a world normal: the vertex normal is used)
 float La = dot(a, float3(0.2126, 0.7152, 0.0722));
-float capk = sunk * 2.4;
+float capk = sunk * 1.15;
 float Lc = La > capk ? capk + (La - capk) * 0.08 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 Rough = r; NormalW = n; return a;''',
