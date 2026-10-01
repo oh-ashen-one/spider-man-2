@@ -1,5 +1,13 @@
 # P3 Traversal + camera — handoff (after round 16)
 
+**ROUND 17 IN PROGRESS (Opus 5.5, started 2026-09-30 19:55; this block is replaced at the end of the round).** Critic r16 (`critic/round-16-CRITIC.md`): FAILS, Camera 5, flips 6;
+single gap "every trick is shot from the street into a dark facade, and each starts facing the sun". r17 plan: (1) f-series moved to the y -560 cross street heading EAST
+(north side = 10-30 m low-rise row, then the traversal world's north edge = open sky behind the hero; south side = 46-466 m blocks to web onto; heading east the sun (due west)
+is behind every view); (2) `bFlowApexSolve`: a flow flip's climb is solved for its APEX = hips >= lower roofline within 30 m + 3 (+1 margin) (`FlowRoofTarget`), and autoChain holds
+a trick swing on its rising front until that apex is reachable (`FlowApexGap <= FlowReadyGain`); (3) trick-camera blend-in = smoothstep over 0.34 s (k .9 at ~0.27 s), sky share
+weight 4 in the side choice, 35 deg offset added; (4) asymmetric tuck / pike / swan / layout / kickout shapes (`blender/make_flip_shapes.py`, sticks `_scratch/traversal/r17/blender/sticks.png`);
+(5) `roof_check.py` = the critic's TC8 test per flip (heightmap `city/heightmap_5m.csv.gz`). Scripts may now carry `"tune"` / `"camTune"` strings. Scratch: `_scratch/traversal/r17/`.
+
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
 **Status (end of round 16, 2026-09-30 ~18:50, Sonnet 5.5): rendered (all nine sequences, code `2e86dc8`), measured, critic pack built; the blind critic has NOT run yet.**

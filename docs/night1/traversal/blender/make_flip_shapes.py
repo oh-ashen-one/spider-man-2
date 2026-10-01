@@ -52,21 +52,26 @@ def legs(thigh, shin, foot=POINT):
 
 SHAPES = {
     # tight tuck: knees to the chest, hands on the shins, back rounded, chin down
+    # round 17 (critic r16 "limbs symmetric"): asymmetric grab -- left hand low on the shin, right hand high on the knee; knees unevenly apart
     "flipTuck": dict(spine=(0.35, 1, 0), spine1=(0.6, 1, 0), spine2=(0.8, 1, 0), neck=(1.0, 0.9, 0), head=(1.0, 0.55, 0),
-                     upperArm=(1.0, -0.35, 0.4), forearm=(0.25, -1.0, 0.05), hand="follow",
-                     **legs((1.0, 0.95, 0.12), (-0.35, -1.0, 0.05))),
+                     upperArm_L=(1.0, -0.45, 0.32), forearm_L=(0.2, -1.0, 0.04), upperArm_R=(1.0, -0.15, 0.5), forearm_R=(0.55, -0.85, -0.05),
+                     hand="follow", foot=POINT, toe=POINT,
+                     thigh_L=(1.0, 0.95, 0.08), shin_L=(-0.4, -1.0, 0.04), thigh_R=(1.0, 0.8, 0.2), shin_R=(-0.2, -1.0, 0.08)),
     # pike: legs straight and together, folded forward at the hips, hands reaching to the ankles
+    # round 17 (critic r16 "the pike is a lump from 3/4 behind"): left hand reaches the ankles, right arm sweeps wide and back
     "flipPike": dict(spine=(0.3, 1, 0), spine1=(0.6, 1, 0), spine2=(0.95, 1, 0), neck=(1.0, 0.7, 0), head=(1.0, 0.4, 0),
-                     upperArm=(1.0, 0.1, 0.12), forearm=(1.0, 0.35, 0.05), hand="follow",
-                     **legs((1.0, 0.55, 0.03), (1.0, 0.6, 0.02))),
+                     upperArm_L=(1.0, 0.1, 0.12), forearm_L=(1.0, 0.35, 0.05), upperArm_R=(0.15, 0.35, 1.0), forearm_R=(-0.25, 0.45, 1.0),
+                     hand="follow", **legs((1.0, 0.55, 0.03), (1.0, 0.6, 0.02))),
     # layout: one straight line, slight hollow, arms along the sides a hand-width out
     "flipLayout": dict(spine=(0.04, 1, 0), spine1=(0.02, 1, 0), spine2=(0.0, 1, 0), neck=(0.02, 1, 0), head=(0.05, 1, 0),
                        upperArm=(0.05, -1.0, 0.33), forearm=(0.05, -1.0, 0.22), hand="follow",
                        **legs((0.03, -1.0, 0.03), (0.0, -1.0, 0.02))),
     # swan: arched back, chest proud, arms spread wide and a little back, legs together extended behind
+    # round 17 (critic r16 "swan arms even"): left arm high and forward, right arm low and back; right knee bent, foot trailing (stag line)
     "flipSwan": dict(spine=(-0.18, 1, 0), spine1=(-0.32, 1, 0), spine2=(-0.4, 1, 0), neck=(-0.25, 1, 0), head=(-0.15, 1, 0),
-                     upperArm=(-0.3, 0.2, 1.0), forearm=(-0.22, 0.32, 1.0), hand="follow",
-                     **legs((-0.28, -1.0, 0.02), (-0.4, -1.0, 0.02))),
+                     upperArm_L=(0.05, 0.6, 1.0), forearm_L=(0.2, 0.85, 0.75), upperArm_R=(-0.55, -0.15, 1.0), forearm_R=(-0.7, -0.05, 0.8),
+                     hand="follow", foot=POINT, toe=POINT,
+                     thigh_L=(-0.3, -1.0, 0.03), shin_L=(-0.42, -1.0, 0.02), thigh_R=(-0.05, -1.0, 0.1), shin_R=(-0.85, -0.6, 0.05)),
     # pencil: straight, legs glued together, arms out low on the diagonal (the reference's inverted pencil)
     "flipPencil": dict(spine=(0.0, 1, 0), spine1=(0.0, 1, 0), spine2=(0.0, 1, 0), neck=(0.0, 1, 0), head=(0.03, 1, 0),
                        upperArm=(0.12, -0.5, 1.0), forearm=(0.12, -0.35, 1.0), hand="follow",
@@ -105,25 +110,30 @@ KEYED = {
     # layout: the straight line breathes with overlapping limbs -- the arms float out and forward, the legs part a little behind them
     "flipLayout": [
         (0, _lay((0.05, -1.0, 0.33), (0.05, -1.0, 0.22), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02))),
-        (12, _lay((0.3, -0.75, 0.55), (0.35, -0.6, 0.45), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02),
-                  sp=(0.0, -0.04, -0.06))),
-        (18, _lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.12, -1.0, 0.04), (0.05, -1.0, 0.02), (-0.08, -1.0, 0.04), (-0.14, -1.0, 0.02),
-                  sp=(-0.02, -0.06, -0.08))),
-        (30, _lay((0.1, -0.9, 0.45), (0.12, -0.85, 0.35), (0.06, -1.0, 0.05), (0.02, -1.0, 0.03), (-0.02, -1.0, 0.05), (-0.05, -1.0, 0.03),
-                  sp=(0.02, 0.0, -0.03))),
+        # round 17 (critic r16 "limbs symmetric"): the left arm floats higher and further forward than the right; the legs part more
+        (12, dict(_lay((0.3, -0.75, 0.55), (0.35, -0.6, 0.45), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02),
+                       sp=(0.0, -0.04, -0.06)), upperArm_L=(0.45, -0.45, 0.6), forearm_L=(0.55, -0.25, 0.5))),
+        (18, dict(_lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.2, -1.0, 0.04), (0.08, -1.0, 0.02), (-0.15, -1.0, 0.04), (-0.25, -1.0, 0.02),
+                       sp=(-0.02, -0.06, -0.08)), upperArm_L=(0.5, -0.25, 0.65), forearm_L=(0.6, -0.05, 0.55),
+                  upperArm_R=(0.1, -0.9, 0.5), forearm_R=(0.12, -0.85, 0.4))),
+        (30, dict(_lay((0.1, -0.9, 0.45), (0.12, -0.85, 0.35), (0.08, -1.0, 0.05), (0.03, -1.0, 0.03), (-0.05, -1.0, 0.05), (-0.1, -1.0, 0.03),
+                       sp=(0.02, 0.0, -0.03)), upperArm_L=(0.3, -0.6, 0.55), forearm_L=(0.35, -0.45, 0.45))),
     ],
     # kick-out (the double's open finish, then the catch): out of the tuck the arms swing up and forward, sweep wide and back while the
     # body arches and the legs, still piked, straighten and scissor behind them; the web arm (right) comes up for the catch at the end
+    # round 17 (critic r16 "legs together in every kickout", "limbs symmetric"): a wide scissor (left leg forward, right leg back) and the
+    # arms out of step (left leads high, right sweeps low and back)
     "flipKickout": [
         (0, _lay((0.45, 0.9, 0.3), (0.4, 1.0, 0.25), (0.35, -0.95, 0.05), (0.15, -1.0, 0.03), (0.35, -0.95, 0.05), (0.15, -1.0, 0.03),
                  sp=(0.15, 0.12, 0.08))),
-        (8, _lay((0.15, 0.55, 1.0), (0.1, 0.6, 1.0), (0.25, -1.0, 0.05), (0.1, -1.0, 0.03), (0.25, -1.0, 0.05), (0.1, -1.0, 0.03),
-                 sp=(0.0, -0.05, -0.08))),
-        (16, _lay((-0.2, 0.15, 1.0), (-0.2, 0.25, 1.0), (0.05, -1.0, 0.05), (-0.02, -1.0, 0.03), (0.0, -1.0, 0.05), (-0.08, -1.0, 0.03),
-                  sp=(-0.14, -0.22, -0.26))),
-        (22, _lay((-0.05, 0.3, 1.0), (0.0, 0.4, 1.0), (0.22, -1.0, 0.06), (0.08, -1.0, 0.03), (-0.2, -1.0, 0.06), (-0.34, -1.0, 0.03),
-                  sp=(-0.1, -0.16, -0.18))),
-        (30, dict(_lay(None, None, (0.45, -0.9, 0.08), (-0.2, -1.0, 0.05), (0.25, -1.0, 0.07), (-0.3, -1.0, 0.04), sp=(0.05, 0.02, 0.0)),
+        (8, dict(_lay((0.15, 0.55, 1.0), (0.1, 0.6, 1.0), (0.3, -1.0, 0.05), (0.15, -1.0, 0.03), (0.15, -1.0, 0.05), (0.0, -1.0, 0.03),
+                      sp=(0.0, -0.05, -0.08)), upperArm_L=(0.3, 0.8, 0.8), forearm_L=(0.3, 0.9, 0.7))),
+        (16, dict(_lay((-0.2, 0.15, 1.0), (-0.2, 0.25, 1.0), (0.32, -1.0, 0.06), (0.15, -1.0, 0.03), (-0.22, -1.0, 0.06), (-0.42, -1.0, 0.03),
+                       sp=(-0.14, -0.22, -0.26)), upperArm_L=(0.0, 0.45, 1.0), forearm_L=(0.05, 0.55, 0.9),
+                  upperArm_R=(-0.4, -0.1, 1.0), forearm_R=(-0.45, 0.0, 0.9))),
+        (22, dict(_lay((-0.05, 0.3, 1.0), (0.0, 0.4, 1.0), (0.42, -1.0, 0.06), (0.25, -1.0, 0.03), (-0.32, -1.0, 0.06), (-0.55, -1.0, 0.03),
+                       sp=(-0.1, -0.16, -0.18)), upperArm_R=(-0.3, 0.05, 1.0), forearm_R=(-0.3, 0.15, 0.95))),
+        (30, dict(_lay(None, None, (0.45, -0.9, 0.08), (-0.2, -1.0, 0.05), (0.15, -1.0, 0.07), (-0.4, -1.0, 0.04), sp=(0.05, 0.02, 0.0)),
                   upperArm_R=(0.45, 1.0, 0.25), forearm_R=(0.45, 1.0, 0.18), upperArm_L=(0.25, 0.1, 1.0), forearm_L=(0.35, 0.2, 1.0))),
     ],
 }
