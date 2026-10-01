@@ -2,11 +2,11 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Round 11 post-processing after chain_r11_final.sh (CPU only): copy the evidence into docs/night1/characters/round-11, build the swatch sheet, measure the swap on the pixels,
 # OCR the 4K stills, write SPEC_CHECK.md.
-#   STILLS=stills_a bash tools/ue_char/suits/post_r11.sh [chain3 out dir]       (STILLS = the exposure set that is committed: stills_a | stills_b | stills_c)
+#   STILLS=stills_a bash tools/ue_char/suits/post_r11.sh [chain4 out dir]       (STILLS = the exposure set that is committed: stills_a | stills_b | stills_c)
 set -u
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
 export P2_SCRATCH="${P2_SCRATCH:-/Users/midir/sm2-n1/_scratch/characters}"
-OUT="${1:-$P2_SCRATCH/r11/chain3}"; STILLS="${STILLS:-stills_a}"
+OUT="${1:-$P2_SCRATCH/r11/chain4}"; STILLS="${STILLS:-stills_a}"
 R="$WT/docs/night1/characters/round-11"; E="$R/evidence"
 mkdir -p "$R/stills" "$E"
 cd "$WT"
@@ -31,7 +31,8 @@ for f in "$OUT"/menu3/menu_*.png; do [ -f "$f" ] && ffmpeg -loglevel error -y -i
 # --- evidence copies
 for n in pawn3 persist3 menu3 orbit3; do [ -f "$OUT/$n/suit_log.txt" ] && cp "$OUT/$n/suit_log.txt" "$E/${n%3}_suit_log.txt"; done
 cp "$OUT/pawn3/GameUserSettings_after_pawn.ini" "$E/" 2>/dev/null
-cp "$OUT/characters_build3.log" "$E/characters_build.log" 2>/dev/null
+cp "$OUT/characters_build4.log" "$E/characters_build.log" 2>/dev/null || cp "$OUT/characters_build3.log" "$E/characters_build.log" 2>/dev/null
+for f in ev.txt calib.txt gpu_util_before_stills.txt gpu_wrapper.log; do cp "$OUT/$f" "$E/chain_$f" 2>/dev/null; done
 cp "$OUT/final.log" "$E/chain.log" 2>/dev/null
 for t in stills_a stills_b stills_c; do cp "$OUT/$t/suit_log.txt" "$E/${t}_suit_log.txt" 2>/dev/null; cp "$OUT/$t/skins_perf.json" "$E/${t}_perf.json" 2>/dev/null; done
 cp "$S/skins_perf.json" "$E/stills_perf.json" 2>/dev/null; cp "$S/suit_log.txt" "$E/stills_suit_log.txt" 2>/dev/null

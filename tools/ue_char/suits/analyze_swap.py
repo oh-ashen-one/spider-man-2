@@ -56,12 +56,14 @@ def main():
     for pf in press_frames:
         near = [s_ for s_ in merged if pf - 1 <= s_ <= pf + 40]
         lat.append(near[0] - pf if near else None)
-    res = dict(method='colour histogram of the hero pixels (centre 40 pct minus side strips), step > %.3f (median step %.3f)' % (thr, base), frames=len(files), swap_frames=merged,
+    matched = {pf + l for pf, l in zip(press_frames, lat) if l is not None}
+    other = [s_ for s_ in merged if s_ not in matched]           # not a swap of a pressed key: the director's camera cut to the next pawn shot at game time 10 s
+    res = dict(other_steps=other, matched=len(matched), method='colour histogram of the hero pixels (centre 40 pct minus side strips), step > %.3f (median step %.3f)' % (thr, base), frames=len(files), swap_frames=merged,
                press_times=presses, press_frames=press_frames, hist_steps=[round(float(step[s_ - 1]), 3) for s_ in merged], latency_frames=lat,
                latency_ms=[None if l is None else round(l * 1000 / fps, 1) for l in lat], engine_sets=sets, engine_swap_done=done,
                max_latency_s=None if any(l is None for l in lat) or not lat else round(max(lat) / fps, 3), swaps_found=len(merged), presses=len(presses))
     json.dump(res, open(out, 'w'), indent=1)
-    print(json.dumps({k: res[k] for k in ('method', 'frames', 'swap_frames', 'press_frames', 'hist_steps', 'latency_frames', 'latency_ms', 'max_latency_s', 'swaps_found', 'presses')}))
+    print(json.dumps({k: res[k] for k in ('method', 'frames', 'swap_frames', 'press_frames', 'hist_steps', 'other_steps', 'latency_frames', 'latency_ms', 'max_latency_s', 'matched', 'presses')}))
     for d in done: print('engine:', d)
 
 

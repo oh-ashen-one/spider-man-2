@@ -46,8 +46,8 @@ if rt:
 if sw:
     ms = [x for x in sw['latency_ms'] if x is not None]
     done = sw['engine_swap_done']
-    lines.append('| swap <= 0.5 s, pixels of the fixed-step movie | <= 500 ms | pixel step %d of %d presses found, worst key-to-pixel latency **%s ms** (%s frames at 60 fps, `analyze_swap.py` on the fixed-step movie); engine: `apply_ms` max %.2f, `swap_done` wall_ms max %.1f, textures resident %s | %s |' % (
-        sw['swaps_found'], sw['presses'], max(ms) if ms else 'n/a', sorted(set(x for x in sw['latency_frames'] if x is not None)), max([s['apply_ms'] for s in sw['engine_sets']] or [0]),
+    lines.append('| swap <= 0.5 s, pixels of the fixed-step movie | <= 500 ms | %d of %d injected T presses found on the pixels (+ %d unmatched histogram steps = the director camera cut at 10 s), worst key-to-pixel latency **%s ms** (%s frames at 60 fps, `analyze_swap.py` on the fixed-step movie); engine: `apply_ms` max %.2f, `swap_done` wall_ms max %.1f (a -movie run spends ~0.22 s of wall time per dumped PNG frame, so this wall figure is the dump, not the game latency; the real-time number is the row above), textures resident %s | %s |' % (
+        sw.get('matched', sw['swaps_found']), sw['presses'], len(sw.get('other_steps', [])), max(ms) if ms else 'n/a', sorted(set(x for x in sw['latency_frames'] if x is not None)), max([s['apply_ms'] for s in sw['engine_sets']] or [0]),
         max([x['wall_ms'] for x in done] or [0]), sorted({x['res'] for x in done}), 'PASS' if ms and max(ms) <= 500 and len(ms) == sw['presses'] else 'CHECK'))
 lines.append('| IQ >= 6 | blind critic | see `critic/round-11-CRITIC.md` | critic |')
 lines.append('')
@@ -55,6 +55,6 @@ if perf:
     lines += ['## Resolution disclosure of the 4K stills', '', '`evidence/stills_perf.json`: output %sx%s, internal %sx%s (`r.ScreenPercentage 100`), screen-percentage mode %s. Real-time run: frame times are NOT a performance result (shared GPU, other agents; the lock logged `contaminated=true`).' % (
         perf.get('output_w'), perf.get('output_h'), perf.get('internal_w'), perf.get('internal_h'), perf.get('screen_percentage_mode')), '']
 lines += ['## Other numbers', '', '- texel density: 4096 px atlas x 0.569 UV units / m = **%d texels / m** (CH3 target >= 680); Tessera 8192 px = %d texels / m.' % (4096 * 0.5692, 8192 * 0.5692),
-          '- persistence: ' + (T('persist.txt').strip() or 'see `evidence/persist_*`'),
+          '- persistence: ' + (T('persist.txt').strip().replace('\n', '; ') or 'see `evidence/persist_*`'),
           '- key paths: T / Shift+T, gamepad D-pad Up / LB + D-pad Up, settings-menu row, console `wh.Suit <n|id>`, `wh.SuitNext`, `wh.SuitPrev`.']
 print('\n'.join(lines))
