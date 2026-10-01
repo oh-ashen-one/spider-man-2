@@ -14,7 +14,10 @@
 #   /Game/Look/Look_NightLights          night street lighting (step night): lamps, storefront spill, stand-in traffic lights, wet-street decal, hero lights
 #   /Game/Tests/Look/Look_Midtown[_golden|_night]     playable maps (traversal game mode): city geometry + Look_Boxes + rig + PlayerStart
 #   /Game/Tests/Look/Look_View_<preset>_<S#>          the city shot views (Scripts/city_shots.json) under each preset
-import unreal, os, json, math, time, random
+#   (round 05) preset 'tod': /Game/Look/Rigs/Look_Rig_tod = ONE rig for every hour (sun + moon + four horizon fills + sky + atmosphere + clouds + fog + post + star dome)
+#              driven by AWHLookTimeOfDay (Source/WebHomage/Look/WHLookTimeOfDay.*, console wh.TimeOfDay 0-24) with the key table of Scripts/look_tod.py baked in;
+#              /Game/Tests/Look/Look_Midtown_tod = city + boxes + Look_Rig_tod + Look_NightLights (the driver scales / hides the street lights by the hour)
+import unreal, os, sys, json, math, time, random, copy
 
 EXPORT = os.environ.get('SM2_CITY_EXPORT', os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'export', 'midtown3x3'))   # the city export (collision.json, layout.json)
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.path.join(os.environ.get('SM2_LOOK_WORKTREE', '/Users/midir/sm2-n1/look'), 'unreal/WebHomage/Scripts')
@@ -24,6 +27,8 @@ STEPS = set((ARGS.get('steps') or os.environ.get('SM2_LOOK_STEPS') or 'geo,rigs,
 PRESETS_JSON = json.load(open(os.path.join(HERE, 'look_presets.json')))
 ORDER = [p for p in PRESETS_JSON['order'] if p in (ARGS.get('presets') or os.environ.get('SM2_LOOK_PRESETS') or ','.join(PRESETS_JSON['order'])).split(',')]
 PRE = PRESETS_JSON['presets']
+sys.path.insert(0, HERE)
+import look_tod   # (round 05) continuous time of day: key table expansion (pure python)
 SHOTS = json.load(open(os.path.join(HERE, 'city_shots.json')))
 CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'
 LOOK, RIGS, TESTS = '/Game/Look', '/Game/Look/Rigs', '/Game/Tests/Look'
@@ -134,8 +139,19 @@ def build_geo():
     log('geo: %d components -> WorldDynamic, %d ground actors tagged, %d traversal boxes in %s' % (n_dyn, n_gnd, n_box, BOXES))
 
 # ------------------------------------------------------------------------------------------------ step rigs
+def tod_preset():
+    """the static part of the time-of-day rig: the golden preset's actors and settings (the driver overrides every keyed value at run time) + the night moon,
+    four horizon fills (N / E / S / W, 10 deg up), the engine cloud material instance (the driver makes a dynamic instance of it), no MPC sequence (the driver sets MPC_City)"""
+    P = copy.deepcopy(PRE['golden'])
+    P['moon'] = dict(PRE['night']['moon'])
+    P['fills'] = [{'name': d, 'elev': 10.0, 'az': az, 'lux': 0.0, 'temp': 6500.0} for d, az in (('N', 0.0), ('E', 90.0), ('S', 180.0), ('W', 270.0))]
+    P['clouds'] = dict(P['clouds']); P['clouds'].pop('mi', None)
+    P['mpc'] = {}
+    return P
+
 def build_rig(name):
-    P = PRE[name]
+    P = PRE[name] if name != 'tod' else tod_preset()
+    TOD = name == 'tod'
     path = '%s/Look_Rig_%s' % (RIGS, name)
     world = open_level(path)
     sun_d, moon_d = P['sun'], P.get('moon')
@@ -143,6 +159,7 @@ def build_rig(name):
     sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(sun_d['elev'], sun_d['az']), 'Sun', 'Lighting')
     lc = sun.light_component
     lc.set_mobility(unreal.ComponentMobility.MOVABLE)
+    if TOD: sun.tags = [unreal.Name('WHSun')]
     for k, v in (('intensity', sun_d['lux']), ('use_temperature', True), ('temperature', sun_d['temp']), ('light_source_angle', sun_d['angle']),
                  ('atmosphere_sun_light', True), ('atmosphere_sun_light_index', 0), ('cast_shadows', True), ('cast_volumetric_shadow', True),
                  ('cast_cloud_shadows', bool(sun_d.get('cloud_shadows', True))), ('cloud_shadow_strength', 0.8), ('per_pixel_atmosphere_transmittance', True),
@@ -151,6 +168,7 @@ def build_rig(name):
     if moon_d:
         moon = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(moon_d['elev'], moon_d['az']), 'Moon', 'Lighting')
         mc = moon.light_component; mc.set_mobility(unreal.ComponentMobility.MOVABLE)
+        if TOD: moon.tags = [unreal.Name('WHMoon')]
         for k, v in (('intensity', moon_d['lux']), ('use_temperature', True), ('temperature', moon_d['temp']), ('light_source_angle', moon_d['angle']),
                      ('atmosphere_sun_light', True), ('atmosphere_sun_light_index', 1), ('cast_shadows', True), ('cast_volumetric_shadow', True),
                      ('cast_cloud_shadows', False), ('per_pixel_atmosphere_transmittance', True)):
@@ -158,6 +176,7 @@ def build_rig(name):
     for fill_d in P.get('fills', []):   # unshadowed, non-atmosphere fill directional lights (night: horizon city glow, lights facades the moon does not reach)
         fl = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(fill_d['elev'], fill_d['az']), 'CityGlow' + fill_d['name'], 'Lighting')
         fc_ = fl.light_component; fc_.set_mobility(unreal.ComponentMobility.MOVABLE)
+        if TOD: fl.tags = [unreal.Name('WHFill_' + fill_d['name'])]
         for k, v in (('intensity', fill_d['lux']), ('use_temperature', True), ('temperature', fill_d['temp']), ('atmosphere_sun_light', False), ('cast_shadows', False),
                      ('cast_volumetric_shadow', False), ('volumetric_scattering_intensity', 0.0), ('light_source_angle', 2.0)):
             setp(fc_, k, v, 'CityGlow' + fill_d['name'])
@@ -213,9 +232,21 @@ def build_rig(name):
         if setp(st, 'override_' + k, True, 'PostProcess'): setp(st, k, v, 'PostProcess')
     ppv.set_editor_property('settings', st)
     # --- night: procedural star dome (additive, unlit) so the sky is not an empty black gradient
-    if P['mpc'].get('NightK', 0.0) > 0.5: build_stars()
+    if P['mpc'].get('NightK', 0.0) > 0.5 or TOD:
+        dome = build_stars()
+        if TOD: dome.tags = [unreal.Name('WHStars')]
     # --- MPC_City through a Level Sequence (auto-plays at level start): night lights of the city materials
-    build_mpc_sequence(name, P['mpc'], world)
+    if not TOD: build_mpc_sequence(name, P['mpc'], world)
+    else:   # (round 05) the time-of-day driver (C++) with the expanded key table baked in
+        cls = unreal.load_class(None, '/Script/WebHomage.WHLookTimeOfDay')
+        if not cls: MISS.append('AWHLookTimeOfDay class missing (build the C++ module)')
+        else:
+            table = look_tod.expand(PRESETS_JSON)
+            drv = spawn(cls, unreal.Vector(0, 0, 0), label='TimeOfDay', folder='Lighting')
+            setp(drv, 'keys_json', look_tod.to_text(table), 'TimeOfDay'); setp(drv, 'default_hour', float(table['default_hour']), 'TimeOfDay')
+            mpc = unreal.load_asset(MPC)
+            if mpc: setp(drv, 'city_mpc', mpc, 'TimeOfDay')
+            log('tod driver: %d keys x %d params, default hour %.2f' % (len(table['keys']), len(table['keys'][0]['p']), table['default_hour']))
     unreal.EditorLoadingAndSavingUtils.save_map(world, path)
     log('rig', name)
 
@@ -234,11 +265,28 @@ def make_cloud_mi(name, d):
     EAL.save_asset(path)
     return mi
 
+STARS_MAT = []
 def build_stars():
+    """star dome (additive unlit sphere, 300 km); material M_LookStars built once per run (scalar 'Gain', 1 = round-03 night; the time-of-day driver fades it)"""
     MAT_PATH = LOOK + '/M_LookStars'
     mel = unreal.MaterialEditingLibrary
-    if EAL.does_asset_exist(MAT_PATH): EAL.delete_asset(MAT_PATH)
-    m = unreal.AssetToolsHelpers.get_asset_tools().create_asset('M_LookStars', LOOK, unreal.Material, unreal.MaterialFactoryNew())
+    m = STARS_MAT[0] if STARS_MAT else None
+    if m is None:
+        if EAL.does_asset_exist(MAT_PATH): EAL.delete_asset(MAT_PATH)
+        m = unreal.AssetToolsHelpers.get_asset_tools().create_asset('M_LookStars', LOOK, unreal.Material, unreal.MaterialFactoryNew())
+        build_stars_mat(m, mel); STARS_MAT.append(m)
+    dome = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='StarDome', folder='Lighting')
+    dome.static_mesh_component.set_static_mesh(unreal.load_asset('/Engine/BasicShapes/Sphere'))
+    dome.static_mesh_component.set_material(0, m)
+    dome.set_actor_scale3d(unreal.Vector(6000, 6000, 6000))  # 300 km radius: outside the atmosphere shell, inside the far plane
+    dome.static_mesh_component.set_cast_shadow(False)
+    dome.static_mesh_component.set_collision_profile_name('NoCollision')  # a 600 km WorldStatic sphere would be one giant traversal "building box"
+    dome.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+    dome.static_mesh_component.set_editor_property('cast_dynamic_shadow', False)
+    return dome
+
+def build_stars_mat(m, mel):
+    MAT_PATH = LOOK + '/M_LookStars'
     m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT); m.set_editor_property('blend_mode', unreal.BlendMode.BLEND_ADDITIVE)
     m.set_editor_property('two_sided', True)
     code = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -600, 0)
@@ -258,16 +306,11 @@ return tint * star * (0.4 + 1.6 * h2) * horizon * 6.0;""")
     sub = mel.create_material_expression(m, unreal.MaterialExpressionSubtract, -750, 0)
     mel.connect_material_expressions(wp, '', sub, 'A'); mel.connect_material_expressions(cam, '', sub, 'B')
     mel.connect_material_expressions(sub, '', code, 'D')
-    mel.connect_material_property(code, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    gain = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -600, 200); gain.set_editor_property('parameter_name', 'Gain'); gain.set_editor_property('default_value', 1.0)
+    mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -300, 0)
+    mel.connect_material_expressions(code, '', mul, 'A'); mel.connect_material_expressions(gain, '', mul, 'B')
+    mel.connect_material_property(mul, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     mel.recompile_material(m); EAL.save_asset(MAT_PATH)
-    dome = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='StarDome', folder='Lighting')
-    dome.static_mesh_component.set_static_mesh(unreal.load_asset('/Engine/BasicShapes/Sphere'))
-    dome.static_mesh_component.set_material(0, m)
-    dome.set_actor_scale3d(unreal.Vector(6000, 6000, 6000))  # 300 km radius: outside the atmosphere shell, inside the far plane
-    dome.static_mesh_component.set_cast_shadow(False)
-    dome.static_mesh_component.set_collision_profile_name('NoCollision')  # a 600 km WorldStatic sphere would be one giant traversal "building box"
-    dome.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
-    dome.static_mesh_component.set_editor_property('cast_dynamic_shadow', False)
 
 def build_mpc_sequence(name, values, world):
     """MPC_City parameter values of the preset, applied at level start by a Level Sequence with an MPC track (holds the values)."""
@@ -690,7 +733,7 @@ def rig_path(name): return '%s/Look_Rig_%s' % (RIGS, name)
 def add_sublevels(world, name, boxes=False):
     for lp in (CITY_GEO, BOXES, rig_path(name), NIGHT):
         if lp == BOXES and not (boxes and EAL.does_asset_exist(BOXES)): continue
-        if lp == NIGHT and not (name == 'night' and EAL.does_asset_exist(NIGHT)): continue
+        if lp == NIGHT and not (name in ('night', 'tod') and EAL.does_asset_exist(NIGHT)): continue
         if not any(lp.split('/')[-1] in l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)):
             unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
     les.set_current_level_by_name(str(world.get_name()))
@@ -708,6 +751,7 @@ def build_maps():
         else: MISS.append('WebTravGameMode class missing (build the C++ module)')
         unreal.EditorLoadingAndSavingUtils.save_map(world, '%s/%s' % (TESTS, mp))
         log('map', mp)
+        if name == 'tod': continue   # time of day: stills come from the shot tour (tools/perf_ue/capture_tour.py), no per-view maps
         for s in SHOTS:
             mv = '%s/Look_View_%s_%s' % (TESTS, name, s['id'].split('_')[0])
             world = open_level(mv)

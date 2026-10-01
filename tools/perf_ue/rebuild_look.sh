@@ -10,7 +10,7 @@ WT="$(cd "$(dirname "$0")/../.." && pwd)"
 export SM2_LOOK_SCRATCH=${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}
 export SM2_LOOK_WORKTREE="$WT"
 export SM2_CITY_EXPORT=${SM2_CITY_EXPORT:-$SM2_LOOK_SCRATCH/export/midtown3x3}
-export SM2_LOOK_STEPS=${1:-geo,rigs,night,maps}; export SM2_LOOK_PRESETS=${2:-midday,golden,night}
+export SM2_LOOK_STEPS=${1:-geo,rigs,night,maps}; export SM2_LOOK_PRESETS=${2:-midday,golden,night,tod}
 LOG=${SM2_LOOK_LOG:-$SM2_LOOK_SCRATCH/build_look_headless.log}
 mkdir -p "$SM2_LOOK_SCRATCH"
 cd "$WT/unreal/WebHomage"

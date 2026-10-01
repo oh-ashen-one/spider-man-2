@@ -4,7 +4,7 @@
 # P1's dev server (5202), editor (8771), export or chrome profile.  Round 04: headless commandlets (no editor, no MCP), and it mirrors
 # P1's tools/export/build_city.sh round 09 (street cars / trees / traffic, vehicles, sunmask height field for the canyon shade fill).
 #   usage: tools/perf_ue/rebuild_city.sh prep     CPU only: vite on 5205, export_city.mjs (headless Chrome) -> <SCR>/export/midtown3x3, P1 prep chain
-#          tools/perf_ue/rebuild_city.sh ue       Unreal: build_city.py pass 1 (clean,tex,mat,mesh,proto,map) + pass 2 (kit), then rebuild_look.sh geo,rigs,night,maps
+#          tools/perf_ue/rebuild_city.sh ue       Unreal: build_city.py one pass (clean,tex,mat,mesh,proto,kit,fsky,map, as build_manhattan.py), then rebuild_look.sh geo,rigs,night,maps (all presets incl. tod)
 #                                                 wrap it in ONE slot hold:  gpu_slot.sh capture --label look -- tools/perf_ue/rebuild_city.sh ue
 #          tools/perf_ue/rebuild_city.sh all      both (SKIP_EXPORT=1 reuses the export)
 # Env: SM2_LOOK_SCRATCH (default /Users/midir/sm2-n1/_scratch/look), SM2_LOOK_DEV_PORT (5205).  Your editor must be closed (one Unreal process per agent).
@@ -29,7 +29,7 @@ prep() {
   [ -n "$VITE_PID" ] && kill -TERM $VITE_PID 2>/dev/null || true      # our own vite only (by PID)
   sed -i '' "s#127.0.0.1:$DEVP/#127.0.0.1:5202/#g" $EXPD/manifest.json
   python3 tools/export/patch_export.py $EXPD
-  python3 tools/export/prep_textures.py $SCR/tex $EXPD/manifest.json
+  mkdir -p $SCR/tex/maps; python3 tools/export/prep_textures.py $SCR/tex $EXPD/manifest.json
   python3 tools/export/gen_street_signs.py $SCR/tex/street_signs.png
   python3 tools/export/street_kit.py $EXPD
   python3 tools/export/street_props.py $EXPD
@@ -37,7 +37,8 @@ prep() {
   python3 tools/export/street_cars.py $EXPD
   python3 tools/export/street_trees.py $EXPD
   python3 tools/export/street_traffic.py $EXPD
-  mkdir -p $SCR/r09; python3 tools/export/bake_sunmask.py $EXPD $SCR/tex
+  python3 tools/export/far_skyline.py               # (r05) mirror build_manhattan.py city_extra: far skyline (2 km merged tiles, seawall, tree clumps)
+  mkdir -p $SCR/r09 $SCR/tex/maps; python3 tools/export/bake_sunmask.py $EXPD $SCR/tex
   node tools/export/gen_shaders.mjs
 }
 
@@ -57,9 +58,7 @@ ue() {
 os.environ["SM2_CITY_EXPORT"] = "'$SCR'/export/midtown3x3"; os.environ["SM2_CITY_TEX"] = "'$SCR'/tex"
 unreal.SystemLibrary.execute_console_command(None, "Module Load StaticMeshEditor")'
   commandlet city_pass1 "$PRE
-JOB_ARGS = {\"steps\": \"clean,tex,mat,mesh,proto,map\"}"
-  commandlet city_pass2_kit "$PRE
-JOB_ARGS = {\"steps\": \"kit\"}"
+JOB_ARGS = {\"steps\": \"clean,tex,mat,mesh,proto,kit,fsky,map\"}"     # (r05) one pass in build_city.py's default order, like build_manhattan.py step city
   "$WT/tools/perf_ue/rebuild_look.sh" geo,rigs,night,maps
 }
 

@@ -5,6 +5,10 @@ through the C++ shot tour (Source/WebHomage/Look/WHLookTour.cpp, -WHLookTour=<fi
 Same running game, same maps (/Game/Tests/Look/Look_Midtown[_preset]: city + Look_Boxes + preset rig + traversal game mode), same hero (teleported to the
 view's `player` position like the per-view maps do). Every run goes through gpu_slot.sh capture. Frames land in the scratch dir; JPEGs + notes go to the round folder.
 
+(round 05) --tod 18.4,22,13w1,...: ONE session of the time-of-day map /Game/Tests/Look/Look_Midtown_tod visits every shot at every listed hour
+(`! cvar wh.TimeOfDay <h>`, `w<x>` = `wh.Weather <x>`, else wh.Weather -1 = keyed); stills: <round>/stills/tod_<S#>_<res>_h<hour>[w<x>].jpg; --variants with
+--presets tod sweeps the same map (variant lines may use `exec wh.ToDSet <param> <v>`, `exec wh.ToDClear`, `cvar wh.TimeOfDay <h>`).
+
 usage: tools/perf_ue/capture_tour.py --round docs/night1/look/round-NN [--presets midday,golden,night] [--res 1920x1080,3840x2160] [--shots S1,S4,...]
          [--settle 4] [--min-frames 90] [--sp 100] [--work <dir>] [--redo] [--no-jpeg]      (--work: keep PNGs there instead of the default scratch dir)"""
 import argparse, glob, json, math, os, shutil, subprocess, sys, time
@@ -15,6 +19,12 @@ UE = os.path.join(WT, 'unreal', 'WebHomage')
 RUN_GAME = os.path.join(UE, 'Scripts', 'run_game.sh')
 GPU_SLOT = os.environ.get('GPU_SLOT', '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh')
 SCR = os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'tour')
+
+def util():
+    try:
+        o = subprocess.run(['ioreg', '-r', '-d', '1', '-c', 'IOAccelerator'], capture_output=True, text=True).stdout
+        import re; m = re.search(r'"Device Utilization %"=(\d+)', o); return int(m.group(1)) if m else None
+    except Exception: return None
 
 def slot(cmd): return [GPU_SLOT, 'capture', '--label', 'look', '--'] + cmd if os.path.exists(GPU_SLOT) else cmd
 
@@ -42,7 +52,7 @@ def main():
     ap.add_argument('--round', required=True); ap.add_argument('--presets', default='midday,golden,night'); ap.add_argument('--res', default='1920x1080,3840x2160')
     ap.add_argument('--shots', default=''); ap.add_argument('--settle', type=float, default=4.0); ap.add_argument('--first-settle', type=float, default=10.0)
     ap.add_argument('--min-frames', type=int, default=90); ap.add_argument('--sp', default='100'); ap.add_argument('--redo', action='store_true'); ap.add_argument('--no-jpeg', action='store_true')
-    ap.add_argument('--work', default=''); ap.add_argument('--jpeg-q', type=int, default=90); ap.add_argument('--start', type=float, default=8.0)
+    ap.add_argument('--tod', default='', help='time-of-day hours (e.g. 18.4,22,13w1): one session of Look_Midtown_tod per resolution'); ap.add_argument('--work', default=''); ap.add_argument('--jpeg-q', type=int, default=90); ap.add_argument('--start', type=float, default=8.0)
     ap.add_argument('--variants', default='', help='json {"variants": {name: [live tuning commands]}} : one session sweeps every variant over the selected shots'); ap.add_argument('--exec', default='', help='extra console commands, comma separated (debug variants)'); ap.add_argument('--timeout', type=int, default=1500); ap.add_argument('--suffix', default='', help='extra text appended to the file names (variants)')
     a = ap.parse_args()
     shots = json.load(open(os.path.join(UE, 'Scripts', 'city_shots.json')))
@@ -54,13 +64,20 @@ def main():
     if not ensure_boxes.ensure(): sys.exit('traversal boxes are stale (see above)')
     work = os.path.abspath(a.work) if a.work else SCR
     fails = 0; notes = []
-    if a.variants:
-        V = json.load(open(a.variants))['variants']
+    if a.tod:
+        V = {}
+        for t in a.tod.split(','):
+            h, w = (t.split('w') + ['-1'])[:2]
+            V['h' + t] = ['exec wh.ToDClear', 'cvar wh.Weather %s' % w, 'cvar wh.TimeOfDay %s' % h]
+        a.presets = 'tod'
+    if a.variants or a.tod:
+        V = V if a.tod else json.load(open(a.variants))['variants']
         for preset in a.presets.split(','):
             for res in a.res.split(','):
                 d = os.path.join(work, 'var_%s_%s' % (preset, res)); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
                 tf = os.path.join(d, 'tour.txt'); open(tf, 'w').write(tour_lines(shots, a.settle, a.first_settle, V))
                 mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
+                u = util()
                 cmd = [RUN_GAME, d, '-map', mp, '-res', res, '-quit', '3000', '-name', 'tour', '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp + ((',' + a.exec) if a.exec else ''),
                        '--', '-WHLookTour=' + tf, '-WHLookTourDir=' + d, '-WHLookTourStart=%s' % a.start, '-WHLookTourMinFrames=%d' % a.min_frames]
                 t0 = time.time(); subprocess.run(slot(cmd), capture_output=True, text=True)
@@ -69,7 +86,16 @@ def main():
                     sid, v = os.path.basename(f)[:-4].split('@')
                     out = '%s/stills/%s_%s_%s_%s.jpg' % (rnd, preset, sid, res, v)
                     subprocess.run(['sips', '-s', 'format', 'jpeg', '-s', 'formatOptions', str(a.jpeg_q), f, '--out', out], capture_output=True); n += 1
+                    if a.tod:
+                        s = next(x for x in shots if x['id'].split('_')[0] == sid)
+                        notes.append({'kind': 'still', 'file': os.path.relpath(out, rnd), 'preset': 'tod ' + v, 'view': s['id'], 'desc': s['desc'], 'output': res,
+                                      'internal': '%s%% of output' % a.sp, 'camera_pos_m': s['pos'], 'camera_target_m': s['target'], 'fov_deg': s.get('fov', 70),
+                                      'game_time_s': 'tour: %g s settle per pose (first pose %g s, +2 s at each new hour), >= %d frames' % (a.settle, a.first_settle, a.min_frames),
+                                      'gpu_util_before_pct': u, 'wall_s': None, 'method': 'shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour'})
                 print('variants', preset, res, n, 'stills', '%d s' % (time.time() - t0), flush=True)
+        if a.tod:
+            import capture_looks
+            capture_looks.flush(rnd, notes, json.load(open(os.path.join(UE, 'Scripts', 'city_shots.json'))))
         return
     for preset in a.presets.split(','):
         for res in a.res.split(','):
