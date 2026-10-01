@@ -256,7 +256,7 @@ def bluff():
         for j in range(1, NR - 1):
             v = veg[i, j]
             if v < 0.5: continue
-            pr = (0.35 if Y[j] < 20 else 0.18) * (v - 0.4) / 0.6 + (0.55 if Y[j] > 52 else 0.0)
+            pr = 2.4 * ((0.35 if Y[j] < 20 else 0.18) * (v - 0.4) / 0.6) + (0.55 if Y[j] > 52 else 0.0)   # (r10 second pass: the first render showed the face as a bare grey-blue band between the tree lines)
             if rng.random() > pr: continue
             p = Pg[i, j] + np.array([nx[i], 0, nz[i]]) * 1.0
             cl.append([p[0] + rng.uniform(-4, 4), p[1], p[2] + rng.uniform(-4, 4), rng.uniform(3.2, 6.8) * (1.0 if Y[j] < 52 else 1.3), rng.uniform(0.7, 1.15), rng.uniform(0.45, 0.8)])
