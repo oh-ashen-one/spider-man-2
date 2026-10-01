@@ -24,6 +24,8 @@ CSV_DIR = os.path.join(UE, 'Saved', 'Profiling', 'CSV')
 ROUTE = os.path.join(WT, 'docs', 'night1', 'manhattan', 'scripts', 'route_30s_warmup15.json')
 sys.path.insert(0, os.path.join(WT, 'tools', 'perf_ue'))
 from run_perf import analyse_csv, pct  # noqa: E402  (P4's CSV reader, unchanged)
+sys.path.insert(0, HERE)
+import gpu_procs  # noqa: E402
 
 
 def read_set(stem):
@@ -88,6 +90,7 @@ def main():
     ap.add_argument('--timeout', type=int, default=900)
     ap.add_argument('--trace', default='', help='Unreal Insights channels for a -trace run (e.g. cpu,gpu,frame); writes <name>/trace.utrace')
     ap.add_argument('--budget-s', type=int, default=780, help='skip remaining configs when the next one would pass this many seconds (lock max hold 15 min)')
+    ap.add_argument('--game-args', default='', help='extra game command-line args for every config, space separated (round 07: -csvCategories=RHITStalls,RHITFlushes)')
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     summary, t_start, last = [], time.time(), 0.0
@@ -103,20 +106,22 @@ def main():
             print('SKIP (lock budget)', name, flush=True); summary.append({'config': name, 'skipped': 'lock budget'}); continue
         d = os.path.join(out, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
         started = time.time()
+        snap0 = gpu_procs.snap()   # round 07: per-process GPU time of every OTHER process (EXO / MLX models are invisible to the lock)
         execs = ([] if sp == 'ini' else ['r.ScreenPercentage %s' % sp]) + ['%s %s' % (k, v) for k, v in cv]   # SP 'ini' = the shipped path: the preset comes from Config/Mac/MacEngine.ini (build_map.py step perf_preset), nothing on the command line
         # no -WHTravMask: the hero-mask / scene-depth telemetry captures stay off (they re-render the scene every frame)
         extra = (['-WHTravScript=' + cfg_script, '-WHTravCsv=' + os.path.join(d, 'trav_telemetry.csv')] if cfg_script not in ('', 'none') else []) \
             + ['-csvGpuStats', '-benchmark', '-fps=60', '-notraceserver']
-        extra += flags
+        extra += flags + a.game_args.split()
         if cv: extra.append('-dpcvars=' + ','.join('%s=%s' % (k, v) for k, v in cv))
         if a.trace: extra += ['-trace=' + a.trace, '-tracefile=' + os.path.join(d, 'trace.utrace')]
         cmd = [RUN_GAME, d, '-map', cfg_map, '-res', a.res, '-perf', a.window, '-name', name, '-timeout', str(a.timeout),
                '-exec', ','.join(execs), '--'] + extra
         r = subprocess.run(cmd, capture_output=True, text=True)
+        other = gpu_procs.diff(snap0, gpu_procs.snap())
         open(os.path.join(d, 'run.txt'), 'w').write(' '.join(cmd) + '\n\n' + r.stdout + '\n' + r.stderr)
         rec = {'config': name, 'spec': spec, 'screen_percentage': sp, 'cvars': dict(cv), 'flags': flags, 'map': cfg_map, 'res': a.res, 'window_s': a.window,
                'script': os.path.relpath(cfg_script, WT) if cfg_script not in ('', 'none') else 'none', 'wall_s': round(time.time() - started, 1),
-               'command': ' '.join(x.replace(WT, '<wt>') for x in cmd)}
+               'command': ' '.join(x.replace(WT, '<wt>') for x in cmd), 'other_gpu': other, 'void': other['void']}
         pj = os.path.join(d, name + '_perf.json')
         if os.path.exists(pj): rec['wh_perf'] = json.load(open(pj))
         else: rec['error'] = 'no perf json (run failed or timed out): see run.txt'
@@ -133,7 +138,7 @@ def main():
         json.dump(rec, open(os.path.join(d, 'result.json'), 'w'), indent=1)
         summary.append(rec); last = time.time() - started
         c = rec.get('csv') or {}
-        print('%-14s sp %-3s avg %s p50 %s p95 %s gpu %s rt %s  (%.0f s)' % (name, sp, fmt(c.get('avg_ms')), fmt(c.get('p50_ms')), fmt(c.get('p95_ms')),
+        print('%-14s%s sp %-3s avg %s p50 %s p95 %s gpu %s rt %s  (%.0f s)' % (name, ' VOID(other GPU use)' if rec['void'] else '', sp, fmt(c.get('avg_ms')), fmt(c.get('p50_ms')), fmt(c.get('p95_ms')),
               fmt((c.get('gpu_ms') or {}).get('avg')), fmt((c.get('render_thread_ms') or {}).get('avg')), last), flush=True)
     json.dump(summary, open(os.path.join(out, 'summary.json'), 'w'), indent=1)
     open(os.path.join(out, 'TABLE.md'), 'w').write(table(summary))
@@ -151,7 +156,7 @@ def table(summary):
         c, w, b = r.get('csv') or {}, r.get('wh_perf') or {}, (r.get('breakdown') or {}).get('counters') or {}
         f1 = lambda ms: '%s (%s)' % (fmt(ms), fmt(1000.0 / ms, 1) if ms else 'n/a')
         L.append('| %s | %s | %sx%s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |' % (
-            r['config'], r['screen_percentage'], w.get('internal_w', '?'), w.get('internal_h', '?'), f1(c.get('avg_ms')), f1(c.get('p50_ms')),
+            r['config'] + (' **VOID**' if r.get('void') else ''), r['screen_percentage'], w.get('internal_w', '?'), w.get('internal_h', '?'), f1(c.get('avg_ms')), f1(c.get('p50_ms')),
             f1(c.get('p95_ms')), fmt(c.get('p99_ms')), c.get('hitches', 'n/a'), fmt((c.get('gpu_ms') or {}).get('avg')),
             fmt((c.get('render_thread_ms') or {}).get('avg')), fmt((c.get('game_thread_ms') or {}).get('avg')), fmt((c.get('rhi_thread_ms') or {}).get('avg')),
             fmt(b.get('RHI/DrawCalls'), 0), ' '.join('%s=%s' % kv for kv in r.get('cvars', {}).items()) or '-'))
