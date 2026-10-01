@@ -81,7 +81,8 @@ def safe_rmtree(p):
 
 def wait_slot():
     while True:
-        n = subprocess.run("pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
+        # (island r01) count real engine processes only: `pgrep -f` also matched gpu_slot.py waiters whose argv holds the editor path
+        n = subprocess.run("pgrep -x UnrealEditor | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
         if int(n or 0) < 3: return
         log('3+ Unreal instances running, waiting 60 s'); time.sleep(60)
 
