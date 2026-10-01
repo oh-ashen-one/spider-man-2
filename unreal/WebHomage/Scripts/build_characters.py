@@ -1291,7 +1291,7 @@ if 'skinsmap' in STEPS:
         for fi, fyaw in enumerate((0, 90, 180, 270)):
             fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'HeroFill_%d' % fi)
             fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
-            fc.set_editor_property('intensity', float(ARGS.get('skin_fill', 0.8))); fc.set_editor_property('cast_shadows', False); fc.set_editor_property('lighting_channels', only1)
+            fc.set_editor_property('intensity', float(ARGS.get('skin_fill', 0.5))); fc.set_editor_property('cast_shadows', False); fc.set_editor_property('lighting_channels', only1)   # round 12: 0.8 -> 0.5 (four equal shadowless fills flattened the raised piping)
         hs = walker('Hero_Skin', ROOT + '/Hero/SK_Hero', ROOT + '/Hero/ABP_Hero_Lineup', (0, 0, 0), WS.STAND, 0.0, yaw=0.0)
         chan = unreal.LightingChannels(); chan.set_editor_property('channel0', True); chan.set_editor_property('channel1', True)
         hs.get_editor_property('mesh').set_editor_property('lighting_channels', chan)

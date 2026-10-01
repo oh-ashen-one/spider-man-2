@@ -46,8 +46,27 @@ def region_ramp(P, dense, names):
     return ramp
 
 
+def strip_arm(P, dense, names):
+    """Below the armpit the side of the chest follows the SPINE only: the shoulder / deltoid / upperArm weights of torso-side vertices fade out from
+    y = 1.36 (armpit, kept) to y = 1.25 (removed), the removed weight goes to the vertex's torso bones (round 12: smoothing alone moved the fold inward)."""
+    arm = np.array([n.split('.')[0] in ('shoulder', 'deltoid', 'upperArm') for n in names])
+    tor = np.array([n.split('.')[0] in ('hips', 'glute', 'spine', 'spine1', 'spine2') for n in names])
+    ts = dense[:, tor].sum(1); y = P[:, 1]; ax = np.abs(P[:, 0])
+    t = np.clip((y - 1.25) / (1.36 - 1.25), 0, 1); keep = t * t * (3 - 2 * t)
+    sel = (ts >= 0.45) & (y > 0.98) & (y < 1.36) & (ax > 0.05) & (ax < 0.26)
+    out = dense.copy()
+    rem = out[sel][:, arm].sum(1) * (1 - keep[sel])
+    out_sel = out[sel]
+    out_sel[:, arm] *= keep[sel][:, None]
+    tw = out_sel[:, tor]; tw = tw / np.maximum(tw.sum(1, keepdims=True), 1e-9)
+    out_sel[:, tor] += tw * rem[:, None]
+    out[sel] = out_sel
+    return out
+
+
 def smooth_weights(P, N, dense, names, radius=RADIUS, iters=ITERS):
-    ramp = region_ramp(P, dense, names)
+    ramp = region_ramp(P, dense, names)          # the region is found on the ORIGINAL weights
+    dense = strip_arm(P, dense, names)
     act = ramp > 0
     tree = cKDTree(P)
     pr = tree.query_pairs(radius, output_type='ndarray')

@@ -2,7 +2,7 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Round 12 capture chain (P2 hero skins): ONE gpu_slot hold per call, every engine run nested in it (one engine at a time, run_game.sh stops by SIGTERM only).
 #   /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r12.sh <out_dir>
-#   STEPS (default "stills pawn orbit hero chase fight crowd lineup"):
+#   STEPS (default "stills pawn orbit hero chase fight crowd lineup"; "build" first = the content build nested in the same hold):
 #     stills  4K real-time stills of every suit (Char_Skins: front / back framed for CH1 at 7.85 m, chest, head), EV bias $EV
 #     pawn    the playable pawn cycling the suits with real T presses (Char_SkinsPlay, 1080p -movie fixed 1/60 s)
 #     orbit   the stage hero orbit across every suit (1080p -movie)
@@ -44,6 +44,14 @@ if [ -n "${REQUIRE_BUILD_LOG:-}" ]; then      # queued behind its own content bu
      || { [ -n "${REQUIRE_NEWER:-}" ] && [ ! "$REQUIRE_BUILD_LOG" -nt "$REQUIRE_NEWER" ]; }; then
     log "content build not finished OK ($REQUIRE_BUILD_LOG): no render"; exit 4; fi
   if grep -q "M_Char_Suit weave-from-position FAILED" "$REQUIRE_BUILD_LOG"; then log "NOTE: weave-from-position failed in the build, UV weave in use"; fi
+fi
+
+if has build; then      # the content build nested in this hold (gpu_slot passes nested launches through): one queue turn for build + captures
+  log "build: clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap"
+  BUILD_STDOUT="$OUT/build.stdout" bash "$WT/tools/ue_char/fight/build_fight.sh" clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap 2>&1 | tail -3 | tee -a "$OUT/chain.log"
+  cp "$WT/unreal/WebHomage/Saved/Logs/characters_build.log" "$OUT/characters_build.log" 2>/dev/null
+  if ! grep -q "skinsmap saved True True" "$OUT/characters_build.log" || ! grep -q "map saved /Game/Tests/Characters/Char_Fight True" "$OUT/characters_build.log"; then log "build FAILED: no render"; exit 5; fi
+  grep -E "weave from pre-skinned|weave-from-position FAILED" "$OUT/characters_build.log" | sed 's/^.*LogPython: //' | tee -a "$OUT/chain.log"
 fi
 
 if has stills; then

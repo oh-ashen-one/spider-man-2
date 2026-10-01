@@ -51,7 +51,7 @@ DEFAULT_STYLE = dict(
     # round 12: relief.kind 'piping' = every panel / net line is a RAISED rounded cord (height profile, glossier roughness) and the net / piping / panel
     # lines are layered UNDER the sash and chevron panels (colour, height and roughness); 'r8' = the round-08 flat print (grooves, net over the sash),
     # kept so tools/ue_char/suits/test_regression.py can still prove the round-08 maps texel for texel.
-    relief=dict(kind='piping', net=0.65, pipe=0.95, ring=0.95, glyph=0.85, sash=0.40, border=0.85, rough_pipe=0.36, rough_net=0.42, cavity=0.55),
+    relief=dict(kind='piping', net=1.30, pipe=1.80, ring=1.80, glyph=1.40, sash=0.60, border=1.60, rough_pipe=0.34, rough_net=0.40, cavity=0.35, net_tone=0.38),
 )
 
 
@@ -514,11 +514,12 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             L(band(t_fore - tc, 0.0016, aa) * arm_w * R_ * (armF / arm_tot) * (1 - plate_m), DEEP, h=-0.30, rough=0.8, H=RL['net'], dist=(t_fore - tc) * float(np.linalg.norm(W_R - E_R)), hw=0.0016, r_pipe=RL['rough_net'])
     # dark hairline net on the TEAL panels: upper chest / shoulders / back yoke, the whole left arm, left shin, right thigh
     NK = dict(h=-0.25, rough=0.82, H=RL['net'], hw=netw_d, r_pipe=RL['rough_net'])
-    L(cover(nd_tor - netw_d, aa) * z_up * 0.85, DEEP, dist=nd_tor, **NK)
-    L(cover(nd_armU_L - netw_d, aa) * arm_w * L_ * (armU + shoulder_arm) * (1 - plate_m) * 0.85, DEEP, dist=nd_armU_L, **NK)
-    L(cover(nd_armF_L - netw_d, aa) * arm_w * L_ * armF * (1 - plate_m) * 0.85 * (1 - ss(t_fore, 0.55, 0.6)), DEEP, dist=nd_armF_L, **NK)
-    L(cover(nd_shL - netw_d, aa) * shin * L_ * (1 - plate_m) * ss(y, 0.22, 0.26) * 0.85, DEEP, dist=nd_shL, **NK)
-    L(cover(nd_thR - netw_d, aa) * thigh * R_ * (1 - plate_m) * ss(y, 0.60, 0.66) * 0.85, DEEP, dist=nd_thR, **NK)
+    NETC = DEEP * (1 - RL.get('net_tone', 0.0)) + TEAL * RL.get('net_tone', 0.0) if PIPE else DEEP      # round 12: a mid-dark cord shows its lit and its shadowed flank (a near-black one reads flat)
+    L(cover(nd_tor - netw_d, aa) * z_up * 0.85, NETC, dist=nd_tor, **NK)
+    L(cover(nd_armU_L - netw_d, aa) * arm_w * L_ * (armU + shoulder_arm) * (1 - plate_m) * 0.85, NETC, dist=nd_armU_L, **NK)
+    L(cover(nd_armF_L - netw_d, aa) * arm_w * L_ * armF * (1 - plate_m) * 0.85 * (1 - ss(t_fore, 0.55, 0.6)), NETC, dist=nd_armF_L, **NK)
+    L(cover(nd_shL - netw_d, aa) * shin * L_ * (1 - plate_m) * ss(y, 0.22, 0.26) * 0.85, NETC, dist=nd_shL, **NK)
+    L(cover(nd_thR - netw_d, aa) * thigh * R_ * (1 - plate_m) * ss(y, 0.60, 0.66) * 0.85, NETC, dist=nd_thR, **NK)
     # amber net on the DEEP left thigh and dark net on the amber greave
     zL = thigh * L_ * ss(y, 0.56, 0.60) * (1 - plate_m) * ss(0.78 - y, -0.03, 0.03) * (1.0 if S['thigh_deep'] else 0.0)
     L(cover(nd_thL - netw_a * 0.9, aa) * zL, AMBER_D, h=0.25, rough=0.55, H=RL['net'] * 1.1, dist=nd_thL, hw=netw_a * 0.9)
