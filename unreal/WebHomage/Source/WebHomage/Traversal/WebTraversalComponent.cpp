@@ -73,6 +73,7 @@ void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 	Rng.Initialize(RandomSeed);
 	FlipRng.Initialize(RandomSeed * 31 + 7);
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFlipVar="), V)) WebFlips::bVariants = V != 0; } // round 19 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHighFix="), V)) FWebTravAnchors::bHighFix = V != 0; } // round 19 A/B
 	bWorldReady = true;
 }
 

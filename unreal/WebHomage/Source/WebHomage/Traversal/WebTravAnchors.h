@@ -58,6 +58,10 @@ public:
 private:
 	struct FCand { FVector Point; FVector Normal; double L; double Score; double Lat; FName Kind; };
 	struct FPass { double Ahead, Up, Radius, MinAbove, MinL, MaxL, MinAhead, MaxLat, ElevLo, ElevHi; };
+public:
+	/** Round 19: high-band search aims >= 4 m over the body (-WHTravHighFix=0 = the round-18 1.5 m, A/B). */
+	static bool bHighFix;
+private:
 
 	void FaceCandidates(const FVector& Pos, const FVector& D, const FVector& Fwd, const FVector& Right, const FPass& P, const FVector* Turn, TArray<FCand>& Out) const;
 	bool Confirm(const FVector& Pos, const FCand& C, bool bStrict, FTravAnchor& Out) const;
