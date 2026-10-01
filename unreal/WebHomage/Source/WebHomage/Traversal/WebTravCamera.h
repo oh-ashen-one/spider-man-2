@@ -47,6 +47,10 @@ public:
 	// ---- live state (public for telemetry)
 	double Yaw = 0.0, Pitch = 0.14, Dist = 4.2, Fov = 58.0, Roll = 0.0;
 	double Sens = 1.0;     // look input already in radians
+	/** 2026-10-01 settings menu: base vertical FOV (deg; browser 58) and the camera-shake switch. Set from WHSettings() every frame
+	 *  by the pawn; at the defaults (58.0, true) the camera is bit-identical to before the menu existed. */
+	double BaseVFov = 58.0;
+	bool bJolts = true;
 	/** Round 02: swing / air pitch follows height (looks down over the street when high, levels out at the arc bottom). */
 	double HeightPitchK = 0.024, HeightPitchRef = 10.0;
 	double Trauma = 0.0, Time = 0.0, HeightOff = 0.0, CollDist = 4.2, SideOff = 0.32;
@@ -145,10 +149,11 @@ public:
 	void ComposeChase(double Dt, const FTravCamInput& P, const FWebTravWorld& World, const FVector& Fwd);
 	double DebugOccHold() const { return OccHold; }
 	double DebugAutoPitch() const { return AutoPitch; }
-	void Shake(double Amt) { Trauma = FMath::Min(1.0, Trauma + Amt); }
+	// 2026-10-01 settings menu: bJolts = "Camera shake" (default on). Off = no trauma shake, no landing punch / dip, no launch kick.
+	void Shake(double Amt) { if (!bJolts) return; Trauma = FMath::Min(1.0, Trauma + Amt); }
 	/** launch kick (zip slingshot / point launch): pull back + FOV widen, springs back */
-	void Kick(double Amt) { KickV += 9.0 * Amt; Trauma = FMath::Min(1.0, Trauma + 0.08 * Amt); }
-	void Impact(double Sev) { Trauma = FMath::Min(1.0, Trauma + 0.12 + 0.55 * Sev); PunchV -= 40.0 * Sev; DipV -= 5.0 * Sev; }
+	void Kick(double Amt) { if (!bJolts) return; KickV += 9.0 * Amt; Trauma = FMath::Min(1.0, Trauma + 0.08 * Amt); }
+	void Impact(double Sev) { if (!bJolts) return; Trauma = FMath::Min(1.0, Trauma + 0.12 + 0.55 * Sev); PunchV -= 40.0 * Sev; DipV -= 5.0 * Sev; }
 	/** Camera-relative directions (browser cam.forward / forwardFlat / rightFlat). */
 	FVector Forward() const { const double CP = FMath::Cos(Pitch); return FVector(FMath::Cos(Yaw) * CP, FMath::Sin(Yaw) * CP, -FMath::Sin(Pitch)); }
 	FVector ForwardFlat() const { return FVector(FMath::Cos(Yaw), FMath::Sin(Yaw), 0.0); }

@@ -71,6 +71,14 @@ void AWHCombatHero::SetupPlayerInputComponent(UInputComponent* IC)
 	IC->BindKey(EKeys::C, IE_Pressed, this, &AWHCombatHero::KDodge);
 	IC->BindKey(EKeys::LeftControl, IE_Pressed, this, &AWHCombatHero::KDodge);
 	IC->BindKey(EKeys::Gamepad_FaceButton_Right, IE_Pressed, this, &AWHCombatHero::KDodge);
+	// 2026-10-01 owner ("connect a PS5 controller and play"): every combat action on the pad (DualSense via the macOS
+	// GameController framework = standard Gamepad_* keys). Square attack (above), Circle dodge (above), Triangle web strike
+	// (also traversal zip, like keyboard E), R1 finisher, D-pad left web shooter, D-pad right throw, D-pad down heal.
+	IC->BindKey(EKeys::Gamepad_FaceButton_Top, IE_Pressed, this, &AWHCombatHero::KStrike);
+	IC->BindKey(EKeys::Gamepad_RightShoulder, IE_Pressed, this, &AWHCombatHero::KFinisher);
+	IC->BindKey(EKeys::Gamepad_DPad_Left, IE_Pressed, this, &AWHCombatHero::KWeb);
+	IC->BindKey(EKeys::Gamepad_DPad_Right, IE_Pressed, this, &AWHCombatHero::KThrow);
+	IC->BindKey(EKeys::Gamepad_DPad_Down, IE_Pressed, this, &AWHCombatHero::KHeal);
 }
 
 void AWHCombatHero::KAttackDown() { if (Dir) Dir->LmbDown(); }

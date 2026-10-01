@@ -29,6 +29,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/StaticMesh.h"
+#include "Core/WHSettings.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -143,9 +144,18 @@ void AWebTravCharacter::BuildTravInput()
 	MapMove(EKeys::S, true, true); MapMove(EKeys::Down, true, true);
 	MapMove(EKeys::D, false, false); MapMove(EKeys::Right, false, false);
 	MapMove(EKeys::A, false, true); MapMove(EKeys::Left, false, true);
-	IMC->MapKey(MoveAction, EKeys::Gamepad_Left2D);
+	// sticks: radial dead zone (DualSense / any pad through the macOS GameController framework = standard Gamepad_* keys)
+	auto DeadZone = [IMC](FEnhancedActionKeyMapping& M)
+	{
+		UInputModifierDeadZone* DZ = NewObject<UInputModifierDeadZone>(IMC);
+		DZ->Type = EDeadZoneType::Radial;
+		DZ->LowerThreshold = 0.12f;
+		DZ->UpperThreshold = 1.f;
+		M.Modifiers.Add(DZ);
+	};
+	DeadZone(IMC->MapKey(MoveAction, EKeys::Gamepad_Left2D));
 	IMC->MapKey(LookMouseAction, EKeys::Mouse2D);
-	IMC->MapKey(LookPadAction, EKeys::Gamepad_Right2D);
+	DeadZone(IMC->MapKey(LookPadAction, EKeys::Gamepad_Right2D));
 	// RIGHT MOUSE = web swing (hold); R2 = swing in air / parkour on ground (L2+R2 = zip)
 	IMC->MapKey(SwingAction, EKeys::RightMouseButton);
 	IMC->MapKey(PadR2Action, EKeys::Gamepad_RightTrigger);
@@ -156,6 +166,7 @@ void AWebTravCharacter::BuildTravInput()
 	// Shift = wall run + ground parkour
 	IMC->MapKey(SprintAction, EKeys::LeftShift);
 	IMC->MapKey(SprintAction, EKeys::RightShift);
+	IMC->MapKey(SprintAction, EKeys::Gamepad_LeftThumbstick);  // L3 (R2 also sprints on the ground)
 	// E / MIDDLE MOUSE = web-zip / point-launch; Y / Triangle
 	IMC->MapKey(ZipAction, EKeys::E);
 	IMC->MapKey(ZipAction, EKeys::MiddleMouseButton);
@@ -705,14 +716,21 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		const AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(GetController());
 		const bool bMouseLook = !WPC || WPC->IsMouseCaptured();
 		const FVector2D MouseD = bMouseLook ? FVector2D(FMath::Clamp(MouseAccum.X, -MaxMouseDeltaPx, MaxMouseDeltaPx), FMath::Clamp(MouseAccum.Y, -MaxMouseDeltaPx, MaxMouseDeltaPx)) : FVector2D::ZeroVector;
-		I.Look = FVector2D(MouseD.X * MSens, -MouseD.Y * MSens)
-			+ FVector2D(PadLook.X * PadLookRate.X, -PadLook.Y * PadLookRate.Y) * Dt;
+		// 2026-10-01 settings menu: gamepad look sensitivity and Invert Y (mouse and stick). The right stick is never gated by mouse capture.
+		const FWHSettings& St = WHSettings();
+		const double YSign = St.bInvertY ? -1.0 : 1.0;
+		const double PadK = St.PadSens;
+		I.Look = FVector2D(MouseD.X * MSens, -MouseD.Y * MSens * YSign)
+			+ FVector2D(PadLook.X * PadLookRate.X * PadK, -PadLook.Y * PadLookRate.Y * PadK * YSign) * Dt;
 	}
 	MouseAccum = FVector2D::ZeroVector;
 	I.ComputeEdges(PrevInput);
 	PrevInput = I;
 
 	// ---- camera look, traversal, camera
+	// settings menu (2026-10-01): FOV + camera shake. WHSettings() stays at its defaults (58.0 deg, shake on) in automated runs.
+	Cam.BaseVFov = WHSettings().BaseVFov();
+	Cam.bJolts = WHSettings().bCameraShake;
 	Cam.ApplyLook(I.Look);
 	// pre-roll: the camera state is restored after the frame is set up and the traversal is only posed (not stepped), so the
 	// sequence that follows is bit-identical to a run without pre-roll
