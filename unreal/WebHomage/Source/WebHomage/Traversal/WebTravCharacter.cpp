@@ -358,9 +358,12 @@ bool AWebTravCharacter::SetupHeroMesh()
 void AWebTravCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	UWebTravScript* TuneScript = GetGameInstance() ? GetGameInstance()->GetSubsystem<UWebTravScript>() : nullptr;
 	{ // round 07: -WHTravTune=Name=Value,... sets float tuning properties of the traversal component (tuning scans)
-		FString Tune;
-		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravTune="), Tune, false))
+	  // round 17: the script's own "tune" string first, then the command line (which wins)
+		FString CmdTune, Tune = TuneScript && TuneScript->IsActive() ? TuneScript->TuneString() : FString();
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravTune="), CmdTune, false)) Tune = Tune.IsEmpty() ? CmdTune : Tune + TEXT(",") + CmdTune;
+		if (!Tune.IsEmpty())
 		{
 			TArray<FString> Parts;
 			Tune.ParseIntoArray(Parts, TEXT(","));
@@ -378,8 +381,9 @@ void AWebTravCharacter::BeginPlay()
 		}
 	}
 	{ // round 15: -WHCamTune=Name=Value,... sets the camera's named tuning doubles (FWebTravCamera::SetTune)
-		FString Tune;
-		if (FParse::Value(FCommandLine::Get(), TEXT("-WHCamTune="), Tune, false))
+		FString CmdTune, Tune = TuneScript && TuneScript->IsActive() ? TuneScript->CamTuneString() : FString();
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHCamTune="), CmdTune, false)) Tune = Tune.IsEmpty() ? CmdTune : Tune + TEXT(",") + CmdTune;
+		if (!Tune.IsEmpty())
 		{
 			TArray<FString> Parts;
 			Tune.ParseIntoArray(Parts, TEXT(","));
@@ -593,7 +597,12 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			// round 14: a swing that ends in a flow flip is let go at LongCut even before it rises (the flip solves its own climb; a flat
 			// swing over a low roof held f4 1.4 s -> attach-to-attach 2.98 s)
 			const bool bLong = bSwinging && bAutoSawDescent && A.ModeT > LongCut && (Traversal->VelM().Z > 0 || bTrickNext);
-			if (bAutoHeld && bSwinging && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
+			// round 17 (TC8, critic r16 "fire flips from an apex >= 3 m over the lower roofline"): a swing that ends in a flow flip is held on
+			// its RISING front until the flip's apex can clear the lower roofline within 30 m (FlowApexGap <= FlowReadyGain); the front apex
+			// (vz <= 0) or a stale swing still lets go
+			const bool bRoofHold = bTrickNext && Traversal->bFlowApexSolve && bSwinging && Traversal->VelM().Z > 0.5 && !bStale
+				&& Traversal->FlowApexGap() > double(Traversal->FlowReadyGain);
+			if (bAutoHeld && bSwinging && !bRoofHold && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;
 				const int32 Every = Script->TrickEveryAt(TravTime);
@@ -1089,7 +1098,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25,flow_apex_want_z,flow_gap_m"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1220,7 +1229,10 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	// round 16: trick camera distance after the dolly (m), selection tier (-1 none, 0 obstruction + sun ok, 1 sun rule failed, 2 pulled in, 3 plain chase), abort flag, height weight
 	const FString Cols15 = FString::Printf(TEXT(",%.1f,%.1f,%.1f,%.1f,%.2f,%.2f,%d,%d,%.3f,%d"), Cam.FlipSunDeg, ViewSun, Traversal->FlowRoofUsed, Traversal->FlowRiseUsed, Cam.FlipGlare,
 		Cam.FlipDistNow, Cam.FlipTier, Cam.bFlipAbort ? 1 : 0, Cam.FlipZK, Cam.bLensTouch ? 1 : 0);
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15);
+	// round 17: apex hips Z the last flow flip was solved for (world m, 0 none) and the roofline gap now (target - hips, m; -999 no roof)
+	const double Gap = Traversal->FlowApexGap();
+	const FString Cols17 = FString::Printf(TEXT(",%.2f,%.2f"), Traversal->FlowApexWant, Gap < -1e8 ? -999.0 : Gap);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17);
 }
 
 // ------------------------------------------------------------------ game mode

@@ -128,6 +128,28 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofAhead = 40.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofMinH = 16.f;
 	double FlowRoofUsed = -1.0, FlowRiseUsed = 0.0; // telemetry: roofline (m over the street) and rise of the last flow flip
+	/**
+	 * Round 17 (critic r16 single gap: "every trick is shot from the street into a dark facade"; TRICK_CAMERA_SPEC TC8): a flow flip fires
+	 * from an APEX with the hips >= FlowRoofOver m over the lower roofline within FlowRoofR m. Roofline = per street side the HIGHEST roof
+	 * sample (>= FlowRoofMinH over the street: canopies ignored) within FlowRoofR m behind / beside / ahead, lower side wins (FlowRoofTarget).
+	 * bFlowApexSolve: the release's climb is solved for the program's APEX (hips at target + FlowApexMargin), not for the catch height, and
+	 * the flow vz cap is FlowApexVzMax; a swing that ends in a flip is held on its rising front until the apex is reachable
+	 * (FlowApexGap <= FlowReadyGain, autoChain; a live player lets go at the top of the swing the same way).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bFlowApexSolve = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofR = 30.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMargin = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexVzMax = 16.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMin = 2.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowReadyGain = 9.0f;
+	/** Round 17: world Z the hips must reach at the flip apex (lower roofline within FlowRoofR + FlowRoofOver + FlowApexMargin); -1 = no roof. */
+	double FlowRoofTarget(const FVector& Dir, double* OutRoofOverStreet = nullptr) const;
+	/** Round 17: target - hips now (m; <= 0 already above it); -1e9 when there is no roofline rule here. Cached 0.1 s. */
+	double FlowApexGap() const;
+	/** Round 17: apex gain (m) of a flow flip released now with vertical speed Vz0 (program boost included). */
+	double FlowApexGain(double Vz0, const struct FWebFlipProgram* FP) const;
+	mutable double GapCacheT = -1e9, GapCacheV = -1e9;
+	double FlowApexWant = 0.0; // telemetry: apex hips Z the last flow flip was solved for (world m; 0 none)
 	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;
 	/** Round 12: gravity scale while a sky launch's flip program plays (from vz 9 m/s: ~5 m more climb, ends near its start height). */

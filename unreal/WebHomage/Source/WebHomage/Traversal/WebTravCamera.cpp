@@ -272,12 +272,21 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (bOn)
 		{ // blend in: critically damped springs (smooth times FlipInT horizontal, FlipZInT height), continuous with a blend-out still running
 			bFlipOutRun = false;
-			SD(FlipK, FlipKV, 1.0, FlipInT, Dt);
+			// round 17 (critic r16: "flipcam_k >= 0.9 by flip_t 0.35", r16 spring reached it at ~0.65 s): a smoothstep over FlipInT from the
+			// weight at its start (k .9 at 0.80 x FlipInT; the output yaw slew 2.4 deg/frame still caps the view's turn rate)
+			if (!bFlipInRun) { bFlipInRun = true; FlipInClock = 0.0; FlipInK0 = FlipK; }
+			FlipInClock += Dt;
+			{
+				const double X = FMath::Clamp(FlipInClock / FMath::Max(0.05, FlipInT), 0.0, 1.0);
+				FlipK = FlipInK0 + (1.0 - FlipInK0) * X * X * (3.0 - 2.0 * X);
+				FlipKV = (1.0 - FlipInK0) * 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipInT);
+			}
 			SD(FlipZK, FlipZKV, 1.0, FlipZInT, Dt);
 		}
 		else if (FlipK > 1e-4 || FlipZK > 1e-4)
 		{ // blend out (TC10): a smoothstep over FlipOutT seconds from the weights at its start -- finite, so the next trick of a chain never
 			// starts on the exponential tail of this one (a critically damped tail left 22 % of the old side in the next flip: a 19 deg jump)
+			bFlipInRun = false;
 			if (!bFlipOutRun) { bFlipOutRun = true; FlipOutClock = 0.0; FlipOutK0 = FlipK; FlipOutZ0 = FlipZK; }
 			FlipOutClock += Dt;
 			const double X = FMath::Clamp(FlipOutClock / FMath::Max(0.05, FlipOutT), 0.0, 1.0), S = X * X * (3.0 - 2.0 * X), Dv = 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipOutT);
@@ -286,7 +295,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			const double Xz = FMath::Clamp((FlipOutClock - FlipZHold) / FMath::Max(0.05, FlipOutT), 0.0, 1.0), Sz = Xz * Xz * (3.0 - 2.0 * Xz);
 			FlipZK = FlipOutZ0 * (1.0 - Sz); FlipZKV = Xz > 0.0 && Xz < 1.0 ? -FlipOutZ0 * 6.0 * Xz * (1.0 - Xz) / FMath::Max(0.05, FlipOutT) : 0.0;
 		}
-		else { bFlipOutRun = false; FlipK = FlipZK = 0.0; FlipKV = FlipZKV = 0.0; }
+		else { bFlipOutRun = false; bFlipInRun = false; FlipK = FlipZK = 0.0; FlipKV = FlipZKV = 0.0; }
 		FlipK = FMath::Clamp(FlipK, 0.0, 1.0);
 		FlipZK = FMath::Clamp(FlipZK, 0.0, 1.0);
 	}
@@ -654,12 +663,12 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 			C.Sun = bHaveSun ? FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(D, SunDir), -1.0, 1.0))) : 180.0;
 		}
 		C.Tier = C.Sun >= SunMinDeg ? 0 : 1;
-		C.Cost = 2.0 * (1.0 - C.Open) + 1.5 * (1.0 - C.Sky) + 4.0 * (1.0 - C.ClearT / 1.5) + GlareW * C.Glare
+		C.Cost = 2.0 * (1.0 - C.Open) + FlipSkyW * (1.0 - C.Sky) + 4.0 * (1.0 - C.ClearT / 1.5) + GlareW * C.Glare
 			+ 2.0 * FMath::Max(0.0, SunPrefDeg - C.Sun) / 40.0
 			+ 0.6 * FMath::Abs(OffDeg - FlipPrefYaw) / 5.0 + (FMath::Sign(CurOff) != double(Side) ? 0.25 : 0.0);
 		return true;
 	};
-	static const double OffsDeg[] = { 40.0, 45.0, 50.0, 55.0 };
+	static const double OffsDeg[] = { 35.0, 40.0, 45.0, 50.0, 55.0 }; // round 17: 35 added (TC1 35-55)
 	FCand Best; bool bHave = false;
 	FString Log;
 	int32 BestTier = 99;
@@ -694,7 +703,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("FlipInT"), &FlipInT}, {TEXT("FlipOutT"), &FlipOutT}, {TEXT("FlipZInT"), &FlipZInT}, {TEXT("FlipDollyInT"), &FlipDollyInT}, {TEXT("FlipDollyOutT"), &FlipDollyOutT},
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
-		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
+		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
