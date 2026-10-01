@@ -6,6 +6,8 @@
 #   push03   = 3D distance the victim's root moved between the frame BEFORE the contact and 0.3 s (real) after it   (target >= 0.5 m)
 #   rot03    = largest visual yaw change (actor yaw + hit twist) within those 0.3 s, degrees                          (target >= 30)
 #   dmax1    = furthest 3D distance from the pre-contact root within 1.0 s                                            (heavy / finisher / launcher >= 2 m)
+# r04 adds tilt03 (largest change of the body's tilt = angle between its up axis and the vertical: the recoil lean about the knees + tumble, from the
+# 16th enemy field of fight_frames.jsonl) and turn03 = max(rot03, tilt03): CB2 says "moves >= 0.5 m OR rotates >= 30 deg" (a rotation about any axis counts).
 # 'heavy' = kind in ender / launch / strike / finisher / throw on a victim that was not ARMORED (armoured brutes take a flinch + push by design).
 import json, os, sys
 import numpy as np
@@ -21,7 +23,7 @@ def enemy_rows(r):
     """tag -> dict(pos, yaw, held, alive, state) from one frame row (rows written before r03 have no yaw / held: yaw None)"""
     out = {}
     for e in r['e']:
-        out[e[0]] = dict(pos=np.array(e[3:6]), yaw=e[13] if len(e) > 13 else None, held=e[14] if len(e) > 14 else 0, alive=e[12], state=e[2])
+        out[e[0]] = dict(pos=np.array(e[3:6]), yaw=e[13] if len(e) > 13 else None, held=e[14] if len(e) > 14 else 0, alive=e[12], state=e[2], tilt=e[15] if len(e) > 15 else None)
     return out
 
 def wrap(a):
@@ -42,7 +44,8 @@ def analyse(rows, ev, win=0.3):
         p0, y0 = fr[fb][tag]['pos'], fr[fb][tag]['yaw']
         f03 = int(np.argmin(np.abs(rt - (rows[fb]['rt'] + win + 1 / 60.0))))   # 0.3 s after the pre-contact frame + the contact frame's own step
         f10 = int(np.argmin(np.abs(rt - (rows[fb]['rt'] + 1.0))))
-        push = rot = None; dmax = 0.0
+        push = rot = tilt = None; dmax = 0.0
+        t0 = fr[fb][tag].get('tilt')
         for f in range(fc, min(len(rows), f10 + 1)):
             if tag not in fr[f]: continue
             d = float(np.linalg.norm(fr[f][tag]['pos'] - p0)); dmax = max(dmax, d)
@@ -50,8 +53,11 @@ def analyse(rows, ev, win=0.3):
                 push = d
                 if y0 is not None and fr[f][tag]['yaw'] is not None:
                     rot = max(rot or 0.0, abs(wrap(fr[f][tag]['yaw'] - y0)))
+                if t0 is not None and fr[f][tag].get('tilt') is not None:
+                    tilt = max(tilt or 0.0, abs(fr[f][tag]['tilt'] - t0))
         res.append(dict(rt=round(e['rt'], 3), kind=kind, victim=tag, armored=armored, heavy=(kind in HEAVY and not armored),
-                        push03=None if push is None else round(push, 2), rot03=None if rot is None else round(rot, 1), dmax1=round(dmax, 2)))
+                        push03=None if push is None else round(push, 2), rot03=None if rot is None else round(rot, 1),
+                        tilt03=None if tilt is None else round(tilt, 1), turn03=None if (rot is None and tilt is None) else round(max(rot or 0.0, tilt or 0.0), 1), dmax1=round(dmax, 2)))
     return res
 
 def summarize(res):
@@ -65,6 +71,9 @@ def summarize(res):
                 push03_min=min((r['push03'] for r in res if r['push03'] is not None), default=None),
                 rot03_min=min((r['rot03'] for r in have_rot), default=None),
                 heavy_dmax1_min=min((r['dmax1'] for r in hv), default=None),
+                tilt03_ge_30=sum((r.get('tilt03') or 0) >= 30 for r in res), tilt03_median=float(np.median([r['tilt03'] for r in res if r.get('tilt03') is not None])) if any(r.get('tilt03') is not None for r in res) else None,
+                turn03_ge_30=sum((r.get('turn03') or 0) >= 30 for r in res),
+                move_or_turn=sum(((r['push03'] or 0) >= 0.5) or ((r.get('turn03') or 0) >= 30) for r in res),
                 misses=[r for r in res if (r['push03'] or 0) < 0.5 or (r['rot03'] is not None and r['rot03'] < 30) or (r['heavy'] and r['dmax1'] < 2.0)])
 
 if __name__ == '__main__':

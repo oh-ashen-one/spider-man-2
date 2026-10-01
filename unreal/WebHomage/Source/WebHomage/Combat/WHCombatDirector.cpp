@@ -28,7 +28,9 @@
 #include "HAL/FileManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Materials/MaterialInstanceDynamic.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/CommandLine.h"
+#include "Misc/ConfigCacheIni.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
@@ -76,6 +78,7 @@ void AWHCombatDirector::Init(AWHCombatHero* InHero)
 	FParse::Value(Cmd, TEXT("WHCmbHoldR="), HoldRadius);
 	FParse::Value(Cmd, TEXT("WHCmbVigA="), VigAmp);
 	{ double Fi = 1.0; if (FParse::Value(Cmd, TEXT("WHCmbFlareI="), Fi)) Fx.FlareI = Fi; }
+	{ int32 Fo = 1; if (FParse::Value(Cmd, TEXT("WHCmbFlare="), Fo)) Fx.bFlareOff = Fo == 0; }   // r04 A/B: -WHCmbFlare=0 = no starburst (same sim, same frames otherwise)
 	{ double Fk = 1.0; if (FParse::Value(Cmd, TEXT("WHCmbFlareK="), Fk)) Fx.FlareK = Fk; int32 Sw = 0; if (FParse::Value(Cmd, TEXT("WHCmbSweep="), Sw)) bShakeSweep = Sw != 0; }
 	{ FString LookSpec; if (FParse::Value(Cmd, TEXT("WHCmbLook="), LookSpec, false) && !LookSpec.IsEmpty()) ApplyLook(LookSpec); }
 	FString ShotList;
@@ -449,6 +452,7 @@ void AWHCombatDirector::PlayerHit(AWHEnemy* E, const FWHPlayerHit& H)
 	const FVector From = H.bHasFrom ? H.From : HP;
 	const FVector D = FlatNorm(E->Pos - From, YawDir(Hero->GetTraversal()->Facing()));
 	FWHHitIn In; In.Dmg = H.Dmg; In.Dir = D; In.Kind = H.Kind; In.bStunBrute = H.bStunBrute; In.Side = H.Side;
+	In.CamRight = FRotationMatrix(CamRotF).GetScaledAxis(EAxis::Y);   // r04: the recoil lean is biased sideways on the screen
 	const FWHHitResult R = E->Hit(In);
 	if (!R.bValid) return;
 	const double Heavy = R.bArmored ? 0.1 : H.Heavy;
@@ -934,7 +938,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 		HitShake(R, Fv);
 		Cam->SetWorldLocationAndRotation(BaseCamP * 100.0, R); Cam->SetFieldOfView(float(Fv));
 		LastCamPos = BaseCamP; LastCamRot = R; LastFov = float(Fv);
-		CamPosM = BaseCamP; CamRotF = R; CamFovF = Fv; Fx.SetCam(BaseCamP, Fv);
+		CamPosM = BaseCamP; CamRotF = R; CamFovF = Fv; Fx.SetCam(BaseCamP, Fv, R);
 		ImpactVignette(Cam);
 		return;
 	}
@@ -1128,7 +1132,7 @@ void AWHCombatDirector::CombatCamera(double RDt)
 	Cam->SetWorldLocationAndRotation(OutP * 100.0, OutR);
 	Cam->SetFieldOfView(float(ShFov));
 	LastCamPos = OutP; LastCamRot = OutR; LastFov = float(ShFov); bCamLast = true;
-	CamPosM = OutP; CamRotF = OutR; CamFovF = ShFov; Fx.SetCam(OutP, OutFov);
+	CamPosM = OutP; CamRotF = OutR; CamFovF = ShFov; Fx.SetCam(OutP, OutFov, OutR);
 	ImpactVignette(Cam);
 }
 
@@ -1185,6 +1189,7 @@ void AWHCombatDirector::Tick(float DeltaSeconds)
 	bDtFrozen = bHitStop;   // the hold applied to THIS tick was set by the previous tick's UpdateTime
 	const double HDt = bDtFrozen ? 0.0 : Dt;   // r03: the hero's own dt (0 while he is held; the rest of the world runs)
 	Time += Dt; RTime += RDt; ++Frame;
+	if (Frame == 40) LogRenderRes();
 	if (TimeScale < 0.999) { SlowmoGameT += Dt; SlowmoRealT += RDt; }
 	RunBeats();
 	// hero (spidey.js override): input -> moves -> body placed through the traversal component
@@ -1265,7 +1270,7 @@ void AWHCombatDirector::FrameRecord()
 	{ return ScreenBox(M, CamPosM, CamRotF, CamFovF, X0, Y0, X1, Y1, Dist); };
 	double X0, Y0, X1, Y1, D;
 	// r03: frz = the hero was held (dt 0) in THIS frame; shk = the hit shake's screen offset in 1080p px (along yaw, pitch); each enemy row ends with
-	// [.., alive, visual yaw deg (actor yaw + hit twist), held in this frame]
+	// [.., alive, visual yaw deg (actor yaw + hit twist), held in this frame, r04: body tilt deg (up axis vs vertical: recoil lean + tumble)]
 	FString Row = FString::Printf(TEXT("{\"f\":%lld,\"rt\":%.4f,\"ts\":%.3f,\"frz\":%d,\"shk\":[%.2f,%.2f],\"cine\":%.2f,\"cam\":[%.3f,%.3f,%.3f,%.2f,%.2f,%.2f,%.2f],\"move\":\"%s\","),
 		Frame, RTime, TimeScale, bDtFrozen ? 1 : 0, ShakeOutPx, ShakeOutPx2, CineK, CamPosM.X, CamPosM.Y, CamPosM.Z, CamRotF.Pitch, CamRotF.Yaw, CamRotF.Roll, CamFovF, *Me->MoveName().ToString());
 	Box(Hero->GetMesh(), X0, Y0, X1, Y1, D);
@@ -1276,9 +1281,9 @@ void AWHCombatDirector::FrameRecord()
 		if (!E) continue;
 		const bool bOk = Box(E->Mesh, X0, Y0, X1, Y1, D);
 		const bool bWarn = E->WarnOn();
-		Row += FString::Printf(TEXT("%s[\"%s\",\"%s\",\"%s\",%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f,%d,%d,%.1f,%d]"), bFirst ? TEXT("") : TEXT(","), *E->Tag(), E->TypeName(), E->StateName(),
+		Row += FString::Printf(TEXT("%s[\"%s\",\"%s\",\"%s\",%.3f,%.3f,%.3f,%.4f,%.4f,%.4f,%.4f,%.2f,%d,%d,%.1f,%d,%.1f]"), bFirst ? TEXT("") : TEXT(","), *E->Tag(), E->TypeName(), E->StateName(),
 			E->Pos.X, E->Pos.Y, E->Pos.Z, bOk ? X0 : -1.0, bOk ? Y0 : -1.0, bOk ? X1 : -1.0, bOk ? Y1 : -1.0, D, bWarn ? 1 : 0, E->Alive() ? 1 : 0,
-			FMath::RadiansToDegrees(E->VisYaw()), E->bHeld ? 1 : 0);
+			FMath::RadiansToDegrees(E->VisYaw()), E->bHeld ? 1 : 0, E->TiltNow);
 		bFirst = false;
 	}
 	Row += TEXT("]}");
@@ -1315,6 +1320,39 @@ void AWHCombatDirector::WriteTelemetry()
 	FFileHelper::SaveStringToFile(FString::Join(EventRows, TEXT("\n")) + TEXT("\n"), *(OutDir / (ShotName + TEXT("_events.jsonl"))));
 	FFileHelper::SaveStringToFile(FString::Join(BeatRows, TEXT("\n")) + TEXT("\n"), *(OutDir / (ShotName + TEXT("_beats.jsonl"))));
 	FFileHelper::SaveStringToFile(FString::Join(FrameRows, TEXT("\n")) + TEXT("\n"), *(OutDir / (ShotName + TEXT("_frames.jsonl"))));
+}
+
+// r04: disclose the render resolution of every capture (output size, r.ScreenPercentage, the internal pre-TSR size: same rule as WebHomageAutomation's perf json)
+void AWHCombatDirector::LogRenderRes() const
+{
+	FIntPoint Size(0, 0);
+	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport) Size = GEngine->GameViewport->Viewport->GetSizeXY();
+	auto CV = [](const TCHAR* N, float D) -> float { IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(N); return V ? V->GetFloat() : D; };
+	const float Sp = CV(TEXT("r.ScreenPercentage"), 0.f);
+	float Frac = 1.f; FString Mode = TEXT("manual");
+	if (Sp > 0.f) Frac = Sp / 100.f;
+	else if (int32(CV(TEXT("r.ScreenPercentage.Default.Desktop.Mode"), 1.f)) == 1 && Size.X > 0)
+	{
+		Mode = TEXT("auto_display");
+		auto Px = [](float H) { return H * H * 16.f / 9.f; };
+		float MinD = 720, MinR = 720, MidD = 2160, MidR = 1080, MaxD = 4320, MaxR = 1440;
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinDisplayResolution"), MinD, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinRenderingResolution"), MinR, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidDisplayResolution"), MidD, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidRenderingResolution"), MidR, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxDisplayResolution"), MaxD, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxRenderingResolution"), MaxR, GEngineIni);
+		const float Disp = float(Size.X) * float(Size.Y);
+		float Render;
+		if (Disp < Px(MinD)) Render = Disp * Px(MinR) / Px(MinD);
+		else if (Disp > Px(MaxD)) Render = Disp * Px(MaxR) / Px(MaxD);
+		else if (Disp > Px(MidD)) Render = FMath::Lerp(Px(MidR), Px(MaxR), (Disp - Px(MidD)) / (Px(MaxD) - Px(MidD)));
+		else Render = FMath::Lerp(Px(MinR), Px(MidR), FMath::Clamp((Disp - Px(MinD)) / (Px(MidD) - Px(MinD)), 0.f, 1.f));
+		Frac = FMath::Sqrt(CV(TEXT("r.ScreenPercentage.Auto.PixelCountMultiplier"), 1.f) * Render / Disp);
+	}
+	else Frac = CV(TEXT("r.ScreenPercentage.Default"), 100.f) / 100.f;
+	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_RES output %dx%d r.ScreenPercentage %.1f mode %s internal %dx%d (pre-TSR) TSR upscale %.2f"), Size.X, Size.Y, Sp, *Mode,
+		FMath::RoundToInt(Size.X * Frac), FMath::RoundToInt(Size.Y * Frac), Frac > 0.f ? 1.f / Frac : 0.f);
 }
 
 void AWHCombatDirector::WriteSummary()

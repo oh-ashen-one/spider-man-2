@@ -29,13 +29,16 @@ case "$MODE" in
     grep -o 'WH_CMB_SUMMARY.*' "$OUT/fight.log" | head -1 ;;
   movie)
     RES="${ARG4:-1920x1080}"
-    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "$RES" -quit 400 -name fight -movie -timeout 2400 \
+    # r04: WHCMB_EXEC = console commands for the game (e.g. "r.ScreenPercentage 100" = native internal resolution); the run's own timeout is 5400 s so run_game.sh
+    # never SIGKILLs a rendering engine on its own (a wedged engine is stopped by hand with stop_ue.sh)
+    EXARG=(); [ -n "${WHCMB_EXEC:-}" ] && EXARG=(-exec "$WHCMB_EXEC")
+    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "$RES" -quit 400 -name fight -movie -timeout 5400 ${EXARG[@]+"${EXARG[@]}"} \
       -- -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=fight ${LOOKARG[@]+"${LOOKARG[@]}"}
     echo "rc $?" ;;
   stills)
     # WHCMB_RES (default 3840x2160 native) and WHCMB_QUIT (game s to stop at) are for quick look tests; r.ScreenPercentage 100 always
     QARG=(); [ -n "${WHCMB_QUIT:-}" ] && QARG=(-WHCmbQuit="$WHCMB_QUIT")
-    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "${WHCMB_RES:-3840x2160}" -quit 400 -name still -timeout 2400 \
+    $G/gpu_slot.sh capture --label combat --timeout 3600 -- "$PROJ/Scripts/run_game.sh" "$OUT" -map "$MAP" -res "${WHCMB_RES:-3840x2160}" -quit 400 -name still -timeout 5400 \
       -exec "r.ScreenPercentage 100" -- -benchmark -fps=60 -WHCmbScript="$SCRIPT" -WHCmbOut="$OUT" -WHCmbShotName=still -WHCmbShots="$ARG4" ${LOOKARG[@]+"${LOOKARG[@]}"} ${QARG[@]+"${QARG[@]}"}
     echo "rc $?" ;;
   *) echo "mode: logic | movie | stills"; exit 1 ;;

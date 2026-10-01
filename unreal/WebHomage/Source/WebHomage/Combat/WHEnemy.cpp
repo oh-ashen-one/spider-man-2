@@ -290,6 +290,7 @@ FWHHitResult AWHEnemy::Hit(const FWHHitIn& H)
 	FWHHitResult R;
 	if (!Alive() || !Dir.IsValid()) return R;
 	R.bValid = true; ++HitsTaken;
+	BlowDir = H.Dir; BlowCamRt = H.CamRight;
 	AWHCombatDirector* C = Dir.Get();
 	LastHitT = C->Time;
 	const bool bArmored = Type == EWHEnemyType::Brute && Stun <= 0 && H.Kind != "throw" && H.Kind != "finisher" && H.Kind != "slam" && State != EWHEnemyState::Webbed;
@@ -430,7 +431,7 @@ void AWHEnemy::Update(double Dt)
 {
 	AWHCombatDirector* C = Dir.Get(); if (!C) return;
 	const FVector P = C->PlayerFeet;
-	St += Dt; Cd -= Dt; Stun -= Dt; TwistT += Dt;
+	St += Dt; Cd -= Dt; Stun -= Dt; TwistT += Dt; RecT += Dt;
 	Flinch = FMath::Max(0.0, Flinch - Dt * 5);
 	if (Slide.SizeSquared() > 1e-4 && State != EWHEnemyState::Air && State != EWHEnemyState::Knock && State != EWHEnemyState::Yanked && Stuck == 0)
 	{ MoveXZ(Slide.X * Dt, Slide.Y * Dt); Slide *= FMath::Exp(-6.0 * Dt); }
@@ -658,9 +659,28 @@ void AWHEnemy::SyncActor()
 		Tw = TwistAmp * P;
 	}
 	TwistNow = Tw;
-	const FQuat Comb = FQuat(FVector::UpVector, Tw) * Tilt;
+	// r04 recoil lean about the knees (see StartTwist): 65 % in the contact frame, peak at 0.1 s, gone by 0.56 s
+	double Rc = 0;
+	if (RecT < 0.56 && RecAmp > 0.0)
+	{
+		const double P = RecT < 0.10 ? Lerp(0.65, 1.0, Smooth(RecT / 0.10)) : 1.0 - Smooth((RecT - 0.10) / 0.46);
+		Rc = RecAmp * P;
+	}
+	RecNow = Rc;
+	FQuat Rec = FQuat::Identity;
+	if (Rc > 1e-3)
+	{
+		const double Cy = FMath::Cos(Yaw), Sy = FMath::Sin(Yaw);
+		const FVector Ll(RecDirW.X * Cy + RecDirW.Y * Sy, -RecDirW.X * Sy + RecDirW.Y * Cy, 0);
+		Rec = FQuat::FindBetweenNormals(FVector::UpVector, FVector(Ll.X * FMath::Sin(Rc), Ll.Y * FMath::Sin(Rc), FMath::Cos(Rc)).GetSafeNormal());
+	}
+	const FQuat Inner = FQuat(FVector::UpVector, Tw) * Tilt;
+	const FQuat Comb = Rec * Inner;
+	const double Piv2 = 45.0;
+	TiltNow = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Comb.RotateVector(FVector::UpVector).Z, -1.0, 1.0)));
 	Mesh->SetRelativeRotation(Comb * MeshCorr);
-	Mesh->SetRelativeLocation(FVector(0, 0, Piv) - Comb.RotateVector(FVector(0, 0, Piv)));
+	// inner rotation about the pelvis (0.95 m), then the recoil about the knees (0.45 m)
+	Mesh->SetRelativeLocation(Rec.RotateVector(FVector(0, 0, Piv) - Inner.RotateVector(FVector(0, 0, Piv)) - FVector(0, 0, Piv2)) + FVector(0, 0, Piv2));
 	SetActorLocationAndRotation(Pos * 100.0, FRotator(0, FMath::RadiansToDegrees(Yaw), 0), false, nullptr, ETeleportType::TeleportPhysics);
 }
 
