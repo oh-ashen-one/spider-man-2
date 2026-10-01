@@ -190,7 +190,7 @@ def main():
     tiles = []
     for t in ts:
         if cam_name == 'orbit':
-            az = math.radians(250 + 16 * max(0.0, t - 16.0)); ex, ey = 830 * math.cos(az), 830 * math.sin(az); eye_ue = (ex, ey, 95 + 280); fov = 48.0
+            az = math.radians(271 + 16 * max(0.0, t - 16.6)); ex, ey = 830 * math.cos(az), 830 * math.sin(az); eye_ue = (ex, ey, 95 + 280); fov = 48.0
         else:
             eye_ue, fov = cams[cam_name]
         eye = np.array([eye_ue[0], -eye_ue[1], eye_ue[2]], float); tgt = np.array([0, 0, 95.0])

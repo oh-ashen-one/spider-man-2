@@ -101,8 +101,10 @@ class Actor:
         t0 = max(self.t_end, t_arrive - d / self.speed)
         self.goto(t0, t_arrive, pos, yaw, what)
 
-    def play(self, t0, clip, rate=1.0, blend_in=0.06, blend_out=0.2, hold=0.0, weight=1.0, travel=True, what=None):
-        """A clip beat at stage time t0; the clip's pelvis travel (clip_motion.json) moves the actor (scaled by the weight)."""
+    def play(self, t0, clip, rate=1.0, blend_in=0.06, blend_out=0.2, hold=0.0, weight=1.0, travel=True, what=None, travel_k=1.0, shove=0.0):
+        """A clip beat at stage time t0; the clip's pelvis travel (clip_motion.json) moves the actor (scaled by the weight and travel_k).
+        shove (m): round 10, an extra recoil along the line hero -> actor that builds up over the first 0.18 s of the clip (the blow's impulse: the head / torso moves >= 0.1 stature
+        within 0.2 s of the contact, the critic's measure)."""
         T = dur(clip) / rate
         self.beats.append(dict(clip=clip, start=round(t0, 4), rate=rate, blend_in=blend_in, blend_out=blend_out, hold=hold, weight=weight))
         self.busy.append((t0, t0 + T + (0 if hold < 0 else hold), what or clip))
@@ -110,40 +112,96 @@ class Actor:
         if travel and w == 'fight' and c in MOT:
             if t0 > self.t_end + 1e-6: self.key(t0)
             m = MOT[c]; p0, y0 = self.pos.copy(), self.yaw
+            out_dir = p0 / max(1e-6, float(np.linalg.norm(p0)))
             for t, dx, dz in zip(m['times'][1:], m['dx_left'][1:], m['dz_fwd'][1:]):
-                self.key(t0 + t / rate, p0 + (left(y0) * dx + fwd(y0) * dz) * 100.0 * self.xy * weight, y0)
+                tau = t / rate
+                extra = out_dir * shove * 100.0 * smooth01(min(1.0, tau / 0.18)) if shove else 0.0
+                self.key(t0 + tau, p0 + (left(y0) * dx + fwd(y0) * dz) * 100.0 * self.xy * weight * travel_k + extra, y0)
         return t0 + T
 
 
+def smooth01(x):
+    x = min(max(x, 0.0), 1.0); return x * x * (3 - 2 * x)
+
+
 HOME_ANG = {}   # label -> engage angle (deg): every step-in / lunge returns to it, so nobody drifts into a neighbour
+HOME_R = {}     # label -> engage radius (cm)
+
+# the three 8 s clips of the capture: the first run is trimmed by 0.6 s of texture-streaming warm-up, so shot 0 lasts 8.6 s (build_characters.py `fight_shots`) and every clip is a full 8.0 s
+DOWN_HIPS_R = 150.0     # knocked-down pelvis distance from the hero (cm): legs end ~70 cm from his feet, the head stays inside the wide / orbit frames
+WINDOWS = [(0.65, 8.65), (8.65, 16.65), (16.65, 24.65)]
+SHOT_STARTS = (0.0, 8.6, 16.6)
+TOTAL = 25.2
+
+# round 10: who swings what in the gaps between the hits (every enemy leaves its guard at least every ~1.8 s: critic r09 "the red-hoodie thug guards 0 - 7.75 s")
+FEINTS = {'Fight_Thug': ['thug:thugPunch2', 'thug:thugPunch1', 'thug:thugKick'], 'Fight_Brute': ['thug:bruteSlam', 'thug:thugPunch1', 'thug:thugPunch2'],
+          'Fight_Hood': ['thug:thugPunch1', 'thug:thugKick', 'thug:thugPunch2'], 'Fight_Tee': ['thug:thugPunch1', 'thug:thugKick', 'thug:thugPunch2'],
+          'Fight_Beard': ['thug:thugPunch2', 'thug:thugPunch1', 'thug:thugKick'], 'Fight_Oxblood': ['thug:thugKick', 'thug:thugPunch2', 'thug:thugPunch1']}
 
 
 def build():
     hero = Actor('Fight_Hero', (0, 0), 240, base='hero:fightIdle')
     bxy = BRUTE['scale'] * BRUTE['girth']
-    # label: (start polar, engage polar, xy scale, z scale, base idle, walk speed, arrival time)
-    E = {'Fight_Thug':     ((235, 265), (240, 110), 1.0, 1.0, 'hero:idle', 114.0, 1.6),
-         'Fight_Hood':     ((188, 270), (178, 110), 1.0, 1.0, 'hero:idle', 114.0, 2.1),
-         'Fight_Tee':      ((358, 275), (0, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 2.5),
-         'Fight_Beard':    ((128, 290), (118, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 2.8),
-         'Fight_Oxblood':  ((312, 285), (300, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 3.2),     # round 09: the brute stands on the far side from the wide camera (south), the lighter Oxblood in front
-         'Fight_Brute':    ((58, 300), (55, 125), bxy, BRUTE['scale'], 'hero:idle', 110.0, 3.4)}
+    # label: (start polar angle, engage polar (angle, radius), xy scale, z scale, base idle, walk speed, arrival time at the ring)
+    # round 10: every enemy starts walking at t = 0 from a radius that makes it arrive at the ring at t_arr, so nobody stands in a guard while the clip starts
+    E = {'Fight_Thug':     (235, (240, 110), 1.0, 1.0, 'hero:idle', 114.0, 1.35),
+         'Fight_Hood':     (188, (178, 110), 1.0, 1.0, 'hero:idle', 114.0, 1.55),
+         'Fight_Tee':      (358, (0, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 1.95),
+         'Fight_Beard':    (128, (118, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 1.85),
+         'Fight_Oxblood':  (312, (300, 110), 1.0, 1.0, 'thug:thugIdle', 114.0, 1.75),
+         'Fight_Brute':    (58, (55, 125), bxy, BRUTE['scale'], 'hero:idle', 110.0, 2.35)}
     act = {'Fight_Hero': hero}
     eng = {}
-    HOME_ANG.clear()
-    for lbl, (s, e, xy, z, base, spd, t_arr) in E.items():
-        HOME_ANG[lbl] = float(e[0])
-        a = Actor(lbl, P(s[1], s[0]), s[0] + 180, xy, z, base, spd)
+    HOME_ANG.clear(); HOME_R.clear()
+    for lbl, (s_ang, e, xy, z, base, spd, t_arr) in E.items():
+        HOME_ANG[lbl] = float(e[0]); HOME_R[lbl] = float(e[1])
+        r0 = e[1] + spd * t_arr
+        a = Actor(lbl, P(r0, s_ang), s_ang + 180, xy, z, base, spd)
         eng[lbl] = P(e[1], e[0])
-        a.walk_to(t_arr, eng[lbl], e[0] + 180, 'walk-in')
+        a.goto(0.0, t_arr, eng[lbl], e[0] + 180, 'walk-in')
         act[lbl] = a
     return hero, act, eng
 
 
-def script():
+def script(fill=True):
+    """Hero + 6 enemies, 25 s.  Pass 1 builds the hand-written hits; pass 2 (fill=True) inserts feints / circling into every gap longer than ~1.7 s."""
+    fillers = _fillers() if fill else []
+    return _script(fillers)
+
+
+def _fillers():
+    hero, act, slots, _ = _script([])
+    out = []; k = 0
+    for lbl, a in act.items():
+        if lbl == 'Fight_Hero': continue
+        merged = []
+        for b0, b1 in sorted((b0, b1) for b0, b1, what in a.busy):
+            if merged and b0 <= merged[-1][1] + 1e-6: merged[-1][1] = max(merged[-1][1], b1)
+            else: merged.append([b0, b1])
+        edges = [(0.0, 0.0)] + [tuple(m) for m in merged] + [(TOTAL - 0.2, TOTAL)]
+        for (p0, p1), (n0, n1) in zip(edges, edges[1:]):
+            g0, g1 = p1, n0                                  # an idle gap of this enemy
+            t = g0 + 0.3
+            while g1 - t >= 0.7:
+                room = g1 - t
+                if room >= 1.9 and k % 3 == 2:               # a shuffle round the ring: 1.6 s
+                    out.append(dict(t=t, who=lbl, kind='circle', sign=(1 if (k // 3) % 2 == 0 else -1))); e = t + 1.6
+                else:
+                    kinds = FEINTS[lbl]; clip = kinds[k % len(kinds)]; d = dur(clip)
+                    if d > room - 0.15: clip = 'thug:thugPunch2'; d = dur(clip)
+                    if d > room - 0.15: break
+                    out.append(dict(t=t, who=lbl, kind='feint', clip=clip, dur=d)); e = t + d
+                k += 1
+                if g1 - e <= 1.6: break
+                t = e + 1.0
+    return out
+
+
+def _script(fillers):
     hero, act, eng = build()
     H = hero
     hero_slots = []
+    events = []        # (sort key, order, function): per actor the sort key never exceeds the actor's first new path key
 
     def face(target, t_turn0, t_turn1):
         """Hero turns to face `target` (its position at t_turn1); keyed so the turn takes t_turn1 - t_turn0."""
@@ -158,91 +216,103 @@ def script():
         hero_slots.append((t0, t1, what))
         return t1
 
-    def strike(t0, hero_clip, tgt, react, *, rate=1.0, react_kw=None, turn=0.30, ret=True):
-        """Hero strikes tgt at t0 (clip start); the target steps in to the strike's reach just before, reacts at the contact; react = clip key or 'down'."""
-        T = act[tgt]
-        contact = t0 + CONTACT[hero_clip] / rate
-        reach = REACH[hero_clip] + (10.0 if tgt == 'Fight_Brute' else 0.0)
-        ang = HOME_ANG[tgt]
-        if float(np.linalg.norm(T.pos_at(t0)[0] - P(reach, ang))) > 3.0:
-            T.goto(max(T.t_end, contact - 0.6), contact - 0.05, P(reach, ang), None, 'step-in')
-        face(T, t0 - turn - 0.04, t0 - 0.04)
-        hero_do(t0, hero_clip, '%s>%s' % (hero_clip.split(':')[1], tgt.split('_')[1]), rate=rate)
-        kw = dict(react_kw or {})
-        t_r = contact + 0.02
-        if react == 'down':
-            up = kw.pop('getup_at')
-            T.play(t_r, 'fight:down', hold=up - (t_r + dur('fight:down')), blend_out=0.12, blend_in=0.05, what='knockdown')
-            T.down.append((t_r + 0.62, up + 0.3))
-            t_end = T.play(up, 'fight:getUp', blend_in=0.12, blend_out=0.25, what='get-up')
-        else:
-            t_end = T.play(t_r, react, what='hit:' + react.split(':')[1], **kw)
-        if ret and float(np.linalg.norm(T.pos - eng[tgt])) > 3.0:          # back to its place in the ring (a walk: the walk clip plays under it)
-            T.goto(t_end + 0.1, t_end + 0.1 + float(np.linalg.norm(T.pos - eng[tgt])) / 100.0, eng[tgt], None, 'step-in')
-        return contact
+    def ev(key, f): events.append((key, len(events), f))
+
+    def strike(t0, hero_clip, tgt, react, *, rate=1.0, react_kw=None, turn=0.30, ret=True, getup=None, getup_clip='fight:getUp', down_k=None, shove=0.10):
+        """Hero strikes tgt at t0 (clip start); the target steps in to the strike's reach just before, reacts at the contact; react = clip key or 'down' (getup = start of the get-up)."""
+        def f():
+            T = act[tgt]
+            contact = t0 + CONTACT[hero_clip] / rate
+            reach = REACH[hero_clip] + (10.0 if tgt == 'Fight_Brute' else 0.0)
+            ang = HOME_ANG[tgt]
+            if float(np.linalg.norm(T.pos_at(t0)[0] - P(reach, ang))) > 3.0:
+                T.goto(max(T.t_end, contact - 0.6), contact - 0.05, P(reach, ang), None, 'step-in')
+            face(T, t0 - turn - 0.04, t0 - 0.04)
+            hero_do(t0, hero_clip, '%s>%s' % (hero_clip.split(':')[1], tgt.split('_')[1]), rate=rate)
+            kw = dict(react_kw or {})
+            t_r = contact + 0.02
+            if react == 'down':
+                dk = down_k if down_k is not None else max(1.0, (DOWN_HIPS_R - reach) / 53.0)       # the body ends DOWN_HIPS_R cm from the hero: its legs clear his feet
+                T.play(t_r, 'fight:down', hold=getup - (t_r + dur('fight:down')), blend_out=0.12, blend_in=0.05, what='knockdown', travel_k=dk, shove=shove)
+                T.down.append((t_r + 0.62, getup + 0.3))
+                t_end = T.play(getup, getup_clip, blend_in=0.12, blend_out=0.25, what='get-up')
+            else:
+                t_end = T.play(t_r, react, what='hit:' + react.split(':')[1], shove=shove, **kw)
+            if ret and float(np.linalg.norm(T.pos - P(HOME_R[tgt], HOME_ANG[tgt]))) > 3.0:          # back to its place in the ring (a walk: the walk clip plays under it)
+                home = P(HOME_R[tgt], HOME_ANG[tgt])
+                T.goto(t_end + 0.1, t_end + 0.1 + float(np.linalg.norm(T.pos - home)) / 100.0, home, None, 'step-in')
+        ev(t0 - 0.7, f)
 
     def enemy_hit(t0, who, clip, rate=1.0, lunge_to=82.0, react_clip='hero:hitReact'):
         """Enemy strikes the hero at t0; it lunges in to lunge_to cm before and the hero flinches at the contact."""
-        T = act[who]; C = CONTACT[clip] / rate
-        ang = HOME_ANG[who]
-        if float(np.linalg.norm(T.pos - P(lunge_to, ang))) > 2.0:
-            T.goto(max(T.t_end, t0 - 0.45), t0 + 0.05, P(lunge_to, ang), None, 'lunge')
-        face(T, t0 - 0.35, t0 - 0.02)
-        T.play(t0, clip, rate=rate, what='strike:' + clip.split(':')[1])
-        hero_do(t0 + C + 0.02, react_clip, 'flinch<' + who.split('_')[1])
-        return t0 + C
+        def f():
+            T = act[who]; C = CONTACT[clip] / rate
+            ang = HOME_ANG[who]
+            if float(np.linalg.norm(T.pos - P(lunge_to, ang))) > 2.0:
+                T.goto(max(T.t_end, t0 - 0.45), t0 + 0.05, P(lunge_to, ang), None, 'lunge')
+            face(T, t0 - 0.35, t0 - 0.02)
+            T.play(t0, clip, rate=rate, what='strike:' + clip.split(':')[1])
+            hero_do(t0 + C + 0.02, react_clip, 'flinch<' + who.split('_')[1])
+            home = P(HOME_R[who], HOME_ANG[who]); t_e = t0 + dur(clip) / rate
+            if float(np.linalg.norm(T.pos - home)) > 3.0: T.goto(t_e + 0.05, t_e + 0.05 + float(np.linalg.norm(T.pos - home)) / 100.0, home, None, 'step-in')
+        ev(t0 - 0.5, f)
 
-    def feint(t0, who, clip, rate=1.0):
-        """Swing from range (no contact): an enemy circling the hero."""
-        T = act[who]
-        T.play(t0, clip, rate=rate, what='swing:' + clip.split(':')[1])
+    def feint(t0, who, clip, rate=1.0, d=None):
+        """Swing from range (no contact): an enemy circling the hero.  thugGunAim is a static aim pose: held for d seconds."""
+        def f():
+            T = act[who]
+            if clip == 'thug:thugGunAim':
+                T.play(t0, clip, blend_in=0.15, blend_out=0.2, hold=max(0.0, (d or 0.9) - dur(clip)), what='aim', travel=False)
+            else:
+                T.play(t0, clip, rate=rate, what='swing:' + clip.split(':')[1])
+        ev(t0 - 0.05, f)
 
-    def step_in(who, t0, t1):
-        T = act[who]
-        T.goto(t0, t1, eng[who], None, 'step-in')
+    def circle(t0, who, sign, dur_=0.7, deg=14.0):
+        """A shuffle round the ring: out by `deg` degrees (dur_ s), a short stop, back (dur_ s)."""
+        def f():
+            T = act[who]; ang = HOME_ANG[who]; r = HOME_R[who]
+            if float(np.linalg.norm(T.pos - P(r, ang))) > 3.0 or t0 < T.t_end: return
+            T.goto(t0, t0 + dur_, P(r, ang + sign * deg), ang + sign * deg + 180, 'circle')
+            T.goto(t0 + dur_ + 0.2, t0 + 2 * dur_ + 0.2, P(r, ang), ang + 180, 'circle')
+        ev(t0 - 0.05, f)
 
     Th, Hd, Te, Be, Ox, Br = ['Fight_' + k for k in ('Thug', 'Hood', 'Tee', 'Beard', 'Oxblood', 'Brute')]
 
-    # The hero works round the ring in one direction (angles 240 Thug, 178 Hood, 118 Beard, 55 Brute, 0 Tee, 300 Oxblood, 240 ...): no turn is larger than ~62 degrees.
-    # ------------------------------------------------------------------ shot 0 (0-8 s): they close in, first exchanges
-    enemy_hit(2.05, Th, 'thug:thugPunch2')                                   # the thug lands a blow -> hero flinches at 2.4
-    feint(2.9, Hd, 'thug:thugPunch1')
-    strike(3.15, 'hero:punch1', Th, 'fight:hitBack')                           # hero counters: thug staggers back
-    feint(3.4, Be, 'thug:thugPunch2')
-    strike(4.20, 'hero:punch2', Hd, 'fight:hitLeft')
-    feint(4.6, Ox, 'thug:thugPunch2')
-    strike(5.55, 'hero:kick', Be, 'fight:hitRight')                            # kick: the beard reels sideways
-    feint(5.3, Te, 'thug:thugPunch1')
-    strike(6.85, 'hero:punch2', Br, 'hero:hitReact', react_kw=dict(weight=0.55, blend_in=0.05, rate=1.15))   # the brute only flinches
-    feint(6.5, Ox, 'thug:thugKick')
-    # ------------------------------------------------------------------ shot 1 (8-16 s): the main melee
-    strike(8.15, 'hero:uppercut', Te, 'down', react_kw=dict(getup_at=11.6))    # uppercut: knockdown, on the ground 9.2 s ... 11.9 s
-    feint(8.6, Hd, 'thug:thugPunch2')
-    enemy_hit(9.25, Br, 'thug:thugPunch2')                                    # the brute hits back with the pipe
-    strike(10.35, 'hero:punch1', Ox, 'fight:hitLeft')
-    feint(10.0, Th, 'thug:thugPunch1')                                         # round 09b: the windows 9.9 and 14.4 s had one moving enemy only
-    feint(10.1, Hd, 'thug:thugPunch2')
-    feint(10.7, Be, 'thug:thugPunch1')
-    strike(11.85, 'hero:punch2', Th, 'down', react_kw=dict(getup_at=15.3))     # the thug (near the 3/4 camera) goes down too
-    feint(12.4, Hd, 'thug:thugPunch1')
-    strike(13.15, 'hero:kick', Hd, 'fight:hitRight')
-    feint(13.6, Te, 'thug:thugPunch1')
-    strike(14.45, 'hero:punch3', Be, 'fight:hitBack')
-    feint(14.3, Br, 'thug:thugPunch2')
-    feint(14.6, Te, 'thug:thugKick')
-    # ------------------------------------------------------------------ shot 2 (16-24 s): orbit camera, the hero finishes it
-    strike(16.0, 'hero:kick', Br, 'down', react_kw=dict(getup_at=20.4))    # the brute goes down
-    enemy_hit(16.9, Hd, 'thug:thugPunch1')
-    strike(17.95, 'hero:punch1', Te, 'fight:hitBack')
-    feint(18.3, Th, 'thug:thugPunch2')
-    strike(19.25, 'hero:kick', Ox, 'down', react_kw=dict(getup_at=22.6))
-    feint(19.9, Be, 'thug:thugPunch1')
-    strike(20.55, 'hero:punch2', Th, 'fight:hitLeft')
-    feint(21.3, Hd, 'thug:thugKick')
-    strike(21.8, 'hero:punch3', Hd, 'fight:hitRight')
-    feint(22.4, Te, 'thug:thugPunch2')
-    strike(23.05, 'hero:uppercut', Be, 'fight:hitBack')
-    return hero, act, hero_slots
+    # The hero works round the ring (angles 240 Thug, 300 Oxblood, 0 Tee, 55 Brute, 118 Beard, 178 Hood): no turn is larger than ~62 degrees; one reversal per window.
+    # Per 8 s window: 2 knockdowns (two enemies on the ground together >= 1 s, two DIFFERENT get-ups: the hero's backward roll `getUp` and the sit-up `getUp2`),
+    # 5 more hit reactions, one enemy blow that lands on the hero (his flinch), no hold of one guard pose longer than ~1.8 s.
+    # ------------------------------------------------------------------ shot 0, wide (0.65 - 8.65 s): Thug and Oxblood (front of the wide camera) go down
+    strike(1.60, 'hero:uppercut', Th, 'down', getup=5.05, getup_clip='fight:getUp')        # knockdown 1: on the ground 2.5 - 5.0 s, rolls up
+    strike(2.65, 'hero:kick', Ox, 'down', getup=6.15, getup_clip='fight:getUp2')           # knockdown 2: on the ground 3.6 - 6.2 s, sits up (1.4 s together with the Thug)
+    strike(3.70, 'hero:punch2', Te, 'fight:hitLeft')
+    enemy_hit(4.03, Hd, 'thug:thugPunch2')                                                    # the pistol-whip lands: hero flinch 4.35 - 4.9
+    strike(5.05, 'hero:punch1', Br, 'fight:hitBack')
+    strike(6.10, 'hero:punch3', Be, 'fight:hitRight')
+    strike(7.15, 'hero:kick', Hd, 'fight:hitBack')
+    strike(8.20, 'hero:punch2', Th, 'fight:hitLeft')                                          # the Thug is up again (5.05 + 1.0 s)
+    # ------------------------------------------------------------------ shot 1, 3/4 (8.65 - 16.65 s): Hood and Beard go down
+    strike(9.25, 'hero:uppercut', Hd, 'down', getup=12.7, getup_clip='fight:getUp')
+    strike(10.30, 'hero:kick', Be, 'down', getup=13.4, getup_clip='fight:getUp2')
+    strike(11.35, 'hero:punch2', Br, 'fight:hitLeft')
+    strike(12.40, 'hero:punch1', Te, 'fight:hitBack')
+    enemy_hit(13.05, Th, 'thug:thugPunch1')                                                   # a bat swing lands (the Thug, near the 3/4 camera): hero flinch ~13.4 - 13.9
+    strike(14.10, 'hero:punch3', Ox, 'fight:hitRight')
+    strike(15.15, 'hero:punch2', Th, 'fight:hitLeft')
+    strike(16.10, 'hero:kick', Hd, 'fight:hitBack')
+    # ------------------------------------------------------------------ shot 2, orbit (16.65 - 24.65 s): Brute and Tee go down
+    strike(17.15, 'hero:punch3', Be, 'fight:hitRight')
+    strike(18.20, 'hero:uppercut', Br, 'down', getup=21.6, getup_clip='fight:getUp2')
+    strike(19.25, 'hero:kick', Te, 'down', getup=21.95, getup_clip='fight:getUp')
+    strike(20.30, 'hero:punch1', Ox, 'fight:hitBack')
+    strike(21.35, 'hero:punch2', Th, 'fight:hitLeft')
+    enemy_hit(22.05, Be, 'thug:thugPunch2')
+    strike(23.15, 'hero:punch1', Hd, 'fight:hitBack')
+    strike(24.15, 'hero:punch3', Be, 'fight:hitRight')
+    for fl in fillers:
+        if fl['kind'] == 'feint': feint(fl['t'], fl['who'], fl['clip'], d=fl['dur'])
+        else: circle(fl['t'], fl['who'], fl['sign'])
+    for _, _, f in sorted(events, key=lambda e: (e[0], e[1])): f()
+    return hero, act, hero_slots, eng
 
 
 def to_json(act, total=26.0):
@@ -304,7 +374,7 @@ def check(act, hero_slots, total=24.5):
                 if d < dmin[0]: dmin = (d, t, ls[i], ls[j])
     lines.append('closest enemy pair %.0f cm (%s / %s at %.2f s); closest enemy to the hero %.0f cm (%s at %.2f s)' % (dmin[0], dmin[2], dmin[3], dmin[1], hmin[0], hmin[2], hmin[1]))
     # 4. reactions / knockdowns inside shot 1 (8-16 s)
-    for (w0, w1, nm) in ((0, 8, 'shot 0'), (8, 16, 'shot 1 (street_fight_34)'), (16, 24, 'shot 2')):
+    for (w0, w1, nm) in ((WINDOWS[0][0], WINDOWS[0][1], 'shot 0 wide'), (WINDOWS[1][0], WINDOWS[1][1], 'shot 1 (street_fight_34)'), (WINDOWS[2][0], WINDOWS[2][1], 'shot 2 orbit')):
         hits = []
         for lbl, a in act.items():
             for b in a.beats:
@@ -387,7 +457,7 @@ def render_preview(act, times, out, cam=(-760.0, -800.0, 330.0), aim=(0.0, 0.0, 
 
 if __name__ == '__main__':
     a = sys.argv[1:]
-    hero, act, slots = script()
+    hero, act, slots, _ = script()
     js = to_json(act)
     tmp = os.path.join(HERE, 'fight_script.json.tmp'); json.dump(js, open(tmp, 'w'), indent=1); os.replace(tmp, os.path.join(HERE, 'fight_script.json'))   # atomic: a build that reads it meanwhile never sees half a file
     n_beats = sum(len(v['beats']) for v in js['actors'].values()); n_keys = sum(len(v['path']) for v in js['actors'].values())

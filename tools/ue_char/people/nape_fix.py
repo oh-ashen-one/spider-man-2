@@ -33,7 +33,8 @@ def main():
     # round 09b: the first version (y < 1.582, any r) left the strip right under the ear (triangles 3231 / 3234 / 4209 / 4212, y 1.572 - 1.585, r 6.4 - 6.6 cm): the engine capture still showed it.
     # The neck is r < 7 cm there; the ear sticks out beyond (r > 8 cm), so the height limit is lifted for neck-radius triangles only.
     r_lim = 0.095 + (0.072 - 0.095) * sm(1.572, 1.580, cen[:, 1])      # below the ear: the hood-collar triangles of the strip (r 7.8 - 8.1 cm); beside the ear lobe: neck radius only
-    w_tri = sm(88, 98, np.abs(phi)) * sm(1.535, 1.548, cen[:, 1]) * (1 - sm(1.592, 1.602, cen[:, 1])) * (1 - sm(r_lim - 0.004, r_lim + 0.004, r))
+    # round 10: wider (|phi| from 80 deg, y from 1.515 m: the r09 strip left 1,790 px of lighter grey-brown = dim neck skin, mean 91 / 82 / 81 against the hood's 41 / 42 / 45 at 4K)
+    w_tri = sm(80, 92, np.abs(phi)) * sm(1.515, 1.532, cen[:, 1]) * (1 - sm(1.592, 1.602, cen[:, 1])) * (1 - sm(r_lim - 0.004, r_lim + 0.004, r))
     sel = np.where(w_tri > 0.02)[0]
     print('nape_fix: %d triangles (bind pose |phi| > 88 deg, y 1.535 - 1.582)' % len(sel))
     for path in atlases:
@@ -47,10 +48,10 @@ def main():
         m = cv2.GaussianBlur(m, (0, 0), 2.0)
         rgb = im[..., ::-1].astype(np.float32) / 255
         mx, mn = rgb.max(-1), rgb.min(-1)
-        hue_skin = (rgb[..., 0] > rgb[..., 1]) & (rgb[..., 1] >= rgb[..., 2]) & ((mx - mn) / (mx + 1e-6) > 0.12) & (mx > 0.18)   # round 09b: dim skin too (78, 61, 58 = 0.31: the sun makes it pink in the engine)
+        hue_skin = ((rgb[..., 0] > rgb[..., 1]) & (rgb[..., 1] >= rgb[..., 2]) & ((mx - mn) / (mx + 1e-6) > 0.12) & (mx > 0.18)) | (mx > 0.16)   # round 09b: dim skin too (78, 61, 58 = 0.31); round 10: every texel brighter than 0.16 under the selected triangles (the hood's own are 0.13 - 0.16)
         w = m * cv2.GaussianBlur(hue_skin.astype(np.float32), (0, 0), 1.0)
         hood = np.array([36, 35, 37], np.float32) / 255     # the hood's own dark (texels there measure 34 - 40)
-        k = (0.95 * w)[..., None]
+        k = (1.0 * w)[..., None]
         out = rgb * (1 - k) + hood * k          # round 09b: the first version (x 0.22 of the mean) left a brownish-grey strip that the sun lifted above the hood; now it takes the hood colour
         cv2.imwrite(path, (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)[..., ::-1])
         print('  %s: %d texels darkened (weight > 0.5)' % (os.path.basename(path), int((w > 0.5).sum())))
