@@ -1,5 +1,5 @@
 {
- "source": "/Users/midir/sm2-n1/_scratch/characters/r9/cap/fight_bones.csv",
+ "source": "/Users/midir/sm2-n1/_scratch/characters/r9/cap9b/fight_bones.csv",
  "window": [
   16.0,
   24.0
@@ -8,9 +8,9 @@
   "Fight_Hero": {
    "knockdown_runs_s": [],
    "longest_knockdown_s": 0.0,
-   "guard_baseline_cms_p95_first_second": 5.5,
-   "peak_bone_cms": 466.7,
-   "active_fraction_window": 0.244
+   "guard_baseline_cms_p95_first_second": 5.8,
+   "peak_bone_cms": 984.3,
+   "active_fraction_window": 0.719
   },
   "Fight_Thug": {
    "knockdown_runs_s": [
@@ -20,9 +20,9 @@
     ]
    ],
    "longest_knockdown_s": 2.917,
-   "guard_baseline_cms_p95_first_second": 174.2,
-   "peak_bone_cms": 646.4,
-   "active_fraction_window": 0.323
+   "guard_baseline_cms_p95_first_second": 390.6,
+   "peak_bone_cms": 1156.6,
+   "active_fraction_window": 0.408
   },
   "Fight_Brute": {
    "knockdown_runs_s": [
@@ -32,16 +32,16 @@
     ]
    ],
    "longest_knockdown_s": 3.799,
-   "guard_baseline_cms_p95_first_second": 2.6,
-   "peak_bone_cms": 915.2,
-   "active_fraction_window": 0.3
+   "guard_baseline_cms_p95_first_second": 5.4,
+   "peak_bone_cms": 1584.6,
+   "active_fraction_window": 0.323
   },
   "Fight_Hood": {
    "knockdown_runs_s": [],
    "longest_knockdown_s": 0.0,
-   "guard_baseline_cms_p95_first_second": 172.8,
-   "peak_bone_cms": 279.0,
-   "active_fraction_window": 0.323
+   "guard_baseline_cms_p95_first_second": 424.1,
+   "peak_bone_cms": 758.5,
+   "active_fraction_window": 0.44
   },
   "Fight_Tee": {
    "knockdown_runs_s": [
@@ -52,15 +52,15 @@
    ],
    "longest_knockdown_s": 2.933,
    "guard_baseline_cms_p95_first_second": 9.2,
-   "peak_bone_cms": 627.4,
-   "active_fraction_window": 0.175
+   "peak_bone_cms": 1215.0,
+   "active_fraction_window": 0.223
   },
   "Fight_Beard": {
    "knockdown_runs_s": [],
    "longest_knockdown_s": 0.0,
    "guard_baseline_cms_p95_first_second": 9.2,
-   "peak_bone_cms": 342.5,
-   "active_fraction_window": 0.194
+   "peak_bone_cms": 900.3,
+   "active_fraction_window": 0.235
   },
   "Fight_Oxblood": {
    "knockdown_runs_s": [
@@ -71,12 +71,12 @@
    ],
    "longest_knockdown_s": 2.784,
    "guard_baseline_cms_p95_first_second": 9.2,
-   "peak_bone_cms": 646.3,
-   "active_fraction_window": 0.327
+   "peak_bone_cms": 1215.0,
+   "active_fraction_window": 0.344
   }
  },
  "idle_windows_all_walkers_inactive": [],
- "min_walkers_active_in_any_1s_window": 2,
+ "min_walkers_active_in_any_1s_window": 3,
  "active_walkers_per_window_start": [
   [
    16.0,
@@ -96,11 +96,11 @@
   ],
   [
    18.0,
-   2
+   3
   ],
   [
    18.5,
-   3
+   4
   ],
   [
    19.0,
@@ -112,27 +112,27 @@
   ],
   [
    20.0,
-   4
+   5
   ],
   [
    20.5,
-   3
+   4
   ],
   [
    21.0,
-   3
+   4
   ],
   [
    21.5,
-   3
+   4
   ],
   [
    22.0,
-   3
+   5
   ],
   [
    22.5,
-   4
+   5
   ],
   [
    23.0,

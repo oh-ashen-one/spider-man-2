@@ -41,7 +41,7 @@ def main():
             cm = lab[y0:y1, x0:x1] == k + 1
             ring = ndi.binary_dilation(cm, iterations=6) & ~ndi.binary_dilation(cm, iterations=1)
             frac = float(cloth[y0:y1, x0:x1][ring].mean()) if ring.any() else 0.0
-            if frac < 0.6: continue                      # not enclosed by cloth: skin / hair / background at the mask edge, not a hole in it
+            if frac < 0.85: continue                      # not enclosed by cloth: skin / hair / background at the mask edge, not a hole in it
             comps.append({'px': int(sz[k]), 'cx': int(xs.mean()), 'cy': int(ys.mean()), 'ring_cloth': round(frac, 2)})
         res[name] = comps
         res['%s_px_total' % name] = int(sum(c['px'] for c in comps))

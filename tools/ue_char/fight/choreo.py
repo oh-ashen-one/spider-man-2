@@ -220,12 +220,16 @@ def script():
     feint(8.6, Hd, 'thug:thugPunch2')
     enemy_hit(9.25, Br, 'thug:thugPunch2')                                    # the brute hits back with the pipe
     strike(10.35, 'hero:punch1', Ox, 'fight:hitLeft')
+    feint(10.0, Th, 'thug:thugPunch1')                                         # round 09b: the windows 9.9 and 14.4 s had one moving enemy only
+    feint(10.1, Hd, 'thug:thugPunch2')
     feint(10.7, Be, 'thug:thugPunch1')
     strike(11.85, 'hero:punch2', Th, 'down', react_kw=dict(getup_at=15.3))     # the thug (near the 3/4 camera) goes down too
     feint(12.4, Hd, 'thug:thugPunch1')
     strike(13.15, 'hero:kick', Hd, 'fight:hitRight')
     feint(13.6, Te, 'thug:thugPunch1')
     strike(14.45, 'hero:punch3', Be, 'fight:hitBack')
+    feint(14.3, Br, 'thug:thugPunch2')
+    feint(14.6, Te, 'thug:thugKick')
     # ------------------------------------------------------------------ shot 2 (16-24 s): orbit camera, the hero finishes it
     strike(16.0, 'hero:kick', Br, 'down', react_kw=dict(getup_at=20.4))    # the brute goes down
     enemy_hit(16.9, Hd, 'thug:thugPunch1')

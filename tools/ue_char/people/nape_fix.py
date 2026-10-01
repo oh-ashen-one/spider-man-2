@@ -49,8 +49,9 @@ def main():
         mx, mn = rgb.max(-1), rgb.min(-1)
         hue_skin = (rgb[..., 0] > rgb[..., 1]) & (rgb[..., 1] >= rgb[..., 2]) & ((mx - mn) / (mx + 1e-6) > 0.12) & (mx > 0.18)   # round 09b: dim skin too (78, 61, 58 = 0.31: the sun makes it pink in the engine)
         w = m * cv2.GaussianBlur(hue_skin.astype(np.float32), (0, 0), 1.0)
-        dark = np.full(3, 0.14, np.float32) + 0.0 * rgb[0, 0]
-        out = rgb * (1 - 0.88 * w[..., None]) + dark * (0.88 * w[..., None]) * 0.0 + (rgb.mean(-1, keepdims=True) * 0.22) * (0.88 * w[..., None])
+        hood = np.array([36, 35, 37], np.float32) / 255     # the hood's own dark (texels there measure 34 - 40)
+        k = (0.95 * w)[..., None]
+        out = rgb * (1 - k) + hood * k          # round 09b: the first version (x 0.22 of the mean) left a brownish-grey strip that the sun lifted above the hood; now it takes the hood colour
         cv2.imwrite(path, (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)[..., ::-1])
         print('  %s: %d texels darkened (weight > 0.5)' % (os.path.basename(path), int((w > 0.5).sum())))
 
