@@ -16,6 +16,11 @@ AWHCombatHero::AWHCombatHero()
 
 void AWHCombatHero::BeginPlay()
 {
+	// The traversal pawn's hero-only fill (5000 / 18000 cd point light 1.8 m from the hero, ~1500 lux) is tuned for the Manhattan look
+	// (sun 26000-44000 lux). Combat_Street's sun is 10 lux, so the same fill was ~150x the key: auto-exposure adapts to the street and the
+	// hero rendered as a blown-out white figure (its glossy-street reflection = the yellow streaks at its feet). No fill in combat;
+	// -WHHeroFill=<cd>,<cd> on the command line still overrides (parsed in Super::BeginPlay).
+	HeroFillCd = 0.f; HeroFillFlipCd = 0.f;
 	Super::BeginPlay();
 	// combat animation on top of the traversal animation: same clips / proxy, plus the combat clip stack
 	if (USkeletalMeshComponent* M = GetMesh())
