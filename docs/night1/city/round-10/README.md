@@ -35,3 +35,9 @@ Frame times: game seconds 18-28, `t.MaxFPS 0`, no VSync, TSR with automatic scre
 | S7_sunset_crosstown | 3840x2160 | NonexNone | None | None | None | None % |
 | S8_aerial_midtown | 1920x1080 | 1399x787 | 21.268 | 32.038 | 18.835 | 78 % |
 | S8_aerial_midtown | 3840x2160 | NonexNone | None | None | None | None % |
+
+## Capture configuration (the hold-2 "Z" set; verified against the saved MPC_City asset after the captures)
+
+MPC_City: FarGain 4.0, FarSunK 0.22, ShadeFill 0.17, GlassSky 0.15, FarJit 1.3, FarLandGain 1.6, WaterSpec 0.035, SunK 0.08, AlbKnee 0.30, AlbSlope 0.48, F0Scale 0.8, DayEmisK 0.22, GlassSpec 0.5, EmissiveScale 3.0, InteriorGain 0.5, ShopGain 0.7, NightK 0, DnTime 0, DebugMode 0.
+Maps: S4 fog 0.0012 (`city_shots.json`), other views fog 0.0008 / inscattering (0.76, 0.78, 0.80) / aerial 0.34. `M_CitySidewalk` luma knee `SunK x 2.4`.
+`build_city.py` (MPC_DEFAULTS, sidewalk knee) was brought in line with these values after the set was captured (an unrendered sidewalk `x 1.15` edit was reverted); the previous committed defaults were ShadeFill 0.12 / GlassSky 0.11.
