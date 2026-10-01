@@ -37,7 +37,9 @@ EXPORT = os.path.join(SCR, 'export', 'midtown3x3')
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
-STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city', 'traversal', 'characters', 'look', 'map']
+STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'map']
+# P1's tools default to THEIR scratch/export; every one honours these, so point them at this build's dirs.
+os.environ.setdefault('SM2_CITY_SCRATCH', SCR); os.environ.setdefault('SM2_CITY_EXPORT', EXPORT); os.environ.setdefault('SM2_CITY_TEX', TEX)
 PRESETS = ['golden', 'midday', 'night']
 VIEWS = ['S1', 'S2', 'S4']
 
@@ -135,6 +137,16 @@ def step_city_prep():
     sh(['node', 'tools/export/gen_shaders.mjs'], log_name='city_gen_shaders.log')  # regenerates the committed Shaders/City/*.ush
 
 
+def step_city_extra():
+    """P1 placement tools added after round 01 (tools/export/build_city.sh order, r08-r10): parked cars, trees, traffic, far skyline, sun height mask"""
+    e = EXPORT
+    os.makedirs(os.path.join(SCR, 'r09'), exist_ok=True)   # bake_sunmask.py writes its preview PNG to <SM2_CITY_SCRATCH>/r09/
+    for name, cmd in (('export_vehicles', ['python3', 'tools/export/export_vehicles.py', e]), ('street_cars', ['python3', 'tools/export/street_cars.py', e]),
+                      ('street_trees', ['python3', 'tools/export/street_trees.py', e]), ('street_traffic', ['python3', 'tools/export/street_traffic.py', e]),
+                      ('far_skyline', ['python3', 'tools/export/far_skyline.py']), ('bake_sunmask', ['python3', 'tools/export/bake_sunmask.py', e, TEX])):
+        sh(cmd, log_name='city_extra_%s.log' % name)
+
+
 # In a -run=pythonscript commandlet StaticMeshEditorSubsystem is None until its module is loaded (build_city.py assumes an editor).
 LOAD_SME = 'import unreal\nunreal.SystemLibrary.execute_console_command(None, "Module Load StaticMeshEditor")\n'
 
@@ -142,8 +154,8 @@ LOAD_SME = 'import unreal\nunreal.SystemLibrary.execute_console_command(None, "M
 def step_city():
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}
     bc = os.path.join(HERE, 'build_city.py')
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,map"}'), env)
-    ue_python('city_pass2_kit', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "kit"}'), env)
+    # one pass in build_city.py's own default order (tools/export/build_city.sh): the map step spawns the kit + far-skyline actors
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map"}'), env)
 
 
 def step_traversal():
