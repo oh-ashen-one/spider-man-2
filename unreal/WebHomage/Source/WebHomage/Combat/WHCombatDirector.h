@@ -68,8 +68,10 @@ struct FWHBeat
 	FName Key;
 	double Hold = 0;
 	FString Toward;       // enemy tag (e1..): the stick points at him for this beat (targeting only)
-	FName React;          // record runs only: 'threat' = fire when a threat is 0.08-0.25 s from contact (window s after T)
+	FName React;          // record runs only: 'threat' = fire when a threat is 0.08-0.25 s from contact; 'free' = hero free; 'air' = hero waits in the air (else skipped)
 	double Window = 3.0;
+	double Rel = -1;      // r02: >= 0 = fire this many real s after the PREVIOUS beat fired (chains: launcher hold after its jab, juggle after the rise)
+	bool bGuard = false;  // r02: no reflex dodge 0.5 s before / 1.2 s after this beat (launchers, juggles, finishers)
 	FString Label;
 	bool bFired = false;
 	double FiredRT = -1, FiredGT = -1;
@@ -127,7 +129,22 @@ public:
 	void Heal(double N);
 	void Cine(AWHEnemy* Target, double Dur, FName Kind);
 	void FireWebLater(AWHEnemy* T, double Delay) { PendingShot = T; PendingShotAt = Time + Delay; }
-	void HitStop(double Dur, double Scale = 0.04);
+	/** r03 LOCAL hit-stop: only the hero and the victim are frozen (dt = 0 for both; the hero's actor time dilation ~0) for N rendered frames at 60 fps (real
+	 *  time), the camera framing state is held and a 2-4 px shake runs on top, everything else in the world keeps moving. */
+	void HitStop(int32 Frames, AWHEnemy* Victim = nullptr);
+	/** True while the hero is held (the camera holds its framing state and shakes). */
+	bool Frozen() const { return bHitStop; }
+	bool bHitStop = false, bDtFrozen = false;
+	double HeroHoldUntil = -1;                      // director real time
+	double ShakeUntil = -1e9, ShakeStart = -1e9, ShakeAx = 1, ShakeAy = 0;   // r03 hit shake (screen-space axis, unit)
+	double HitShakePx = 3.5, HitShakeHz = 5.0;      // px at 1080p (frame edge); overridable with -WHCmbShakePx= / -WHCmbShakeHz= (experiments)
+	double HoldRadius = 2.5;                        // m: enemies this close to the victim are held with it (their bodies and long shadows cross the victim's crop); 0 = only the victim; -WHCmbHoldR=
+	bool bShakeSweep = false; int32 ShakeSweepN = 0; // -WHCmbSweep=1: cycle shake / flare variants per blow (experiment run)
+	FVector BaseCamP = FVector::ZeroVector; FRotator BaseCamR = FRotator::ZeroRotator; double BaseCamFov = 75;   // framing camera before the hit shake
+	FRandomStream ShakeRng = FRandomStream(777);
+	double VigBase = 0.3, VigAmp = 0.0;             // r03 impact vignette (OFF by default: never rendered yet): the map's vignette (0.3) ramps up by VigAmp over the hold, a whole-frame change that leaves the middle alone; -WHCmbVigA=0.5
+	void ImpactVignette(class UCameraComponent* Cam) const;
+	mutable double ShakeOutPx = 0, ShakeOutPx2 = 0; // the shake applied this frame: roll / zoom edge displacement in 1080p px (logged as 'shk')
 	void Slowmo(double Dur, double Scale = 0.3, double Ease = 0.25);
 	void Banner(const FString& S) { LogEvent(TEXT("banner ") + S); }
 
@@ -140,7 +157,12 @@ public:
 	double Time = 0, RTime = 0, TimeScale = 1, SlowK = 0;
 	FVector PlayerFeet = FVector::ZeroVector;
 	TArray<FWHThreat> Threats;
-	TWeakObjectPtr<AWHEnemy> MeleeToken, GunToken;
+	TArray<TWeakObjectPtr<AWHEnemy>> MeleeTokens, GunTokens;   // r02: several committed attackers (aggression scheduler)
+	bool HasToken(const AWHEnemy* E) const;
+	double LastAttackRT = -1, MaxAttackGap = 0; int32 NAttackStarts = 0;
+	double HeroMinHp = 0; bool bHeroArmor = false;   // scripted captures only (script "hero_min_hp", "hero_armor"): hp floor; launcher not interruptible, no knockdown
+	double ReflexCd = 0, LastReflexRT = -9, LastPerfectSlowRT = -9;   // script "reflex": scripted player dodges telegraphed blows (min interval s)          // scripted captures: the hero cannot drop below this (script "hero_min_hp")
+	int32 Reserve = 0, KeepAlive = 0, NextIndex = 1; double SpawnCd = 0; FString ReserveSpec;   // reinforcements (script "reserve", "keep")
 	double GlobalCd = 0, GunCd = 0;
 	int32 ComboN = 0; double ComboT = 0;
 	int32 WarnCount = 0;
@@ -150,12 +172,23 @@ public:
 	FVector StickDir = FVector::ZeroVector;   // world stick direction this frame (script 'toward'), zero = neutral
 
 	// cinematic (finisher / wall pin)
-	struct FCine { TWeakObjectPtr<AWHEnemy> Target; double T = 0, Dur = 1, Dist = 3; FVector Side = FVector::ZeroVector; bool bSide = false; FName Kind; bool bOn = false; } CineS;
-	double CamW = 0, CamAir = 0, CamExtra = -1, CamSide = 0, CamPunchT = 9, CamPunch = 0, CamHard = -1, CamSoft = -1, CamYawOff = 0;
-	FVector CamFrame = FVector::ZeroVector;
-	double CamTrauma = 0, CamImpact = 0, SenseLvl = 0;
+	struct FCine { TWeakObjectPtr<AWHEnemy> Target; double T = 0, Dur = 1, SideYaw = 0; bool bSide = false; FName Kind; bool bOn = false; } CineS;
+	double CamW = 0, CamPunchT = 9, CamPunch = 0;
+	double CamTrauma = 0, CamImpact = 0, SenseLvl = 0, ShakePh = 0;
+	// r02 combat framing camera (mid-high, 4-6 m back, 15-25 deg down, hero + 3 nearest enemies, no enemy near the lens)
+	bool bCamInit = false, bCamLast = false;
+	double CYaw = 0, CYawGoal = 0, CDist = 5.2, CPitch = 20, CFov = 75, CineK = 0, MarginPull = 0;
+	FVector CHero = FVector::ZeroVector, COff = FVector::ZeroVector;
+	FVector BubbleP = FVector::ZeroVector;
+	FVector SunTo = FVector::ZeroVector; bool bSunKnown = false;   // flat unit vector toward the sun (camera avoids looking into it)
+	FVector LastCamPos = FVector::ZeroVector; FRotator LastCamRot = FRotator::ZeroRotator; float LastFov = 75.f;
+	/** Project a world point (m) with a camera (m, rot, horizontal fov deg, 16:9). Returns false behind the lens. */
+	static bool Project(const FVector& CamP, const FRotator& CamR, double FovDeg, const FVector& P, double& Sx, double& Sy);
+	/** Screen box (0..1, 16:9) of a skeletal mesh from all its bones (head top padded): false when nothing is in front of the lens. */
+	static bool ScreenBox(const USkeletalMeshComponent* M, const FVector& CamP, const FRotator& CamR, double FovDeg, double& X0, double& Y0, double& X1, double& Y1, double& Dist);
 
 	// stats (telemetry / summary)
+	int32 NFrozenFrames = 0;
 	int32 NHits = 0, NWhiffs = 0, NKOs = 0, NPerfect = 0, NDodges = 0, NLaunch = 0, NAirHits = 0, NFinishers = 0, NWebHits = 0, NShots = 0, NShotHits = 0, NEnemyHits = 0, NHitStops = 0, NSlowmo = 0;
 	double DamageTaken = 0, MinTimeScale = 1, SlowmoGameT = 0, SlowmoRealT = 0;
 
@@ -167,6 +200,12 @@ private:
 	void UpdateTime();
 	void UpdateShots(double Dt);
 	void CombatCamera(double RealDt);
+	void HitShake(FRotator& R, double& Fov) const;
+	void BlowVariant();
+	void SpawnEnemy(TCHAR Ch, const FVector& FeetM);
+	void Reinforce(double Dt);
+	void FrameRecord();
+	void ApplyLook(const FString& Spec);
 	void Separate();
 	void LoadScript(const FString& Path);
 	void RunBeats();
@@ -190,7 +229,8 @@ private:
 	double FightDist = 7, FightStartAt = 0.5, QuitAt = -1;
 	bool bFightStarted = false, bQuitSent = false, bSummaryDone = false;
 	TArray<double> ShotTimes; int32 NextShot = 0;
-	TArray<FString> TelemetryRows, EventRows, BeatRows;
+	TArray<FString> TelemetryRows, EventRows, BeatRows, FrameRows;
+	FVector CamPosM = FVector::ZeroVector; FRotator CamRotF = FRotator::ZeroRotator; double CamFovF = 75;
 	int64 Frame = 0;
 	double StickUntil = 0;
 };

@@ -18,6 +18,8 @@ void FWHCombatFx::Init(AActor* InOwner)
 	MGlow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFX.M_CmbFX"));
 	MTrans = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbTrans.M_CmbTrans"));
 	MSolid = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbSolid.M_CmbSolid"));
+	MFlare = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFlare.M_CmbFlare"));
+	if (!MFlare) MFlare = MGlow;   // (the map script builds M_CmbFlare; without it the flare falls back to the plain additive glow)
 }
 
 FWHFxItem& FWHCombatFx::Alloc(EWHFxMat Mat, UStaticMesh* Mesh)
@@ -36,7 +38,7 @@ FWHFxItem& FWHCombatFx::Alloc(EWHFxMat Mat, UStaticMesh* Mesh)
 		It.Comp->SetUsingAbsoluteLocation(true); It.Comp->SetUsingAbsoluteRotation(true); It.Comp->SetUsingAbsoluteScale(true);
 		It.Comp->SetupAttachment(O->GetRootComponent());
 		It.Comp->RegisterComponent();
-		UMaterialInterface* Base = Mat == EWHFxMat::Glow ? MGlow : Mat == EWHFxMat::Trans ? MTrans : MSolid;
+		UMaterialInterface* Base = Mat == EWHFxMat::Glow ? MGlow : Mat == EWHFxMat::Trans ? MTrans : Mat == EWHFxMat::Flare ? MFlare : MSolid;
 		if (Base) { It.Mid = UMaterialInstanceDynamic::Create(Base, O); It.Comp->SetMaterial(0, It.Mid); }
 		It.Mat = Mat;
 		Idx = Items.Add(It);
@@ -78,17 +80,19 @@ void FWHCombatFx::Place(FWHFxItem& It, double K)
 	}
 }
 
-void FWHCombatFx::Update(double Dt)
+void FWHCombatFx::Update(double GameDt, double RealDt)
 {
 	for (FWHFxItem& It : Items)
 	{
 		if (!It.bLive) continue;
+		const double Dt = It.bReal ? RealDt : GameDt;
 		It.T += Dt;
 		if (It.T >= It.Life) { It.bLive = false; It.A = nullptr; It.B = nullptr; It.Comp->SetVisibility(false); continue; }
+		if (It.bReal && It.T < It.Hold) { Place(It, 0); continue; }   // static while the hit-stop holds the frame
 		It.Vel += It.Gravity * Dt;
 		if (It.Drag > 0) It.Vel *= FMath::Exp(-It.Drag * Dt);
 		It.Pos += It.Vel * Dt;
-		Place(It, It.T / It.Life);
+		Place(It, It.bReal ? (It.T - It.Hold) / FMath::Max(1e-3, It.Life - It.Hold) : It.T / It.Life);
 	}
 }
 
@@ -103,34 +107,60 @@ int32 FWHCombatFx::LiveCount() const
 	int32 N = 0; for (const FWHFxItem& It : Items) N += It.bLive ? 1 : 0; return N;
 }
 
-void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color)
+void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
 {
-	const FLinearColor C = Color ? *Color : FLinearColor(5.0f, 3.6f, 1.8f);
-	{ // core flash
+	// A spark burst: a small additive core + radial streaks. HoldFrames > 0 keeps everything static for that many frames (the local hit-stop),
+	// then the streaks fly out and fade in ~2.3 frames (r03: everything is gone 8 frames after the contact for a 5-frame hold).
+	const FLinearColor C = Color ? *Color * 0.8f : FLinearColor(4.0f, 2.8f, 1.3f);
+	const double Hold = HoldFrames > 0 ? (HoldFrames + 1.25) / 60.0 : 0.0, Life = Hold + (HoldFrames > 0 ? 2.3 / 60.0 : 0.09);
+	{
 		FWHFxItem& F = Alloc(EWHFxMat::Glow, Sphere);
-		F.Pos = P; F.Life = 0.11 + 0.06 * Heavy; F.Size0 = FVector(0.12 + 0.1 * Heavy); F.Size1 = FVector(0.45 + 0.5 * Heavy);
-		F.Color = C; F.Op0 = 1.0; F.Op1 = 0.0;
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = FVector(0.1 + 0.08 * Heavy); F.Size1 = FVector(0.05);
+		F.Color = C; F.Op0 = 0.9; F.Op1 = 0.0;
 		Place(F, 0);
 	}
-	const int32 N = 6 + int32(8 * Heavy);
+	const int32 N = 8 + int32(8 * Heavy);
 	const FVector D = Dir.GetSafeNormal();
 	for (int32 i = 0; i < N; ++i)
 	{
 		FWHFxItem& S = Alloc(EWHFxMat::Glow, Cyl);
-		FVector R = Rng.GetUnitVector();
-		FVector V = (D * 1.2 + R * 0.9).GetSafeNormal() * Rng.FRandRange(4.0, 9.0 + 6.0 * Heavy);
-		S.Pos = P; S.Vel = V; S.Drag = 5.0; S.Gravity = FVector(0, 0, -6); S.Life = Rng.FRandRange(0.12, 0.22 + 0.1 * Heavy);
-		S.Size0 = FVector(0.012 + 0.01 * Heavy); S.Size1 = FVector(0.004); S.bStretch = true;
-		S.Color = FLinearColor(C.R * 1.2f, C.G, C.B * 0.7f); S.Op0 = 1.0; S.Op1 = 0.0;
+		const FVector R = (D * 0.9 + Rng.GetUnitVector()).GetSafeNormal();
+		const double Len = Rng.FRandRange(0.16, 0.30 + 0.16 * Heavy) * (HoldFrames > 0 ? 1.5 : 1.0);   // r03: r02's 2-px ticks read as nothing at 5 m
+		S.bReal = true; S.Hold = Hold; S.Life = Life;
+		S.Dir = R; S.Pos = P + R * (0.08 + Len * 0.5); S.Vel = R * Rng.FRandRange(5.0, 9.0); S.Drag = 3.0;
+		S.Size0 = FVector(0.02 + 0.012 * Heavy, 0.02 + 0.012 * Heavy, Len); S.Size1 = FVector(0.006, 0.006, Len * 0.6);
+		S.Color = FLinearColor(C.R * 1.1f, C.G, C.B * 0.7f); S.Op0 = 1.0; S.Op1 = 0.0;
 		Place(S, 0);
 	}
-	if (Heavy > 0.45)
-	{ // shock ring facing the blow
-		FWHFxItem& R = Alloc(EWHFxMat::Glow, Cyl);
-		R.Pos = P; R.Dir = D; R.Life = 0.22; R.Size0 = FVector(0.2, 0.2, 0.01); R.Size1 = FVector(1.6 * Heavy + 0.4, 1.6 * Heavy + 0.4, 0.01);
-		R.Color = FLinearColor(C.R * 0.5f, C.G * 0.5f, C.B * 0.5f); R.Op0 = 0.9; R.Op1 = 0.0;
-		Place(R, 0);
+}
+
+void FWHCombatFx::Impact(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
+{
+	Hit(P, Dir, Heavy, Color, HoldFrames);
+	// r03 flare: radius from the camera distance so the disc covers ~FlareFrac of the frame (area = pi r^2, frame = W x 9/16 W, W = 2 d tan(fov/2)).
+	const double Dist = bCam ? FMath::Max(1.5, FVector::Dist(CamP, P)) : 5.5;
+	const double Wd = 2.0 * Dist * FMath::Tan(FMath::DegreesToRadians(CamFovH * 0.5));
+	const double Frac = FlareFrac * (1.0 + 0.25 * Heavy) * FlareK;
+	const double R = FMath::Sqrt(Frac * Wd * Wd * (9.0 / 16.0) / PI);
+	const double Hold = (HoldFrames + 1.25) / 60.0, Life = Hold + 2.3 / 60.0;
+	const FLinearColor Base = Color ? *Color : FLinearColor(1, 1, 1);
+	const bool bTint = Color != nullptr && Color->R + Color->G + Color->B > 8.0f && Color->B > 3.0f;   // armoured (white) blow: cooler flare
+	{ // halo: red-orange
+		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = F.Size1 = FVector(R * 2.0);   // the sphere mesh is 1 m in diameter at scale 1
+		F.Color = bTint ? FLinearColor(0.9f, 0.75f, 0.6f) : FLinearColor(1.0f, 0.085f, 0.008f); F.Op0 = FlareI; F.Op1 = 0.0;
+		Place(F, 0);
 	}
+	{ // core: hot orange-yellow
+		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = F.Size1 = FVector(R * 0.85);
+		F.Color = FLinearColor(1.8f, 0.45f, 0.04f); F.Op0 = FlareI; F.Op1 = 0.0;
+		Place(F, 0);
+	}
+	(void)Base;
 }
 
 void FWHCombatFx::Dust(const FVector& P, double Amount)
@@ -143,9 +173,9 @@ void FWHCombatFx::Dust(const FVector& P, double Amount)
 		D.Pos = P + FVector(FMath::Cos(A), FMath::Sin(A), 0) * Rng.FRandRange(0.1, 0.5) + FVector(0, 0, 0.1);
 		D.Vel = FVector(FMath::Cos(A), FMath::Sin(A), 0) * Rng.FRandRange(1.0, 2.8) * Amount + FVector(0, 0, Rng.FRandRange(0.3, 1.2));
 		D.Drag = 2.5; D.Life = Rng.FRandRange(0.6, 1.1);
-		const double S = Rng.FRandRange(0.25, 0.45) * (0.7 + 0.5 * Amount);
+		const double S = Rng.FRandRange(0.2, 0.36) * (0.7 + 0.5 * Amount);
 		D.Size0 = FVector(S * 0.5); D.Size1 = FVector(S * 1.8);
-		D.Color = FLinearColor(0.32f, 0.3f, 0.27f); D.Op0 = 0.38; D.Op1 = 0.0;
+		D.Color = FLinearColor(0.10f, 0.09f, 0.08f); D.Op0 = 0.24; D.Op1 = 0.0;   // r02: darker dust (in daylight the old grey read as white discs)
 		Place(D, 0);
 	}
 }
