@@ -57,6 +57,7 @@ protected:
 
 	/** Mouse look: radians per Mouse2D unit (browser 0.0023 rad / px; Mouse2D arrives pre-scaled by 0.07). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	float MouseTestPx = 6.f; // round 20: px per engine frame injected by -WHTravInputTest=mouseLook (-WHMouseTestPx=)
 	float MouseRadPerUnit = 0.0025f; // 2026-10-01 owner playtest ("tiny move = seizure"): Enhanced Input mouse = raw pixels, so 0.011 rad/px (0.6 deg) spun the camera; 0.0025 rad/px (~0.14 deg, typical PC TPS); x wh.MouseSensitivity
 
 	/** Right stick look rate (rad/s) at full deflection (browser 900 px/s x 0.0023). */
@@ -197,6 +198,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> MaskRT;
 	float PxTop = -1.f, PxBottom = -1.f, PxLeft = -1.f, PxRight = -1.f;
+	float VisTop = -1.f, VisBottom = -1.f; int32 VisPx = -1; // round 20: visible (unoccluded) hero pixels
 	// round 08: full-scene depth from the view camera (same 480x270 grid) -> near-wall share and hero occlusion
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> SceneCapture;
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> SceneRT;

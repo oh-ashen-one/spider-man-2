@@ -144,10 +144,12 @@ for p in CLIPS:
         if t_ >= 0 and b_ > t_: wh.append((r_ - l_) / (b_ - t_))
     kg = [shifted(rows, 'tuck_knee_gap_m', i) for i in wr]
     # contacts: a limb is on the wall when its toe / palm is <= 0.08 m off the facade; longest time between two contact changes
-    ch = []; last = None; lastt = None
+    ch = []; last = None; lastt = None; previ = None
     for i in wr:
         st = tuple(shifted(rows, k, i) <= 0.08 for k in ('foot_wall_l', 'foot_wall_r', 'hand_wall_l', 'hand_wall_r'))
         t = fl(rows[i], 't')
+        if previ is not None and i != previ + 1: last = None; lastt = None   # r20: a new wall-run segment (setback mantle / corner) restarts the clock
+        previ = i
         if last is not None and st != last:
             if lastt is not None: ch.append(t - lastt)
             lastt = t
@@ -203,12 +205,46 @@ for nm in ('w1_wallrun_tall_zip', 'c_wallrun_perch', 'r1_roofrun_zip', 'w2_wallr
         full = sum(1 for _, w_, _ in zr if w_ >= 0.9)
         P(f'  {nm}: zipFlight {zr[0][0]:.2f}-{zr[-1][0]:.2f} s, reach weight >= .9 on {full}/{len(zr)} rows; limb_z (hands L R, feet L R over the hips, m) mid-flight: {zr[len(zr) // 2][2]}')
 
+P('\n== X  RMB response (owner bug 1): every fresh RMB press during a trick / top-out flip / wall run -> time to the swing (target <= 0.1 s)')
+for p in CLIPS:
+    name = os.path.basename(p)[:-len('_telemetry.csv')]
+    rows = load(p)
+    for i in range(1, len(rows)):
+        if fl(rows[i], 'in_swing') > 0 and fl(rows[i - 1], 'in_swing') <= 0:
+            m0 = rows[i - 1]['mode'] + '/' + rows[i - 1]['sub']
+            busy = rows[i - 1]['mode'] == 'wall' or rows[i - 1]['sub'] in ('trick', 'topOut')
+            t0 = fl(rows[i], 't')
+            ts = next((fl(rows[j], 't') for j in range(i, len(rows)) if rows[j]['mode'] == 'swing'), None)
+            dt = (ts - t0) if ts is not None else None
+            P(f'  {name}: press at {t0:.2f} s from {m0}' + (f' -> swing at {ts:.2f} s (+{dt:.2f} s)' if dt is not None else ' -> no swing') +
+              (' -> ' + ('PASS' if dt is not None and dt <= 0.1 + 1e-6 else 'FAIL') if busy else ' (not busy: info)'))
+
+P('\n== S  air pose by speed (air rows, not trick / launch subs): hands / feet height over the hips (limb_z, m), body-to-velocity, procedural weights')
+for p in CLIPS:
+    name = os.path.basename(p)[:-len('_telemetry.csv')]
+    rows = load(p)
+    bins = {}
+    for i, r in enumerate(rows):
+        if r['mode'] != 'air' or r['sub'] in SKIP: continue
+        sp = fl(r, 'speed_mps'); b = '<20' if sp < 20 else '20-30' if sp < 30 else '30-44' if sp < 44 else '>=44'
+        lz = rows[min(i + 1, len(rows) - 1)]['limb_z'].split()
+        if len(lz) != 4: continue
+        bins.setdefault(b, []).append(([float(x) for x in lz], shifted(rows, 'body_vel_deg', i), shifted(rows, 'air_fast_w', i), shifted(rows, 'air_track_k', i), r['anim_node']))
+    for b in ('<20', '20-30', '30-44', '>=44'):
+        v = bins.get(b)
+        if not v: continue
+        med = lambda a: sorted(a)[len(a) // 2]
+        hands = med([(x[0][0] + x[0][1]) / 2 for x in v]); feet = med([(x[0][2] + x[0][3]) / 2 for x in v])
+        P(f'  {name} {b:>6} m/s: {len(v):4d} rows | hands {hands:+.2f} m, feet {feet:+.2f} m over the hips | body-to-velocity med {med([x[1] for x in v]):.0f} deg'
+          f' | air_fast_w med {med([x[2] for x in v]):.2f}, track_k med {med([x[3] for x in v]):.2f} | upright fallCalm rows (node air_fallCalm, body-to-vel > 60): '
+          f'{sum(1 for x in v if x[4] == "air_fallCalm" and x[1] > 60)}')
+
 P('\n== I  mouse look injection (-WHTravInputTest=mouseLook)')
 lg = os.path.join(RD, 'inputtest_mouselook.log')
 if os.path.exists(lg):
     for line in open(lg):
         if 'mouseLook' in line: P('  ' + line.strip())
-mt = glob.glob(os.path.join(RD, 'probes', 'mouselook_telemetry.csv'))
+mt = glob.glob(os.path.join(RD, 'probes', 'mouselook_telemetry.csv')) + glob.glob(os.path.join(RD, 'mouselook_telemetry.csv'))
 if mt:
     rows = load(mt[0])
     lp = [fl(r, 'look_px') for r in rows]

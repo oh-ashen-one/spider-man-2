@@ -28,6 +28,7 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/GameViewportClient.h"
+#include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/StaticMesh.h"
 #include "Core/WHSettings.h"
@@ -431,6 +432,7 @@ void AWebTravCharacter::BeginPlay()
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravInputTest="), InputTest) && !InputTest.IsEmpty())
 	{
 		bInputTestMouse = InputTest.Contains(TEXT("mouse"));
+		FParse::Value(FCommandLine::Get(), TEXT("-WHMouseTestPx="), MouseTestPx);
 		InputTestTicker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &AWebTravCharacter::InputTestTick));
 		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST %s armed (%s input)"), *InputTest, bLatchInput ? TEXT("round-18 event-latched") : TEXT("round-19 polled"));
 	}
@@ -600,6 +602,12 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		FVector2D LookRate;
 		I = Script->Sample(TravTime, LookRate);
 		I.Look = LookRate * Dt;
+		if (bInputTestMouse)
+		{ // round 20: -WHTravInputTest=mouseLook inside a scripted repro -- the injected mouse events add to the script's look (same gain as live)
+			const float MSens = MouseRadPerUnit * FMath::Max(0.f, CVarWHMouseSensitivity.GetValueOnGameThread());
+			LookMagFrame = MouseAccum.Size();
+			I.Look += FVector2D(FMath::Clamp(MouseAccum.X, -MaxMouseDeltaPx, MaxMouseDeltaPx) * MSens, -FMath::Clamp(MouseAccum.Y, -MaxMouseDeltaPx, MaxMouseDeltaPx) * MSens);
+		}
 		double HeadingDeg = 0;
 		if (Script->HeadingAt(TravTime, HeadingDeg))
 		{ // steer toward a world direction: express it in camera-relative stick terms (what a player's stick would do)
@@ -1148,7 +1156,7 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 
 void AWebTravCharacter::ReadHeroMask()
 {
-	PxTop = PxBottom = PxLeft = PxRight = -1.f; WallFrac = HeroOccl = -1.f;
+	PxTop = PxBottom = PxLeft = PxRight = -1.f; WallFrac = HeroOccl = -1.f; VisTop = VisBottom = -1.f; VisPx = -1;
 	if (!MaskRT) return;
 	FTextureRenderTargetResource* Res = MaskRT->GameThread_GetRenderTargetResource();
 	if (!Res) return;
@@ -1172,7 +1180,17 @@ void AWebTravCharacter::ReadHeroMask()
 				for (int32 K = 0; K < Px.Num(); ++K)
 				{
 					const float HD = Px[K].R, SD = Sc[K].R;
-					if (HD < 20000.f) { ++Hero; if (SD < HD - 30.f) ++Occ; continue; }
+					if (HD < 20000.f)
+					{
+						++Hero;
+						if (SD < HD - 30.f) ++Occ;
+						else
+						{ // round 20 (critic r19: "telemetry bbox .25 while a parapet hides all but the shoulders"): bbox of the VISIBLE hero pixels
+							const float Yp = float(K / 480);
+							VisTop = VisTop < 0.f ? Yp * 4.f : FMath::Min(VisTop, Yp * 4.f); VisBottom = FMath::Max(VisBottom, (Yp + 1.f) * 4.f);
+						}
+						continue;
+					}
 					++NonHero;
 					if (SD >= 600.f) continue;
 					const double U = ((K % 480) + 0.5) / 480.0 * 2.0 - 1.0, V = 1.0 - ((K / 480) + 0.5) / 270.0 * 2.0;
@@ -1181,6 +1199,7 @@ void AWebTravCharacter::ReadHeroMask()
 				}
 				WallFrac = float(Near) / float(FMath::Max(1, Px.Num()));
 				HeroOccl = Hero > 0 ? float(Occ) / float(Hero) : 1.f;
+				VisPx = (Hero - Occ) * 16; // in 1920x1080 pixels
 			}
 		}
 	}
@@ -1205,7 +1224,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
 		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25,flow_apex_want_z,flow_gap_m,")
 		TEXT("in_cap,vp_cap,vp_focus,look_px,ground_src,wall_ik_w,gait_ph,swing_leg_w,tuck_w,tuck_wrist_shin_m,tuck_knee_gap_m,flip_scale,foot_wall_l,foot_wall_r,hand_wall_l,hand_wall_r,zip_why,")
-		TEXT("body_vel_deg,body_wallup_deg,cam_enclosed,vis_pts,vis_up_m,setbacks,topouts,tunnel_stops,cam_slew8,zip_reach_w,solid_mode"));
+		TEXT("body_vel_deg,body_wallup_deg,cam_enclosed,vis_pts,vis_up_m,setbacks,topouts,tunnel_stops,cam_slew8,zip_reach_w,solid_mode,")
+		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1386,7 +1406,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	FString Cols20;
 	{
 		double BodyVel = -1.0, BodyWall = -1.0;
-		float ZipW = 0.f;
+		float ZipW = 0.f, AirFW = 0.f, AirTK = 0.f;
 		if (bHeroMesh)
 		{
 			const USkeletalMeshComponent* M = GetMesh();
@@ -1397,10 +1417,11 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 				FVector Up = A.Wall.Up - A.Wall.Normal * FVector::DotProduct(A.Wall.Up, A.Wall.Normal);
 				if (!Up.IsNearlyZero()) BodyWall = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(Ax, Up.GetSafeNormal()), -1.0, 1.0)));
 			}
-			if (const UWebTravAnimInstance* AI = Cast<UWebTravAnimInstance>(M->GetAnimInstance())) ZipW = AI->Frame.ZipReachW;
+			if (const UWebTravAnimInstance* AI = Cast<UWebTravAnimInstance>(M->GetAnimInstance())) { ZipW = AI->Frame.ZipReachW; AirFW = AI->Frame.AirFastW; AirTK = AI->Frame.AirTrackK; }
 		}
 		Cols20 = FString::Printf(TEXT(",%.1f,%.1f,%d,%d,%.2f,%d,%d,%d,%d,%.2f,%d"), BodyVel, BodyWall, Cam.bCamEnclosed ? 1 : 0, Cam.VisPts, Cam.VisUp,
-			Traversal->SetbackCount, Traversal->TopOutCount, Traversal->TunnelStops, (Cam.SlewFlags & 8) ? 1 : 0, ZipW, Traversal->TravWorld.SolidMode);
+			Traversal->SetbackCount, Traversal->TopOutCount, Traversal->TunnelStops, (Cam.SlewFlags & 8) ? 1 : 0, ZipW, Traversal->TravWorld.SolidMode)
+			+ FString::Printf(TEXT(",%d,%.3f,%.3f,%.0f,%.0f,%d"), Traversal->FlipCancels, AirFW, AirTK, VisTop, VisBottom, VisPx);
 	}
 	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20);
 }
@@ -1604,8 +1625,16 @@ bool AWebTravCharacter::InputTestTick(float Dt)
 	{ // round 20: real mouse-axis events, 6 px per engine frame right for 2 s (720 px at 60 fps), then 4 px per frame up for 1 s
 		const double Yaw = Cam.CamRot.Yaw;
 		if (T >= 0.5 && !bMouseTestYaw0) { bMouseTestYaw0 = true; MouseTestYaw0 = Yaw; UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST mouseLook t %.2f start: camera yaw %.1f pitch %.1f"), T, Yaw, Cam.CamRot.Pitch); }
-		if (T >= 0.5 && T < 2.5) { PC->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::MouseX, IE_Axis, 6.f)); InjectedPx += 6.0; }
-		else if (T >= 3.0 && T < 4.0) { PC->InputKey(FInputKeyEventArgs::CreateSimulated(EKeys::MouseY, IE_Axis, 4.f)); InjectedPx += 4.0; }
+		// round 20 (critic r19 "mouse 0 px over 0 frames"): the events take the HARDWARE path's form -- the game viewport, the default input
+		// device, delta + delta time + 1 device sample (FSceneViewport mouse-move -> InputAxis), not a simulated key event
+		auto Mouse = [&](const FKey& Key, float Delta)
+		{
+			FViewport* VP = GEngine && GEngine->GameViewport ? GEngine->GameViewport->Viewport : nullptr;
+			const FInputKeyEventArgs Args(VP, IPlatformInputDeviceMapper::Get().GetDefaultInputDevice(), Key, Delta, Dt, 1, FPlatformTime::Cycles64());
+			PC->InputKey(Args);
+		};
+		if (T >= 0.5 && T < 2.5) { Mouse(EKeys::MouseX, MouseTestPx); InjectedPx += MouseTestPx; }
+		else if (T >= 3.0 && T < 4.0) { Mouse(EKeys::MouseY, MouseTestPx * 0.66f); InjectedPx += MouseTestPx * 0.66f; }
 		if (T >= 2.5 && InputTestStep == 0) { InputTestStep = 1; UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST mouseLook t %.2f after %.0f px right: camera yaw %.1f (turned %.1f deg)"), T, InjectedPx, Yaw, FRotator::NormalizeAxis(Yaw - MouseTestYaw0)); }
 		if (T >= 4.0 && InputTestStep == 1)
 		{
