@@ -9,6 +9,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "Core/WebHomageCharacter.h"
 #include "GameFramework/GameModeBase.h"
 #include "Traversal/WebTravTypes.h"
@@ -135,6 +136,17 @@ private:
 	double LookMagFrame = 0.0;      // this frame's mouse delta (px) before the capture gate
 	float StatT = 0.f; double StatLook = 0.0; int32 StatLookFrames = 0, StatPress = 0, StatSwingStart = 0, StatNoAnchor = 0, StatZipPress = 0, StatZipFail = 0;
 	float PressWatchT = 0.f; FString PressFrom; int32 PressNoAnchor = 0;
+	// round 19 scripted repro of the live-input bugs: -WHTravInputTest=pauseRelease injects real key events into the player controller on a
+	// real-time core ticker (it runs while the game is paused): RMB held, game paused, RMB released DURING the pause, unpause, RMB pressed
+	// again -> must swing. -WHTravLatchInput = the round-18 event-latched flags (the A/B that shows the old failure).
+	bool bLatchInput = false;
+	FString InputTest;
+	FTSTicker::FDelegateHandle InputTestTicker;
+	double InputTestT0 = -1.0;
+	int32 InputTestStep = 0, InputTestPresses = 0, InputTestSwings = 0;
+	double InputTestPressT = -1.0;
+	bool InputTestTick(float Dt);
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
 	FWebTravCamera Cam;
 	int32 SunTries = 0; // round 15: frames spent looking for the level's sun light

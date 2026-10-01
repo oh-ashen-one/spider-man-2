@@ -37,6 +37,18 @@ struct FWebTravAnimFrame
 	// body), blended over the main pose's leg bones by LegW
 	TArray<FWebTravAnimLayer> LegLayers;
 	float LegW = 0.f;
+	// round 19 (owner playtest: wall-run "super cooked"): procedural wall-run stride. Two-bone IK puts the feet and hands ON the facade
+	// (component space, cm): contralateral gait, stance feet sweep down the wall (push), hands plant above the shoulder and pull down,
+	// knees drive up-and-out between contacts, shoulders counter-twist with the arms. WallW = blend weight (0 = clip pose only).
+	float WallW = 0.f;
+	FVector WallN = FVector::ForwardVector, WallP = FVector::ZeroVector, WallU = FVector::UpVector;
+	float GaitPh = 0.f;
+	// round 19 (owner: swing / in-air poses at speed): procedural leg shaping while swinging (legs trail the velocity at the arc bottom,
+	// knees tuck on the rise) and the free arm opening against the arc; weights 0..1
+	float SwingLegW = 0.f, SwingTuck = 0.f, SwingFreeArmW = 0.f;
+	FVector VelCS = FVector::ZeroVector;  // component-space velocity direction (unit)
+	// round 19 (r18 critic): tight tuck (wrists to the shins, knees together) while a flip program is in a Tuck shape
+	float TuckW = 0.f;
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy
@@ -103,6 +115,12 @@ private:
 	float NodeT = 0.f, FadeT = 1.f, FadeDur = 0.2f, TotalWeight = 0.f;
 	TArray<FWebTravAnimLayer> PrevLayers;
 	float LocoPhase = 0.f, WallRunPhase = 0.f;
+	float WallGaitPh = 0.f;
+	float PendingTuckW = 0.f;
+public:
+	/** Round 19: procedural wall-run stride on (default) -- -WHWallGait=0 restores the round-06 sprint-clip wall run (A/B). */
+	static bool bWallGait;
+private:
 	// air cycle
 	bool bInAirCycle = false;
 	float AirCycleT = 0.f;

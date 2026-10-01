@@ -270,6 +270,8 @@ public:
 	/** Round 19: why the last E press did what it did (highlighted / facadeTop / nearest / wallZip / pointLaunch / webDash / none). */
 	FName LastZipWhy;
 	int32 LastLandSrc = 0;
+	int32 FlipVarCount = 0;
+	FRandomStream FlipRng{ 20261001 }; // round 19: own stream (the swing solver's Rng sequence and the r18 routes stay unchanged)
 	int32 GroundSrcNow() const { (void)FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); return TravWorld.LastGroundSrc; }
 	FString LastZipFrom;
 	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
@@ -477,5 +479,7 @@ public:
 	static constexpr double JUMP = 11.2, JUMP_MAX = 19.5;
 	// round 06 wall-run body: lean back off the wall (rad) and feet offset from the wall plane (m) while running
 	static constexpr double WallRunLean = 0.16, WallRunFootOff = 0.42;
+	// round 19: procedural IK stride -- hips 0.28 m off the facade, torso leaned 0.28 rad back (shoulders ~0.40 m: the hands reach the wall)
+	static constexpr double WallGaitLean = 0.28, WallGaitFootOff = 0.28;
 	static constexpr double WEB_MASS = 80;
 };

@@ -11,6 +11,8 @@
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/Pawn.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 
 static const FName NAME_WHGround(TEXT("WHGround"));
 
@@ -56,6 +58,9 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 		for (UPrimitiveComponent* P : Ps) { if (P && IsTravCube(P) && P->IsCollisionEnabled()) { bBoxesOnly = true; break; } }
 	}
 	int32 NVisualOnly = 0;
+	// round 19 A/B: -WHTravSolidFilter=0 keeps every collision primitive a traversal solid (the 690dfa7 behaviour, for the floor audit)
+	bool bFilter = true;
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravSolidFilter="), V)) bFilter = V != 0; }
 	for (TActorIterator<AActor> It(InWorld); It; ++It)
 	{
 		AActor* A = *It;
@@ -160,6 +165,9 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 			}
 		}
 	}
+	const bool bFound = bBoxesOnly;
+	if (!bFilter) { bBoxesOnly = false; }
+	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: solid filter %s (per-building boxes found %d)"), bBoxesOnly ? TEXT("ON: only WHBox boxes + WHGround are traversal solids") : TEXT("OFF"), bFound ? 1 : 0);
 	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided; per-building boxes only %d, %d wide merged meshes made visual-only, %d traversal solids (boxes + ground), %d ground boxes)"), Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped, bBoxesOnly ? 1 : 0, NVisualOnly, AllowedComps.Num(), GroundBoxes.Num());
 }
 

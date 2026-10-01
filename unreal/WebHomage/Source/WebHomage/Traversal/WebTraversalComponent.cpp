@@ -2,6 +2,9 @@
 // Port of src/player/traversal/traversal.js (browser build). Function order and comments follow the browser file so the
 // two can be diffed by eye; owner feel notes (user rN / feedback #N) are kept where they shaped the code.
 #include "Traversal/WebTraversalComponent.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
+#include "Traversal/Anim/WebTravAnimInstance.h"
 #include "Traversal/WebTravFlips.h"
 #include "Traversal/WebTravCamera.h"
 #include "WebHomage.h"
@@ -68,6 +71,8 @@ void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 	TravWorld.Init(World, InOwner);
 	Anchors = MakeUnique<FWebTravAnchors>(TravWorld);
 	Rng.Initialize(RandomSeed);
+	FlipRng.Initialize(RandomSeed * 31 + 7);
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFlipVar="), V)) WebFlips::bVariants = V != 0; } // round 19 A/B
 	bWorldReady = true;
 }
 
@@ -1245,18 +1250,26 @@ FName UWebTraversalComponent::FitFlip(FName Want) const
 	if (bFlowChoose) return HeightAboveFloor() >= double(FlipFloorClear) ? Want : NAME_None;
 	const double Air = AirTimeToClear();
 	auto Need = [](const FWebFlipProgram* P) { return P ? double(P->CatchT()) : 1e9; };
-	const FWebFlipProgram* P = WebFlips::Find(Want);
-	if (P && Need(P) + double(FlipCatchRoom) <= Air) return Want;
+	const FWebFlipProgram* P = WebFlips::FindBase(Want);
+	if (P && Need(P) * 1.18 + double(FlipCatchRoom) <= Air) return Want; // round 19: room for the longest variant
 	const FName Short(TEXT("backSingle"));
-	if (Need(WebFlips::Find(Short)) + double(FlipCatchRoom) <= Air) return Short;
+	if (Need(WebFlips::FindBase(Short)) * 1.18 + double(FlipCatchRoom) <= Air) return Short;
 	return NAME_None;
 }
 
 void UWebTraversalComponent::StartTrick(FName Name)
 {
 	if (Name.IsNone()) return;
-	if (const FWebFlipProgram* FP = WebFlips::Find(Name))
+	if (const FWebFlipProgram* FP0 = WebFlips::FindBase(Name))
 	{ // round 11: flip program — its length is the trick; boost at 30 % of the first shape
+		// round 19 (critic r18 "every program is a replay"): this instance's variant -- a fast release spins quicker (shorter), a high apex
+		// has time for a slower, more extended program; + / - 5 % jitter; segments and arm / leg timing vary inside it (WebFlips::MakeVariant)
+		const double Sp = S.Vel.Size(), ApexH = HeightAboveFloor() + FMath::Max(0.0, S.Vel.Z) * FMath::Max(0.0, S.Vel.Z) / (2.0 * G);
+		const double Sc = 1.0 - 0.10 * FMath::Clamp((Sp - 24.0) / 12.0, -1.0, 1.0) + 0.08 * FMath::Clamp((ApexH - 18.0) / 15.0, -1.0, 1.0) + 0.05 * (2.0 * FlipRng.FRand() - 1.0);
+		const FWebFlipProgram* FP = WebFlips::MakeVariant(Name, float(Sc), uint32(++FlipVarCount * 7919 + FlipRng.RandHelper(100000)));
+		if (!FP) FP = FP0;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flip variant %s #%d: release %.1f m/s, apex ~%.1f m -> x%.3f (%.2f s, lead %.3f lag %.3f)"),
+			*Name.ToString(), FlipVarCount, Sp, ApexH, FP->Scale, FP->Dur(), FP->Lead, FP->Lag);
 		S.Trick = Name; S.LastTrickName = Name;
 		S.TrickSide = FMath::Abs(S.TrickLat) > 0.35 ? Sgn(S.TrickLat) : 1.0; // corkscrew twist direction toward the stick
 		S.TrickDur = FP->Dur(); S.TrickSnapT = 0.3 * FP->Segs[0].Dur; S.bTrickBoosted = false; S.bTrickNoUp = false;
@@ -2504,6 +2517,13 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		Fwd = YawDir(S.Facing);
 		S.Roll = S.Bank * 0.45;
 		S.Pitch = S.bDive || S.bGliding ? 0.25 : FMath::Clamp(-S.Vel.Z * 0.008, -0.2, 0.25);
+		// round 19 (owner: between-swing poses at speed): a fast descent tips the body toward the flight path -- a sky-dive lean
+		// (0.85 rad) when falling fast, head-first (1.25 rad) in a dive / glide; rising, tricks, launches and zips keep the upright frame
+		if (S.Sub != N_trick && S.Sub != N_topOut && S.Sub != N_zipPull && S.Sub != N_jumpLaunch && S.Sub != N_wallJump && S.Sub != N_pointLaunch && S.Sub != N_vault)
+		{
+			const double K = FMath::Clamp((-S.Vel.Z - 4.0) / 14.0, 0.0, 1.0) * FMath::Clamp((S.Vel.Size() - 14.0) / 16.0, 0.0, 1.0);
+			S.Pitch = FMath::Lerp(S.Pitch, S.bDive || S.bGliding ? 1.25 : 0.85, K);
+		}
 		Rate = 8;
 		break;
 	case EWebTravMode::Swing:
@@ -2549,13 +2569,14 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		// back off it while running (runK). The browser's "run cycle rotated onto the wall" frame (body up = normal) is gone.
 		FWall& W = S.W;
 		const FVector N = W.Normal;
-		const bool bRunning = (S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip;
+		const bool bGait = UWebTravAnimInstance::bWallGait;
+		const bool bRunning = (S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip || (bGait && S.Sub == N_wallRunSide && W.bFast);
 		W.RunK = Damp(W.RunK, bRunning ? 1 : 0, bRunning ? 9 : 7, Dt);
 		FVector Along = W.Up - N * FVector::DotProduct(W.Up, N);
 		if (Along.SizeSquared() < 1e-4) Along = ZUP;
 		Along.Normalize();
 		Fwd = -N; Up = Along;
-		S.Pitch = -WallRunLean * W.RunK;
+		S.Pitch = -(bGait ? WallGaitLean : WallRunLean) * W.RunK; // round 19: the IK stride leans further off the wall (hands reach it)
 		Rate = 14;
 		break;
 	}
@@ -2583,7 +2604,7 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		const FWall& W = S.W;
 		const double ToPlane = W.Dist;
 		// feet 0.30 m off the wall when crawling, WallRunFootOff when running (the striding foot reaches the wall)
-		RootPos = S.Pos + W.Normal * (FMath::Lerp(0.30, WallRunFootOff, W.RunK) - ToPlane) - BodyUp * H;
+		RootPos = S.Pos + W.Normal * (FMath::Lerp(0.30, UWebTravAnimInstance::bWallGait ? WallGaitFootOff : WallRunFootOff, W.RunK) - ToPlane) - BodyUp * H;
 	}
 	else RootPos = S.Pos - BodyUp * H;
 	if (S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch) RootPos.Z = S.Pos.Z - H + S.StepOff;
@@ -2612,6 +2633,7 @@ void UWebTraversalComponent::WriteAnim(const FQuat& Q)
 	A.Zip.bDash = S.Z.bDash && S.Sub == N_zipPull && S.Mode == EWebTravMode::Air;
 	A.Wall.Normal = S.W.Normal; A.Wall.Move = S.W.Move; A.Wall.bFast = S.W.bFast; A.Wall.Phase = float(S.W.Phase);
 	A.Wall.RunK = S.Mode == EWebTravMode::Wall ? float(S.W.RunK) : 0.f;
+	A.Wall.Point = S.W.Point * 100.0; A.Wall.Up = S.W.Up;
 	A.Perch.Point = S.P.Pos * 100.0; A.Perch.Normal = S.P.Normal; A.Perch.Kind = S.P.Kind; A.Perch.Impact = S.P.Impact * 100.0;
 	A.LandingSeverity = float(S.LandSeverity); A.Trick = S.Trick; A.TrickSide = float(S.TrickSide); A.TrickDur = float(S.TrickDur);
 	A.bDive = S.bDive || S.bGliding; A.bGlide = S.bGliding;

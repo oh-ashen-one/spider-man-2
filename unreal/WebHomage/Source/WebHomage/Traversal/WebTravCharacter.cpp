@@ -45,6 +45,7 @@
 #include "Widgets/SViewport.h"
 #include "HAL/PlatformTime.h"
 #include "GameFramework/PlayerInput.h"
+#include "InputKeyEventArgs.h"
 #include "UObject/ConstructorHelpers.h"
 
 // round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable; 2026-10-01 -> 0.0025
@@ -425,6 +426,12 @@ void AWebTravCharacter::BeginPlay()
 			}
 		}
 	}
+	bLatchInput = FParse::Param(FCommandLine::Get(), TEXT("WHTravLatchInput"));
+	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravInputTest="), InputTest) && !InputTest.IsEmpty())
+	{
+		InputTestTicker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &AWebTravCharacter::InputTestTick));
+		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST %s armed (%s input)"), *InputTest, bLatchInput ? TEXT("round-18 event-latched") : TEXT("round-19 polled"));
+	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
 	if (ProxyBody) ProxyBody->SetVisibility(false);
@@ -536,7 +543,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		if (!bHmDone && Traversal && FParse::Value(FCommandLine::Get(), TEXT("-WHTravHeightmap="), HmPath))
 		{
 			bHmDone = true;
-			FString Out = TEXT("x,y,z,ground\n");
+			FString Out = TEXT("x,y,z,ground,src\n");
 			double HX0 = -320.0, HY0 = -620.0, HX1 = 680.0, HY1 = 380.0;
 			FString Ext;
 			if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHmExt="), Ext))
@@ -547,9 +554,10 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			for (double Y = HY0; Y <= HY1; Y += 5.0)
 				for (double X = HX0; X <= HX1; X += 5.0)
 				{
-					FTravHit Hh;
-					if (Traversal->TravWorld.Raycast(FVector(X, Y, 600.0), FVector(0, 0, -1), 700.0, Hh))
-						Out += FString::Printf(TEXT("%.0f,%.0f,%.1f,%d\n"), X, Y, Hh.Point.Z, Hh.bGround ? 1 : 0);
+					// round 19: the traversal's own floor (GroundHeight: box / ground filter applied) + its source (floor audit)
+					const double Z = Traversal->TravWorld.GroundHeight(X, Y, 600.0);
+					if (Z > -999.0)
+						Out += FString::Printf(TEXT("%.0f,%.0f,%.1f,%d,%d\n"), X, Y, Z, Traversal->TravWorld.LastGroundSrc == 2 ? 1 : 0, Traversal->TravWorld.LastGroundSrc);
 				}
 			FFileHelper::SaveStringToFile(Out, *HmPath);
 			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV heightmap written: %s"), *HmPath);
@@ -1169,7 +1177,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("in_move_x,in_move_y,in_swing,in_jump,in_sprint,in_zip,in_drop,in_quick,cam_orbit_pitch_deg,cam_auto_pitch_deg,cam_occ_hold,")
 		TEXT("hero_bbox_h,hero_bbox_w,hero_cy,hero_in_frame,cam_hero_dist_m,cam_in_geometry,frame_s_target,in_trick,")
 		TEXT("anim_node,anim_clip,anim_weight,air_flavor,pose_sig,pcm_x,pcm_y,pcm_z,pcm_pitch,pcm_yaw,pcm_fov,px_top,px_bottom,px_left,px_right,head_hip_dz,limb_z,body_rope_deg,web_on,wall_frac,hero_occl,hero_cx,pcm_roll,")
-		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25,flow_apex_want_z,flow_gap_m"));
+		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25,flow_apex_want_z,flow_gap_m,")
+		TEXT("in_cap,vp_cap,vp_focus,look_px,ground_src,wall_ik_w,gait_ph,swing_leg_w,tuck_w,tuck_wrist_shin_m,tuck_knee_gap_m,flip_scale,foot_wall_l,foot_wall_r,hand_wall_l,hand_wall_r,zip_why"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1303,7 +1312,49 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	// round 17: apex hips Z the last flow flip was solved for (world m, 0 none) and the roofline gap now (target - hips, m; -999 no roof)
 	const double Gap = Traversal->FlowApexGap();
 	const FString Cols17 = FString::Printf(TEXT(",%.2f,%.2f"), Traversal->FlowApexWant, Gap < -1e8 ? -999.0 : Gap);
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17);
+	// round 19: input / capture state, floor source, wall-run IK stride, swing leg shaping, tuck closure, flip variant, limb-to-wall gaps
+	FString Cols19;
+	{
+		const AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(GetController());
+		UGameViewportClient* GVC = GetWorld() ? GetWorld()->GetGameViewport() : nullptr;
+		FViewport* VP = GVC ? GVC->Viewport : nullptr;
+		float WallW = 0.f, GaitPh = 0.f, SwLeg = 0.f, TuckW = 0.f;
+		double WristShin = -1.0, KneeGap = -1.0;
+		double FootWall[2] = { -1.0, -1.0 }, HandWall[2] = { -1.0, -1.0 };
+		if (bHeroMesh)
+		{
+			const USkeletalMeshComponent* M = GetMesh();
+			if (const UWebTravAnimInstance* AI = Cast<UWebTravAnimInstance>(M->GetAnimInstance()))
+			{
+				WallW = AI->Frame.WallW; GaitPh = AI->Frame.GaitPh; SwLeg = AI->Frame.SwingLegW; TuckW = AI->Frame.TuckW;
+			}
+			const FVector KL = M->GetBoneLocation(TEXT("shin_L")), KR = M->GetBoneLocation(TEXT("shin_R"));
+			const FVector AL = M->GetBoneLocation(TEXT("foot_L")), AR = M->GetBoneLocation(TEXT("foot_R"));
+			KneeGap = FVector::Dist(KL, KR) / 100.0;
+			auto SegDist = [](const FVector& P, const FVector& A0, const FVector& B0)
+			{
+				const FVector AB = B0 - A0;
+				const double T = FMath::Clamp(FVector::DotProduct(P - A0, AB) / FMath::Max(AB.SizeSquared(), 1e-6), 0.0, 1.0);
+				return FVector::Dist(P, A0 + AB * T) / 100.0;
+			};
+			const FVector WL = M->GetBoneLocation(TEXT("hand_L")), WR = M->GetBoneLocation(TEXT("hand_R"));
+			WristShin = FMath::Max(FMath::Min(SegDist(WL, KL, AL), SegDist(WL, KR, AR)), FMath::Min(SegDist(WR, KR, AR), SegDist(WR, KL, AL)));
+			if (A.Mode == EWebTravMode::Wall)
+			{
+				const FVector N = A.Wall.Normal, WP = A.Wall.Point;
+				FootWall[0] = FVector::DotProduct(M->GetBoneLocation(TEXT("toe_L")) - WP, N) / 100.0;
+				FootWall[1] = FVector::DotProduct(M->GetBoneLocation(TEXT("toe_R")) - WP, N) / 100.0;
+				HandWall[0] = FVector::DotProduct(WL - WP, N) / 100.0;
+				HandWall[1] = FVector::DotProduct(WR - WP, N) / 100.0;
+			}
+		}
+		const FWebFlipProgram* FPv = (A.Sub == FName(TEXT("trick")) && !A.Trick.IsNone()) ? WebFlips::Find(A.Trick) : nullptr;
+		Cols19 = FString::Printf(TEXT(",%d,%d,%d,%.1f,%d,%.2f,%.3f,%.2f,%.2f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%s"),
+			WPC && WPC->IsMouseCaptured() ? 1 : 0, VP && VP->HasMouseCapture() ? 1 : 0, VP && VP->HasFocus() ? 1 : 0, LookMagFrame,
+			Traversal->GroundSrcNow(), WallW, GaitPh, SwLeg, TuckW, WristShin, KneeGap, FPv ? FPv->Scale : 0.f,
+			FootWall[0], FootWall[1], HandWall[0], HandWall[1], *Traversal->LastZipWhy.ToString());
+	}
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19);
 }
 
 // ------------------------------------------------------------------ live input (round 19)
@@ -1311,10 +1362,10 @@ void AWebTravCharacter::PollLiveInput(APlayerController* PC, FWebTravInput& I, f
 {
 	// a frame gap (pause menu, focus loss, hitch) longer than 0.3 s real time: every button still held counts as a fresh press
 	const double Now = FPlatformTime::Seconds();
-	if (LastLiveTickReal > 0.0 && Now - LastLiveTickReal > 0.3) PrevInput = FWebTravInput();
+	if (!bLatchInput && LastLiveTickReal > 0.0 && Now - LastLiveTickReal > 0.3) PrevInput = FWebTravInput();
 	LastLiveTickReal = Now;
 	FVector2D Stick = LiveMove, RStick = PadLook;
-	if (PC)
+	if (PC && !bLatchInput)
 	{
 		auto Down = [PC](const FKey& K) { return PC->IsInputKeyDown(K); };
 		bRMB = Down(EKeys::RightMouseButton);
@@ -1418,6 +1469,64 @@ void AWebTravCharacter::WatchInput(APlayerController* PC, const FWebTravInput& I
 			StatLook, StatLookFrames, bPcCap ? 1 : 0, bVpCap ? 1 : 0, StatPress, StatSwingStart, StatNoAnchor, StatZipPress, NRecaptures);
 		StatT = 0.f; StatLook = 0.0; StatLookFrames = StatPress = StatSwingStart = StatNoAnchor = StatZipPress = 0;
 	}
+}
+
+void AWebTravCharacter::EndPlay(const EEndPlayReason::Type Reason)
+{
+	if (InputTestTicker.IsValid()) { FTSTicker::GetCoreTicker().RemoveTicker(InputTestTicker); InputTestTicker.Reset(); }
+	Super::EndPlay(Reason);
+}
+
+bool AWebTravCharacter::InputTestTick(float Dt)
+{
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC || !bTravStarted) return true;
+	const double Now = FPlatformTime::Seconds();
+	if (InputTestT0 < 0.0) InputTestT0 = Now;
+	const double T = Now - InputTestT0;
+	enum EOp { Press, Release, Pause, Unpause, Report, End };
+	struct FStep { double T; EOp Op; FKey Key; };
+	// pauseRelease: (1) a normal press / release / press, (2) the release lost to a pause, (3) the release lost to a focus flush gap
+	static const FStep Steps[] = {
+		{ 0.6, Press, EKeys::RightMouseButton }, { 1.8, Release, EKeys::RightMouseButton }, { 2.4, Press, EKeys::RightMouseButton },
+		{ 3.4, Pause, EKeys::Invalid }, { 3.7, Release, EKeys::RightMouseButton }, { 4.2, Unpause, EKeys::Invalid },
+		{ 4.8, Press, EKeys::RightMouseButton }, { 6.0, Release, EKeys::RightMouseButton }, { 6.6, Press, EKeys::RightMouseButton },
+		{ 7.6, Pause, EKeys::Invalid }, { 7.9, Release, EKeys::RightMouseButton }, { 8.1, Press, EKeys::RightMouseButton }, { 8.4, Unpause, EKeys::Invalid },
+		{ 9.4, Release, EKeys::RightMouseButton }, { 10.0, Press, EKeys::RightMouseButton }, { 11.0, Release, EKeys::RightMouseButton },
+		{ 11.6, Report, EKeys::Invalid }, { 12.0, End, EKeys::Invalid } };
+	// swing detection for the last press (game-time independent: polled every engine frame)
+	if (InputTestPressT >= 0.0 && Traversal->IsSwinging())
+	{
+		++InputTestSwings;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST press %d -> swing after %.2f s real time"), InputTestPresses, Now - InputTestPressT);
+		InputTestPressT = -1.0;
+	}
+	while (InputTestStep < int32(UE_ARRAY_COUNT(Steps)) && T >= Steps[InputTestStep].T)
+	{
+		const FStep& St = Steps[InputTestStep++];
+		switch (St.Op)
+		{
+		case Press:
+			if (InputTestPressT >= 0.0) UE_LOG(LogWebHomage, Warning, TEXT("WH_INPUTTEST press %d -> NO SWING"), InputTestPresses);
+			PC->InputKey(FInputKeyEventArgs::CreateSimulated(St.Key, IE_Pressed, 1.f));
+			++InputTestPresses; InputTestPressT = Traversal->IsSwinging() ? -1.0 : Now;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST t %.2f press %d (%s, mode %s)"), T, InputTestPresses, *St.Key.ToString(), ModeName(Traversal->Anim.Mode));
+			break;
+		case Release:
+			PC->InputKey(FInputKeyEventArgs::CreateSimulated(St.Key, IE_Released, 0.f));
+			UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST t %.2f release (%s)%s"), T, *St.Key.ToString(), PC->IsPaused() ? TEXT(" while PAUSED") : TEXT(""));
+			break;
+		case Pause: PC->SetPause(true); UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST t %.2f pause"), T); break;
+		case Unpause: PC->SetPause(false); UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST t %.2f unpause"), T); break;
+		case Report:
+			if (InputTestPressT >= 0.0) { UE_LOG(LogWebHomage, Warning, TEXT("WH_INPUTTEST press %d -> NO SWING"), InputTestPresses); InputTestPressT = -1.0; }
+			UE_LOG(LogWebHomage, Display, TEXT("WH_INPUTTEST RESULT %s: %d presses, %d swings started (%s input)"), *InputTest, InputTestPresses, InputTestSwings,
+				bLatchInput ? TEXT("round-18 event-latched") : TEXT("round-19 polled"));
+			break;
+		case End: return false;
+		}
+	}
+	return true;
 }
 
 // ------------------------------------------------------------------ game mode
