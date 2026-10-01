@@ -81,6 +81,7 @@ private:
 	TArray<TWeakObjectPtr<AActor>> NightActors;
 	float LastLightsK = -1.f;
 	bool bNightHidden = false;
+	bool bSunLitWorld = true;
 
 	void Bind();
 	TMap<FName, FVector4f> Evaluate(float H, float W, float SunElev) const;
