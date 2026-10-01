@@ -55,3 +55,5 @@ After a workflow finishes: `git merge origin/night1/<piece>` into integration, `
 3. Check which workflows finished (piece branches' latest `critic/round-NN-CRITIC.md`), merge judged rounds into integration, record them, republish the progress page.
 4. Relaunch the next round per piece with the workflow script above, following "Next" in the table and the model policy.
 5. Keep this file current: update the table after every merge and push.
+
+- 2026-10-01 00:05: owner actively using the Studio (Steam/CrossOver, EXO). Loop engine cap lowered to **1** (`_scratch/gpu/slots`; health_monitor max 1) until the owner says otherwise. Restore with: edit health_monitor.sh `slots -lt 1` → `-lt 2`, `echo 2 > slots`, restart the monitor.
