@@ -57,3 +57,9 @@ After a workflow finishes: `git merge origin/night1/<piece>` into integration, `
 5. Keep this file current: update the table after every merge and push.
 
 - 2026-10-01 00:05: owner actively using the Studio (Steam/CrossOver, EXO). Loop engine cap lowered to **1** (`_scratch/gpu/slots`; health_monitor max 1) until the owner says otherwise. Restore with: edit health_monitor.sh `slots -lt 1` → `-lt 2`, `echo 2 > slots`, restart the monitor.
+
+## Overnight 2026-10-01 (owner: "keep cooking"; plays the build in the morning)
+
+- Running: traversal r18 (Opus, living flips), perf r7 (Opus, life-on pacing + look_gate.py), characters r10 (Sonnet, reactions + grey arm), city r10–r11 (Sonnet, far-shore band), life r3–r4 (Sonnet, sidewalk crowds). Relaunch each piece's next round from its latest critic when it finishes; merge only rounds with no regression.
+- Engine cap is 1 while the owner's Steam/CrossOver is open; `_scratch/gpu/cap_restore.sh` returns it to 2 after 15 quiet minutes.
+- **Before the owner wakes:** stop launching new rounds ~1 h ahead, merge judged rounds, rebuild the combined map headless (`~/sm2-n1/_scratch/showcase/build.sh`, plus `build_combat.py --steps combat` if combat moved), and DO NOT open a window — the owner will say when to launch the playable build (standalone `-game -windowed -ResX=1920 -ResY=1080`, mouse sensitivity via `wh.MouseSensitivity`).
