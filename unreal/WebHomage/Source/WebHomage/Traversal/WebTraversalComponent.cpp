@@ -1402,11 +1402,23 @@ bool UWebTraversalComponent::CatchReachable(double Dur) const
 	CatchCacheT = S.Clock;
 	const FVector Vh(S.Vel.X, S.Vel.Y, 0.0);
 	if (Vh.Size() < 2.0) { bCatchCacheV = true; return true; }
-	// a flow flip's climb (apex solve) and fall roughly cancel over the program: the catch is searched from the release height
-	const FVector P = S.Pos + Vh * (Dur * double(CatchSpeedK));
-	const double Fl = FloorAt(P.X, P.Y, P.Z - H + 0.1);
-	FTravAnchor A;
-	bCatchCacheV = Anchors->Find(P, Vh.GetSafeNormal(), nullptr, S.Vel.Size(), Fl, A);
+	// the catch is searched the way TryStartSwing will search it: from the predicted body position (the release turns the swing's climb into
+	// forward speed: the flight runs at ~ the FULL speed, r18 probe f4 4th flip: vx 34 / vz 31 before the release, vx 50 after) in the program's final reach (the search opens
+	// at CatchT; a catch within ~0.3 s of it reads as continuous), ~2 m under the release height (the flow apex climb and the fall after it), along
+	// the travel heading leaned AnchorAltDeg away from the previous web's side, and the anchor must be AnchorMinAbove over the body and ahead.
+	// Any of the three points attaching counts. (A single point at the program end, along the plain heading, blocked a flip that caught in r17 f1
+	// and passed the f4 4th flip that did not.)
+	bCatchCacheV = false;
+	const FVector Fwd = Vh.GetSafeNormal();
+	const FVector FwdSearch = S.LastAnchorSide != 0 ? RotZ(Fwd, -S.LastAnchorSide * FMath::DegreesToRadians(double(AnchorAltDeg))) : Fwd;
+	for (const double Tq : { Dur - 0.1, Dur + 0.05, Dur + 0.2 })
+	{
+		const FVector P = S.Pos + Fwd * (S.Vel.Size() * Tq * double(CatchSpeedK)) - FVector(0, 0, 2.0);
+		const double Fl = FloorAt(P.X, P.Y, P.Z - H + 0.1);
+		FTravAnchor A;
+		if (Anchors->Find(P, FwdSearch, nullptr, S.Vel.Size(), Fl, A) && A.Point.Z >= P.Z + AnchorMinAbove
+			&& FVector::DotProduct(Flat(A.Point - P), Fwd) >= 2.0) { bCatchCacheV = true; break; }
+	}
 	return bCatchCacheV;
 }
 

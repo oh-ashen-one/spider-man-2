@@ -557,7 +557,6 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 			I.Move = FVector2D(FVector::DotProduct(W, Cam.RightFlat()), FVector::DotProduct(W, Cam.ForwardFlat())) * Mag;
 		}
 		double RelPhase = 0.45, Gap = 0.3, RepressVz = 1e9;
-		bAutoFlipPre = false;
 		if (Script->AutoChainAt(TravTime, RelPhase, Gap, RepressVz))
 		{ // deterministic swing rhythm: hold through the arc, let go on the rising front, re-press after the gap
 			const bool bSwinging = Traversal->IsSwinging();
@@ -608,8 +607,16 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 				&& Traversal->FlowApexGap() <= double(Traversal->FlowReadyGain + Traversal->FlowHoldMax);
 			// round 18: flow-flip release predicted within FlipPreT s (the LongCut clock, or the rising front nearing the release phase) and not
 			// held for the roofline -> the trick camera pre-blends to its held 3/4 view before the release
-			bAutoFlipPre = bTrickNext && bAutoHeld && bSwinging && bAutoSawDescent && !bRoofHold && !bStale
-				&& (A.ModeT > LongCut - FlipPreT || (Traversal->VelM().Z > 0 && A.Swing.Phase > RelPhaseEff - 0.3f));
+			// (latched: once predicted it stays on until the release or the swing / trick plan ends -- a flickering prediction blended the camera
+			// out and back in at 110 deg/s, r18 probe f4 3.6-4.4 s; a roof hold counts once its gap closes within FlipPreT at the climb rate)
+			{
+				const double Vz = Traversal->VelM().Z;
+				const bool bPreNow = bTrickNext && bAutoHeld && bSwinging && bAutoSawDescent && !bStale
+					&& (bRoofHold ? Traversal->FlowApexGap() - double(Traversal->FlowReadyGain) <= FMath::Max(0.0, Vz) * double(FlipPreT) + 0.5
+						: (A.ModeT > LongCut - FlipPreT || (Vz > 0 && A.Swing.Phase > RelPhaseEff - 0.3f)));
+				if (bPreNow) bAutoFlipPre = true;
+				if (!bSwinging || !bTrickNext || !bAutoHeld) bAutoFlipPre = false;
+			}
 			if (bAutoHeld && bSwinging && !bRoofHold && ((bAutoSawDescent && ((A.Swing.Phase > RelPhaseEff && Traversal->VelM().Z > 0 && A.T > 0.25f) || bFrontApex)) || bStale || bLong))
 			{
 				bAutoHeld = false; AutoGapT = 0.0; ++AutoReleases;

@@ -150,8 +150,8 @@ public:
 	/** Round 18 (critic r17: f4's 4th flip missed its catch over a plaza): is a web in reach where a flow flip released now ends (Dur s of flight at the
 	 *  current horizontal speed x CatchSpeedK)? The auto-chain only presses the trick when it is (else a plain release). Cached 0.1 s. */
 	bool CatchReachable(double Dur) const;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchSpeedK = 1.05f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchFlightS = 1.6f; // release -> catch press of the longest flow program
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchSpeedK = 1.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchFlightS = 1.55f; // release -> catch window (CatchT: backDouble 1.6, corkscrew 1.51, frontPikeSwan 1.43)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchGuard = 1.f;    // 0 = off
 	/** Round 17: apex gain (m) of a flow flip released now with vertical speed Vz0 (program boost included). */
 	double FlowApexGain(double Vz0, const struct FWebFlipProgram* FP) const;

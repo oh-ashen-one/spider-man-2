@@ -698,7 +698,8 @@ void FWebTravCamera::ChooseFlipView(const FTravCamInput& P, const FWebTravWorld&
 			+ (bKeep ? 0.08 * FMath::Abs(FMath::RadiansToDegrees(WrapA(C.Az - FlipAzNow))) : 0.0);
 		return true;
 	};
-	static const double OffsDeg[] = { 35.0, 40.0, 45.0, 50.0, 55.0 }; // round 17: 35 added (TC1 35-55)
+	// round 18 (critic r17 TC-A p5 20-29): the look direction leads the held azimuth by ~5-7 deg, so a 35 deg azimuth read 28-29 on pcm_yaw -> 40-55
+	static const double OffsDeg[] = { 40.0, 44.0, 48.0, 52.0, 55.0 }; // round 17: 35 added (TC1 35-55)
 	FCand Best; bool bHave = false;
 	FString Log;
 	int32 BestTier = 99, BestRank = 99;
