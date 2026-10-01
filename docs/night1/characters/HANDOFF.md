@@ -34,3 +34,9 @@ Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/User
 
 - The hero is the ORIGINAL "Tessera" suit (procedural, 8192 maps); never revert to or imitate an official suit. Sealed lenses, round-07 crowd avoidance, stencil key, round-06 seam fixes, round-09 scripted fight + its 4 reaction clips all stay.
 - No copied IP: enemies / civilians are the owner's own Tripo generations; the fight clips are the browser game's own; weapons are generic primitives. No reference image or footage is committed.
+
+## UPDATE (round 10, after the real re-capture; supersedes the 'engine work queued' state above)
+
+- Found with the real captures: the 'grey arm' of r09 was NOT fully fixed by the gunmetal pipe: the Brute's pipe still passed through the hero's back (grey L-shaped elbow fitting sticking out of his flank, `street_fight_34` 3.25 - 3.45 s) and the Thug's bat through his waist / arm (CPU `fight/weapon_clip_check.py`: bat 5.8 s, pipe 1.4 s of 24 s inside the hero, up to 16 cm).  Fix: `weapons/add_weapon.py` tilt +58 -> -10 deg (swept 0 - 180 deg on the CPU: hero 0.05 s, own head / torso 0.1 - 0.15 s).  Measured on the rebuilt GLBs: bat 0.00 s, pipe 0.00 s, pistol 0.05 s.
+- Choreography: two strikes were aimed the wrong way (`enemy_hit` turned the hero toward the attacker before the previous punch landed: hero faced AWAY from the Tee at 3.97 s, facing error 165 deg; 18 deg at 12.73 s).  `choreo.py`: wide window re-timed (enemy_hit 4.50, strikes 5.55 / 6.55 / 7.55, the 8.20 strike dropped), enemy_hit 13.15.  Engine log: worst facing error 3.9 deg over 23 strikes.
+- Engine bone log (real game): all three 8 s windows PASS `r10_check.py`.  Numbers in `round-10/SPEC_CHECK.md`.
