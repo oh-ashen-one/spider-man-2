@@ -1218,11 +1218,11 @@ if 'skinsmap' in STEPS:
         spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
         ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
         try:   # MANUAL exposure: auto exposure re-normalised every close-up (a dark suit filling the frame came out pastel).  AEM_Manual = camera EV100 of f/4, 1/60 s, ISO 100 (9.9) minus the bias, and this stage's sun is
-               # 8 lux (surface radiance ~0.8 cd/m2), so the bias that gives the floor the same level auto exposure gave it (sRGB luma ~170) is ~ +9 (measured by chain_r11_final2.sh; -0.3 rendered black).
+               # 8 lux (surface radiance ~0.8 cd/m2), so the bias that gives the floor the same level auto exposure gave it (sRGB luma ~170) is +10.0 (measured: floor luma 121 at +9, 172 at +10; -0.3 rendered black).
                # -WHExposure=<bias> overrides the bias at run time
             ps = ppv.get_editor_property('settings')
             ps.set_editor_property('override_auto_exposure_method', True); ps.set_editor_property('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL)
-            ps.set_editor_property('override_auto_exposure_bias', True); ps.set_editor_property('auto_exposure_bias', float(ARGS.get('skin_ev', 9.2)))
+            ps.set_editor_property('override_auto_exposure_bias', True); ps.set_editor_property('auto_exposure_bias', float(ARGS.get('skin_ev', 10.0)))
             ppv.set_editor_property('settings', ps)
         except Exception as ex: log('manual exposure not set', str(ex)[:120])
         box((0, 0, -10), (4000, 4000, 0.2), 'M_Env_Sidewalk', 'Floor')                # 4 km x 4 km (the horizon is the floor's edge, not the sky atmosphere's ground); the pawn demo runs far
