@@ -33,6 +33,14 @@ L1 keeps binding next to L21 (mean 61–100, Y<10 ≤ 8 %, clipped ≤ 1.8 %). C
 | L22b | night S4 | **city median Y <= 42** (and frame mean <= 42: the critic's round-03 "58" equals this instrument's frame mean 58.1, median 51.9) | reference 37 |
 Checker: `tools/perf_ue/night_city_check.py`. L3 (night means 37..60 on every view) keeps binding.
 
+### L23 continuous time of day (added round 05, director PLAN-firstpass §4 Sky)
+| id | target | instrument |
+|---|---|---|
+| L23a | ONE map, `wh.TimeOfDay` 0–24 continuous: sun and moon move on their arcs, sky / atmosphere / fog / clouds / exposure / city lights follow the hour; the three preset maps stay buildable but are not needed for play | `/Game/Tests/Look/Look_Midtown_tod` (rig `Look_Rig_tod`, C++ `AWHLookTimeOfDay`) |
+| L23b | no steps: in a 24 h time-lapse at 2 h per second (fixed 1/60 s step) the frame-to-frame change of the frame mean Y stays **≤ 3 Y** (p99 ≤ 1.5 Y) | `tools/perf_ue/capture_tod_lapse.py` (`<name>.json`, `frame_to_frame_mean_y_jump`) |
+| L23c | clouds visible at every hour (day, golden, night: a volumetric cloud layer lit by the sun or the moon), stars and a moon disk at night | stills of the round's hour tour + lapse contact sheet (critic) |
+| L23d | the golden hour of the time of day passes L1 / L5 / L6 / L10 / L21; its night passes L3 / L8 / L13 / L14 / L22; `wh.Weather 1` at 13:00 passes L2 (overcast: 0 crisp shadows, 0.00 % clipped) | `look_spec_check.py`, `key_fill_check.py`, `night_city_check.py`, `tools/export/s4_far_check.py` (C12 / C13 far band) on the tour stills |
+
 ## 2. Colour by time of day (L-A)
 | id | target (frame mean B−R, 8-bit) | measured from (median [p10, p90]) |
 |---|---|---|
