@@ -218,7 +218,7 @@ def mi(name, parent, scalars=None, vectors=None):
 # ------------------------------------------------------------------------------------------------ meshes
 MESHD = ROOT + '/Meshes'
 GROUND_TAG = ('park', 'mapLawns', 'coastLawn', 'parkWater')           # actors tagged WHGround (floors that never hold a web)
-SKIP_MESH = ('parkPaths', 'park_drives', 'plazaPaving', 'park_water_shallows', 'wetBands', 'coastPickets')   # paths / drives = baked mask; plaza paving is the city's; shallows / wet bands / pickets: later rounds
+SKIP_MESH = ('park_setpieces', 'parkPaths', 'park_drives', 'plazaPaving', 'park_water_shallows', 'wetBands', 'coastPickets')   # paths / drives = baked mask; plaza paving is the city's; shallows / wet bands / pickets: later rounds
 def keep(rec):
     n = rec['name']
     return not any(n == s or n.startswith(s) for s in SKIP_MESH)
@@ -255,7 +255,7 @@ PROD = ROOT + '/Props'
 PROTOS = ('parkReeds', 'park_blankets', 'parklamp')
 @step('foliage')
 def _step_foliage():
-    extra = ['tuft'] + (['shore_patch'] if os.path.exists(os.path.join(PREP, 'shore_patch.glb')) else [])
+    extra = ['tuft'] + [n for n in ('shore_patch', 'park_rocks') if os.path.exists(os.path.join(PREP, n + '.glb'))]
     files = [os.path.join(PREP, n + '.glb') for n in extra] + [os.path.join(EXPORT, p['file']) for p in MAN['protos'] if p['name'] in PROTOS]
     import_files(files, PROD + '/_in', mesh_pipeline())
     for nm in extra + [p['name'] for p in MAN['protos'] if p['name'] in PROTOS]:
@@ -263,6 +263,7 @@ def _step_foliage():
         if not EAL.does_asset_exist(src): log('MISSING proto', src); continue
         EAL.rename_asset(src, dst); sm = load(dst)
         if nm == 'tuft': finish_mesh(sm, load(f'{MAT}/M_TerrainGrass'), False)
+        elif nm == 'park_rocks': finish_mesh(sm, mi('P_park_rocks', 'M_TerrainVC', {'usevc': 1.0, 'roughp': 0.9}, {'tint': (1.0, 1.0, 1.0, 1.0)}), False)   # schist outcrops (vertex-coloured, museum triangles dropped in prep)
         elif nm == 'shore_patch': finish_mesh(sm, mi('P_shore_patch', 'M_TerrainVC', {'usevc': 0.0, 'roughp': 0.85}, {'tint': (0.2, 0.19, 0.17, 1.0)}), False)   # granite bulkhead blocks closing the shoreline gaps (tools/terrain/shore_audit.py)
         else:
             rec = [p for p in MAN['protos'] if p['name'] == nm][0]; m = rec.get('mat') or {}
@@ -361,6 +362,9 @@ def build_land(path):
             if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
             n += 1
         log('land: %d mesh actors' % n)
+        if EAL.does_asset_exist(f'{PROD}/SM_park_rocks'):
+            a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='park_rocks', folder='Terrain/Props')
+            a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_park_rocks')); a.set_mobility(unreal.ComponentMobility.STATIC)
         if EAL.does_asset_exist(f'{PROD}/SM_shore_patch'):
             a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='shore_patch', folder='Terrain/shore')
             a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_shore_patch')); a.set_mobility(unreal.ComponentMobility.STATIC)

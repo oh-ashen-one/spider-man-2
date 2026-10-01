@@ -91,6 +91,19 @@ Image.fromarray(img, 'RGBA').save(os.path.join(PREP, 'pathmask.png'))
 json.dump({'x0': PX0, 'z0': PZ0, 'w_m': PW, 'h_m': PH, 'texel': TEXEL, 'px': [MW, MH]}, open(os.path.join(PREP, 'pathmask.json'), 'w'))
 print('pathmask.png %dx%d, covered %.1f %% of the rectangle' % (MW, MH, 100 * (COV > 0).mean()))
 
+# ------------------------------------------------------------------ park rocks: the schist outcrops of the browser's park-setpieces mesh (the Met-like museum triangles are dropped on purpose)
+sp = os.path.join(EXP, 'mesh', 'setpieces', 'park_setpieces.glb')
+if os.path.exists(sp):
+    g = read_glb(sp); P3 = g['attrs']['POSITION']; N3 = g['attrs']['NORMAL']; I3 = g['index'].reshape(-1, 3)
+    met = T['sites']['met']; c3 = P3[I3].mean(1); mg = 6.0
+    keep_t = ~((c3[:, 0] > met['x0'] - mg) & (c3[:, 0] < met['x1'] + mg) & (c3[:, 2] > met['z0'] - mg) & (c3[:, 2] < met['z1'] + mg))
+    I3 = I3[keep_t]; used = np.unique(I3.reshape(-1)); remap = -np.ones(len(P3), np.int64); remap[used] = np.arange(len(used))
+    Pn = P3[used]; Nn = N3[used]; Ik = remap[I3].reshape(-1)
+    h = np.abs(np.sin(np.floor(Pn[:, 0] / 1.6) * 12.9898 + np.floor(Pn[:, 2] / 1.6) * 78.233 + np.floor(Pn[:, 1] / 0.5) * 37.719) * 43758.5453) % 1.0
+    base = np.array([0.46, 0.44, 0.40]); col = np.clip(base[None, :] * (0.72 + 0.5 * h)[:, None] * (0.85 + 0.25 * np.clip((Pn[:, 1] + 0.9) / 3.0, 0, 1))[:, None], 0, 1)
+    write_glb(os.path.join(PREP, 'park_rocks.glb'), {'POSITION': Pn.astype(np.float32), 'NORMAL': Nn.astype(np.float32), 'TEXCOORD_0': np.zeros((len(Pn), 2), np.float32), 'COLOR_0': np.concatenate([col, np.ones((len(col), 1))], 1).astype(np.float32)}, Ik, 'park_rocks')
+    print('park_rocks.glb: %d tris (museum dropped: %d)' % (len(Ik) // 3, int((~keep_t).sum())))
+
 # ------------------------------------------------------------------ grass tuft prototype (unit height)
 rng = np.random.default_rng(7)
 PP, NN, UU, CC, II = [], [], [], [], []

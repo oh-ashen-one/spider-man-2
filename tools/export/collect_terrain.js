@@ -15,6 +15,8 @@
     [/^park-wall-benches$/, 'furniture'], [/^park-ballfield-fences$/, 'furniture'], [/^park-ballfield-posts$/, 'furniture'], [/^park-reeds$/, 'furniture'],
     // shoreline details that are not in the city's far export
     [/^coastPickets-/, 'shore'], [/^wetBands$/, 'shore'],
+    // Met-like museum + schist outcrops share one facade-builder mesh: exported whole, the museum triangles are dropped by tools/terrain/prep_terrain.py (rocks only)
+    [/^park-setpieces$/, 'setpieces'],
   ];
   // plain InstancedMesh / Pool props that belong to the terrain (positions are the full island list, not the view-dependent near set)
   const INST = /^(parkReeds|park-blankets|parklamp|parklampFar|parkLampPool|ez-(park|elm|conifer)\d-l[01]-(leaves|bark))$/;   // + the park woodland's ez-trees (per-instance autumn tints aTintA / aTintB, LOD0 + LOD1)
