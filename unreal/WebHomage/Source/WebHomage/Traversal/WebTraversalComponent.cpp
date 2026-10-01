@@ -76,6 +76,7 @@ void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHighFix="), V)) FWebTravAnchors::bHighFix = V != 0; } // round 19 A/B
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTrickCancel="), V)) bTrickCancel = V != 0; } // round 20 A/B
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFacadeWeb="), V)) bFacadeWeb = V != 0; } // round 20 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHPerchTopFix="), V)) bPerchTopFix = V != 0; } // round 20 A/B
 	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHRopeGuard="), V)) bRopeGuard = V != 0; } // round 20 A/B
 	bWorldReady = true;
 }
@@ -2265,11 +2266,21 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 			if (bWall) { LastHit = DY; continue; }
 			if (LastHit < 0.0 && DY < 4.0) continue; // a recess right at the body
 			// the facade ended: find its roof just inside the edge
-			FTravHit Top;
-			const FVector In = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + 0.6);
-			if (TravWorld.Raycast(FVector(In.X, In.Y, S.Pos.Z + DY + 3.0), FVector(0, 0, -1), 8.0, Top) && Top.Normal.Z > 0.5)
+			// round 20 (capture w1 5.0-6.1 s: the perch sat on the roof BEHIND a 1-2 m parapet -- the down ray 0.6 m inside missed the thin
+			// parapet -- so the camera saw only his head over it): the edge is the HIGHEST walkable top within 0.15-0.6 m of the facade line
+			FTravHit Top; double BestIn = -1.0;
+			for (double Inset : { 0.15, 0.3, 0.45, 0.6 })
 			{
-				const FVector Edge = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + 0.25);
+				FTravHit T2;
+				const FVector In = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + Inset);
+				if (TravWorld.Raycast(FVector(In.X, In.Y, S.Pos.Z + DY + 3.0), FVector(0, 0, -1), 8.0, T2) && T2.Normal.Z > 0.5
+					&& (BestIn < 0.0 || T2.Point.Z > Top.Point.Z + 0.05)) { Top = T2; BestIn = Inset; }
+			}
+			if (BestIn >= 0.0 && !bPerchTopFix) { const FVector In = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + 0.6);
+				FTravHit T3; if (TravWorld.Raycast(FVector(In.X, In.Y, S.Pos.Z + DY + 3.0), FVector(0, 0, -1), 8.0, T3) && T3.Normal.Z > 0.5) { Top = T3; BestIn = 0.6; } else BestIn = -1.0; }
+			if (BestIn >= 0.0)
+			{
+				const FVector Edge = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + (bPerchTopFix ? FMath::Max(0.2, BestIn) : 0.25));
 				Out.Pos = FVector(Edge.X, Edge.Y, Top.Point.Z); Out.Normal = Flat(N).GetSafeNormal(); Out.Kind = FName(TEXT("roofEdge")); Out.Box = Top.Box;
 				Why = TEXT("facadeTop");
 				return true;

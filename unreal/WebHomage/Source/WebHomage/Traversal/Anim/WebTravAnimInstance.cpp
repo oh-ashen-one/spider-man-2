@@ -17,6 +17,7 @@ bool UWebTravAnimInstance::bWallGait = true;
 bool UWebTravAnimInstance::bAirSpeedPose = true;
 double UWebTravAnimInstance::ChestSign = 1.0;
 // round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
+static double GaitHandLat = -3.0, GaitElbowOut = 0.12; // r20 c capture: w/h .70 with hands 3 cm outside the shoulders and elbows out .35
 static double GaitTop = 0.76, GaitBot = 0.90, GaitLift = 0.04, GaitKneeOffT = 2.0, GaitLatT = -2.0, GaitKneeOutT = 0.0; // r20 probe g6: knee gap med .17 max .32 m in the run (g2 .43-.46, r19 .55-.59): longer legs under the hips, feet on the body line
 
 namespace
@@ -46,6 +47,7 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 				const double X = FCString::Atod(*V);
 				if (K == TEXT("Top")) GaitTop = X; else if (K == TEXT("Bot")) GaitBot = X; else if (K == TEXT("Lift")) GaitLift = X;
 				else if (K == TEXT("KneeOff")) GaitKneeOffT = X; else if (K == TEXT("Lat")) GaitLatT = X; else if (K == TEXT("KneeOut")) GaitKneeOutT = X;
+				else if (K == TEXT("HandLat")) GaitHandLat = X; else if (K == TEXT("ElbowOut")) GaitElbowOut = X;
 			}
 		}
 	}
@@ -786,15 +788,16 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const float Sig = 0.42f;
 			double O, Off, Lat;
 			const bool bPlant = Phi < Sig;
-			if (bPlant) { const float K = Phi / Sig; O = FMath::Lerp(OUp, ODn, double(Ease(K))); Off = 4.0; Lat = 3.0; }
+			// round 20 (capture c: rendered silhouette w/h .70 > .55): hands planted on the shoulder line, recovery close to the body, elbows tucked
+			if (bPlant) { const float K = Phi / Sig; O = FMath::Lerp(OUp, ODn, double(Ease(K))); Off = 4.0; Lat = GaitHandLat; }
 			else
 			{
 				const float K = (Phi - Sig) / (1.f - Sig);
 				O = FMath::Lerp(ODn, OUp, double(Ease(K)));
-				Off = 4.0 + 16.0 * FMath::Sin(PI * K); Lat = 3.0 + 4.0 * FMath::Sin(PI * K);
+				Off = 4.0 + 16.0 * FMath::Sin(PI * K); Lat = GaitHandLat + 2.0 * FMath::Sin(PI * K);
 			}
 			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
-			const FVector Pole = Sd * (Sg * 0.35) - U * 0.85 + N * 0.5; // round 20: elbows down / back, not out
+			const FVector Pole = Sd * (Sg * GaitElbowOut) - U * 0.9 + N * 0.45; // round 20: elbows down / back, not out
 			const FVector Fingers = (U * 0.85 + Sd * (Sg * 0.2) - N * 0.15).GetSafeNormal();
 			TwoBone(UA, FA, HA, Tgt, Pole, W, &Fingers, bPlant ? 0.8f * W : 0.25f * W);
 		}

@@ -287,6 +287,7 @@ public:
 	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
 	/** Round 20: a fresh RMB press cancels a trick / top-out flip / wall run into a swing at once (-WHTrickCancel=0 = r19). */
 	bool bTrickCancel = true;
+	bool bPerchTopFix = true; // round 20: facadeTop perches on the highest top within 0.15-0.6 m of the edge (parapets); -WHPerchTopFix=0 = r19
 	bool bFacadeWeb = true; // round 20: -WHFacadeWeb=0 = no facade web after a wall cancel (A/B)
 	/** Round 20: rope wrap guard (strand grazing its own facade near the anchor; re-anchor turn limit). -WHRopeGuard=0 = r19. */
 	bool bRopeGuard = true;

@@ -587,6 +587,13 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
+	// round 20 (capture c 9.0-10.0 s: after the perch landing a look-up held from the zip aim left the crouched hero cut by the bottom edge,
+	// centre at 0.92 of the frame): perched / on foot, his centre stays at or above 0.66 of the frame height and the look offset recentres fast
+	if (P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Ground)
+	{
+		PitchDown = FMath::Max(PitchDown, DownToHero - FMath::Atan((0.66 - 0.5) * 2.0 * TanHalfV));
+		if (P.Mode == EWebTravMode::Perch && LastLook > 0.3) UserPitch = Damp(UserPitch, 0.0, 4.0, Dt);
+	}
 	// round 05: at each web attach, look up enough that the anchor on the facade (and a band of sky) is on screen for
 	// ~0.7 s, then settle back (spring); the hero stays in frame below
 	double LookWant = 0.0, FovWant = 0.0;

@@ -79,7 +79,7 @@ def luma(mp4):
     if mp4 in LUMA: return LUMA[mp4]
     out = subprocess.run(['ffprobe', '-v', 'error', '-f', 'lavfi', '-i', f'movie={mp4},signalstats', '-show_entries', 'frame_tags=lavfi.signalstats.YAVG', '-of', 'csv=p=0'],
                          capture_output=True, text=True).stdout.split()
-    LUMA[mp4] = [float(x) for x in out if x.strip()]
+    LUMA[mp4] = [float(x.strip(',')) for x in out if x.strip(',').strip()]
     return LUMA[mp4]
 
 CLIPS = sorted(glob.glob(os.path.join(RD, '*_telemetry.csv')))
