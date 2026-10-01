@@ -138,10 +138,14 @@ for p in CLIPS:
         v = [shifted(rows, k, i) for i in ix]; v = [x for x in v if x >= 0]
         return (sum(1 for x in v if x <= lim) / len(v) * 100, sorted(v)[len(v) // 2], max(v)) if v else (float('nan'),) * 3
     bv = share(vert, 'body_wallup_deg', 15); bs = share(side, 'body_vel_deg', 20)
-    wh = []
+    wh = []; whs_side = []
     for i in wr:
         t_, b_, l_, r_ = (shifted(rows, k, i) for k in ('px_top', 'px_bottom', 'px_left', 'px_right'))
-        if t_ >= 0 and b_ > t_: wh.append((r_ - l_) / (b_ - t_))
+        if t_ >= 0 and b_ > t_:
+            # r20: a vertical run is judged by w/h; a side run's body lies along the run (horizontal on screen), so its silhouette is judged
+            # by the thin side over the long side (min / max)
+            if rows[i]['sub'] == 'wallRun': wh.append((r_ - l_) / (b_ - t_))
+            elif r_ > l_: whs_side.append(min(r_ - l_, b_ - t_) / max(r_ - l_, b_ - t_))
     kg = [shifted(rows, 'tuck_knee_gap_m', i) for i in wr]
     # contacts: a limb is on the wall when its toe / palm is <= 0.08 m off the facade; longest time between two contact changes
     ch = []; last = None; lastt = None; previ = None
@@ -157,7 +161,8 @@ for p in CLIPS:
         last = st
     whs = sorted(wh)
     P(f'  {name}: top-outs {tops}, setbacks mantled {sets} | vertical rows {len(vert)}: body-to-wall-up <= 15 deg {bv[0]:.0f} % (med {bv[1]:.1f}, max {bv[2]:.1f})'
-      f' | side rows {len(side)}: body-to-run <= 20 deg {bs[0]:.0f} % (med {bs[1]:.1f}) | w/h med {whs[len(whs) // 2] if whs else float("nan"):.2f} p90 {whs[int(len(whs) * .9)] if whs else float("nan"):.2f}'
+      f' | side rows {len(side)}: body-to-run <= 20 deg {bs[0]:.0f} % (med {bs[1]:.1f}) | vertical w/h med {whs[len(whs) // 2] if whs else float("nan"):.2f} p90 {whs[int(len(whs) * .9)] if whs else float("nan"):.2f}'
+      f' | side thin/long med {sorted(whs_side)[len(whs_side) // 2] if whs_side else float("nan"):.2f}'
       f' | knee gap med {sorted(kg)[len(kg) // 2] if kg else float("nan"):.2f} max {max(kg) if kg else float("nan"):.2f} m | longest contact hold {max(ch) if ch else float("nan"):.2f} s')
 
 P('\n== Z  E presses -> where he ends (0.4 s later and at the end of the zip)')

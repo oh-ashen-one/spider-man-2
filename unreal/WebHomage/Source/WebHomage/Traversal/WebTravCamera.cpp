@@ -545,24 +545,26 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		FVector Lifted = Base + FVector(0, 0, VisUp);
 		ClearFrom(From, Lifted, Lifted);
 		const int32 V0 = Vis(Lifted);
-		if (V0 < 3 && !bFlipCam)
+		// round 20 (capture r1 8.1 s: perched, 3 of 4 probe points visible but the parapet hid his legs, occl .48): perched, every probe point counts
+		const int32 NeedVis = P.Mode == EWebTravMode::Perch ? 4 : 3;
+		if (V0 < NeedVis && !bFlipCam)
 		{
 			double Found = -1.0;
 			for (double Up : { 0.0, 0.6, 1.2, 1.8, 2.6, 3.5, 4.5, 6.0 })
 			{
 				FVector C2 = Base + FVector(0, 0, Up);
 				ClearFrom(From, C2, C2);
-				if (Vis(C2) >= 3) { Found = Up; break; }
+				if (Vis(C2) >= NeedVis) { Found = Up; break; }
 			}
 			if (Found >= 0.0) { VisUpGoal = Found; VisHold = 0.8; }
 		}
-		else if (V0 >= 3)
+		else if (V0 >= NeedVis)
 		{
 			VisHold -= Dt;
 			if (VisHold <= 0.0)
 			{ // relax only when the unlifted spot also sees the body
 				FVector C0 = Base; ClearFrom(From, C0, C0);
-				if (Vis(C0) >= 3) VisUpGoal = 0.0;
+				if (Vis(C0) >= NeedVis) VisUpGoal = 0.0;
 			}
 		}
 		SD(VisUp, VisUpV, VisUpGoal, VisUpGoal > VisUp ? 0.07 : 0.4, Dt);
