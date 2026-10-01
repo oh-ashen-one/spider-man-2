@@ -218,7 +218,7 @@ def mi(name, parent, scalars=None, vectors=None):
 # ------------------------------------------------------------------------------------------------ meshes
 MESHD = ROOT + '/Meshes'
 GROUND_TAG = ('park', 'mapLawns', 'coastLawn', 'parkWater')           # actors tagged WHGround (floors that never hold a web)
-SKIP_MESH = ('park_setpieces', 'parkPaths', 'park_drives', 'plazaPaving', 'park_water_shallows', 'wetBands', 'coastPickets')   # paths / drives = baked mask; plaza paving is the city's; shallows / wet bands / pickets: later rounds
+SKIP_MESH = ('park_ballfield_fences', 'park_setpieces', 'parkPaths', 'park_drives', 'plazaPaving', 'park_water_shallows', 'wetBands', 'coastPickets')   # paths / drives = baked mask; plaza paving is the city's; shallows / wet bands / pickets: later rounds
 def keep(rec):
     n = rec['name']
     return not any(n == s or n.startswith(s) for s in SKIP_MESH)
