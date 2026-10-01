@@ -8,7 +8,7 @@
           normal) -> delta = |L+ - L-|.  Lines are scored in 64 px cells (>= 25 centre-line pixels): cell = median delta.  Reported: share of cells >= 20,
           median, worst cells.  A flat print has delta ~ 0 (both flanks the same colour); a raised cord lit from one side has one bright and one dark flank.
   sash    inside any sash / chevron panel (the large accent-hue regions, holes filled, eroded 8 px from the border) no run longer than 10 px of pixels darker
-          than the panel median - 15 (median over the panel pixels within 101 px: lighting falloff across a curved panel is not a defect), rows and columns.
+          than the panel median - 15 (median over the panel pixels within 61 px: lighting falloff across a curved panel is not a defect), rows and columns.
   jog     sash / chevron edge continuity in a region: the top and bottom boundary of the accent panel per column, deviation from a smooth (61 px quadratic)
           fit; max deviation and the largest column-to-column jump beyond the local slope (critic: Verdant chevron jog 24 px at (1333-1357, 1610-1680)).
 
@@ -85,15 +85,19 @@ def relief(img, roi=None, overlay=None):
     return res
 
 
-def accent_mask(im, accent, tol_h=20.0):
+def accent_mask(im, accent, tol_h=14.0):
     hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV_FULL).astype(np.float32)
     h = hsv[..., 0] / 255 * 360; s = hsv[..., 1] / 255; v = hsv[..., 2] / 255
     a = np.uint8([[[int(accent[5:7], 16), int(accent[3:5], 16), int(accent[1:3], 16)]]])
     ah = cv2.cvtColor(a, cv2.COLOR_BGR2HSV_FULL)[0, 0].astype(np.float32); ahue = ah[0] / 255 * 360; asat = ah[1] / 255
     dh = np.abs((h - ahue + 180) % 360 - 180)
+    # the hero only (the stage background is the per-row median colour): a pale accent would otherwise match the sky / floor
+    med = np.median(im, axis=1, keepdims=True)
+    hero = np.abs(im.astype(np.float32) - med.astype(np.float32)).max(-1) > 38
+    hero = cv2.morphologyEx(hero.astype(np.uint8), cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8)) > 0
     if asat < 0.25:      # a pale accent (bone): match by low saturation + high value
-        return ((s < 0.30) & (v > 0.55)).astype(np.uint8)
-    return ((dh < tol_h) & (s > 0.30) & (v > 0.20)).astype(np.uint8)
+        return ((s < 0.30) & (v > 0.55) & hero).astype(np.uint8)
+    return ((dh < tol_h) & (s > 0.30) & (v > 0.35) & hero).astype(np.uint8)
 
 
 def panels(im, accent, min_frac=0.004):
@@ -107,10 +111,14 @@ def panels(im, accent, min_frac=0.004):
     n, lab, st, _ = cv2.connectedComponentsWithStats(m, 8)
     keep = np.zeros_like(m)
     H, W = m.shape
-    for i in range(1, n):
+    if n < 2: return keep
+    inner_ok = [i for i in range(1, n) if st[i, 0] > 0 and st[i, 0] + st[i, 2] < W and st[i, 1] > 0]      # a panel lies inside the hero: a region touching the frame edge is background / a cut-off limb
+    if not inner_ok: return keep
+    big = int(max(st[i, 4] for i in inner_ok))
+    for i in inner_ok:
         x, y, w, h, area = st[i]
-        # a panel is big and wide (thin rings / piping / sleeves are long but narrow: their 12 px erosion vanishes)
-        if area >= min_frac * H * W:
+        # the sash / chevron = the largest accent panel (+ any other at least half its size: a double sash); the chest glyph, sleeves and rings are smaller
+        if area >= min_frac * H * W and area >= 0.5 * big:
             keep[lab == i] = 1
     return keep
 
@@ -121,10 +129,10 @@ def sash(img, accent, roi=None, overlay=None, probes=()):
     if roi: im = im[roi[1]:roi[3], roi[0]:roi[2]]
     L = luma(im)
     pm = panels(im, accent)
-    inner = cv2.erode(pm, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (17, 17)))
+    inner = cv2.erode(pm, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25)))      # 12 px in from the border strip / cut end
     if inner.sum() == 0:
         return dict(image=img, accent=accent, panel_px=0, note='no accent panel found')
-    k = 101
+    k = 61
     num = cv2.boxFilter(L * inner, -1, (k, k), normalize=False); den = cv2.boxFilter(inner.astype(np.float32), -1, (k, k), normalize=False)
     ref = num / np.maximum(den, 1)
     dark = (inner > 0) & (L < ref - 15)

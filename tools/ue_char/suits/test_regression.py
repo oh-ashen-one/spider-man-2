@@ -11,7 +11,7 @@ import cv2
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
 EXPECT_R8 = {'suit_basecolor_r8.png': '66e3b691813cc83cd9dc7bd20bdf0c59', 'suit_normal_r8.png': '09f0c6554c3a706529387e78ea4ff2e8', 'suit_orm_r8.png': 'ad1be27f39d2b4d5bb77f124125d5a8f'}
-EXPECT_R12 = {'suit_basecolor_r8.png': '12a74d9d10583756420ec34576694991', 'suit_normal_r8.png': 'aa2dc15fc94fdf2789988f75d73b4c12', 'suit_orm_r8.png': '960b17deb4ee735f7e43583c22d80725'}
+EXPECT_R12 = {'suit_basecolor_r8.png': '7b0905060f99c1e94c283208ee4b262c', 'suit_normal_r8.png': 'efa874d66249c9fd3c6c2601167c10e0', 'suit_orm_r8.png': '65e1bd9aeb876e3489777807abe22ad3'}
 bad = 0
 for tag, extra, expect in (('legacy r8', ['--legacy-r8'], EXPECT_R8), ('default r12', [], EXPECT_R12)):
     out = tempfile.mkdtemp()

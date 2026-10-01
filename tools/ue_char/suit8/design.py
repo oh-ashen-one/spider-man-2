@@ -393,6 +393,8 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             d_s = ax - 0.0 * y                                           # vertical band down the sternum
         y_lo, y_hi = (1.045, 1.44) if sa['kind'] != 'yoke' else (1.20, 1.50)
         zone_s = tors_w * body_w * ss(y, y_lo, y_lo + 0.045) * (1 - ss(y, y_hi, y_hi + 0.03)) * cover(ax - 0.160, aa)
+        if PIPE:     # round 12: CRISP panel ends (the skin-weight / height ramps faded the sash end over centimetres: a dark smear at the cut end in the 4K chest view)
+            zone_s = ss(tors_w, 0.45, 0.55) * body_w * cover(y_lo + 0.0225 - y, aa) * cover(y - (y_hi + 0.015), aa) * cover(ax - 0.160, aa)
         if sa['kind'] == 'placket': zone_s = tors_w * body_w * front * cover(1.083 - y, aa) * cover(y - 1.43, aa)      # hard ends: belt to collar
         hw = sa['half']
         offs = [0.0] if sa['kind'] != 'double' else [-sa['gap'] * 0.5, sa['gap'] * 0.5]
