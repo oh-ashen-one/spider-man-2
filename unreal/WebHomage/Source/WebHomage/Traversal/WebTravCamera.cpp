@@ -274,12 +274,25 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			bFlipOutRun = false;
 			// round 17 (critic r16: "flipcam_k >= 0.9 by flip_t 0.35", r16 spring reached it at ~0.65 s): a smoothstep over FlipInT from the
 			// weight at its start (k .9 at 0.80 x FlipInT; the output yaw slew 2.4 deg/frame still caps the view's turn rate)
-			if (!bFlipInRun) { bFlipInRun = true; FlipInClock = 0.0; FlipInK0 = FlipK; }
+			// v2 (rendered f-series: the smoothstep was still turning ~130 deg/s when k passed .9 -> TC-B "held max <= 60 deg/s" failed): the blend
+			// covers the azimuth change D0 (camera azimuth now -> held azimuth) with a minimum-time profile: accelerate at FlipInAcc deg/s^2 to
+			// FlipInRate deg/s, decelerate at FlipInDec deg/s^2 (rate sqrt(2 a d) at d deg left), so k reaches .9 at ~0.30-0.35 s for D0 30-40 deg
+			// with the turn at <= ~57 deg/s by then; k = covered / D0.
+			if (!bFlipInRun)
+			{
+				bFlipInRun = true; FlipInClock = 0.0; FlipInK0 = FlipK; FlipInS = 0.0; FlipInR = 0.0;
+				const double CurAz = bOutInit ? FMath::Atan2(LastOutPos.Y - Hero.Y, LastOutPos.X - Hero.X) : FlipAz;
+				FlipInD0 = FMath::Max(2.0, FMath::Abs(FMath::RadiansToDegrees(WrapA(FlipAz - CurAz))) * (1.0 - FlipInK0));
+			}
 			FlipInClock += Dt;
 			{
-				const double X = FMath::Clamp(FlipInClock / FMath::Max(0.05, FlipInT), 0.0, 1.0);
-				FlipK = FlipInK0 + (1.0 - FlipInK0) * X * X * (3.0 - 2.0 * X);
-				FlipKV = (1.0 - FlipInK0) * 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipInT);
+				const double Rem = FMath::Max(0.0, FlipInD0 - FlipInS);
+				const double Want = FMath::Min(FlipInRate, FMath::Sqrt(2.0 * FlipInDec * Rem));
+				FlipInR = FMath::Min(Want, FlipInR + FlipInAcc * Dt);
+				FlipInS = FMath::Min(FlipInD0, FlipInS + FlipInR * Dt);
+				const double X = FlipInS / FlipInD0;
+				FlipK = FlipInClock >= FlipInT * 3.0 ? 1.0 : FlipInK0 + (1.0 - FlipInK0) * X; // (a safety end at 3 x FlipInT)
+				FlipKV = (1.0 - FlipInK0) * FlipInR / FlipInD0;
 			}
 			SD(FlipZK, FlipZKV, 1.0, FlipZInT, Dt);
 		}
@@ -707,7 +720,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("FlipInT"), &FlipInT}, {TEXT("FlipOutT"), &FlipOutT}, {TEXT("FlipZInT"), &FlipZInT}, {TEXT("FlipDollyInT"), &FlipDollyInT}, {TEXT("FlipDollyOutT"), &FlipDollyOutT},
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
-		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
+		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;

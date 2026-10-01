@@ -89,7 +89,8 @@ public:
 	// camera blends to the plain chase over FlipOutT. Blend in FlipInT (vertical FlipZInT), out FlipOutT (spring smooth times, TC10).
 	double FlipK = 0.0, FlipKV = 0.0, FlipZK = 0.0, FlipZKV = 0.0;   // weights: 0 chase .. 1 trick camera (FlipK = telemetry flipcam_k)
 	bool bFlipWas = false, bFlipAbort = false, bFlipOutRun = false, bFlipInRun = false;
-	double FlipInClock = 0.0, FlipInK0 = 0.0;   // round 17: blend-in state (smoothstep over FlipInT from the weight at its start: k >= .9 by 0.8 x FlipInT)
+	double FlipInClock = 0.0, FlipInK0 = 0.0, FlipInS = 0.0, FlipInR = 0.0, FlipInD0 = 30.0;
+	double FlipInRate = 140.0, FlipInAcc = 2400.0, FlipInDec = 380.0;   // round 17 v2 blend-in profile (deg/s, deg/s^2)   // round 17: blend-in state (smoothstep over FlipInT from the weight at its start: k >= .9 by 0.8 x FlipInT)
 	double FlipSkyW = 4.0;   // round 17: weight of the ring sky share in the side choice (r16 1.5: the open-space term picked the street side)
 	double FlipObsT = 0.0, FlipSinceObs = 9.0, FlipAbortGrace = 0.20;   // seconds the held axis has been blocked under FlipDistMin / grace before the plain-chase fallback
 	double FlipOutClock = 0.0, FlipOutK0 = 0.0, FlipOutZ0 = 0.0;   // blend-out state (smoothstep over FlipOutT from the weights at its start)
