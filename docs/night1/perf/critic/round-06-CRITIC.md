@@ -12,10 +12,10 @@
 | life_c | 16.19 (61.8) | **18.36 (54.5)** | 20.07 | 116 | 0 | 18.94 |
 | ship_a/b/c (no traffic/crowd) | 15.44-15.58 | 17.61-17.72 (56.4-56.8) | 18.8-19.3 | 36-44 | 0 | 17.63-17.70 |
 
-Builder table matches to 0.01 ms. With traffic and crowd on (the real city), p50 passes and p95 fails in all three runs (53.1-54.5 fps). The in-game `wh_perf` p95 is 0.5-0.7 ms worse still. Only the empty-street map passes.
+Builder table matches to 0.01 ms. With traffic and crowd (the real city): p50 passes, p95 fails 3/3 (53.1-54.5 fps; in-game p95 worse still). Only the empty-street map passes.
 
 ## Trust
-`perf_gpu.json` for f1, x1, y1, z1 and w1 all show `exclusive=true`, `contaminated=false` and one Unreal instance. Before the f1 runs GPU use read 0. The lock only counts Unreal processes, so the other session's MLX model is invisible to it, and life_b's 80-frame stall is unexplained. Runs use a scripted route with a fixed step (`-benchmark -fps=60`). That is acceptable but it is not player input.
+`perf_gpu.json` for f1, x1, y1, z1 and w1 all show `exclusive=true`, `contaminated=false` and one Unreal instance. Before the f1 runs GPU use read 0. The lock only counts Unreal processes, so the other session's MLX model is invisible to it, and life_b's 80-frame stall is unexplained. Scripted route, fixed step: acceptable, not player input.
 
 ## Visual (my SSIM and pixel counts on the 3840 PNGs, `r03/before` vs `r06/final`)
 - S1 glass crop SSIM 0.935 (gate 0.97, **fails**). In the canopy tile (480,180) the share of green pixels drops from 84 % to 65 % because the leaf interiors are darker.
@@ -24,12 +24,7 @@ Builder table matches to 0.01 ms. With traffic and crowd on (the real city), p50
 - The route stills use a different camera (SSIM 0.23 / 0.30), so no valid gameplay before/after exists.
 
 ## Single biggest remaining cost
-The p95 is not a GPU-work problem. In the slowest 5 % of life frames, FrameTime minus GPUTime grows from **0.87 to 3.1-3.2 ms**, while GPUTime rises only 1.0 ms. Life GPUTime p95 is 17.5 ms, which would pass on its own. The slow frames are in window frames 300-1200, where RayTracingGeometry ReferencedSizeMB is +66 MB and 10 more skeletal ticks run.
+The p95 is not a GPU-work problem. In the slowest 5 % of life frames, FrameTime minus GPUTime grows from **0.87 to 3.1-3.2 ms**, while GPUTime rises only 1.0 ms. Life GPUTime p95 is 17.5 ms, which would pass on its own. Slow frames sit in window frames 300-1200 (RayTracingGeometry ReferencedSizeMB +66 MB).
 
 **Instruction:** take one life run with the RHI/render-thread wait stats in the CSV (`-csvCategories` with RHI and RenderThread waits, no Insights). Find the sync or BLAS/RT-geometry update that opens the gap and remove it. Pass condition: the top-5 % FrameTime-GPUTime gap is at or below 1.2 ms and CSV p95 is at or below 18.0 ms in 3 of 3 life runs. Restore S2/S7 foliage before claiming the look gate.
 
-| | Hari's target | measured (life) |
-|---|---|---|
-| p50 | ≥ 60 fps | 61.5-61.8 fps (pass) |
-| p95 | ≥ 55 fps | 53.1-54.5 fps (**fail**) |
-| look | no regression | 3 regressions (**fail**) |
