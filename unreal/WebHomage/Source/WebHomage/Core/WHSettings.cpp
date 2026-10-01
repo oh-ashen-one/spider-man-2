@@ -95,7 +95,9 @@ void FWHSettings::ApplyWindow() const
 	FDisplayMetrics DM;
 	FDisplayMetrics::RebuildDisplayMetrics(DM);
 	int32 W = FMath::Max(640, DM.PrimaryDisplayWidth), H = FMath::Max(360, DM.PrimaryDisplayHeight);
-	EWindowMode::Type Mode = EWindowMode::WindowedFullscreen;
+	// owner playtest 2026-10-01: on macOS the WindowedFullscreen path left mouse clicks unregistered (menu buttons + right-mouse swing dead
+	// while keys worked). Borderless = a plain window covering the primary display instead.
+	EWindowMode::Type Mode = PLATFORM_MAC ? EWindowMode::Windowed : EWindowMode::WindowedFullscreen;
 	if (WindowMode == WinFullscreen)
 	{
 		Mode = EWindowMode::Fullscreen;

@@ -44,6 +44,8 @@ void AWebHomagePlayerController::BeginPlay()
 			S.ApplyWindow();
 		}
 		ReleaseMouse();
+		// interactive play starts with the mouse captured (owner: right-mouse swing must work immediately); Escape releases + opens settings
+		if (!bNeverCapture) CaptureMouse();
 	}
 }
 
