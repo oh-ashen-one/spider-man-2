@@ -59,12 +59,13 @@ os.environ["SM2_CITY_EXPORT"] = "'$SCR'/export/midtown3x3"; os.environ["SM2_CITY
 unreal.SystemLibrary.execute_console_command(None, "Module Load StaticMeshEditor")'
   commandlet city_pass1 "$PRE
 JOB_ARGS = {\"steps\": \"clean,tex,mat,mesh,proto,kit,fsky,map\"}"     # (r05) one pass in build_city.py's default order, like build_manhattan.py step city
-  "$WT/tools/perf_ue/rebuild_look.sh" geo,rigs,night,maps
+  [ -n "$CITY_ONLY" ] || "$WT/tools/perf_ue/rebuild_look.sh" geo,rigs,night,maps
 }
 
 case $PHASE in
   prep) prep ;;
   ue) ue ;;
+  ue_city) CITY_ONLY=1 ue ;;   # (r05) city commandlet only (its own slot hold; run rebuild_look.sh after it in a second hold: the capture hold is capped at 40 min)
   all) prep; ue ;;
   *) echo "usage: rebuild_city.sh prep|ue|all"; exit 2 ;;
 esac

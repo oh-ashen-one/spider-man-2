@@ -75,18 +75,21 @@ def main():
     if a.clips:
         PRE = 0.8   # pre-roll (s): start pose rendered, traversal not stepped (exposure / Lumen / TSR settle); those frames are trimmed from the clip
         for preset in a.presets.split(','):
-            name = 'swing_%s' % preset
-            mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
+            # (round 05) 'tod@<hour>[w<weather>]': the time-of-day map at that hour (-WHToD / -WHWeather), clip swing_tod_<hour>
+            tod = preset.split('@')[1] if preset.startswith('tod@') else None
+            name = 'swing_%s' % (preset if not tod else 'tod_' + tod.replace('.', 'h'))
+            mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + (preset if not tod else 'tod'))
+            todargs = [] if not tod else ['-WHToD=' + tod.split('w')[0]] + (['-WHWeather=' + tod.split('w')[1]] if 'w' in tod else [])
             if not a.no_warmup:
                 wd = os.path.join(SCR, name + '_warmup'); shutil.rmtree(wd, ignore_errors=True)   # shader / texture warm-up render, not kept
                 subprocess.run(slot([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', str(min(2400, a.timeout)), '--', '-benchmark', '-fps=60',
-                                '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')]), capture_output=True, text=True)
+                                '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json')] + todargs), capture_output=True, text=True)
                 shutil.rmtree(wd, ignore_errors=True)
             d = os.path.join(SCR, name); shutil.rmtree(d, ignore_errors=True)
             u = util(); t0 = time.time()
             cmd = [RUN_GAME, d, '-map', mp, '-res', '1920x1080', '-quit', str(a.clip_seconds + PRE),
                    '-name', name, '-movie', '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp,
-                   '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE]
+                   '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE] + todargs
             r = subprocess.run(slot(cmd), capture_output=True, text=True)
             mp4 = os.path.join(d, name + '.mp4')
             fr = os.path.join(d, name + '_frames'); csvp = os.path.join(d, name + '_telemetry.csv')

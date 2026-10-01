@@ -1,0 +1,259 @@
+{
+ "groups": [
+  {
+   "name": "h18.4",
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ],
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ]
+  },
+  {
+   "name": "h22",
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ],
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ]
+  },
+  {
+   "name": "h13w1",
+   "cmds": [
+    "cvar wh.Weather 1",
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ],
+   "shots": [
+    "S1",
+    "S2",
+    "S3",
+    "S4",
+    "S5",
+    "S6",
+    "S7",
+    "S8"
+   ]
+  },
+  {
+   "name": "h13",
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ],
+   "shots": [
+    "S1",
+    "S2",
+    "S4",
+    "S8"
+   ]
+  },
+  {
+   "name": "h7.6",
+   "cmds": [
+    "cvar wh.TimeOfDay 7.6",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ],
+   "shots": [
+    "S2",
+    "S4",
+    "S8"
+   ]
+  },
+  {
+   "name": "h19.8",
+   "cmds": [
+    "cvar wh.TimeOfDay 19.8",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ],
+   "shots": [
+    "S2",
+    "S4",
+    "S8"
+   ]
+  },
+  {
+   "name": "g1",
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.08",
+    "exec wh.ToDSet sky.Intensity 3",
+    "exec wh.ToDSet fill.E 6",
+    "exec wh.ToDSet fill.S 2",
+    "exec wh.ToDSet fill.N 2",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 2",
+    "exec wh.ToDSet pp.ColorOffset 0.002 0.0015 0.001 0"
+   ],
+   "shots": [
+    "S1",
+    "S4",
+    "S5",
+    "S6",
+    "S7"
+   ]
+  },
+  {
+   "name": "g2",
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.04",
+    "exec wh.ToDSet sky.Intensity 1.5",
+    "exec wh.ToDSet fill.E 3",
+    "exec wh.ToDSet fill.S 1",
+    "exec wh.ToDSet fill.N 1",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.6",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.22 1.18 1.12 1",
+    "exec wh.ToDSet pp.FilmToe 0.6"
+   ],
+   "shots": [
+    "S1",
+    "S4",
+    "S5",
+    "S6",
+    "S7"
+   ]
+  },
+  {
+   "name": "g3",
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.04",
+    "exec wh.ToDSet sky.Intensity 1.5",
+    "exec wh.ToDSet fill.E 3",
+    "exec wh.ToDSet fill.S 1",
+    "exec wh.ToDSet fill.N 1",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.6",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.22 1.18 1.12 1",
+    "exec wh.ToDSet pp.FilmToe 0.6",
+    "exec wh.ToDSet atm.MieScatteringScale 0.045",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 1.25 1.2 1.15 1",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.34 0.21 0.14 1"
+   ],
+   "shots": [
+    "S1",
+    "S4",
+    "S7"
+   ]
+  },
+  {
+   "name": "g4",
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0.04",
+    "exec wh.ToDSet sky.Intensity 1.5",
+    "exec wh.ToDSet fill.E 3",
+    "exec wh.ToDSet fill.S 1",
+    "exec wh.ToDSet fill.N 1",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.6",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.22 1.18 1.12 1",
+    "exec wh.ToDSet pp.FilmToe 0.6",
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 3.5",
+    "exec wh.ToDSet atm.MieScattering 1 0.62 0.36 1",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.3 0.2 0.15 1"
+   ],
+   "shots": [
+    "S1",
+    "S4",
+    "S7"
+   ]
+  },
+  {
+   "name": "g5",
+   "cmds": [
+    "cvar wh.TimeOfDay 18.4",
+    "exec wh.ToDSet mpc.ShadeFill 0",
+    "exec wh.ToDSet sky.Intensity 1.5",
+    "exec wh.ToDSet fill.E 3",
+    "exec wh.ToDSet fill.S 1",
+    "exec wh.ToDSet fill.N 1",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.6",
+    "exec wh.ToDSet pp.ColorOffset 0 0 0 0",
+    "exec wh.ToDSet pp.ColorSaturation 1.22 1.18 1.12 1",
+    "exec wh.ToDSet pp.FilmToe 0.6",
+    "exec wh.ToDSet sky.Intensity 1.0",
+    "exec wh.ToDSet fill.E 0",
+    "exec wh.ToDSet fill.S 0",
+    "exec wh.ToDSet fill.N 0",
+    "exec wh.ToDSet pp.IndirectLightingIntensity 1.2"
+   ],
+   "shots": [
+    "S1",
+    "S4",
+    "S5",
+    "S6",
+    "S7"
+   ]
+  },
+  {
+   "name": "n1",
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet mpc.EmissiveScale 20",
+    "exec wh.ToDSet pp.AutoExposureBias -0.6"
+   ],
+   "shots": [
+    "S4",
+    "S1",
+    "S6"
+   ]
+  },
+  {
+   "name": "n2",
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet mpc.EmissiveScale 26",
+    "exec wh.ToDSet mpc.InteriorGain 2",
+    "exec wh.ToDSet pp.AutoExposureBias -0.8",
+    "exec wh.ToDSet sky.Intensity 1.5"
+   ],
+   "shots": [
+    "S4",
+    "S1",
+    "S6"
+   ]
+  },
+  {
+   "name": "n3",
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet mpc.EmissiveScale 26",
+    "exec wh.ToDSet mpc.InteriorGain 2",
+    "exec wh.ToDSet pp.AutoExposureBias -0.8",
+    "exec wh.ToDSet sky.Intensity 1.2",
+    "exec wh.ToDSet fill.W 1.7",
+    "exec wh.ToDSet fill.N 0.4",
+    "exec wh.ToDSet fill.S 0.4",
+    "exec wh.ToDSet fill.E 0.25",
+    "exec wh.ToDSet moon.Intensity 9"
+   ],
+   "shots": [
+    "S4",
+    "S1",
+    "S6"
+   ]
+  }
+ ]
+}
