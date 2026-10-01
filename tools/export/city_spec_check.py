@@ -150,7 +150,8 @@ def check_ip(cfg, root, out):
             v = ImageOps.invert(img.convert('RGB')).convert('L') if inv else img.convert('L'); v = v.resize((v.width * 2, v.height * 2)); p = os.path.join(tmp, 'c.png'); v.save(p)
             txt += ' ' + subprocess.run(['tesseract', p, '-', '--psm', '11'], capture_output=True, text=True).stdout.upper()
         return txt
-    for f in sorted(glob.glob(os.path.join(root, 'S*_3840x2160.*'))):
+    _fr = sorted(glob.glob(os.path.join(root, 'S*_3840x2160.*'))) or sorted(glob.glob(os.path.join(root, 'S*_1920x1080.*')))   # (r10) a 1080p-only round is OCR'd at 1080p (reported as such: smaller text can be missed)
+    for f in _fr:
         if not f.lower().endswith(('.jpg', '.png')): continue
         im = Image.open(f).convert('L'); W, H = im.size; hits = set()
         for (x0, y0) in [(0, 0), (W // 2, 0), (0, H // 2), (W // 2, H // 2)]:
