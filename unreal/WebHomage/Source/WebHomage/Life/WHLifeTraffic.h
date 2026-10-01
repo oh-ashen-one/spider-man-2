@@ -48,6 +48,9 @@ namespace WHLife
 		int32 L0 = -1, K = -1, L1 = -1;   // incoming link, connector (chosen / current), outgoing link
 		uint8 Where = 0;                  // front on: 0 = L0, 1 = K, 2 = L1
 		bool bReserved = false;
+		bool bRedHold = false;            // was held by a red / amber signal on the previous step
+		float GoDelay = 0.f;              // driver reaction time after the light turns green (s)
+		float BoxStopT = 0.f;             // seconds stopped with the body inside the junction box
 		uint8 Brake = 0;
 		FLinearColor Color = FLinearColor::White;
 		uint32 Rng = 1;
@@ -71,14 +74,46 @@ public:
 	/** Static meshes in the order taxi, taxi_hy, taxi_mv, taxi_gr, sedan, hatch, sedan2, cross, suv, suv2, pickup, van, truck, bus, tour. */
 	UPROPERTY(EditAnywhere, Category="Life|Data") TArray<TObjectPtr<UStaticMesh>> VehicleMeshes;
 	UPROPERTY(EditAnywhere, Category="Life|Data") TObjectPtr<UMaterialInterface> VehicleMaterial;
+	/** Scripts/life_data/signals.txt: `M|P x z ry` per line (browser metres; M = mast arm with 2 arm heads + 1 pole head, P = post head), the P1 signal props. */
+	UPROPERTY(EditAnywhere, Category="Life|Signals", meta=(MultiLine=true)) FString SignalData;
+	/** Lens overlay: a unit cylinder (axis Z, 100 cm) turned into a flat disc facing the road; the material reads custom data (r, g, b, on). */
+	UPROPERTY(EditAnywhere, Category="Life|Signals") TObjectPtr<UStaticMesh> SignalMesh;
+	UPROPERTY(EditAnywhere, Category="Life|Signals") TObjectPtr<UMaterialInterface> SignalMaterial;
+	UPROPERTY(EditAnywhere, Category="Life|Signals") float LensDiameterCm = 27.f;
+	/** Drivers wait this long (s, uniform between the two) after their light turns green before they pull away. */
+	/** A street-level camera (eye below 4.5 m) is not driven through: a moving car whose body comes within this many metres of the camera is not drawn (it keeps simulating). 0 = off. */
+	UPROPERTY(EditAnywhere, Category="Life") float CameraClearM = 1.8f;
+	/** Fixed street-level shots only (command line -WHLifeClearAhead=<m>, default 0 = off): moving cars whose body lies in a corridor this many metres ahead of the camera (and ClearAheadHalfWidthM to each side)
+	 *  are not drawn, so a stills camera standing in a lane is not filled by a delivery truck that happens to arrive on its frame. Gameplay leaves it off. */
+	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadM = 0.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ClearAheadHalfWidthM = 12.5f;
+	/** Fixed street-level shots only (command line -WHLifeClearCurb=<m>[:<offset m>], default 0 = off): the corridor above is extended to this many metres ahead for the curb lanes only (lateral offset from the view axis between
+	 *  ClearCurbOffsetM and the corridor half width), so a truck or a car queued in the curb lane 30-60 m ahead does not hide the whole near sidewalk of a still (the centre lanes keep their traffic from ClearAheadM on). */
+	UPROPERTY(EditAnywhere, Category="Life") float ClearCurbAheadM = 0.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ClearCurbOffsetM = 5.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ReactionMin = 0.35f;
+	UPROPERTY(EditAnywhere, Category="Life") float ReactionMax = 1.25f;
+	/** >= 0: the signal clock reads this phase (s in the 40 s cycle) when the pre-roll ends, i.e. game time 0. Fixed-camera signal clips. */
+	UPROPERTY(EditAnywhere, Category="Life") float SignalPhaseAtStart = -1.f;
+	/** Bus / tourist bus share of the curb-side through lane of avenues (0..1). */
+	UPROPERTY(EditAnywhere, Category="Life") float BusShare = 0.07f;
+	/** Bus stops / loading zones: on the far (north) side of every ParkedGapEveryM-spaced street of an avenue curb (streets sit at z = 0 mod 80) a curb stretch of ParkedGapLenM, starting ParkedGapStartM
+	 *  past the street centre line, has no parked cars. It applies to a given curb and street with probability 1/2 (hash of the curb line, the street and ParkedGapSeed), so about a tenth of the
+	 *  avenue curb cars are missing and the sidewalk behind them can be seen from the street. 0 = no gaps. Command line: -WHLifeParkGap=<every m>:<len m>:<seed>:<start m>. */
+	UPROPERTY(EditAnywhere, Category="Life") float ParkedGapEveryM = 80.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ParkedGapLenM = 36.f;
+	UPROPERTY(EditAnywhere, Category="Life") float ParkedGapStartM = 9.f;
+	UPROPERTY(EditAnywhere, Category="Life") int32 ParkedGapSeed = 38;
 
 	UPROPERTY(EditAnywhere, Category="Life") bool bSimulate = true;
 	/** 1 = the browser's steady-state density (cars per km of lane by road kind). */
 	UPROPERTY(EditAnywhere, Category="Life") float DensityScale = 1.f;
+	/** Extra factor for the cross-street lanes (kind 1): they are 10 m wide with curb parking, a dense avenue setting would make a solid queue. */
+	UPROPERTY(EditAnywhere, Category="Life") float StreetDensityFactor = 0.6f;
 	UPROPERTY(EditAnywhere, Category="Life") int32 Seed = 7;
 	/** Seconds simulated at BeginPlay so the first frame already shows platoons and queues at the lights. */
 	UPROPERTY(EditAnywhere, Category="Life") float PreRollSeconds = 75.f;
-	UPROPERTY(EditAnywhere, Category="Life") int32 MaxCars = 900;
+	UPROPERTY(EditAnywhere, Category="Life") int32 MaxCars = 2000;
 	/** Cull moving and parked instances beyond this distance (cm). */
 	UPROPERTY(EditAnywhere, Category="Life") float CullDistance = 100000.f;
 	UPROPERTY(EditAnywhere, Category="Life") bool bCastShadows = true;
@@ -93,6 +128,10 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumParked = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumParkedTaxis = 0;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumStopped = 0;
+	/** Cars stopped (< 0.3 m/s) with any part of the body inside a junction box right now / worst count seen / accumulated car-seconds. */
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 NumBoxStopped = 0;
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") int32 MaxBoxStopped = 0;
+	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float BoxStopSeconds = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float LastSimMs = 0.f;
 	UPROPERTY(BlueprintReadOnly, Category="Life|Stats") float LastPushMs = 0.f;
 
@@ -105,6 +144,14 @@ public:
 	double GetSignalClock() const { return SimClock + SignalOffset; }
 	/** Centres of the vehicles (cm, ground level + 0.8 m): moving, then parked, with their type index. */
 	void GetPoints(TArray<FVector>& Moving, TArray<int32>& MovingType, TArray<FVector>& Parked, TArray<int32>& ParkedType) const;
+	/** Moving cars with their world centre (cm), speed (m/s) and a lane key (kind*100 + lane*10 + travel direction 1 N / 2 S / 3 E / 4 W). */
+	void GetMovingInfo(TArray<FVector>& Pos, TArray<float>& Speed, TArray<int32>& LaneKey) const;
+	/** Queue on a lane link (file id): cars whose front is on it, how many are stopped, the front car's distance to the stop line (m, -1 none). */
+	void GetLinkQueue(int32 LinkFileId, int32& Cars, int32& Stopped, float& FrontToLine) const;
+	/** Signal state of an axis (0 avenue, 1 street) now: 2 green, 1 amber, 0 red. */
+	/** True if any moving car's body (front, centre, rear points) lies within DistM of the segment A-B (browser metres): the crowd does not step onto a crosswalk a car is still crossing. */
+	bool AnyCarNearSegment(const FVector2D& A, const FVector2D& B, float DistM) const;
+	int32 CurrentPhase(int32 Axis) const { return SigPhase(GetSignalClock(), Axis); }
 	/** Moving-car count whose centre is inside a world-space frustum-ish cone (camera location, forward, half-angle deg, range cm). */
 	UFUNCTION(BlueprintCallable, Category="Life") int32 CountInCone(FVector Eye, FVector Forward, float HalfAngleDeg, float Range) const;
 
@@ -117,6 +164,11 @@ private:
 	TArray<int32> FreeCars;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> MovingISM;
 	UPROPERTY(Transient) TArray<TObjectPtr<UInstancedStaticMeshComponent>> ParkedISM;
+	UPROPERTY(Transient) TObjectPtr<UInstancedStaticMeshComponent> LensISM;
+	struct FLens { int32 Axis = 0, Color = 0, Inst = 0; };
+	TArray<FLens> Lenses;
+	int32 LastSig[2] = { -1, -1 };
+	FVector2D ClearM = FVector2D::ZeroVector, ClearFwd = FVector2D(1, 0); bool bClearCam = false;   // street-level camera ground position (browser m) and its heading
 	TArray<TArray<int32>> FreeInst;
 	TArray<TArray<FTransform>> Xf;
 	TArray<int32> HighWater;
@@ -128,9 +180,12 @@ private:
 	uint32 GlobalRng = 1;
 	bool bReady = false;
 
+	float KindDensity(int32 Kind) const;
 	void ParseLanes();
 	void BuildComponents();
 	void PlaceParked();
+	void BuildSignals();
+	void UpdateSignals();
 	void PopulateInitial();
 	void StepSim(float Dt);
 	void PushInstances();

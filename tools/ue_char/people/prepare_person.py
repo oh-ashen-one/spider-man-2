@@ -40,18 +40,19 @@ CFG = {
     'thug': dict(src='leather+jacket+man+3d+model.glb', name='StreetThug',
                  # landmarks measured on the normalised mesh with tools/ue_char/people/ortho.py (metres)
                  eye=1.652, nose=1.620, ear_lobe=1.591, chin=1.535, axis_z=-0.02,
-                 mask=(38, 42, 60), seed=11,
-                 tints={'Oxblood': dict(region='jacket', color=(58, 26, 24))}),
+                 mask=(38, 42, 60), seed=11, sink_neck=True, soften_neck=True,   # collar_dark=(42, 40, 42) was tried (offline): no visible effect, not built into the round-08 content
+                 tints={'Oxblood': dict(region='jacket', color=(58, 26, 24), mask_color=(30, 52, 44))}),   # round 05: the tint also swaps the mask (no near-twin with the base thug)
     'brute': dict(src='human+character+3d+model.glb', name='StreetBrute',
                   eye=1.616, nose=1.587, ear_lobe=1.563, chin=1.472, axis_z=-0.02,
-                  mask=(66, 24, 22), seed=23),
+                  mask=(66, 24, 22), seed=23, bot_drop=0.004),
     # round 04: three more raw Tripo people (owner's assets), landmarks from mask.auto_landmarks
     # hood: auto landmarks pick the sunglasses as the nose -> measured with ortho.py (side view, 2 cm grid)
     'hood': dict(src='human+figure+3d+model.glb', name='StreetHood', eye=1.630, nose=1.603, ear_lobe=1.582, chin=1.527, axis_z=-0.02,
                  mask=(58, 62, 42), seed=31, tie_band=False, clear_temple_text=True,
                  tints={'Grey': dict(region='top', color=(104, 104, 108))}),
     'tee': dict(src='adult+male+3d+model.glb', name='StreetTee', auto=True, axis_z=-0.02,
-                mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70))),
+                mask=(74, 20, 22), seed=41, tie_band=False, cap=dict(color=(36, 44, 70)),
+                hang=dict(uncover_mouth=True)),   # round 08: lips showed through the tee mask (the mouth slit was left as a ledge under the cloth)
     'beard': dict(src='human+character+3d+model (3).glb', name='StreetBeard', auto=True, axis_z=-0.02,
                   mask=(26, 46, 52), seed=53, tie_band=False, clear_graphic=True),
 }
@@ -357,11 +358,16 @@ def tint_region(img, pos, cov, region, color):
 
 
 # ------------------------------------------------------------------------------------------------------ weapon tiles
+WEAPON_TEXTURED = True
 WEAPON_X0 = 3584            # strip columns [3584, 4096): solid material tiles for tools/ue_char/weapons/add_weapon.py
 WEAPON_TILES = [('wood', (150, 108, 66)), ('steel', (104, 108, 114)), ('polymer', (30, 30, 33)), ('grip', (44, 40, 38)), ('tape', (24, 24, 26))]
 
 
 def weapon_tiles():
+    if WEAPON_TEXTURED:   # round 05: procedural wood / steel / polymer / wrap / tape tiles (tools/ue_char/weapons/weapon_textures.py)
+        sys.path.insert(0, os.path.join(HERE, '..', 'weapons'))
+        import weapon_textures
+        return weapon_textures.strip(ATLAS, CONTENT_H, WEAPON_X0)
     h = ATLAS - CONTENT_H
     out = np.zeros((h, ATLAS - WEAPON_X0, 3), np.float32)
     rng = np.random.RandomState(5)
@@ -464,11 +470,19 @@ def main():
     tri = (wv[F].max(1) > 0) & (np.hypot(P[F][:, :, 0], P[F][:, :, 2] - cfg['axis_z']).max(1) < 0.14)
     nt0 = len(F)
     P, N, UV, F = M.subdivide_region(P, N, UV, F, tri)
-    P, moved = M.drape(P, F, cfg, cfg['seed'])
+    P, moved = (M.drape if cfg.get('drape') == 'hull' else M.hang)(P, F, cfg, cfg['seed'], **(cfg.get('hang') or {}) if cfg.get('drape') != 'hull' else {})   # round 05: hanging cloth (mask.hang); 'hull' = the round-04 convex-hull drape
+    nP0 = len(P)
+    F, ndrop = M.drop_cavity(P, F, cfg)                           # round 05: mouth / nostril cavity walls removed, their loops closed below
+    P, N, UV, F, nfill = M.fill_face_holes(P, N, UV, F, cfg)   # round 05: mouth slit / chin tears closed
+    moved = np.concatenate([moved, np.zeros(len(P) - nP0)])
+    F, nflip = M.fix_flips(P, F, cfg)                            # round 05: back-faced slivers at lips / nostrils
+    if cfg.get('flatten_mouth'): P = M.flatten_mouth(P, cfg); F, nflip2 = M.fix_flips(P, F, cfg); nflip += nflip2           # round 08: the mouth slit ledge (lips showing through the cloth)
+    if cfg.get('sink_neck'): P = M.sink_neck(P, F, cfg)             # round 08: slack for the neck skin under the collar (collar shards)
     N2 = M.vertex_normals(P, F)
     chg = moved > 1e-5
     N[chg] = N2[chg]
-    info.update(mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
+    N = M.cloth_normals(P, F, N, cfg)                            # round 05: smoothed cloth normals over the mask region
+    info.update(cavity_tris_dropped=int(ndrop), holes_filled=int(nfill), flipped_tris=int(nflip), mask_subdivided_tris=int(tri.sum()), tris_after_subdiv=len(F), tris_before=nt0, draped_verts=int(chg.sum()),
                 drape_max_cm=round(float(moved.max() * 100), 2))
     # ---- texture
     im4 = np.asarray(im.resize((ATLAS, ATLAS), Image.LANCZOS))
@@ -479,6 +493,24 @@ def main():
         im4, nrem = clear_plaid_remnants(im4, pos, cov); info['plaid_remnant_px'] = nrem
     elif a.which == 'thug':
         im4, nm = recolor_thug(im4, pos, cov); info['metal_px'] = nm
+    if cfg.get('soften_neck'):
+        # round 08 (critic r07: 'thug collar shards'): the raw atlas has coarse, stair-stepped texels where the neck skin meets the dark collar / jacket interior; in the
+        # close-up they read as jagged skin-coloured wedges in the collar.  Inside a ring around the neck / collar (y 1.36-1.50, r < 10 cm) the atlas is blurred (sigma 3 px, feathered)
+        zone = cov & (pos[..., 1] > 1.36) & (pos[..., 1] < 1.50) & (np.hypot(pos[..., 0], pos[..., 2] - cfg['axis_z']) < 0.10)
+        zf = ndi.gaussian_filter(zone.astype(np.float32), 5.0)[..., None]
+        bl = np.stack([ndi.gaussian_filter(im4[..., k].astype(np.float32), 3.0) for k in range(3)], -1)
+        im4 = np.clip(im4.astype(np.float32) * (1 - zf) + bl * zf, 0, 255).astype(np.uint8); info['neck_soften_px'] = int(zone.sum())
+    if cfg.get('collar_dark'):
+        # round 08: the pale 'collar shard' of the thug is neck skin seen through a gap of the hood collar at the sides / nape (round 08 captures: identical with and without the neck slack).
+        # Skin-coloured texels of the neck below the ear line on the sides and the back (|azimuth| > 55 deg) take the collar's own dark colour, so a gap shows the inside of the hood.
+        hh, ss_, vv = rgb2hsv(im4)
+        skin_t = (hh > 5) & (hh < 40) & (ss_ > 0.15) & (ss_ < 0.65) & (vv > 0.40)
+        az = np.degrees(np.arctan2(pos[..., 0], pos[..., 2] - cfg['axis_z']))
+        rr = np.hypot(pos[..., 0], pos[..., 2] - cfg['axis_z'])
+        zone = cov & skin_t & (np.abs(az) > 55) & (pos[..., 1] > 1.30) & (pos[..., 1] < 1.505) & (rr < 0.085)
+        zf = ndi.gaussian_filter(zone.astype(np.float32), 1.5)[..., None]
+        dark = np.array(cfg['collar_dark'], np.float32)[None, None, :]
+        im4 = np.clip(im4.astype(np.float32) * (1 - zf) + dark * zf, 0, 255).astype(np.uint8); info['collar_dark_px'] = int(zone.sum())
     if cfg.get('clear_graphic'):
         im4, ng = clear_graphic(im4, pos, cov); info['graphic_px'] = ng
     if cfg.get('clear_temple_text'):
@@ -490,6 +522,11 @@ def main():
     variants = {}
     for tn, tc in (cfg.get('tints') or {}).items():
         variants[tn], npx = tint_region(im4, pos, cov, tc['region'], tc['color']); info['tint_%s_px' % tn] = npx
+        if tc.get('mask_color'):   # round 05: re-tint the cloth mask (per-channel ratio keeps the weave, folds and stitching)
+            ratio = np.asarray(tc['mask_color'], np.float32) / np.asarray(cfg['mask'], np.float32)
+            sel = mw > 0.05
+            v_ = variants[tn].astype(np.float32); v_[sel] = np.clip(v_[sel] * ratio[None, :], 0, 255)
+            variants[tn] = v_.astype(np.uint8); info['tint_%s_mask_px' % tn] = int(sel.sum())
     if a.which == 'brute':
         # the actor is widened by `girth` in X/Y at run time: shrink the head (and the top of the neck) by 1/girth so it keeps natural proportions
         f = 1.0 / SIZES['brute']['girth']

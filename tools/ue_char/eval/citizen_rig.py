@@ -17,6 +17,9 @@ from mathutils import Matrix
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '../../..'))
 NPC = os.path.join(ROOT, 'public/assets/city/npc')
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+from p2paths import scr as _p2scr   # noqa: E402
 C = np.array([[1, 0, 0, 0], [0, 0, -1, 0], [0, 1, 0, 0], [0, 0, 0, 1]], float)
 Ci = np.linalg.inv(C)
 
@@ -57,9 +60,47 @@ def lbs(g, Mf):
     return out
 
 
-def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
+def load_refit(name):
+    """Round 06 (CH18): the raw-Tripo refit of a citizen (refit.py + weights_r6.py: welded skin weights, no shredded shells), or None (legacy pack LOD0
+    + hull) when it has not been generated or CIT_SRC=legacy."""
+    if os.environ.get('CIT_SRC') == 'legacy': return None
+    f = os.path.join(_p2scr('eval', 'refit'), name + '_final.npz')
+    if not os.path.exists(f): return None
+    z = np.load(f)
+    return {k: z[k] for k in z.files}
+
+
+def refit_tex(name):
+    """Round 06: the refit citizen's own base colour (raw Tripo 8192 px texture at 2048), or None."""
+    if load_refit(name) is None: return None
+    f = os.path.join(_p2scr('eval', 'refit'), name + '_tex.png')
+    return f if os.path.exists(f) else None
+
+
+def load_hull(name):
+    """Round 05 (CH18): the closed under-layer hull made by underlayer.py (None when it has not been generated)."""
+    try:
+        from p2paths import scr
+    except ImportError:
+        import sys; sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..')); from p2paths import scr
+    f = os.path.join(scr('eval', 'hull'), name + '.npz')
+    if not os.path.exists(f):
+        print('citizen_rig: no under-layer hull for', name, '(run tools/ue_char/eval/underlayer.py)')
+        return None
+    z = np.load(f)
+    return {k: z[k] for k in z.files}
+
+
+def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature', hull=True):
     p, M = load_people()
     meta, var, g = load_citizen(name)
+    R6 = load_refit(name)
+    if R6 is not None:   # round 06: the refit mesh replaces the pack LOD0 (uv = glTF, origin top-left; the weights are final, 4 per vertex)
+        top6 = np.argsort(-R6['dense'], 1)[:, :4]
+        wt6 = np.take_along_axis(R6['dense'], top6, 1); wt6 = wt6 / np.maximum(wt6.sum(1, keepdims=True), 1e-9)
+        g = dict(pos=R6['pos'].astype(float), nrm=R6['nrm'].astype(float), uv=R6['uv'].astype(float), si=top6, sw=wt6, idx=R6['idx'].astype(int))
+        hull = False
+        print('citizen_rig: %s from the round-06 refit (%d verts, %d tris)' % (name, len(g['pos']), len(g['idx'])))
     bones = p['bones']
     sc = bpy.context.scene
     # armature
@@ -99,15 +140,38 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
     # mesh
     vb = (C[:3, :3] @ g['pos'].T).T
     nb_ = (C[:3, :3] @ g['nrm'].T).T
+    nv0 = len(vb)
+    H_ = load_hull(name) if hull else None
+    faces = g['idx']
+    if R6 is not None:
+        tuv = np.c_[g['uv'][:, 0], 1.0 - g['uv'][:, 1]]                     # whole texture, Blender v up
+    else:
+        gx, gy = meta['grid']
+        c, r = var['tile']
+        tuv = np.c_[g['uv'][:, 0] * gx - c, 1.0 - (g['uv'][:, 1] * gy - r)]   # tile-local, Blender v up
+    loop_uv = tuv[faces.ravel()]
+    EXPAND_M = 0.0 if R6 is not None else float(os.environ.get('CIT_EXPAND', '0.003'))
+    idx_g = g['idx']
+    if EXPAND_M > 0:   # round 05b (CH18, geometry level): every garment triangle grows by EXPAND_M on each edge (about its incentre, uv scaled identically so the
+        # texture stays put): hairline gaps between the crowd pack's separate shells (up to ~2 x EXPAND_M wide) close (uv NOT scaled: the atlas has gutters); triangles are unwelded (3 corners each,
+        # corner weights / normals / uv copied from the source vertex).  Offline proxy on 9 dark walkers: slivers 31 -> 15 (garment), 17 -> 11 (with hull).
+        from underlayer import expand_triangles
+        P3, UV3 = expand_triangles(vb, idx_g, tuv, EXPAND_M)
+        vb = P3.reshape(-1, 3); nb_ = nb_[idx_g.reshape(-1)]
+        faces = np.arange(len(vb)).reshape(-1, 3); loop_uv = tuv[idx_g.reshape(-1)]   # corners keep their ORIGINAL uv: growing the uv too samples the atlas gutters (white speckles)
+        nv0 = len(vb)
+    if H_ is not None:   # round 05: closed backing hull (one flat uv per triangle = the local garment texel), appended as extra vertices / faces
+        vb = np.vstack([vb, (C[:3, :3] @ H_['V'].T).T])
+        nb_ = np.vstack([nb_, (C[:3, :3] @ H_['N'].T).T])
+        faces = np.vstack([faces, H_['T'] + nv0])
+        loop_uv = np.vstack([loop_uv, np.repeat(H_['tri_uv'], 3, axis=0)])
     me = bpy.data.meshes.new(name)
-    me.from_pydata(vb.tolist(), [], g['idx'].tolist())
+    me.from_pydata(vb.tolist(), [], faces.tolist())
     uvl = me.uv_layers.new(name='UVMap')
-    gx, gy = meta['grid']
-    c, r = var['tile']
-    tuv = np.c_[g['uv'][:, 0] * gx - c, 1.0 - (g['uv'][:, 1] * gy - r)]   # tile-local, Blender v up
     li = np.zeros(len(me.loops), int)
     me.loops.foreach_get('vertex_index', li)
-    uvl.data.foreach_set('uv', tuv[li].ravel())
+    assert len(li) == len(loop_uv)
+    uvl.data.foreach_set('uv', loop_uv.ravel())   # loops are in face order: 3 per triangle
     me.update()
     try:
         me.normals_split_custom_set_from_vertices([tuple(n / max(1e-9, np.linalg.norm(n))) for n in nb_])
@@ -118,22 +182,38 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
     ob.parent = arm
     for i, b in enumerate(bones):
         vg = ob.vertex_groups.new(name=b['name'])
-    w = g['sw'] / g['sw'].sum(1, keepdims=True)
-    # round 04: weld the weights of UV-seam duplicates (same position, different vertex) - unequal quantised weights open hairline
-    # cracks along every texture seam as soon as the pose changes (the white streaks / sparkles the critics saw on citizens)
-    dense = np.zeros((len(w), len(bones)))
-    for k in range(4): np.add.at(dense, (np.arange(len(w)), g['si'][:, k]), w[:, k])
-    key = np.round(g['pos'] / 1e-5).astype(np.int64)
-    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
-    acc = np.zeros((inv.max() + 1, len(bones))); np.add.at(acc, inv, dense)
-    cnt = np.bincount(inv).astype(float)
-    dense = acc[inv] / cnt[inv][:, None]
+    if R6 is not None:   # round 06: final weights come from weights_r6.py (welded, smoothed, skirt rig, stretch relaxed)
+        dense = R6['dense'].astype(float)
+    else:
+        w = g['sw'] / g['sw'].sum(1, keepdims=True)
+        # round 04: weld the weights of UV-seam duplicates (same position, different vertex) - unequal quantised weights open hairline
+        # cracks along every texture seam as soon as the pose changes (the white streaks / sparkles the critics saw on citizens)
+        dense = np.zeros((len(w), len(bones)))
+        for k in range(4): np.add.at(dense, (np.arange(len(w)), g['si'][:, k]), w[:, k])
+        key = np.round(g['pos'] / 1e-5).astype(np.int64)
+        _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.reshape(-1)
+        acc = np.zeros((inv.max() + 1, len(bones))); np.add.at(acc, inv, dense)
+        cnt = np.bincount(inv).astype(float)
+        dense = acc[inv] / cnt[inv][:, None]
+        # round 05 (CH18, weights level): abutting garment shells move together (underlayer.smooth_weights); the hull skins from these weights too
+        from underlayer import final_weights   # = smooth_weights + skirt-panel blend (round 05b)
+        dense = final_weights(g['pos'], g['nrm'], g['idx'], dense)
     top = np.argsort(-dense, 1)[:, :4]
     wt = np.take_along_axis(dense, top, 1); wt /= wt.sum(1, keepdims=True)
     g['si'], g['sw'], w = top, wt, wt
+    g_eval = None
+    if EXPAND_M > 0:   # per-corner copies for the expanded, unwelded triangles (g['si'] / g['sw'] stay per source vertex for the hull and the checks)
+        ci = idx_g.reshape(-1)
+        g_eval = dict(pos=(Ci[:3, :3] @ vb[:len(ci)].T).T, si=top[ci], sw=wt[ci])
+        top, wt, w = top[ci], wt[ci], wt[ci]
+    if H_ is not None:   # hull vertices skin like their 4 nearest garment vertices (weighted by 1 / distance; `dense` is still per SOURCE vertex = H_['nn'] indices)
+        dh = np.einsum('nk,nkb->nb', H_['nw'], dense[H_['nn']])
+        toph = np.argsort(-dh, 1)[:, :4]
+        wh = np.take_along_axis(dh, toph, 1); wh /= wh.sum(1, keepdims=True)
+        top, wt = np.vstack([top, toph]), np.vstack([wt, wh]); w = wt   # garment rows first, hull rows after (g['si'] / g['sw'] stay garment-only)
     for k in range(4):
         for bi in range(len(bones)):
-            sel = np.where((g['si'][:, k] == bi) & (w[:, k] > 0))[0]
+            sel = np.where((top[:, k] == bi) & (w[:, k] > 0))[0]
             vg = ob.vertex_groups[bi]
             for vi in sel:
                 vg.add([int(vi)], float(w[vi, k]), 'ADD')
@@ -202,12 +282,12 @@ def build(name, clips=('walk', 'run', 'idle'), tex=None, obj_name='Armature'):
     for pb_ in arm.pose.bones:
         pb_.location, pb_.scale = (0, 0, 0), (1, 1, 1)
         pb_.rotation_quaternion = (1, 0, 0, 0)
-    return dict(arm=arm, ob=ob, acts=acts, p=p, M=M, g=g, meta=meta, var=var)
+    return dict(arm=arm, ob=ob, acts=acts, p=p, M=M, g=g, meta=meta, var=var, g_eval=g_eval)
 
 
 def recon_error(R, clip='walk', frames=(0, 5, 11, 17, 23)):
     """Max |Blender armature-deformed vertex - direct LBS| in metres over sample frames."""
-    arm, ob, p, M, g = R['arm'], R['ob'], R['p'], R['M'], R['g']
+    arm, ob, p, M, g = R['arm'], R['ob'], R['p'], R['M'], (R.get('g_eval') or R['g'])   # expanded, unwelded corners when CIT_EXPAND > 0
     from studio import assign
     assign(arm, R['acts'][clip])
     sc = bpy.context.scene
@@ -221,6 +301,6 @@ def recon_error(R, clip='walk', frames=(0, 5, 11, 17, 23)):
         em.vertices.foreach_get('co', co)
         eo.to_mesh_clear()
         ref = (C[:3, :3] @ lbs(g, M[p['clips'][clip]['row'] + f]).T).T
-        worst = max(worst, float(np.abs(co.reshape(-1, 3) - ref).max()))
+        worst = max(worst, float(np.abs(co.reshape(-1, 3)[:len(ref)] - ref).max()))   # garment vertices only (a hull may follow)
     arm.animation_data.action = None
     return worst

@@ -15,7 +15,7 @@
 #
 # Combat_Street: a lit test street (NOT the Manhattan city: see docs/night1/combat/round-01/NOTES.md for why). 30 m avenue along
 # +X (building lines y = +-15 m), 4 m sidewalks with a 15 cm curb, 3 blocks of 30-90 m buildings each side, parked-car blocks,
-# lamp posts and hydrants on the kerb (all outside the 14 m fight circle around the origin), low golden sun across the street.
+# lamp posts and hydrants on the kerb (all outside the 14 m fight circle around the origin), warm afternoon sun along the street axis.
 # Game mode AWHCombatGameMode: AWHCombatHero (the P3 traversal hero + combat) and AWHCombatDirector (fight, script, telemetry).
 import os, sys, json, subprocess, time, shutil
 
@@ -29,6 +29,7 @@ CHAR_STAGE = os.path.join(SCR, 'chars')
 P2_WT = os.environ.get('SM2_P2_WT', '/Users/midir/sm2-n1/characters')
 P2_SCR = os.environ.get('SM2_P2_SCR', '/Users/midir/sm2-n1/_scratch/characters')
 STEPS_ALL = ['cpp', 'traversal', 'characters', 'combat']
+GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'
 
 try:
     import unreal  # noqa: F401
@@ -59,15 +60,16 @@ def safe_rmtree(p):
 
 
 def wait_slot():
+    if os.environ.get('SM2_COMBAT_NOWAIT'): return   # inside a gpu_slot hold: the lock already enforces the cap
     while True:
-        n = subprocess.run("pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
+        n = subprocess.run("pgrep -f '^/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
         if int(n or 0) < 3: return
         log('3+ Unreal instances running, waiting 60 s'); time.sleep(60)
 
 
 def ue_python(name, code, timeout=3600):
     if subprocess.run(['pgrep', '-f', UPROJECT], capture_output=True).returncode == 0:
-        raise SystemExit('an Unreal process of this worktree is running; stop it first: pkill -9 -f "%s"' % UPROJECT)
+        raise SystemExit('an Unreal process of this worktree is running; stop it first with /Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh (never SIGKILL a rendering engine)')
     jobs = os.path.join(SCR, 'jobs'); os.makedirs(jobs, exist_ok=True)
     job = os.path.join(jobs, name + '.py'); open(job, 'w').write(code)
     lg = os.path.join(SCR, 'logs', name + '.log')
@@ -75,8 +77,10 @@ def ue_python(name, code, timeout=3600):
     log('UE commandlet', name, '-> log', lg)
     t0 = time.time()
     with open(lg + '.stdout', 'w') as so:
-        r = subprocess.run([UE, UPROJECT, '-run=pythonscript', '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen',
-                            '-NoSound', '-NoCrashReports', '-abslog=' + lg], stdout=so, stderr=subprocess.STDOUT, timeout=timeout)
+        # r02 (RULES): every Unreal launch goes through the GPU slot lock, headless commandlets included
+        r = subprocess.run([GPU_SLOT, 'capture', '--label', 'combat', '--timeout', '3600', '--', UE, UPROJECT, '-run=pythonscript', '-script=' + job,
+                            '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen', '-NoSound', '-NoCrashReports', '-abslog=' + lg],
+                           stdout=so, stderr=subprocess.STDOUT, timeout=timeout)
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
     bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l]
     log('UE commandlet %s: rc %d, %.0f s, %d python error lines' % (name, r.returncode, time.time() - t0, len(bad)))
@@ -199,6 +203,29 @@ def build_in_unreal():
     MEL.connect_material_expressions(m1, '', m2, 'A'); MEL.connect_material_expressions(inv, '', m2, 'B')
     MEL.connect_material_property(m2, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
     MEL.recompile_material(fx)
+
+    # ---- M_CmbFlare (r03): the blow flare. Unlit additive, single-sided; a radial glow on a sphere: 1 - Fresnel(exponent 0.4, base 0) is ~1 at the
+    # centre and falls to 0 at the rim (so the disc has no hard edge and no doubled back face). Color (HDR) x Opacity x falloff.
+    fl = new_material('M_CmbFlare')
+    fl.set_editor_property('blend_mode', unreal.BlendMode.BLEND_ADDITIVE)
+    fl.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    fl.set_editor_property('two_sided', False)
+    try: fl.set_editor_property('disable_depth_test', True)   # a screen-space style flare: the same disc in front of or behind the bodies
+    except Exception as ex: log('M_CmbFlare: disable_depth_test not settable (%s)' % ex)
+    c = vparam(fl, 'Color', (2.0, 0.34, 0.05, 1), -700, 0); o = sparam(fl, 'Opacity', 1.0, -700, 200)
+    fres = MEL.create_material_expression(fl, unreal.MaterialExpressionFresnel, -700, 350)
+    try:
+        fres.set_editor_property('exponent', 0.4); fres.set_editor_property('base_reflect_fraction', 0.0)
+    except Exception as ex:
+        log('M_CmbFlare: fresnel exponent not settable (%s): the flare falls off like M_CmbFX' % ex)
+    inv = MEL.create_material_expression(fl, unreal.MaterialExpressionOneMinus, -500, 350)
+    MEL.connect_material_expressions(fres, '', inv, '')
+    m1 = MEL.create_material_expression(fl, unreal.MaterialExpressionMultiply, -400, 100)
+    MEL.connect_material_expressions(c, '', m1, 'A'); MEL.connect_material_expressions(o, '', m1, 'B')
+    m2 = MEL.create_material_expression(fl, unreal.MaterialExpressionMultiply, -250, 200)
+    MEL.connect_material_expressions(m1, '', m2, 'A'); MEL.connect_material_expressions(inv, '', m2, 'B')
+    MEL.connect_material_property(m2, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    MEL.recompile_material(fl)
 
     # ---- M_CmbTrans: lit translucent (web cocoons / splats, dust puffs). Color, Opacity, Emissive.
     tr = new_material('M_CmbTrans')
@@ -409,25 +436,40 @@ return c;
     for i, (cx, side) in enumerate([(-38, -1), (-26, -1), (24, -1), (36, 1), (-44, 1), (52, 1), (-60, -1), (66, -1)]):
         car(cx, side * 9.6, True, 'Car%02d' % i, car_mats[i % len(car_mats)])
 
-    # ---- lighting: low late-afternoon sun across the street (warm key on the fight, long facade shadows), sky, fog
-    sun = spawn(unreal.DirectionalLight, (0, 0, 50000), (0, -24, 128), 'Sun')
+    # ---- lighting (r02, look sweep lk1-lk4 in docs/night1/combat/round-02/NOTES.md). r01: white sky + low contrast flattened the
+    # silhouettes; the first r02 dusk (sun 7 deg, sky-lit) went the other way: everything blue-black. Sky-lit shade is blue whatever the
+    # sun colour, so the sun has to be the key: a warm afternoon sun 32 deg high, along the street axis (the canyon does not shade the
+    # floor), real cast shadows, a dimmed sky light for the shade, thin dark haze (a bright fog luminance washed everything to pale blue-grey: cap2). Lamps stay unlit (daylight).
+    sun = spawn(unreal.DirectionalLight, (0, 0, 50000), (0, -32, 180), 'Sun')
     sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
-    sc.set_editor_property('intensity', 9.0)
-    sc.set_editor_property('light_color', unreal.Color(255, 226, 190, 255))
+    sc.set_editor_property('intensity', 10.0)
+    sc.set_editor_property('light_color', unreal.Color(255, 200, 150, 255))
     sc.set_editor_property('atmosphere_sun_light', True)
     sc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
     spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
     sky = spawn(unreal.SkyLight, (0, 0, 1000), label='SkyLight')
     skc = sky.get_component_by_class(unreal.SkyLightComponent)
     skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
+    skc.set_editor_property('intensity', 0.6)
     fog = spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='HeightFog')
-    fog.get_component_by_class(unreal.ExponentialHeightFogComponent).set_editor_property('fog_density', 0.012)
+    fgc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
+    fgc.set_editor_property('fog_density', 0.003)
+    try: fgc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(0.08, 0.07, 0.09, 1.0))
+    except Exception as ex: log('fog colour not set: %s' % ex)
     spawn(unreal.VolumetricCloud, (0, 0, 0), label='VolumetricCloud')
     ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='GlobalPPV'); ppv.set_editor_property('unbound', True)
-    # fight fill: a soft cool fill from the shadow side so faces read in the canyon shade (not a stage light: low intensity)
+    try:
+        pps = ppv.get_editor_property('settings')
+        for k, v in (('override_auto_exposure_bias', True), ('auto_exposure_bias', -0.3), ('override_vignette_intensity', True), ('vignette_intensity', 0.3),
+                     ('override_color_contrast', True), ('color_contrast', unreal.Vector4(1.08, 1.08, 1.08, 1.08)),
+                     ('override_color_saturation', True), ('color_saturation', unreal.Vector4(1.1, 1.1, 1.1, 1.0))):
+            pps.set_editor_property(k, v)
+        ppv.set_editor_property('settings', pps)
+    except Exception as ex: log('ppv grade not set: %s' % ex)
+    # fight fill: a very soft cool fill from the shadow side (low intensity, not a stage light)
     fill = spawn(unreal.RectLight, (0, -900, 900), (0, -30, 90), 'FightFill')
     fc_ = fill.get_component_by_class(unreal.RectLightComponent)
-    fc_.set_editor_property('intensity', 40.0); fc_.set_editor_property('attenuation_radius', 3000.0)
+    fc_.set_editor_property('intensity', 5.0); fc_.set_editor_property('attenuation_radius', 3000.0)
     fc_.set_editor_property('source_width', 1200.0); fc_.set_editor_property('source_height', 600.0)
     fc_.set_editor_property('light_color', unreal.Color(200, 215, 255, 255)); fc_.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
     # player start: hero at x = -8 m on the centre line facing +X (the fight spawns ahead of him)

@@ -29,6 +29,7 @@
 #include "Engine/GameViewportClient.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/StaticMesh.h"
+#include "Core/WHSettings.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -42,12 +43,13 @@
 #include "UnrealClient.h"
 #include "UObject/ConstructorHelpers.h"
 
-// round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable
+// round 11 (owner: mouse look far too fast): MouseRadPerUnit 0.033 -> 0.011 and a sensitivity multiplier console variable; 2026-10-01 -> 0.0025
 static TAutoConsoleVariable<float> CVarWHMouseSensitivity(TEXT("wh.MouseSensitivity"), 1.0f,
 	TEXT("Mouse look sensitivity multiplier for the traversal hero (1 = default, radians per mouse unit = MouseRadPerUnit x this)."), ECVF_Default);
 
 namespace
 {
+	constexpr float MaxMouseDeltaPx = 120.f;   // per-frame mouse delta clamp (capture warps / focus changes)
 	const FName N_swingLow(TEXT("swingLow")), N_trick(TEXT("trick")), N_tuckFlip(TEXT("tuckFlip")), N_layout(TEXT("layout")),
 		N_corkscrew(TEXT("corkscrew")), N_scissor(TEXT("scissor")), N_rise(TEXT("rise")), N_dive(TEXT("dive")), N_zipPull(TEXT("zipPull")),
 		N_release(TEXT("release")), N_jumpLaunch(TEXT("jumpLaunch")), N_wallRun(TEXT("wallRun")), N_wallRunSide(TEXT("wallRunSide")),
@@ -142,9 +144,18 @@ void AWebTravCharacter::BuildTravInput()
 	MapMove(EKeys::S, true, true); MapMove(EKeys::Down, true, true);
 	MapMove(EKeys::D, false, false); MapMove(EKeys::Right, false, false);
 	MapMove(EKeys::A, false, true); MapMove(EKeys::Left, false, true);
-	IMC->MapKey(MoveAction, EKeys::Gamepad_Left2D);
+	// sticks: radial dead zone (DualSense / any pad through the macOS GameController framework = standard Gamepad_* keys)
+	auto DeadZone = [IMC](FEnhancedActionKeyMapping& M)
+	{
+		UInputModifierDeadZone* DZ = NewObject<UInputModifierDeadZone>(IMC);
+		DZ->Type = EDeadZoneType::Radial;
+		DZ->LowerThreshold = 0.12f;
+		DZ->UpperThreshold = 1.f;
+		M.Modifiers.Add(DZ);
+	};
+	DeadZone(IMC->MapKey(MoveAction, EKeys::Gamepad_Left2D));
 	IMC->MapKey(LookMouseAction, EKeys::Mouse2D);
-	IMC->MapKey(LookPadAction, EKeys::Gamepad_Right2D);
+	DeadZone(IMC->MapKey(LookPadAction, EKeys::Gamepad_Right2D));
 	// RIGHT MOUSE = web swing (hold); R2 = swing in air / parkour on ground (L2+R2 = zip)
 	IMC->MapKey(SwingAction, EKeys::RightMouseButton);
 	IMC->MapKey(PadR2Action, EKeys::Gamepad_RightTrigger);
@@ -155,6 +166,7 @@ void AWebTravCharacter::BuildTravInput()
 	// Shift = wall run + ground parkour
 	IMC->MapKey(SprintAction, EKeys::LeftShift);
 	IMC->MapKey(SprintAction, EKeys::RightShift);
+	IMC->MapKey(SprintAction, EKeys::Gamepad_LeftThumbstick);  // L3 (R2 also sprints on the ground)
 	// E / MIDDLE MOUSE = web-zip / point-launch; Y / Triangle
 	IMC->MapKey(ZipAction, EKeys::E);
 	IMC->MapKey(ZipAction, EKeys::MiddleMouseButton);
@@ -310,6 +322,20 @@ bool AWebTravCharacter::SetupHeroMesh()
 	M->SetAnimationMode(EAnimationMode::AnimationBlueprint);
 	M->SetAnimInstanceClass(UWebTravAnimInstance::StaticClass());
 	M->SetSkeletalMesh(Body);
+	// [integration, traversal r18 merge] the HeroDev proxy (public/assets/spiderman.glb) carries the upstream browser suit texture, a copy
+	// of a studio suit layout/emblem. The playable hero must wear P2's ORIGINAL round-08 suit (Tessera, MI_Hero_Suit), which is authored on
+	// the same body UV atlas (tools/ue_char/hero_suit_r8.py evaluates the same spiderman.glb body). Override the 'SpiderSuit' slot whenever
+	// that material exists (build_characters.py ran); traversal keeps its own skeleton, clips and flip shapes untouched.
+	{
+		static const TCHAR* OriginalSuit = TEXT("/Game/Characters/Hero/Materials/MI_Hero_Suit.MI_Hero_Suit");
+		const int32 Slot = M->GetMaterialIndex(FName(TEXT("SpiderSuit")));
+		UMaterialInterface* Suit = Slot != INDEX_NONE ? LoadObject<UMaterialInterface>(nullptr, OriginalSuit) : nullptr;
+		if (Suit) M->SetMaterial(Slot, Suit);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s"), Suit ? TEXT("ORIGINAL (MI_Hero_Suit, slot SpiderSuit)")
+			: Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : TEXT("MI_Hero_Suit MISSING - run build_characters.py; proxy suit shown"));
+		if (Slot != INDEX_NONE && !Suit)
+			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: original suit material %s not found"), OriginalSuit);
+	}
 	M->SetCastShadow(true);
 	// round 06: the suit rendered white / unshaded for the first frames of a capture (textures streaming in late):
 	// keep the hero's textures resident at full mip from the first frame
@@ -449,7 +475,10 @@ void AWebTravCharacter::BeginPlay()
 	if (Script && Script->IsActive()) Traversal->SetVelocityM(Script->SpawnVelM());
 	Cam.Reset(Traversal->PosM(), FMath::DegreesToRadians(YawDeg));
 	Cam.Pitch = CamPitch;
-	if (bHeroMesh && Script && Script->WantsTelemetry())
+	// [F perf local patch, P3 to adopt] the two 480x270 scene captures below re-render the scene every frame (the full-scene depth
+	// capture = a second Nanite/VSM/prepass pass). They only feed telemetry columns (hero mask / wall_frac / hero_occl), so they are
+	// off unless -WHTravMask is passed (C's route/anim checks pass it; perf runs do not).
+	if (bHeroMesh && Script && Script->WantsTelemetry() && FParse::Param(FCommandLine::Get(), TEXT("WHTravMask")))
 	{ // pixel mask of the hero for telemetry: scene depth of the hero meshes only, 480x270, from the view camera
 		MaskRT = NewObject<UTextureRenderTarget2D>(this, TEXT("HeroMaskRT"));
 		MaskRT->RenderTargetFormat = ETextureRenderTargetFormat::RTF_RGBA16f;
@@ -682,14 +711,26 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		I.bJump = bJumpKey; I.bDrop = bDropKey; I.bQuick = bQuickKey; I.bTrick = bTrickKey;
 		// look: mouse (yaw right +, pitch down +) and right stick rate
 		const float MSens = MouseRadPerUnit * FMath::Max(0.f, CVarWHMouseSensitivity.GetValueOnGameThread());
-		I.Look = FVector2D(MouseAccum.X * MSens, -MouseAccum.Y * MSens)
-			+ FVector2D(PadLook.X * PadLookRate.X, -PadLook.Y * PadLookRate.Y) * Dt;
+		// owner playtest 2026-10-01: mouse look only while the game has the mouse (left click captures, Escape releases). With the cursor free,
+		// moving it over the window -- or the right-mouse capture warp when a swing starts -- produced huge one-frame deltas. Clamp spikes too.
+		const AWebHomagePlayerController* WPC = Cast<AWebHomagePlayerController>(GetController());
+		const bool bMouseLook = !WPC || WPC->IsMouseCaptured();
+		const FVector2D MouseD = bMouseLook ? FVector2D(FMath::Clamp(MouseAccum.X, -MaxMouseDeltaPx, MaxMouseDeltaPx), FMath::Clamp(MouseAccum.Y, -MaxMouseDeltaPx, MaxMouseDeltaPx)) : FVector2D::ZeroVector;
+		// 2026-10-01 settings menu: gamepad look sensitivity and Invert Y (mouse and stick). The right stick is never gated by mouse capture.
+		const FWHSettings& St = WHSettings();
+		const double YSign = St.bInvertY ? -1.0 : 1.0;
+		const double PadK = St.PadSens;
+		I.Look = FVector2D(MouseD.X * MSens, -MouseD.Y * MSens * YSign)
+			+ FVector2D(PadLook.X * PadLookRate.X * PadK, -PadLook.Y * PadLookRate.Y * PadK * YSign) * Dt;
 	}
 	MouseAccum = FVector2D::ZeroVector;
 	I.ComputeEdges(PrevInput);
 	PrevInput = I;
 
 	// ---- camera look, traversal, camera
+	// settings menu (2026-10-01): FOV + camera shake. WHSettings() stays at its defaults (58.0 deg, shake on) in automated runs.
+	Cam.BaseVFov = WHSettings().BaseVFov();
+	Cam.bJolts = WHSettings().bCameraShake;
 	Cam.ApplyLook(I.Look);
 	// pre-roll: the camera state is restored after the frame is set up and the traversal is only posed (not stepped), so the
 	// sequence that follows is bit-identical to a run without pre-roll

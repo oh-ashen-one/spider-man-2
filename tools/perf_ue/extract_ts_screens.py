@@ -38,7 +38,11 @@ def main():
             area = np.linalg.norm(np.cross(e1, e2), axis=1)
             for i in np.where(area >= min_area)[0]:
                 n = N[i * 4]; n = n / max(np.linalg.norm(n), 1e-6)
-                out.append({'c': [round(float(v), 2) for v in cen[i]], 'n': [round(float(v), 3) for v in n], 'a': round(float(area[i]), 1)})
+                # (round 03) edge lengths: h = the edge with the larger vertical component, w = the other (used by the emissive stand-in content quads)
+                a1, a2 = e1[i], e2[i]
+                hv, wv = (a1, a2) if abs(a1[1]) >= abs(a2[1]) else (a2, a1)
+                out.append({'c': [round(float(v), 2) for v in cen[i]], 'n': [round(float(v), 3) for v in n], 'a': round(float(area[i]), 1),
+                            'w': round(float(np.linalg.norm(wv)), 2), 'h': round(float(np.linalg.norm(hv)), 2)})
     dst = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'unreal', 'WebHomage', 'Scripts', 'look_ts_screens.json')
     json.dump({'_comment': 'LED screen quads of the Times-Square-like district (geometry only), from tools/perf_ue/extract_ts_screens.py', 'screens': out}, open(dst, 'w'))
     print(len(out), 'screens ->', os.path.normpath(dst))

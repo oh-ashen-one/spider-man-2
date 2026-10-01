@@ -7,19 +7,19 @@
  ],
  "presets": {
   "midday": {
-   "desc": "late-morning summer sun, high, warm-white; blue skylight fills the canyons, strong wall bounce",
+   "desc": "round 03 v2: overcast late morning (LOOK-SPEC L2): neutral grey Rayleigh sky, bright hazy horizon, soft strong sun behind the cloud deck, average-metered exposure, highlights compressed",
    "sun": {
-    "elev": 58.0,
+    "elev": 55.0,
     "az": 196.0,
-    "lux": 105000.0,
-    "temp": 5900.0,
-    "angle": 0.5357,
-    "disk": 1.0,
+    "lux": 26000.0,
+    "temp": 6700.0,
+    "angle": 5.0,
+    "disk": 0.0,
     "cloud_shadows": false
    },
    "moon": null,
    "sky": {
-    "intensity": 1.25,
+    "intensity": 2.3,
     "tint": [
      1.0,
      1.0,
@@ -27,11 +27,11 @@
     ]
    },
    "atmosphere": {
-    "rayleigh_scattering_scale": 0.0331,
-    "mie_scattering_scale": 0.02,
-    "mie_absorption_scale": 0.002,
-    "mie_anisotropy": 0.8,
-    "aerial_perspective_distance_scale": 6.0,
+    "rayleigh_scattering_scale": 0.03,
+    "mie_scattering_scale": 0.15,
+    "mie_absorption_scale": 0.004,
+    "mie_anisotropy": 0.6,
+    "aerial_perspective_distance_scale": 4.0,
     "aerial_perspective_start_depth": 0.02,
     "height_fog_contribution": 1.0,
     "ground_albedo": [
@@ -41,9 +41,15 @@
      255
     ],
     "sky_luminance_factor": [
-     1.0,
-     1.0,
-     1.0,
+     1.5,
+     1.5,
+     1.5,
+     1.0
+    ],
+    "rayleigh_scattering": [
+     0.5,
+     0.5,
+     0.5,
      1.0
     ]
    },
@@ -81,13 +87,33 @@
      "fog_density": 0.0016,
      "fog_height_offset": 9000.0,
      "fog_height_falloff": 0.02
-    }
+    },
+    "sky_atmosphere_ambient_contribution_color_scale": [
+     3.5,
+     3.5,
+     3.5,
+     1.0
+    ]
    },
    "clouds": {
-    "layer_bottom_altitude": 3.5,
-    "layer_height": 6.0,
+    "layer_bottom_altitude": 2.0,
+    "layer_height": 4.0,
     "coverage": 0.45,
-    "tracing_max_distance": 40.0
+    "tracing_max_distance": 40.0,
+    "mi": {
+     "scalars": {
+      "Cloud_GlobalCoverage": 0.5,
+      "Cloud_GlobalDensity": 0.03
+     },
+     "vectors": {
+      "Cloud_AlbedoColor": [
+       0.9,
+       0.9,
+       0.9,
+       0.5
+      ]
+     }
+    }
    },
    "mpc": {
     "NightK": 0.0,
@@ -97,32 +123,32 @@
     "EmissiveScale": 3.0
    },
    "exposure": {
-    "min_ev": 11.0,
+    "min_ev": 8.0,
     "max_ev": 15.0,
-    "bias": 0.55
+    "bias": -0.7
    },
    "post": {
     "bloom_intensity": 0.55,
     "bloom_threshold": 1.0,
-    "lens_flare_intensity": 0.6,
+    "lens_flare_intensity": 0.0,
     "vignette_intensity": 0.32,
     "scene_fringe_intensity": 0.15,
     "film_slope": 0.9,
     "film_toe": 0.55,
-    "film_shoulder": 0.26,
+    "film_shoulder": 0.2,
     "film_black_clip": 0.0,
-    "film_white_clip": 0.04,
+    "film_white_clip": 0.0,
     "white_temp": 6500.0,
     "color_saturation": [
-     1.08,
-     1.08,
-     1.08,
+     0.96,
+     0.96,
+     0.96,
      1.0
     ],
     "color_contrast": [
-     1.06,
-     1.06,
-     1.06,
+     1.0,
+     1.0,
+     1.0,
      1.0
     ],
     "motion_blur_amount": 0.5,
@@ -130,15 +156,29 @@
     "motion_blur_target_fps": 60,
     "ambient_occlusion_intensity": 0.35,
     "ambient_occlusion_radius": 90.0,
-    "indirect_lighting_intensity": 1.9,
+    "indirect_lighting_intensity": 1.6,
     "lumen_scene_lighting_quality": 1.0,
     "lumen_final_gather_quality": 1.0,
     "lumen_reflection_quality": 1.0,
-    "lumen_diffuse_color_boost": 1.6
+    "lumen_diffuse_color_boost": 1.6,
+    "color_offset": [
+     0.008,
+     0.0084,
+     0.0092,
+     0.0
+    ],
+    "color_gain_highlights": [
+     0.9,
+     0.9,
+     0.9,
+     1.0
+    ],
+    "auto_exposure_low_percent": 10.0,
+    "auto_exposure_high_percent": 90.0
    }
   },
   "golden": {
-   "desc": "sun 9 degrees above the west-south-west end of the cross streets (behind the buildings at the end of the avenue views): warm orange key (4200 K), unshadowed low warm-neutral fills so the shadow side is lifted, soft golden haze",
+   "desc": "round 03 v2: golden hour 9 deg sun behind the avenue ends, warm Mie haze (far shore takes the sky tint), cool sky-fill in the shadows, highlights compressed",
    "sun": {
     "elev": 9.0,
     "az": 238.0,
@@ -150,19 +190,19 @@
    },
    "moon": null,
    "sky": {
-    "intensity": 7.0,
+    "intensity": 8.0,
     "tint": [
-     1.0,
-     0.9,
-     0.78
+     0.88,
+     0.94,
+     1.0
     ]
    },
    "atmosphere": {
     "rayleigh_scattering_scale": 0.03,
-    "mie_scattering_scale": 0.01,
+    "mie_scattering_scale": 0.03,
     "mie_absorption_scale": 0.003,
-    "mie_anisotropy": 0.82,
-    "aerial_perspective_distance_scale": 3.0,
+    "mie_anisotropy": 0.7,
+    "aerial_perspective_distance_scale": 5.0,
     "aerial_perspective_start_depth": 0.02,
     "height_fog_contribution": 1.0,
     "ground_albedo": [
@@ -175,6 +215,12 @@
      1.0,
      1.0,
      1.0,
+     1.0
+    ],
+    "mie_scattering": [
+     1.0,
+     0.72,
+     0.45,
      1.0
     ]
    },
@@ -240,10 +286,10 @@
     "scene_fringe_intensity": 0.15,
     "film_slope": 0.92,
     "film_toe": 0.5,
-    "film_shoulder": 0.3,
+    "film_shoulder": 0.2,
     "film_black_clip": 0.0,
-    "film_white_clip": 0.04,
-    "white_temp": 7300.0,
+    "film_white_clip": 0.0,
+    "white_temp": 7800.0,
     "color_saturation": [
      1.1,
      1.08,
@@ -270,6 +316,18 @@
      0.006,
      0.004,
      0.0
+    ],
+    "color_gain_shadows": [
+     0.93,
+     0.97,
+     1.08,
+     1.0
+    ],
+    "color_gain_highlights": [
+     0.8,
+     0.8,
+     0.8,
+     1.0
     ]
    },
    "fills": [
@@ -297,7 +355,7 @@
    ]
   },
   "night": {
-   "desc": "deep blue night, lifted ambient: sodium / LED street lamps with light pools every 24 m, storefront spill on the sidewalks, stand-in traffic lights (head / tail), damp streets, hero rim + fill; windows and shop fronts lit through MPC_City (NightK = 1)",
+   "desc": "round 03 v2: night with dark facade masses, neutral B-R, wide sodium / LED lamp pools, denser far haze",
    "sun": {
     "elev": -9.0,
     "az": 285.0,
@@ -310,15 +368,15 @@
    "moon": {
     "elev": 38.0,
     "az": 118.0,
-    "lux": 30.0,
-    "temp": 6500.0,
+    "lux": 16.0,
+    "temp": 5600.0,
     "angle": 0.52
    },
    "sky": {
-    "intensity": 5.0,
+    "intensity": 2.5,
     "tint": [
-     0.85,
-     0.9,
+     0.92,
+     0.94,
      1.0
     ]
    },
@@ -341,10 +399,16 @@
      1.0,
      1.0,
      1.0
+    ],
+    "rayleigh_scattering": [
+     0.3,
+     0.4,
+     0.7,
+     1.0
     ]
    },
    "fog": {
-    "fog_density": 0.0038,
+    "fog_density": 0.012,
     "fog_height_falloff": 0.1,
     "start_distance": 4000.0,
     "fog_max_opacity": 0.9,
@@ -395,7 +459,7 @@
    "exposure": {
     "min_ev": 1.0,
     "max_ev": 4.3,
-    "bias": -0.3
+    "bias": -0.25
    },
    "post": {
     "bloom_intensity": 0.85,
@@ -408,11 +472,11 @@
     "film_shoulder": 0.3,
     "film_black_clip": 0.0,
     "film_white_clip": 0.04,
-    "white_temp": 6100.0,
+    "white_temp": 6000.0,
     "color_saturation": [
-     1.05,
-     1.05,
-     1.1,
+     0.95,
+     0.95,
+     1.0,
      1.0
     ],
     "color_contrast": [
@@ -431,9 +495,9 @@
     "lumen_final_gather_quality": 1.0,
     "lumen_reflection_quality": 1.0,
     "color_offset": [
-     0.004,
-     0.005,
-     0.009,
+     0.0064,
+     0.008,
+     0.0144,
      0.0
     ]
    },
@@ -442,11 +506,11 @@
     "lamps": {
      "head_h": 9.15,
      "arm": 2.9,
-     "spot_cd": 7000,
-     "spot_outer": 46,
-     "spot_inner": 10,
+     "spot_cd": 14000,
+     "spot_outer": 60,
+     "spot_inner": 25,
      "spot_radius": 3000,
-     "halo_cd": 60,
+     "halo_cd": 120,
      "halo_radius": 1200,
      "temps": [
       3500,
@@ -470,7 +534,7 @@
      "spacing": 12.0,
      "height": 3.3,
      "pitch": -38,
-     "spot_cd": 2000,
+     "spot_cd": 4000,
      "outer": 70,
      "inner": 22,
      "radius": 2000,
@@ -499,7 +563,7 @@
      "gap_max": 20.0,
      "clear_radius": 7.0,
      "lane_edge_park": 2.4,
-     "head_cd": 1000,
+     "head_cd": 2000,
      "head_outer": 26,
      "head_inner": 6,
      "head_radius": 1900,
@@ -586,7 +650,12 @@
        0.1
       ]
      },
-     "_comment": "coloured light in front of each Times-Square-like LED screen (quad positions from look_ts_screens.json = tools/perf_ue/extract_ts_screens.py). The screens' own ad content is IP-excluded from the port, so their emission is black; this restores the district's colour spill."
+     "_comment": "coloured light in front of each Times-Square-like LED screen (quad positions from look_ts_screens.json = tools/perf_ue/extract_ts_screens.py). The screens' own ad content is IP-excluded from the port, so their emission is black; this restores the district's colour spill.",
+     "content": {
+      "enabled": true,
+      "offset": 0.05,
+      "gain": 4.5
+     }
     }
    },
    "fills": [
@@ -594,28 +663,28 @@
      "name": "West",
      "elev": 8.0,
      "az": 262.0,
-     "lux": 7.0,
-     "temp": 4200.0
+     "lux": 3.4,
+     "temp": 3000.0
     },
     {
      "name": "North",
      "elev": 8.0,
      "az": 355.0,
-     "lux": 1.5,
+     "lux": 0.765,
      "temp": 5200.0
     },
     {
      "name": "South",
      "elev": 8.0,
      "az": 175.0,
-     "lux": 1.5,
+     "lux": 0.765,
      "temp": 5200.0
     },
     {
      "name": "East",
      "elev": 8.0,
      "az": 95.0,
-     "lux": 1.0,
+     "lux": 0.51,
      "temp": 6500.0
     }
    ],

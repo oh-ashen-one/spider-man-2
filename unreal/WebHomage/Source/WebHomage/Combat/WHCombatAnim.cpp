@@ -126,7 +126,7 @@ void WHCmbAnim::ApplyProc(FPoseContext& Output, const FWHProcLayer& P)
 UAnimSequence* UWHCombatHeroAnim::CombatClip(FName Name)
 {
 	if (TObjectPtr<UAnimSequence>* S = CClips.Find(Name)) return S->Get();
-	const FString N = Name.ToString();
+	const FString N = ClipPrefix + Name.ToString();   // r04: P2's hero clips are prefixed (-WHHeroClipPrefix=A_Hero_); empty for the HeroDev proxy
 	UAnimSequence* Seq = LoadObject<UAnimSequence>(nullptr, *FString::Printf(TEXT("%s/%s.%s"), *ClipRoot, *N, *N));
 	CClips.Add(Name, Seq);
 	return Seq;

@@ -3,6 +3,9 @@
 #include "WebHomage.h"
 
 #include "Components/PrimitiveComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/OverlapResult.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -27,10 +30,30 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 	GroundBoxes.Reset();
 	Grid.Reset();
 	CompToBox.Reset();
+	InstToBox.Reset();
+	int32 NInstComps = 0, NInstBoxes = 0, NInstSkipped = 0, NFarSkipped = 0;
 	if (!InWorld)
 	{
 		return;
 	}
+	// owner playtest 2026-10-01: the integrated Manhattan map carries per-TILE merged visual meshes (SM_facade / SM_roofs / SM_detail /
+	// SM_facadeLod / SM_signage / SM_streetkit / Times Square / bridges / seawalls / far skyline) with collision; as traversal boxes (and as
+	// web-trace targets) each was a 256 m-2 km solid block -> landing / running in mid-air, webs on nothing. When the map has the browser's
+	// per-building boxes (build_look.py: hidden /Engine/BasicShapes/Cube actors "WHBox_*"), those are the ONLY building boxes, and every
+	// other wide (> 60 m) collision primitive becomes visual-only.
+	auto IsTravCube = [](const UPrimitiveComponent* P)
+	{
+		const UStaticMeshComponent* C = Cast<UStaticMeshComponent>(P);
+		const UStaticMesh* M = C ? C->GetStaticMesh() : nullptr;
+		return M && !C->IsVisible() && M->GetName() == TEXT("Cube") && M->GetPathName().StartsWith(TEXT("/Engine/BasicShapes/"));
+	};
+	bool bBoxesOnly = false;
+	for (TActorIterator<AActor> It(InWorld); It && !bBoxesOnly; ++It)
+	{
+		TInlineComponentArray<UPrimitiveComponent*> Ps(*It);
+		for (UPrimitiveComponent* P : Ps) { if (P && IsTravCube(P) && P->IsCollisionEnabled()) { bBoxesOnly = true; break; } }
+	}
+	int32 NVisualOnly = 0;
 	for (TActorIterator<AActor> It(InWorld); It; ++It)
 	{
 		AActor* A = *It;
@@ -48,31 +71,89 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 		TInlineComponentArray<UPrimitiveComponent*> Prims(A);
 		for (UPrimitiveComponent* P : Prims)
 		{
+			if (bBoxesOnly && P && P->IsCollisionEnabled() && !IsTravCube(P))
+			{
+				const FBox VB = P->Bounds.GetBox();
+				if (FMath::Max(VB.GetSize().X, VB.GetSize().Y) > 6000.0)
+				{
+					P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					++NVisualOnly;
+				}
+				continue;   // only the per-building boxes are traversal boxes
+			}
 			if (!P || !P->IsCollisionEnabled() || P->GetCollisionObjectType() != ECC_WorldStatic)
 			{
 				continue;
 			}
-			const FBox B = P->Bounds.GetBox();
-			FTravBox TB{ B.Min / 100.0, B.Max / 100.0 };
-			const FVector S = TB.Max - TB.Min;
-			if (S.Z < 1.0 || (S.X < 0.8 && S.Y < 0.8))
 			{
+				// owner playtest 2026-10-01 ("landed in mid-air", "ran up the air"): the far-skyline LOD meshes (SM_farCityMass / SM_farCity /
+				// SM_farCityRoofs, one merged mesh per 2 km tile) carried collision, so each became one 2 km x 2 km, 80-290 m tall invisible block.
+				// They are scenery only: switch their collision off (also for web traces) and never index anything wider than 400 m above street level.
+				const UStaticMeshComponent* SMC = Cast<UStaticMeshComponent>(P);
+				const UStaticMesh* SMesh = SMC ? SMC->GetStaticMesh() : nullptr;
+				const bool bFarMesh = SMesh && SMesh->GetName().StartsWith(TEXT("SM_far"));
+				const FBox PB = P->Bounds.GetBox();
+				const bool bGiant = FMath::Max(PB.GetSize().X, PB.GetSize().Y) > 40000.0 && PB.Max.Z > 2000.0;
+				if (bFarMesh || bGiant)
+				{
+					P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+					++NFarSkipped;
+					continue;
+				}
+			}
+			auto AddBox = [this](const FBox& B) -> int32
+			{
+				FTravBox TB{ B.Min / 100.0, B.Max / 100.0 };
+				const FVector S = TB.Max - TB.Min;
+				if (S.Z < 1.0 || (S.X < 0.8 && S.Y < 0.8))
+				{
+					return -1;
+				}
+				const int32 Idx = Boxes.Add(TB);
+				const int32 X0 = FMath::FloorToInt(TB.Min.X / Cell), X1 = FMath::FloorToInt(TB.Max.X / Cell);
+				const int32 Y0 = FMath::FloorToInt(TB.Min.Y / Cell), Y1 = FMath::FloorToInt(TB.Max.Y / Cell);
+				for (int32 X = X0; X <= X1; ++X)
+				{
+					for (int32 Y = Y0; Y <= Y1; ++Y)
+					{
+						Grid.FindOrAdd(Key(X, Y)).Add(Idx);
+					}
+				}
+				return Idx;
+			};
+			if (const UInstancedStaticMeshComponent* ISM = Cast<UInstancedStaticMeshComponent>(P))
+			{
+				// per-instance boxes; foliage / tree / moving-traffic instances are not perchable building boxes
+				const UStaticMesh* SM = ISM->GetStaticMesh();
+				const FString MeshName = SM ? SM->GetName().ToLower() : FString();
+				const FString CompName = (A->GetName() + TEXT("/") + ISM->GetName()).ToLower();
+				static const TCHAR* Skip[] = { TEXT("tree"), TEXT("crown"), TEXT("clump"), TEXT("leaf"), TEXT("leaves"), TEXT("foliage"), TEXT("canopy"), TEXT("bush"), TEXT("traffic") };
+				bool bSkip = !SM;
+				for (const TCHAR* K : Skip) { if (MeshName.Contains(K) || CompName.Contains(K)) { bSkip = true; break; } }
+				++NInstComps;
+				TArray<int32>& Map = InstToBox.FindOrAdd(P);
+				const int32 N = ISM->GetInstanceCount();
+				Map.Init(-1, N);
+				if (bSkip) { NInstSkipped += N; continue; }
+				const FBox MB = SM->GetBoundingBox();
+				for (int32 I = 0; I < N; ++I)
+				{
+					FTransform T;
+					if (!ISM->GetInstanceTransform(I, T, /*bWorldSpace*/ true)) continue;
+					const int32 Idx = AddBox(MB.TransformBy(T));
+					Map[I] = Idx;
+					if (Idx >= 0) ++NInstBoxes;
+				}
 				continue;
 			}
-			const int32 Idx = Boxes.Add(TB);
-			CompToBox.Add(P, Idx);
-			const int32 X0 = FMath::FloorToInt(TB.Min.X / Cell), X1 = FMath::FloorToInt(TB.Max.X / Cell);
-			const int32 Y0 = FMath::FloorToInt(TB.Min.Y / Cell), Y1 = FMath::FloorToInt(TB.Max.Y / Cell);
-			for (int32 X = X0; X <= X1; ++X)
+			const int32 Idx = AddBox(P->Bounds.GetBox());
+			if (Idx >= 0)
 			{
-				for (int32 Y = Y0; Y <= Y1; ++Y)
-				{
-					Grid.FindOrAdd(Key(X, Y)).Add(Idx);
-				}
+				CompToBox.Add(P, Idx);
 			}
 		}
 	}
-	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed"), Boxes.Num());
+	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided; per-building boxes only %d, %d wide merged meshes made visual-only)"), Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped, bBoxesOnly ? 1 : 0, NVisualOnly);
 }
 
 void FWebTravWorld::Near(double X, double Y, double R, TArray<int32>& Out) const
@@ -137,6 +218,13 @@ bool FWebTravWorld::Raycast(const FVector& O, const FVector& D, double MaxDist, 
 	Out.bGround = A && A->ActorHasTag(NAME_WHGround);
 	const int32* Bi = H.GetComponent() ? CompToBox.Find(H.GetComponent()) : nullptr;
 	Out.Box = Bi ? *Bi : -1;
+	if (!Bi && H.GetComponent())
+	{
+		if (const TArray<int32>* M = InstToBox.Find(H.GetComponent()))
+		{
+			Out.Box = M->IsValidIndex(H.Item) ? (*M)[H.Item] : -1;
+		}
+	}
 	return true;
 }
 
