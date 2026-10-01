@@ -4,6 +4,8 @@
 - Built + committed: C++ `AWHLookTimeOfDay` (`wh.TimeOfDay` 0-24 continuous, `wh.Weather`, live pins `exec wh.ToDSet <param> <v>` / `wh.ToDClear`), key table `Scripts/look_tod.py` (from the `tod` section of `Scripts/look_presets.json`),
   map `/Game/Tests/Look/Look_Midtown_tod` (rebuild: `tools/perf_ue/rebuild_look.sh rigs,maps tod`), time-lapse `tools/perf_ue/capture_tod_lapse.py`, one-session sweep runner `tools/perf_ue/sweeps/run_r05.py --plan <json>`, `tools/perf_ue/tod_tests.py` (spec numbers per variant).
 - Session A (64 stills) = `round-05/sweeps/A_TESTS.md`. Session B (`sweeps/r05/plan_b.json`: golden key/fill gA..gF, night windows nA..nC, overcast oA/oB) and C (`plan_c.json`: cloud coverage per hour) were queued at 14:40 into `$SM2_LOOK_SCRATCH/r05/B|C`.
+- **17:06 resume (Opus 5.5, after the 15:41 owner pause):** `final_r05.sh build,tour` queued (log `$SM2_LOOK_SCRATCH/r05/final_bt.log`); then `chain_E.sh` runs sweep E (`sweeps/r05/plan_e.json`: night far band via fog start/density/max opacity, overcast + clear-day far band via aerial distance) into `r05/E`.
+  Session CD finding: night S4 far shore is 56 Y ABOVE the sky (lit far city, Y 92 vs sky 35), overcast/day far shore only 6..10 Y under the sky; golden gJ passes the PLAN band (-22.9, dBR -5.4). After E: fold winners into `look_presets.json`, `final_r05.sh build,tour,lapse,clips`, `tod_tests.py`, critic pack.
 - Next: pick winners into `look_presets.json` `tod` keys -> `rebuild_look.sh rigs,maps tod` -> `capture_tour.py --tod ...` stills + `capture_tod_lapse.py` + swing clip -> `tod_tests.py` -> critic pack `/Users/midir/sm2-n1/_scratch/critic-P4-r05/`.
 
 # (older) P4 Look, lighting, post: handoff (round 03; round 04)

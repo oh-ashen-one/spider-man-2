@@ -1,0 +1,178 @@
+{
+ "groups": [
+  {
+   "name": "eN0",
+   "shots": [
+    "S4",
+    "S8",
+    "S1"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ]
+  },
+  {
+   "name": "eN1",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 80000",
+    "exec wh.ToDSet fog.FogDensity 0.04",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.97"
+   ]
+  },
+  {
+   "name": "eN2",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 80000",
+    "exec wh.ToDSet fog.FogDensity 0.08",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.98"
+   ]
+  },
+  {
+   "name": "eN3",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 120000",
+    "exec wh.ToDSet fog.FogDensity 0.15",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.99"
+   ]
+  },
+  {
+   "name": "eN4",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 80000",
+    "exec wh.ToDSet fog.FogDensity 0.08",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.98",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.02 0.03 0.07 1"
+   ]
+  },
+  {
+   "name": "eN5",
+   "shots": [
+    "S4",
+    "S8",
+    "S1"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 22",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet fog.StartDistance 40000",
+    "exec wh.ToDSet fog.FogDensity 0.05",
+    "exec wh.ToDSet fog.FogMaxOpacity 0.98",
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.02 0.03 0.07 1"
+   ]
+  },
+  {
+   "name": "eO0",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "cvar wh.Weather 1",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ]
+  },
+  {
+   "name": "eO1",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "cvar wh.Weather 1",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5"
+   ]
+  },
+  {
+   "name": "eO2",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "cvar wh.Weather 1",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.0",
+    "exec wh.ToDSet fog.FogDensity 0.0016"
+   ]
+  },
+  {
+   "name": "eO3",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "cvar wh.Weather 1",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 2.0",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 2.4 2.4 2.4 1"
+   ]
+  },
+  {
+   "name": "eD0",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17"
+   ]
+  },
+  {
+   "name": "eD1",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5"
+   ]
+  },
+  {
+   "name": "eD2",
+   "shots": [
+    "S4",
+    "S8"
+   ],
+   "cmds": [
+    "cvar wh.TimeOfDay 13",
+    "exec wh.ToDSet mpc.ShadeFill 0.17",
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5",
+    "exec wh.ToDSet fog.FogDensity 0.0013"
+   ]
+  }
+ ]
+}
