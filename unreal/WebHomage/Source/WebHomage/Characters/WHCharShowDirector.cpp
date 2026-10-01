@@ -2,6 +2,7 @@
 #include "Characters/WHCharShowDirector.h"
 #include "Characters/WHCharLoopWalker.h"
 #include "Characters/WHCharStage.h"
+#include "Characters/WHHeroSuit.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "EngineUtils.h"
 #include "Misc/FileHelper.h"
@@ -103,18 +104,21 @@ void AWHCharShowDirector::Tick(float Dt)
 	float Tl = bLoop ? FMath::Fmod(T, FMath::Max(0.1f, Total)) : FMath::Min(T, Total - 1e-3f);
 	int32 Idx = 0; for (; Idx < Shots.Num() - 1 && Tl >= Shots[Idx].Duration; ++Idx) Tl -= Shots[Idx].Duration;
 	const FWHShot& S = Shots[Idx];
-	if (!S.Target) return;
+	AActor* Tgt = S.bTargetPlayer ? Cast<AActor>(UGameplayStatics::GetPlayerPawn(this, 0)) : S.Target.Get();
+	if (!Tgt) return;
+	if (Idx != LastShot && S.Suit >= 0)
+		if (UWHHeroSuitSubsystem* Sub = UWHHeroSuitSubsystem::Get(this)) Sub->SetSuit(S.Suit, TEXT("director shot"));
 	if (Idx != LastShot)
 		for (AActor* W : S.RestartWalkers)
 			if (AWHCharLoopWalker* LW = Cast<AWHCharLoopWalker>(W)) LW->RestartLine();
 	if (Idx != LastShot && ManagedActors.Num() > 0)
 		for (AActor* M : ManagedActors)
-			if (M) M->SetActorHiddenInGame(!(M == S.Target || S.ShowActors.Contains(M)));
-	const FVector Base = S.Target->GetActorLocation();
+			if (M) M->SetActorHiddenInGame(!(M == Tgt || S.ShowActors.Contains(M)));
+	const FVector Base = Tgt->GetActorLocation();
 	const FVector Aim = Base + FVector(0, 0, S.AimHeight);
 	const bool bCut = Idx != LastShot; LastShot = Idx;
 	SmoothAim = bCut ? Aim : FMath::VInterpTo(SmoothAim, Aim, Dt, 12.f);
-	const float Face = S.Target->GetActorRotation().Yaw;
+	const float Face = Tgt->GetActorRotation().Yaw;
 	float Az = S.Azimuth;
 	switch (S.Kind)
 	{

@@ -116,8 +116,10 @@ void FWHSettings::ApplyWindow() const
 void FWHSettings::ResetToDefaults()
 {
 	const bool bWasLive = bLive;
+	const int32 KeepSuit = SuitIndex; const FString KeepSuitId = SuitId;   // 'Reset defaults' resets look / graphics, not the hero's suit
 	*this = FWHSettings();
 	bLive = bWasLive;
+	SuitIndex = KeepSuit; SuitId = KeepSuitId;
 	ApplyCVars();
 	ApplyRender();
 	ApplyWindow();
@@ -154,6 +156,8 @@ void FWHSettings::Load()
 	GConfig->GetInt(GSection, TEXT("ResolutionScale"), ResScale, GGameUserSettingsIni);
 	GConfig->GetInt(GSection, TEXT("WindowMode"), WindowMode, GGameUserSettingsIni);
 	GConfig->GetBool(GSection, TEXT("VSync"), bVSync, GGameUserSettingsIni);
+	GConfig->GetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
+	GConfig->GetString(GSection, TEXT("HeroSuitId"), SuitId, GGameUserSettingsIni);
 	Clamp();
 	bLive = true;
 	ApplyCVars();
@@ -178,6 +182,25 @@ void FWHSettings::Save()
 	GConfig->SetInt(GSection, TEXT("ResolutionScale"), ResScale, GGameUserSettingsIni);
 	GConfig->SetInt(GSection, TEXT("WindowMode"), WindowMode, GGameUserSettingsIni);
 	GConfig->SetBool(GSection, TEXT("VSync"), bVSync, GGameUserSettingsIni);
+	GConfig->SetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
+	GConfig->SetString(GSection, TEXT("HeroSuitId"), *SuitId, GGameUserSettingsIni);
 	GConfig->Flush(false, GGameUserSettingsIni);
 	UE_LOG(LogWebHomage, Display, TEXT("WH_SETTINGS saved to %s"), *GGameUserSettingsIni);
+}
+
+void FWHSettings::LoadSuit()
+{
+	if (!GConfig) return;
+	GConfig->GetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
+	GConfig->GetString(GSection, TEXT("HeroSuitId"), SuitId, GGameUserSettingsIni);
+	UE_LOG(LogWebHomage, Display, TEXT("WH_SETTINGS suit read from %s: HeroSuit=%d HeroSuitId=%s"), *GGameUserSettingsIni, SuitIndex, *SuitId);
+}
+
+void FWHSettings::SaveSuit() const
+{
+	if (!GConfig) return;
+	GConfig->SetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
+	GConfig->SetString(GSection, TEXT("HeroSuitId"), *SuitId, GGameUserSettingsIni);
+	GConfig->Flush(false, GGameUserSettingsIni);
+	UE_LOG(LogWebHomage, Display, TEXT("WH_SETTINGS suit saved to %s: HeroSuit=%d HeroSuitId=%s"), *GGameUserSettingsIni, SuitIndex, *SuitId);
 }

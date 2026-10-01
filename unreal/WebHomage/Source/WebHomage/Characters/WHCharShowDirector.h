@@ -36,6 +36,10 @@ struct WEBHOMAGE_API FWHShot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> RestartWalkers;
 	/** Round 05: with a non-empty Director.ManagedActors list, only these (plus the shot's target) are visible during the shot; every other managed actor is hidden. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> ShowActors;
+	/** Round 11 (hero skins): >= 0 = switch the hero to this suit when the shot starts (UWHHeroSuitSubsystem, the same path as `wh.Suit`). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") int32 Suit = -1;
+	/** Round 11: the shot's target is player 0's pawn (the real playable hero) instead of Target. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") bool bTargetPlayer = false;
 };
 
 UCLASS()

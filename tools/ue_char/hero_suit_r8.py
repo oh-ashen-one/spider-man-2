@@ -23,11 +23,12 @@ def arg(k, d):
     return sys.argv[sys.argv.index(k) + 1] if k in sys.argv else d
 
 
-def build(n, log=print):
-    m = meshio.load_body()
+def build(n, log=print, style=None, pre=None):
+    """style = design.DEFAULT_STYLE override (round 11: tools/ue_char/suits); pre = (mesh, raster) reused across suits of one size."""
+    m = pre[0] if pre else meshio.load_body()
     P, N, UV, F, GW = m['P'], m['N'], m['UV'], m['F'], m['GW']
     t0 = time.time()
-    tri, w0, w1, inside = meshio.raster_tri(UV, F, n)
+    tri, w0, w1, inside = pre[1] if pre else meshio.raster_tri(UV, F, n)
     cov = tri >= 0
     log('raster %.1fs coverage %.3f' % (time.time() - t0, cov.mean()))
     # metres per texel of each triangle (anti-alias footprint)
@@ -48,7 +49,7 @@ def build(n, log=print):
         Nn /= np.linalg.norm(Nn, axis=-1, keepdims=True) + 1e-9
         G = meshio.gather(tri, w0, w1, F, GW, sl)
         mp = mpt_tri[np.where(tri[sl] >= 0, tri[sl], 0)]
-        o = design.paint(Pp, Nn, G, mp, gi, jp)
+        o = design.paint(Pp, Nn, G, mp, gi, jp, style)
         col[sl] = o['col']; hgt[sl] = o['h']; rough[sl] = o['rough']; ao[sl] = o['ao']; mptm[sl] = mp
     log('paint %.1fs' % (time.time() - t0))
     return dict(col=col, h=hgt, rough=rough, ao=ao, mpt=mptm, cov=cov, tri=tri)

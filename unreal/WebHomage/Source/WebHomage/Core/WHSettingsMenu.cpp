@@ -2,6 +2,7 @@
 #include "Core/WHSettingsMenu.h"
 #include "Core/WHSettings.h"
 #include "Core/WebHomagePlayerController.h"
+#include "Characters/WHHeroSuit.h"
 
 #include "Brushes/SlateColorBrush.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -190,6 +191,14 @@ void SWHSettingsMenu::Construct(const FArguments& InArgs)
 					[
 						CheckRow(LOCTEXT("Shake", "Camera shake"),
 							[] { return WHSettings().bCameraShake; }, [](bool b) { WHSettings().bCameraShake = b; })
+					]
+
+					+ SVerticalBox::Slot().AutoHeight().Padding(10.f, 12.f, 0.f, 2.f) [ Section(LOCTEXT("SecHero", "HERO")) ]
+					+ SVerticalBox::Slot().AutoHeight()
+					[
+						ChoiceRow(LOCTEXT("HeroSuit", "Suit (T / D-pad Up in play)"), FMath::Max(1, WHHeroSuits::Count()),
+							[] { return WHHeroSuits::Current(); }, [](int32 I) { WHHeroSuits::Set(I, TEXT("menu")); },
+							[](int32 I) { return WHHeroSuits::Name(I); })
 					]
 
 					+ SVerticalBox::Slot().AutoHeight().Padding(10.f, 12.f, 0.f, 2.f) [ Section(LOCTEXT("SecGraphics", "GRAPHICS")) ]

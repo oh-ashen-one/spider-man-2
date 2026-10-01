@@ -1128,4 +1128,123 @@ if 'mapkey' in STEPS:
         log(map_name, 'saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), nh, 'hero actors flat-coloured + stencil')
     hero_key_map('Char_HeroKey')
 
+# ------------------------------------------------------------------------------------------------ round 11 (first-pass piece G): the hero's ORIGINAL suits
+# tools/ue_char/suits/gen_suits.py writes <ART>/hero/suits/<id>_{basecolor,normal,orm}.png from tools/ue_char/suits/suits.json (a style override of the Tessera
+# generator, tools/ue_char/suit8/design.py); this step imports them (4096, NeverStream so a swap is one frame), makes MI_HeroSuit_<id> instances of M_Char_Suit and the
+# data asset DA_HeroSuits (UWHHeroSuitSet) that the game's UWHHeroSuitSubsystem reads: the order of suits.json is the cycle order of T / D-pad Up / wh.Suit <n>.
+# Tessera (texture_set 'hero') keeps its round-08 8192 maps and MI_Hero_Suit (the 'mat' step).   Step 'skinsmap' builds /Game/Tests/Characters/Char_Skins (stage + shots).
+SUITS_CFG = _json0.load(open(WT + '/tools/ue_char/suits/suits.json'))
+SUITS_DIR = ROOT + '/Hero/Suits'
+if 'skins' in STEPS:
+    master = load(ROOT + '/Shared/Materials/M_Char_Suit')
+    twill_p = ROOT + '/Shared/Textures/T_Fabric_Twill_N'
+    if not EAL.does_asset_exist(twill_p): twill_p = ROOT + '/Shared/Textures/T_Fabric_Knit_N'
+    _hj8 = ART + '/hero/tex/suit_r8.json'
+    tile_ = float(_json0.load(open(_hj8))['detail_tiling']) if os.path.exists(_hj8) else 122.0
+    if EAL.does_directory_exist(SUITS_DIR):
+        try: EAL.delete_directory(SUITS_DIR)
+        except Exception as e: log('skins: delete failed', str(e)[:120])
+    entries = []
+    for e_ in SUITS_CFG['suits']:
+        sid = e_['id']
+        if e_.get('texture_set') == 'hero':
+            mat_ = load(ROOT + '/Hero/Materials/MI_Hero_Suit')
+            if mat_ is None: log('skins: MI_Hero_Suit missing (run the mat step); skipping', sid); continue
+        else:
+            D_ = ART + '/hero/suits/' + sid
+            if not all(os.path.exists(D_ + k) for k in ('_basecolor.png', '_normal.png', '_orm.png')):
+                log('skins: maps missing for', sid, '(run tools/ue_char/suits/gen_suits.py); skipping'); continue
+            TD = SUITS_DIR + '/Textures'
+            tb = import_tex(D_ + '_basecolor.png', TD, 'T_HeroSuit_%s_BaseColor' % sid, 'srgb')
+            tn = import_tex(D_ + '_normal.png', TD, 'T_HeroSuit_%s_Normal' % sid, 'normal_gl')
+            to = import_tex(D_ + '_orm.png', TD, 'T_HeroSuit_%s_ORM' % sid, 'linear')
+            tb.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_BC7)
+            for t_ in (tb, tn, to):
+                try: t_.set_editor_property('never_stream', True)
+                except Exception as ex: log('never_stream not set', sid, str(ex)[:100])
+            fz = list(e_.get('style', {}).get('fuzz', [0.50, 0.62, 0.68]))
+            mat_ = mi('MI_HeroSuit_' + sid, SUITS_DIR + '/Materials', master,
+                      tex={'BaseColor': TD + '/T_HeroSuit_%s_BaseColor' % sid, 'ORM': TD + '/T_HeroSuit_%s_ORM' % sid,
+                           'Normal': TD + '/T_HeroSuit_%s_Normal' % sid, 'DetailNormal': twill_p},
+                      scal={'DetailTiling': tile_, 'DetailStrength': 0.8, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (fz[0], fz[1], fz[2], 1.0)}, switches={'HasORM': True})
+        en = unreal.WHHeroSuitEntry()
+        en.set_editor_property('id', sid); en.set_editor_property('display_name', e_.get('name', sid)); en.set_editor_property('material', mat_)
+        entries.append(en)
+        log('skins: suit', len(entries) - 1, sid, mat_.get_name())
+    if EAL.does_asset_exist(SUITS_DIR + '/DA_HeroSuits'): EAL.delete_asset(SUITS_DIR + '/DA_HeroSuits')
+    da = AT.create_asset('DA_HeroSuits', SUITS_DIR, unreal.WHHeroSuitSet, unreal.DataAssetFactory())
+    da.set_editor_property('suits', entries)
+    EAL.save_directory(SUITS_DIR, only_if_is_dirty=False, recursive=True)
+    log('skins ok:', len(entries), 'suits in', SUITS_DIR + '/DA_HeroSuits')
+
+if 'skinsmap' in STEPS:
+    # ================= Char_Skins: the hero stands on a plain floor under a key sun + fills; four views of every suit (director shots switch the suit through the
+    # same UWHHeroSuitSubsystem path as `wh.Suit n`), then an orbit that cycles the suits.  Char_SkinsPlay: the same stage with the PLAYABLE pawn (WebTravGameMode, the real
+    # game's pawn + camera hook) and two director shots that follow it (bTargetPlayer).
+    WS = unreal.WHWalkerMode; KS = unreal.WHShotKind
+    names = [e_.get('name', e_['id']) for e_ in SUITS_CFG['suits']]
+    def skins_stage(tag, play):
+        les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        les.new_level('/Temp/Char_%s_Build_%d' % (tag, int(time.time())))
+        sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (-38, 150, 0), 'Sun')       # rot = (yaw, pitch, roll); light travels toward -X: front-left of a hero that faces +X
+        sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
+        sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True); sc.set_editor_property('light_source_angle', 3.0)
+        spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
+        sky = spawn(unreal.SkyLight, (0, 0, 300), label='SkyLight')
+        skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
+        spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
+        ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
+        box((0, 0, -10), (600, 600, 0.2), 'M_Env_Sidewalk', 'Floor')                  # 600 m x 600 m: the pawn demo runs far
+        if play:
+            spawn(unreal.PlayerStart, (-4000, 0, 120), label='PlayerStart_Pawn')
+            gm = unreal.load_class(None, '/Script/WebHomage.WebTravGameMode')
+            if gm: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world().get_world_settings().set_editor_property('default_game_mode', gm)
+            else: log('WebTravGameMode missing: the playable pawn will not spawn')
+            return None
+        spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
+        only1 = unreal.LightingChannels(); only1.set_editor_property('channel0', False); only1.set_editor_property('channel1', True)
+        for fi, fyaw in enumerate((0, 90, 180, 270)):
+            fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'HeroFill_%d' % fi)
+            fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
+            fc.set_editor_property('intensity', float(ARGS.get('skin_fill', 0.8))); fc.set_editor_property('cast_shadows', False); fc.set_editor_property('lighting_channels', only1)
+        hs = walker('Hero_Skin', ROOT + '/Hero/SK_Hero', ROOT + '/Hero/ABP_Hero_Lineup', (0, 0, 0), WS.STAND, 0.0, yaw=0.0)
+        chan = unreal.LightingChannels(); chan.set_editor_property('channel0', True); chan.set_editor_property('channel1', True)
+        hs.get_editor_property('mesh').set_editor_property('lighting_channels', chan)
+        return hs
+    def sshot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, label='', suit=-1, player=False):
+        sh = unreal.WHShot()
+        for k, v in (('kind', kind), ('duration', dur), ('distance', dist), ('aim_height', aim), ('cam_height', camh), ('fov', fov),
+                     ('orbit_deg_per_sec', orbit), ('azimuth', az), ('label', label), ('suit', suit), ('target_player', player)):
+            sh.set_editor_property(k, v)
+        if t is not None: sh.set_editor_property('target', t)
+        return sh
+    def save_skins_map(MAP, shots):
+        d = spawn(unreal.WHCharShowDirector, (0, 0, 0), label='CaptureDirector')
+        d.set_editor_property('shots', shots)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        return unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
+    # ---- Char_Skins
+    hero_s = skins_stage('Skins', False)
+    VIEWS = [('front', KS.FRONT, 0.0, 430.0, 92.0, 8.0, 36.0), ('back', KS.FRONT, 180.0, 430.0, 92.0, 8.0, 36.0),
+             ('chest', KS.CLOSEUP, 0.0, 120.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, 0.0, 78.0, 160.0, 0.0, 26.0)]
+    shots = []
+    SHOT_S = 3.0
+    for i, nm in enumerate(names):
+        for j, (vn, kd, az, dist, aim, camh, fov) in enumerate(VIEWS):
+            shots.append(sshot(hero_s, kd, SHOT_S + (1.0 if (i == 0 and j == 0) else 0.0), dist, aim, camh, fov, 0.0, az, label='%s %s' % (nm, vn), suit=i if j == 0 else -1))
+    N_STILL = len(shots)
+    ORBIT_S, ORBIT_RATE = 1.5, 40.0
+    for i, nm in enumerate(names):          # continuous 40 deg/s orbit across the suit changes (the azimuth continues from shot to shot)
+        shots.append(sshot(hero_s, KS.ORBIT, ORBIT_S, 430.0, 92.0, 20.0, 36.0, ORBIT_RATE, ORBIT_RATE * ORBIT_S * i, label='orbit %s' % nm, suit=i))
+    ok1 = save_skins_map(TESTS + '/Char_Skins', shots)
+    # ---- Char_SkinsPlay (the real pawn)
+    skins_stage('SkinsPlay', True)
+    pshots = [sshot(None, KS.SIDE, 10.0, 520.0, 95.0, 10.0, 40.0, label='playable pawn, side (T swaps the suit)', player=True),
+              sshot(None, KS.THREE_QUARTER, 6.0, 480.0, 95.0, 20.0, 40.0, label='playable pawn, 3/4', player=True)]
+    ok2 = save_skins_map(TESTS + '/Char_SkinsPlay', pshots)
+    json.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,
+                   first_still=0, first_orbit=N_STILL, first_pawn=0, map_stills=TESTS + '/Char_Skins', map_play=TESTS + '/Char_SkinsPlay'),
+              open(SCRATCH + '/skins_shots.json', 'w'), indent=1)
+    log('skinsmap saved', ok1, ok2, 'stills', N_STILL, 'orbit', len(shots) - N_STILL)
+
 log('done')
