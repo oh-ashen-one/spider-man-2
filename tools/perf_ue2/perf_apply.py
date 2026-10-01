@@ -35,6 +35,10 @@
 #                 Env SM2_PERF_PROXY_LUMEN_ORIG=0 also takes the original tree HISMs out of the Lumen scene (their surface-cache cards are never hit any more).
 #   rt_proxy_cards (round 07) Lumen mesh cards per proxy mesh = SM2_PERF_PROXY_CARDS (default 64; engine default 12): hardware-RT Lumen hits on a
 #                 proxy read its surface cache; 12 cards per 200 m tile cannot cover its median 89 crowns (S2 / S7 / S1 foliage lost its green).
+#   leaf_area     (round 07, round-06 critic: S2 avenue tree line 7.8 -> 2.5 % foliage, S1 canopy tile 84 -> 65 %) the Nanite leaf-card meshes of the
+#                 street / park trees (City/Props ISM_ez_*_leaves, ISM_trees_*crown*) get Nanite ShapePreservation = SM2_PERF_LEAF_SHAPE (default PRESERVE_AREA;
+#                 VOXELIZE / NONE): with the perf preset's Nanite error of 8 px the simplified clusters drop leaf cards and the crowns thin out with
+#                 distance; preserve-area keeps each cluster's surface area while it simplifies (no runtime cost: same triangle budget). Rebuilds the meshes' Nanite data.
 # `all` = static,far_rt,far_plain,kit_plain.  Output log: env SM2_PERF_APPLY_LOG (default _scratch/perf/apply.json)
 import unreal, json, os, time
 
@@ -251,6 +255,24 @@ if 'rt_proxy_trees' in STEPS:
                        'orig_in_lumen_scene': lum_orig, 'report': json.load(open(os.path.join(PDIR, 'report.json'))) if os.path.exists(os.path.join(PDIR, 'report.json')) else None}
     if rep['rt_proxy']['report']: rep['rt_proxy']['report'].pop('meshes', None)
     if missing: rep.setdefault('errors', []).append('rt_proxy: %d tiles not imported' % len(missing))
+
+if 'leaf_area' in STEPS:
+    SHAPE = os.environ.get('SM2_PERF_LEAF_SHAPE', 'PRESERVE_AREA')
+    want = getattr(unreal.NaniteShapePreservation, SHAPE)
+    seen, n_c, olds = set(), 0, set()
+    for a, c in comps('City/Props'):
+        if not is_leaves(a.get_actor_label()): continue
+        sm = c.get_editor_property('static_mesh')
+        if not sm or sm.get_path_name() in seen: continue
+        seen.add(sm.get_path_name())
+        ns = sm.get_editor_property('nanite_settings')
+        if not ns.enabled: continue
+        olds.add(str(ns.get_editor_property('shape_preservation')))
+        if ns.get_editor_property('shape_preservation') == want: continue
+        ns.set_editor_property('shape_preservation', want); sm.set_editor_property('nanite_settings', ns)
+        EAL.save_asset(sm.get_path_name()); n_c += 1
+    rep['leaf_area'] = {'shape': SHAPE, 'meshes': sorted(seen), 'meshes_changed': n_c, 'old_values': sorted(olds)}
+    bump('leaf_area_mesh', n_c)
 
 if 'rt_proxy_cards' in STEPS:   # round 07 (round-06 critic: S2 tree line / S7 reflected foliage / S1 canopy lost their green)
     # The 402 per-tile proxy meshes (median 89 trees per 200 m tile) were built with the engine default of 12 Lumen mesh cards per mesh: a
