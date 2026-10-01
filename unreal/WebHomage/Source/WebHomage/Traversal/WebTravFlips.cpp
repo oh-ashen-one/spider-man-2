@@ -18,7 +18,7 @@ namespace WebFlips
 			case EWebFlipShape::Layout: return 3.2f;
 			case EWebFlipShape::Swan: return 7.5f;
 			case EWebFlipShape::Pencil: return 9.0f;
-			case EWebFlipShape::Straddle: return 6.0f;
+			case EWebFlipShape::Straddle: return 7.5f; // round 18: corkscrew's inverted shape (replaces its swan: same timeline)
 			case EWebFlipShape::Throne: return 9.0f;
 			case EWebFlipShape::Twist: return 3.5f;
 			case EWebFlipShape::Reach: return 7.0f;
@@ -62,7 +62,9 @@ namespace WebFlips
 			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.26f} });
 			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach (1.84 -> 1.66 s)
 			// round 14: every shape >= 0.3 s (layout 0.22 -> 0.31, tuck 0.26 -> 0.34 eased), twist 0.42 s, swan 0.36 s (1.66 -> 1.67 s)
-			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Swan, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
+			// round 18 (critic r17 "f2, f3 and f4 share one inverted split"): the corkscrew opens into its OWN inverted shape, a straddle that
+			// flings the arms out of the twist wrap and splits the legs wide to the sides (flipStraddle, keyed motion), instead of the swan
+			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Straddle, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
 			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.24f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing
@@ -166,6 +168,21 @@ namespace WebFlips
 		case EWebFlipShape::Kickout: return -6.f;
 		case EWebFlipShape::Reach: return 3.f;
 		default: return 0.f;
+		}
+	}
+
+	// round 18: vertical extent (m, joints + 0.2 m pad) a shape reaches during its hold (flip_motion_sim.py z-extent): the trick camera backs
+	// out ahead of an opening shape so the hero stays inside TC-C's .12-.36 of the frame at 5.0-6.4 m (TC4)
+	float ShapeExtent(EWebFlipShape S)
+	{
+		switch (S)
+		{
+		case EWebFlipShape::Tuck: return 0.95f;
+		case EWebFlipShape::Pike: return 1.3f;
+		case EWebFlipShape::Twist: return 1.4f;
+		case EWebFlipShape::Throne: return 1.5f;
+		case EWebFlipShape::Reach: return 1.8f;
+		default: return 2.0f; // layout, swan, pencil, straddle, kickout
 		}
 	}
 

@@ -53,6 +53,9 @@ public:
 	 *  the sky release waits for swing phase `skyPhase` (higher on the rising front than `releasePhase`). */
 	int32 SkyEveryAt(double T, double& OutRepressH, int32& OutTricks, double& OutMax, double& OutPhase) const;
 	int32 Seed() const { return SeedValue; }
+	/** Round 17: the script's own "tune" / "camTune" strings ("Name=V,..."; empty = none). */
+	const FString& TuneString() const { return TuneStr; }
+	const FString& CamTuneString() const { return CamTuneStr; }
 
 	/** Held input at script time T (seconds since the first traversal tick). Look is returned as a rate (rad/s). */
 	FWebTravInput Sample(double T, FVector2D& OutLookRate) const;
@@ -85,6 +88,7 @@ private:
 	int32 SeedValue = 1234;
 	TArray<FKey> Keys;
 	FString ScriptName;
+	FString TuneStr, CamTuneStr;
 	FString CsvPath, CsvHeader;
 	TArray<FString> Rows;
 	bool bWroteHeader = false;

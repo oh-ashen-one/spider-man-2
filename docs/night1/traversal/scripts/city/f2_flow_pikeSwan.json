@@ -1,19 +1,20 @@
 {
  "name": "f2_flow_pikeSwan",
- "note": "Round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): a trick pressed at a web release starts its flip program AT the release (flow flip, climb solved so the catch window opens ~2 m over the release height, inside the canyon), and the next web attaches in the program's final reach. West avenue from y 180: a flip on every 2nd release (frontPikeSwan: pike, pencil, inverted swan, tuck, reach).",
+ "note": "Round 17 (critic r16 single gap: every trick shot from the street into a dark facade, starting toward the sun; TC8): the f-series moved to the y -560 cross street heading EAST: north side = a 10-30 m low-rise row with the traversal world's north edge (open sky) behind it, south side = 46-466 m blocks to web onto; the sun (due west, 8 deg up) is behind every view. Script tune: arcs bottom >= 14 m over the street (ArcLowMin, drops 8 / 12 m: the chain stays over the 10-14 m street-tree canopies), WallClearance 9 m (keeps him mid-street so the sun-away trick-camera side has room). A flip on EVERY release; each flow flip is solved for an apex with the hips >= 3 m (+1) over the lower roofline within 30 m (bFlowApexSolve), the trick swing held on its rising front until that is reachable. f2: frontPikeSwan on every release from x -200.",
  "seed": 1234,
+ "tune": "ArcLowMin=14,ArcDropShallow=8,ArcDropDeep=12,WallClearance=9",
  "spawn": {
   "pos": [
-   -250,
-   180,
-   28
+   -200,
+   -560,
+   30
   ],
   "vel": [
+   26,
    0,
-   24,
    0
   ],
-  "yaw": 90,
+  "yaw": 0,
   "camPitch": 0.12
  },
  "keys": [
@@ -23,7 +24,7 @@
     0,
     1
    ],
-   "heading": 90,
+   "heading": 0,
    "swing": false,
    "flip": "frontPikeSwan"
   },
@@ -33,7 +34,7 @@
    "releasePhase": 0.55,
    "gap": 0.8,
    "repressVz": 99.0,
-   "trickEvery": 2,
+   "trickEvery": 1,
    "skyEvery": 0,
    "skyTricks": 1,
    "skyRepressH": 30,

@@ -29,13 +29,14 @@ SEQS=(
   "b_release_trick_dive_zip b_release_trick_dive_zip.json 7.0 0.8,1.9,2.5,4.4,5.8"
   "c_wallrun_perch c_wallrun_perch.json 10.5 1.0,2.6,3.6,4.9,9.8"
   "d_sprint_jump_first_swing d_sprint_jump_first_swing.json 12.0 2.3,5.6,7.6,11.8"
+  # round 17: f1-f5 = the y -560 cross street heading east, a flip on every release, each solved for an apex >= 3 m over the lower roofline
   # round 13 (flow flips: the program starts at the web release, the next web attaches in its final reach): f1-f3 the west avenue
   # (x -250 south, lower blocks), a flip on every 2nd release; f4 a flip on every release; f5 the Midtown canyon (x 250 north)
-  "f1_flow_backDouble f1_flow_backDouble.json ${F1Q:-8.0} ${F1T:-2.4,3.0}"
-  "f2_flow_pikeSwan f2_flow_pikeSwan.json ${F2Q:-8.0} ${F2T:-2.4,3.0}"
-  "f3_flow_corkscrew f3_flow_corkscrew.json ${F3Q:-8.0} ${F3T:-2.4,3.0}"
-  "f4_chain_flips f4_chain_flips.json ${F4Q:-11.6} ${F4T:-3.0,6.0}"   # round 14: north-bound, 4 flips + 1 s after the 4th catch
-  "f5_canyon_backDouble f5_canyon_backDouble.json 8.0 ${F5T:-2.4,3.0}"
+  "f1_flow_backDouble f1_flow_backDouble.json ${F1Q:-9.0} ${F1T:-2.4,3.0}"
+  "f2_flow_pikeSwan f2_flow_pikeSwan.json ${F2Q:-9.0} ${F2T:-2.4,3.0}"
+  "f3_flow_corkscrew f3_flow_corkscrew.json ${F3Q:-9.0} ${F3T:-2.4,3.0}"
+  "f4_chain_flips f4_chain_flips.json ${F4Q:-13.3} ${F4T:-3.0,6.0}"   # round 18: 3 flips, a plain release where the catch guard finds no web (9.12 s), the 4th flip 10.88 s, its catch ~12.5 s + 0.8 s (r17: 12.2 s, the 4th flip missed its catch)
+  "f5_canyon_backDouble f5_canyon_backDouble.json ${F5Q:-9.0} ${F5T:-2.4,3.0}"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
