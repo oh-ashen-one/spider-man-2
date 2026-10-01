@@ -21,6 +21,10 @@ HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from island_coll_audit import boxes_of
 
 SUPPORTED = ('ground', 'perch', 'land')
+# (island r01 resume) x_m / y_m / z_m are the traversal BODY CENTRE, UWebTraversalComponent::H = 0.95 m above the feet
+# (WebTravCharacter.cpp: PosM = capsule bottom / 100 + H). The first version compared z_m with box tops / the street as if it were the feet,
+# which flagged every street frame (z_m = 0.95) as mid-air and would have missed real roof floats by 0.95 m.
+BODY_H = 0.95
 
 
 def load_boxes(E):
@@ -46,7 +50,8 @@ def check(E, csv_path, B, L, audit_hv=None, reg=None):
     n_sup = 0
     for r in rows:
         t = f(r, 't'); dt = 0.0 if prev_t is None else max(0.0, t - prev_t); prev_t = t
-        x, y, z = f(r, 'x_m'), f(r, 'y_m'), f(r, 'z_m'); mode = r['mode']
+        x, y, zc = f(r, 'x_m'), f(r, 'y_m'), f(r, 'z_m'); mode = r['mode']
+        z = zc - BODY_H   # feet
         if len(L):
             dx = np.maximum(np.maximum(L[:, 0] - x, x - L[:, 2]), 0); dy = np.maximum(np.maximum(L[:, 1] - y, y - L[:, 3]), 0)
             lod_min = min(lod_min, float(np.min(np.hypot(dx, dy))))

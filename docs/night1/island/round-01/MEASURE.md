@@ -42,3 +42,23 @@ Internal disk 177 GB free after the build (gate 150 GB); the export / GLBs live 
 | I1 facadeLod meshes inside the detailed region | 0 | **0** |
 | I5 phantom (box above the drawn roof) | <= 1 % | **0.21 %** (mass > 6 m: 0.18 %) |
 | I5 hollow (drawn building without a box) | <= 2 % | **5.81 %: FAIL** (mass > 6 m: 0.39 %, i.e. most hollow cells miss by less than 6 m of height; not yet located on the map) |
+
+## Resume 17:05 (after the owner's 15:41 pause): rooftop equipment boxes
+- Cause of the I5 hollow FAIL: hollow interior cells had drawn top - box top = **5.02 m median** (IQR 4.98-5.07 m, roofs median 132 m).
+  Every sampled cell sat under a collision.json BOX solid of kind `equipment` (mechanical penthouse / plant room, drawn in the roofs mesh)
+  that the WHBox rule did not keep. Fix: `island_boxes.py` rule 4 keeps equipment BOX solids >= 2 m in both horizontal sides and >= 0.8 m tall.
+  Size sweep (simulated on the audit grid): min side 1.2 m -> +9,491 boxes, hollow 0.20 %; **2.0 m -> +3,411, hollow 0.22 %** (chosen);
+  3.0 m -> +1,746, 0.31 %; 4.0 m -> +894, 0.58 %; 6.0 m -> +176, 1.11 %.
+- Audit after the fix (`round-01/coll_audit_equip.json`, map `coll_audit_equip_map.png`; before: `coll_audit_before.json`):
+
+| line | target | before | after |
+|---|---|---|---|
+| I1 facadeLod meshes inside the detailed region | 0 | 0 | **0** |
+| I5 phantom | <= 1 % | 0.21 % | **0.26 %** |
+| I5 hollow | <= 2 % | 5.81 % FAIL | **0.22 % PASS** (mass > 6 m: 0.02 %) |
+| WHBox cubes | | 53,405 | 56,816 |
+
+- WP-only rebuild with the new boxes (`SM2_ISLAND_CITY_STEPS=wp build_manhattan.py --steps city,map`, 17:09-17:47): city/wp **2,203 s**
+  (vs 1,077 s for 53,405 boxes at 14:41) + map 54 s. Spawn rate fell from ~51 actors/s to ~19 actors/s past 45 k actors: one actor per box
+  scales super-linearly in a WP commandlet. The whole island (~140 k boxes) cannot use one actor per box; per-tile collision bodies
+  (one ISM / merged collision-only mesh per 256 m cell) are required for the 90 min target.
