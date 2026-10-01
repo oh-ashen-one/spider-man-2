@@ -40,7 +40,8 @@ def mask_bounds(phi, cfg):
     a = np.abs(phi)
     ang = np.radians([0, 35, 70, 90, 105, 125, 150, 180])
     top = np.interp(a, ang, [eye - .016, eye - .026, ear + .012, ear + .020, ear + .030, ear + .038, ear + .040, ear + .040])
-    bot = np.interp(a, ang, [chin - .040, chin - .036, chin - .016, ear - .012, ear + .004, ear + .010, ear + .010, ear + .010])
+    bd = cfg.get('bot_drop', 0.040)     # how far below the chin the front hem hangs (round 05b: brute 0.004 - its vest collar reaches the chin)
+    bot = np.interp(a, ang, [chin - bd, chin - bd + .004, chin - bd * 0.4, ear - .012, ear + .004, ear + .010, ear + .010, ear + .010])
     if not cfg.get('tie_band', True):          # long / voluminous hair at the back: the mask ends behind the ears (no painted tie)
         cut = smoothstep(np.radians(108), np.radians(116), a)
         top = top * (1 - cut) + (bot - 0.01) * cut
@@ -158,7 +159,303 @@ def drape(P, F, cfg, seed=0, thick=0.0035):
         rn = r[i] + (max(rh, r[i]) - r[i]) * side * w[i] + (thick + fold) * w[i]
         moved[i] = rn - r[i]
         P[i, 0] = np.sin(phi[i]) * rn; P[i, 2] = cfg['axis_z'] + np.cos(phi[i]) * rn
+    # relax: a few Laplacian passes over the lower face (welded neighbours) close the last hairline of the lip crease
+    wid = weld_ids(P)
+    nbr = [set() for _ in range(wid.max() + 1)]
+    for a_, b_, c_ in F:
+        A, B, C = wid[a_], wid[b_], wid[c_]
+        nbr[A].update((B, C)); nbr[B].update((A, C)); nbr[C].update((A, B))
+    rep = np.zeros(wid.max() + 1, int); rep[wid] = np.arange(len(P))
+    lower = (w > 0.3) & sel & (y < cfg['nose'] - 0.012) & (y > cfg['chin'] - 0.05) & (np.abs(phi) < np.radians(80))
+    lw = np.zeros(wid.max() + 1, bool); lw[wid[lower]] = True
+    Pw = np.zeros((wid.max() + 1, 3)); Pw[wid] = P
+    for it in range(relax):
+        Q = Pw.copy()
+        for v in np.where(lw)[0]:
+            n = list(nbr[v])
+            if n: Q[v] = Pw[v] * 0.4 + Pw[n].mean(0) * 0.6
+        Pw = Q
+    chg = lw[wid]
+    P[chg] = Pw[wid[chg]]
+    moved = np.where(chg, np.hypot(P[:, 0], P[:, 2] - cfg['axis_z']) - r, moved)
     return P, moved
+
+
+def _ray_hits_any(O, D, P, F, tmax, skip_verts=None):
+    """True per ray if some triangle (not touching vertex skip_verts[i]) is hit within (2 mm, tmax] (Moller-Trumbore, chunked)."""
+    P0 = P[F[:, 0]]; E1 = P[F[:, 1]] - P0; E2 = P[F[:, 2]] - P0
+    hit_any = np.zeros(len(O), bool)
+    wid = weld_ids(P)
+    Fw = wid[F]
+    for s0 in range(0, len(O), 128):
+        o = O[s0:s0 + 128, None, :]; d = D[s0:s0 + 128, None, :]
+        h = np.cross(d, E2[None]); a = (E1[None] * h).sum(-1)
+        ok = np.abs(a) > 1e-12
+        f = 1.0 / np.where(ok, a, 1); sv = o - P0[None]; u = f * (sv * h).sum(-1)
+        q = np.cross(sv, E1[None]); v = f * (d * q).sum(-1); t = f * (E2[None] * q).sum(-1)
+        hit = ok & (u >= 0) & (v >= 0) & (u + v <= 1) & (t > 0.002) & (t < tmax)
+        if skip_verts is not None:
+            sv_ids = wid[skip_verts[s0:s0 + 128]]
+            touch = (Fw[None, :, :] == sv_ids[:, None, None]).any(-1)
+            hit &= ~touch
+        hit_any[s0:s0 + 128] = hit.any(1)
+    return hit_any
+
+
+def hang(P, F, cfg, seed=0, thick=0.0035, reach=0.05, slope=0.35, grow=0.012, sigma=0.011, relax=8, uncover_mouth=False):
+    """Round 05: the mask as CLOTH, not as a skin-tight shell (critic r04: 'shrink-wrapped, lips and chin show through the cloth').
+    Every vertex of the mask region takes the cloth radius
+        r_cloth(s, y) = max over the head surface within `grow` sideways and from y up to y + `reach` of ( r - slope * (y' - y) )
+    (cloth hangs down from the higher points: over the lips it is carried by the nose and the upper lip, under the chin it falls almost
+    vertically from the jaw to the collar), Gaussian-smoothed over `sigma` (lips, chin cleft and jowl creases vanish, the nose stays a soft
+    tent), then r_new = max(r + thick, r_cloth).  The displacement fades over the region weight so the lower edge merges into the neck
+    without a flap.  Ears are excluded.  Returns P, moved (metres, like drape)."""
+    P = P.copy()
+    w = region_weight(P, cfg, feather=0.03)
+    ear = ear_flag(P, cfg, P)
+    phi, r = cyl(P, cfg)
+    near = (r < 0.15) & (P[:, 1] > cfg['chin'] - 0.09) & (P[:, 1] < cfg['eye'] + 0.012)
+    sel = (w > 0) & ~ear & near
+    import os
+    if os.environ.get('HANG_DEBUG'):
+        box = (np.abs(P[:, 0]) < 0.035) & (P[:, 1] > cfg['nose'] - 0.05) & (P[:, 1] < cfg['nose'] - 0.005) & (P[:, 2] > 0.05)
+        print('HANG box verts', int(box.sum()), 'w>0', int((w[box] > 0).sum()), 'ear', int(ear[box].sum()), 'near', int(near[box].sum()), 'sel', int(sel[box].sum()), 'cfg', {k: round(float(cfg[k]), 3) for k in ('eye', 'nose', 'chin', 'ear_lobe', 'nose_r')})
+        bx = np.where(box & ~sel)[0][:12]
+        for i in bx: print('  unsel', i, np.round(P[i], 4), 'w', round(float(w[i]), 3), 'r', round(float(r[i]), 3), 'near', bool(near[i]), 'ear', bool(ear[i]))
+    r0 = 0.11
+    s_ = phi * r0
+    y = P[:, 1]
+    pts = np.c_[s_, y]
+    # source cloud: every region-ish vertex (the head surface under and beside the mask, ears excluded)
+    src = np.where(near & ~ear & (np.abs(phi) < np.radians(125)))[0]
+    tree = cKDTree(pts[src])
+    env = r.copy()
+    tgt = np.where(sel)[0]
+    for i in tgt:
+        cand = tree.query_ball_point([s_[i], y[i] + reach / 2], np.hypot(grow + 0.006, reach / 2 + 0.006))
+        cand = np.asarray(src[cand], int)
+        cand = cand[(np.abs(s_[cand] - s_[i]) <= grow) & (y[cand] >= y[i] - 0.004) & (y[cand] <= y[i] + reach)]
+        if len(cand) == 0: continue
+        env[i] = max(r[i], np.max(r[cand] - slope * np.maximum(y[cand] - y[i], 0.0)))
+    # gaussian smoothing of the envelope over the selected vertices (2D, parametric space)
+    t2 = cKDTree(pts[tgt])
+    sm = env.copy()
+    for k, i in enumerate(tgt):
+        nb = np.asarray(t2.query_ball_point(pts[i], 3 * sigma), int)
+        d2 = ((pts[tgt[nb]] - pts[i]) ** 2).sum(1)
+        wt = np.exp(-d2 / (2 * sigma * sigma))
+        sm[i] = (env[tgt[nb]] * wt).sum() / wt.sum()
+    side = 1 - smoothstep(np.radians(85), np.radians(112), np.abs(phi))          # sides of the head: cloth follows the cheek / ear line
+    _, botb = mask_bounds(phi, cfg)
+    taper = smoothstep(botb + 0.002, botb + 0.035, y)                            # round 05b: the hem returns to the neck surface (no skirt over the collar)
+    # round 05b: only the OUTERMOST shell is draped.  A vertex with another shell (hoodie collar, vest collar, hair) within 5 cm straight out is
+    # under it (neck skin under a collar): moving it would push it through / tear it away from the outer shell (the tears at the mask hem).
+    Dv = np.stack([np.sin(phi[tgt]), np.zeros(len(tgt)), np.cos(phi[tgt])], 1)
+    covered = np.zeros(len(P), bool)
+    covered[tgt] = _ray_hits_any(P[tgt] + Dv * 0.0005, Dv, P, F, 0.05, skip_verts=tgt)
+    if uncover_mouth:   # round 08: the lips of a parted mouth are 'covered' by the other lip (the slit then stays as a ledge under the cloth): let them hang too
+        mb = (np.abs(phi[tgt]) < np.radians(62)) & (y[tgt] > cfg['chin'] + 0.006) & (y[tgt] < cfg['nose'] - 0.004)
+        covered[tgt[mb]] = False
+    moved = np.zeros(len(P))
+    for i in tgt:
+        if covered[i]: continue
+        fold = (0.0011 * np.sin(phi[i] * 8 + y[i] * 55) + 0.0007 * np.sin(-phi[i] * 5 + y[i] * 95 + 1.1)) * smoothstep(cfg['nose'] - 0.01, cfg['chin'], y[i])
+        target = max(r[i] + thick, sm[i] + thick * 0.6 + fold)
+        rn = r[i] + (target - r[i]) * w[i] * (0.25 + 0.75 * side[i]) * taper[i]
+        moved[i] = rn - r[i]
+        P[i, 0] = np.sin(phi[i]) * rn; P[i, 2] = cfg['axis_z'] + np.cos(phi[i]) * rn
+    # relax: a few Laplacian passes over the lower face (welded neighbours) close the last hairline of the lip crease
+    wid = weld_ids(P)
+    nbr = [set() for _ in range(wid.max() + 1)]
+    for a_, b_, c_ in F:
+        A, B, C = wid[a_], wid[b_], wid[c_]
+        nbr[A].update((B, C)); nbr[B].update((A, C)); nbr[C].update((A, B))
+    rep = np.zeros(wid.max() + 1, int); rep[wid] = np.arange(len(P))
+    lower = (w > 0.3) & sel & (y < cfg['nose'] - 0.012) & (y > cfg['chin'] - 0.05) & (np.abs(phi) < np.radians(80))
+    lw = np.zeros(wid.max() + 1, bool); lw[wid[lower]] = True
+    Pw = np.zeros((wid.max() + 1, 3)); Pw[wid] = P
+    for it in range(relax):
+        Q = Pw.copy()
+        for v in np.where(lw)[0]:
+            n = list(nbr[v])
+            if n: Q[v] = Pw[v] * 0.4 + Pw[n].mean(0) * 0.6
+        Pw = Q
+    chg = lw[wid]
+    P[chg] = Pw[wid[chg]]
+    moved = np.where(chg, np.hypot(P[:, 0], P[:, 2] - cfg['axis_z']) - r, moved)
+    return P, moved
+
+
+def flatten_mouth(P, cfg, reach=0.011, sigma=0.007, margin=0.0008):
+    """Round 08 (critic r07: 'lips show through the tee mask'): the mouth slit of a Tripo face survives the drape as a ledge because the vertices
+    inside it have another shell in front of them (the lips), so hang() leaves them where they are.  Every vertex of the mouth band is raised to the
+    cloth envelope: the maximum radius of any band vertex within `reach` (closing of the dents), Gaussian-smoothed over `sigma`, minus `margin`.
+    Only ever moves vertices OUTWARD along their own radial direction; the lips / nose tip keep their place.  Returns P."""
+    from scipy.spatial import cKDTree
+    P = P.copy()
+    phi, r = cyl(P, cfg)
+    y = P[:, 1]
+    band = (np.abs(phi) < np.radians(62)) & (y > cfg['chin'] + 0.006) & (y < cfg['nose'] - 0.004) & (r < 0.17)
+    idx = np.where(band)[0]
+    if len(idx) == 0: return P
+    s_ = phi * 0.11
+    pts = np.c_[s_[idx], y[idx]]
+    tree = cKDTree(pts)
+    env = r[idx].copy()
+    for k, nb in enumerate(tree.query_ball_point(pts, reach)):
+        env[k] = r[idx][nb].max()
+    sm = env.copy()
+    for k, nb in enumerate(tree.query_ball_point(pts, 3 * sigma)):
+        nb = np.asarray(nb, int)
+        w = np.exp(-((pts[nb] - pts[k]) ** 2).sum(1) / (2 * sigma * sigma))
+        sm[k] = (env[nb] * w).sum() / w.sum()
+    fade = smoothstep(np.radians(62), np.radians(48), np.abs(phi[idx])) * smoothstep(cfg['chin'] + 0.006, cfg['chin'] + 0.016, y[idx]) * smoothstep(cfg['nose'] - 0.004, cfg['nose'] - 0.012, y[idx])
+    rn = np.maximum(r[idx], r[idx] + (sm - margin - r[idx]) * fade)
+    P[idx, 0] = np.sin(phi[idx]) * rn
+    P[idx, 2] = cfg['axis_z'] + np.cos(phi[idx]) * rn
+    return P
+
+
+def sink_neck(P, F, cfg, depth=0.012, top=0.475, bottom=0.44):
+    """Round 08 (critic r07: 'thug collar shards'): in the running game the neck skin under a hood / jacket collar pokes through the collar as jagged
+    skin-coloured wedges when the head turns (the collar and the neck are skinned to different bone mixes).  Every vertex that has another shell
+    within 5 cm straight out (= the neck skin UNDER the collar) is pulled toward the head axis by up to `depth` metres, growing from 0 at y = top to
+    `depth` at y = bottom, so there is slack under the cloth.  The visible neck (above the collar) is untouched.  Returns P."""
+    P = P.copy()
+    phi, r = cyl(P, cfg)
+    y = P[:, 1]
+    sel = np.where((r < 0.075) & (r > 0.02) & (y > 1.30) & (y < top + 0.02))[0]
+    if len(sel) == 0: return P
+    Dv = np.stack([np.sin(phi[sel]), np.zeros(len(sel)), np.cos(phi[sel])], 1)
+    cov = _ray_hits_any(P[sel] + Dv * 0.0005, Dv, P, F, 0.05, skip_verts=sel)
+    f = smoothstep(top, bottom, y[sel]) * cov
+    rn = r[sel] - depth * f
+    P[sel, 0] = np.sin(phi[sel]) * rn
+    P[sel, 2] = cfg['axis_z'] + np.cos(phi[sel]) * rn
+    return P
+
+
+def drop_cavity(P, F, cfg, max_area=6e-5, dot=-0.3):
+    """Round 05: delete the mouth / nostril cavity triangles: small back-facing triangles (normal against the radial outward direction) in the
+    lower face.  They lie under the cloth and only show as a dark slit; the loops they leave are closed by fill_face_holes().
+    Returns F, number dropped."""
+    cen = P[F].mean(1)
+    fn = np.cross(P[F[:, 1]] - P[F[:, 0]], P[F[:, 2]] - P[F[:, 0]])
+    ar = np.linalg.norm(fn, axis=1) / 2
+    fn /= np.linalg.norm(fn, axis=1, keepdims=True) + 1e-15
+    phi, r = cyl(cen, cfg)
+    rad = np.stack([np.sin(phi), np.zeros(len(phi)), np.cos(phi)], 1)
+    inreg = (np.abs(phi) < np.radians(70)) & (r < 0.16) & (cen[:, 1] > cfg['chin'] - 0.03) & (cen[:, 1] < cfg['nose'] + 0.012)
+    bad = inreg & ((fn * rad).sum(1) < dot) & (ar < max_area)
+    return F[~bad], int(bad.sum())
+
+
+def fill_face_holes(P, N, UV, F, cfg, max_extent=0.075):
+    """Round 05: close the small open boundary loops of the lower face / neck (the Tripo mouth slit, chin and jaw tears that showed dark
+    through the cloth).  Each loop that lies entirely in the mask region and is smaller than `max_extent` gets a centroid fan whose
+    triangles use the boundary edges in reverse (same winding as the surface around the hole).  Returns P, N, UV, F, number filled."""
+    from collections import defaultdict
+    wid = weld_ids(P)
+    dirn = {}
+    cnt = defaultdict(int)
+    for ti, (a, b, c) in enumerate(F):
+        for u, v in ((a, b), (b, c), (c, a)):
+            wu, wv = wid[u], wid[v]
+            if wu == wv: continue
+            k = (min(wu, wv), max(wu, wv)); cnt[k] += 1; dirn[k] = (u, v)
+    bnd = [k for k, v in cnt.items() if v == 1]
+    pos = np.zeros((wid.max() + 1, 3)); pos[wid] = P
+    adj = defaultdict(list)
+    for a, b in bnd:
+        adj[a].append(b); adj[b].append(a)
+    seen = set(); loops = []
+    for s0 in adj:
+        if s0 in seen: continue
+        st = [s0]; comp = []
+        while st:
+            v = st.pop()
+            if v in seen: continue
+            seen.add(v); comp.append(v); st += adj[v]
+        loops.append(set(comp))
+    w = region_weight(P, cfg, feather=0.02)
+    P, N, UV, Fl = list(P), list(N), list(UV), [tuple(f) for f in F]
+    filled = 0
+    for comp in loops:
+        pp = pos[list(comp)]
+        if (pp.max(0) - pp.min(0)).max() > max_extent or len(comp) < 3: continue
+        phi, r = cyl(pp, cfg)
+        inreg = (np.abs(phi) < np.radians(100)) & (r < 0.15) & (pp[:, 1] > cfg['chin'] - 0.07) & (pp[:, 1] < cfg['eye'] + 0.01)
+        if not inreg.all(): continue
+        edges = [k for k in bnd if k[0] in comp and k[1] in comp]
+        c = pp.mean(0)
+        nn = np.mean([N[np.where(wid == v)[0][0]] for v in comp], axis=0); nn /= np.linalg.norm(nn) + 1e-12
+        c = pp.mean(0)
+        nn = np.mean([N[np.where(wid == v)[0][0]] for v in comp], axis=0); nn /= np.linalg.norm(nn) + 1e-12
+        # round 05b: one centroid vertex PER boundary edge, its uv = the mean of that edge's own two uvs, so a loop that spans several UV islands
+        # (the hood's neck hole) is closed edge by edge without any triangle stretching across the atlas; edges whose endpoints sit in different
+        # islands (uv distance > 0.04) are left open
+        nfan = 0
+        for k in edges:
+            u, v = dirn[k]
+            if np.abs(UV[u] - UV[v]).max() > 0.04: continue
+            ci = len(P); P.append(c); N.append(nn); UV.append((UV[u] + UV[v]) / 2)
+            Fl.append((v, u, ci)); nfan += 1
+        if nfan == 0: continue
+        filled += 1
+    return np.array(P), np.array(N), np.array(UV), np.array(Fl, np.int64), filled
+
+
+def fix_flips(P, F, cfg, min_area=5e-6):
+    """Round 05: sub-millimetre triangles at the lips / nostrils come out of the drape with reversed winding (back-faced = a dark hole through
+    the cloth).  Inside the lower face every triangle whose normal opposes the area-weighted normal of the larger triangles around it
+    is flipped.  Returns F, number flipped."""
+    from collections import defaultdict
+    wid = weld_ids(P)
+    fn = np.cross(P[F[:, 1]] - P[F[:, 0]], P[F[:, 2]] - P[F[:, 0]])
+    ar = np.linalg.norm(fn, axis=1) / 2
+    big = ar > min_area
+    nrm = fn / (np.linalg.norm(fn, axis=1, keepdims=True) + 1e-15)
+    acc = np.zeros((wid.max() + 1, 3))
+    for k in range(3):
+        np.add.at(acc, wid[F[:, k]], nrm * (ar * big)[:, None])
+    vn = acc[wid[F]].sum(1)
+    vn /= np.linalg.norm(vn, axis=1, keepdims=True) + 1e-12
+    cen = P[F].mean(1)
+    phi, r = cyl(cen, cfg)
+    inreg = (np.abs(phi) < np.radians(100)) & (r < 0.16) & (cen[:, 1] > cfg['chin'] - 0.07) & (cen[:, 1] < cfg['eye'] + 0.01)
+    bad = inreg & ((nrm * vn).sum(1) < 0.0) & (ar < 12 * min_area)
+    F = F.copy()
+    F[bad] = F[bad][:, [0, 2, 1]]
+    return F, int(bad.sum())
+
+
+def cloth_normals(P, F, N, cfg, iters=30):
+    """Round 05: shading normals of the mask region = area-weighted face normals smoothed over the welded neighbours, so the mouth-slit
+    walls / nostril pits (tiny triangles facing up, down or backwards) cannot light or darken the cloth.  Returns N."""
+    wid = weld_ids(P)
+    fn = np.cross(P[F[:, 1]] - P[F[:, 0]], P[F[:, 2]] - P[F[:, 0]])
+    acc = np.zeros((wid.max() + 1, 3))
+    for k in range(3): np.add.at(acc, wid[F[:, k]], fn)
+    nbr = [set() for _ in range(wid.max() + 1)]
+    for a, b, c in F:
+        A, B, C = wid[a], wid[b], wid[c]
+        nbr[A].update((B, C)); nbr[B].update((A, C)); nbr[C].update((A, B))
+    Pw = np.zeros((wid.max() + 1, 3)); Pw[wid] = P
+    phi, r = cyl(Pw, cfg)
+    w = region_weight(Pw, cfg, feather=0.012)
+    act = np.where((w > 0.2) & (np.abs(phi) < np.radians(100)) & (Pw[:, 1] > cfg['chin'] - 0.07))[0]
+    nw = acc / (np.linalg.norm(acc, axis=1, keepdims=True) + 1e-12)
+    for _ in range(iters):
+        Q = nw.copy()
+        for v in act:
+            n = list(nbr[v])
+            if n: Q[v] = nw[v] * 0.5 + nw[n].mean(0) * 0.5
+        nw = Q / (np.linalg.norm(Q, axis=1, keepdims=True) + 1e-12)
+    out = N.copy()
+    chg = np.zeros(wid.max() + 1, bool); chg[act] = True
+    m = chg[wid]
+    out[m] = nw[wid[m]]
+    return out
 
 
 # ------------------------------------------------------------------------------------------------ texture

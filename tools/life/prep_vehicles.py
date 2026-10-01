@@ -105,11 +105,19 @@ except Exception:
 for (x, y, w, h), text, fg, bg in (((0, 1214, 512, 66), 'CROSSTOWN  LOCAL', (250, 168, 20), (8, 8, 8)), ((512, 1248, 512, 66), 'CITY  TRANSIT', (28, 66, 140), (245, 245, 242))):
     d.rectangle([x, y, x + w - 1, y + h - 1], fill=bg)
     tw = d.textlength(text, font=F); d.text((x + (w - tw) / 2, y + (h - 46) / 2 - 2), text, font=F, fill=fg)
+# round 03 (critic r02): the taxi label "NYC TAXI" (the NYC taxi logo text) is a real-world mark -> generic "CITY TAXI". Cell x 768-1024 / y 1024-1150 of the 2048 px atlas:
+# black rounded square x 780-882 / y 1038-1138 carrying "NYC" in taxi yellow, then the word TAXI. Only the three letters inside the square are repainted.
+try:
+    F2 = ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc', 34, index=1)
+except Exception:
+    F2 = F
+d.rectangle([786, 1062, 878, 1116], fill=(15, 15, 15))
+tw2 = d.textlength('CITY', font=F2); d.text((831 - tw2 / 2, 1088 - 21), 'CITY', font=F2, fill=(244, 170, 0))
 im.save(os.path.join(OUT, 'vehicles_atlas_clean.png'))
 # crops for the record
 for k in range(8):
     x0 = W // 2 + (k % 2) * 512; y0 = (k // 2) * AD_H
     im.crop((x0, y0, x0 + AD_W, y0 + AD_H)).save(os.path.join(OUT, 'ad_tile_%d.png' % k))
 json.dump({'types': info, 'atlas_clean': 'vehicles_atlas_clean.png', 'ad_tiles_excluded': EXCLUDED_ADS, 'ad_tiles_kept': KEPT_ADS,
-           'bus_text_replaced': ['bus_dest', 'bus_text']}, open(os.path.join(OUT, 'vehicles.json'), 'w'), indent=1)
+           'bus_text_replaced': ['bus_dest', 'bus_text', 'taxi_label_nyc_to_city']}, open(os.path.join(OUT, 'vehicles.json'), 'w'), indent=1)
 print('atlas cleaned; excluded ad tiles', sorted(EXCLUDED_ADS))

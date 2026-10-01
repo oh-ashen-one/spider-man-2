@@ -1,100 +1,91 @@
-# P6 City life: handoff after round 01 (traffic + crowd; water not started)
+# P6 City life: handoff after round 03 (traffic, crowd, signals; water not started)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe. See `DISCLAIMER.md`.
 
-Branch `night1/life`, worktree `~/sm2-n1/life` (base: integration `Opus-5.5-Loop-Night-1` at e1632c7). UE MCP port 8776 (not used: everything is headless commandlets + `-game`), dev port 5207.
-Owned: `/Game/Life`, `/Game/Tests/Life`, `unreal/WebHomage/Scripts/build_life.py`, `unreal/WebHomage/Scripts/life_data/`, `tools/life/`, `docs/night1/life/`, and (new, flagged for the integrator)
-`unreal/WebHomage/Source/WebHomage/Life/` (a new folder in the shared module: no Build.cs / .uproject / Config change was needed, the module root is already an include root).
-Scratch: `/Users/midir/sm2-n1/_scratch/life/`. No `.uasset` / `.umap` is committed: `build_life.py` recreates everything.
+Branch `night1/life`, worktree `~/sm2-n1/life` (integration `Opus-5.5-Loop-Night-1` merged in at e0ada6c; the integrator's uncommitted fixes to `tools/life/citizens_fbx.py` (P2's `SCR = _scr('eval')`) and `build_life.py` (`SM2_LIFE_CIT`) were re-applied here). UE MCP port 8776 (not used: everything is headless commandlets + `-game`), dev port 5207.
+Owned: `/Game/Life`, `/Game/Tests/Life`, `unreal/WebHomage/Scripts/build_life.py`, `unreal/WebHomage/Scripts/life_data/`, `tools/life/`, `docs/night1/life/`, and (flagged for the integrator) `unreal/WebHomage/Source/WebHomage/Life/`.
+Scratch: `/Users/midir/sm2-n1/_scratch/life/` (capture frames, logs, venv with ultralytics for the detector, `r03/` experiment runs, `bin/` GUI probe). No `.uasset` / `.umap` is committed: `build_life.py` recreates everything.
 
-## What round 01 built
+## The one thing the next builder must know first (read `round-03/NOTES.md`)
 
-| system | what it is |
+**Round 03's code is committed and pushed but its final captures do not exist.** At 06:55:42 the macOS WindowServer watchdog fired and restarted; from then on the session could not start any Cocoa app, so every Unreal process hangs at
+`-[NSApplication run]` with no log (see `round-03/NOTES.md`, "Status"). Before any capture run `tools/life/gui_ok.sh` (exit 0 = an app can launch; `capture_round.sh` calls it before every engine and refuses to launch otherwise). If it fails,
+the machine needs a login / reboot by the owner; do not launch engines (a launch while it fails leaves a hung engine, one entered uninterruptible state) and stop hung ones only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh 'sm2-n1/[l]ife/unreal/WebHomage'`
+(kill your driver scripts first; a bracket pattern so it cannot match your own shell). What exists instead: 11 experiment runs (real game, stills, probe lines, YOLO numbers) in `round-03/experiments/` and a critic pack built from them.
+
+Round 02's critic verdict (`critic/round-02-CRITIC.md`): FAILS TARGET, lowest score 4, biggest gap "populate both sidewalks at every height": >= 15 hand-counted pedestrians on the nearest block's sidewalks in S2 and in every 0.5 s swing sample (was 0 in 20 of 20), and >= 35 % of the YOLO people count on the right half in S1 and the t12-t24 series (was 0-17 %).
+
+## What round 03 built (delta on round 02; see `round-03/NOTES.md` for reasons and numbers)
+
+| system | round 03 change |
 |---|---|
-| Traffic (`AWHLifeTraffic`) | Port of the browser sim (`src/world/npc/roads.js` + `traffic.js`) on the exported Midtown road graph: 179 lane links, 253 junction connectors with pairwise conflicts, the 40 s signal cycle of `props.js` (avenue 22 s green / 3 s amber, street 11 s green / 2 s amber), IDM car following (per-driver headway / accel), turn speed caps, left turns yield to oncoming, box reservation by connector conflicts (no car enters a junction whose exit is full), cars removed at region exits and spawned at entries up to the browser density (31 / 44 / 20 / 41 cars per km of lane for avenue / street / wide street / Broadway). 15 vehicle types x 3 LODs (the browser's Blender models, 5.5k / 1.1k / 160 tris), one `UInstancedStaticMeshComponent` per type with per-instance custom data (linear paint colour, brake-light state). About 650-710 moving instances + 1200 static parked ones. |
-| Parked cars / curb taxis | Port of `parkedFor` (curb lane spots, double-parked trucks, pulled-over taxis (chance raised 0.16 -> 0.42), buses at stops), spots blocked by P1 curb props and junction paths are dropped. `life_data/parked.txt`, static ISM instances. |
-| Crowd (`AWHLifeCrowd`) | Pedestrian graph exported from the browser layout (135 sidewalk corners, 113 sidewalk edges, 71 crosswalks, every point validated against `streetsAt`). About 1450 walkers are simulated analytically (acceleration-limited speed, smooth heading, wait at crosswalks for the walk signal on the same clock as the traffic); only the ~280 within 190 m of the camera own a `USkeletalMeshComponent` (pool of 8 per look x 60 looks = 20 citizen models x 3 outfits). Each live walker plays P2's citizen walk cycle through `UWHCharAnimInstance` at its exact ground speed (`ForcedSpeed`), starts at a random gait phase (pre-roll 0.2-2 s), and identical looks on screen are re-assigned (farther one only, >= 30 m). The outfit variants (`tools/life/citizen_variants.py`) recolour clothes / bags / hats of each citizen's atlas tile (hue +120 / +240 deg outside skin, red and brown), the mesh is shared. |
-| Materials | `M_LifeVehicle`: port of `partmat.js` / `vehicles.js` (part id in UV1.x, atlas UV0, baked AO in vertex colour, taxi topper ad tiles picked per instance from the CLEAN tiles, glass over the interior cards, brake lights from custom data, night lamps from `MPC_City NightK`). `M_LifeCitizen` + 20 instances. |
-| Test maps | `/Game/Tests/Life/Life_Midtown` (playable, default game mode, PlayerStart on the avenue), `Life_View_S1`, `Life_View_S2` (P1 shot cameras from `city_shots.json`), `Life_Street_Clip` (a walking camera through the avenue's curb channel). All four = sublevels `City_Midtown_Geo` (P1, patched by P4) + `Look_Rig_golden` (P4) + `Life_Actors` (traffic, crowd, probe). |
-| Probe (`AWHLifeProbe`) | Logs `WH_LIFE_FRAME` (vehicles / people in the camera frustum, size- and occlusion-tested), `WH_LIFE_FOOT` (planted-stance ankle displacement of the 14 nearest walkers), sim ms. `tools/life/analyze_feet.py` computes the gait-phase spread from the CSV. |
+| Crowd fill light | `AWHLifeCrowd`: one unshadowed directional light on lighting channel 1 (`FillLux` 1800, 5200 K, no GI); walkers carry channels 0+1 only while the sun is blocked at them (`UpdateShade` / `TestShade`: line trace to the atmosphere sun light, ~1 s per live walker, 24 per tick). `-WHLifeFill=<lux>`, `-WHLifeFillSteps=<t>:<lux>,...`, `-WHLifeFillAll`, `-WHLifeFillPitch`. Sweep: 0 lux invisible, 1500-2500 natural, 4000+ chalky, 6000 all-walker glows |
+| Fast-camera recycling | camera speed > `AheadSpeedCms` (500): walkers beyond 1.12 R and up to 28 per refresh that are >= 60 m behind go to the ring 62-98 % of R within 60 deg of the velocity (`BuildRespawnEdges`, `Respawn`). `-WHLifeAheadSpeed=1e9` = the round 02 behaviour |
+| Population | `SpawnRadius` 190 m, live radius 110 m -> 180 m with camera height 12 -> 32 m, `MaxWalkers` 6000 (uniform thinning), far walkers step every 4th tick, density 1600 / 1100 per km, `NearAllRadius` 10 m, pool still 6 per look (600 live max; raise `pool_per_model` in `build_life.py` if the near field starves) |
+| Walking | keep-right lanes (`KeepRight` 0.78), sidestep around walkers ahead (`UpdateAvoidance`), crosswalk waits for car bodies to clear (`AWHLifeTraffic::AnyCarNearSegment`) |
+| Curb gaps | `AWHLifeTraffic::ParkedGapEveryM / LenM / StartM / Seed` (80 / 36 / 9 / 38): bus-stop / loading-zone gaps north of avenue streets on half of the (curb, street) pairs, about 4 % of parked cars. The seed was chosen so the three near cars of the S1 east curb (z 122-144) are absent: disclosed tuning. `-WHLifeParkGap=<every>:<len>:<seed>:<start>` |
+| Shots | swing clip 22 m up, aimed 70 m ahead (`AimAheadCm`), `capture_round.sh` passes `-WHLifeRig=250:232:250:-18:2200:250:0:-170:88:2.5:10 -WHLifeAimAhead=70:0`; S1 stills use `-WHLifeClearAhead=24` (half width 12.5 m); S2 does not |
+| Probe / tools | `WH_LIFE_FRAME` / `WH_LIFE_SAMPLE` carry people >= 20 px unoccluded left / right / within 80 m; `detect_counts.py` prints left / right and takes `--crop 0.84` (the critic pack's crop); `spec_table.py` has the round-03 rows (reads `detector_crop84.json`, `hand_counts.json`); `summarize_exp.py` (experiment table); `gui_ok.sh` + `ns_launch_probe.swift` |
+| Command-line knobs (no map rebuild) | `-WHLifePerKm=<av>:<st>`, `-WHLifeNearAll=<m>`, `-WHLifeMargin=<deg>`, `-WHLifeBand=<avMin>:<avMax>:<stMin>:<stMax>`, `-WHLifeShadowR=<m>`, `-WHLifeLiveR=<m>`, `-WHLifeDensity=<traffic scale>`, `-WHLifeRig`, `-WHLifeAimAhead`, plus the round 02 switches (`-WHLifeOff`, `-WHTrafficOff`, `-WHCrowdOff`, `-WHLifeStats`, `-WHLifeSample`, `-WHLifeClearParked`, `-WHLifeClearAhead`, `-WHLifeSignalPhase`, `-WHLifeQueue`, `-WHLifeFoot`) |
+| IP | "NYC TAXI" sticker in the vehicle atlas repainted "CITY TAXI" (`prep_vehicles.py`; takes effect at the next `--steps content`) |
 
-## How to build (editor closed)
+Round 01 / 02 systems (traffic sim, signals, sidewalk bands, 100 looks, gait sync, personal space, test maps, probe, feet analysis) are unchanged unless listed.
+
+## What to do first (in order)
+
+1. `tools/life/gui_ok.sh` must exit 0. If not: report to the owner, do nothing that starts an engine.
+2. `python3 unreal/WebHomage/Scripts/build_life.py --steps content,map` (about 90 s, commandlets; the C++ is already built: `--steps cpp` if a source file changed).
+3. One verification run of the swing rig with the probe (about 1 min, 1080p): `_scratch/life/r03/exp.sh` (see its header; the runs of round 03 are `batch1.sh` / `batch2.sh` there) or `capture_round.sh <dir> clip_swing`; every `WH_LIFE_SAMPLE` should show `within 80 m` >= 15 (g8 showed 4 after 10 s before the recycle-behind fix).
+4. `docs/night1/life/capture_round.sh docs/night1/life/round-03 stills clips` inside ONE `gpu_slot.sh capture --label life --` hold per group (stills ~5 min, clips ~15 min; the hold limit is 40 min and the wrapper SIGKILLs at the limit: keep groups short), then `detect` (CPU, no lock), `python3 tools/life/spec_table.py docs/night1/life/round-03`, hand counts into `round-03/hand_counts.json` (`{"S2_avenue_4k.jpg": {"total": n, "left": l, "right": r, "note": "..."}}`), then `perf_variants.sh` (exclusive; new cost: fill light, ~24 shade traces per tick, 190 m disc).
+5. Blind critic pack: `pairs.json` as in `_scratch/critic-P6-r03/pairs.json`, `python3 ~/spider-man-2-astra6/tools/night1/abpack.py <pack> <pairs.json>`.
+6. Decide the open questions below with the new numbers.
+
+## Known gaps / open questions
+
+1. **The 35 % right-share target is proven only by experiment g3 (39 % median, 42 % cropped, 4 of 5 stills)**; the final defaults (fill 1800, curb-gap rule with seed 38, corridor 24 m) are unmeasured. If the still series stays < 35 %: lower `ParkedGapSeed` search (`round-03/NOTES.md`), raise the fill to 2500, or widen `AvenueBandMax`.
+2. Swing: the recycle-behind rule (budget 28 per refresh) and ring 62-98 % are unverified in the engine; g8 (before them) fell to 4 people within 80 m after 10 s. If it still starves: raise the budget, start the flight later than z = 232 (the city ends at z ~ 256), or pre-populate ahead of the start pose.
+3. S2: the west sidewalk is a dense file (1.6 / m in a 2.5 m band; about 40 in the near block), the east one is under P1's tree (about 9). Consider a wider band or density 1300 / 900 if the critic calls it a parade; consider `pool_per_model` 8 for the near field.
+4. GPU cost of round 03 (fill light + shade traces + more live walkers) is unmeasured; round 02 was +2.85 ms at 4K / 67 % (budget <= 3 ms). Trims: `-WHLifeShadowR` (65 m now), `LiveRadius`, no fill beyond 60 m.
+5. Vehicle mesh quality (blobby minivan, flat bus windows, dark taxi roof lights), more body types, lane changes, hero-aware traffic (cars brake for a hero standing in a lane), buses at stops, night lighting, RT visibility of walkers: unchanged from round 02.
+6. Two soft glows of unidentified origin (green-white smear over the S1 road centre, green haze on a bin) are still in the frames: not the signal lenses (present in round 01 before any lens existed); P1 / P4.
+7. Water (`/Game/Water`): not started.
+
+## How to build and capture (editor closed)
 
 ```
-python3 tools/life/build_deps.py            # pieces this one stands on: cpp, P1 export + city build (2 passes), P4 look (~4 min; own vite :5207, scratch _scratch/life/manhattan)
-python3 unreal/WebHomage/Scripts/build_life.py            # prep (vehicle GLBs + IP-clean atlas, lanes / parked / walk data, 20 citizen FBX via P2's exporter in Blender), cpp, content (~50 s), map (~20 s)
-python3 unreal/WebHomage/Scripts/build_life.py --steps content,map      # any subset, always in this order
-tools/life/build_cpp.sh                     # C++ only (also repairs the stale UnrealEditor.modules manifest, see Gotchas)
-docs/night1/life/capture_round.sh docs/night1/life/round-NN [warm|stills|clip|perf]     # every run under gpu_slot.sh
+python3 tools/life/build_deps.py                      # only if P1 / P4 content is missing (cpp, P1 export + city build, P4 look; ~4 min)
+python3 unreal/WebHomage/Scripts/build_life.py        # prep + cpp + content (~60 s) + map (~20 s); or --steps content,map / --steps cpp
+tools/life/gui_ok.sh                                  # exit 0 or do not start anything
+docs/night1/life/capture_round.sh docs/night1/life/round-NN [warm stills clips clip_street clip_swing clip_signal detect perf]
+VIEWS=S1 docs/night1/life/capture_round.sh docs/night1/life/round-NN stills clip_street          # subsets
+docs/night1/life/perf_variants.sh <round dir> 3840x2160 off:-WHLifeOff on:                        # exclusive GPU-locked runs, r.ScreenPercentage 67
 ```
-`build_life.py` needs `/Game/Tests/City/City_Midtown_Geo`, `/Game/Look/Rigs/Look_Rig_golden` and `/Game/City/Materials/MPC_City` (P1 / P4). The commandlets wait while the number of running Unreal
-processes is >= the cap in `_scratch/gpu/slots` (they are `-nullrhi`, no GPU).
-
-## Integration into `/Game/Maps/Manhattan` (integrator)
-
-Add the sublevel `/Game/Tests/Life/Life_Actors` (always loaded) to `Manhattan*` in `build_manhattan.py`'s `add_sublevels`, after the city and the rig. Nothing else: the actors carry their data (lane text, parked list, walk graph, mesh and anim references) as properties, use the same city export coordinates, and follow the player camera for the crowd. The hero does not affect traffic yet.
-The C++ under `Source/WebHomage/Life/` must be merged with the branch (new folder, no shared file touched). Command line switches for A/B runs: `-WHLifeOff`, `-WHTrafficOff`, `-WHCrowdOff`, `-WHLifeStats=<seconds>`.
+Detector / tables (CPU): `python tools/life/detect_counts.py --device cpu [--crop 0.84] --json <round>/detector.json <stills> <clips>`, `python3 tools/life/analyze_feet.py <round>/feet_clip.csv --json <round>/feet_analysis.json`, `python3 tools/life/spec_table.py <round>`, `python3 tools/life/summarize_exp.py <out.md> <exp dirs>`.
+`gpu_slot.sh capture` allows two shared slots and passes a nested capture through; the wait behind other pieces was 10-60 minutes in round 03, so batch launches into one hold (round 03 ran 10 launches of 50-70 s each in one hold).
 
 ## File map
 
 | Path | What |
 |---|---|
 | `unreal/WebHomage/Source/WebHomage/Life/` | `WHLifeTraffic`, `WHLifeCrowd`, `WHLifeCamRig`, `WHLifeProbe` |
-| `unreal/WebHomage/Scripts/build_life.py` | orchestrator + in-Unreal content / map builder |
-| `unreal/WebHomage/Scripts/life_data/` | `lanes.txt` (nodes, links, connectors, conflicts), `parked.txt`, `walk.txt` (generated by `tools/life/export_lanes.mjs` from the browser road code; committed so the build does not need node) |
-| `tools/life/` | `export_lanes.mjs`, `prep_vehicles.py` (GLB split + sanitised atlas), `citizens_fbx.py` (P2's exporter redirected), `citizen_variants.py` (2 outfit recolours per citizen), `build_deps.py`, `build_cpp.sh`, `ip_check.py`, `analyze_feet.py`, `spec_table.py` |
-| `docs/night1/life/` | this file, `IP_EXCLUSIONS.md`, `capture_round.sh`, `round-01/` (stills, clip, probe logs, perf, spec table, notes) |
+| `unreal/WebHomage/Scripts/build_life.py` | orchestrator + in-Unreal content / map builder (keep the values it sets equal to the C++ defaults: a value equal to the default is not serialised) |
+| `unreal/WebHomage/Scripts/life_data/` | `lanes.txt`, `parked.txt`, `walk.txt`, `signals.txt` (generated by `tools/life/export_lanes.mjs` / `export_signals.py`, committed) |
+| `tools/life/` | build / export / analysis tools, `gui_ok.sh`, `summarize_exp.py`, `detect_counts.py`, `spec_table.py` |
+| `docs/night1/life/` | this file, `SHOTLIST.md`, `IP_EXCLUSIONS.md`, `capture_round.sh`, `perf_variants.sh`, `critic/`, `round-01/`, `round-02/`, `round-03/` (`NOTES.md`, `experiments/`) |
 
+## Round 02 results (kept for reference; evidence `round-02/`)
 
-## Round 01 results (evidence: `round-01/`)
-
-Spec table `round-01/SPEC_TABLE.md` (probe counts, not YOLO: see its header). Summary at 4K, S1 / S2 cameras, median over 4 reports:
-
-| id | target | measured | |
-|---|---|---|---|
-| C4 cars (S1) | 5-19, median ~11 | 9 vehicles >= 44 px (8-12); 21.5 incl. small far ones >= 22 px | in range at 44 px |
-| C4 people (S1) | 6-32, median ~24 | 15 (12-19) at >= 28 px, 12 (9-13) at >= 56 px | in range, median low |
-| S1 parked cars incl. taxis | >= 5 | 12 parked, 1 taxi among them (moving taxis 2-4) | meets |
-| C6 vehicles (S2) | median 14-22 | 14 (10-16) at >= 22 px | low edge |
-| CH16 people | 8-25 | 15 (12-19) | meets |
-| CH17 >= 6 models, no twins | 6 / 0 | 15 looks in frame (12-19), 0 identical looks in all 4 reports of each run | meets in these runs (twins can still appear briefly) |
-| CH17 feet | 0 sliding walkers | ankle displacement in planted stances (14 nearest walkers): median 15.7 cm (4K) / 21.7 cm (1080p), 2.2 % / 3.6 % of stances > 45 cm, per-walker medians 12-21 cm | no continuous glide; ankle bone only, not toe-level |
-| CH19 gait phases | spread >= 0.2 cycle, >= 6 walkers | 14 walkers, mean pairwise 0.264, max 0.49 cycle | meets |
-| C4 traffic lights | >= 1 | P1 heads present, NOT driven | gap |
-
-Instance counts: about 650-710 moving vehicle instances (of which 30-50 % stopped at lights), 1197 parked (140 taxis), 1458 simulated walkers of which about 290 live (skeletal) near the camera; 15 vehicle meshes x 3 LODs, 60 looks.
-Sim cost (CPU, game thread): traffic 0.06 ms + instance push 0.08-0.12 ms, crowd 0.17-0.45 ms.
-
-GPU-locked perf (`round-01/PERF_TABLE.md`, exclusive runs, S1 view, NATIVE internal resolution, GPU 0-2 % before each run):
-
-| | frame ms (avg) | GPU ms (avg) | life vs off |
-|---|---|---|---|
-| 1080p, life off | 22.70 | 20.48 | |
-| 1080p, life ON, ray-tracing visible (first build) | 38.77 | 34.74 | +16.1 frame / +14.3 GPU: too expensive |
-| 1080p, life ON (default now) | 23.59 | 22.62 | +0.9 frame / +2.1 GPU |
-| 4K, life off (run 2; run 1 was 64.43 / 61.72) | 55.38 | 52.64 | |
-| 4K, life ON (default now) | 58.09 | 54.64 | +2.7 frame / +2.0 GPU |
-
-The whole cost was the ray-tracing scene (`r.RayTracing=True` + Lumen HWRT): moving ISM instances and skinned meshes force TLAS / BLAS updates every frame. `bVisibleInRayTracing = false` (default on both actors) removes it; the cars and walkers then do not appear in Lumen reflections / GI (they still get direct light, shadows and screen-space effects). Shadows from the life actors cost nothing measurable (24.3 vs 23.6 ms with them off). Crowd only: +1.4 ms frame (CPU, 290 skeletal components), traffic only: about 0. The scene without life is 20 ms GPU at native 1080p, so the 60 fps budget is P4's problem, not P6's.
-
-## Known gaps / next (round 02 candidates)
-
-1. Water (`/Game/Water`): not started (P1 has the far-field water material; boats, waterfront, wakes are in the browser `water.js` / `waterfx/` / `boats.js`).
-2. Drive the P1 signal heads from the life clock (`AWHLifeTraffic::GetSignalClock`); crosswalk "walk" lights.
-3. People avoid P1 street props (the export has the prop positions), yield to / are yielded to by cars at crosswalks, react to the hero (scatter, look up); cars brake / honk for the hero (browser `playerObstacle`).
-4. More than 20 citizen meshes (P2 pipeline) or per-look normal / detail variation; the seam-crack skinning issue of the crowd rig noted in P2's handoff was not re-checked here.
-5. Night: headlights / taillights / lit windows through `MPC_City NightK` are wired but not captured (round 01 is golden hour only); the taxi topper and bus screens glow at night.
-6. Lane changes, parked-car pull-outs, buses at stops, bicycles, the Broadway diagonals beyond the 2 short links in the region.
-7. Perf: instance culling per LOD distance, VSM caching flags for the parked instances, skeletal LODs / URO for the crowd.
-8. Integration: add `Life_Actors` to the Manhattan maps (see above); the map keeps the default game mode.
+Detector (YOLO11x-seg conf 0.35 imgsz 1920): S1 people median 27 (24-30), street clip median 19, swing clip vehicles median 17, S2 vehicles median 13 (still series), signal queue 3 cars, 246 lit lenses, 100 looks (twin pair within 30 m in 8 of 41 S1 samples), gait spread 0.262, feet 9.0 % of stances > 45 cm.
+GPU-locked perf (S1, 3840x2160, `r.ScreenPercentage 67`): life off 29.76 ms GPU, on 32.61 ms (+2.85 ms, budget <= 3 ms). Round 01 critic: 2/10 (4 people in the street clip, twin heads, blank signal heads).
 
 ## Gotchas learned
 
-1. **Stale module manifest**: while other agents' editors of this engine run, UBT links `libUnrealEditor-WebHomage-000N.dylib` but sometimes leaves `UnrealEditor.modules` on the old name; the commandlet then dies with "game module WebHomage could not be found". `tools/life/build_cpp.sh` re-points the manifest to the newest dylib.
-2. **`Texture2DSample` in a Custom node needs its sampler**: `tAtlas` + `tAtlasSampler`; usage flag `used_with_instanced_static_meshes` must be set on the material asset (a commandlet cannot add it at runtime).
-3. **Hidden ISM instances**: park freed instances at (0, 0, -50 m) with scale 0.001. At z = -10 km the distance-field object upload logged "Found precision loss while converting matrix to GPU format" (ensure) every frame. One such ensure per run remains in every log (P1 and P4 captures too, also with the life actors off): not from this piece.
-4. **Interchange glTF**: no materials in the vehicle GLB -> one empty slot per mesh; LODs are separate GLBs merged with `StaticMeshEditorSubsystem.set_lod_from_static_mesh` (needs `Module Load StaticMeshEditor` in a commandlet); UV channels must stay full precision (atlas UV0 and the part id in UV1).
-5. **Citizen FBX**: the first import defines the skeleton, the others reuse it; the imported clips are named `Armature_walk` etc. (flatten with the last `_` token).
-6. **zsh**: an unquoted `$NAMES` does not word-split and an unmatched glob aborts the command line; the scripts here use Python for lists.
-7. **Blender headless**: `--factory-startup`, otherwise the owner's BlenderMCP add-on loads.
-8. **Editing a bash script while it runs** shifts the read offset (the capture driver printed `fsize: command not found` after an edit): stop the run first.
+Rounds 01-02 gotchas still hold (stale module manifest -> `tools/life/build_cpp.sh` / `build_life.py --steps cpp`; `Texture2DSample` needs its sampler + `used_with_instanced_static_meshes`; hidden ISM instances park at z = -50 m, scale 0.001; Interchange glTF has no materials, LODs are separate GLBs;
+citizen FBX first import defines the skeleton; zsh does not word-split an unquoted `$NAMES`; Blender `--factory-startup`; do not edit a bash script while it runs; actor properties equal to the C++ default are not saved in the map; `pgrep -f` matches your own shell, use `[x]yz` patterns;
+a queued `gpu_slot.sh` job can be cancelled only while it is `wait phase=queue`). New in round 03:
+
+1. **`FParse::Value(cmdline, "Name=", FString&)` stops at a comma unless the 4th argument is `false`**: `-WHLifeFillSteps=0:0,14:2500,...` silently parsed as one step and the first "fill sweep" ran at 0 lux (experiment e1). Colon-separated lists are fine.
+2. **A WindowServer watchdog restart leaves the session unable to launch any Cocoa app** (see Status). Symptoms: engine with ~0.9 s CPU and no log, `sample` shows `-[NSApplication run]` in `mach_msg`; `system_profiler SPDisplaysDataType` shows no display; `WindowServer` `TIME` stays ~0. `tools/life/gui_ok.sh` detects it in 8 s. The watchdog fired while three captures and a permanently busy GPU (100 % device utilisation from another session's local model) were running: keep at most one engine of this piece, 1080p runs while others run, 4K only when `gpu_status.sh` shows a quiet GPU.
+3. **An `ensure` in `FDistanceFieldSceneData::UpdateDistanceFieldObjectBuffers` ("precision loss while converting matrix to GPU format") is logged once per run** in every Life map (also before round 03): harmless, not investigated.
+4. The S1 right sidewalk is under P1's shed and behind parked cars; what YOLO counts on it depends on moving traffic in the curb lane (a box truck at t = 20 s in every run), on lighting and on the parked cars, not on the crowd density (the probe counts ~50 people >= 20 px there in every frame). Measure on the 84 % crop the critic pack applies.
+5. Population size vs pool: live meshes are capped by `pool_per_model` x looks (600); at 1600 / 1100 the S1 view uses all of them (592 live), so density beyond that only adds far walkers.

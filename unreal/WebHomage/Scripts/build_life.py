@@ -12,7 +12,7 @@
 #     Needs the pieces this one stands on: /Game/Tests/City/City_Midtown_Geo + /Game/Look/Rigs/Look_Rig_golden (python3 tools/life/build_deps.py).
 #     Every Unreal process is a headless commandlet (-nullrhi -RenderOffScreen -NoSound) of THIS worktree's project; it waits while the number
 #     of running Unreal processes is >= the cap in /Users/midir/sm2-n1/_scratch/gpu/slots (RULES.md, GPU lock).
-#   * inside Unreal (-run=pythonscript -script=<this file>, env SM2_LIFE_STEPS=clean,vehicles,citizens,map): builds the content.
+#   * inside Unreal (-run=pythonscript -script=<this file>, env SM2_LIFE_STEPS=clean,vehicles,citizens,signals,map): builds the content.
 # No .uasset / .umap is committed (unreal/WebHomage/CONTENT.md); this script is the source of truth.
 import os, sys, json, subprocess, time, shutil, glob, math
 
@@ -29,6 +29,7 @@ DATA = os.path.join(HERE, 'life_data')
 STEPS_ALL = ['prep', 'cpp', 'content', 'map']
 TYPES = ['taxi', 'taxi_hy', 'taxi_mv', 'taxi_gr', 'sedan', 'hatch', 'sedan2', 'cross', 'suv', 'suv2', 'pickup', 'van', 'truck', 'bus', 'tour']
 ROOT, TESTS = '/Game/Life', '/Game/Tests/Life'
+DENSITY = float(os.environ.get('SM2_LIFE_DENSITY', '2.3'))   # traffic DensityScale (1 = the browser's steady-state cars per km of lane)
 
 try:
     import unreal  # noqa: F401
@@ -57,7 +58,8 @@ def slots():
 
 def wait_slot():
     while True:
-        n = subprocess.run("pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
+        # real engine processes only (comm == UnrealEditor): the gpu_slot.py wrappers of queued jobs carry the same path in their argv
+        n = subprocess.run("pgrep -x UnrealEditor | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
         if int(n or 0) < slots(): return
         log('%s Unreal processes running (cap %d), waiting 60 s' % (n, slots())); time.sleep(60)
 
@@ -84,6 +86,7 @@ def ue_python(name, steps, timeout=7200):
 
 
 def step_prep():
+    os.environ.setdefault('SM2_LIFE_CIT', CIT)   # citizens_fbx.py writes where this build reads
     os.makedirs(VEH, exist_ok=True); os.makedirs(CIT, exist_ok=True)
     sh(['python3', 'tools/life/prep_vehicles.py', '--out', VEH], log_name='prep_vehicles.log')
     lay = os.path.join(EXPORT, 'layout.json')
@@ -92,7 +95,10 @@ def step_prep():
     if not all(os.path.exists(os.path.join(CIT, 'fbx', n + '.fbx')) for n in names):
         sh(['python3', 'tools/ue_char/eval/tiles.py', os.path.join(CIT, 'tiles'), os.path.join(CIT, 'stats_tiles.json')], log_name='citizen_tiles.log')
         sh(['/Applications/Blender.app/Contents/MacOS/Blender', '-b', '--factory-startup', '-P', 'tools/life/citizens_fbx.py', '--'] + names, log_name='citizen_fbx.log')
-    sh(['python3', 'tools/life/citizen_variants.py', os.path.join(CIT, 'fbx')], log_name='citizen_variants.log')   # two outfit recolours per citizen (crowd variety)
+    sh(['python3', 'tools/life/export_signals.py'] + ([lay] if os.path.exists(lay) else []), log_name='export_signals.log')
+    if not glob.glob(os.path.join(CIT, 'fbx', '*_headmask.json')):
+        sh(['/Applications/Blender.app/Contents/MacOS/Blender', '-b', '--factory-startup', '-P', 'tools/life/citizen_headmask.py', '--', os.path.join(CIT, 'fbx')], log_name='citizen_headmask.log')
+    sh(['python3', 'tools/life/citizen_variants.py', os.path.join(CIT, 'fbx')], log_name='citizen_variants.log')   # two outfit + head recolours per citizen (crowd variety)
     log('prep done: %d vehicle GLBs, %d citizen FBX' % (len(glob.glob(VEH + '/glb/*.glb')), len(glob.glob(CIT + '/fbx/*.fbx'))))
 
 
@@ -112,7 +118,7 @@ def step_cpp():
 
 
 def step_content():
-    ue_python('life_content', 'clean,vehicles,citizens')
+    ue_python('life_content', 'clean,vehicles,citizens,signals')
 
 
 def step_map():
@@ -139,7 +145,7 @@ def main():
 
 # ================================================================================================ inside Unreal
 def build_in_ue():
-    STEPS = set(os.environ.get('SM2_LIFE_STEPS', 'clean,vehicles,citizens,map').split(','))
+    STEPS = set(os.environ.get('SM2_LIFE_STEPS', 'clean,vehicles,citizens,signals,map').split(','))
     AT = unreal.AssetToolsHelpers.get_asset_tools()
     EAL = unreal.EditorAssetLibrary
     MEL = unreal.MaterialEditingLibrary
@@ -344,7 +350,7 @@ return alb;''')
                 if p.rsplit('/', 1)[0] != CD: EAL.rename_asset(p, CD + '/' + p.split('/')[-1])
         if EAL.does_asset_exist(CD + '/SK_Citizen'): EAL.rename_asset(CD + '/SK_Citizen', CD + '/SK_Citizen_' + names[0])
         # textures + materials: one master (skeletal usage), one instance per citizen
-        VARS = ('', '_v1', '_v2')   # outfit variants (tools/life/citizen_variants.py): same mesh, recoloured atlas tile
+        VARS = ('', '_v1', '_v2', '_v3', '_v4')   # outfit / hair / skin variants (tools/life/citizen_variants.py): same mesh, recoloured atlas tile
         for n in names:
             for v in VARS:
                 t = unreal.AssetImportTask(); t.filename = '%s/fbx/%s_basecolor%s.png' % (CIT, n, v); t.destination_path = CD + '/Textures'; t.destination_name = 'T_Cit_%s_BaseColor%s' % (n, v)
@@ -390,6 +396,40 @@ return alb;''')
         EAL.save_directory(CD, only_if_is_dirty=True, recursive=True)
         L('citizens', len(names), 'models; clips', sorted(p.split('.')[-1] for p in EAL.list_assets(CD + '/Anims')))
 
+    # ------------------------------------------------------------------------------------------------ signal lenses
+    if 'signals' in STEPS:
+        SD = ROOT + '/Signals'
+        m = AT.create_asset('M_LifeSignal', SD, unreal.Material, unreal.MaterialFactoryNew())
+        try: m.set_editor_property('used_with_instanced_static_meshes', True)
+        except Exception as e: MISS.append('signal material flag: ' + str(e)[:80])
+        c = E(m, unreal.MaterialExpressionCustom, -400, 0)
+        c.set_editor_property('description', 'LifeSignal'); c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+        c.set_editor_property('code', '''
+float3 rgb = float3(r, g, b);
+float on = saturate(st);
+Emis = rgb * lerp(0.015, 55.0, on);
+Rough = 0.25;
+return rgb * lerp(0.02, 0.15, on);''')
+        ins = []
+        for n in ('r', 'g', 'b', 'st'):
+            ci = unreal.CustomInput(); ci.set_editor_property('input_name', n); ins.append(ci)
+        c.set_editor_property('inputs', ins)
+        outs = []
+        for n, k in (('Emis', 3), ('Rough', 1)):
+            co = unreal.CustomOutput(); co.set_editor_property('output_name', n)
+            co.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3 if k == 3 else unreal.CustomMaterialOutputType.CMOT_FLOAT1)
+            outs.append(co)
+        c.set_editor_property('additional_outputs', outs)
+        for i, n in enumerate(('r', 'g', 'b', 'st')):
+            e = E(m, unreal.MaterialExpressionPerInstanceCustomData, -900, i * 100); e.set_editor_property('data_index', i); MEL.connect_material_expressions(e, '', c, n)
+        MP = unreal.MaterialProperty
+        MEL.connect_material_property(c, '', MP.MP_BASE_COLOR)
+        MEL.connect_material_property(c, 'Emis', MP.MP_EMISSIVE_COLOR)
+        MEL.connect_material_property(c, 'Rough', MP.MP_ROUGHNESS)
+        MEL.recompile_material(m)
+        EAL.save_asset(SD + '/M_LifeSignal')
+        L('material M_LifeSignal')
+
     # ------------------------------------------------------------------------------------------------ maps
     if 'map' in STEPS:
         HEREDIR = HERE
@@ -424,23 +464,36 @@ return alb;''')
         tr.set_editor_property('vehicle_material', load(ROOT + '/Vehicles/M_LifeVehicle'))
         tr.set_editor_property('seed', 7)
         tr.set_editor_property('stats_interval', 0.0)
+        tr.set_editor_property('density_scale', DENSITY)
+        tr.set_editor_property('street_density_factor', float(os.environ.get('SM2_LIFE_STREETF', '0.6')))
+        tr.set_editor_property('bus_share', 0.07)
+        sigp = os.path.join(DATA, 'signals.txt')
+        if os.path.exists(sigp) and EAL.does_asset_exist(ROOT + '/Signals/M_LifeSignal'):
+            tr.set_editor_property('signal_data', open(sigp).read())
+            tr.set_editor_property('signal_mesh', load('/Engine/BasicShapes/Cylinder'))
+            tr.set_editor_property('signal_material', load(ROOT + '/Signals/M_LifeSignal'))
+        else: MISS.append('signals.txt / M_LifeSignal missing: no lit signal lenses')
         cits = sorted(p.split('.')[0] for p in EAL.list_assets(ROOT + '/Citizens', recursive=False)
                       if p.split('.')[0].split('/')[-1].startswith('SK_Citizen_') and isinstance(load(p.split('.')[0]), unreal.SkeletalMesh))
         cr = spawn(unreal.WHLifeCrowd, unreal.Vector(0, 0, 0), label='LifeCrowd')
         cr.set_editor_property('walk_data', walk)
-        # 20 people x 3 outfits = 60 looks: the same mesh three times, the recoloured material as override (P6 twins fix, tools/life/citizen_variants.py)
-        looks = [(p, '') for p in cits] + [(p, '_v1') for p in cits] + [(p, '_v2') for p in cits]
+        # 20 people x 5 outfits = 100 looks: the same mesh five times, the recoloured material as override (P6 twins fix, tools/life/citizen_variants.py; look = variant * 20 + citizen)
+        looks = [(p, v) for v in ('', '_v1', '_v2', '_v3', '_v4') for p in cits]
         cr.set_editor_property('meshes', [load(p) for p, v in looks])
         cr.set_editor_property('material_overrides', [load('%s/Citizens/Materials/MI_LifeCit_%s%s' % (ROOT, p.split('SK_Citizen_')[-1], v)) if v else None for p, v in looks])
         cr.set_editor_property('anim_class', load(ROOT + '/Citizens/ABP_Life_Citizen').generated_class())
         cr.set_editor_property('traffic', tr)
         cr.set_editor_property('seed', 11)
+        cr.set_editor_property('per_km_avenue', float(os.environ.get('SM2_LIFE_PERKM_AV', '1600')))     # walkers per km of sidewalk edge (round 03: 1600 / 1100; round 02 1300 / 860; round 01 950 / 640). Keep equal to the C++ default (a value equal to the default is not serialised)
+        cr.set_editor_property('per_km_street', float(os.environ.get('SM2_LIFE_PERKM_ST', '1100')))
+        cr.set_editor_property('num_variants', 5)
+        cr.set_editor_property('pool_per_model', 6)
         pr = spawn(unreal.WHLifeProbe, unreal.Vector(0, 0, 0), label='LifeProbe')
         pr.set_editor_property('traffic', tr); pr.set_editor_property('crowd', cr)
         pr.set_editor_property('report_at', [8.0, 14.0, 20.0, 28.0])
         pr.set_editor_property('foot_from', 10.0); pr.set_editor_property('foot_to', 22.0)
         unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), ACTORS)
-        L('actors: traffic (%d vehicle meshes), crowd (%d citizen meshes x 3 outfits)' % (len(TYPES), len(cits)))
+        L('actors: traffic (%d vehicle meshes), crowd (%d citizen meshes x 5 outfits)' % (len(TYPES), len(cits)))
 
         def add_sublevels(world):
             have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
@@ -473,16 +526,29 @@ return alb;''')
                 try: r.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
                 except Exception as e: MISS.append('camera rig auto activate: ' + str(e)[:80])
                 for k, v in (('start', sv(rig['start'])), ('end', sv(rig['end'])), ('duration', rig['duration']), ('eye_height', rig.get('eye', 170.0)),
-                             ('look_height_delta', rig.get('lookup', 250.0)), ('yaw_sway_deg', rig.get('sway', 5.0)), ('fov_degrees', rig.get('fov', 68.0))):
+                             ('look_height_delta', rig.get('lookup', 250.0)), ('yaw_sway_deg', rig.get('sway', 5.0)), ('fov_degrees', rig.get('fov', 68.0)),
+                             ('hold_seconds', rig.get('hold', 0.0)), ('loop', rig.get('loop', False))):
                     r.set_editor_property(k, v)
+                if 'aim' in rig:
+                    r.set_editor_property('aim_at_target', True); r.set_editor_property('aim_target', sv(rig['aim']))
+                if 'aim_ahead' in rig:
+                    r.set_editor_property('aim_ahead_cm', rig['aim_ahead'][0] * 100.0); r.set_editor_property('aim_ahead_height_cm', rig['aim_ahead'][1] * 100.0)
             ok = unreal.EditorLoadingAndSavingUtils.save_map(world, path)
             L('map', path, 'saved' if ok else 'SAVE FAILED', 'levels', len(unreal.EditorLevelUtils.get_levels(world)))
 
         make_map(TESTS + '/Life_Midtown', start=True)
         make_map(TESTS + '/Life_View_S1', cam=SHOTS['S1'])
         make_map(TESTS + '/Life_View_S2', cam=SHOTS['S2'])
-        # street-level clip: walks north through the channel between the west curb parking and the traffic lane from the S1 stand point (browser x 242.8 = the free channel between the parked cars (x 240.8) and the southbound lane (x 244.6), z 196 -> 148, 2.4 m/s), eye 1.7 m
-        make_map(TESTS + '/Life_Street_Clip', rig={'start': (242.8, 0.15, 196.0), 'end': (242.8, 0.15, 148.0), 'duration': 20.0, 'eye': 170.0, 'lookup': 900.0, 'sway': 4.0, 'fov': 68.0})
+        # street-level clip: walks north through the free curb lane of the avenue's west side (browser x 241.0; the curb parking is cleared for the walk with -WHLifeClearParked, see
+        # capture_round.sh), z 150.5 -> 123.5 (1.5 m/s), eye 1.8 m, aimed 10 deg to the left of north. This is the S1 storefront stretch (P1 thins its street trees out there, so the
+        # west sidewalk, 3.5-6.5 m to the left, is open): two-way flow seen obliquely with parallax. The rig holds still for 2.5 s (warm-up, trimmed by the capture script), then walks 18 s.
+        make_map(TESTS + '/Life_Street_Clip', rig={'start': (241.0, 0.15, 150.5), 'end': (241.0, 0.15, 123.5), 'duration': 18.0, 'eye': 180.0, 'aim': (223.0, 1.6, 50.0), 'fov': 75.0, 'hold': 2.5})
+        # swing-height clip (round 03): 22 m above the avenue centre line, heading north at 25 m/s for 10 s, the camera always aimed at the ground 70 m ahead of itself (constant pitch about 17 deg down,
+        # 88 deg lens like the swing camera): both sidewalks and the lanes of the nearest blocks fill the lower half of the frame (round 02: 30 m up, aimed at a fixed point 150-400 m away, the street was a sliver)
+        make_map(TESTS + '/Life_Swing_Clip', rig={'start': (250.0, 0.15, 232.0), 'end': (250.0, 0.15, -18.0), 'duration': 10.0, 'eye': 2200.0, 'aim_ahead': (70.0, 0.0), 'fov': 88.0, 'hold': 2.5})
+        # signal clip: fixed camera 7.5 m up on the avenue centre line, 18 m behind the tail of the queue of the southbound lanes (links 1201 / 1202) that stops at the signal of street 160
+        # (z 155-165); the P1 mast at its far corner (238.1, 165.9) has its heads facing the camera. 10 s after the 2.5 s warm-up: cycle phase 36 -> 46 s (capture_round.sh -WHLifeSignalPhase=33.5), red until 40 s (clip t = 4 s), green after
+        make_map(TESTS + '/Life_Signal_Clip', rig={'start': (248.5, 0.15, 106.0), 'end': (248.5, 0.15, 106.0), 'duration': 10.0, 'eye': 750.0, 'aim': (246.0, 3.0, 165.0), 'fov': 52.0, 'hold': 2.5})
         if MISS:
             L('WARNINGS (%d):' % len(MISS))
             for m_ in MISS: print('    ', m_)

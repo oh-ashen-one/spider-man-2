@@ -9,7 +9,9 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 EVAL = os.path.join(ROOT, 'tools/ue_char/eval')
 SCR = os.environ.get('SM2_LIFE_CIT', '/Users/midir/sm2-n1/_scratch/life/citizens')
 src = open(os.path.join(EVAL, 'citizens.py')).read()
-subs = [("SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'", 'SCR = %r' % SCR),
+# P2 round 05 moved its scratch path behind p2paths.scr('eval'); accept either form
+_scr_line = "SCR = _scr('eval')" if src.count("SCR = _scr('eval')") == 1 else "SCR = '/Users/midir/sm2-n1/_scratch/characters/eval'"
+subs = [(_scr_line, 'SCR = %r' % SCR),
         ("EXP = os.path.join(ROOT, 'art/night1/characters/export/citizens')", 'EXP = %r' % os.path.join(SCR, 'fbx')),
         ("DOCS = os.path.join(ROOT, 'docs/night1/characters/round-01/assets')", 'DOCS = %r' % os.path.join(SCR, 'docs'))]
 for a, b in subs:
