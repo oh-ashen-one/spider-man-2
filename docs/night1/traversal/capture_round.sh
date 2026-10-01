@@ -35,7 +35,7 @@ SEQS=(
   "f1_flow_backDouble f1_flow_backDouble.json ${F1Q:-9.0} ${F1T:-2.4,3.0}"
   "f2_flow_pikeSwan f2_flow_pikeSwan.json ${F2Q:-9.0} ${F2T:-2.4,3.0}"
   "f3_flow_corkscrew f3_flow_corkscrew.json ${F3Q:-9.0} ${F3T:-2.4,3.0}"
-  "f4_chain_flips f4_chain_flips.json ${F4Q:-12.2} ${F4T:-3.0,6.0}"   # round 17: y -560 street east-bound, 4 flips + ~0.8 s after the 4th catch (a 5th flip starts at 12.37 s)
+  "f4_chain_flips f4_chain_flips.json ${F4Q:-13.3} ${F4T:-3.0,6.0}"   # round 18: 3 flips, a plain release where the catch guard finds no web (9.12 s), the 4th flip 10.88 s, its catch ~12.5 s + 0.8 s (r17: 12.2 s, the 4th flip missed its catch)
   "f5_canyon_backDouble f5_canyon_backDouble.json ${F5Q:-9.0} ${F5T:-2.4,3.0}"
 )
 WANT=("$@")
