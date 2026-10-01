@@ -1,4 +1,4 @@
-# P5 combat, round 04: notes (NO CAPTURE: the GPU was wedged for the whole session)
+# P5 combat, round 04: notes (captured 2026-10-01 06:47-07:05 EDT; the original text below was written before the capture)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -6,9 +6,15 @@ Builder: Claude Sonnet 5.5. Branch `night1/combat`. Target of the round (critic 
 (4-8 radial streaks, each >= 8 % of the frame width, <= 35 % of the bounding circle filled, victim keeps >= 60 % of its Sobel energy over contact frames 1-5) and make every blow move the victim
 (>= 0.5 m or >= 30 deg within 0.3 s, all 33-34 hero blows of fight30, victim visible).
 
-**Nothing in this round has been rendered.** Code and tools are built (C++ compiles, `build_editor.sh` OK), `measure_r04.py --selftest` passes on synthetic frames, and the capture chain is written and
-was queued, but `gpu_slot.sh` refused every launch from 07:29 to the end of my session: two other agents' engines (pids 17555 and 17831) sat in state `?E` (stuck exiting inside the GPU driver) since 06:54, the GPU
-read 100 % with no engine running, and the lock does not start an engine while one is stuck exiting (RULES.md, 23:08 kernel panic). I did not bypass it. See "Hazards".
+**Capture status (2026-10-01):** rendered in one `gpu_slot.sh` hold (cap 1) by `final_r04.sh`, then `package_r04.sh`, `critic_pack_r04.sh`. The paragraph "Nothing in this round has been rendered" that stood here was
+written on 2026-09-30 when the GPU was wedged and no longer applies; the sections below describe the implementation and are otherwise unchanged. Facts of the run:
+
+- Hero = the HeroDev proxy (`final_r04.sh`). `final_r04_tessera.sh` (P2's original Tessera suit) was NOT run.
+- Map rebuild 31 s (`COMBAT_STREET_OK actors=191 boxes=183`); movie A (starburst) and movie B (`-WHCmbFlare=0`) 1080p60 `-dumpmovie`, `WH_CMB_RES` = output 1920x1080, `r.ScreenPercentage 100`, internal 1920x1080; 15 native stills at 3840x2160 (internal 3840x2160). Logs in `ue/render_res.txt`.
+- Replay of the frozen `fight30.json` against `round-03/ue/record`: movie A 381 / 381 events identical (`ue/movieA_diff.txt`). Movie B 381 vs 377 events, identical up to the first difference at 11.05 s (`ue/movieB_diff.txt`): the no-flare control diverges from the record there, so
+  the "vs no-flare" columns of `measure_r04.md` for contacts after 11 s compare two slightly different fights. Stills run: 381 / 381 once the 15 `still ...` marker events are excluded (`replay_diff.py` itself cannot read `still_events.jsonl`; the `ue/stills_diff.txt` line is from a manual copy of that file).
+- Published `fight30_1080p60.mp4` = 14,718,996 bytes (crf 30; crf 22-28 were above 15 MB). Measurements: `measure.md` / `measure_r04.md` (master pair A/B) / `measure_r04_published.md` (heuristic mask on the x264 file), `measure_master.md`, `sim_metrics.json`.
+- Not run: a GPU perf pass, any browser comparison. The GPU read 10-12 % before the launch; `gpu_ok.sh` exit 0; no UnrealEditor of this worktree running afterwards.
 
 ## What was implemented (unverified on screen)
 
