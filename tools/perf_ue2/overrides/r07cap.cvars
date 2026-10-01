@@ -1,0 +1,8 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 07 (life p95): Lumen surface-cache capture budget + sky-capture cloud resolution. Measured on the life route (docs/night1/perf/round-07/NOTES.md):
+#   CardCaptureRefreshFraction 0: no periodic re-capture of already captured cards (only new / changed cards are captured) - life p95 -0.2 ms (sessions e1 / g1).
+#   CardCaptureFactor 128: per-frame card capture budget from screen size / 128 (default 64): fewer new-card captures in the frames that reveal a new block.
+#   SkyLight real-time capture cloud resolution divider 4 (default 2): the volumetric cloud in the 64 px sky-capture cubemap at quarter resolution.
+r.LumenScene.SurfaceCache.CardCaptureRefreshFraction=0
+r.LumenScene.SurfaceCache.CardCaptureFactor=128
+r.SkyLight.RealTimeReflectionCapture.VolumetricCloudResolutionDivider=4

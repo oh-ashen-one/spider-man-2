@@ -38,7 +38,7 @@ def _wait_slot():
 
 bm.wait_slot = _wait_slot
 UE_DIR = os.path.join(WT, 'unreal', 'WebHomage')
-PRESET_STEM = os.environ.get('SM2_PERF_PRESET', 'perf60_hwl3')   # round 06 (round 04-05: perf60_hwl2; round 03: perf60_hwl)
+PRESET_STEM = os.environ.get('SM2_PERF_PRESET', 'perf60_hwl4')   # round 07 (round 06: perf60_hwl3; round 04-05: perf60_hwl2; round 03: perf60_hwl)
 PRESET_SP = os.environ.get('SM2_PERF_PRESET_SP', '50')
 INI = os.path.join(UE_DIR, 'Config', 'Mac', 'MacEngine.ini')   # project platform layer: generated, untracked, never rewritten by the engine. (Saved/Config/MacEditor/Engine.ini does NOT work: the engine deletes it at exit when it holds nothing but console variables)
 BEGIN, END = '; >>> F perf preset (tools/perf_ue2/build_map.py step perf_preset) >>>', '; <<< F perf preset <<<'

@@ -1,0 +1,4 @@
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Round 07 preset "perf60_hwl4" = round-06 perf60_hwl3 + overrides/r07cap.cvars (Lumen card-capture budget, sky-capture cloud resolution).
+set:perf60_hwl3
+set:r07cap
