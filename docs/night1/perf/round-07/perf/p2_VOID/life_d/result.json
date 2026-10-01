@@ -1,0 +1,221 @@
+{
+ "config": "life_d",
+ "spec": "life_d@ini+variant:Life",
+ "screen_percentage": "ini",
+ "cvars": {},
+ "flags": [],
+ "map": "/Game/PerfF/Life/Manhattan",
+ "res": "3840x2160",
+ "window_s": "15:45",
+ "script": "docs/night1/manhattan/scripts/route_30s_warmup15.json",
+ "wall_s": 68.5,
+ "command": "<wt>/unreal/WebHomage/Scripts/run_game.sh /Users/midir/sm2-n1/_scratch/perf/r07/perf/p2/life_d -map /Game/PerfF/Life/Manhattan -res 3840x2160 -perf 15:45 -name life_d -timeout 900 -exec  -- -WHTravScript=<wt>/docs/night1/manhattan/scripts/route_30s_warmup15.json -WHTravCsv=/Users/midir/sm2-n1/_scratch/perf/r07/perf/p2/life_d/trav_telemetry.csv -csvGpuStats -benchmark -fps=60 -notraceserver",
+ "other_gpu": {
+  "wall_s": 68.5,
+  "top": [
+   {
+    "pid": 1341,
+    "name": "avconferenced",
+    "gpu_ms": 1457.9,
+    "pct": 2.13
+   },
+   {
+    "pid": 657,
+    "name": "WindowServer",
+    "gpu_ms": 1103.5,
+    "pct": 1.61
+   },
+   {
+    "pid": 1497,
+    "name": "ghostty",
+    "gpu_ms": 368.6,
+    "pct": 0.54
+   },
+   {
+    "pid": 68732,
+    "name": "Codex (Service)",
+    "gpu_ms": 63.1,
+    "pct": 0.09
+   },
+   {
+    "pid": 1671,
+    "name": "Google Chrome He",
+    "gpu_ms": 1.3,
+    "pct": 0.0
+   }
+  ],
+  "void": true,
+  "void_by": [
+   {
+    "pid": 1341,
+    "name": "avconferenced",
+    "gpu_ms": 1457.9,
+    "pct": 2.13
+   }
+  ]
+ },
+ "void": true,
+ "wh_perf": {
+  "frames": 1800,
+  "seconds": 31.53,
+  "avg_ms": 17.517,
+  "avg_fps": 57.09,
+  "p50_ms": 17.508,
+  "p95_ms": 21.377,
+  "p99_ms": 25.585,
+  "max_ms": 35.071,
+  "frames_over_16_67ms": 1005,
+  "gpu_avg_ms": 16.999,
+  "gpu_p95_ms": 19.764,
+  "output_w": 3840,
+  "output_h": 2160,
+  "r_ScreenPercentage": 50.0,
+  "screen_percentage_mode": "manual",
+  "internal_w": 1920,
+  "internal_h": 1080,
+  "rhi": "Metal"
+ },
+ "csv": {
+  "csv_frames": 1800,
+  "avg_ms": 17.518964555555556,
+  "p50_ms": 17.6038,
+  "p95_ms": 20.559505,
+  "p99_ms": 23.737585,
+  "max_ms": 31.8285,
+  "fps_avg": 57.08099909836756,
+  "over_16_7ms": 1208,
+  "over_33_3ms": 0,
+  "hitches": 0,
+  "hitch_rule": "frame > 25 ms and > 2x the median frame",
+  "blocks_5s_avg_ms": [
+   17.35,
+   18.89,
+   18.29,
+   18.76,
+   17.63,
+   15.65
+  ],
+  "best_5s_block_ms": 15.65,
+  "game_thread_ms": {
+   "avg": 4.691156722222222,
+   "p95": 8.522870000000001,
+   "max": 29.4285
+  },
+  "render_thread_ms": {
+   "avg": 17.51406088888889,
+   "p95": 20.598654999999997,
+   "max": 31.6071
+  },
+  "gpu_ms": {
+   "avg": 16.988582333333333,
+   "p95": 19.743995,
+   "max": 28.1256
+  },
+  "rhi_thread_ms": {
+   "avg": 3.554730888888889,
+   "p95": 4.58758,
+   "max": 17.1706
+  },
+  "gpu_passes_avg_ms": {
+   "GPU/LumenScreenProbeGather": 3.0361695555555555,
+   "GPU/NaniteVisBuffer": 2.7535973888888887,
+   "GPU/ShadowDepths": 2.2722742777777776,
+   "GPU/Unaccounted": 1.2753457505555557,
+   "GPU/Basepass": 1.2403923888888888,
+   "GPU/Postprocessing": 0.9768605,
+   "GPU/RenderDeferredLighting": 0.6795262222222223,
+   "GPU/LumenSceneLighting": 0.6477293888888889,
+   "GPU/Lights": 0.46761655555555554,
+   "GPU/NaniteBasePass": 0.466978,
+   "GPU/VolumetricCloud": 0.36834455222222223,
+   "GPU/LumenSceneUpdate": 0.36005408333333333,
+   "GPU/LumenReflections": 0.2486627777777778,
+   "GPU/ShadowProjection": 0.19803777777777778,
+   "GPU/VolumetricFog": 0.13504294888888888,
+   "GPU/CaptureConvolveSkyEnvMap": 0.11995509944444445,
+   "GPU/RenderVelocities": 0.10629638111111112,
+   "GPU/TranslucentLighting": 0.06743322833333333,
+   "GPU/VolCloudComposeOverScene": 0.05918812444444444,
+   "GPU/VolCloudReconstruction": 0.055678685,
+   "GPU/SkyAtmosphereLUTs": 0.053874218333333335,
+   "GPU/RenderAnisotropyPass": 0.04758657555555556,
+   "GPU/HZB": 0.04666387888888889,
+   "GPU/Fog": 0.042053550555555555,
+   "GPU/SkyAtmosphere": 0.03979893722222222
+  }
+ },
+ "breakdown": {
+  "render_thread_exclusive_ms": {
+   "EventWait/Visibility": 12.371,
+   "RenderOther": 1.587,
+   "RDG": 0.631,
+   "RenderLighting": 0.447,
+   "RenderThreadOther": 0.403,
+   "EventWait": 0.346,
+   "RenderShadows": 0.322,
+   "RDG_CollectResources": 0.153,
+   "RenderPostProcessing": 0.139,
+   "STAT_SkinningSceneExtension": 0.133,
+   "RDG_Execute": 0.122,
+   "UpdatePrimitiveTransform": 0.114,
+   "InitViews_Scene": 0.101,
+   "RemovePrimitiveSceneInfos": 0.078
+  },
+  "game_thread_exclusive_ms": {
+   "EventWait": 12.833,
+   "Animation": 1.21,
+   "TickActors": 1.077,
+   "EndOfFrameUpdates": 0.894,
+   "EventWait/EndPhysics": 0.166,
+   "UI": 0.158,
+   "ViewportMisc": 0.119,
+   "WorldTickMisc": 0.093
+  },
+  "all_workers_exclusive_ms": {
+   "FPrimitiveSceneInfo_CacheMeshDrawCommands": 0.431,
+   "RenderShadows": 0.251,
+   "RenderLighting": 0.177,
+   "Physics": 0.129,
+   "RenderPostProcessing": 0.066,
+   "FPrimitiveSceneInfo_CacheNaniteMaterialBins": 0.061,
+   "Slate": 0.045,
+   "ShadowInitDynamic": 0.029,
+   "PrepareDistanceFieldScene": 0.019,
+   "RenderBasePass": 0.016
+  },
+  "drawcalls_by_pass": {
+   "SlateUI": 0.0,
+   "Basepass": 0.0,
+   "CustomDepth": 0.0,
+   "Prepass": 0.0,
+   "Distortion": 0.0,
+   "Fog": 0.0,
+   "FrontLayerTranslucencyGBuffer": 0.0,
+   "Lights": 0.0,
+   "BeginOcclusionTests": 0.0,
+   "ScreenSpaceReflections": 0.0
+  },
+  "counters": {
+   "RHI/DrawCalls": 0.0,
+   "RHI/PrimitivesDrawn": 0.0,
+   "GPUSceneInstanceCount": 120494.329,
+   "SceneCulling/NumDynamicInstances": 57858.329,
+   "SceneCulling/NumStaticInstances": 2012.0,
+   "SceneCulling/NumUpdatedInstances": 223.517,
+   "RenderThreadIdle/Total": 0.0,
+   "RenderThreadIdle/CriticalPath": 0.0,
+   "RenderThreadIdle/SwapBuffer": 0.005,
+   "RenderThreadIdle/GPUQuery": 0.0,
+   "RenderThreadIdle/NonCriticalPath": 0.0,
+   "RenderThreadTime_CriticalPath": 17.514,
+   "GameThreadTime_CriticalPath": 4.691,
+   "ShadowCacheUsageMB": 0.0,
+   "LightCount/UpdatedShadowMaps": 0.0,
+   "RDGCount/Passes": 591.378,
+   "DrawSceneCommand_StartDelay": 13.584,
+   "Scheduler/Oversubscription": 3.207
+  }
+ },
+ "dpcvar_log": [],
+ "cvar_warnings": []
+}

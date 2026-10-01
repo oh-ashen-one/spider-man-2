@@ -1,0 +1,227 @@
+{
+ "config": "lwarm",
+ "spec": "lwarm@ini+variant:Life",
+ "screen_percentage": "ini",
+ "cvars": {},
+ "flags": [],
+ "map": "/Game/PerfF/Life/Manhattan",
+ "res": "3840x2160",
+ "window_s": "15:45",
+ "script": "docs/night1/manhattan/scripts/route_30s_warmup15.json",
+ "wall_s": 84.8,
+ "command": "<wt>/unreal/WebHomage/Scripts/run_game.sh /Users/midir/sm2-n1/_scratch/perf/r07/perf/p2/lwarm -map /Game/PerfF/Life/Manhattan -res 3840x2160 -perf 15:45 -name lwarm -timeout 900 -exec  -- -WHTravScript=<wt>/docs/night1/manhattan/scripts/route_30s_warmup15.json -WHTravCsv=/Users/midir/sm2-n1/_scratch/perf/r07/perf/p2/lwarm/trav_telemetry.csv -csvGpuStats -benchmark -fps=60 -notraceserver",
+ "other_gpu": {
+  "wall_s": 84.7,
+  "top": [
+   {
+    "pid": 1341,
+    "name": "avconferenced",
+    "gpu_ms": 6150.6,
+    "pct": 7.26
+   },
+   {
+    "pid": 657,
+    "name": "WindowServer",
+    "gpu_ms": 4846.8,
+    "pct": 5.72
+   },
+   {
+    "pid": 1497,
+    "name": "ghostty",
+    "gpu_ms": 538.5,
+    "pct": 0.64
+   },
+   {
+    "pid": 68732,
+    "name": "Codex (Service)",
+    "gpu_ms": 70.6,
+    "pct": 0.08
+   },
+   {
+    "pid": 20527,
+    "name": "Wispr Flow Helpe",
+    "gpu_ms": 10.5,
+    "pct": 0.01
+   },
+   {
+    "pid": 1671,
+    "name": "Google Chrome He",
+    "gpu_ms": 6.6,
+    "pct": 0.01
+   }
+  ],
+  "void": true,
+  "void_by": [
+   {
+    "pid": 1341,
+    "name": "avconferenced",
+    "gpu_ms": 6150.6,
+    "pct": 7.26
+   }
+  ]
+ },
+ "void": true,
+ "wh_perf": {
+  "frames": 1800,
+  "seconds": 31.983,
+  "avg_ms": 17.768,
+  "avg_fps": 56.28,
+  "p50_ms": 17.796,
+  "p95_ms": 21.244,
+  "p99_ms": 24.192,
+  "max_ms": 35.59,
+  "frames_over_16_67ms": 1119,
+  "gpu_avg_ms": 16.868,
+  "gpu_p95_ms": 20.013,
+  "output_w": 3840,
+  "output_h": 2160,
+  "r_ScreenPercentage": 50.0,
+  "screen_percentage_mode": "manual",
+  "internal_w": 1920,
+  "internal_h": 1080,
+  "rhi": "Metal"
+ },
+ "csv": {
+  "csv_frames": 1800,
+  "avg_ms": 17.768636,
+  "p50_ms": 17.862099999999998,
+  "p95_ms": 20.755705000000003,
+  "p99_ms": 23.582131,
+  "max_ms": 35.6019,
+  "fps_avg": 56.278940037941005,
+  "over_16_7ms": 1287,
+  "over_33_3ms": 2,
+  "hitches": 0,
+  "hitch_rule": "frame > 25 ms and > 2x the median frame",
+  "blocks_5s_avg_ms": [
+   17.44,
+   19.12,
+   18.43,
+   19.12,
+   17.9,
+   15.89
+  ],
+  "best_5s_block_ms": 15.89,
+  "game_thread_ms": {
+   "avg": 4.6766585,
+   "p95": 8.84972,
+   "max": 21.5155
+  },
+  "render_thread_ms": {
+   "avg": 17.764236166666667,
+   "p95": 20.70455,
+   "max": 35.6341
+  },
+  "gpu_ms": {
+   "avg": 16.87445838888889,
+   "p95": 20.017425,
+   "max": 28.2184
+  },
+  "rhi_thread_ms": {
+   "avg": 3.4754257777777777,
+   "p95": 4.20084,
+   "max": 17.4141
+  },
+  "gpu_passes_avg_ms": {
+   "GPU/LumenScreenProbeGather": 3.122068611111111,
+   "GPU/NaniteVisBuffer": 2.7823661344444446,
+   "GPU/ShadowDepths": 2.291278222222222,
+   "GPU/Unaccounted": 1.270149095,
+   "GPU/Basepass": 1.2451225694444445,
+   "GPU/Postprocessing": 0.9847436111111111,
+   "GPU/RenderDeferredLighting": 0.6859034444444444,
+   "GPU/LumenSceneLighting": 0.6590757222222222,
+   "GPU/NaniteBasePass": 0.5061261111111112,
+   "GPU/Lights": 0.49540555555555554,
+   "GPU/VolumetricCloud": 0.37294034555555555,
+   "GPU/LumenSceneUpdate": 0.3529446388888889,
+   "GPU/LumenReflections": 0.25220811111111113,
+   "GPU/ShadowProjection": 0.20143227777777778,
+   "GPU/VolumetricFog": 0.1373660277777778,
+   "GPU/CaptureConvolveSkyEnvMap": 0.12111735166666666,
+   "GPU/RenderVelocities": 0.11062034722222222,
+   "GPU/TranslucentLighting": 0.06719692666666667,
+   "GPU/VolCloudComposeOverScene": 0.06035556833333333,
+   "GPU/SkyAtmosphereLUTs": 0.054224500555555555,
+   "GPU/HZB": 0.04774105611111111,
+   "GPU/RenderAnisotropyPass": 0.04739303222222222,
+   "GPU/VolCloudReconstruction": 0.04409718333333333,
+   "GPU/Fog": 0.042613298888888894,
+   "GPU/SkyAtmosphere": 0.03970582
+  }
+ },
+ "breakdown": {
+  "render_thread_exclusive_ms": {
+   "EventWait/Visibility": 12.882,
+   "RenderOther": 1.538,
+   "RDG": 0.621,
+   "RenderLighting": 0.442,
+   "RenderThreadOther": 0.399,
+   "RenderShadows": 0.312,
+   "EventWait": 0.199,
+   "RDG_CollectResources": 0.145,
+   "RenderPostProcessing": 0.143,
+   "STAT_SkinningSceneExtension": 0.128,
+   "RDG_Execute": 0.112,
+   "UpdatePrimitiveTransform": 0.111,
+   "InitViews_Scene": 0.101,
+   "RemovePrimitiveSceneInfos": 0.077
+  },
+  "game_thread_exclusive_ms": {
+   "EventWait": 13.096,
+   "Animation": 1.197,
+   "TickActors": 1.057,
+   "EndOfFrameUpdates": 0.925,
+   "EventWait/EndPhysics": 0.164,
+   "UI": 0.16,
+   "ViewportMisc": 0.122,
+   "WorldTickMisc": 0.095
+  },
+  "all_workers_exclusive_ms": {
+   "FPrimitiveSceneInfo_CacheMeshDrawCommands": 0.43,
+   "RenderShadows": 0.233,
+   "RenderLighting": 0.169,
+   "Physics": 0.133,
+   "RenderPostProcessing": 0.064,
+   "FPrimitiveSceneInfo_CacheNaniteMaterialBins": 0.063,
+   "Slate": 0.044,
+   "ShadowInitDynamic": 0.028,
+   "PrepareDistanceFieldScene": 0.018,
+   "RenderBasePass": 0.015
+  },
+  "drawcalls_by_pass": {
+   "SlateUI": 0.0,
+   "Basepass": 0.0,
+   "CustomDepth": 0.0,
+   "Prepass": 0.0,
+   "Distortion": 0.0,
+   "Fog": 0.0,
+   "FrontLayerTranslucencyGBuffer": 0.0,
+   "Lights": 0.0,
+   "BeginOcclusionTests": 0.0,
+   "ScreenSpaceReflections": 0.0
+  },
+  "counters": {
+   "RHI/DrawCalls": 0.0,
+   "RHI/PrimitivesDrawn": 0.0,
+   "GPUSceneInstanceCount": 120494.329,
+   "SceneCulling/NumDynamicInstances": 57858.329,
+   "SceneCulling/NumStaticInstances": 2012.0,
+   "SceneCulling/NumUpdatedInstances": 223.517,
+   "RenderThreadIdle/Total": 0.001,
+   "RenderThreadIdle/CriticalPath": 0.0,
+   "RenderThreadIdle/SwapBuffer": 0.005,
+   "RenderThreadIdle/GPUQuery": 0.0,
+   "RenderThreadIdle/NonCriticalPath": 0.001,
+   "RenderThreadTime_CriticalPath": 17.765,
+   "GameThreadTime_CriticalPath": 4.677,
+   "ShadowCacheUsageMB": 0.0,
+   "LightCount/UpdatedShadowMaps": 0.0,
+   "RDGCount/Passes": 591.363,
+   "DrawSceneCommand_StartDelay": 13.854,
+   "Scheduler/Oversubscription": 3.145
+  }
+ },
+ "dpcvar_log": [],
+ "cvar_warnings": []
+}
