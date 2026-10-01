@@ -2,7 +2,18 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 19, 2026-10-01, Opus 5.5): owner-playtest fixes built, captured and checked; blind critic NOT run yet.**
+**Status (round 20, 2026-10-01 15:05, Opus 5.5): IN PROGRESS -- code built and probed (nullrhi), captures not yet taken.**
+Round 19 critic FAILED (swing 6, camera 4; `critic/round-19-CRITIC.md`). Round 20 = owner-playtest fixes, resumed after the 14:26 restart (GTA V froze WindowServer).
+The GPU lock is paused while the owner plays GTA V (`_scratch/gpu/PAUSED`); probes queue behind it. Never render around it.
+Round-20 work so far (all A/B-able): visual-triangle solids (`SolidMode 2`, previous session), setback mantle, facade-top E zips (w1/w2 now perch at 97.7 m),
+fresh RMB cancels a flip / top-out / armed flip / wall run into a swing in the same step (`bTrickCancel`, `-WHTrickCancel=0` = r19; x1 probe +0.00 s vs +1.00 s r19),
+scripted autoChain re-presses only in a flip's catch window, speed-dependent air pose (arch 20-30 m/s -> track 30-44 m/s, `-WHAirSpeedPose=0`),
+swing shaping by speed, side-run body on the run line, gait shape g2, mouse-look injection in hardware form and inside scripted runs (m1),
+visible-pixel hero bbox + flip_cancels / air_fast_w telemetry, checker `r20_checks.py` (sections W/Z/A/R/X/S/K/L).
+Open at 15:05: f4 drifts north off the y -560 axis at 8.7 s and falls to the street (present since the 14:15 WIP build; probe E tests `-WHTravIsmSolid=1`);
+wall-cancel x2 +0.18 s (fixed kick + immediate re-search, re-probe pending). Scratch: `_scratch/traversal/r20/` (probe_batch.sh, probeD/E.sh, probe/chk3).
+
+**Previous status (round 19, 2026-10-01, Opus 5.5): owner-playtest fixes built, captured and checked; blind critic NOT run yet.**
 Pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r19/pack` (6 pairs, built by `_scratch/critic-P3-r19/make_pairs.sh`; answer key beside it, refcuts scratch-only).
 Round dir `docs/night1/traversal/round-19/` (movies, telemetry, `R19_CHECK.txt`, `SHOTLIST.md`, `inputtest_*.log`, `floor_{on,off}.csv.gz`, `probes/`).
 Batch B captures (b, d, f5, s1, f2) were queued behind the owner's game (`gpu_slot` waits on "owner game running"); see §8 if they are missing.
