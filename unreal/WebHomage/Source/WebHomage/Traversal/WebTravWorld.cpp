@@ -165,9 +165,14 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 					}
 					else Role = TEXT("other");
 				}
+				else if (Cast<UInstancedStaticMeshComponent>(P) && !(MeshName == TEXT("SM_shed") || MeshName == TEXT("SM_shedtop") || MeshName == TEXT("SM_subway")))
+				{ // instanced street / roof props and trees (benches, carts, posts, hvac, antennas, trunks, hedges): visible, not solids.
+				  // Sidewalk sheds and subway entrances are structures and stay solid.
+					++NExcluded; Role = TEXT("excluded-ism"); ExcludedComps.Add(P);
+				}
 				else if (MeshName.StartsWith(TEXT("SM_far")) || (FMath::Max(PB.GetSize().X, PB.GetSize().Y) > 40000.0 && PB.Max.Z > 2000.0))
 				{ // far skyline (2 km tiles beyond the playable city): scenery only
-					P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++NFarSkipped; Role = TEXT("far-off");
+					P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++NFarSkipped; Role = TEXT("far-off"); ExcludedComps.Add(P);
 				}
 				else if (IsExcludedName(LName))
 				{

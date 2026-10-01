@@ -57,7 +57,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.30f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV0 = 22.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV1 = 28.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipRange = 260.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
@@ -287,6 +287,11 @@ public:
 	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
 	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
 	bool TryMantleSetback(const FVector& N0);
+	/** Round 20: wall normal on real facade triangles -- the face of the building box under the contact when one is within 1.5 m (window
+	 *  jambs, mullions and pilasters gave the side run a new normal every frame), else the raw normal. */
+	FVector CleanWallNormal(const FVector& Pt, const FVector& RawN) const;
+	/** Round 20: facade plane in front of the body from a 3 x 2 ray grid along -N (most protruding valid hit, cleaned normal). */
+	bool WallPlane(const FVector& N, FVector& OutN, FVector& OutPoint) const;
 
 private:
 	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop, Mantle };

@@ -14,6 +14,8 @@
 FString UWebTravAnimInstance::ClipRoot = TEXT("/Game/Traversal/HeroDev");
 FString UWebTravAnimInstance::ClipPrefix;
 bool UWebTravAnimInstance::bWallGait = true;
+// round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
+static double GaitTop = 0.55, GaitBot = 0.86, GaitLift = 0.04, GaitKneeOffT = 8.0, GaitLatT = 4.0, GaitKneeOutT = 0.10;
 
 namespace
 {
@@ -29,6 +31,20 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 {
 	Super::NativeInitializeAnimation();
 	{ int32 G = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHWallGait="), G)) bWallGait = G != 0; }
+	{ // round 20: -WHGaitTune=Top=,Bot=,Lift=,KneeOff=,Lat=,KneeOut=
+		FString T;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHGaitTune="), T, false))
+		{
+			TArray<FString> Parts; T.ParseIntoArray(Parts, TEXT(","));
+			for (const FString& Pr : Parts)
+			{
+				FString K, V; if (!Pr.Split(TEXT("="), &K, &V)) continue;
+				const double X = FCString::Atod(*V);
+				if (K == TEXT("Top")) GaitTop = X; else if (K == TEXT("Bot")) GaitBot = X; else if (K == TEXT("Lift")) GaitLift = X;
+				else if (K == TEXT("KneeOff")) GaitKneeOffT = X; else if (K == TEXT("Lat")) GaitLatT = X; else if (K == TEXT("KneeOut")) GaitKneeOutT = X;
+			}
+		}
+	}
 	static const TCHAR* Names[] = { TEXT("idle"), TEXT("walk"), TEXT("jog"), TEXT("run"), TEXT("sprint"), TEXT("jumpCrouch"), TEXT("jumpLaunchSmall"),
 		TEXT("jumpLaunchHigh"), TEXT("jump"), TEXT("land"), TEXT("landLight"), TEXT("landMedium"), TEXT("landHard"), TEXT("landRoll"),
 		TEXT("airRise"), TEXT("airApex"), TEXT("fall"), TEXT("fallCalm"), TEXT("fallFast"), TEXT("releaseSpread"), TEXT("releaseTuck"),
@@ -683,7 +699,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 	// ---- wall-run stride
 	if (Frame.WallW > 0.01f && BHips.IsValid())
 	{
-		static const double GaitLat = 4.0, GaitKneeOff = 14.0, GaitKneeOut = 0.12; // round 20 (cm / pole weight)
+		const double GaitLat = GaitLatT, GaitKneeOff = GaitKneeOffT, GaitKneeOut = GaitKneeOutT; // round 20 (cm / pole weight)
 		const float W = Frame.WallW;
 		const FVector N = Frame.WallN, U = Frame.WallU;
 		const FVector Sd = FVector::CrossProduct(U, N).GetSafeNormal(); // lateral axis (sign fixed per limb below)
@@ -716,7 +732,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const double Ll = (CS(BS).GetLocation() - Hip).Size() + (CS(BF).GetLocation() - CS(BS).GetLocation()).Size();
 			const double DH = FVector::DotProduct(Hip - Frame.WallP, N);
 			const FVector Base = Hip - N * DH; // hip projected onto the wall
-			const double OTd = -0.30 * Ll, OTo = -FMath::Min(0.9 * Ll, FMath::Sqrt(FMath::Max(1.0, FMath::Square(0.97 * Ll) - FMath::Square(DH - 7.0))));
+			const double OTd = -GaitTop * Ll, OTo = -FMath::Min(GaitBot * Ll, FMath::Sqrt(FMath::Max(1.0, FMath::Square(0.97 * Ll) - FMath::Square(DH - 7.0))));
 			const float Phi = FMath::Fmod(Ph + (L == 0 ? 0.f : 0.5f), 1.f);
 			const float Sig = 0.42f;
 			double O, Off, Lat;
@@ -726,7 +742,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			else
 			{
 				const float K = (Phi - Sig) / (1.f - Sig);
-				O = FMath::Lerp(OTo, OTd, double(Ease(K))) + 0.08 * Ll * FMath::Square(FMath::Sin(PI * K));
+				O = FMath::Lerp(OTo, OTd, double(Ease(K))) + GaitLift * Ll * FMath::Square(FMath::Sin(PI * K));
 				Off = 6.0 + GaitKneeOff * FMath::Sin(PI * K); Lat = GaitLat + 1.5 * FMath::Sin(PI * K);
 			}
 			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);

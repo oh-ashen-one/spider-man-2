@@ -574,9 +574,16 @@ void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 	{ // round 19 (owner: "landing in mid-air"): log every landing whose floor is not a building box / the ground mesh
 		(void)TravWorld.GroundHeight(S.Pos.X, S.Pos.Y, F + 0.3);
 		LastLandSrc = TravWorld.LastGroundSrc;
-		if (LastLandSrc != 2 && LastLandSrc != 3)
+		// round 20: in the visual-triangle mode every floor a ray can find is a visible solid (src 4 = a visible mesh outside any building box)
+		if (TravWorld.SolidMode != 2 && LastLandSrc != 2 && LastLandSrc != 3)
+		{
 			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV landing on a non-traversal floor: (%.1f, %.1f) z %.2f src %d %s"), S.Pos.X, S.Pos.Y, F, LastLandSrc,
 				LastLandSrc == 4 ? *TravWorld.LastGroundComp : TEXT(""));
+		}
+		else
+		{
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV landing: (%.1f, %.1f) z %.2f src %d %s"), S.Pos.X, S.Pos.Y, F, LastLandSrc, LastLandSrc == 4 ? *TravWorld.LastGroundComp : TEXT(""));
+		}
 	}
 }
 
@@ -1680,10 +1687,54 @@ bool UWebTraversalComponent::WideWall(const FVector& N, const FVector& Point) co
 	return Ok == 2;
 }
 
+FVector UWebTraversalComponent::CleanWallNormal(const FVector& Pt, const FVector& RawN) const
+{
+	const FVector N = Flat(RawN).GetSafeNormal();
+	if (TravWorld.SolidMode != 2 || N.IsNearlyZero()) return N;
+	TArray<int32> L;
+	TravWorld.Near(Pt.X, Pt.Y, 2.0, L);
+	double Best = 1.5; FVector BN = N;
+	for (int32 I : L)
+	{
+		const FTravBox& B = TravWorld.Boxes[I];
+		if (Pt.Z < B.Min.Z - 1.0 || Pt.Z > B.Max.Z + 1.0) continue;
+		const struct { FVector Nf; double D; bool bIn; } Faces[4] = {
+			{ FVector(1, 0, 0), FMath::Abs(Pt.X - B.Max.X), Pt.Y >= B.Min.Y - 0.5 && Pt.Y <= B.Max.Y + 0.5 },
+			{ FVector(-1, 0, 0), FMath::Abs(Pt.X - B.Min.X), Pt.Y >= B.Min.Y - 0.5 && Pt.Y <= B.Max.Y + 0.5 },
+			{ FVector(0, 1, 0), FMath::Abs(Pt.Y - B.Max.Y), Pt.X >= B.Min.X - 0.5 && Pt.X <= B.Max.X + 0.5 },
+			{ FVector(0, -1, 0), FMath::Abs(Pt.Y - B.Min.Y), Pt.X >= B.Min.X - 0.5 && Pt.X <= B.Max.X + 0.5 } };
+		for (const auto& F : Faces)
+		{
+			if (F.bIn && F.D < Best && FVector::DotProduct(F.Nf, N) > 0.5) { Best = F.D; BN = F.Nf; }
+		}
+	}
+	return BN;
+}
+
+bool UWebTraversalComponent::WallPlane(const FVector& N, FVector& OutN, FVector& OutPoint) const
+{
+	const FVector Lat(-N.Y, N.X, 0.0);
+	int32 Nv = 0; double BestD = -1e9; FVector Sum = FVector::ZeroVector; FVector BestP = FVector::ZeroVector;
+	for (double OZ : { 0.35, -0.5 })
+		for (double OL : { -0.45, 0.0, 0.45 })
+		{
+			FTravHit Hit;
+			const FVector O = S.Pos + Lat * OL + FVector(0, 0, OZ);
+			if (!TravWorld.Raycast(O, -N, R + 0.9, Hit) || FMath::Abs(Hit.Normal.Z) > 0.5 || FVector::DotProduct(Flat(Hit.Normal).GetSafeNormal(), N) < 0.3) continue;
+			++Nv; Sum += Flat(Hit.Normal).GetSafeNormal();
+			const double D = FVector::DotProduct(Hit.Point - S.Pos, N); // most protruding = largest (least negative)
+			if (D > BestD) { BestD = D; BestP = Hit.Point - Lat * OL; }
+		}
+	if (Nv < 2) return false;
+	OutN = CleanWallNormal(BestP, Sum.GetSafeNormal());
+	OutPoint = S.Pos + N * BestD; OutPoint.Z = S.Pos.Z;
+	return true;
+}
+
 void UWebTraversalComponent::EnterWall(const FVector& N, const FVector& Point, bool bRun, double Speed)
 {
 	FWall& W = S.W;
-	W.Normal = Flat(N).GetSafeNormal();
+	W.Normal = CleanWallNormal(Point, N); // round 20
 	S.Pos.X = Point.X + W.Normal.X * (R + 0.02); S.Pos.Y = Point.Y + W.Normal.Y * (R + 0.02);
 	W.RunV = bRun ? FMath::Clamp(FMath::Max(Speed * 0.8, S.Vel.Z), WALLRUN * 0.9, WALLRUN * 1.15) : FMath::Max(0.0, FMath::Min(8.0, S.Vel.Z)); // r9q
 	W.bFast = bRun; S.Vel = FVector::ZeroVector; S.bDive = false; S.Trick = NAME_None;
@@ -1768,8 +1819,12 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	{
 		const FVector Side = Right * Sgn(VX);
 		FTravHit Hit;
-		if (TravWorld.Raycast(S.Pos, Side, R + 0.25, Hit) && FMath::Abs(Hit.Normal.Z) < 0.5 && FVector::DotProduct(Hit.Normal, Side) < -0.7)
+		FTravHit Hit2;
+		if (TravWorld.Raycast(S.Pos, Side, R + 0.25, Hit) && FMath::Abs(Hit.Normal.Z) < 0.5 && FVector::DotProduct(Hit.Normal, Side) < -0.7
+			// round 20: a real inner corner (the new face reaches >= 1.2 m out from this facade), not a pilaster / jamb
+			&& (TravWorld.SolidMode != 2 || (TravWorld.Raycast(S.Pos + N * 1.2, Side, R + 0.7, Hit2) && FVector::DotProduct(Hit2.Normal, Side) < -0.7)))
 		{
+			Hit.Normal = CleanWallNormal(Hit.Point, Hit.Normal);
 			const FVector N1 = Flat(Hit.Normal).GetSafeNormal();
 			FVector P1 = Hit.Point + N1 * (R + 0.02); P1.Z = S.Pos.Z;
 			StartCornerWrap(N1, P1, 0.22, N, Sgn(VX));
@@ -1789,12 +1844,26 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	// stay attached: probe the wall at chest and knee height
 	auto Probe = [&](double OZ, FTravHit& Out) { return TravWorld.Raycast(FVector(S.Pos.X, S.Pos.Y, S.Pos.Z + OZ), -N, R + 0.9, Out); };
 	FTravHit Hit;
-	bool bHit = Probe(0.35, Hit);
-	if (!bHit || FMath::Abs(Hit.Normal.Z) > 0.5) bHit = Probe(-0.5, Hit);
+	bool bHit = false;
+	FVector PlaneN, PlaneP;
+	if (TravWorld.SolidMode == 2 && WallPlane(N, PlaneN, PlaneP))
+	{ // round 20: the facade plane from a ray grid (real triangles: recesses / jambs / mullions must not steer the run)
+		bHit = true; Hit.Point = PlaneP; Hit.Normal = PlaneN;
+	}
+	else
+	{
+		bHit = Probe(0.35, Hit);
+		if (!bHit || FMath::Abs(Hit.Normal.Z) > 0.5) bHit = Probe(-0.5, Hit);
+	}
 	if (bHit && FMath::Abs(Hit.Normal.Z) < 0.5)
 	{
-		const FVector NN = Flat(Hit.Normal).GetSafeNormal();
-		if (FVector::DotProduct(NN, N) < 0.98) N = NN;
+		FVector NN = Flat(Hit.Normal).GetSafeNormal();
+		if (TravWorld.SolidMode == 2)
+		{ // a big turn on a facade is a corner (handled by the corner wraps), never a frame-to-frame normal swap; small drifts are eased in
+			if (FVector::DotProduct(NN, N) < 0.85 && S.ModeT > 0.15) NN = N;
+			else if (FVector::DotProduct(NN, N) < 0.999) NN = FMath::Lerp(N, NN, FMath::Min(1.0, 12.0 * Hs)).GetSafeNormal();
+		}
+		if (FVector::DotProduct(NN, N) < 0.98 || TravWorld.SolidMode == 2) N = NN;
 		// effective wall plane = the most protruding surface over the body extent (user feedback #5)
 		const double BX = Hit.Point.X, BY = Hit.Point.Y;
 		const double Prot = FMath::Min(0.12, WallProtrusion(N, BX, BY));
@@ -1813,7 +1882,7 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 			FTravHit H2;
 			if (TravWorld.Raycast(O, -Side, 2, H2) && FVector::DotProduct(H2.Normal, Side) > 0.7)
 			{
-				const FVector N1 = Flat(H2.Normal).GetSafeNormal();
+				const FVector N1 = CleanWallNormal(H2.Point, H2.Normal); // round 20
 				FVector P1 = H2.Point + N1 * (R + 0.02); P1.Z = Prev.Z;
 				StartCornerWrap(N1, P1, 0.3, -N, Sgn(VX));
 				return;
