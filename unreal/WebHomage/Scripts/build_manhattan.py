@@ -155,7 +155,8 @@ def step_city_extra():
     os.makedirs(os.path.join(SCR, 'r09'), exist_ok=True)   # bake_sunmask.py writes its preview PNG to <SM2_CITY_SCRATCH>/r09/
     for name, cmd in (('export_vehicles', ['python3', 'tools/export/export_vehicles.py', e]), ('street_cars', ['python3', 'tools/export/street_cars.py', e]),
                       ('street_trees', ['python3', 'tools/export/street_trees.py', e]), ('street_traffic', ['python3', 'tools/export/street_traffic.py', e]),
-                      ('far_skyline', ['python3', 'tools/export/far_skyline.py']), ('bake_sunmask', ['python3', 'tools/export/bake_sunmask.py', e, TEX])):
+                      ('far_skyline', ['python3', 'tools/export/far_skyline.py']), ('bake_sunmask', ['python3', 'tools/export/bake_sunmask.py', e, TEX]),
+                      ('island_boxes', ['python3', 'tools/export/island_boxes.py', e])):   # (island r01) WHBox cubes fitted to the drawn city
         sh(cmd, log_name='city_extra_%s.log' % name)
 
 

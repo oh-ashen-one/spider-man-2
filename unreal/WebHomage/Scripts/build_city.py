@@ -64,7 +64,7 @@ if 'tex' in STEPS:
                      wrap=k not in ('interiors', 'signs', 'markings', 'leaves', 'street_signs', 'coast_atlas', 'farland_map'))
         if k in NEVER_STREAM: t.set_editor_property('never_stream', True)
 
-    maps = sorted(f for f in os.listdir(os.path.join(TEX, 'maps')) if f.endswith('.png'))
+    maps = sorted(f for f in os.listdir(os.path.join(TEX, 'maps')) if f.endswith('.png') and not f.startswith('._'))   # (island r01) exFAT scratch: skip AppleDouble ._ files
     import_files([os.path.join(TEX, 'maps', f) for f in maps], ROOT + '/Textures/Maps')
     for f in maps:
         t = load(f'{ROOT}/Textures/Maps/{f[:-4]}'); tex_settings(t, 'noise' not in f)
@@ -1157,13 +1157,21 @@ def spawn_boxes(wp=False):
     """the browser's own collision boxes (collision.json: wall / glass / hero / spire / bulkhead / watertower; >= 3 m tall, >= 1.2 m wide) as invisible
     /Engine/BasicShapes/Cube actors "WHBox_<n>" = the traversal's building boxes (anchors, wall-run, perch, capsule push-out, web targets).
     Same selection as P4's build_look.py geo step (Look_Boxes), which this replaces."""
-    C = json.load(open(os.path.join(EXPORT, 'collision.json')))
+    # (island r01) <EXPORT>/whboxes.json (tools/export/island_boxes.py: + roof tiers < 3 m, round towers as 3 crossed boxes, boxes fitted to the
+    # drawn geometry -- phantom AABBs of angled / undrawn buildings dropped or split) when present, else the browser boxes 1:1 (P4 rule)
+    wp_ = os.path.join(EXPORT, 'whboxes.json')
+    if os.path.exists(wp_): rows = [b[:6] for b in json.load(open(wp_))['boxes']]
+    else:
+        rows = []
+        for sd in json.load(open(os.path.join(EXPORT, 'collision.json')))['solids']:
+            if sd['t'] != 0 or sd['k'] not in BOX_KINDS: continue
+            x0, y0, z0, x1, y1, z1 = sd['bb']  # browser metres: x east, y up, z south
+            if (y1 - y0) < 3.0 or ((x1 - x0) < 1.2 and (z1 - z0) < 1.2): continue
+            rows.append(sd['bb'])
+    log('WHBox source', 'whboxes.json' if os.path.exists(wp_) else 'collision.json', len(rows))
     cube = load('/Engine/BasicShapes/Cube')
     n = 0
-    for sd in C['solids']:
-        if sd['t'] != 0 or sd['k'] not in BOX_KINDS: continue
-        x0, y0, z0, x1, y1, z1 = sd['bb']  # browser metres: x east, y up, z south
-        if (y1 - y0) < 3.0 or ((x1 - x0) < 1.2 and (z1 - z0) < 1.2): continue
+    for x0, y0, z0, x1, y1, z1 in rows:
         a = spawn(unreal.StaticMeshActor, U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), label='WHBox_%d' % n, folder='City/TraversalBoxes')
         c = a.static_mesh_component; c.set_static_mesh(cube)
         a.set_actor_scale3d(unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))  # the cube is 100 cm: scale = size in metres
