@@ -493,6 +493,18 @@ float wood = smoothstep(44.0, 52.0, h) * (0.4 + 0.6 * tf);
 rock = lerp(rock, float3(0.07, 0.11, 0.045) * (0.5 + 1.0 * tf), saturate(wood));
 Rough = 0.9; return rock;""",
         [('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None)], [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
+    # (r10) wooded Palisades bluff (tools/export/far_skyline.py replaces the flat basalt wall of the critic's 'grey embankment'): vertex colour R = wooded fraction, G = rock tone;
+    # forest canopy speckle at two scales so the face keeps texture at kilometres, rock ledges show where the wood stops
+    make_material('M_CityFarBluff', None, r"""
+float3 p = wpos * 0.01;
+float veg = saturate(vc.r); float tone = vc.g;
+float tf = Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.y, p.z) / 6.3).g, tg = Texture2DSample(tNoise, tNoiseSampler, float2(p.x + p.y, p.z) / 1.9).r;
+float3 rock = float3(0.2, 0.18, 0.155) * (0.6 + 0.8 * tone) * (0.75 + 0.5 * tf);
+float3 forest = float3(0.055, 0.088, 0.036) * (0.55 + 0.9 * tf) * (0.8 + 0.4 * tg);
+float f = smoothstep(0.36, 0.64, veg + (tf - 0.5) * 0.35);
+Rough = 0.9;
+return lerp(rock, forest, f);""",
+        [('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('vc', 'vc', None)], [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
     # (r05) street-level kit (tools/export/street_kit.py): piers, cornices, storefront frames, awnings, sign boards, fire escapes.
     # UV0 = atlas uv (image space, v down) or metres (gratings), UV1 = (kind, param), UV2 = metres along the element, vertex colour = linear base.
     # kinds: 0 masonry (param 0 ashlar / 1 brick / 2 smooth), 1 metal, 2 fabric (param stripes / m), 3 sign atlas (0 fascia, 1 / 2 valance letters
@@ -982,10 +994,78 @@ if 'kit' in STEPS:
     else:
         kit_import()
 
+# (r10) far skyline (tools/export/far_skyline.py -> <EXPORT>/farsky.json): plateau towers (M_CityFarMass), wooded Palisades bluff (M_CityFarBluff, replaces the flat `palisadesCliff` face),
+# seawall / promenade / piers (M_CityVC instance), tree clumps (one HISM, M_CityCrown) and extra hinterland towers (merged into ISM_hinterland). Step `fsky`.
+FSKY_DIR = ROOT + '/Meshes/farsky'
+def fsky_data():
+    p = os.path.join(EXPORT, 'farsky.json')
+    return json.load(open(p)) if os.path.exists(p) and ARGS.get('farsky', '1') != '0' else None
+def fsky_has_bluff():
+    D = fsky_data(); return bool(D) and any(r['mat'] == 'bluff' and EAL.does_asset_exist(f'{FSKY_DIR}/SM_{r["name"]}') for r in D['files'])
+def fsky_import():
+    D = fsky_data()
+    if not D: log('no farsky.json'); return
+    recs = D['files']
+    if EAL.does_directory_exist(FSKY_DIR): EAL.delete_directory(FSKY_DIR)
+    import_files([os.path.join(EXPORT, r['file']) for r in recs], FSKY_DIR + '/_in', mesh_pipeline(False))
+    shore_mi = MAT + '/Inst/MI_farsky_shore'
+    if not EAL.does_asset_exist(shore_mi):
+        mi = at.create_asset('MI_farsky_shore', MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+        mel.set_material_instance_parent(mi, load(MAT + '/M_CityVC'))
+        mel.set_material_instance_scalar_parameter_value(mi, 'RoughP', 0.85); mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(1, 1, 1, 1))
+        EAL.save_asset(shore_mi)
+    mats = {'towers': load(MAT + '/M_CityFarMass'), 'bluff': load(MAT + '/M_CityFarBluff'), 'shore': load(shore_mi)}
+    for r in recs:
+        base = r['name']; src = f'{FSKY_DIR}/_in/{base}/StaticMeshes/{base}'; dst = f'{FSKY_DIR}/SM_{base}'
+        if not EAL.does_asset_exist(src): log('MISSING farsky mesh', src); continue
+        EAL.rename_asset(src, dst); sm = load(dst)
+        finish_mesh(sm, mats[r['mat']], False, nanite=False); EAL.save_asset(dst)
+    EAL.delete_directory(FSKY_DIR + '/_in')
+    cp = ROOT + '/Props/SM_farsky_clump'
+    if EAL.does_asset_exist(cp): EAL.delete_asset(cp)
+    import_files([os.path.join(EXPORT, D['clump_proto'])], ROOT + '/Props/_in', mesh_pipeline(False))
+    src = f'{ROOT}/Props/_in/farsky_clump/StaticMeshes/farsky_clump'
+    if EAL.does_asset_exist(src):
+        EAL.rename_asset(src, cp); sm = load(cp); finish_mesh(sm, load(MAT + '/M_CityCrown'), False, nanite=False); EAL.save_asset(cp)
+    else: log('MISSING farsky clump proto')
+    if EAL.does_directory_exist(ROOT + '/Props/_in'): EAL.delete_directory(ROOT + '/Props/_in')
+    log('farsky meshes', len(recs))
+def fsky_spawn():
+    D = fsky_data(); n = 0
+    if not D: return 0
+    for r in D['files']:
+        sp = f'{FSKY_DIR}/SM_{r["name"]}'
+        if not EAL.does_asset_exist(sp): continue
+        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label='farsky__' + r['name'], folder='City/Far')
+        a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
+        a.static_mesh_component.set_editor_property('cast_shadow', r['mat'] == 'towers'); n += 1
+    cp = ROOT + '/Props/SM_farsky_clump'
+    if D['clumps'] and EAL.does_asset_exist(cp):
+        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_farsky_clumps', folder='City/Far')
+        c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+        c.set_static_mesh(load(cp)); c.set_editor_property('cast_shadow', False)
+        xs = [unreal.Transform(U(q[0], q[1], q[2]), unreal.Rotator(0, 0, (q[5] * 997.0) % 360.0), unreal.Vector(q[3], q[3], q[3] * q[4])) for q in D['clumps']]
+        c.add_instances(xs, False, True); n += len(xs)
+    return n
+
+if 'fsky' in STEPS:
+    # like the kit step: the geometry level must not reference the assets that are deleted + re-imported
+    if EAL.does_asset_exist(TESTS + '/City_Midtown_Geo'):
+        unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
+        eas_ = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+        for a in eas_.get_all_level_actors():
+            if a.get_actor_label().startswith('farsky__') or a.get_actor_label() == 'ISM_farsky_clumps': eas_.destroy_actor(a)
+        unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
+        fsky_import()
+    else:
+        fsky_import()
+
 def build_geo_level(path):
     open_level(path)
     recs = [r for r in man['meshes'] if keep_mesh(r)]
+    _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
     for r in recs:
+        if _fb and r['name'] == 'palisadesCliff': continue
         base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
         for suf in ('_r06', '_r04'):  # re-imported variants (frames / far steps) win over the original import
             if EAL.does_asset_exist(sp + suf): sp += suf; break
@@ -994,6 +1074,7 @@ def build_geo_level(path):
         smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
         a.set_mobility(unreal.ComponentMobility.STATIC)
     kit_spawn()
+    log('farsky instances', fsky_spawn())   # (r10)
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
     ni = 0
@@ -1046,6 +1127,8 @@ def build_geo_level(path):
     hp = os.path.join(EXPORT, 'hinterland.json')
     if os.path.exists(hp) and EAL.does_asset_exist(ROOT + '/Props/SM_hinterland'):
         H = json.load(open(hp))['items']
+        _D = fsky_data()
+        if _D and _D.get('hinterland'): H = list(H) + _D['hinterland']   # (r10) skyline clusters (far_skyline.py)
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_hinterland', folder='City/Far')
         c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
         c.set_static_mesh(load(ROOT + '/Props/SM_hinterland')); c.set_editor_property('num_custom_data_floats', 6)
@@ -1063,27 +1146,28 @@ def build_geo_level(path):
 # Fog and FarGain move along one trade line (fog -1e-4 = C13 -1.7 Y / C15 +0.011; FarGain +1 = C13 +1.7..0.7 Y / C15 -0.004): S4 sweep table in docs/night1/city/round-07/README.md.
 # The previous values veiled the far shore to ~12 % contrast transmission (C13 / C15 could not both pass); P4 owns the final haze, these are the City test maps'.
 FOG_DENSITY = float(ARGS.get('fog', 0.0008)); FOG_COLOR = [float(v) for v in ARGS.get('fogc', '0.76,0.78,0.80').split(',')]; AERIAL_SCALE = float(ARGS.get('aerial', 0.34))
-def add_lighting(sun_pitch, sun_yaw, sunset=False):
+def add_lighting(sun_pitch, sun_yaw, sunset=False, shot=None):
+    shot = shot or {}
     sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), unreal.Rotator(roll=0, pitch=sun_pitch, yaw=sun_yaw), 'Sun', 'Lighting')
     lc = sun.light_component
     lc.set_editor_property('intensity', 6.0 if not sunset else 4.0)
     lc.set_editor_property('atmosphere_sun_light', True); lc.set_mobility(unreal.ComponentMobility.MOVABLE)
     sa = spawn(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), label='SkyAtmosphere', folder='Lighting')
     try:  # (r06) far field: less blue aerial perspective (critic: far shore |R-B| within 10 of the mid-ground)
-        sa.get_component_by_class(unreal.SkyAtmosphereComponent).set_editor_property('aerial_pespective_view_distance_scale', AERIAL_SCALE)  # (sic: UE spells it 'pespective')
+        sa.get_component_by_class(unreal.SkyAtmosphereComponent).set_editor_property('aerial_pespective_view_distance_scale', float(shot.get('aerial', AERIAL_SCALE)))  # (sic: UE spells it 'pespective')
     except Exception as ex: log('WARN aerial perspective', ex)
     sl = spawn(unreal.SkyLight, unreal.Vector(0, 0, 2000), label='SkyLight', folder='Lighting')
     sl.light_component.set_editor_property('real_time_capture', True); sl.light_component.set_mobility(unreal.ComponentMobility.MOVABLE)
     sl.light_component.set_editor_property('intensity', 1.7)  # (r05) canyon shade: more sky fill (ground floors read as dark slabs at 1.0)
     fog = spawn(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0), label='HeightFog', folder='Lighting')
-    fc = fog.component; fc.set_editor_property('fog_density', FOG_DENSITY if not sunset else 0.009); fc.set_editor_property('fog_height_falloff', 0.12)
+    fc = fog.component; fc.set_editor_property('fog_density', float(shot.get('fog', FOG_DENSITY)) if not sunset else 0.009)   # (r10) per-shot fog / exposure in city_shots.json; fc.set_editor_property('fog_height_falloff', 0.12)
     fc.set_editor_property('start_distance', 40000.0)  # (r02) clear near field, aerial haze band toward the horizon
-    fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(*FOG_COLOR, 1) if not sunset else unreal.LinearColor(0.9, 0.55, 0.35, 1))
+    fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(*(shot.get('fogc') or FOG_COLOR), 1) if not sunset else unreal.LinearColor(0.9, 0.55, 0.35, 1))
     spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
     ppv = spawn(unreal.PostProcessVolume, unreal.Vector(0, 0, 0), label='PPV', folder='Lighting')
     ppv.set_editor_property('unbound', True)
     st = ppv.get_editor_property('settings')  # simple, deterministic exposure for the city test maps (P4 owns the final look)
-    for k, v in (('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL), ('auto_exposure_bias', 2.0 if not sunset else 2.3),
+    for k, v in (('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL), ('auto_exposure_bias', float(shot.get('exposure', 2.0)) if not sunset else 2.3),
                  ('auto_exposure_apply_physical_camera_exposure', False)):
         st.set_editor_property('override_' + k, True); st.set_editor_property(k, v)
     ppv.set_editor_property('settings', st)
@@ -1097,7 +1181,7 @@ if 'map' in STEPS:
         if not any('City_Midtown_Geo' in l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)):
             unreal.EditorLevelUtils.add_level_to_world(world, TESTS + '/City_Midtown_Geo', unreal.LevelStreamingAlwaysLoaded)
         if not les.set_current_level_by_name(mp): log('WARN could not make persistent level current', mp)  # new actors go to the persistent level, not the streamed geometry
-        add_lighting(sun[0], sun[1], sunset=bool(cam and cam.get('sunset')))
+        add_lighting(sun[0], sun[1], sunset=bool(cam and cam.get('sunset')), shot=cam)
         ps = SHOTS[0]['player'] if cam is None else cam.get('player', SHOTS[0]['player'])
         spawn(unreal.PlayerStart, U(ps[0], ps[1] + 1.0, ps[2]), unreal.Rotator(0, 0, -90), 'PlayerStart')
         if cam:
