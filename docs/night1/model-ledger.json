@@ -620,6 +620,32 @@
     5,
     4
    ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 2,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 3,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    4,
+    4
+   ]
   }
  ],
  "agents": [

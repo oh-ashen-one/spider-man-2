@@ -65,3 +65,5 @@ After a workflow finishes: `git merge origin/night1/<piece>` into integration, `
 - **Before the owner wakes:** stop launching new rounds ~1 h ahead, merge judged rounds, rebuild the combined map headless (`~/sm2-n1/_scratch/showcase/build.sh`, plus `build_combat.py --steps combat` if combat moved), and DO NOT open a window — the owner will say when to launch the playable build (standalone `-game -windowed -ResX=1920 -ResY=1080`, mouse sensitivity via `wh.MouseSensitivity`).
 
 - 2026-10-01 01:25: owner asleep, asked for max safe load: engine cap 2 (hard rule), seven pieces running in parallel (CPU-side work fills the gaps). Fixed a health_monitor bug where STRAIN raised the cap from 1 to 2 (min was hard-coded 2; now min 1, max 2).
+
+- Fable night-2 plan: `docs/night1/director/PLAN-night2.md` (60% Opus). **Cut-off: no new round launches after 07:30; critics finished by 08:30; headless rebuild + acceptance checklist by 09:30** (morning acceptance pass = Fable 5.1 max). Characters r12 and look r5 run on Opus (launched before the plan; plan said Sonnet) — every later round goes through the Fable director step built into the loop script.

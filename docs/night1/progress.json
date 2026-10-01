@@ -1,5 +1,5 @@
 {
- "updated": "01:15",
+ "updated": "01:27",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -71,10 +71,10 @@
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (impact 3, moves 4, enemies 3, camera 3, spectacle 3)",
-   "gap": "No visible hit-stop (0% frozen frames), passive enemies without tells, camera crops the hero"
+   "state": "active",
+   "round": 3,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
+   "gap": "Additive impact burst that keeps the victim readable; every blow moves the victim."
   },
   {
    "id": "P6",
@@ -824,6 +824,22 @@
    "verdict": "fails",
    "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar.",
    "notes": "Fight fixed: the grey 'arm' was a pipe piercing the hero (weapon tilt fixed); every 8 s clip has 6\u20137 reactions, 2 knockdowns with two down together ~1.9 s, two get-ups, no guard hold > 2 s. Image quality still 4 (hair cards, collar wedge worse) \u2014 not merged; r11+ on Opus."
+  },
+  {
+   "t": "01:27",
+   "piece": "P5 Combat",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Hit-stops freeze the whole frame; T-pose enemy; hero passes through enemies; dark opening seconds.",
+   "notes": "Recorded late (director ledger gap). Critic also flagged the copied chest emblem on the old hero suit \u2014 replaced by the original Tessera suit (characters r8)."
+  },
+  {
+   "t": "01:27",
+   "piece": "P5 Combat",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Additive impact burst that keeps the victim readable; every blow moves the victim.",
+   "notes": "Recorded late. Local hit-stop fixed the global freeze (0.2% frozen frames); launcher/air hit/slam read. Camera and spectacle still 4."
   }
  ],
  "perf": [
