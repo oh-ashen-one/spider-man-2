@@ -99,7 +99,7 @@
     "layer_bottom_altitude": 2.0,
     "layer_height": 4.0,
     "coverage": 0.45,
-    "tracing_max_distance": 40.0,
+    "tracing_max_distance": 20.0,
     "mi": {
      "scalars": {
       "Cloud_GlobalCoverage": 0.5,
@@ -264,7 +264,7 @@
     "layer_bottom_altitude": 3.0,
     "layer_height": 6.0,
     "coverage": 0.55,
-    "tracing_max_distance": 50.0
+    "tracing_max_distance": 20.0
    },
    "mpc": {
     "NightK": 0.0,
@@ -447,7 +447,7 @@
     "layer_bottom_altitude": 3.5,
     "layer_height": 6.0,
     "coverage": 0.35,
-    "tracing_max_distance": 30.0
+    "tracing_max_distance": 20.0
    },
    "mpc": {
     "NightK": 1.0,

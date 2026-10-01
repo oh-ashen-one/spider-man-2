@@ -18,6 +18,8 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Parse.h"
 #include "UnrealClient.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "Kismet/KismetMaterialLibrary.h"
 
 void UWHLookTour::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -83,6 +85,35 @@ void UWHLookTour::RunCommand(UWorld* World, const FString& Line)
 			break;
 		}
 	}
+	else if (Cmd == TEXT("sun") && P.Num() >= 3)
+	{
+		// (round 04) ! sun <elevation deg> <compass azimuth deg> [ActorLabel=Sun]: same maths as build_look.py sun_rotator (UE X east, Y south, Z up)
+		const double E = FMath::DegreesToRadians(FCString::Atod(*P[1])), Az = FMath::DegreesToRadians(FCString::Atod(*P[2]));
+		const FVector ToSun(FMath::Sin(Az) * FMath::Cos(E), -FMath::Cos(Az) * FMath::Cos(E), FMath::Sin(E));
+		const FRotator R = (-ToSun).Rotation();
+		const FString Label = P.Num() >= 4 ? P[3] : FString(TEXT("Sun"));
+		int32 Hits = 0;
+		for (TActorIterator<AActor> It(World); It; ++It)
+		{
+#if WITH_EDITOR
+			const FString L = It->GetActorLabel();
+#else
+			const FString L = It->GetName();
+#endif
+			if (L == Label) { It->SetActorRotation(R); ++Hits; }
+		}
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TOUR sun elev %s az %s -> pitch %.2f yaw %.2f (%d actors)"), *P[1], *P[2], R.Pitch, R.Yaw, Hits);
+	}
+	else if (Cmd == TEXT("mpc") && P.Num() >= 4)
+	{
+		// (round 04) ! mpc <collection path> <scalar name> <value>: the rig's MPC_City_<preset> level sequence re-applies the preset every frame, so the override is
+		// re-applied in every Tick of this subsystem (tickables run after the world's tick groups)
+		UMaterialParameterCollection* C = LoadObject<UMaterialParameterCollection>(nullptr, *P[1]);
+		if (!C) { UE_LOG(LogWebHomage, Warning, TEXT("WH_TOUR mpc %s not found"), *P[1]); return; }
+		MpcOverrides.Add(TPair<TWeakObjectPtr<UMaterialParameterCollection>, FName>(C, FName(*P[2])), (float)FCString::Atod(*P[3]));
+		UKismetMaterialLibrary::SetScalarParameterValue(World, C, FName(*P[2]), (float)FCString::Atod(*P[3]));
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TOUR mpc %s.%s = %s"), *P[1], *P[2], *P[3]);
+	}
 	else if (Cmd == TEXT("set") && P.Num() >= 5)
 	{
 		FString Label = P[1]; const bool bPrefix = Label.EndsWith(TEXT("*")); if (bPrefix) Label.LeftChopInline(1);
@@ -146,6 +177,7 @@ void UWHLookTour::Tick(float DeltaTime)
 	UWorld* World = GI ? GI->GetWorld() : nullptr;
 	if (!World || !World->IsGameWorld() || bQuit) return;
 	Elapsed += DeltaTime;
+	for (const auto& O : MpcOverrides) if (O.Key.Key.IsValid()) UKismetMaterialLibrary::SetScalarParameterValue(World, O.Key.Key.Get(), O.Key.Value, O.Value);
 	if (Phase == EPhase::Waiting)
 	{
 		if (Elapsed >= StartDelay && UGameplayStatics::GetPlayerController(World, 0)) EnterPose(World, 0);

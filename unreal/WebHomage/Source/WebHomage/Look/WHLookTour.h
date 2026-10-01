@@ -12,6 +12,8 @@
 //                                                                                              ! set SkyLight - LightColor (B=255,G=240,R=235,A=255))
 //   ! post <PropertyName> <text value>       sets the first PostProcessVolume's setting and its bOverride_ flag (CamelCase C++ names, e.g. AutoExposureBias, ColorContrast (X=1,Y=1,Z=1,W=1))
 //   ! cvar <name> <value>    |   ! exec <console command>
+//   ! sun <elev> <az> [label]   (round 04) re-aim the directional light "Sun" like build_look.py sun_rotator (compass azimuth, east = 90)
+//   ! mpc <collection path> <scalar> <value>   (round 04) sets the scalar and re-applies it every frame (the rig's MPC level sequence would undo it) (e.g. ! mpc /Game/City/Materials/MPC_City.MPC_City ShadeFill 0.04)
 // Written by tools/perf_ue/capture_tour.py from Scripts/city_shots.json.
 #pragma once
 
@@ -21,6 +23,7 @@
 #include "WHLookTour.generated.h"
 
 class ACameraActor;
+class UMaterialParameterCollection;
 
 UCLASS()
 class WEBHOMAGE_API UWHLookTour : public UGameInstanceSubsystem, public FTickableGameObject
@@ -44,6 +47,7 @@ private:
 	enum class EPhase : uint8 { Waiting, Settling, Shot } Phase = EPhase::Waiting;
 	int32 ShotFrames = 0;
 	TWeakObjectPtr<ACameraActor> Cam;
+	TMap<TPair<TWeakObjectPtr<UMaterialParameterCollection>, FName>, float> MpcOverrides;
 	void EnterPose(UWorld* World, int32 I);
 	void RunCommand(UWorld* World, const FString& Line);
 };
