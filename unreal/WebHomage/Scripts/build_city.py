@@ -1227,7 +1227,7 @@ def add_lighting(sun_pitch, sun_yaw, sunset=False, shot=None):
     sl.light_component.set_editor_property('real_time_capture', True); sl.light_component.set_mobility(unreal.ComponentMobility.MOVABLE)
     sl.light_component.set_editor_property('intensity', 1.7)  # (r05) canyon shade: more sky fill (ground floors read as dark slabs at 1.0)
     fog = spawn(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0), label='HeightFog', folder='Lighting')
-    fc = fog.component; fc.set_editor_property('fog_density', float(shot.get('fog', FOG_DENSITY)) if not sunset else 0.009)   # (r10) per-shot fog / exposure in city_shots.json; fc.set_editor_property('fog_height_falloff', 0.12)
+    fc = fog.component; fc.set_editor_property('fog_density', float(shot.get('fog', FOG_DENSITY)) if not sunset else 0.009); fc.set_editor_property('fog_height_falloff', 0.12)   # (r10) per-shot fog / exposure / aerial in city_shots.json (an earlier edit put the comment BEFORE the falloff statement and silently dropped it: hold-1 frames of the new maps have the UE default falloff 0.2)
     fc.set_editor_property('start_distance', 40000.0)  # (r02) clear near field, aerial haze band toward the horizon
     fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(*(shot.get('fogc') or FOG_COLOR), 1) if not sunset else unreal.LinearColor(0.9, 0.55, 0.35, 1))
     spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
