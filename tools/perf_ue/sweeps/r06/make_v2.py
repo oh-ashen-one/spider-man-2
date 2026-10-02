@@ -51,6 +51,17 @@ KNOBS = {
     'golden_set': {'pp.ColorGainHighlights': [0.55, 0.72, 0.72, 1.0], 'mpc.ShadeFill': 0.2},
     'golden_hours': [7.6, 18.4],
     'twilight_overrides': {},      # {hour: {param: value}} applied last (sweep results go here)
+    # ---- round 06 hold 5+ knobs (all default OFF = the committed hold-4 table; variants / the final table set them) ----
+    # explicit SkyLuminanceFactor schedule per twilight (replaces tw_warm x tw_factor): {'dusk': [(h, [r, g, b]), ...], 'dawn': [...]}; outside the listed hours the factor is 1
+    'tw_fac_pts': None,
+    # R-highlight compression at the twilights (the red sky clips the R channel): {'dusk': [(h, mult)], 'dawn': [...]} multiplies pp.ColorGainHighlights R (outside the hours 1)
+    'tw_hl_r': None,
+    # twilight clouds: {'dusk': [(h, coverage, density)], 'dawn': [...]} written on the key hours inside the listed range
+    'tw_cloud': None,
+    # night highlight roll-off (L15b: no clipped px in the hero box): {'dusk': [(h, mult)], 'dawn': [(h, mult)], 'night': mult} multiplies pp.ColorGainHighlights on the night keys
+    'night_hl': None,
+    # moonlit cloud pattern: cloudv.Layout_GlobalTexturePlacement on every key (hold-2 Mv4: [0, 30000, 0, 0] = sky high-pass std 3.4 at 22:00 with the disk clear)
+    'cloud_offset': None,
 }
 
 
@@ -60,6 +71,17 @@ def u_of(h, anchors):
     if h >= pts[-1][0]: return pts[-1][1]
     for (h0, u0), (h1, u1) in zip(pts, pts[1:]):
         if h0 <= h <= h1: return u0 + (u1 - u0) * (h - h0) / (h1 - h0)
+
+
+def sched(h, pts, outside=None):
+    """piecewise-linear interpolation of (hour, number | list) points; `outside` (default: the end values are NOT extended, None) outside the listed hours"""
+    pts = sorted(pts, key=lambda p: p[0])
+    if h < pts[0][0] or h > pts[-1][0]: return outside
+    for (h0, v0), (h1, v1) in zip(pts, pts[1:]):
+        if h0 <= h <= h1:
+            t = 0.0 if h1 == h0 else (h - h0) / (h1 - h0)
+            return [a + (b - a) * t for a, b in zip(v0, v1)] if isinstance(v0, list) else v0 + (v1 - v0) * t
+    return outside
 
 
 def city_u(h, K):
@@ -134,7 +156,26 @@ def apply(doc, K):
             sset['sky.Intensity'] = round(b['sky.Intensity'] * (1 - (1 - K['tw_sky_scale']) * w), 4)
             for dn in 'NESW': sset['fill.' + dn] = round(b['fill.' + dn] * (1 - (1 - K['tw_fill_scale']) * w), 4)
             sset['fog.SkyAtmosphereAmbientContributionColorScale'] = [round(1 - (1 - K['tw_amb']) * w, 4)] * 3 + [1.0]
-        if ww > 0: sset['atm.SkyLuminanceFactor'] = [round(1 + (f - 1) * ww, 4) for f in K['tw_factor']] + [1.0]
+        if K.get('tw_fac_pts'):
+            ph = 'dusk' if h >= 12 else 'dawn'
+            v = sched(h, [(a, b) for a, b in K['tw_fac_pts'][ph]]) if (h >= 18.0 or h <= 7.6) else None
+            if v is not None: sset['atm.SkyLuminanceFactor'] = [round(x, 4) for x in v] + [1.0]
+            elif h >= 18.0 or h <= 7.6: sset['atm.SkyLuminanceFactor'] = [1.0, 1.0, 1.0, 1.0]
+        elif ww > 0: sset['atm.SkyLuminanceFactor'] = [round(1 + (f - 1) * ww, 4) for f in K['tw_factor']] + [1.0]
+        if K.get('tw_hl_r') and (h >= 18.0 or h <= 7.6):
+            m = sched(h, K['tw_hl_r']['dusk' if h >= 12 else 'dawn'])
+            if m is not None:
+                g = list(b['pp.ColorGainHighlights']); g[0] = round(g[0] * m, 4); sset['pp.ColorGainHighlights'] = g
+        if K.get('tw_cloud') and (h >= 18.0 or h <= 7.6):
+            c = sched(h, [(a, [cv, dn]) for a, cv, dn in K['tw_cloud']['dusk' if h >= 12 else 'dawn']])
+            if c is not None: sset['cloud.Cloud_GlobalCoverage'] = round(c[0], 4); sset['cloud.Cloud_GlobalDensity'] = round(c[1], 5)
+        if K.get('night_hl'):
+            nh = K['night_hl']; m = None
+            if h >= 18.0: m = sched(h, nh['dusk'], nh['night'] if h > nh['dusk'][-1][0] else None)
+            elif h <= 7.6: m = sched(h, nh['dawn'], nh['night'] if h < nh['dawn'][0][0] else None)
+            if m is not None:
+                g = list((sset.get('pp.ColorGainHighlights') or b['pp.ColorGainHighlights'])); sset['pp.ColorGainHighlights'] = [round(x * m, 4) for x in g[:3]] + [1.0]
+        if K.get('cloud_offset') is not None: sset['cloudv.Layout_GlobalTexturePlacement'] = list(K['cloud_offset'])
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
         if K.get('cutoff_all') is not None: sset['fog.FogCutoffDistance'] = K['cutoff_all']
         if h in K['night_stars']: sset['stars'] = K['night_stars'][h]
