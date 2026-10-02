@@ -392,13 +392,8 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
 { float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
   Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
-// r05: sun-facing water seen from swing height (camera >= ~50 m): the shading normal leans toward the camera by SunTilt (tan), so the
-//      mirror ray climbs into the higher, darker sky and leaves the grazing Fresnel peak (harbour_sun_high read brass: R-B 100, the
-//      reference's troughs are dark). Hold 1: the Specular input did not change SLW's reflection at all. The glints keep the untilted normal.
-float3 N0 = N;
-float hiCam = smoothstep(20.0, 80.0, cm.z);
-float sunward = LsN.z > 0.0 ? smoothstep(0.2, 0.8, dot(normalize(-V.xy + 1e-5), normalize(LsN.xy + 1e-5))) : 0.0;
-[branch] if (hiCam * sunward * SunTilt > 0.0) N = normalize(N + hiCam * sunward * SunTilt * float3(normalize(V.xy + 1e-5), 0.0));
+// r05: tried and removed (round-05 NOTES): an F0 scale (x0.25) and a 0.2 normal lean toward the camera on sun-facing swing-height water
+//      left harbour_sun_high's mean colour unchanged (R-B 100.0 / 99.7): its brass is the atmosphere's forward in-scatter, not the water.
 float farW = smoothstep(%(near).1f * 0.4, %(near).1f, dist);
 float r4 = RoughN * RoughN; r4 *= r4;
 float a2 = r4 + VARK * FarVarK * lerp(1.0, TopVarK, down) * farW * (varU + 2.0 * varF);
@@ -434,7 +429,7 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
     float gs = lerp(1.0, GlitFar, smoothstep(250.0, 600.0, dist));
     float2 pg = p / gs;
     float2 gn = (NZG(pg / 2.3 + float2(t * 0.05, t * 0.034) / gs, 1.0 / (2.3 * gs)).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-pg.y, pg.x) / 3.7 + float2(-t * 0.041, t * 0.02) / gs, 1.0 / (3.7 * gs)).ga - 0.5) * 2.0;
-    float3 nG = normalize(N0 + float3(gn * 0.22, 0.0));
+    float3 nG = normalize(N + float3(gn * 0.22, 0.0));
     float gl = pow(saturate(dot(nG, Hh)), 700.0);
     float spark = smoothstep(0.62, 0.9, NZG(pg / 5.0 + float2(t * 0.02 / gs, 0.0), 1.0 / (5.0 * gs)).r);
     gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
@@ -502,8 +497,8 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # 2 = C: half-res legacy TextureFactory; Dbg 9 showed all three read correctly in-engine). ShoreCalm: the far-field long-wave
           # gains (LongK / MidK) fade out within ShoreCalm m of land (sheltered water mirrors the island: the r03 reflections).
           # FoamFarK / FoamFar: the far contact line (harbour_high: the island seawall ~1 km away had no foam: foam stopped at NEAR_M)
-          # SunTilt replaces hold 1's SunSpecK (no effect on SLW reflections); FarPx: the far line spans >= FarPx pixel footprints
-          'CSel': 0.0, 'ShoreCalm': 380.0, 'SunTilt': 0.2, 'FoamFarK': 1.0, 'FoamFar': 2500.0, 'FarPx': 4.0}
+          # FarPx: the far line spans >= FarPx pixel footprints (a 1-2 m band is < 1 px at 1 km from swing height: hold 1 line 0.3 %)
+          'CSel': 0.0, 'ShoreCalm': 380.0, 'FoamFarK': 1.0, 'FoamFar': 2500.0, 'FarPx': 6.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
