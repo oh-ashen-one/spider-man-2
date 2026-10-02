@@ -1,6 +1,28 @@
-# Island (piece A) — HANDOFF (round 01 done except r3 take 2 + the ISM in-game check, both blocked by the 20:43 GPU auto-pause)
+# Island (piece A) — HANDOFF (round 02 IN PROGRESS, 2026-10-01 22:25)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
+
+## Round 02 state (read first; the round-01 handoff follows below)
+Target: collision that matches what is drawn AND survives traversal r20 (SolidMode 2: every visible mesh is a QueryOnly solid traced
+complex; WHBox cubes index only). Done so far (all pushed on `night1/island`):
+- merged `Opus-5.5-Loop-Night-1` (traversal r20) at 70e914a.
+- `build_city.py`: `solid_rec()` mirrors r20's exclusion list; facade / roofs (parapets + copings are drawn in the ROOFS mesh) / detail
+  (browser fire escapes) / landmarks / plazas / bridges / facadeLod keep cooked triangle collision (CTF_UseComplexAsSimple, full Nanite
+  fallback) and QueryOnly BlockAll components; sheds / shed tops / subway ISMs too; other instanced props carry cooked triangles with
+  collision OFF (A/B-ready for `-WHTravIsmSolid=1`); in-place step `collide`.
+- `street_kit.py`: fire escapes in their own kit tiles `fireescape__t*` -> `/Game/City/Meshes/fireescape` (solids); streetkit stays visual.
+- `tools/export/island_route_check.py`: drawn-surface checks (mid_air_drawn, capsule overlap with parapet / coping / fire-escape / trunk
+  solids, web_air_drawn, re-web gaps, landings); `tools/export/island_dump_check.py` for the `-WHTravDumpPrims` dump.
+- r01 telemetry re-checked with the new checker: `round-02/route_check_r01_baseline.json` (r4 332 overlap frames, r3 140 trunk frames).
+- `REQUEST-traversal-r02.md` (ISM cubes per instance; IsmSolid default).
+Running (headless, my PIDs in `_scratch/island/*.pid`): rebuild `SM2_ISLAND_DROP_MAPS=Manhattan_WP_ism SM2_ISLAND_CITY_STEPS=kit,collide,map,wp
+python3 unreal/WebHomage/Scripts/build_manhattan.py --steps city,map` (log `_scratch/island/logs/build_r02.log`), then
+`docs/night1/island/holds_r02.sh` (waits for the build, then 3 GPU-lock holds; log `_scratch/island/logs/holds_r02.log`). The GPU was
+PAUSED (20:43 auto-pause) when the round started; the driver waits up to 6 h per hold.
+After captures: `python3 tools/export/island_route_check.py <export> round-02/*_telemetry.csv --out round-02/route_check.json`,
+`python3 tools/export/island_dump_check.py <export> <(gunzip -c round-02/prims_dump.csv.gz) --out round-02/dump_check.json`, README, critic pack.
+
+# (round 01 handoff, kept for reference)
 
 Branch `night1/island` (pushed), worktree `/Users/midir/sm2-n1/island`, scratch `/Users/midir/sm2-n1/_scratch/island`
 (a symlink to the exFAT SD card `/Volumes/memory/sm2-n1/island`: exports / GLBs / logs / frames only, never Content or DDC; exFAT writes `._*`
