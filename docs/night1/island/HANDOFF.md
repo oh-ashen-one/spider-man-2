@@ -25,7 +25,7 @@
   10 s) off a rendering engine, `_scratch/island/r1_guard.sh` stopped r1 with stop_ue.sh at t=29.1 s (1,751 frames kept, encoded by hand)
   and r3 never started. r1 (`route_check_r1.json`): 0 fall / stuck / mid-air / wall-air, 0 feet overlap, 0 webs on nothing, 1,142 m.
   `capture_round.sh` now skips a route without 1,500 s of hold left and passes run_game `-timeout` = hold left - 150 s.
-- 13:24 hold "r3" running (driver `holds_r03c.sh`, pid in `_scratch/island/holds_r03.pid`), then hold "r4 a1".
+- 13:24 hold "r3" running (~55 frames/min; 13:55 at ~1,450 frames), driver `holds_r03c.sh` (pid in `_scratch/island/holds_r03.pid`), then hold "r4 a1".
 - Then: route checks r1/r3/r4 (`python3 tools/export/island_route_check.py _scratch/island/export/island <csv> --out ...`),
   `python3 docs/night1/island/critic_prep_r03.py` + abpack, round-03/README.md.
 
