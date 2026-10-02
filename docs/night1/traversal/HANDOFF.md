@@ -15,6 +15,8 @@ Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`
 Integration (`origin/Opus-5.5-Loop-Night-1`) merged at the r21 start (brings the orchestrator's run_game.sh frame cap, identical to the
 file that sat uncommitted here). GPU cap is ONE heavy renderer; every engine run goes through `/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh`;
 `PAUSED` = no launches (CPU work only); stop with `stop_ue.sh "<worktree>"`, never kill -9.
+**Uncommitted, not ours:** `unreal/WebHomage/Scripts/run_game.sh` was edited in this worktree at 22:41 by the orchestrator (4K / stills capped at 20 fps,
+uncapped only under the perf lock). Leave it (do not revert, do not commit it as ours); 1080p movie captures are unaffected (still 30 fps cap).
 
 ## 0. Round 21 -- what changed (all A/B-able at run time)
 
