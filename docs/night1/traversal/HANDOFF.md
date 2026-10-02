@@ -2,13 +2,20 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 22, 2026-10-02 03:35, Opus 5.5): fix built, all 11 shot-list movies captured (real `-game`, offscreen, 1920x1080 internal = output,
-through the GPU lock) + `w2_r21route`, measured (`round-22/R22_CHECK.txt`), blind critic pack built (`_scratch/critic-P3-r22/pack`); critic NOT run yet.**
-Round 21 critic FAILED TARGET (7/6/6/6/6/7; `critic/round-21-CRITIC.md`): side run "a slither" (box wider than tall in 29/44 w2 frames), facade luma 15-30.
-Director r22 target: wallRunSide = upright parkour sprint on a SUNLIT facade (torso <= 30 deg off wall-up / >= 60 deg above the run line, chest along
-the run line, alternating contacts <= .18 s, along-run foot sep peak >= .6 m and >= .3 m for >= 70 %), box h >= w in >= 80 % of w1+w2 side frames,
-facade luma >= 45, no mullion over the hero, w2 3.1-3.85 s at 12 fps legs apart >= 7/10; keep c's r21 numbers; TC-A..K frozen (no WebTravCamera edits);
-no flip-code edits (f1/f4 bit-identical to r21). If the 12 fps test failed: freeze the wall run and switch to swing/camera (it passed: see §8).
+**Status (round 23 IN PROGRESS, 2026-10-02, Opus 5.5): code built + pushed (commit after 9ad5222); hold 1 queued through the GPU lock
+(`_scratch/traversal/r23/hold1.sh`, log `hold1.log`; copy in `round-23/tools/`): -nullrhi probes of w2 / c -> `r23_checks.py` -> if the r22 critic
+tests pass on the probes, real captures of all 11 clips into `round-23/` (time-guarded; leftovers listed in `_scratch/traversal/r23/LEFT`), else
+variant probes (`VARIANTS`, -WHGaitTune) to pick new compiled defaults.**
+Round 22 critic FAILED TARGET (7/6/6/6/6/7, `critic/round-22-CRITIC.md`, mergeable: no axis below r21): biggest gap = the VERTICAL wall run
+"slides frozen, legs together, bbox_w .082-.088 for 1.5 s". Director r23 target: fix the excursion, not the cadence -- recovery toe >= .25 m off the
+face with the knee .35-.50 m at mid-swing, stance foot on the face, contacts alternate <= .18 s, torso 5-20 deg off wall-up, hips <= .45 m; pass the
+r22 critic tests verbatim on w2 1.0-2.8 s AND c 2.65-4.15 s (foot_sep_run_m crosses < .15 / > .35 >= 4/s; bbox_w changes >= 25 % in every 0.4 s
+window; legs apart in >= 6/10 frames at 12 fps); gates: r22 side-run numbers on w2, SSw=28 compiled, all 11 clips on compiled defaults from one build,
+T22 c pitch, f1/f4/a bit-identical, w2 E-zip perches <= 2 s after fire, w1 / x2 recaptured (w1 on a lit face if a route reaches one).
+r23 changes (A/B at run time): vertical sprint `-WHGaitTune=VKick=0` restores r22 exactly (VSw, VTr, VKt, VTrack, VKneeLat, VHip, VRoll, VArmOut,
+VArmUp, VArmK: see the comment block in `Anim/WebTravAnimInstance.cpp`); `SSw` default 28; wall-zip far-top fallback `-WHTravTune=WallZipFarUp=0`
+restores r22 (a facade top > 110 m up is only the fallback; the nearest roof edge first); telemetry `hip_wall_m`, `ankle_sep_3d_m`.
+Checker: `python3 docs/night1/traversal/r23_checks.py <dir> [--sheets <dir>]` (on round-22 it reproduces the critic: bbox_w windows 1/85, Z23 FAIL).
 Older history: r21 handoff `git show 5f1970b:docs/night1/traversal/HANDOFF.md`, r20 `git show aa5b205:...`, r19 `git show 9f28ab2:...`, r01-18 `git show 047a342:...`.
 
 Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`, `unreal/WebHomage/Scripts/build_traversal.py`,
