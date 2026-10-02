@@ -1,6 +1,6 @@
 {
  "name": "c_wallrun_perch_city",
- "note": "Round 10, Manhattan: airborne swing north up the avenue, steer east (stick into the 45 m loft facade at x = 266 m) -> the swing lets go onto the wall and runs up it, tops out on the roof, camera turn, zip to a roof edge, perch. (A street-level sprint into this block hits the storefront awnings at 4-5 m; see HANDOFF.) Round 24: tune AltChain=0 -- c tests the wall run and the roof camera turn on its r23 path (the altitude chain would launch the 1.7 s release to 33 m and move every later window).",
+ "note": "Round 10, Manhattan: airborne swing north up the avenue, steer east (stick into the 45 m loft facade at x = 266 m) -> the swing lets go onto the wall and runs up it, tops out on the roof, camera turn, zip to a roof edge, perch. (A street-level sprint into this block hits the storefront awnings at 4-5 m; see HANDOFF.)",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -64,6 +64,5 @@
    "t": 8.6,
    "zip": false
   }
- ],
- "tune": "AltChain=0"
+ ]
 }

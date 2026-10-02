@@ -107,6 +107,7 @@ def rhythm(rows, label):
         if r['mode'] == 'swing' and cur is None: cur = [x, x]
         elif r['mode'] == 'swing': cur[1] = x
         elif cur is not None: sw.append(cur); cur = None
+    if cur is not None: sw.append(cur)   # a swing still running at the clip end counts as an attach (not as a full hold)
     full = [s for s in sw if s[1] < t[-1] - 0.02]
     held = [round(s[1] - s[0] + 1/60, 2) for s in full]
     P(f"  T1 rope held per swing (s): {held} (0.5-1.6) -> {'PASS' if held and all(0.5 <= h <= 1.6 for h in held) else 'FAIL'}")

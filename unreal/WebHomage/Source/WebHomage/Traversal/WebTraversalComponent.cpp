@@ -1640,7 +1640,19 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 		S.Vel.Z = VzCap; S.Vel.X += HV0.X * Extra * 0.6; S.Vel.Y += HV0.Y * Extra * 0.6;
 	};
 	// round 24 (T7): the altitude chain solves a plain / flow release for a roofline apex instead (below, once the trick is known)
-	const bool bAltRel = AltChain > 0.f && !bJump && !bLegacyTricks;
+	// (probe r24 c / x2 / r1: a release TOWARD a nearby facade -- the player turned into the block to wall-run -- climbed 20 m up the wall
+	//  instead of the r23 hop onto it; x2's wall kick then hid the hero behind the facade for 0.8 s): the roofline climb only applies when
+	//  the street ahead is open for AltOpenAhead m at body height and AltOpenUp m above it)
+	bool bAltRel = AltChain > 0.f && !bJump && !bLegacyTricks;
+	if (bAltRel && AltOpenAhead > 0.f)
+	{
+		FVector HVo;
+		if (!HDir(S.Vel, HVo)) HVo = YawDir(S.Facing);
+		FTravHit OH;
+		for (double Up : { 0.0, double(AltOpenUp) })
+			if (TravWorld.Raycast(S.Pos + ZUP * Up, HVo, double(AltOpenAhead), OH) && FMath::Abs(OH.Normal.Z) < 0.5) { bAltRel = false; break; }
+		if (!bAltRel) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV alt release skipped: facade %.1f m ahead"), OH.Distance);
+	}
 	if (!bJump && !bAltRel) PopForward();
 	const double AltApexNow = double(AltApexH) + double(AltApexJit) * double((AltRelIdx * 37) % 5) / 4.0; // m over the floor (feet)
 	if (bJump)

@@ -84,6 +84,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltEntryMin = 20.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowLo = 5.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowHi = 10.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenAhead = 35.f; // round 24: open street needed ahead (m; 0 = always)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenUp = 8.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltWeaveK = 0.4f; // round 24: corridor weave scale (low points near the centre)
 	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
 	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
