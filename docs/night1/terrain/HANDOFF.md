@@ -1,13 +1,23 @@
-# Terrain (piece E) — HANDOFF (round 03 done: pass-1 captures, measurements, critic pack; numeric target NOT met; pass 2 built, not captured)
+# Terrain (piece E) — HANDOFF (round 04 IN PROGRESS: lawn rebuilt, content built side by side as /Game/TerrainR4, capture hold queued)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain`, dev port 5209 (Vite, exports only; stopped).
-Owns `/Game/Terrain`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_terrain_shaders.mjs}`, `tools/terrain/`, `unreal/WebHomage/Scripts/{build_terrain.py,terrain_materials.py}`,
-`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E9 added in r03), `SHOTLIST.md`, `shots.json` (unchanged since r02).
-**Nothing of this piece is running** (no engine, no Vite, no hold, no waiter). Content in this worktree = the PASS-2 scripts (committed HEAD); the round-03 captures are PASS 1 (see below).
-`unreal/WebHomage/Content/TerrainR2` (130 MB) = the round-02 scripts built side by side for the GPU-ms pair (scratch content, never committed; rebuild with `_scratch/terrain/r03/run_r02copy.sh`; delete when done).
-`unreal/WebHomage/Content/Water` = the merged water built here by `build_water.py` (scratch inputs in `_scratch/terrain/water`).
+Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain` (r04 notes in `r04/`), dev port 5209 (Vite, exports only; stopped).
+Owns `/Game/Terrain*`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_terrain_shaders.mjs}`, `tools/terrain/`, `unreal/WebHomage/Scripts/{build_terrain.py,terrain_materials.py}`,
+`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E10 = r04), `SHOTLIST.md`, `shots.json`.
+
+## Round 04 (2026-10-02, Sonnet 5.5): THE LAWN — state at the last push
+Target (three critics, r3 verdict): replace the yellow star tufts by dense blade grass + 0.3-3 m lawn albedo detail, sat >= 0.70, E1 sigma-6 SD >= 8 on the critic crops + guard boxes, no flat quad > 100 px in t4,
+t5 last 5 s over park ground at 25-40 m with sigma-3 SD >= 5, canopy guard for the never-rendered pass-2 hunks, GPU ms p1 / p10 within +5 % of r3 (161 / 92 ms), no axis below [4,4,4,4,3].
+Done in committed scripts (CPU, verified offline: `tools/terrain/check_hlsl.py` 13 / 13): `tools/terrain/prep_lawn.py` (4 near blade-patch meshes of ~1150 blades / 2.3 m discs on a 1.5 m grid = 177 k instances, culled 18 m; 2 far patches of ~400 wider blades on a 2.6 m grid = 59 k, culled 60 m;
+`lawn_detail.png` tileable RGBA noise; `blanket_weave.png`), `Shaders/Terrain/Lawn.ush` (lawn grade with blue 0.10 instead of 0.46, 0.3-16 m mottling / wear / clover / mowing stripes, clay vs grass mask), `terrain_materials.py`
+(M_TerrainGrass = blade turf: two-sided foliage, root -> tip colour, wind, distance shrink; M_TerrainBlanket = gingham weave + fringed ends + fold normal; M_TerrainVC grain; path gravel grain), `build_terrain.py` (env `SM2_TERRAIN_ROOT`,
+grass pools out of ray tracing, 2 cm lifted tilted blankets, grass scatter clears the blankets). A numpy simulation of the lawn detail predicted hp6 SD 10-12 at 0.07-0.15 m/px with amplitude 0.55 (`_scratch/terrain/r04/sim_detail.py`).
+Content: `/Game/TerrainR4` (built by `SM2_TERRAIN_ROOT=/Game/TerrainR4 tools/terrain/run_build.sh`, 2-4 min nullrhi) — the HEAD content `/Game/Terrain` (pass-2 canopy, old tufts) is untouched for the GPU-ms baseline.
+Capture: hold A (`round4.sh STAGE=A`, launcher `_scratch/terrain/r04/hold_A.sh`, log `_scratch/terrain/r04/holdA.log`) = safe warm-up + nine 4K stills + t5 route probes (12 candidates in `round-04/t5_candidates`, nullrhi, the best becomes the t5 movie) + t4 / t5 movies.
+Then `tools/terrain/measure_r04.sh docs/night1/terrain/round-04`, then `make_pairs.py` + `abpack.py` (pack dir `/Users/midir/sm2-n1/_scratch/critic-E-r04/pack`).
+If the pass-2 canopy gate fails (trees axis < 4, E9b FAIL, E9a < 5/24 or E9c > 47 px): reverse the pass-2 hunks: `git diff cdaa64a0 dfaf7f94 -- unreal/WebHomage/Scripts/build_terrain.py unreal/WebHomage/Scripts/terrain_materials.py unreal/WebHomage/Shaders/Terrain/Foliage.ush | git apply -R` (tested context may need hand merging),
+rebuild, recapture the p1 / p10 / p9 / p4 stills.
 
 ## Round 03 outcome (2026-10-02, Opus 5.5; details: `round-03/README.md`)
 Target (Fable): canopy reads as leaves at every distance. Done in pass 1 (captured): 165-520 m band = leaf-card LOD1 from the browser's own trees.js `canopyGeometry` (LOD0 reproduced vertex for vertex as a check),
