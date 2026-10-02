@@ -305,10 +305,12 @@ float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampler, su, dpx / float2(%(sw).1f, %(sh).1f), dpy / float2(%(sw).1f, %(sh).1f)).r * 400.0 : 400.0;
 // r05: the far-field gains fade out within ShoreCalm m of land: sheltered water along the island stays calm enough to mirror it (r03's
 //      island reflections, lost to LongK 3 in r04)
-float calm = ShoreCalm > 0.0 ? smoothstep(ShoreCalm * 0.35, ShoreCalm, shore) : 1.0;
+float down = smoothstep(0.08, 0.25, V.z);
+// final hold 1: at river level the calm also flattened the 100-300 m rows of the river_low near crop (hp 10.7, r04 11.7): the calm applies
+//      seen from above (down) or beyond 300-500 m (the far shore's reflection), not to river-level water inside 300 m
+float calm = ShoreCalm > 0.0 ? lerp(1.0, smoothstep(ShoreCalm * 0.35, ShoreCalm, shore), max(down, smoothstep(300.0, 500.0, dist))) : 1.0;
 float lk = lerp(1.0, LongK, smoothstep(%(lf0).1f, %(lf1).1f, dist) * calm);
 float lm = lerp(1.0, MidK, smoothstep(%(lf0).1f, %(lf1).1f, dist) * calm);   // r04: the 6.7 m layer (0.3-2.2 m waves: 1-10 px from swing height)
-float down = smoothstep(0.08, 0.25, V.z);
 float gk = lerp(0.75, 1.25, gust);
 // ---- the long Gerstner waves (waves.js waveSlope: resolved -> slope, unresolved -> slope variance)
 float2 sl2 = 0; float varU = 0, h = 0, s, c, f;
