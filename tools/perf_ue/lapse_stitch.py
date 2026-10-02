@@ -18,26 +18,29 @@ DEFAULT = "3.7:1.8:4:0.3,5.2:3.0:16:0.3,7.9:10.5:4:0.3,18.1:3.3:16:0.3,21.1:6.9:
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--round', required=True); ap.add_argument('--name', default='tod_lapse_S4'); ap.add_argument('--keys', default=''); ap.add_argument('--res', default='960x540')
     ap.add_argument('--segments', default=DEFAULT); ap.add_argument('--timeout', type=int, default=900); ap.add_argument('--shot', default='S4'); ap.add_argument('--cmds', default='')
+    ap.add_argument('--reuse', action='store_true', help='(round 07) keep the work dir and reuse segments already rendered there (a lapse split over two GPU holds of the SAME build); the json says which were reused')
     ap.add_argument('--deadline', type=float, default=0.0, help='unix time: segments that cannot finish before it are not started (the stitched json then says so)')
     a = ap.parse_args()
     rnd = os.path.abspath(a.round); os.makedirs(rnd, exist_ok=True)
-    work = os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'lapse_stitch', a.name); shutil.rmtree(work, ignore_errors=True); os.makedirs(work)
+    work = os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'lapse_stitch', a.name); (None if a.reuse else shutil.rmtree(work, ignore_errors=True)); os.makedirs(work, exist_ok=True)
     segs = []
     for sp in a.segments.split(','):
         f, h, n, dr = sp.split(':'); segs.append((float(f), float(h), int(n), float(dr)))
     hrs, ys, brs, cls = [], [], [], []; mp4s = []; info = []; t0 = time.time(); live = ''
     for k, (f, h, n, dr) in enumerate(segs):
         nm = 'seg%d' % k; rd = os.path.join(work, nm)
-        est = h / 2.0 * 60.0 * n * 0.09 + 45.0     # s: rendered frames x 0.09 s + start-up
-        if a.deadline and time.time() + est > a.deadline: print('stitch: deadline, not starting segment', k, flush=True); break
+        est = h / 2.0 * 60.0 * n * float(os.environ.get('LAPSE_SPF', '0.09')) + 45.0     # s: rendered frames x 0.09 s (LAPSE_SPF: measured s per rendered frame, 0.6 under a loaded machine) + start-up
+        jp0 = os.path.join(rd, nm + '.json'); reused = a.reuse and os.path.exists(jp0)
+        if not reused and a.deadline and time.time() + est > a.deadline: print('stitch: deadline, not starting segment', k, flush=True); break
         cmd = [sys.executable, os.path.join(HERE, 'capture_tod_lapse.py'), '--shot', a.shot, '--res', a.res, '--round', rd, '--name', nm, '--from', '%g' % f, '--hours', '%g' % h, '--seconds', '%g' % (h / 2.0),
                '--substeps', str(n), '--drop-first-hours', '%g' % dr, '--trim-end', '--timeout', str(a.timeout)] + (['--keys', os.path.abspath(a.keys)] if a.keys else []) + (['--cmds', a.cmds] if a.cmds else [])
-        r = subprocess.run(cmd, capture_output=True, text=True); print(r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr[-300:], flush=True)
+        if reused: print('stitch: segment', k, 'reused from', rd, flush=True)
+        else: r = subprocess.run(cmd, capture_output=True, text=True); print(r.stdout.strip().splitlines()[-1] if r.stdout.strip() else r.stderr[-300:], flush=True)
         jp = os.path.join(rd, nm + '.json')
         if not os.path.exists(jp): print('stitch: segment', k, 'failed'); sys.exit(2)
         d = json.load(open(jp)); live = d.get('live_cmds', live)
         hrs += d['hours_per_frame']; ys += d['mean_y_per_frame']; brs += d['b_minus_r_per_frame']; cls += d['clipped_pct_per_frame']; mp4s.append(os.path.join(rd, nm + '.mp4'))
-        info.append({'from': f, 'hours': h, 'substeps': n, 'drop_first_hours': dr, 'frames_kept': d['frames'], 'rendered_frames': d.get('rendered_frames'), 'max_jump_inside': d['frame_to_frame_mean_y_jump']['max']})
+        info.append({'from': f, 'hours': h, 'substeps': n, 'drop_first_hours': dr, 'frames_kept': d['frames'], 'rendered_frames': d.get('rendered_frames'), 'max_jump_inside': d['frame_to_frame_mean_y_jump']['max'], 'reused_from_earlier_hold': bool(reused)})
     chk = C.lapse_checks(hrs, ys, cls)
     out = os.path.join(rnd, a.name + '.mp4')
     lst = os.path.join(work, 'list.txt'); open(lst, 'w').write(''.join("file '%s'\n" % m for m in mp4s))
