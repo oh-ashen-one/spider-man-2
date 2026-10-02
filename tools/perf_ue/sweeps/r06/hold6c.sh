@@ -1,6 +1,7 @@
 #!/bin/zsh
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # P4 round 06, hold 8 (C): the FINAL chain after hold 7 (B) (B: max jump 5.75 / p99 3.48 / clipped 1.94 %; the dawn bumps are rig steps: zigzag keys at 07:00 / 07:12 / 07:24, the sun lux x4.5 at 06:15-06:30, the city lights fading while it is dark). C = B + dawn smoothing, later city lights, extra keys, spline least-squares loop (4 iterations), no clips.
+# hold 8 changes: the loop measures only the twilight windows at x16 (lapse_loop_w.py) and the final lapse is stitched from x4 / x16 segments (lapse_stitch.py): the x4 lapse of hold 7 read 54.6 Y at 19:48 against 15.0 for a settled still.
 # (the text below is the hold-7 header) ONE gpu_slot hold (max 40 min; remaining-budget guard: a step is only started when it can finish, no engine is ever left for the 2400 s kill):
 #   0  (CPU)  doc_pre.json = make_v2.py with $F/knobs_final.json (the variant winners of hold 6A + the sun ramp params), no bias overrides yet
 #   1  LOOP   lapse_loop.py: sub-stepped lapses (S4 perch, 960x540, nominal 2 h/s, rendered at 2/SUB h/s), DP target (|dY| <= 1.3 per frame, golden / night anchors pinned, clip ceiling) -> exposure-bias overrides of the twilight keys
@@ -27,7 +28,7 @@ KN=$F/knobs_c.json
 python3 tools/perf_ue/sweeps/r06/make_v2.py --knobs "$KN" --out "$F/doc_pre.json" || exit 2
 if [[ $STEPS == *loop* ]]; then
   # each iteration is ~(100 s + 55 s x (SUB-1)... measured: SUB 4 = 280 s at 960x540); 2 iterations + the final lapse must leave time for the build / stills / clips
-  python3 tools/perf_ue/lapse_loop.py --out "$F/loop" --doc "$F/doc_pre.json" --substeps $SUB --iters ${LOOP_ITERS:-4} --deadline $(( T0 + ${LOOP_DEADLINE:-1000} )) 2>&1 | tail -20
+  python3 tools/perf_ue/lapse_loop_w.py --out "$F/loop" --doc "$F/doc_pre.json" --substeps ${WSUB:-16} --iters ${LOOP_ITERS:-2} --deadline $(( T0 + ${LOOP_DEADLINE:-800} )) 2>&1 | tail -24
   chk ${pipestatus[1]} loop
   [ -f "$F/loop/bias_overrides.json" ] && cp "$F/loop/bias_overrides.json" "$R/lapse_bias_overrides.json"
 fi
@@ -39,7 +40,7 @@ if [[ $STEPS == *build* ]]; then
   grep -q "build_look.*DONE" "${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/build_look_headless.log" || { echo "look rebuild not confirmed"; exit 1; }
 fi
 if [[ $STEPS == *lapse* ]]; then
-  [ $(rem) -gt 400 ] && { python3 tools/perf_ue/capture_tod_lapse.py --round "$R" --shot S4 --res 960x540 --from 4.0 --hours 24 --seconds 12 --substeps $SUB --save-frames 440:452,66:78 --timeout $(tmo 700); chk $? lapse; rm -rf "$F/tod_lapse_S4_frames_kept"; mv "$R/tod_lapse_S4_frames_kept" "$F/" 2>/dev/null; } || echo "skipping lapse (budget)"
+  [ $(rem) -gt 700 ] && { rm -rf "$R/tod_lapse_S4_frames_kept"; python3 tools/perf_ue/lapse_stitch.py --round "$R" --name tod_lapse_S4 --res 960x540 --deadline $(( T0 + HOLD - 560 )); chk $? lapse; } || echo "skipping lapse (budget)"
 fi
 if [[ $STEPS == *stills* ]]; then
   python3 -c "import sys; sys.path.insert(0, 'unreal/WebHomage/Scripts'); import look_tod; open(sys.argv[1], 'w').write(look_tod.to_text(look_tod.expand(look_tod.load_doc())))" "$F/keys_final.txt"

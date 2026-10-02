@@ -65,6 +65,8 @@ def main():
     ap.add_argument('--freeze', type=float, default=0.0, help='(round 06 diagnostic) extra game seconds with the clock STOPPED after the lapse (wh.TimeOfDaySpeed 0 through a second pose): shows how long the lighting lags a change; frames after the freeze keep their (frozen) hour')
     ap.add_argument('--save-frames', default='', help="e.g. '440:452,66:78': keep these frames (index in the lapse) as jpgs in <round>/<name>_frames_kept/ (diagnosing a step)")
     ap.add_argument('--substeps', type=int, default=1, help="(round 06) render N frames per output frame: the clock advances 1/N of the output step per rendered frame (fixed 1/60 s step) and every Nth frame is kept, so the engine's temporal lighting caches (Lumen GI, sky light capture, volumetric fog history; ~35 frames) settle between two kept frames. N=4 turns the 2 h/s lapse into a 0.5 h/s render with the same 724 output frames; the lapse json records it as the instrument condition")
+    ap.add_argument('--drop-first-hours', type=float, default=0.0, help="(round 06, hold 8) drop the output frames of the first H game hours of the window (a warm-up for the lighting caches before the part that is measured): segments of a stitched lapse start H earlier than their nominal start")
+    ap.add_argument('--trim-end', action='store_true', help='(hold 8) drop the frames at or after the end of the window (the tool renders a few frames past it; segments of a stitched lapse must not overlap)')
     ap.add_argument('--no-encode', action='store_true'); ap.add_argument('--pose-file', default='', help='extra pose file (json like city_shots.json); the sky poses of tools/perf_ue/sky_poses.json are always known')
     a = ap.parse_args()
     rnd = os.path.abspath(a.round); os.makedirs(rnd, exist_ok=True)
@@ -102,7 +104,11 @@ def main():
     with ProcessPoolExecutor(max_workers=6) as ex: res_f = list(ex.map(frame_stats, keep, chunksize=8))
     ys = [r[0] for r in res_f]; brs = [r[1] for r in res_f]; cl = [r[2] for r in res_f]
     tmax = gsec * 60.0   # frames after the freeze keep the hour they froze at
-    hrs = [(a.h0 + rate * min(3 + i * N, tmax) / 60.0) % 24.0 for i in range(len(keep))]   # keep[0] is frame START*60+3 of the dump: 3 frames after the pose was entered
+    offs = [rate * min(3 + i * N, tmax) / 60.0 for i in range(len(keep))]                     # game hours since the window start of each kept frame
+    hrs = [(a.h0 + o) % 24.0 for o in offs]   # keep[0] is frame START*60+3 of the dump: 3 frames after the pose was entered
+    if a.drop_first_hours > 0 or a.trim_end:
+        sel = [i for i, o in enumerate(offs) if o >= a.drop_first_hours - 1e-9 and (not a.trim_end or o < a.hours - 1e-6)]
+        keep, ys, brs, cl, hrs = [keep[i] for i in sel], [ys[i] for i in sel], [brs[i] for i in sel], [cl[i] for i in sel], [hrs[i] for i in sel]
     jumps = [abs(ys[i + 1] - ys[i]) for i in range(len(ys) - 1)]
     chk = lapse_checks(hrs, ys, cl)
     out = os.path.join(rnd, name + '.mp4')
