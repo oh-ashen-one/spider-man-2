@@ -16,13 +16,13 @@
  "crop_river_low_4k_seawall_foam.jpg": {
   "file": "crop_river_low_4k_seawall_foam.jpg",
   "edge_line": [
-   -0.0536,
-   464.4
+   -0.045,
+   454.3
   ],
   "band_px_mean": 0.0,
   "band_px_median": 0.0,
   "rows_ge12px_pct": 0.0,
-  "band_Y_mean": 190.0,
+  "band_Y_mean": null,
   "dolly": "river_low_dolly.mp4",
   "dolly_samples_4fps": 40,
   "dolly_band_px_mean": 0.0,
@@ -40,7 +40,7 @@
   ],
   "p1": 58.0,
   "p99_5": 113.4,
-  "highpass_sd": 7.33,
+  "highpass_sd": 7.34,
   "glint_pct_ge140": 0.0,
   "glint_pct_ge130": 0.0,
   "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
@@ -48,11 +48,11 @@
    "file": "harbour_high_1080.jpg",
    "crop": "native 4K x0-2400 y1300-2160",
    "mean_Y": 81.7,
-   "highpass_sd": 7.1,
+   "highpass_sd": 7.11,
    "glint_pct_ge140": 0.0,
-   "pale_blobs_ge20px": 165,
-   "p1": 52.8,
-   "p99_5": 114.6
+   "pale_blobs_ge20px": 155,
+   "p1": 52.9,
+   "p99_5": 114.7
   }
  },
  "harbour_high_4k.jpg": {
@@ -66,7 +66,7 @@
   ],
   "p1": 56.2,
   "p99_5": 112.8,
-  "highpass_sd": 8.47,
+  "highpass_sd": 8.46,
   "glint_pct_ge140": 0.0,
   "glint_pct_ge130": 0.0,
   "note": "",
@@ -76,37 +76,37 @@
    "mean_Y": 80.8,
    "highpass_sd": 8.19,
    "glint_pct_ge140": 0.0,
-   "pale_blobs_ge20px": 187,
+   "pale_blobs_ge20px": 188,
    "p1": 51.4,
-   "p99_5": 112.7
+   "p99_5": 112.5
   }
  },
  "harbour_sun_high_1080.jpg": {
   "file": "harbour_sun_high_1080.jpg",
   "src_width": 1920,
-  "mean_Y": 117.2,
+  "mean_Y": 117.1,
   "rgb": [
-   159.2,
-   110.4,
+   159.1,
+   110.3,
    60.9
   ],
-  "p1": 64.9,
+  "p1": 64.8,
   "p99_5": 217.3,
   "highpass_sd": 13.96,
-  "glint_pct_ge140": 26.4,
-  "glint_pct_ge130": 31.78,
+  "glint_pct_ge140": 26.39,
+  "glint_pct_ge130": 31.75,
   "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
   "sunhigh": {
    "file": "harbour_sun_high_1080.jpg",
    "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
    "mean_Y": 130.5,
-   "highpass_sd": 12.97,
-   "glint_pct": 0.459,
+   "highpass_sd": 12.96,
+   "glint_pct": 0.457,
    "path_cols_pct_ge2pct_rows": 100.0,
    "path_cols_pct_any": 100.0,
-   "sparkles": 2048,
+   "sparkles": 2019,
    "sparkle_px_median": 4.0,
-   "sparkle_px_p90": 9.0,
+   "sparkle_px_p90": 10.0,
    "p99_5": 244.1
   }
  },
@@ -115,25 +115,25 @@
   "src_width": 3840,
   "mean_Y": 113.3,
   "rgb": [
-   154.9,
-   106.4,
-   58.4
+   155.0,
+   106.5,
+   58.5
   ],
   "p1": 62.1,
-  "p99_5": 214.6,
-  "highpass_sd": 15.37,
-  "glint_pct_ge140": 23.28,
-  "glint_pct_ge130": 28.5,
+  "p99_5": 214.4,
+  "highpass_sd": 15.28,
+  "glint_pct_ge140": 23.32,
+  "glint_pct_ge130": 28.59,
   "note": "",
   "sunhigh": {
    "file": "harbour_sun_high_4k.jpg",
    "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
-   "mean_Y": 127.1,
-   "highpass_sd": 14.4,
-   "glint_pct": 0.608,
+   "mean_Y": 127.2,
+   "highpass_sd": 14.37,
+   "glint_pct": 0.613,
    "path_cols_pct_ge2pct_rows": 100.0,
    "path_cols_pct_any": 100.0,
-   "sparkles": 3999,
+   "sparkles": 3848,
    "sparkle_px_median": 3.0,
    "sparkle_px_p90": 8.0,
    "p99_5": 240.5
@@ -142,14 +142,14 @@
  "river_low_1080.jpg": {
   "file": "river_low_1080.jpg",
   "src_width": 1920,
-  "mean_Y": 63.4,
+  "mean_Y": 63.5,
   "rgb": [
-   70.0,
+   70.1,
    62.6,
    52.7
   ],
   "p1": 32.6,
-  "p99_5": 98.5,
+  "p99_5": 98.6,
   "highpass_sd": 8.73,
   "glint_pct_ge140": 0.0,
   "glint_pct_ge130": 0.0,
@@ -158,15 +158,15 @@
  "river_low_4k.jpg": {
   "file": "river_low_4k.jpg",
   "src_width": 3840,
-  "mean_Y": 62.1,
+  "mean_Y": 62.0,
   "rgb": [
-   68.6,
-   61.3,
+   68.4,
+   61.1,
    51.5
   ],
   "p1": 31.6,
-  "p99_5": 101.6,
-  "highpass_sd": 11.73,
+  "p99_5": 101.4,
+  "highpass_sd": 11.74,
   "glint_pct_ge140": 0.0,
   "glint_pct_ge130": 0.0,
   "note": ""
@@ -176,60 +176,60 @@
   "frames": 600,
   "sampled": 100,
   "autocorr_80px": 0.076,
-  "autocorr_80px_max": 0.127,
-  "water_dT_per_sample": 4.5
+  "autocorr_80px_max": 0.128,
+  "water_dT_per_sample": 4.49
  },
  "river_sun_1080.jpg": {
   "file": "river_sun_1080.jpg",
   "src_width": 1920,
-  "mean_Y": 124.0,
+  "mean_Y": 124.1,
   "rgb": [
-   155.7,
-   119.9,
-   71.2
+   155.8,
+   120.0,
+   71.3
   ],
-  "p1": 32.6,
-  "p99_5": 243.8,
-  "highpass_sd": 21.41,
-  "glint_pct_ge140": 39.09,
-  "glint_pct_ge130": 42.3,
+  "p1": 32.7,
+  "p99_5": 243.7,
+  "highpass_sd": 21.43,
+  "glint_pct_ge140": 39.16,
+  "glint_pct_ge130": 42.34,
   "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
   "sparkle_width_pct": 47.6
  },
  "river_sun_4k.jpg": {
   "file": "river_sun_4k.jpg",
   "src_width": 3840,
-  "mean_Y": 123.3,
+  "mean_Y": 124.3,
   "rgb": [
-   154.2,
-   119.4,
-   71.8
+   155.2,
+   120.3,
+   72.3
   ],
   "p1": 33.4,
-  "p99_5": 245.9,
-  "highpass_sd": 25.98,
-  "glint_pct_ge140": 38.4,
-  "glint_pct_ge130": 41.69,
+  "p99_5": 246.0,
+  "highpass_sd": 26.31,
+  "glint_pct_ge140": 39.12,
+  "glint_pct_ge130": 42.43,
   "note": "",
-  "sparkle_width_pct": 48.8
+  "sparkle_width_pct": 50.5
  },
  "river_sun_dolly.mp4": {
   "file": "river_sun_dolly.mp4",
   "frames": 600,
   "sampled": 100,
   "autocorr_80px": 0.024,
-  "autocorr_80px_max": 0.127,
+  "autocorr_80px_max": 0.126,
   "water_dT_per_sample": 16.06
  },
  "_checks_r03": [
   [
    "river_low near hp sd >= 12",
-   11.73,
+   11.74,
    false
   ],
   [
    "river_low near p99.5 >= 150",
-   101.6,
+   101.4,
    false
   ],
   [
@@ -239,7 +239,7 @@
   ],
   [
    "river_low near mean Y <= 80",
-   62.1,
+   62.0,
    true
   ],
   [
@@ -249,17 +249,17 @@
   ],
   [
    "river_sun sparkle width >= 50 %",
-   48.8,
-   false
+   50.5,
+   true
   ],
   [
    "river_sun near mean Y <= 90",
-   123.3,
+   124.3,
    false
   ],
   [
    "river_sun near glints 3..15 %",
-   38.4,
+   39.12,
    false
   ],
   [
@@ -274,7 +274,7 @@
   ],
   [
    "harbour crop pale blobs (>= 20 px) == 0",
-   187,
+   188,
    false
   ],
   [
@@ -301,12 +301,12 @@
   ],
   [
    "harbour_high crop pale blobs (>= 20 px) == 0",
-   187,
+   188,
    false
   ],
   [
    "harbour_sun_high glints (Y>=200, hp>=30) >= 0.5 %",
-   0.608,
+   0.613,
    true
   ],
   [
@@ -336,12 +336,12 @@
   ],
   [
    "river_low near hp sd >= 9.9 (hold)",
-   11.73,
+   11.74,
    true
   ],
   [
    "river_low near mean Y <= 80 (hold)",
-   62.1,
+   62.0,
    true
   ],
   [
