@@ -31,7 +31,7 @@ KNOBS = {
     'cutoff': {18.8: 0, 19.5: 0, 20.2: 0, 21.0: 700000, 21.4: 700000, 5.6: 700000, 6.5: 0, 7.2: 0},
     # twilight sky design (round-06 hold-1 sweep A: dimming the ambient (sky light, fills, fog sky ambient) takes the far band 15-25 Y under the sky at 6.5-7.5 and 19.5-21.5; the warm
     # SkyLuminanceFactor gives the sun-facing sky band B-R <= -20 until ~19.5 only: the tint is stronger and later, see tw_warm)
-    'tw_w': {'dusk': [(18.8, 0.0), (19.2, 0.6), (19.5, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.5), (6.25, 1.0), (7.0, 1.0), (7.3, 0.5), (7.6, 0.0)]},
+    'tw_w': {'dusk': [(18.8, 0.0), (19.2, 0.6), (19.5, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.5), (6.25, 1.0), (7.0, 1.0), (7.3, 0.8), (7.6, 0.5)]},
     'tw_warm': {'dusk': [(18.8, 0.0), (19.2, 0.4), (19.5, 0.8), (19.8, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.6), (6.25, 1.0), (6.8, 0.8), (7.3, 0.2), (7.6, 0.0)]},
     'tw_factor': [4.0, 1.6, 0.6],
     'tw_sky_scale': 0.5, 'tw_fill_scale': 0.3, 'tw_amb': 0.3,
