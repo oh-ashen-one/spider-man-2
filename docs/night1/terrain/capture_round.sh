@@ -26,7 +26,7 @@ want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 mkdir -p "$TMP" "$ROUND/stills"
 gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1; }
 IDS=$(python3 -c "import json;print(' '.join(s['id'] for s in json.load(open('$HERE/shots.json'))['shots']))")
-BASE_IDS="${BASE_IDS:-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"   # baseline (city alone) stills only for the pair views
+BASE_IDS="${BASE_IDS-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"   # baseline (city alone) stills only for the pair views
 if want warm; then
   echo "== warm-up (shader compile, not kept)  $(gpu)"
   rm -rf "$TMP/warm"
@@ -71,8 +71,7 @@ movie() {  # <name> <script.json> <quit seconds>
     CRF=$((CRF + 2)); [ $CRF -gt 35 ] && break
   done
   echo "$NAME.mp4 crf $CRF $(stat -f %z "$ROUND/$NAME.mp4") bytes, $(ls "$TMP/$NAME/${NAME}_frames" | wc -l | tr -d ' ') frames"
-  for s in 3 7 11; do f=$(printf "%05d" $((s * 60))); [ -f "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" ] && \
-    ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" -q:v 3 "$ROUND/stills/${NAME}_t${s}s_1920x1080.jpg"; done
+  for s in 3 7 11; do ffmpeg -loglevel error -y -ss $s -i "$ROUND/$NAME.mp4" -frames:v 1 -q:v 3 "$ROUND/stills/${NAME}_t${s}s_1920x1080.jpg"; done   # contact frames from the encoded movie (r02: the frame-file names did not match)
   rm -rf "$TMP/$NAME/${NAME}_frames"
 }
 # (r02: the round-01 'turn 3' in-hold rebuild block was removed: the terrain content is rebuilt BEFORE taking the slot, never inside the hold)

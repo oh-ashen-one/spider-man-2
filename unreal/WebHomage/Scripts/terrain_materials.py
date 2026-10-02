@@ -7,7 +7,7 @@
 # Frames: wpos is the UE world position in cm; the browser frame is (x, y up, z) metres = (X, Z, Y) / 100.
 
 PARK_INC = '/Project/Terrain/Park.ush'
-LAWN_GRADE = (0.68, 1.16, 0.62, 1.0)   # r02 lawn albedo grade (R, G, B): greener, more saturated (critic r1 secondary: G/R >= 1.05, saturation >= 0.55)
+LAWN_GRADE = (0.54, 1.20, 0.46, 1.0)   # r02 lawn albedo grade (R, G, B): greener, more saturated (critic r1 secondary: G/R >= 1.05, saturation >= 0.55)
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
 
@@ -100,10 +100,11 @@ float occ = lerp(0.36, 1.05, pow(expo, 1.3));
 float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
 float bnd = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);   // r02: the ez-tree LOD band (L0 < 20 m, L1 20-44 m): UE drew L1 out to 520 m
 Op = tx.a * bnd; Sub = c * 0.85; Rough = 0.78;
+Emis = c * 0.45 * (0.35 + 0.65 * expo);   // r02: ambient fill (the browser's emissive sky fill): crowns in the sun's shadow were near black (luma 20-60) next to lit ones
 return c;''',
         inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
-        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')], two_sided=True, blend='masked', foliage=True, nanite=True))
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Emis', 3, 'MP_EMISSIVE_COLOR')], two_sided=True, blend='masked', foliage=True, nanite=True))
     # ez-tree bark / park trunks (vertex colour = ambient occlusion, flat bark tint) with the same LOD band clip
     M.append(dict(name='M_TerrainBark', include=FOLI_INC, code='''
 float3 c = lerp(tint.rgb, vc.rgb * tint.rgb, usevc);
@@ -117,10 +118,12 @@ Rough = roughp; return c;''',
 float op; float3 sub;
 float3 c = TerrainLeafCards(tAtlas, tAtlasSampler, uv0, uv1, float3(a0, a1, a2), float3(b0, b1, b2), wn, wpos, cam, band, Parameters.SvPosition.xy, t, op, sub);
 Op = op; Sub = sub * gain; Rough = 0.78;
+float ex = saturate(uv1.x >= 1.5 ? uv1.x - 2.0 : uv1.x);
+Emis = c * gain * 0.45 * (0.35 + 0.65 * ex);   // r02 ambient fill, see M_TerrainLeaves
 return c * gain;''',
         inputs=[('tAtlas', 'tex', 'leaf_atlas'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
-        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')], two_sided=True, blend='masked', foliage=True))
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Emis', 3, 'MP_EMISSIVE_COLOR')], two_sided=True, blend='masked', foliage=True))
     # lumpy clump crowns (browser pool `trees-*-crown`, 165-520 m, crownMaterial): procedural clumps of leaf speckle, ragged see-through silhouette, normal from the clump height field
     M.append(dict(name='M_TerrainClump', include=FOLI_INC, code='''
 float op; float3 nW;

@@ -42,13 +42,14 @@ float tfVn(float3 p)
 float tfClump(float3 cp, out float n1, out float n2, out float n3)
 {
     n1 = tfVn(cp * 0.62f); n2 = tfVn(cp * 2.1f + 3.1f); n3 = tfVn(cp * 5.3f + 7.7f);
-    return n1 * 0.65f + n2 * 0.35f;
+    float n15 = tfVn(cp * 1.05f + 11.3f);       // r02: a ~1 m octave between the clumps and the sub-clumps: at 165-520 m a 4K pixel covers 6-18 cm, 1 m features are what survives TSR
+    return n1 * 0.5f + n15 * 0.25f + n2 * 0.25f;
 }
 // bump height used for the normal (browser: dFdx / dFdy of crClump * 3 + n3 * 0.5)
 float tfBumpH(float3 cp)
 {
     float n1, n2, n3; float c = tfClump(cp, n1, n2, n3);
-    return c * 3.0f + n3 * 0.5f;
+    return c * 7.5f + n3 * 0.2f;       // r02: 3.0 / 0.5 -> 7.5 / 0.2 (the r02 first render measured crown crops at 6.6-8 high-pass SD)
 }
 
 // The lumpy clump crown (trees.js crownMaterial), 165-520 m. wpos / cam in UE cm; wn = world vertex normal; aLeaf = (exposure, per-lobe variation); tA / tB = the tree's autumn
@@ -70,9 +71,9 @@ float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float
     float3 leaf = lerp(tA, tB, smoothstep(0.1f, 0.9f, hsel));
     leaf *= 0.74f + 0.34f * n3;
     leaf = frac(n3 * 17.3f + aLeaf.y * 3.1f) > 0.97f ? leaf * float3(0.55f, 0.4f, 0.3f) : leaf;      // dry leaves
-    float3 c = lerp(tB * 0.42f, leaf, smoothstep(0.3f, 0.62f, crClump + n3 * 0.22f));                // deep gaps between the clumps
+    float3 c = lerp(tB * 0.22f, leaf, smoothstep(0.3f, 0.62f, crClump + n3 * 0.22f));                // deeper gaps between the clumps (browser 0.42)
     c *= lerp(float3(1.0f, 1.0f, 1.0f), float3(1.12f, 1.1f, 0.8f), smoothstep(0.62f, 0.9f, n2) * 0.6f); // sunlit yellowing leaf tips
-    float occ = lerp(0.3f, 1.14f, pow(expo, 1.25f)) * lerp(0.66f, 1.1f, smoothstep(0.3f, 0.75f, crClump)); // dark skirts, sunlit domes
+    float occ = lerp(0.38f, 1.28f, pow(expo, 1.25f)) * lerp(0.42f, 1.35f, smoothstep(0.3f, 0.75f, crClump)); // dark skirts, sunlit domes (clump contrast raised: browser 0.3-1.14 x 0.66-1.1)
     // silhouette: grazing faces keep only the leaf coverage -> ragged, see-through crown edges (stochastic threshold, resolved by TSR)
     float facing = abs(dot(N, V));
     float alpha = lerp(cov * 1.25f, 1.0f, smoothstep(0.3f, 0.72f, facing));
@@ -83,7 +84,7 @@ float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float
     float h0 = tfBumpH(cp);
     float3 g = float3(tfBumpH(cp + float3(e, 0.0f, 0.0f)) - h0, tfBumpH(cp + float3(0.0f, e, 0.0f)) - h0, tfBumpH(cp + float3(0.0f, 0.0f, e)) - h0) / e;
     g -= N * dot(g, N);
-    float k = clamp(0.0012f * dist, 0.04f, 0.25f) * bumpGain;
+    float k = clamp(0.0026f * dist, 0.09f, 0.62f) * bumpGain;
     nW = normalize(N - g * k);
     return c * occ;
 }

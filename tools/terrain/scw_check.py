@@ -7,14 +7,56 @@ in its header). This tool copies a material's dump tree to scratch, swaps the in
 and runs  ShaderCompileWorker <dir> 0 DebugCompile DebugCompile.in DebugCompile.out -DebugSourceFiles=...  so a fix to Foliage.ush is verified against UE's real material wrapper (parameter types,
 stage rules such as "no derivatives in ray tracing hit shaders", Nanite / shadow / ray tracing permutations) before a GPU-lock turn is spent. Custom-node bodies stay the ones of the dump.
 Limits: only permutations that failed once have a dump (run the game once, or `r.DumpShaderDebugInfo=1`); a dump of an older body is not a check of a changed body.
-usage: scw_check.py [material name prefix ...]   (default: every M_Terrain* dump; exit code 1 on any error)"""
-import os, sys, re, shutil, subprocess, glob, shlex
+usage: scw_check.py [--no-regen] [material name prefix ...]   (default: every M_Terrain* dump, with the CURRENT Custom-node bodies of terrain_materials.py regenerated into the dumped wrapper;\n       env SM2_FOLIAGE_SRC=<file> tests a candidate Foliage.ush; exit code 1 on any error)"""
+import os, sys, re, shutil, subprocess, glob, shlex, json
 HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.abspath(os.path.join(HERE, '..', '..'))
 DUMPS = os.path.join(REPO, 'unreal', 'WebHomage', 'Saved', 'ShaderDebugInfo', 'METAL_SM6')
 FOLI = os.path.join(REPO, 'unreal', 'WebHomage', 'Shaders', 'Terrain', 'Foliage.ush')
 SCW = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/ShaderCompileWorker'
 SCR = os.environ.get('SM2_TERRAIN_SCRATCH', '/Users/midir/sm2-n1/_scratch/terrain'); WORK = os.path.join(SCR, 'scw')
 USED = ('SHADOW_DEPTH_SHADER', 'LUMEN_CARD_CAPTURE', 'RAYTRACINGSHADER', 'RAYHITGROUPSHADER')   # macros Foliage.ush tests
+
+FOLI = os.environ.get('SM2_FOLIAGE_SRC', FOLI)    # test a candidate Foliage.ush from scratch before it goes into the worktree
+
+def current_materials():
+    """the CURRENT Custom-node definitions (terrain_materials.py) with the float-literal fix of build_terrain.py applied"""
+    ns = {}; exec(compile(open(os.path.join(REPO, 'unreal', 'WebHomage', 'Scripts', 'terrain_materials.py')).read(), 'terrain_materials.py', 'exec'), ns)
+    src = open(os.path.join(REPO, 'unreal', 'WebHomage', 'Scripts', 'build_terrain.py')).read(); i = src.index('_LIT = '); j = src.index('def sampler_for')
+    fx = {'re': re}; exec(src[i:j], fx)
+    pm = json.load(open(os.path.join(SCR, 'prep', 'pathmask.json')))
+    return {d['name']: dict(d, code=fx['fix_literals'](d['code'])) for d in ns['materials'](pm)}
+
+def regen_custom(usf, mat):
+    """replace the dumped Custom-node function by the current material's code: the dump's input parameters stay (inputs must be unchanged), outputs the material has but the dump lacks are appended
+    to the signature and to the call site (as fresh locals), so a changed body / a new output pin is compiled inside UE's real wrapper"""
+    m = re.search(r'(float3 CustomExpression0\()([^\n]*)(\)\s*\n\{\n)(.*?)(\n\}\n)', usf, re.S)
+    if not m: return usf, 'no CustomExpression0 in the dump'
+    params = [x.strip() for x in re.split(r',(?![^()]*\))', m.group(2))]
+    keep = [x for x in params if not x.startswith('inout ')]; old_out = [x for x in params if x.startswith('inout ')]
+    old_names = [x.split()[-1] for x in old_out]
+    ty = {1: 'float', 2: 'float2', 3: 'float3'}
+    new_out = [(n, k) for n, k, _ in mat['outputs'][1:]]
+    extra = [(n, k) for n, k in new_out if n not in old_names]
+    gone = [n for n in old_names if n not in [n2 for n2, _ in new_out]]
+    if gone: return usf, 'dump has outputs the material no longer has: %s' % gone
+    sig = ', '.join(keep + old_out + ['inout %s %s' % (ty[k], n) for n, k in extra])
+    body = mat['code'].strip('\n')
+    out = usf[:m.start()] + m.group(1) + sig + m.group(3) + body + m.group(5) + usf[m.end():]
+    if extra:    # every call site (Nanite permutations call it in several places): append fresh locals for the new outputs
+        pos = 0
+        while True:
+            i = out.find('= CustomExpression0(', pos)
+            if i < 0: break
+            j = i + len('= CustomExpression0('); depth = 1
+            while depth and j < len(out):
+                depth += {'(': 1, ')': -1}.get(out[j], 0); j += 1
+            close = j - 1                                        # the matching ')'
+            ls = out.rfind('\n', 0, i) + 1                       # start of the statement's line
+            decl = ''.join('%s _x%d_%s = (%s)0; ' % (ty[k], i, n, ty[k]) for n, k in extra)
+            args = ''.join(', _x%d_%s' % (i, n) for n, k in extra)
+            out = out[:ls] + decl + out[ls:close] + args + out[close:]
+            pos = close + len(decl) + len(args) + 1
+    return out, None
 
 def patch(usf, new_foliage):
     """swap the inlined Foliage.ush section (from its first `#line` marker up to the generated Material.ush `#line` that precedes CustomExpression0) for the current file"""
@@ -42,19 +84,26 @@ def check_material(mdir):
         toks = shlex.split(open(os.path.join(d, 'DebugCompileArgs.txt')).read()); toks[0] = d
         srcs = [t.split('=', 1)[1] for t in toks if t.startswith('-DebugSourceFiles=')]
         files = [os.path.normpath(os.path.join(d, f)) for f in (srcs[0].split(',') if srcs else [])]
-        did = False
+        did = False; mname = re.sub(r'_[0-9a-f]{12,}$', '', os.path.basename(mdir))
         for f in files:
             if os.path.exists(f):
                 text = open(f, encoding='utf8', errors='replace').read(); new, ok = patch(text, open(FOLI).read())
-                if ok: open(f, 'w', encoding='utf8').write(new); did = True
+                if ok:
+                    note = None
+                    if REGEN and mname in CUR: new, note = regen_custom(new, CUR[mname])
+                    if note: results.append((rel, False, 'regen: ' + note)); did = None; break
+                    open(f, 'w', encoding='utf8').write(new); did = True
+        if did is None: continue
         if not did: results.append((rel, None, 'no Foliage.ush section in this dump (permutation does not use it)')); continue
         r = subprocess.run([SCW] + toks, capture_output=True, text=True, cwd=d)
         errs = [l for l in (r.stdout + r.stderr).splitlines() if 'Error' in l or 'error:' in l]
         results.append((rel, not errs, '\n'.join(errs[:10])))
     return results
 
+REGEN = '--no-regen' not in sys.argv
+CUR = current_materials() if REGEN else {}
 def main():
-    pre = sys.argv[1:] or ['M_Terrain']; bad = 0; n = 0
+    pre = [a for a in sys.argv[1:] if not a.startswith('--')] or ['M_Terrain']; bad = 0; n = 0
     mdirs = sorted({d for p in pre for d in glob.glob(os.path.join(DUMPS, p + '*')) if os.path.isdir(d)})
     if not mdirs: print('no shader debug dumps found under', DUMPS); return
     for m in mdirs:

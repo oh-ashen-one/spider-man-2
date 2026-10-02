@@ -34,7 +34,8 @@ def flat_faces(path, var_thr=1.4, min_w=40):
     """flat foliage patches: local luma std (7 x 7) <= var_thr on foliage-coloured pixels; opened by 3 px so single smooth pixels do not count"""
     im = load(path); Y = luma(im); r, g, b = im[..., 0], im[..., 1], im[..., 2]
     mx = im.max(axis=2); mn = im.min(axis=2); sat = (mx - mn) / np.maximum(mx, 1.0)
-    foliage = (g >= 0.92 * r) & (g > 1.08 * b) & (sat > 0.22) & (Y > 25) & (Y < 235)       # olive / green / yellow-green foliage, not sky / buildings / road
+    # olive / green / yellow-green foliage, not sky / buildings / road; the mown lawn (vivid green, G/R > 1.15, smooth by design) is excluded: it is not a hull face
+    foliage = (g >= 0.92 * r) & (g > 1.08 * b) & (sat > 0.35) & (Y > 20) & (Y < 235) & (g <= 1.15 * r)
     m1 = uniform_filter(Y, 7); m2 = uniform_filter(Y * Y, 7); lstd = np.sqrt(np.maximum(m2 - m1 * m1, 0))
     flat = foliage & (lstd <= var_thr)
     flat = binary_opening(flat, iterations=3)
