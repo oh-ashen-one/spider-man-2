@@ -382,7 +382,9 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
     float cdF = craw * %(cmax).1f;
     float lapF = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest;
     float fF = NZG(p / 9.0 + float2(t * 0.012, -t * 0.008), 1.0 / 9.0).b;
-    float cfF = 1.0 - smoothstep(0.1 + 0.5 * CBias, 0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, cdF);
+    // hold 1: a 1-2 m band is < 1 px at 1 km from swing height: the band reaches at least FarPx pixel footprints
+    float ce1F = max(0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, FarPx * foot * (0.8 + 0.4 * lapF));
+    float cfF = 1.0 - smoothstep(0.4 * ce1F, ce1F, cdF);
     wf = max(wf, saturate(cfF * FoamFarK * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, dist)));
 }
 // ---- normal / roughness. Near field: GGX alpha from RoughN only (<= 0.08: the resolved facets carry the slope variance);
@@ -390,6 +392,13 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
 { float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
   Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
+// r05: sun-facing water seen from swing height (camera >= ~50 m): the shading normal leans toward the camera by SunTilt (tan), so the
+//      mirror ray climbs into the higher, darker sky and leaves the grazing Fresnel peak (harbour_sun_high read brass: R-B 100, the
+//      reference's troughs are dark). Hold 1: the Specular input did not change SLW's reflection at all. The glints keep the untilted normal.
+float3 N0 = N;
+float hiCam = smoothstep(20.0, 80.0, cm.z);
+float sunward = LsN.z > 0.0 ? smoothstep(0.2, 0.8, dot(normalize(-V.xy + 1e-5), normalize(LsN.xy + 1e-5))) : 0.0;
+[branch] if (hiCam * sunward * SunTilt > 0.0) N = normalize(N + hiCam * sunward * SunTilt * float3(normalize(V.xy + 1e-5), 0.0));
 float farW = smoothstep(%(near).1f * 0.4, %(near).1f, dist);
 float r4 = RoughN * RoughN; r4 *= r4;
 float a2 = r4 + VARK * FarVarK * lerp(1.0, TopVarK, down) * farW * (varU + 2.0 * varF);
@@ -404,10 +413,7 @@ Rough = lerp(rr, 0.6, wf);
 float3 Nlong = normalize(float3(-sl2.x, -sl2.y, 1.0));
 NormalW = normalize(lerp(N, Nlong, saturate(wf * FoamNK)));
 Spec = 0.25 * SpecK;     // F0 = 0.02 (IOR 1.333) x SpecK
-// r05: sun-facing water seen from swing height (camera >= ~50 m): F0 x SunSpecK (the glint facets keep the full F0, below)
-float hiCam = smoothstep(20.0, 80.0, cm.z);
-float sunward = LsN.z > 0.0 ? smoothstep(0.2, 0.8, dot(normalize(-V.xy + 1e-5), normalize(LsN.xy + 1e-5))) : 0.0;
-Spec *= lerp(1.0, SunSpecK, hiCam * sunward);
+
 Opac = wf * 0.92;
 // ---- turbid river optics (per cm): olive-grey Hudson body (ScatK), siltier / browner along the bulkheads
 float silt = (1.0 - smoothstep(10.0, 120.0, shore)) * 0.75;
@@ -428,14 +434,13 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
     float gs = lerp(1.0, GlitFar, smoothstep(250.0, 600.0, dist));
     float2 pg = p / gs;
     float2 gn = (NZG(pg / 2.3 + float2(t * 0.05, t * 0.034) / gs, 1.0 / (2.3 * gs)).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-pg.y, pg.x) / 3.7 + float2(-t * 0.041, t * 0.02) / gs, 1.0 / (3.7 * gs)).ga - 0.5) * 2.0;
-    float3 nG = normalize(N + float3(gn * 0.22, 0.0));
+    float3 nG = normalize(N0 + float3(gn * 0.22, 0.0));
     float gl = pow(saturate(dot(nG, Hh)), 700.0);
     float spark = smoothstep(0.62, 0.9, NZG(pg / 5.0 + float2(t * 0.02 / gs, 0.0), 1.0 / (5.0 * gs)).r);
     gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
 }
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
-Spec = lerp(Spec, 0.25 * SpecK, gw);
 Emis = 0;
 // r05 Dbg 9: import-path diagnosis. Screen rows (y 0.54..0.99 of the frame, 14 bands of 0.032) each show one value as a thermometer
 //   along x (0 at the left edge, full scale at x = 0.48 of the width: white while value > x / 0.48 * full). Bands:
@@ -494,11 +499,11 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           'CBias': 0.8, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
           # r05: GrazeRough 0 (r04's 0.42 grazing floor blurred the far-shore reflection at river level: merge-blocker; perf is not this
           # round's gate). CSel: which contact-map texture (0 = T_WaterContact as r04, 1 = B: half-res Interchange + NeverStream,
-          # 2 = C: half-res legacy TextureFactory). ShoreCalm: the far-field long-wave gains (LongK / MidK) fade out within ShoreCalm m
-          # of land (sheltered water mirrors the island: the r03 reflections). SunSpecK: F0 scale on sun-facing water seen from swing
-          # height (harbour_sun_high brass: R-B 100+); the glint facets keep the full F0.
+          # 2 = C: half-res legacy TextureFactory; Dbg 9 showed all three read correctly in-engine). ShoreCalm: the far-field long-wave
+          # gains (LongK / MidK) fade out within ShoreCalm m of land (sheltered water mirrors the island: the r03 reflections).
           # FoamFarK / FoamFar: the far contact line (harbour_high: the island seawall ~1 km away had no foam: foam stopped at NEAR_M)
-          'CSel': 0.0, 'ShoreCalm': 300.0, 'SunSpecK': 1.0, 'FoamFarK': 1.0, 'FoamFar': 2500.0}
+          # SunTilt replaces hold 1's SunSpecK (no effect on SLW reflections); FarPx: the far line spans >= FarPx pixel footprints
+          'CSel': 0.0, 'ShoreCalm': 380.0, 'SunTilt': 0.2, 'FoamFarK': 1.0, 'FoamFar': 2500.0, 'FarPx': 4.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
