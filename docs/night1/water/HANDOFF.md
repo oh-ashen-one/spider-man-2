@@ -75,12 +75,17 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
 - Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones), `iter/r03`, `cap/` (6.4 GB: dolly PNG frames for both dollies plus still captures and perf runs,
   delete them once round 04 has its own), `r03/` scripts and logs.
 
-## ROUND 04 IN PROGRESS (WIP note, 2026-10-02 06:55; replaced by the full hand-off at the end of the round)
-- Shader changes committed in `build_water.py` (64 m long-wave layer + `LongK` far gain, view-dependent far roughness `FarRough` / `TopVarK` /
-  `GrazeRough`, foam on the long-wave normal `FoamNK`, sun-facing glitter early-out + extension to `GlitDist` with coarser far facets
-  `GlitFar`, `Dbg 5` = N.L of the foam normal; turbidity from the gust sample). Offline dxc compile: OK.
-- New view `harbour_sun_high` (views.json, SHOTLIST, capture_round). Checker: `water_spec.py sunhigh|foam`, r04 checks.
-- Capture hold queued 06:50 (`_scratch/water/r04/hold_r04.sh`, log `r04/hold.log`, pid in `r04/hold.pid`): build + iteration stills,
-  decision gate (`r04/decide.json`, else `r04/auto_params.json`), final build, stills, dollies into `docs/night1/water/round-04/`.
-  07:43: still queued (first in line behind traversal). If this session is gone: check `hold.log`; when it says `HOLD r04 DONE`, run the perf hold (see r03 `perf_chain.sh`, maps incl. native100)
-  and `water_spec.py all docs/night1/water/round-04 --json .../spec.json`.
+## ROUND 04 IN PROGRESS (rolling note; the full hand-off replaces this at the end of the round)
+- Code (pushed): `build_water.py` r04 shader (64 m long-wave layer + `LongK` / `MidK` far gains, view-dependent far roughness `FarRough` /
+  `TopVarK` / `GrazeRough`, `ChopFar` resolved chop from above, foam on the long-wave normal `FoamNK`, contact reach `CBias`, sun-side
+  slope soft clamp `SunClampK`, sun-facing glitter early-out + `GlitDist` / `GlitFar`, `Dbg 5/7/8`), `water_inputs.py` contact map from
+  crossings up to +2.3 m, new view `harbour_sun_high`, `water_spec.py sunhigh|foam` + r04 checks, perf_summary `slw_depth_lumen_sum`.
+- Capture hold 1 done 08:10 (round-04/ files + spec.json): harbour_sun_high PASSES (glints 0.61 %, path columns 100 %, sparkles 3 px);
+  holds pass (river_low hp 11.7 / mean 62, autocorr 0.076 / 0.024, C14 22.0); harbour_high hp 8.19 + 187 crest-highlight "blobs" FAIL;
+  seawall foam 0 FAIL (Dbg 4: no contact coverage). CPU emulation says the contact map reads ~1 m at the wall pixels, so the GPU should
+  have shown foam: hold 2 has `Dbg 7` (cdm / under-water ray / cf) and `Dbg 8` (world-position stripes) stills to find out why.
+- Capture hold 2 queued 08:08 (`_scratch/water/r04/hold_r04b.sh`, log `r04/hold2.log`, pid `r04/hold2.pid`; variants
+  `r04/variants2.json`: CBias 0.8 / 1.6 / 2.4, BendK 0.7 / 1.0, ChopFar 800 / 1500); gate file `r04/decide.json` (else
+  `auto_params.json`). Perf chain 2 (`r04/perf_chain2.sh`, pid `r04/perf_chain2.pid`) runs the exclusive native-100 % perf right after.
+  If this session is gone: when `hold2.log` says `HOLD r04b DONE`, run `bash _scratch/water/r04/post_r04.sh`, wait for
+  `perf_chain2.log` `PERF CHAIN DONE`, then write NOTES / critic pack (`_scratch/critic-W-r04/pairs.json` is ready).
