@@ -94,6 +94,10 @@ def main():
                   ('G5_hiR.62', [pin('pp.ColorGainHighlights', [0.62, 0.72, 0.72, 1.0])]),
                   ('G6_hiR.55_b.8', [pin('pp.ColorGainHighlights', [0.55, 0.72, 0.72, 1.0]), pin('pp.AutoExposureBias', g['pp.AutoExposureBias'] - 0.1)])):
         D.append(G('%s_h18.4' % nm, 18.4, ['S4', 'S3', 'S1', 'S7'], c))
+    # deep but bounded shade (guard: Y<10 <= 8 % on 8/8 while p5 <= 12 holds on >= 6/8): a uniform lift of ~+4 fixes S3 / S5 / S7 but pushes S6 / S8 / S2 over p5 12, so lift the shade through the city's
+    # shade fill (P1 MPC_City ShadeFill, golden .14) which acts on shaded canyon surfaces only
+    for nm, v in (('G7_shade.2', 0.20), ('G8_shade.28', 0.28)):
+        D.append(G('%s_h18.4' % nm, 18.4, ['S3', 'S7', 'S5', 'S6', 'S8', 'S1'], [pin('mpc.ShadeFill', v)]))
     json.dump({'groups': D}, open(os.path.join(out, 'plan_d.json'), 'w'), indent=1)
 
     # ---------------- M: night moon / clouds
