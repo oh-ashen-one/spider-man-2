@@ -13,6 +13,11 @@
 - `tools/water/emu_river_low.py`: CPU emulation used to choose the start params / variants (calibrated on the r02 frame, rough).
 - GPU: ONE capture hold queued (`_scratch/water/r03/hold_r03.sh`: build + 1080p variants + autopick + final build + round-03 stills + dollies)
   and a perf chain (`r03/perf_chain.sh`, exclusive native-100 % perf after the hold). Logs: `_scratch/water/r03/hold.log`, `perf_chain.log`.
+- RESUMED 05:05 (Opus 5.5, fresh session after the 502): the queued hold (`gpu_slot` pid 81663, `hold_r03.sh`) and the perf chain
+  (`perf_chain.sh` pid 84310, waits for the hold, then one exclusive perf hold) were still alive and were left running (no second hold).
+  1080p iteration stills (base / V1 / V2 / V3) show the chop layer resolves, but the river_low range stays compressed (p1 ~43, p99.5 ~100-116):
+  the sky the near water reflects is only ~114-121 Y (p99 137-163) in this look rig, so even a mirror tops out near 120 Y; ScatK 0.05-0.09
+  moves p1 by < 5 Y (floor = Fresnel x sky + height fog over the water, not the body). Harbour hp sd 2.9 at 1080.
   If this session died: check `gpu_status.sh`; if neither runs, re-queue the same two commands (see the scripts' headers).
 
 
