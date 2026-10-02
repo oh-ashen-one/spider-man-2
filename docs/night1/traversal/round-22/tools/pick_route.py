@@ -18,7 +18,7 @@ for n in sys.argv[2:]:
     t0 = fl(wall[0], 't'); x0 = fl(wall[0], 'x_m'); y0 = fl(wall[0], 'y_m'); z0 = fl(wall[0], 'z_m')
     side = [r for r in rows if r['sub'] == 'wallRunSide']
     ts = fl(side[0], 't') if side else float('nan'); te = fl(side[-1], 't') if side else float('nan')
-    def ok(r): return r['sub'] == 'wallRunSide' and 265.0 <= fl(r, 'x_m') <= 271.0 and -619.0 <= fl(r, 'y_m') <= -571.0
+    def ok(r): return r['sub'] == 'wallRunSide' and 265.0 <= fl(r, 'x_m') <= 271.0 and -619.0 <= fl(r, 'y_m') <= -571.0 and fl(r, 'z_m') >= 21.0  # above the street-tree canopy / its shadow (~15 m)
     ts12 = [3.1 + k / 12 for k in range(10)]
     cov = 0
     for t in ts12:
@@ -26,7 +26,7 @@ for n in sys.argv[2:]:
         cov += ok(r)
     perch = any(r['mode'] == 'perch' and fl(r, 't') > 3.9 for r in rows)
     zs = [fl(r, 'z_m') for r in side] or [float('nan')]
-    score = cov + (0.5 if perch else 0) - (0.001 * ts if ts == ts else 0)
+    score = cov + (0.5 if perch else 0) + (0.3 if not n.startswith('w2s_direct') else 0) - (0.001 * ts if ts == ts else 0)  # prefer the swing entry
     print(f'{n}: wall at {t0:.2f}s ({x0:.1f},{y0:.1f},{z0:.1f}); side {ts:.2f}-{te:.2f}s z {min(zs):.1f}-{max(zs):.1f}; '
           f'12fps 3.1-3.85 on the lit face {cov}/10; perch {perch}; score {score:.3f}')
     if best is None or score > best[0]: best = (score, n)
