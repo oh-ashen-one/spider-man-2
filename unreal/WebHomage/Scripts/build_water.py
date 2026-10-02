@@ -44,7 +44,7 @@ UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
 UE = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor'
 SCR = os.environ.get('SM2_WATER_SCR', '/Users/midir/sm2-n1/_scratch/water')
 VIEWS_JSON = os.path.join(WT, 'docs', 'night1', 'water', 'views.json')
-STEPS_ALL = ['inputs', 'ue']
+STEPS_ALL = ['inputs', 'contactb', 'ue']
 GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'   # every Unreal launch goes through the GPU lock (RULES.md)
 
 WATER_Y = -1.6                                  # browser G.WATER_Y (m)
@@ -156,6 +156,17 @@ def step_inputs():
     cm = water_inputs.contact_map(exp, os.path.join(SCR, 'water_contact.png'))
     json.dump(dict(cm, export=exp), open(os.path.join(SCR, 'water_contact.json'), 'w'), indent=1)
     log('contact map from %s: box %s, %.2f m/px, %d segments, %d files' % (exp, [round(v, 1) for v in cm['box']], cm['px'], cm['segments'], len(cm['files'])))
+
+
+def step_contactb():
+    """r05: a half-resolution copy of the contact map (2048 x 4096, ~1.1 x 1.8 m/px) for the import-path diagnosis (Dbg 9): T_WaterContactB
+    (Interchange, NeverStream) and T_WaterContactC (legacy TextureFactory) are imported from it; the material picks one with CSel"""
+    import numpy as np, cv2
+    im = cv2.imread(os.path.join(SCR, 'water_contact.png'), cv2.IMREAD_UNCHANGED)
+    h, w = im.shape
+    b = cv2.resize(im.astype(np.float32), (w // 2, h // 2), interpolation=cv2.INTER_AREA)
+    cv2.imwrite(os.path.join(SCR, 'water_contact_b.png'), np.clip(b + 0.5, 0, 255).astype(np.uint8))
+    log('contact map B %dx%d from %dx%d' % (w // 2, h // 2, w, h))
 
 
 def export_dir():
@@ -290,11 +301,14 @@ float4 nA = NZG(p / 620.0, 1.0 / 620.0), nB = NZG(p / 230.0 + float2(t * 0.0009,
 float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
 // r04: far-field long-wave gain (LongK on the 64 m and 21 m layers beyond ~%(lf0).0f m) and 'looking down' weight (camera above the water:
 //      the far field is seen at steep angles, so its resolved long waves and a sharper lobe carry the structure instead of roughness)
-float lk = lerp(1.0, LongK, smoothstep(%(lf0).1f, %(lf1).1f, dist));
-float lm = lerp(1.0, MidK, smoothstep(%(lf0).1f, %(lf1).1f, dist));   // r04: the 6.7 m layer (0.3-2.2 m waves: 1-10 px from swing height)
-float down = smoothstep(0.08, 0.25, V.z);
 float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampler, su, dpx / float2(%(sw).1f, %(sh).1f), dpy / float2(%(sw).1f, %(sh).1f)).r * 400.0 : 400.0;
+// r05: the far-field gains fade out within ShoreCalm m of land: sheltered water along the island stays calm enough to mirror it (r03's
+//      island reflections, lost to LongK 3 in r04)
+float calm = ShoreCalm > 0.0 ? smoothstep(ShoreCalm * 0.35, ShoreCalm, shore) : 1.0;
+float lk = lerp(1.0, LongK, smoothstep(%(lf0).1f, %(lf1).1f, dist) * calm);
+float lm = lerp(1.0, MidK, smoothstep(%(lf0).1f, %(lf1).1f, dist) * calm);   // r04: the 6.7 m layer (0.3-2.2 m waves: 1-10 px from swing height)
+float down = smoothstep(0.08, 0.25, V.z);
 float gk = lerp(0.75, 1.25, gust);
 // ---- the long Gerstner waves (waves.js waveSlope: resolved -> slope, unresolved -> slope variance)
 float2 sl2 = 0; float varU = 0, h = 0, s, c, f;
@@ -338,7 +352,13 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
     float lr = dnw / max(dot(-V, View.ViewForward), 0.2); dbgL = lr;
     cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
     float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
-    float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSampler, cu, 0).r * %(cmax).1f : %(cmax).1f;
+    float craw = 1.0;   // r05: CSel picks the contact texture (0 = T_WaterContact, 1 = B half-res Interchange NeverStream, 2 = C legacy factory)
+    [branch] if (all(cu > 0.0) && all(cu < 1.0)) {
+        if (CSel < 0.5) craw = Texture2DSampleLevel(tC, tCSampler, cu, 0).r;
+        else if (CSel < 1.5) craw = Texture2DSampleLevel(tC2, tC2Sampler, cu, 0).r;
+        else craw = Texture2DSampleLevel(tC3, tC3Sampler, cu, 0).r;
+    }
+    float cdm = craw * %(cmax).1f;
     // r04: Dbg 4 showed no contact coverage at the river_low bulkhead (the depth test finds no geometry under the water there, and the
     //      0.9 m/px map reads 1.7 to 2.6 m at the built wall face: its contact line wanders +-3 m): the map term reaches CBias m further
     float ce0 = 0.12 + CBias; dbgC = cdm;
@@ -368,6 +388,10 @@ Rough = lerp(rr, 0.6, wf);
 float3 Nlong = normalize(float3(-sl2.x, -sl2.y, 1.0));
 NormalW = normalize(lerp(N, Nlong, saturate(wf * FoamNK)));
 Spec = 0.25 * SpecK;     // F0 = 0.02 (IOR 1.333) x SpecK
+// r05: sun-facing water seen from swing height (camera >= ~50 m): F0 x SunSpecK (the glint facets keep the full F0, below)
+float hiCam = smoothstep(20.0, 80.0, cm.z);
+float sunward = LsN.z > 0.0 ? smoothstep(0.2, 0.8, dot(normalize(-V.xy + 1e-5), normalize(LsN.xy + 1e-5))) : 0.0;
+Spec *= lerp(1.0, SunSpecK, hiCam * sunward);
 Opac = wf * 0.92;
 // ---- turbid river optics (per cm): olive-grey Hudson body (ScatK), siltier / browner along the bulkheads
 float silt = (1.0 - smoothstep(10.0, 120.0, shore)) * 0.75;
@@ -395,7 +419,43 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
 }
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
+Spec = lerp(Spec, 0.25 * SpecK, gw);
 Emis = 0;
+// r05 Dbg 9: import-path diagnosis. Screen rows (y 0.54..0.99 of the frame, 14 bands of 0.032) each show one value as a thermometer
+//   along x (0 at the left edge, full scale at x = 0.48 of the width: white while value > x / 0.48 * full). Bands:
+//   0-2 T_WaterContact width / height (full 8192) and mip count (16); 3 its Load() at the texel the file reads 0 m (8 m full scale);
+//   4 SampleLevel at that UV (8 m); 5 SampleLevel at open water 10 m off the wall (file 11.7 m; 32 m); 6-7 B width / height;
+//   8-9 B at the 0 m / open UVs; 10 C height; 11-12 C at the 0 m / open UVs; 13 T_ShoreDist at the open UV (400 m full scale)
+[branch] if (Dbg > 8.5) {
+    float2 sp = Parameters.SvPosition.xy * View.ViewSizeAndInvSize.zw;
+    float uu = sp.x / 0.48, yb = (sp.y - 0.54) / 0.032, bb = floor(yb);
+    uint w0, h0, l0, w1, h1, l1, w2, h2, l2, w3, h3, l3;
+    tC.GetDimensions(0, w0, h0, l0); tC2.GetDimensions(0, w1, h1, l1); tC3.GetDimensions(0, w2, h2, l2); tS.GetDimensions(0, w3, h3, l3);
+    float2 cbx = float2(%(cx).3f, %(cz).3f), cbw = float2(%(cw).3f, %(ch).3f);
+    float2 cuP = (float2(-766.12, -131.22) - cbx) / cbw, cuO = (float2(-778.0, -128.0) - cbx) / cbw;
+    float2 suO = (float2(-778.0, -128.0) - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
+    float vv = 0.0, full = 1.0;
+    if (bb < 0.5) { vv = w0; full = 8192.0; }
+    else if (bb < 1.5) { vv = h0; full = 8192.0; }
+    else if (bb < 2.5) { vv = l0; full = 16.0; }
+    else if (bb < 3.5) { vv = tC.Load(int3(int2(cuP * float2(w0, h0)), 0)).r * %(cmax).1f; full = 8.0; }
+    else if (bb < 4.5) { vv = Texture2DSampleLevel(tC, tCSampler, cuP, 0).r * %(cmax).1f; full = 8.0; }
+    else if (bb < 5.5) { vv = Texture2DSampleLevel(tC, tCSampler, cuO, 0).r * %(cmax).1f; full = 32.0; }
+    else if (bb < 6.5) { vv = w1; full = 8192.0; }
+    else if (bb < 7.5) { vv = h1; full = 8192.0; }
+    else if (bb < 8.5) { vv = Texture2DSampleLevel(tC2, tC2Sampler, cuP, 0).r * %(cmax).1f; full = 8.0; }
+    else if (bb < 9.5) { vv = Texture2DSampleLevel(tC2, tC2Sampler, cuO, 0).r * %(cmax).1f; full = 32.0; }
+    else if (bb < 10.5) { vv = h2; full = 8192.0; }
+    else if (bb < 11.5) { vv = Texture2DSampleLevel(tC3, tC3Sampler, cuP, 0).r * %(cmax).1f; full = 8.0; }
+    else if (bb < 12.5) { vv = Texture2DSampleLevel(tC3, tC3Sampler, cuO, 0).r * %(cmax).1f; full = 32.0; }
+    else { vv = Texture2DSampleLevel(tS, tSSampler, suO, 0).r * 400.0; full = 400.0; }
+    float dg = vv > uu * full ? 1.0 : 0.0;
+    if (uu < 0.012) dg = 0.5;
+    if (uu > 1.0 || bb < 0.0 || bb > 13.5) dg = 0.25;
+    if (frac(yb) < 0.15) dg = 0.05;
+    Emis = dg.xxx * DbgK * 0.01; Opac = 1.0; NormalW = float3(0, 0, 1); Rough = 1.0;
+    return dg.xxx;
+}
 if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : (Dbg < 5.5 ? float3(saturate(dot(NormalW, Ls) * 4.0), wf, saturate(dot(N, Ls) * 4.0)) : (Dbg < 6.5 ? Lag.zzz : (Dbg < 7.5 ? float3(saturate(dbgC / 4.0), saturate(dbgL / 4.0), cf) : float3(frac(p.x), frac(p.y * 0.25), 0.0))))))); Emis = 0; Opac = 1.0; return dv; }
 return float3(0.62, 0.6, 0.55);   // r03: cream foam albedo (r02 0.74 clipped at the seawall in the golden key)
 #undef NZG
@@ -414,8 +474,14 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 # round-03 captures: autopick variant V3 (lowest penalty on the 1080p iteration stills, docs/night1/water/round-03/iter/autopick.json)
 PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
-          'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
-          'CBias': 0.8, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0}
+          'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.0, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
+          'CBias': 0.8, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
+          # r05: GrazeRough 0 (r04's 0.42 grazing floor blurred the far-shore reflection at river level: merge-blocker; perf is not this
+          # round's gate). CSel: which contact-map texture (0 = T_WaterContact as r04, 1 = B: half-res Interchange + NeverStream,
+          # 2 = C: half-res legacy TextureFactory). ShoreCalm: the far-field long-wave gains (LongK / MidK) fade out within ShoreCalm m
+          # of land (sheltered water mirrors the island: the r03 reflections). SunSpecK: F0 scale on sun-facing water seen from swing
+          # height (harbour_sun_high brass: R-B 100+); the glint facets keep the full F0.
+          'CSel': 0.0, 'ShoreCalm': 300.0, 'SunSpecK': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
@@ -468,20 +534,47 @@ def build_in_unreal():
     import shutil
     stage = os.path.join(SCR, 'ue_import'); os.makedirs(stage, exist_ok=True)
     TEXS = (('water_noise.png', 'T_WaterNoise'), ('shore_dist.png', 'T_ShoreDist'), ('water_slope.png', 'T_WaterSlope'), ('water_contact.png', 'T_WaterContact'),
-            ('water_chop.png', 'T_WaterChop'))
-    for src, name in TEXS + (('water_grid.glb', 'SM_WaterGrid'),):
+            ('water_chop.png', 'T_WaterChop'), ('water_contact_b.png', 'T_WaterContactB'))
+    for src, name in TEXS + (('water_grid.glb', 'SM_WaterGrid'), ('water_contact_b.png', 'T_WaterContactC')):
         shutil.copyfile(os.path.join(SCR, src), os.path.join(stage, name + os.path.splitext(src)[1]))
     import_files([os.path.join(stage, n + '.png') for _, n in TEXS], ROOT + '/Textures')
-    for _, name in TEXS:
+    # r05 (Dbg 9 import-path diagnosis): T_WaterContactC = the half-res map through the legacy TextureFactory instead of Interchange
+    try:
+        tk = unreal.AssetImportTask(); tk.filename = os.path.join(stage, 'T_WaterContactC.png'); tk.destination_path = ROOT + '/Textures'
+        tk.automated = True; tk.replace_existing = True; tk.save = False; tk.factory = unreal.TextureFactory()
+        at.import_asset_tasks([tk])
+    except Exception as e: WARN.append('legacy TextureFactory import: %s' % str(e)[:120])
+    if not EAL.does_asset_exist(ROOT + '/Textures/T_WaterContactC'):
+        WARN.append('T_WaterContactC missing after the legacy import: Interchange fallback'); import_files([os.path.join(stage, 'T_WaterContactC.png')], ROOT + '/Textures')
+    for name in [n for _, n in TEXS] + ['T_WaterContactC']:
         tx = load(f'{ROOT}/Textures/{name}')
         tx.set_editor_property('srgb', False)
         vec = name in ('T_WaterNoise', 'T_WaterSlope', 'T_WaterChop')
         tx.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP if vec else unreal.TextureCompressionSettings.TC_GRAYSCALE)
         if not vec:
             tx.set_editor_property('address_x', unreal.TextureAddress.TA_CLAMP); tx.set_editor_property('address_y', unreal.TextureAddress.TA_CLAMP)
-        if name == 'T_WaterContact':   # non-power-of-two distance map, sampled at level 0 only
+        if name.startswith('T_WaterContact'):   # distance map, sampled at level 0 only
             tx.set_editor_property('mip_gen_settings', unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS)
+        if name in ('T_WaterContactB', 'T_WaterContactC'):   # r05: never streamed, never virtual
+            for k, v in (('never_stream', True), ('virtual_texture_streaming', False)):
+                try: tx.set_editor_property(k, v)
+                except Exception as e: WARN.append('%s.%s: %s' % (name, k, str(e)[:60]))
+        try: tx.post_edit_change()
+        except Exception: pass
         EAL.save_asset(f'{ROOT}/Textures/{name}')
+    # r05: what the engine actually holds (the r04 in-engine contact reading did not match the file)
+    for name in ('T_WaterContact', 'T_WaterContactB', 'T_WaterContactC', 'T_ShoreDist'):
+        tx = load(f'{ROOT}/Textures/{name}'); info = []
+        for k in ('blueprint_get_size_x', 'blueprint_get_size_y'):
+            try: info.append('%s=%s' % (k[-6:], getattr(tx, k)()))
+            except Exception as e: info.append('%s=? (%s)' % (k, str(e)[:40]))
+        for k in ('compression_settings', 'mip_gen_settings', 'lod_group', 'never_stream', 'virtual_texture_streaming', 'srgb', 'power_of_two_mode',
+                  'max_texture_size', 'compression_none', 'filter', 'address_x', 'mip_load_options', 'source_color_settings'):
+            try: info.append('%s=%s' % (k, tx.get_editor_property(k)))
+            except Exception as e: info.append('%s=?' % k)
+        try: info.append('class=%s outer=%s' % (tx.get_class().get_name(), tx.get_path_name()))
+        except Exception: pass
+        wlog('TEXINFO', name, ' '.join(info))
     wlog('textures')
 
     # ---------------------------------------------------------------- grid mesh
@@ -566,12 +659,14 @@ def build_in_unreal():
     tW = expr(unreal.MaterialExpressionTextureObject, -1600, 400, texture=load(ROOT + '/Textures/T_WaterSlope'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     tC = expr(unreal.MaterialExpressionTextureObject, -1600, 500, texture=load(ROOT + '/Textures/T_WaterContact'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
     tK = expr(unreal.MaterialExpressionTextureObject, -1600, 300, texture=load(ROOT + '/Textures/T_WaterChop'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
+    tC2 = expr(unreal.MaterialExpressionTextureObject, -1800, 500, texture=load(ROOT + '/Textures/T_WaterContactB'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+    tC3 = expr(unreal.MaterialExpressionTextureObject, -1800, 600, texture=load(ROOT + '/Textures/T_WaterContactC'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
     prm = {k: expr(unreal.MaterialExpressionScalarParameter, -1600, 600 + 100 * i, parameter_name=k, default_value=float(v)) for i, (k, v) in enumerate(PARAMS.items())}
     dbg = expr(unreal.MaterialExpressionScalarParameter, -1400, 1100, parameter_name='Dbg', default_value=float(os.environ.get('SM2_WATER_DBG', '0')))
     dbgk = expr(unreal.MaterialExpressionScalarParameter, -1400, 1200, parameter_name='DbgK', default_value=float(os.environ.get('SM2_WATER_DBGK', '3000')))
     code = hlsl_ps().replace('VARK', '%.3f' % VAR_K) % dict(SCAT='%.4f, %.4f, %.4f' % SCAT, ABS='%.4f, %.4f, %.4f' % ABS)
     ps = custom('WaterPS', code, [('Lag', vi), ('WPos', wpos_ps), ('Cam', cam2), ('T', tim2), ('tN', tN), ('tS', tS), ('SunDir', sund), ('SunE', sune),
-                                  ('DNW', dnw), ('PD', pd), ('GlitterK', gk), ('Dbg', dbg), ('DbgK', dbgk), ('tW', tW), ('tC', tC), ('tK', tK)] + list(prm.items()),
+                                  ('DNW', dnw), ('PD', pd), ('GlitterK', gk), ('Dbg', dbg), ('DbgK', dbgk), ('tW', tW), ('tC', tC), ('tK', tK), ('tC2', tC2), ('tC3', tC3)] + list(prm.items()),
                 [('NormalW', 3), ('Rough', 1), ('Opac', 1), ('Emis', 3), ('Spec', 1), ('Scat', 3), ('Abs', 3)], -900, 200)
     for out, prop in (('', MP.MP_BASE_COLOR), ('NormalW', MP.MP_NORMAL), ('Rough', MP.MP_ROUGHNESS), ('Opac', MP.MP_OPACITY), ('Emis', MP.MP_EMISSIVE_COLOR),
                       ('Spec', MP.MP_SPECULAR)):
