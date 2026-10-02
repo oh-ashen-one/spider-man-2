@@ -16,12 +16,12 @@ def pin(n, v): return 'exec wh.ToDSet %s %s' % (n, fmt(v))
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--knobs', default='')
+    ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--knobs', default=''); ap.add_argument('--final', action='store_true', help='plan without key table overrides (the baked table of the rebuilt rig is measured)')
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     K = copy.deepcopy(make_v2.KNOBS)
     if a.knobs: K.update(json.load(open(a.knobs)))
-    doc = look_tod.load_doc(); d2 = make_v2.apply(doc, K); tab = look_tod.expand(d2)
+    doc = make_v2.base_doc(); d2 = make_v2.apply(doc, K); tab = look_tod.expand(d2)
     keys = os.path.join(out, 'keys_v2c.txt'); open(keys, 'w').write(look_tod.to_text(tab)); json.dump(d2, open(os.path.join(out, 'doc_v2c.json'), 'w'), indent=1)
 
     def G(name, h, shots, cmds=(), **kw):
@@ -38,7 +38,9 @@ def main():
     for nm, cov, dens, off in (('Mv1', 0.12, 0.02, [0, 0, 0, 0]), ('Mv2', 0.3, 0.03, [0, 0, 0, 0]), ('Mv3', 0.2, 0.025, [30000, 0, 0, 0]), ('Mv4', 0.2, 0.025, [0, 30000, 0, 0])):
         P.append(G('%s_h22' % nm, 22.0, ['S4m'], [pin('cloud.Cloud_GlobalCoverage', cov), pin('cloud.Cloud_GlobalDensity', dens), pin('cloudv.Layout_GlobalTexturePlacement', off)]))
     P.append(G('h13', 13.0, ['S4', 'S8']))
-    json.dump({'groups': P}, open(os.path.join(out, 'plan_d.json'), 'w'), indent=1)
+    if a.final:
+        for g in P: g.pop('keys', None)
+    json.dump({'groups': P}, open(os.path.join(out, 'plan_final.json' if a.final else 'plan_d.json'), 'w'), indent=1)
     print('plan_d', sum(len(x['shots']) for x in P), 'poses', len(P), 'groups ->', out)
 
 

@@ -16,6 +16,10 @@ import argparse, copy, json, math, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))
 PRESETS = os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'look_presets.json')
+BASE = os.path.join(HERE, 'look_presets_r05.json')   # the round-05 document: apply() always starts from it, so --in-place is idempotent
+
+
+def base_doc(): return json.load(open(BASE))
 
 # ----------------------------------------------------------------------------------------------- knobs (defaults = the pre-measurement design)
 KNOBS = {
@@ -145,7 +149,7 @@ def main():
     a = ap.parse_args()
     K = copy.deepcopy(KNOBS)
     if a.knobs: K.update(json.load(open(a.knobs)))
-    doc = json.load(open(PRESETS))
+    doc = base_doc()
     d = apply(doc, K)
     txt = json.dumps(d, indent=1)
     if a.in_place: open(PRESETS, 'w').write(txt)

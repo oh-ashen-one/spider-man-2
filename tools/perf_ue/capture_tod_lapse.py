@@ -112,7 +112,8 @@ def main():
     j = sorted(jumps)
     res = {'clip': os.path.basename(out), 'map': '/Game/Tests/Look/Look_Midtown_tod', 'shot': s['id'], 'output': a.res, 'internal': '%s%% of output' % a.sp,
            'hours': [a.h0, (a.h0 + a.hours) % 24.0], 'rate_h_per_s': rate, 'frames': len(keep), 'time_step': 'fixed 1/60 s (-benchmark -fps=60 -dumpmovie)',
-           'weather': a.weather, 'live_cmds': cmds, 'instrument_condition': ('metering pinned per frame: pp.AutoExposureSpeedUp / Down = 40 (capture-only live pins; the game keeps 6 / 3)' if not a.no_pin else 'metering NOT pinned (game speeds 6 / 3)'),
+           'weather': a.weather, 'live_cmds': cmds, 'instrument_condition': (('metering pinned per frame: pp.AutoExposureSpeedUp / Down = 40 (capture-only live pins; the game keeps 6 / 3)' if not a.no_pin else 'metering NOT pinned (game speeds 6 / 3)')
+                                   + ((' + render settings while the clock runs > 0.3 h/s (wh.ToDLapseCvars, the sky light capture and the volumetric fog history have a ~35 frame latency = 0.6 game hour at 2 h/s): ' + [c for c in cmds.split(';') if 'ToDLapseCvars' in c][0].split('ToDLapseCvars', 1)[1].strip()) if 'ToDLapseCvars' in cmds else '')),
            'keys': a.keys or 'baked into Look_Rig_tod', 'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0), 'bytes': os.path.getsize(out) if os.path.exists(out) else 0,
            'frame_to_frame_mean_y_jump': {'max': round(j[-1], 3) if j else None, 'p99': round(j[int(0.99 * (len(j) - 1))], 3) if j else None, 'median': round(j[len(j) // 2], 3) if j else None},
            'checks_L23b': chk, 'hours_per_frame': [round(h, 4) for h in hrs], 'mean_y_per_frame': [round(v, 2) for v in ys], 'b_minus_r_per_frame': [round(v, 2) for v in brs], 'clipped_pct_per_frame': [round(v, 3) for v in cl]}

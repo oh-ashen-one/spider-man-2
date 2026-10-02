@@ -22,7 +22,7 @@ def main():
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     K = copy.deepcopy(make_v2.KNOBS)
     if a.knobs: K.update(json.load(open(a.knobs)))
-    doc = look_tod.load_doc(); d2 = make_v2.apply(doc, K); tab = look_tod.expand(d2)
+    doc = make_v2.base_doc(); d2 = make_v2.apply(doc, K); tab = look_tod.expand(d2)
     keys = os.path.join(out, 'keys_v2b.txt'); open(keys, 'w').write(look_tod.to_text(tab)); json.dump(d2, open(os.path.join(out, 'doc_v2b.json'), 'w'), indent=1)
     E = lambda h: look_tod.evaluate(tab, h)
 

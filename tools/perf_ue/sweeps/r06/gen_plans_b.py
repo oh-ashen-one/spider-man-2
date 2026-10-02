@@ -24,7 +24,7 @@ def main():
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     import copy; K = copy.deepcopy(make_v2.KNOBS)
     if a.knobs: K.update(json.load(open(a.knobs)))
-    doc = look_tod.load_doc()
+    doc = make_v2.base_doc()
     d2 = make_v2.apply(doc, K); tab = look_tod.expand(d2)
     v2a = os.path.join(out, 'keys_v2a.txt'); open(v2a, 'w').write(look_tod.to_text(tab))
     json.dump(d2, open(os.path.join(out, 'doc_v2a.json'), 'w'), indent=1)

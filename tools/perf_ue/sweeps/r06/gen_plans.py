@@ -14,6 +14,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))
 sys.path.insert(0, os.path.join(WT, 'unreal', 'WebHomage', 'Scripts'))
 import look_tod   # noqa: E402
+sys.path.insert(0, HERE); import make_v2   # noqa: E402
+sys.path.insert(0, HERE); import make_v2   # noqa: E402
 
 
 def fmt(v): return ' '.join('%.6g' % x for x in (v if isinstance(v, list) else [v]))
@@ -26,12 +28,11 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--doc', default='')
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
-    doc = json.load(open(a.doc)) if a.doc else look_tod.load_doc()
+    doc = json.load(open(a.doc)) if a.doc else make_v2.base_doc()
     tab = look_tod.expand(doc)
     base = os.path.join(out, 'keys_base.txt'); open(base, 'w').write(look_tod.to_text(tab))
     # hero test table: the traversal character's own 5000 cd hero fill (P3 'HeroFill', ~1500 lux on the hero at every hour) switched off at every key, the exposure-relative hero lights at nominal
     try:   # the structural round-06 table (make_v2.py defaults: eased city-lights schedule, moon after 20:00, hero keys, extra twilight keys) for a validation lapse
-        sys.path.insert(0, HERE); import make_v2
         open(os.path.join(out, 'keys_v2struct.txt'), 'w').write(look_tod.to_text(look_tod.expand(make_v2.apply(doc, make_v2.KNOBS))))
     except Exception as e: print('v2 struct keys not written:', e)
     open(os.path.join(out, 'keys_herofill0.txt'), 'w').write(look_tod.to_text(look_tod.expand(doc, ['h=*:herofill=0'])))
