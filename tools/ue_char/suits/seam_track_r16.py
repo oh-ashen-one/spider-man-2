@@ -9,6 +9,8 @@ import json, sys, os
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy.ndimage import median_filter, uniform_filter1d
+from scipy import ndimage as ndi
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 SUITS = ['tessera', 'verdant', 'plum', 'cinder', 'glacier', 'ash', 'saffron', 'sage']
 
@@ -25,7 +27,7 @@ def head_box(L, rgb):
     return d
 
 
-def track(path, png=None, tag=''):
+def track(path, png=None, tag='', suit=None):
     rgb = np.asarray(Image.open(path).convert('RGB')).astype(np.float32)
     L = luma(rgb)
     H, W = L.shape
@@ -62,6 +64,22 @@ def track(path, png=None, tag=''):
             if miss > 250: break
     ys = np.array(sorted(xs)); xv = np.array([xs[k] for k in ys])
     if len(ys) < 300: return dict(ok=False, why='short track %d' % len(ys))
+    # rows where the seam runs UNDER an accent piece (the jaw vent's honeycomb / slots, the crown stripes' ends): >= 8 % of the +-80 px band around the track's median column is
+    # accent-family colour (colour direction within 20 deg of the suit's accent / accent_d, as in back_bleed_r16.py) - the seam is covered there, those rows are dropped
+    if suit is not None:
+        import back_bleed_r16 as BB
+        pal = BB.palette(suit)
+        A_ = np.stack([BB.lin(pal['accent']), BB.lin(pal['accent_d'])]); A_ /= np.linalg.norm(A_, axis=1, keepdims=True)
+        O_ = np.stack([BB.lin(pal[k]) for k in ('body', 'crown', 'deep', 'ink', 'stitch')]); O_ /= np.linalg.norm(O_, axis=1, keepdims=True)
+        cx_ = int(np.median(xv)); band_ = rgb[:, max(0, cx_ - 80):cx_ + 81] / 255.0
+        bl_ = np.where(band_ <= 0.04045, band_ / 12.92, ((band_ + 0.055) / 1.055) ** 2.4)
+        v_ = bl_ / np.maximum(np.linalg.norm(bl_, axis=-1, keepdims=True), 1e-9)
+        aa_ = np.degrees(np.arccos(np.clip(v_ @ A_.T, -1, 1))).min(-1); oo_ = np.degrees(np.arccos(np.clip(v_ @ O_.T, -1, 1))).min(-1)
+        accm_ = (aa_ <= 20) & (aa_ + 1.5 <= oo_); accm_[:, 60:101] = False          # not the seam cord itself (+-20 px around the median column): a light cord can share the accent's colour direction (Saffron's cream)
+        accrow = accm_.mean(1) >= 0.08
+        accrow = ndi.binary_dilation(accrow, iterations=12)
+        keep0 = ~accrow[ys]
+        ys, xv = ys[keep0], xv[keep0]
     # robust: a 15-row running median, rows more than 6 px off it are dropped (a vent slot / honeycomb edge, a lens-rim glint), then 9 rows of smoothing (stitch noise)
     from scipy.ndimage import median_filter as _mf
     med = _mf(xv, size=15, mode='nearest')
@@ -97,7 +115,7 @@ def main():
     for s in suits:
         p = os.path.join(d, 'skin_%s_headfront_4k.png' % s)
         if not os.path.exists(p): p = p.replace('.png', '.jpg')
-        res[s] = track(p, png, s)
+        res[s] = track(p, png, s, suit=s)
         r = res[s]
         print(s, 'dev100 %s at y %s  resid %s  range %s rows %s' % (r.get('dev100'), r.get('dev100_at_y'), r.get('resid_max'), r.get('range_x'), r.get('n_rows')) if r['ok'] else r)
     res['gate_dev100_le_10'] = all(res[s].get('ok') and res[s]['dev100'] <= 10 for s in suits)

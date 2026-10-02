@@ -3,7 +3,7 @@
 
 On each 4K back still: the hero silhouette (distance from the background, which is a smooth sky / floor gradient: a per-row median of the frame's outer columns), the BACK TORSO MASK
 (rows from 0.170 to 0.340 of the silhouette height below the head top: the collar down to just above the belt piping; columns
-+-0.15 m of the silhouette's centre column at that row), and every pixel whose colour DIRECTION (linear RGB, illumination-invariant up to a white light) is closer to the suit's accent
++-0.13 m of the silhouette's centre column at that row - the sash ended at |x| 0.118 m, the shoulder caps' ring cords lie outside - and 6 px inside the silhouette), and every pixel whose colour DIRECTION (linear RGB, illumination-invariant up to a white light) is closer to the suit's accent
 (the front emblem / sash fill colour; accent_d, its darker shade, counts with it) than to any other palette colour, by >= 1.5 deg, within 20 deg of it and not near-black (luma >= 18).  Connected clusters of such pixels with
 >= 20 px area are failures (gate: 0 clusters on every suit).  Overlay crops go to --png.
 usage: python3 back_bleed_r16.py <stills dir> <out.json> [--png DIR]"""
@@ -45,6 +45,7 @@ def check(path, suit, png=None):
     if n == 0: return dict(ok=False, why='no silhouette')
     sizes = ndi.sum(sil, lab, range(1, n + 1)); k = int(np.argmax(sizes)) + 1
     hero = lab == k
+    hero_in = ndi.binary_erosion(hero, iterations=6)      # 6 px inside the silhouette: the anti-aliased edge (body colour blended with the sky) is no colour of the suit
     ys, xs = np.where(hero)
     top, bot = ys.min(), ys.max()
     # the feet's shadow joins the silhouette at the bottom: use the head top and the known stage framing (hero height ~ the rows down to the lowest pixel of the legs' columns)
@@ -56,8 +57,8 @@ def check(path, suit, png=None):
         cols = np.where(hero[r])[0]
         if len(cols) == 0: continue
         c = 0.5 * (cols.min() + cols.max())
-        lo, hi = int(c - 0.15 * pxm), int(c + 0.15 * pxm)
-        tor[r, lo:hi + 1] = hero[r, lo:hi + 1]
+        lo, hi = int(c - 0.13 * pxm), int(c + 0.13 * pxm)
+        tor[r, lo:hi + 1] = hero_in[r, lo:hi + 1]
     pal = palette(suit)
     names = [k_ for k_ in ('body', 'crown', 'deep', 'ink', 'accent', 'accent_d', 'stitch')]
     P = np.stack([lin(pal[k_]) for k_ in names]); P = P / np.linalg.norm(P, axis=1, keepdims=True)

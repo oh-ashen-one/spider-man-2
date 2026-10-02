@@ -17,9 +17,9 @@ S = os.path.join(r12, 'stills')
 S4 = os.environ.get('STILLS_4K', '/Users/midir/sm2-n1/_scratch/characters/r16/chain1/run/stills')
 pairs = []
 def have(p): return os.path.exists(p)
-R12DIR = '/Users/midir/sm2-n1/characters/docs/night1/characters/round-12/'
+R12DIR = '/Users/midir/sm2-n1/characters/docs/night1/characters/round-15/'      # round 16: clips not re-shot this round (stage-hero run / chase, fight, crowd: content unchanged) come from round 15 - disclosed in CAPTURES.md
 def cur(name):
-    """this round's file, else the round-12 file of the same name (clips whose content is unchanged since r10 / r12 when a round-13 re-shoot is not in the round dir)"""
+    """this round's file, else the round-15 file of the same name (clips whose content is unchanged, when a round-16 re-shoot is not in the round dir)"""
     p = os.path.join(r12, name)
     return p if os.path.exists(p) else R12DIR + name
 def add(i, x, y, note):
