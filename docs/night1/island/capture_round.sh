@@ -20,6 +20,8 @@ RUN() { if [ -n "${ISLAND_IN_LOCK:-}" ]; then "$UE_DIR/Scripts/run_game.sh" "$@"
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warmup r1 r2 r3 r4 a1)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 mkdir -p "$TMP" "$ROUND/stills"
+# (island r02) never capture while this worktree's content is being rebuilt (rebuild_r02b.sh holds this flag; it removes it on exit)
+while [ -e /Users/midir/sm2-n1/_scratch/island/BUILDING ]; do echo "$(date +%T) waiting for the island rebuild"; sleep 20; done
 gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1; }
 if want warmup; then
   echo "== warm-up (shader / DDC compile, not kept)  $(gpu)"

@@ -146,6 +146,7 @@ def step_city_prep():
     open(man, 'w').write(s.replace('127.0.0.1:%d/' % DEV_PORT, '127.0.0.1:5202/'))  # P1 tools key texture paths on '5202/'
     e = EXPORT + '/'
     sh(['python3', 'tools/export/patch_export.py', EXPORT], log_name='city_patch_export.log')
+    sh(['python3', 'tools/export/split_giants.py', EXPORT], log_name='city_split_giants.log')   # (island r02) no r20 'giant' (de-collided) bridge / seawall
     sh(['python3', 'tools/export/prep_textures.py', TEX, man], log_name='city_prep_textures.log')
     sh(['python3', 'tools/export/gen_street_signs.py', os.path.join(TEX, 'street_signs.png')], log_name='city_street_signs.log')
     sh(['python3', 'tools/export/street_kit.py', e], log_name='city_street_kit.log')

@@ -916,6 +916,9 @@ def finish_mesh(sm, mat, collide, nanite=False):
 
 if 'mesh' in STEPS:
     recs = [r for r in man['meshes'] if keep_mesh(r)]
+    if ARGS.get('mesh_only') == 'split' or os.environ.get('SM2_ISLAND_MESH_ONLY') == 'split':   # (island r02) import only the split_giants.py pieces
+        recs = [r for r in recs if r.get('split_from') and not EAL.does_asset_exist(f'{ROOT}/Meshes/{r["kind"]}/SM_' + os.path.basename(r['file'])[:-4])]
+        log('mesh step: %d split pieces to import' % len(recs))
     for nan in (False, True):
         group = [r for r in recs if (r['kind'] == 'detail') == nan]
         dest = ROOT + '/Meshes'
@@ -931,7 +934,7 @@ if 'mesh' in STEPS:
         mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
         finish_mesh(sm, mat, solid_rec(r), nanite=r['kind'] == 'detail')   # (island r02) traversal solids collide with their own triangles (solid_rec)
         EAL.save_asset(dst); n += 1
-    EAL.delete_directory(ROOT + '/Meshes/_in')
+    if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')
     log('meshes', n)
 
 # (r04) 'frames' step: re-import the patched tsFrames meshes (tools/export/patch_export.py) into an already built project WITHOUT deleting the
