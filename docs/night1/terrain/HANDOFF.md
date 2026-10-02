@@ -22,7 +22,7 @@ Round-02 target (from the round-01 critic): trees / canopy at swing height. Done
 1. The capture hold is queued: `gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh` (waiter pid in `_scratch/terrain/round2_hold.pid`, log `_scratch/terrain/logs/round2_hold.log`). If it is gone, re-enqueue the same command from the worktree
    (rebuild first only if sources changed: recipe below; never rebuild inside the hold). It writes `docs/night1/terrain/round-02/` (stills 3840x2160 internal 1920x1080, 2 movies 1920x1080 hero hidden, `warm_shader_check.txt`).
 2. Measure: `tools/terrain/measure_round.sh docs/night1/terrain/round-02` (needs `round-02/crops.json`: lawn boxes under `crops`, crown boxes under `crowns`; boxes are picked by eye on the new stills with
-   `_scratch/terrain/mock/grid_overlay.py`), then `python3 tools/terrain/make_pairs.py docs/night1/terrain/round-02 /Users/midir/sm2-n1/_scratch/critic-E-r02/pairs.json docs/night1/terrain/round-01` and
+   `tools/terrain/grid_overlay.py`), then `python3 tools/terrain/make_pairs.py docs/night1/terrain/round-02 /Users/midir/sm2-n1/_scratch/critic-E-r02/pairs.json docs/night1/terrain/round-01` and
    `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-E-r02/pack /Users/midir/sm2-n1/_scratch/critic-E-r02/pairs.json`.
 3. Not built: pickets, wet bands, pond shallows, ballfield fences, Met-like museum (skipped on purpose), lamp night look, collision on rocks / esplanades; street trees island-wide belong to the island piece; lawn micro-detail (E1) is still the round-01 shader.
 
