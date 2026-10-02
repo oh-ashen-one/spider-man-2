@@ -1,10 +1,21 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Traversal/WebTravFlips.h"
+#include "Traversal/WebTraversalComponent.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "GameFramework/Character.h"
+#include "GameFramework/PlayerController.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Misc/CoreDelegates.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
+#include "Misc/FileHelper.h"
 
 namespace WebFlips
 {
 	float FlipLead = 0.04f, FlipLag = 0.07f;
 	bool bVariants = true;
+	bool bTempo = true;
 
 	namespace
 	{
@@ -40,36 +51,47 @@ namespace WebFlips
 			static TArray<FWebFlipProgram> P;
 			if (P.Num()) return P;
 			using S = EWebFlipShape;
-			auto Add = [&](const TCHAR* Name, float Pitch, std::initializer_list<FWebFlipSeg> Segs, float Boost = 3.5f, float Up = 1.5f)
+			auto Add = [&](const TCHAR* Name, float Pitch, std::initializer_list<FWebFlipSeg> Segs, float Boost = 3.5f, float Up = 1.5f, float CatchOpen = 0.16f)
 			{
-				FWebFlipProgram F; F.Name = FName(Name); F.PitchDeg = Pitch; F.Segs = Segs; F.Boost = Boost; F.Up = Up; P.Add(F);
+				FWebFlipProgram F; F.Name = FName(Name); F.PitchDeg = Pitch; F.Segs = Segs; F.Boost = Boost; F.Up = Up; F.CatchOpen = CatchOpen; P.Add(F);
 			};
-			// round 13 (critic r12 single gap: tricks were isolated set pieces -- 1.7 s rise, trick, 1.3 s dive, cut): every program starts AT
-			// the web release and is 1.2-1.7 s long, so release -> next attach fits 1.4-1.8 s and attach -> attach <= 3.3 s (TRAVERSAL-SPEC T2/T4)
-			// backDouble: two shapes only (critic r11/r12 secondary): a double tuck that kicks out into an open finish (Kickout: arms sweep
-			// wide, legs scissor behind them, the web arm comes up for the catch) -- the gymnast's double back with a kick-out.
-			// Tuck 1.0 s (peak ~680 deg/s), Kickout 0.7 s (<= 150 deg/s for ~0.65 s), mean ~420 deg/s (FLIPS_SPEC F2 300-500).
-			// (r12: tuck / layout / tuck / layout / reach 2.3 s; r11: nine segments)
-			{
-				// round 14 (critic r13 "a spinning ball at a constant 678 deg/s"; F4 Kickout hold 0.22 s): Tuck 1.20 s eased (ends ~62 % of the
-				// ~700 deg/s middle, peak ~755), Kickout 0.60 s at <= ~100 deg/s (inertia 10.5); catch 1.60 s after the release (r13 1.50)
-				FWebFlipProgram F; F.Name = FName(TEXT("backDouble")); F.PitchDeg = -720.f;
-				F.Segs = { {S::Tuck, 1.20f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.60f} };
-				F.CatchOpen = 0.2f; P.Add(F);
-			}
-			// front pike into a slow inverted swan that unwinds (critic r10 reference description), tuck up, reach (r12 1.97 s -> 1.65 s)
-			// round 14 (critic r13: "b uses 5 shapes in 1.7 s", every shape >= 0.3 s, F3 rendered peak 980-1180 deg/s): the pencil is dropped,
-			// pike 0.40 s and tuck 0.38 s eased at both ends, swan 0.55 s (1.65 -> 1.59 s)
+			// ---- P3 rounds 11-19 (kept unchanged so traversal's merged r23 flips do not regress) --------------------------------------------
+			// backDouble: a double tuck that kicks out into an open finish (Kickout: arms sweep wide, legs scissor behind them, the web arm
+			// comes up for the catch). round 14: Tuck 1.20 s eased, Kickout 0.60 s at <= ~100 deg/s; catch 1.60 s after the release
+			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 1.20f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.60f} }, 3.5f, 1.5f, 0.2f);
+			// front pike into a slow inverted swan that unwinds, tuck up, reach (round 14: pike 0.40 / swan 0.55 / tuck 0.38 / reach 0.26 s)
 			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.26f} });
-			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens to a swan, tucks up, reach (1.84 -> 1.66 s)
-			// round 14: every shape >= 0.3 s (layout 0.22 -> 0.31, tuck 0.26 -> 0.34 eased), twist 0.42 s, swan 0.36 s (1.66 -> 1.67 s)
-			// round 18 (critic r17 "f2, f3 and f4 share one inverted split"): the corkscrew opens into its OWN inverted shape, a straddle that
-			// flings the arms out of the twist wrap and splits the legs wide to the sides (flipStraddle, keyed motion), instead of the swan
+			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens into its own inverted straddle, tucks, reach
 			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Straddle, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
 			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.24f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing
 			Add(TEXT("wallFront"), 360.f, { {S::Tuck, 0.27f}, {S::Layout, 0.3f}, {S::Tuck, 0.27f}, {S::Throne, 0.3f} }, 0.f, 0.f);
+			// ---- Tricks C round 1 (owner: "look like a gymnast", "many tricks"): the gymnastics vocabulary, built from the same keyed shapes.
+			// Every program opens out of its rotation into a slow open shape (Kickout / Straddle / Layout / Reach) before the catch (clean open-out); a
+			// twist always exits into a shape keyed out of the twist wrap (Straddle / Layout), never into the Kickout (which starts from the tuck grab); every
+			// fast phase is a tuck or pike (the rate follows the shape: F3 / F5). Durations were tuned with tools/tricks/flip_sim.py so the
+			// base program peaks <= ~650 deg/s (a fast 0.85x variant stays <= ~770). Twists: a body can only finish a WHOLE number of
+			// twists facing along its travel (a half twist lands facing back), so the 180 / 540 programs do their named twist inside the
+			// flip and turn the last half in slowly as they open toward the catch (the catch-turn), never as a spring at the attach.
+			// front tuck: set, tight tuck, kick out, reach for the web
+			Add(TEXT("frontSingle"), 360.f, { {S::Tuck, 0.74f, 0.f, 0.9f, 0.7f}, {S::Kickout, 0.44f}, {S::Reach, 0.22f} });
+			// front double tuck with a kick-out (the front twin of backDouble)
+			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 1.40f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.54f}, {S::Reach, 0.2f} }, 3.5f, 1.5f, 0.2f);
+			// back pike: the body folds at the hips with straight legs (keyed pike), opens into the kick-out
+			Add(TEXT("backPike"), -360.f, { {S::Pike, 0.72f, 0.f, 1.0f, 0.6f}, {S::Kickout, 0.46f}, {S::Reach, 0.22f} });
+			// back layout: one straight line all the way round (hips / knees >= 170 deg), arms by the sides, opens to the reach
+			Add(TEXT("backLayout"), -360.f, { {S::Layout, 0.92f, 0.f, 0.5f, 0.4f}, {S::Reach, 0.40f} });
+			// barani: front pike with a half twist (180 deg, arms wrapped), then the straddle flings open out of the wrap and turns the last half in toward the catch
+			Add(TEXT("barani"), 360.f, { {S::Pike, 0.50f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.34f, 180.f}, {S::Straddle, 0.46f, 180.f}, {S::Reach, 0.26f} });
+			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, opens straight back into the layout, reach
+			Add(TEXT("fullTwist"), -360.f, { {S::Layout, 0.34f, 0.f, 0.5f, 0.f}, {S::Twist, 0.52f, 360.f}, {S::Layout, 0.32f}, {S::Reach, 0.34f} }, 4.0f, 1.2f);
+			// rudi: front flip with one and a half twists (540 deg) wrapped tight, the catch-turn finishes the last half in the open straddle
+			Add(TEXT("rudi"), 360.f, { {S::Pike, 0.40f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.66f, 540.f}, {S::Straddle, 0.48f, 180.f}, {S::Reach, 0.26f} }, 4.0f, 1.2f);
+			// chain: three back rotations in one release with a shape per rotation (owner clip S3: tuck -> layout -> tuck -> straddle -> tuck
+			// -> open, 3 rotations in 2.8 s, ~385 deg/s mean)
+			Add(TEXT("backTripleChain"), -1080.f, { {S::Tuck, 0.60f, 0.f, 0.9f, 0.3f}, {S::Layout, 0.40f}, {S::Tuck, 0.52f, 0.f, 0.3f, 0.3f}, {S::Straddle, 0.36f},
+				{S::Tuck, 0.52f, 0.f, 0.3f, 0.6f}, {S::Kickout, 0.44f}, {S::Reach, 0.2f} }, 3.5f, 1.5f, 0.2f);
 			return P;
 		}
 
@@ -218,6 +240,8 @@ namespace WebFlips
 	{
 		const TArray<FWebFlipProgram>& B = Programs();
 		static int32 VerCounter = 0;
+		static const bool bTempoParsed = []() { int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTrickTempo="), V)) bTempo = V != 0; return true; }();
+		(void)bTempoParsed;
 		for (int32 I = 0; I < B.Num(); ++I)
 		{
 			if (B[I].Name != Name) continue;
@@ -225,7 +249,13 @@ namespace WebFlips
 			FWebFlipProgram& V = Variants()[I];
 			V = B[I];
 			FRandomStream R{ int32(Seed) };
-			const float Sc = FMath::Clamp(Scale, 0.78f, 1.22f);
+			// Tricks C r01 (PLAN §4: same-type durations vary +-10-20 %; r23 flow flips at ~40 m/s all came out 0.86-0.99x): half of the
+			// caller's release-speed / apex term plus a per-instance TEMPO -- this performance is a slow, floated one (+10-16 %) or a snappy one
+			// (-10-13 %), alternating at random; the fast side is capped at 0.85x so a tuck never passes ~800 deg/s by much (FLIPS_SPEC F3)
+			const float Tempo = (R.FRand() < 0.5f ? -1.f : 1.f);
+			const float TempoMag = Tempo > 0.f ? 0.10f + 0.06f * R.FRand() : 0.10f + 0.03f * R.FRand();
+			const float Sc = bTempo ? FMath::Clamp(1.f + 0.5f * (FMath::Clamp(Scale, 0.78f, 1.22f) - 1.f) + Tempo * TempoMag, 0.85f, 1.20f)
+				: FMath::Clamp(Scale, 0.78f, 1.22f);
 			// each segment its own jitter, renormalised so the total is exactly Sc x the base duration
 			float Sum0 = 0.f, Sum1 = 0.f;
 			for (FWebFlipSeg& Sg : V.Segs) { Sum0 += Sg.Dur; Sg.Dur *= 0.92f + 0.16f * R.FRand(); Sum1 += Sg.Dur; }
@@ -243,6 +273,40 @@ namespace WebFlips
 			return &V;
 		}
 		return nullptr;
+	}
+	const TArray<FName>& ReleasePrograms()
+	{
+		static TArray<FName> N;
+		if (!N.Num())
+		{
+			for (const TCHAR* S : { TEXT("backSingle"), TEXT("frontSingle"), TEXT("backPike"), TEXT("barani"), TEXT("backLayout"), TEXT("frontDouble"),
+				TEXT("fullTwist"), TEXT("frontPikeSwan"), TEXT("backDouble"), TEXT("rudi"), TEXT("corkscrew"), TEXT("backTripleChain") }) N.Add(FName(S));
+		}
+		return N;
+	}
+	FName ChooseForInput(float StickFwd, float StickLat, int32 K, float AirS, FName Last)
+	{
+		static const TCHAR* Front[] = { TEXT("frontSingle"), TEXT("frontPikeSwan"), TEXT("barani"), TEXT("frontDouble"), TEXT("corkscrew"), TEXT("rudi") };
+		static const TCHAR* Back[] = { TEXT("backSingle"), TEXT("backPike"), TEXT("backLayout"), TEXT("backDouble"), TEXT("fullTwist"), TEXT("backTripleChain") };
+		static const TCHAR* Twist[] = { TEXT("barani"), TEXT("fullTwist"), TEXT("corkscrew"), TEXT("rudi") };
+		TArray<FName> Pool;
+		const float Mag = FMath::Sqrt(StickFwd * StickFwd + StickLat * StickLat);
+		if (Mag < 0.35f) Pool = ReleasePrograms();
+		else if (FMath::Abs(StickLat) > FMath::Abs(StickFwd)) { for (const TCHAR* S : Twist) Pool.Add(FName(S)); }
+		else if (StickFwd > 0.f) { for (const TCHAR* S : Front) Pool.Add(FName(S)); }
+		else { for (const TCHAR* S : Back) Pool.Add(FName(S)); }
+		// the first program in the cycle (from K) that fits the air and is not a repeat; else the shortest that fits; else none
+		FName Shortest = NAME_None; float ShortT = 1e9f;
+		for (int32 I = 0; I < Pool.Num(); ++I)
+		{
+			const FName N = Pool[(K + I) % Pool.Num()];
+			const FWebFlipProgram* P = FindBase(N);
+			if (!P) continue;
+			const bool bFits = AirS <= 0.f || P->CatchT() * 1.15f <= AirS;
+			if (bFits && N != Last) return N;
+			if (P->CatchT() < ShortT && N != Last) { ShortT = P->CatchT(); Shortest = N; }
+		}
+		return (AirS <= 0.f || ShortT * 1.15f <= AirS) ? Shortest : NAME_None;
 	}
 	const TArray<FName>& Names()
 	{
@@ -282,5 +346,101 @@ namespace WebFlips
 		O.AxisOffDeg = FMath::Lerp(ShapeAxisDeg(O.A), ShapeAxisDeg(O.B), O.W);
 		ShapeAt(P, T - (P.Lag >= 0.f ? P.Lag : FlipLag), O.LA, O.LB, O.LW, O.LHoldA, O.LHoldB);
 		return O;
+	}
+}
+
+// ---- Tricks C round 1: rendered-pose logger (opt-in, -WHTrickPose=<csv path>). Once per engine frame (OnEndFrame) it writes the hero's
+// world bone positions (cm) and the head / chest bone axes for the gymnast-shape checks in tools/tricks/pose_check.py (tuck grip, layout
+// hip / knee angles, pointed toes, head spot). It reads the pawn only; nothing in the traversal or the anim instance is changed by it.
+namespace WebFlips
+{
+	namespace
+	{
+		struct FPoseLog
+		{
+			FString Path;
+			TArray<FString> Rows;
+			bool bInit = false, bOn = false, bHeader = false;
+			double T0 = -1.0;
+			static const TArray<FName>& Bones()
+			{
+				static TArray<FName> B;
+				if (!B.Num())
+				{
+					for (const TCHAR* N : { TEXT("hips"), TEXT("spine2"), TEXT("neck"), TEXT("head"), TEXT("upperArm_L"), TEXT("forearm_L"), TEXT("hand_L"),
+						TEXT("upperArm_R"), TEXT("forearm_R"), TEXT("hand_R"), TEXT("thigh_L"), TEXT("shin_L"), TEXT("foot_L"), TEXT("toe_L"),
+						TEXT("thigh_R"), TEXT("shin_R"), TEXT("foot_R"), TEXT("toe_R") }) B.Add(FName(N));
+				}
+				return B;
+			}
+			void Flush()
+			{
+				if (!Rows.Num() || Path.IsEmpty()) return;
+				FString Out;
+				for (const FString& R : Rows) { Out += R; Out += TEXT("\n"); }
+				FFileHelper::SaveStringToFile(Out, *Path, FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM, &IFileManager::Get(), bHeader ? FILEWRITE_Append : FILEWRITE_None);
+				bHeader = true;
+				Rows.Reset();
+			}
+			void Tick()
+			{
+				if (!bInit) { bInit = true; bOn = FParse::Value(FCommandLine::Get(), TEXT("-WHTrickPose="), Path) && !Path.IsEmpty(); }
+				if (!bOn || !GEngine) return;
+				UWorld* W = nullptr;
+				for (const FWorldContext& C : GEngine->GetWorldContexts())
+				{
+					if ((C.WorldType == EWorldType::Game || C.WorldType == EWorldType::PIE) && C.World()) { W = C.World(); break; }
+				}
+				if (!W) return;
+				APlayerController* PC = W->GetFirstPlayerController();
+				ACharacter* Ch = PC ? Cast<ACharacter>(PC->GetPawn()) : nullptr;
+				const UWebTraversalComponent* Tr = Ch ? Ch->FindComponentByClass<UWebTraversalComponent>() : nullptr;
+				USkeletalMeshComponent* M = Ch ? Ch->GetMesh() : nullptr;
+				if (!Tr || !M || !M->GetSkeletalMeshAsset()) return;
+				if (Rows.Num() == 0 && !bHeader)
+				{
+					FString H = TEXT("frame,wt,mode,sub,anim_t,trick,trick_side,x_m,y_m,z_m,vx,vy,vz");
+					for (const FName& B : Bones()) { const FString N = B.ToString(); H += FString::Printf(TEXT(",%s_x,%s_y,%s_z"), *N, *N, *N); }
+					H += TEXT(",head_fx,head_fy,head_fz,head_ux,head_uy,head_uz,chest_fx,chest_fy,chest_fz,chest_ux,chest_uy,chest_uz,pelvis_fx,pelvis_fy,pelvis_fz");
+					Rows.Add(H);
+				}
+				const FWebTravAnim& A = Tr->Anim;
+				const FVector P = Tr->PosM();
+				FString R = FString::Printf(TEXT("%llu,%.4f,%d,%s,%.4f,%s,%.0f,%.3f,%.3f,%.3f,%.2f,%.2f,%.2f"), (unsigned long long)GFrameCounter, W->GetTimeSeconds(),
+					int32(A.Mode), *A.Sub.ToString(), A.T, A.Trick.IsNone() ? TEXT("") : *A.Trick.ToString(), A.TrickSide, P.X, P.Y, P.Z,
+					A.Velocity.X / 100.0, A.Velocity.Y / 100.0, A.Velocity.Z / 100.0);
+				for (const FName& B : Bones())
+				{
+					if (M->GetBoneIndex(B) == INDEX_NONE) { R += TEXT(",,,"); continue; }
+					const FVector L = M->GetBoneLocation(B);
+					R += FString::Printf(TEXT(",%.2f,%.2f,%.2f"), L.X, L.Y, L.Z);
+				}
+				// bone axes in world space: the imported (Blender) bones run along their local Y; X / Z span the bone's cross section
+				auto Axes = [&](const TCHAR* N, bool bUp)
+				{
+					const FName B(N);
+					if (M->GetBoneIndex(B) == INDEX_NONE) { R += bUp ? TEXT(",,,,,,") : TEXT(",,,"); return; }
+					const FQuat Q = M->GetBoneQuaternion(B, EBoneSpaces::WorldSpace);
+					const FVector Ax = Q.GetAxisX(), Ay = Q.GetAxisY(), Az = Q.GetAxisZ();
+					R += FString::Printf(TEXT(",%.4f,%.4f,%.4f"), Az.X, Az.Y, Az.Z);
+					if (bUp) R += FString::Printf(TEXT(",%.4f,%.4f,%.4f"), Ay.X, Ay.Y, Ay.Z);
+					(void)Ax;
+				};
+				Axes(TEXT("head"), true); Axes(TEXT("spine2"), true); Axes(TEXT("hips"), false);
+				Rows.Add(R);
+				if (Rows.Num() >= 240) Flush();
+			}
+		};
+		FPoseLog& PoseLog() { static FPoseLog L; return L; }
+		struct FPoseLogReg
+		{
+			FPoseLogReg()
+			{
+				FCoreDelegates::OnEndFrame.AddLambda([]() { PoseLog().Tick(); });
+				FCoreDelegates::OnPreExit.AddLambda([]() { PoseLog().Flush(); });
+				FCoreDelegates::OnEnginePreExit.AddLambda([]() { PoseLog().Flush(); });
+			}
+		};
+		FPoseLogReg GPoseLogReg;
 	}
 }

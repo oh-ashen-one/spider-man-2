@@ -123,7 +123,24 @@ _TUCK = _pose((0.35, 0.6, 0.8), ((1.0, -0.45, 0.32), (0.2, -1.0, 0.04)), ((1.0, 
 _REACH = _pose((0.05, 0.02, 0.0), ((0.25, 0.05, 1.0), (0.35, 0.15, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
                ((0.55, -0.85, 0.1), (-0.25, -1.0, 0.05)), ((0.3, -0.95, 0.08), (-0.1, -1.0, 0.04)), head=(0.1, 1, 0))
 
+def _tuck(th, sh, sp=(0.35, 0.6, 0.8)):
+    """Tricks C r01: tuck key with the thighs / shins pulled in by th / sh (the r17 asymmetric grab otherwise)"""
+    t = dict(SHAPES["flipTuck"])
+    t.update(spine=(sp[0], 1, 0), spine1=(sp[1], 1, 0), spine2=(sp[2], 1, 0),
+             thigh_L=(1.0, 0.95 + th, 0.08), shin_L=(-0.4 - sh, -1.0, 0.04), thigh_R=(1.0, 0.8 + th, 0.2), shin_R=(-0.2 - sh, -1.0, 0.08))
+    return t
+
+
 KEYED = {
+    # Tricks C r01 (critic pose.py rule: 2 slow limb samples in r23's held 1.2 s double tuck): the tuck SQUEEZES instead of holding -- the
+    # knees come up into it, pull hard to the chest at ~40 % (the spin's fastest part), then ease off toward the kick-out; the anim
+    # instance's tuck IK keeps the wrists on the shins and the knees together throughout (tight tuck numbers unchanged)
+    "flipTuck": [
+        (0.0, _tuck(-0.3, -0.25, (0.25, 0.45, 0.65))),
+        (0.4, _tuck(0.2, 0.2, (0.42, 0.7, 0.9))),
+        (0.72, _tuck(-0.05, 0.0)),
+        (1.0, _tuck(-0.3, -0.3, (0.28, 0.5, 0.7))),
+    ],
     # round 18 pike: it STARTS at the release (frontPikeSwan) with the arms raised and the body long, and folds through the hold -- the arms
     # reach forward and down while the straight legs lift -- into the r17 pike (left hand at the ankles, right arm swept wide and back)
     "flipPike": [
@@ -141,8 +158,10 @@ KEYED = {
         (0.0, dict(_lay((0.25, 0.9, 0.4), (0.2, 1.0, 0.3), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02)),
                    upperArm_R=(0.35, 1.0, 0.2), forearm_R=(0.3, 1.0, 0.15))),
         (0.4, _lay((0.05, -1.0, 0.33), (0.05, -1.0, 0.22), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02), (0.03, -1.0, 0.03), (0.0, -1.0, 0.02))),
-        (0.62, dict(_lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.2, -1.0, 0.04), (0.08, -1.0, 0.02), (-0.15, -1.0, 0.04), (-0.25, -1.0, 0.02),
-                         sp=(-0.02, -0.06, -0.08)), upperArm_L=(0.5, -0.25, 0.65), forearm_L=(0.6, -0.05, 0.55),
+        # Tricks C r01 (gymnast layout: hips / knees >= 170 deg): the scissor is halved and the hollow eased (r18: thighs +0.2 / -0.15,
+        # shins +0.08 / -0.25, spine -0.02 / -0.06 / -0.08 -> hip angle ~165 deg)
+        (0.62, dict(_lay((0.35, -0.6, 0.6), (0.4, -0.45, 0.5), (0.1, -1.0, 0.04), (0.06, -1.0, 0.02), (-0.07, -1.0, 0.04), (-0.1, -1.0, 0.02),
+                         sp=(-0.01, -0.03, -0.04)), upperArm_L=(0.5, -0.25, 0.65), forearm_L=(0.6, -0.05, 0.55),
                     upperArm_R=(0.1, -0.9, 0.5), forearm_R=(0.12, -0.85, 0.4))),
         (1.0, dict(_lay((0.5, -0.6, 0.1), (0.4, 0.2, -0.6), (0.08, -1.0, 0.0), (0.03, -1.0, -0.02), (-0.05, -1.0, 0.0), (-0.1, -1.0, -0.02),
                         sp=(0.02, 0.0, -0.03)))),
@@ -153,12 +172,14 @@ KEYED = {
     # the scissor swaps -- it ends in the catch reach. No two keys hold every limb.
     "flipKickout": [
         (0.0, _TUCK),
+        # Tricks C r01: the head SPOTS the catch -- out of the tuck's chin-down it stays forward-down (eyes on where he is going) while the
+        # legs shoot out, then lifts through the open-out to the neutral reach (r18: neutral at 0.22, thrown back at 0.42)
         (0.22, _pose((0.12, 0.16, 0.2), ((0.9, 0.5, 0.3), (0.7, 0.8, 0.25)), ((0.5, -0.3, 1.0), (0.3, -0.2, 1.0)),
-                     ((0.6, -0.8, 0.06), (0.4, -1.0, 0.03)), ((0.15, -1.0, 0.1), (-0.3, -1.0, 0.05)))),
+                     ((0.6, -0.8, 0.06), (0.4, -1.0, 0.03)), ((0.15, -1.0, 0.1), (-0.3, -1.0, 0.05)), neck=(0.3, 1, 0), head=(0.6, 0.8, 0))),
         (0.42, _pose((-0.1, -0.2, -0.25), ((0.25, 1.0, 0.35), (0.1, 1.0, 0.3)), ((-0.1, 0.2, 1.0), (-0.2, 0.35, 1.0)),
-                     ((0.35, -1.0, 0.06), (0.25, -1.0, 0.03)), ((-0.25, -1.0, 0.08), (-0.5, -1.0, 0.04)), head=(-0.1, 1, 0))),
+                     ((0.35, -1.0, 0.06), (0.25, -1.0, 0.03)), ((-0.25, -1.0, 0.08), (-0.5, -1.0, 0.04)), neck=(0.12, 1, 0), head=(0.42, 0.95, 0))),
         (0.62, _pose((-0.05, -0.1, -0.12), ((0.1, -0.1, 1.0), (0.15, 0.05, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
-                     ((0.15, -1.0, 0.06), (-0.2, -1.0, 0.03)), ((0.05, -1.0, 0.08), (-0.6, -0.9, 0.04)))),
+                     ((0.15, -1.0, 0.06), (-0.2, -1.0, 0.03)), ((0.05, -1.0, 0.08), (-0.6, -0.9, 0.04)), head=(0.28, 1, 0))),
         (0.82, _pose((0.05, 0.03, 0.0), ((0.2, -0.65, 0.8), (0.35, -0.45, 0.8)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
                      ((0.45, -0.9, 0.08), (-0.2, -1.0, 0.05)), ((0.15, -1.0, 0.07), (-0.4, -1.0, 0.04)), head=(0.1, 1, 0))),
         (1.0, _REACH),
