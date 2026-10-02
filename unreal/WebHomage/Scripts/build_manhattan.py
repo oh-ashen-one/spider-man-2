@@ -277,8 +277,13 @@ def main():
                 done.append({'step': s, 'seconds': round(time.time() - t, 1)})
                 log('=== step %s done in %.0f s' % (s, time.time() - t))
     finally:
-        json.dump({'region': REGION, 'tiles': TILES, 'steps_wanted': want, 'steps_done': done, 'commands': TIMINGS,
-                   'total_seconds': round(time.time() - t0, 1), 'finished': time.strftime('%Y-%m-%d %H:%M:%S')}, open(tj, 'w'), indent=1)
+        run = {'region': REGION, 'tiles': TILES, 'steps_wanted': want, 'steps_done': done, 'commands': TIMINGS,
+               'env': {k: v for k, v in os.environ.items() if k.startswith('SM2_ISLAND_')},
+               'total_seconds': round(time.time() - t0, 1), 'finished': time.strftime('%Y-%m-%d %H:%M:%S')}
+        try:   # every invocation appended (resumed / partial builds keep their history; a pre-r03 single-run file becomes runs[0])
+            old = json.load(open(tj)); runs = old['runs'] if 'runs' in old else [old]
+        except Exception: runs = []
+        json.dump({'runs': runs + [run]}, open(tj, 'w'), indent=1)
     log('all done in %.0f s (timings %s)' % (time.time() - t0, tj))
 
 
