@@ -1257,7 +1257,7 @@ if 'skins' in STEPS:
             lift_ = float(stl_.get('face', {}).get('lift', 1.0)) if role_ == 'deep' else 0.0      # round 14: design.py lifts a 'deep' hood toward the body colour (face.lift, default 1.0)
             hc_ = [a * (1.0 - lift_) + b * lift_ for a, b in zip(hc_, body_)]
             luma_ = 0.2126 * hc_[0] + 0.7152 * hc_[1] + 0.0722 * hc_[2]
-            dark_mask = luma_ < 0.12      # round 14: every hood is now >= 0.17 (sRGB luma): a dark graphite rim (luma ~15) contrasts with all of them at every angle; a polished silver one crosses a mid mask's luma
+            dark_mask = luma_ < 0.36      # round 14: a polished silver rim reflects the sky / floor (luma 110 - 190) and reads on every hood up to ~0.35 (sRGB luma): r13's graphite rims on the MID hoods (Verdant, Ash, Saffron: hood 0.22 - 0.32) were open on 25 - 45 % of the angles; graphite stays for the pale hoods (Glacier 0.67, Sage 0.55)
             frame_ = mi('MI_HeroFrame_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_LensFrame'),
                         scal={'Roughness': 0.25 if dark_mask else 0.22, 'Specular': 0.6, 'Metallic': 0.9},
                         vec={'Color': (0.22, 0.22, 0.24, 1.0) if dark_mask else (0.06, 0.06, 0.065, 1.0)})

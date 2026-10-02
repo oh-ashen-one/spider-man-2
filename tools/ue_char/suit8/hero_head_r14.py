@@ -57,8 +57,8 @@ PARAMS = dict(
     glabella=2.5,
     socket_amp=-5.2, socket_x=0.041, socket_y=1.6715, socket_sx=0.033, socket_sy=0.0165,
     canthus_amp=-5.0, canthus_x=0.0125, canthus_y=1.6665, canthus_sx=0.0085, canthus_sy=0.0125,                                             # the inner corner of each eye: between the lens end and the nose bridge
-    cheek_amp=7.5, cheek_x=0.050, cheek_y=1.6405, cheek_sx=0.0155, cheek_sy=0.0105,
-    hollow_amp=-4.5, hollow_x=0.042, hollow_y=1.6195,
+    cheek_amp=9.0, cheek_x=0.050, cheek_y=1.6405, cheek_sx=0.0155, cheek_sy=0.0105,
+    hollow_amp=-5.0, hollow_x=0.042, hollow_y=1.6195,
     temple_amp=-3.0,
     mouth_amp=6.0, groove_amp=-3.2, chin_amp=9.0,
 )
