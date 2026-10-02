@@ -713,6 +713,20 @@
     6,
     7
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 21,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
   }
  ],
  "agents": [
