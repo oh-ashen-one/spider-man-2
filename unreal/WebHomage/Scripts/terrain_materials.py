@@ -100,7 +100,7 @@ float occ = lerp(0.36, 1.05, pow(expo, 1.3));
 float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
 float bnd = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);   // r02: the ez-tree LOD band (L0 < 20 m, L1 20-44 m): UE drew L1 out to 520 m
 Op = tx.a * bnd; Sub = c * 0.85; Rough = 0.78;
-Emis = c * 0.45 * (0.35 + 0.65 * expo);   // r02: ambient fill (the browser's emissive sky fill): crowns in the sun's shadow were near black (luma 20-60) next to lit ones
+Emis = c * 0.65 * (0.4 + 0.6 * expo);   // r02: ambient fill (the browser's emissive sky fill): crowns in the sun's shadow were near black (luma 20-60) next to lit ones
 return c;''',
         inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
@@ -119,7 +119,7 @@ float op; float3 sub;
 float3 c = TerrainLeafCards(tAtlas, tAtlasSampler, uv0, uv1, float3(a0, a1, a2), float3(b0, b1, b2), wn, wpos, cam, band, Parameters.SvPosition.xy, t, op, sub);
 Op = op; Sub = sub * gain; Rough = 0.78;
 float ex = saturate(uv1.x >= 1.5 ? uv1.x - 2.0 : uv1.x);
-Emis = c * gain * 0.45 * (0.35 + 0.65 * ex);   // r02 ambient fill, see M_TerrainLeaves
+Emis = c * gain * 0.65 * (0.4 + 0.6 * ex);   // r02 ambient fill, see M_TerrainLeaves
 return c * gain;''',
         inputs=[('tAtlas', 'tex', 'leaf_atlas'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
