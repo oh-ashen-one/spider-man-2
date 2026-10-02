@@ -72,5 +72,5 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
   `stop_ue.sh` was run on this worktree as a final check.
 - Content (Manhattan + `/Game/Water`, V3 params) is built in this worktree's `unreal/WebHomage/Content` (git-ignored). Intermediate and
   DerivedDataCache were kept, because the next round rebuilds here (about 10 min plus queue).
-- Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones), `iter/r03`, `cap/` (dolly PNG frames for both dollies, about
-  2 GB: delete them once round 04 has its own), `r03/` scripts and logs.
+- Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones), `iter/r03`, `cap/` (6.4 GB: dolly PNG frames for both dollies plus still captures and perf runs,
+  delete them once round 04 has its own), `r03/` scripts and logs.
