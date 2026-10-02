@@ -71,21 +71,19 @@ if sw:
     L.append('| swap on the pixels (playable pawn, real T presses) | <= 500 ms | %d of %d presses found, worst %s ms | %s |' % (len(ms), sw['presses'], max(ms) if ms else 'n/a', 'PASS' if ms and max(ms) <= 500 else 'CHECK'))
 # ---- locomotion of the stage hero (r8 axes) and the pawn (P3 numbers)
 L += ['', '## Hero animation (stage hero, Char_Hero, 1080p60 fixed step) and the playable pawn', '', '| line | target | measured | verdict |', '|---|---|---|---|']
-hb = J('measures/ch6_chase_headbob.json'); bb = J('measures/ch6_chase_bob.json'); ch = J('measures/ch2_ch7_chase.json'); sd = J('measures/ch6_ch7_side.json'); lb = J('measures/ch7_side_leanbelt.json')
-if hb or bb:
-    L.append('| CH6 run step rate, chase clip | 3.2 - 3.8 steps/s | head bob FFT %s Hz, minima %s /s; hero-top bob FFT %s Hz | %s |' % (
-        hb and hb.get('head_bob_fft_hz'), hb and hb.get('head_bob_minima_per_s'), bb and bb.get('bob_fft_hz'),
-        'PASS' if hb and 3.2 <= hb.get('head_bob_fft_hz', 0) <= 3.8 else 'CHECK'))
-if sd:
-    L.append('| CH6 run step rate, side clip | 3.2 - 3.8 | bob FFT %s Hz, minima %s /s | %s |' % (sd['bob_fft_hz'], sd['bob_minima_per_s'], 'PASS' if 3.2 <= sd['bob_fft_hz'] <= 3.8 else 'CHECK'))
-if sd or lb:
-    L.append('| CH7 sprint torso lean, side clip | >= 15 deg | head-to-mid lean median %s deg; head-to-belt lean median %s deg, share of frames >= 15 deg %s | %s |' % (
-        sd and sd['lean_median_deg'], lb and lb.get('lean_belt_median'), lb and lb.get('frac_ge15'), 'PASS' if (lb and lb.get('lean_belt_median', 0) >= 15) or (sd and sd['lean_median_deg'] >= 15) else 'CHECK'))
+sh = J('measures/ch6_side_headbob.json'); sd = J('measures/ch6_ch7_side.json'); ch = J('measures/ch2_ch7_chase.json')
+r8s = J('measures/r8_ch6_side_headbob.json'); r8d = J('measures/r8_ch6_ch7_side.json'); r8c = J('measures/r8_ch2_ch7_chase.json')
+if sh:
+    L.append('| CH6 run step rate, side clip (head-blob bob, the round-08 instrument and window) | 3.2 - 3.8 steps/s | **%s Hz** (round 08 clip: %s Hz) | %s |' % (
+        sh['head_bob_fft_hz'], r8s and r8s.get('head_bob_fft_hz'), 'PASS' if 3.2 <= sh['head_bob_fft_hz'] <= 3.8 else 'FAIL'))
 if ch:
-    L.append('| CH2 chase framing | 0.39 - 0.53 | hero height median %s | %s |' % (ch['hero_height_median'], 'PASS' if 0.39 <= ch['hero_height_median'] <= 0.53 else 'CHECK'))
-to = J('measures/ch10_takeoff.json')
-if to:
-    L.append('| CH10 run -> leap anticipation (no pop) | >= 9 frames (0.15 s at 60 fps) | %s frames from crouch start to lift-off | %s |' % (to.get('anticipation_frames'), 'PASS' if (to.get('anticipation_frames') or 0) >= 9 else 'CHECK'))
+    L.append('| CH6 run step rate, chase clip (whole-mask top bob; the head cannot be isolated from behind) | 3.2 - 3.8 | **%s Hz** (round 08: %s Hz) | %s |' % (
+        ch['bob_fft_hz'], r8c and r8c.get('bob_fft_hz'), 'PASS' if 3.2 <= ch['bob_fft_hz'] <= 3.8 else 'FAIL'))
+if sd:
+    L.append('| CH7 sprint torso lean, side clip (head to mid-torso band) | >= 15 deg | median **%s deg** (round 08 clip: %s deg) | %s |' % (sd['lean_median_deg'], r8d and r8d.get('lean_median_deg'), 'PASS' if sd['lean_median_deg'] >= 15 else 'FAIL'))
+if ch:
+    L.append('| CH2 chase framing | 0.39 - 0.53 | hero height median **%s** (round 08 clip: %s) | %s |' % (ch['hero_height_median'], r8c and r8c.get('hero_height_median'), 'PASS' if 0.39 <= ch['hero_height_median'] <= 0.53 else 'FAIL (edge)'))
+L.append('| CH10 stage-hero blends | >= 0.15 s | the stage clips use the round-08 animation set unchanged (same ABP_Hero_Lineup / ABP_Hero_Leap); `video_checks.py takeoff` reads 1 - 2 frames on BOTH the round-08 and the round-12 leap clips (its ground line is set from the bobbing run, not a usable instrument) | not re-measured |')
 pc = J('measures/pawn_cadence.json'); pp = J('measures/pawn_start_pop.json')
 if pc:
     L.append('| playable pawn (P3 `WebTravAnimInstance`, NOT P2) run cadence | (P3) 3.2 - 3.8 | %s steps/s (FFT %s Hz, bob period %s frames) | logged for the traversal brief |' % (pc['steps_per_s_from_period'], pc['bob_fft_hz'], pc['median_minima_period_frames']))

@@ -1,50 +1,65 @@
-# P2 Characters: handoff (round 11, first-pass piece G: hero skins)
+# P2 Characters: handoff (round 12, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 11 author: Sonnet 5.5 (2026-10-01 afternoon; resumed and finished 17:05 - 17:25 after the owner's pause).
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 12 author: Opus 5.5 (2026-10-01 evening); round 11: Sonnet 5.5.
 Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `build_fight.sh`, see Commands).
 Scope since the director's first-pass plan (`git show origin/Opus-5.5-Loop-Night-1:docs/night1/director/PLAN-firstpass.md`, piece G): **the HERO ONLY**. Thugs, fight, crowd are PAUSED (their rounds 05 - 10 below stay as the record).
 
-## ROUND 12 IN PROGRESS (Opus 5.5, 2026-10-01 evening) - read this first
+## STATE AT THE END OF ROUND 12 (read this first)
 
-Round target (critic r11): raised piping on all 8 suits, net / piping layered UNDER the sash and chevron, no faceted patches / weave flip / stair-step at the armpit, Verdant jog <= 2 px, Verdant + Saffron re-blocked, CH1-framed fronts, r8 hero run / chase + enemy lineup + fight + crowd re-shot.
+Round 12 author: Opus 5.5 (2026-10-01 17:40 - 23:30). Everything committed and pushed on `night1/characters`; `/Content` is NOT committed (rebuilt by the scripts).
+Round target (critic r11, single biggest gap): raised piping + net / panel lines UNDER the sash and chevron; same round: no faceted patches / weave flip / armpit stair-step, the Verdant jog
+<= 2 px, Verdant + Saffron re-blocked, CH1-framed fronts, every r8 axis re-proven (stage-hero run / chase, enemy lineup 4K, fight clip, crowd clip, swap movie).
+Numbers: `round-12/SPEC_CHECK.md`; captures and how: `round-12/CAPTURES.md`; the fold diagnosis: `round-12/FOLD.md`. Critic pack: `/Users/midir/sm2-n1/_scratch/critic-P2-r12/pack`
+(21 pairs, key in `pack.key.json` outside it; `pairs.json` also as `round-12/critic_pairs.json`). No critic verdict yet.
 
-Done and pushed (CPU side, verified on CPU renders and checkers):
-- ROOT CAUSE of the jog / stair-step / weave-flip line / faceted patches: a FOLD of the side of the torso in the idle / run poses (neighbouring vertices weighted to different arm bones,
-  shoulder 0.12 vs upperArm 0.11). The suit textures are continuous across that UV seam. Fix: `tools/ue_char/suit8/hero_weights_r12.py` smooths the per-joint weights in the
-  torso-side region (1650 vertices, positions / UVs / normals untouched); `build_characters.py` 'prep' runs it after `hero_lens_r8.py`; `--check` prints fold counts (idle@0: 4 -> 2 folded faces,
-  CPU posed render: the notch is gone).
-- `design.py` style `relief` (default `piping`): every panel / net line is a raised rounded cord (heights 0.65 - 0.95 mm, roughness 0.36 / 0.42), sash / chevron border strips raised,
-  the accent panel a padded plateau, and every net / piping / stitch line laid after the sash is masked UNDER it (colour + height + roughness); cavity AO at the cord feet; normal map sigma 0.6
-  and per-texel smoothed metres-per-texel. `relief.kind = 'r8'` (`hero_suit_r8.py --legacy-r8`) still reproduces round 08 texel for texel; `test_regression.py` checks both (r8 + r12 md5s).
-- `M_Char_Suit`: the weave is laid out from the PRE-SKINNED local position (triplanar, whiteout blend, rotated onto the skinned normal, World -> Tangent), static switch `WeaveFromPosition`
-  (default on; off = the old UV twill). Unverified in the engine until the build runs.
-- `suits.json`: Verdant deep #4b4a22 olive-bronze (no black raglans), upper arm body, glyph `gate` (no ring); Saffron deep #2f3a36 slate, upper arm body, `sleeves: false` (no raglan pair).
-  IP guard palette PASS (min palette distance 52.3), seams PASS (worst run 4.3 px).
-- `tools/ue_char/suits/tangent_check.py`: normal map vs the mesh tangent frames per UV island (PASS: large islands cos >= 0.99, no island flipped; fingers 0.8).
-- Checkers for the critic's numbers: `relief_check_r12.py relief|sash|jog`, `loco_r12.py ch1|bob|pop`. Round-11 baselines: Tessera relief cells >= 20: 32 %, sash longest dark run 46 px,
-  Ash 121 px, Verdant jog 69 px.
-- Engine side: `chain_r12.sh` (one gpu_slot hold: stills pawn orbit hero chase fight crowd lineup), `post_r12.sh` (fills round-12/ + every measure), `make_pairs_r12.py`.
+| line | r11 -> r12 (real game, 4K chest stills unless noted) | verdict |
+|---|---|---|
+| net / panel lines through the sash: critic probe Tessera (1412, 1240) | luma 85 vs panel 109 -> **110 vs 107** | fixed |
+| sash / chevron: longest dark run inside the panel (<= 10 px) | Tessera 20 -> **11**, Ash 70 -> **3**, Cinder 108 -> **10**, Saffron 98 -> **6**, Verdant 9 -> 8, Plum 4 -> 9 (Glacier / Sage: no sash panel found) | Tessera 1 px over |
+| raised piping: 64 px line cells with a lit / shadow pair >= 20 luma | Tessera 32 -> **59 %**, Ash 32 -> 58, Glacier 35 -> 58, Sage 32 -> 62, Plum 53 -> 60, Cinder 51 -> 59, Saffron 40 -> 52, **Verdant 41 -> 35** | NOT "every line": about 6 in 10; Verdant's horizontal rib rings read flat |
+| Verdant chevron jog at the critic's columns (x 1320-1400) | **68.6 px -> 1.2 px** (whole tracked edge 4.1 px at (1528, 1821), stitch / twill noise) | fixed at the jog |
+| armpit fold (CPU skinning, folded faces in the region) | run 62 -> 18, sprint 85 -> 37, fight idle 34 -> 7, idle 4 -> 2 | `FOLD.md` |
+| normal map vs mesh tangent basis per UV island | all large islands cos >= 0.98, no island flipped (Tessera / Verdant / Ash) | PASS |
+| CH1 front framing 0.48 - 0.62 | 0.77 -> **0.541 - 0.545** | PASS |
+| CH6 / CH7 / CH2 stage hero (r8 instruments, r8 clips measured alongside) | side head bob 3.542 Hz (r8 3.542), chase 3.542 Hz, lean 20.6 deg (r8 25.5), chase height 0.389 (r8 0.372; target 0.39) | PASS / PASS / CH2 at the edge |
+| IP guard palette, seams, OCR, regression | min palette distance 52.3, worst seam run 4.6 px, 0 OCR hits, r8 legacy + r12 default md5 PASS | PASS |
+| swap on the pixels | 7 / 7 T presses, 33 ms | PASS |
 
-Engine build DONE 2026-10-01 18:33 local (50 s, `build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, exit 0; weave-from-position connections all True; the
-nullrhi build compiles no shaders, so the custom weave node is first compiled by the -game run: check the first stills for the default grid material). The capture chain
-(`chain_r12.sh`, steps "stills pawn hero chase fight crowd lineup orbit", out `$P2_SCRATCH/r12/chain`) was queued in the lock right behind it (REQUIRE_BUILD_LOG guard).
-First engine pass (v1, chain `$P2_SCRATCH/r12/chain`, 19:10-19:23): 4K stills + pawn + orbit captured (the hero / chase / fight / crowd / lineup steps were lost: chain_r12.sh was
-edited while bash was executing it -> bash re-read shifted bytes and died on a syntax error; LESSON: never edit a running script, the queued chain2 runs a snapshot `.chain_r12_run.sh`).
-v1 measures (`post_r12.sh` dry run): net no longer through the sash (Tessera probe (1412,1240) 135 vs panel 115, was 85 vs 110), CH1 0.541-0.545 PASS, swap 7/7 at 33 ms,
-but relief too weak (Tessera 41 % of cells >= 20) and the Verdant jog still 57 px (the CPU check showed the smoothing only MOVED the fold inward).
-v2/v3 (committed, maps regenerated): cord heights x2 (pipe 1.8 mm, net 1.3 mm) + mid-tone net cords (`relief.net_tone`), stage fills 0.8 -> 0.5, arm weights stripped from the chest side below the
-armpit (`strip_arm` in hero_weights_r12.py: CPU posed render shows no jog / notch on either side), crisp sash / chevron ends (the weight ramp smeared the cut end).
-chain2 hit the lock's 3600 s WAIT timeout (exit 75, nothing ran); re-queued 20:28 as chain3 (`$P2_SCRATCH/r12/chain3`, same steps, `gpu_slot.sh capture --timeout 14400`).
-NOTE: `unreal/WebHomage/Scripts/run_game.sh` has an uncommitted 18:12 change by someone else (frame cap for non-perf captures, WindowServer safety): left as is, not committed by P2.
-Next (if you resume here and the chain did not run): the content build was queued in the GPU lock (`build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, needs prep outputs:
-`python3 tools/ue_char/prep_glbs.py; python3 tools/ue_char/hero_lens_r8.py $P2_SCRATCH/ueimport/SK_Hero.glb; python3 tools/ue_char/suit8/hero_weights_r12.py $P2_SCRATCH/ueimport/SK_Hero.glb`
-and the maps: `python3 tools/ue_char/hero_suit_r8.py` (Tessera 8192) + `python3 tools/ue_char/suits/gen_suits.py`), then
-`EV=10.0 STEPS="stills pawn orbit" gpu_slot.sh capture --label characters -- bash tools/ue_char/suits/chain_r12.sh $P2_SCRATCH/r12/chainA` and `STEPS="hero chase fight crowd lineup" ... chainB`,
-then `bash tools/ue_char/suits/post_r12.sh $P2_SCRATCH/r12/chainA $P2_SCRATCH/r12/chainB`. Check the build log for `M_Char_Suit` compile errors / the weave-from-position line first.
+**Cross-piece numbers for the orchestrator -> traversal brief (P3 owns `Traversal/`, P2 did not edit it):** the playable pawn (`AWebTravCharacter` + `WebTravAnimInstance`) runs at
+**4.0 steps/s** (head-top bob period 15.0 frames, FFT 4.13 Hz; target 3.2 - 3.8), and its start switches `A_Hero_idle -> A_Hero_walk @0.817 s -> A_Hero_jog @0.867 s -> A_Hero_run @0.983 s`
+with blend weight 1.000 on every switch (telemetry `round-12/evidence/pawn_telemetry.csv`, `loco_r12.py tpop`); the 10-number pose signature spreads its change over 28 frames, so the visible
+pop the critic saw (0.733 -> 0.750 s of the trimmed r11 clip) is the hard clip switch at 0.817 s untrimmed.
 
-## STATE AT THE END OF ROUND 11 (read this first)
+### What changed in round 12 (all committed)
+- `tools/ue_char/suit8/hero_weights_r12.py` (run by `build_characters.py` 'prep' after `hero_lens_r8.py`): `strip_arm` (no shoulder / upperArm weight on the chest side below the armpit, ramp
+  y 1.25 -> 1.36 m) + Gaussian weight smoothing in the 1650-vertex torso-side region. `--check` prints / writes the fold counts. THE cause of the jog / weave flip / facets (`FOLD.md`).
+- `tools/ue_char/suit8/design.py`: style `relief` (default `piping`: cords pipe 1.8 mm, net 1.3, ring 1.8, glyph 1.4, sash plateau 0.6, border 1.6, rough 0.34 / 0.40, cavity AO 0.35,
+  `net_tone` 0.38 = mid-tone net cords); every line laid after the sash is masked UNDER it (`sash_cov`); crisp sash / chevron ends. `relief.kind = 'r8'` reproduces round 08 exactly.
+- `tools/ue_char/hero_suit_r8.py`: `--legacy-r8`, cavity AO pass, smoothed metres-per-texel, normal sigma 0.6 for relief maps; `gen_suits.py` the same.
+- `M_Char_Suit` (`build_characters.py`): the weave is laid out from the PRE-SKINNED local position (triplanar whiteout, rotated onto the skinned normal, World -> Tangent; static switch
+  `WeaveFromPosition`, default on). Compiles and renders in -game (weave continuous across the armpit seam in the 4K chest stills).
+- Stage: fills 0.8 -> 0.5 (`skin_fill`), front / back views 7.85 m (CH1).
+- `suits.json`: Verdant deep #4b4a22 olive-bronze, upper arm body, glyph `gate` (no black raglans, no chest ring); Saffron deep / crown #2f3a36 slate, upper arm body, `sleeves: false`
+  (no tan / brown raglan pair).
+- Tools: `tangent_check.py`, `relief_check_r12.py relief|sash|jog`, `loco_r12.py ch1|bob|pop|tpop`, `chain_r12.sh` (one hold: build + captures), `post_r12.sh`, `spec_check_r12.py`,
+  `make_pairs_r12.py`; `test_regression.py` checks the r8 legacy AND the r12 default hashes (update EXPECT_R12 with any deliberate design change).
+
+#### Round-11 next steps (history; round 12's list is at the top)
+1. Read the round-12 critic verdict (`critic/round-12-CRITIC.md` once written) and fix its biggest gap. Known open items: (a) relief is ~60 % of line cells, not every line: Verdant's
+   horizontal rib rings and lines parallel to the key light read flat (raise `relief.net` for `rib`, or give the stage key a side component); (b) Tessera sash dark run 11 px at (1349, 1164)
+   (the remains of the armpit crease at the sash's upper-left corner); (c) CH2 chase framing 0.389 (target 0.39-0.53: camera 5 % closer in `maps5`); (d) head sculpt (egg head, shared
+   decal grille) is round 13 per the brief.
+2. The owner's IP sign-off (PLAN-firstpass section 5): show `round-12/SWATCH_SHEET.jpg` (Verdant and Saffron re-blocked); no merge before it.
+3. P3 items above (cadence 4.0 steps/s, hard clip switches) belong to the traversal brief.
+
+### Lessons of this round
+- NEVER edit a shell script while bash runs it (bash reads it incrementally: the r12 first chain re-ran a step and died on a syntax error). `chain_r12.sh` is run from a snapshot copy.
+- The GPU lock's default capture wait timeout is 3600 s: with 6+ waiters pass `gpu_slot.sh capture --timeout 14400`. An auto-PAUSE (20:43 - 22:38 tonight) blocks every launch; wait.
+- `run_game.sh` has an uncommitted change from another session (18:12, frame cap for non-perf captures): not P2's, left alone.
+
+## Round 11 (history)
 
 Round 11 is DONE except the blind critic's verdict: all acceptance numbers are in `round-11/SPEC_CHECK.md`, what was captured (and how, at which resolution) in `round-11/CAPTURES.md`, the suits in `round-11/SUITS.md`, the owner's swatch sheet is `round-11/SWATCH_SHEET.jpg`.
 
@@ -111,7 +126,22 @@ python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2
 ```
 Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`; count engines with `pgrep -x UnrealEditor`.
 
-## Re-running the evidence (one lock hold, ~10 min, only when the owner is not playing)
+## Re-running the evidence (round 12: ONE lock hold of ~23 min does build + every capture)
+
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters; G=$P2_SCRATCH/ueimport
+python3 tools/ue_char/prep_glbs.py && python3 tools/ue_char/hero_lens_r8.py $G/SK_Hero.glb && python3 tools/ue_char/suit8/hero_weights_r12.py $G/SK_Hero.glb   # hero GLB (CPU, seconds)
+python3 tools/ue_char/hero_suit_r8.py && python3 tools/ue_char/suits/gen_suits.py      # Tessera 8192 (~2.5 min) + the 7 others at 4096 (~5 min); art/.../suits/tessera_* are symlinks to hero/tex
+cp tools/ue_char/suits/chain_r12.sh tools/ue_char/suits/.chain_r12_run.sh            # run a SNAPSHOT (never edit a running script)
+OUT=$P2_SCRATCH/r12/chainN; mkdir -p $OUT
+EV=10.0 STEPS="build stills pawn orbit hero chase fight crowd lineup" nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters --timeout 14400 -- bash tools/ue_char/suits/.chain_r12_run.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &
+bash tools/ue_char/suits/post_r12.sh $OUT $OUT        # CPU: fills round-12/ + measures (~4 min)
+python3 tools/ue_char/suits/spec_check_r12.py docs/night1/characters/round-12 > docs/night1/characters/round-12/SPEC_CHECK.md
+STILLS_4K=$OUT/stills python3 tools/ue_char/suits/make_pairs_r12.py docs/night1/characters/round-12 /Users/midir/sm2-n1/_scratch/critic-P2-r12/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r12/pack /Users/midir/sm2-n1/_scratch/critic-P2-r12/pairs.json
+```
+
+## Re-running the round-11 evidence (history)
 
 ```
 export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters

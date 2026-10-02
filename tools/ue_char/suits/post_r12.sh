@@ -57,8 +57,11 @@ python3 $T jog "docs/night1/characters/round-11/stills/skin_verdant_chest_4k.jpg
 # --- CH1 on the front stills, CH6 / CH7 / CH10 on the stage-hero clips, the pawn's cadence and start pop (P3 numbers)
 python3 tools/ue_char/suits/loco_r12.py ch1 "$S"/skin_*_front_4k.png > "$M/ch1_front.json"
 [ -f "$R/hero_run_chase.mp4" ] && { python3 tools/ue_char/eval/video_checks.py head_bob "$R/hero_run_chase.mp4" 0.3 5.3 > "$M/ch6_chase_headbob.json"; python3 tools/ue_char/suits/loco_r12.py bob "$R/hero_run_chase.mp4" 0.3 5.3 > "$M/ch6_chase_bob.json"; python3 tools/ue_char/eval/video_checks.py hero_run "$R/hero_run_chase.mp4" 0.3 5.3 > "$M/ch2_ch7_chase.json"; }
-[ -f "$R/hero_run_side.mp4" ] && { python3 tools/ue_char/eval/video_checks.py hero_run "$R/hero_run_side.mp4" 0.3 5.3 > "$M/ch6_ch7_side.json"; python3 tools/ue_char/eval/video_checks.py lean_belt "$R/hero_run_side.mp4" 0.3 5.3 > "$M/ch7_side_leanbelt.json" 2>/dev/null; }
-[ -f "$R/hero_run_leap_side.mp4" ] && python3 tools/ue_char/eval/video_checks.py takeoff "$R/hero_run_leap_side.mp4" 0 6.4 > "$M/ch10_takeoff.json" 2>/dev/null
+[ -f "$R/hero_run_side.mp4" ] && { python3 tools/ue_char/eval/video_checks.py hero_run "$R/hero_run_side.mp4" 0.3 5.3 > "$M/ch6_ch7_side.json"; python3 tools/ue_char/eval/video_checks.py head_bob "$R/hero_run_side.mp4" 0.3 5.3 > "$M/ch6_side_headbob.json"; }
+# the round-08 clips through the same instruments (same windows): the A/B of the stage-hero animation
+R8C=docs/night1/characters/round-08/captures
+python3 tools/ue_char/eval/video_checks.py head_bob "$R8C/hero_run_side.mp4" 0.3 5.3 > "$M/r8_ch6_side_headbob.json"; python3 tools/ue_char/eval/video_checks.py hero_run "$R8C/hero_run_side.mp4" 0.3 5.3 > "$M/r8_ch6_ch7_side.json"
+python3 tools/ue_char/eval/video_checks.py hero_run "$R8C/hero_run_chase.mp4" 0.3 5.3 > "$M/r8_ch2_ch7_chase.json"
 [ -f "$R/swap_pawn_T_key.mp4" ] && { python3 tools/ue_char/suits/loco_r12.py bob "$R/swap_pawn_T_key.mp4" 2 9.5 > "$M/pawn_cadence.json"; python3 tools/ue_char/suits/loco_r12.py pop "$R/swap_pawn_T_key.mp4" 0 2.5 > "$M/pawn_start_pop.json"; }
 [ -f "$A/pawn/pawn_telemetry.csv" ] && { cp "$A/pawn/pawn_telemetry.csv" "$E/pawn_telemetry.csv"; python3 tools/ue_char/suits/loco_r12.py tpop "$A/pawn/pawn_telemetry.csv" 0.5 2.0 > "$M/pawn_start_telemetry.json"; }
 # --- CPU checks of the maps (IP guard palette, seams, per-island tangent basis), OCR of the 4K stills, regression
