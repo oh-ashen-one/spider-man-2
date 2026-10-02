@@ -1,0 +1,524 @@
+{
+ "tw_fac_pts": {
+  "dusk": [
+   [
+    18.8,
+    [
+     1,
+     1,
+     1
+    ]
+   ],
+   [
+    19.2,
+    [
+     5,
+     2,
+     1.04
+    ]
+   ],
+   [
+    19.5,
+    [
+     9,
+     3,
+     1.1
+    ]
+   ],
+   [
+    19.8,
+    [
+     26,
+     5.5,
+     1.2
+    ]
+   ],
+   [
+    20.2,
+    [
+     30.0,
+     6.0,
+     1.2
+    ]
+   ],
+   [
+    20.6,
+    [
+     30.0,
+     6.0,
+     1.2
+    ]
+   ],
+   [
+    21.0,
+    [
+     15.5,
+     3.5,
+     1.1
+    ]
+   ],
+   [
+    21.4,
+    [
+     3.9,
+     1.5,
+     1.02
+    ]
+   ]
+  ],
+  "dawn": [
+   [
+    5.6,
+    [
+     1,
+     1,
+     1
+    ]
+   ],
+   [
+    6.25,
+    [
+     12,
+     3.5,
+     1.1
+    ]
+   ],
+   [
+    6.5,
+    [
+     11,
+     3.2,
+     1.1
+    ]
+   ],
+   [
+    6.8,
+    [
+     9.5,
+     3,
+     1.1
+    ]
+   ],
+   [
+    7.0,
+    [
+     8,
+     2.7,
+     1.08
+    ]
+   ],
+   [
+    7.2,
+    [
+     5.5,
+     2.1,
+     1.05
+    ]
+   ],
+   [
+    7.4,
+    [
+     3,
+     1.5,
+     1.03
+    ]
+   ],
+   [
+    7.6,
+    [
+     1,
+     1,
+     1
+    ]
+   ]
+  ]
+ },
+ "tw_hl_r": {
+  "dusk": [
+   [
+    18.8,
+    1.0
+   ],
+   [
+    19.2,
+    0.85
+   ],
+   [
+    19.5,
+    0.8
+   ],
+   [
+    19.8,
+    0.85
+   ],
+   [
+    20.2,
+    1.0
+   ]
+  ],
+  "dawn": [
+   [
+    6.0,
+    1.0
+   ],
+   [
+    6.25,
+    0.85
+   ],
+   [
+    6.5,
+    0.8
+   ],
+   [
+    7.0,
+    0.85
+   ],
+   [
+    7.4,
+    1.0
+   ]
+  ]
+ },
+ "tw_cloud": {
+  "dusk": [
+   [
+    18.8,
+    0.25,
+    0.03
+   ],
+   [
+    19.5,
+    0.25,
+    0.03
+   ],
+   [
+    19.8,
+    0.1,
+    0.02
+   ]
+  ],
+  "dawn": [
+   [
+    6.25,
+    0.25,
+    0.03
+   ],
+   [
+    7.4,
+    0.25,
+    0.03
+   ]
+  ]
+ },
+ "cloud_offset": [
+  0.0,
+  30000.0,
+  0.0,
+  0.0
+ ],
+ "dawn_mist": {
+  "7.0": 0.02,
+  "7.2": 0.1,
+  "7.4": 0.8,
+  "7.6": 4.5,
+  "8.0": 1.7,
+  "8.8": 0.05
+ },
+ "sun_ramp": [
+  -4.0,
+  8.0
+ ],
+ "tw_fog_scale": [
+  [
+   19.5,
+   1.0
+  ],
+  [
+   19.8,
+   0.8
+  ],
+  [
+   20.2,
+   0.55
+  ],
+  [
+   20.6,
+   0.75
+  ],
+  [
+   21.0,
+   1.0
+  ]
+ ],
+ "tw_sun_lux": {
+  "20.2": 5000.0,
+  "20.6": 3500.0
+ },
+ "twilight_overrides": {
+  "7.0": {
+   "sun.Temperature": 4175.0,
+   "fill.W": 2.1875,
+   "sky.Intensity": 0.71875,
+   "fog.FogHeightFalloff": 0.1925,
+   "fog.StartDistance": 3000.0,
+   "fog.FogInscatteringLuminance": [
+    0.32,
+    0.29,
+    0.32,
+    1.0
+   ],
+   "fog.DirectionalInscatteringLuminance": [
+    0.25,
+    0.1375,
+    0.07,
+    1.0
+   ],
+   "pp.ColorContrast": [
+    1.06,
+    1.06,
+    1.06,
+    1.0
+   ],
+   "pp.AutoExposureMinBrightness": 6.55,
+   "pp.AutoExposureMaxBrightness": 12.25,
+   "pp.AutoExposureBias": 0.8979
+  },
+  "7.2": {
+   "sun.Temperature": 4950.0,
+   "fill.W": 2.375,
+   "sky.Intensity": 0.9375,
+   "fog.FogHeightFalloff": 0.295,
+   "fog.StartDistance": 2000.0,
+   "fog.FogInscatteringLuminance": [
+    0.38,
+    0.38,
+    0.44,
+    1.0
+   ],
+   "fog.DirectionalInscatteringLuminance": [
+    0.2,
+    0.125,
+    0.08,
+    1.0
+   ],
+   "pp.ColorContrast": [
+    1.04,
+    1.04,
+    1.04,
+    1.0
+   ],
+   "pp.AutoExposureMinBrightness": 7.1,
+   "pp.AutoExposureMaxBrightness": 12.5,
+   "pp.AutoExposureBias": 0.8419
+  },
+  "7.4": {
+   "sun.Temperature": 5725.0,
+   "fill.W": 2.5625,
+   "sky.Intensity": 1.15625,
+   "fog.FogHeightFalloff": 0.3975,
+   "fog.StartDistance": 1000.0,
+   "fog.FogInscatteringLuminance": [
+    0.44,
+    0.47,
+    0.56,
+    1.0
+   ],
+   "fog.DirectionalInscatteringLuminance": [
+    0.15,
+    0.1125,
+    0.09,
+    1.0
+   ],
+   "pp.ColorContrast": [
+    1.02,
+    1.02,
+    1.02,
+    1.0
+   ],
+   "pp.AutoExposureMinBrightness": 7.65,
+   "pp.AutoExposureMaxBrightness": 12.75,
+   "pp.AutoExposureBias": 0.9043
+  },
+  "6.5": {
+   "sun.Intensity": 12866.6,
+   "pp.AutoExposureBias": 0.8518
+  },
+  "18.4": {
+   "pp.AutoExposureBias": 1.35
+  },
+  "5.6": {
+   "pp.AutoExposureBias": -0.7965
+  },
+  "6.1": {
+   "pp.AutoExposureBias": 0.4384
+  },
+  "6.25": {
+   "pp.AutoExposureBias": 1.4134
+  },
+  "6.35": {
+   "pp.AutoExposureBias": 1.8061
+  },
+  "6.45": {
+   "pp.AutoExposureBias": 1.1525
+  },
+  "6.55": {
+   "pp.AutoExposureBias": 0.6027
+  },
+  "6.65": {
+   "pp.AutoExposureBias": 0.5179
+  },
+  "6.8": {
+   "pp.AutoExposureBias": 0.8365
+  },
+  "6.9": {
+   "pp.AutoExposureBias": 0.9195
+  },
+  "7.1": {
+   "pp.AutoExposureBias": 0.8627
+  },
+  "7.3": {
+   "pp.AutoExposureBias": 0.872
+  },
+  "7.6": {
+   "pp.AutoExposureBias": 1.1573
+  },
+  "7.8": {
+   "pp.AutoExposureBias": 0.9707
+  },
+  "8.0": {
+   "pp.AutoExposureBias": 0.8638
+  },
+  "8.4": {
+   "pp.AutoExposureBias": 0.9328
+  }
+ },
+ "u_dawn": [
+  [
+   5.6,
+   1.0
+  ],
+  [
+   6.25,
+   0.8
+  ],
+  [
+   6.8,
+   0.4
+  ],
+  [
+   7.2,
+   0.12
+  ],
+  [
+   7.6,
+   0.0
+  ]
+ ],
+ "lights_dawn": {
+  "6.25": 1.0,
+  "6.5": 0.85,
+  "6.8": 0.5,
+  "7.0": 0.3,
+  "7.2": 0.2,
+  "7.4": 0.08,
+  "7.6": 0.0
+ },
+ "extra_keys": [
+  6.1,
+  6.35,
+  6.4,
+  6.45,
+  6.55,
+  6.6,
+  6.65,
+  6.7,
+  6.9,
+  7.1,
+  7.3,
+  7.8,
+  8.4,
+  19.0,
+  19.35,
+  19.55,
+  19.6,
+  19.65,
+  19.7,
+  19.75,
+  19.85,
+  19.9,
+  20.4
+ ],
+ "golden_set": {
+  "pp.ColorGainHighlights": [
+   0.55,
+   0.72,
+   0.72,
+   1.0
+  ],
+  "mpc.ShadeFill": 0.2,
+  "pp.ColorOffset": [
+   0.0015,
+   0.0015,
+   0.0015,
+   0.0
+  ]
+ },
+ "surface_gain": {
+  "dusk": [
+   [
+    18.8,
+    1.0
+   ],
+   [
+    19.0,
+    0.9
+   ],
+   [
+    19.2,
+    0.5
+   ],
+   [
+    19.35,
+    0.12
+   ],
+   [
+    19.45,
+    0.02
+   ],
+   [
+    19.55,
+    0.0
+   ],
+   [
+    21.4,
+    0.0
+   ]
+  ],
+  "dawn": [
+   [
+    4.9,
+    0.0
+   ],
+   [
+    6.5,
+    0.0
+   ],
+   [
+    6.65,
+    0.05
+   ],
+   [
+    6.8,
+    0.3
+   ],
+   [
+    7.0,
+    0.8
+   ],
+   [
+    7.2,
+    1.0
+   ]
+  ]
+ }
+}

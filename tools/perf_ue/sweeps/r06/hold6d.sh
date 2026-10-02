@@ -45,7 +45,12 @@ if [[ $STEPS == *lapse* ]]; then
 fi
 if [[ $STEPS == *stills* ]]; then
   python3 -c "import sys; sys.path.insert(0, 'unreal/WebHomage/Scripts'); import look_tod; open(sys.argv[1], 'w').write(look_tod.to_text(look_tod.expand(look_tod.load_doc())))" "$F/keys_final.txt"
-  python3 tools/perf_ue/sweeps/r06/gen_plans_f.py --out "$F" --rt-keys "$F/keys_final.txt"
+  python3 -c "
+import sys, copy; sys.path.insert(0, 'unreal/WebHomage/Scripts'); import look_tod
+t = look_tod.expand(look_tod.load_doc())
+for k in t['keys']: k['p']['cloudv.Layout_GlobalTexturePlacement'] = [0.0, 0.0, 0.0, 0.0]
+open(sys.argv[1], 'w').write(look_tod.to_text(t))" "$F/keys_final_nooffset.txt"
+  python3 tools/perf_ue/sweeps/r06/gen_plans_f.py --out "$F" --rt-keys "$F/keys_final.txt" --rt0-keys "$F/keys_final_nooffset.txt"
   [ $(rem) -gt 650 ] && { python3 tools/perf_ue/sweeps/run_r06.py --plan "$F/plan_f.json" --out "$F/stills" --timeout $(tmo 1200); chk $? stills; if [ -f "$F/stills/session.json" ] && ls "$F"/stills/tod_*.jpg >/dev/null 2>&1; then rm -f "$R"/stills/tod_*.jpg "$R"/stills/*.far.json; for X in "$F"/stills/tod_*.jpg; do cp "$X" "$R/stills/"; done; cp "$F/stills/session.json" "$R/stills_session.json"; fi; } || echo "skipping stills (budget)"
 fi
 if [[ $STEPS == *clips* ]]; then
