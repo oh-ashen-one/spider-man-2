@@ -67,6 +67,7 @@ private:
 	TArray<double> StageShots; int32 NextStageShot = 0; FString StageShotDir, StageShotName;
 	// round 16: -WHStageShotQuit = quit the game 3 s (stage clock) after the LAST stage shot (a contended GPU slows the stage clock: a process-time -quit lost 33 of 56 stills)
 	bool bStageShotQuit = false; double StageQuitAt = -1.0; bool bStageQuitDone = false;
+	int32 WaitTexDoneShot = -1; double WaitTexWall = 0.0;     // round 16: -WHStageWaitTextures
 	UPROPERTY() TObjectPtr<ACameraActor> Cam;
 	float T = 0.f;
 	int32 LastShot = -1;

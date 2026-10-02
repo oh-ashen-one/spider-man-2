@@ -67,10 +67,10 @@ PY
 )
   log "stills: 4K, internal 3840x2160, EV $EV"; gpu stills
   NS=$(python3 -c "import json;d=json.load(open('$SJ'));print(int(d['stills']*d['shot_s']+d.get('first_extra',1.0)+8))")      # last still at stills*shot_s + 1 - 0.8 s of STAGE time; the quit time counts from process start (~35 s of start-up): +40 s (round 13 first run: quit at NS lost the last 7 stills, re-shot in the same hold)
-  # round 16: the director quits 3 s (stage clock) after the last stage shot (-WHStageShotQuit); the process-time -quit is only a safety net now (r16 hold 1: a contended GPU ran the stage
+  # round 16: the director holds its stage clock until the suit textures are resident (-WHStageWaitTextures: hold 2's first-suit stills were a low mip at 1.4 fps) and quits 3 s (stage clock) after the last stage shot (-WHStageShotQuit); the process-time -quit is only a safety net now (r16 hold 1: a contended GPU ran the stage
   # clock at ~1/3 of real time and the old -quit $((NS + 40)) cut the run after 23 of 56 stills)
   Scripts/run_game.sh "$OUT/stills" -map $MAP -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -perf 3:$((NS + 25)) -quit $((NS * 5 + 60)) -name skins -timeout 1800 \
-      -- -WHCharShot=0 -WHStageShot="$TIMES" -WHStageShotQuit -WHExposure=$EV < /dev/null | tail -3
+      -- -WHCharShot=0 -WHStageShot="$TIMES" -WHStageShotQuit -WHStageWaitTextures -WHExposure=$EV < /dev/null | tail -3
   check "$OUT/stills" skins
   python3 - <<PY
 import json, glob, subprocess, os

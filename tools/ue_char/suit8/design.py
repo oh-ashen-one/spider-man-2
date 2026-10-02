@@ -617,10 +617,14 @@ def paint(P, N, G, mpt, gi, jp, style=None, dbg=None):
         RC = dict(h=0.35, rough=0.5, H=RL['ring'], r_pipe=RL['rough_pipe'])
         rcol = NETC * 0.6 + TEAL * 0.4
         if not S['sleeves']:      # no cap / elbow / knee slabs on this suit: the planes that bound the limb nets get ring cords of their own
-            for sd_, nm_ in ((L_, 'L'), (R_, 'R')):
-                s_a, r_a = axial('deltoid.' + nm_, 'forearm.' + nm_)
+            for sd_, nm_, sg_ in ((L_, 'L', 1.0), (R_, 'R', -1.0)):
+                A_r = J('deltoid.' + nm_); d_r = (J('forearm.' + nm_) - A_r) / np.linalg.norm(J('forearm.' + nm_) - A_r)
+                rel_r = P - A_r; s_a = rel_r @ d_r; perp_r = rel_r - s_a[..., None] * d_r; r_a = np.linalg.norm(perp_r, axis=-1)
+                e_r = np.array([-sg_, 0.0, 0.0], np.float32); e_r = e_r - d_r * float(np.dot(e_r, d_r)); e_r = e_r / np.linalg.norm(e_r)
+                ph_r = (perp_r @ e_r) / np.maximum(r_a, 1e-6)                      # +1 = toward the torso
+                r_ring = 0.090 - 0.032 * ss(ph_r, 0.05, 0.60)                        # the ring stays ON the arm: 9 cm outside (the deltoid bulge), 5.8 cm on the torso side (r16 hold 2: a cord stub crossed onto the Saffron torso at the armpit)
                 for c_ in (0.0785, 0.2585, 0.3255):
-                    L(sd_ * body_w * band(s_a - c_, 0.0017, aa) * cover(r_a - 0.090, aa), rcol, dist=s_a - c_, hw=0.0017, **RC)
+                    L(sd_ * body_w * band(s_a - c_, 0.0017, aa) * cover(r_a - r_ring, aa), rcol, dist=s_a - c_, hw=0.0017, **RC)
                 s_t, r_t = axial('thigh.' + nm_, 'shin.' + nm_)
                 for c_ in (0.4015, 0.4735):
                     L(sd_ * body_w * band(s_t - c_, 0.0017, aa) * cover(r_t - 0.16, aa), rcol, dist=s_t - c_, hw=0.0017, **RC)

@@ -17,6 +17,9 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "Misc/Paths.h"
+#include "Misc/App.h"
+#include "Engine/Texture2D.h"
+#include "Materials/MaterialInterface.h"
 
 AWHCharShowDirector::AWHCharShowDirector()
 {
@@ -103,7 +106,34 @@ void AWHCharShowDirector::Tick(float Dt)
 {
 	Super::Tick(Dt);
 	if (!Cam || Shots.Num() == 0) return;
-	T += Dt;
+	// round 16: -WHStageWaitTextures holds the STAGE clock while the target's suit textures are not fully streamed in (r16 hold 2: at 1.4 fps on a contended GPU the first
+	// suit's 8192 px maps were still a low mip when its stills were taken), at most 180 s of wall time per shot
+	static const bool bWaitTex = FParse::Param(FCommandLine::Get(), TEXT("WHStageWaitTextures"));
+	bool bHoldClock = false;
+	if (bWaitTex)
+	{
+		float Tc = bLoop ? T : FMath::Min(T, 1e9f); int32 Ic = 0;
+		for (; Ic < Shots.Num() - 1 && Tc >= Shots[Ic].Duration; ++Ic) Tc -= Shots[Ic].Duration;
+		AActor* Tg = Shots[Ic].bTargetPlayer ? Cast<AActor>(UGameplayStatics::GetPlayerPawn(this, 0)) : Shots[Ic].Target.Get();
+		bool bReady = true;
+		if (Tg && Ic != WaitTexDoneShot)
+			if (USkeletalMeshComponent* SK = Tg->FindComponentByClass<USkeletalMeshComponent>())
+				for (int32 m = 0; m < SK->GetNumMaterials() && bReady; ++m)
+					if (UMaterialInterface* MI = SK->GetMaterial(m))
+					{
+						TArray<UTexture*> Used; MI->GetUsedTextures(Used, EMaterialQualityLevel::Num, true, GMaxRHIFeatureLevel, true);
+						for (UTexture* Tx : Used) if (UTexture2D* T2 = Cast<UTexture2D>(Tx)) if (!T2->IsFullyStreamedIn()) { bReady = false; break; }
+					}
+		if (!bReady && WaitTexWall < 180.0)
+		{
+			if (WaitTexWall == 0.0) UE_LOG(LogTemp, Display, TEXT("WH_STAGE_WAIT_TEX shot %d: holding the stage clock at T=%.2f until the suit textures are resident"), Ic, T);
+			WaitTexWall += FApp::GetDeltaTime();
+			bHoldClock = true;      // the rest of the tick still runs (suit, camera); only the stage clock stands still
+		}
+		else if (Ic != WaitTexDoneShot && WaitTexWall > 0.0) UE_LOG(LogTemp, Display, TEXT("WH_STAGE_WAIT_TEX shot %d: resident=%d after %.1f s wall"), Ic, bReady ? 1 : 0, WaitTexWall);
+		if (!bHoldClock && Ic != WaitTexDoneShot) { WaitTexDoneShot = Ic; WaitTexWall = 0.0; }
+	}
+	if (!bHoldClock) T += Dt;
 	if (!BoneLogPath.IsEmpty() && Dt > 0.f) LogBones(T);
 	while (NextStageShot < StageShots.Num() && double(T) >= StageShots[NextStageShot])
 	{

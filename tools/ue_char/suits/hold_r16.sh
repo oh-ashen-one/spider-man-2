@@ -12,4 +12,4 @@ for i in $(seq 1 24); do [ -f "$OUT/READY_R16" ] && break; sleep 10; done
 if [ ! -f "$OUT/READY_R16" ]; then echo "[r16 launcher] $OUT/READY_R16 missing after 4 min: CPU preparation not finished, releasing the slot"; exit 3; fi
 cd "$WT"
 mkdir -p "$OUT/run"
-P2_FIRST_EXTRA="${P2_FIRST_EXTRA:-9.0}" EV=10.0 STEPS="${STEPS:-build stills lineup pawn orbit hero chase fight crowd}" exec bash "$WT/tools/ue_char/suits/.chain_r16_run.sh" "$OUT/run"
+P2_FIRST_EXTRA="${P2_FIRST_EXTRA:-9.0}" EV=10.0 STEPS="${STEPS:-build stills lineup pawn orbit hero chase fight crowd}" exec bash "$WT/tools/ue_char/suits/${CHAIN_SNAPSHOT:-.chain_r16_run.sh}" "$OUT/run"
