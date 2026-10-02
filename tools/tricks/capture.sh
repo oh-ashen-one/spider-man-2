@@ -5,7 +5,11 @@
 #   <round>/<seq>.mp4             1920x1080 60 fps (fixed 1/60 s step, every frame dumped, r.ScreenPercentage 100 = native internal), <= 15 MB
 #   <round>/<seq>_telemetry.csv   per-frame traversal telemetry (WebTravCharacter)
 #   <round>/<seq>_pose.csv.gz     rendered-bone log of the same run (-WHTrickPose, WebTravFlips.cpp)
-# usage: tools/tricks/capture.sh <round dir> <seq> [<seq> ...]     env: QUIT_<seq>=s (default 60.5), EXTRA_ARGS="-WHTrickTempo=0 ..."
+# usage: tools/tricks/capture.sh <round dir> <seq> [<seq> ...]
+#   env QUIT_<seq>=s (default 60.5); EXTRA_ARGS="-WHTrickTempo=0 ..."; NOHOLD=1 = the caller already holds a capture slot
+#   env SEGS="0:20,20:40,40:60.5" renders the sequence as frame-dump WINDOWS of the same deterministic run (one engine run per window, each
+#       its own gpu_slot hold; -WHTrickDumpFrom/To in WebTravFlips.cpp): r01 found background-priority movie dumps at ~1 frame/s, so 60 s
+#       does not fit one 40-min hold. SEG_ONLY=k renders only window k (0-based) and stops; the merge runs once every window has frames.
 set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -17,34 +21,57 @@ MAP="${TRICK_MAP:-/Game/Maps/Manhattan}"
 GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
 PRE=0.8
 mkdir -p "$TMP"
+RUNG() { if [ -n "${NOHOLD:-}" ]; then "$UE_DIR/Scripts/run_game.sh" "$@"; else "$GPU" capture --label tricks -- "$UE_DIR/Scripts/run_game.sh" "$@"; fi; }
 for NAME in "$@"; do
   Q=$(eval echo "\${QUIT_${NAME}:-60.5}")
-  QUITP=$(python3 -c "print(round($Q + $PRE, 3))")
-  D="$TMP/$NAME"
-  case "$D" in /Users/midir/sm2-n1/_scratch/tricks/*) rm -rf "$D";; *) echo "bad tmp $D"; exit 1;; esac
-  echo "== $NAME quit $Q s  (GPU $(ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1))  $(date +%T)"
-  "$GPU" capture --label tricks -- "$UE_DIR/Scripts/run_game.sh" "$D" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
-    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$NAME.json" -WHTravPreroll=$PRE -WHTravMask -WHTrickPose="$D/${NAME}_pose.csv" ${EXTRA_ARGS:-} | tail -3
-  RC=${PIPESTATUS[0]}
-  echo "gpu_slot rc $RC  $(date +%T)"
-  FR="$D/${NAME}_frames"
-  if [ -d "$FR" ] && [ -f "$D/${NAME}_telemetry.csv" ]; then
-    NF=$(ls "$FR" | wc -l | tr -d ' '); NT=$(( $(wc -l < "$D/${NAME}_telemetry.csv") - 1 ))
-    SKIP=$(( NF - NT ))
-    echo "frames $NF, telemetry rows $NT -> trimming the first $SKIP frames"
-    # mezzanine (scratch, high quality, for sheets / crops) + the committed <= 15 MB movie
-    ffmpeg -loglevel error -y -framerate 60 -start_number $SKIP -i "$FR/MovieFrame%05d.png" -c:v libx264 -pix_fmt yuv420p -crf 16 \
-      -movflags +faststart "$D/${NAME}_hq.mp4"
-    DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$D/${NAME}_hq.mp4")
-    KBPS=$(python3 -c "print(min(12000, int(13.8e6*8/1000/float('$DUR'))))")
-    ffmpeg -loglevel error -y -i "$D/${NAME}_hq.mp4" -c:v libx264 -preset slow -b:v ${KBPS}k -maxrate $((KBPS*3/2))k -bufsize $((KBPS*2))k \
-      -pix_fmt yuv420p -movflags +faststart "$ROUND/$NAME.mp4"
-    cp "$D/${NAME}_telemetry.csv" "$ROUND/"
-    [ -f "$D/${NAME}_pose.csv" ] && gzip -c "$D/${NAME}_pose.csv" > "$ROUND/${NAME}_pose.csv.gz"
-    echo "movie: $ROUND/$NAME.mp4 $(stat -f %z "$ROUND/$NAME.mp4") bytes, ${DUR}s"
-    # the PNG frames are regenerable: drop them once both movies exist
-    [ -s "$ROUND/$NAME.mp4" ] && [ -s "$D/${NAME}_hq.mp4" ] && rm -rf "$FR"
-  else
-    echo "NO FRAMES / TELEMETRY for $NAME (see $D/$NAME.log)"
-  fi
+  SEGL="${SEGS:-0:$Q}"
+  IFS=',' read -r -a SEGA <<< "$SEGL"
+  K=0
+  for SG in "${SEGA[@]}"; do
+    if [ -n "${SEG_ONLY:-}" ] && [ "$SEG_ONLY" != "$K" ]; then K=$((K+1)); continue; fi
+    A="${SG%%:*}"; B="${SG##*:}"
+    D="$TMP/$NAME/seg$K"
+    case "$D" in /Users/midir/sm2-n1/_scratch/tricks/*) rm -rf "$D";; *) echo "bad tmp $D"; exit 1;; esac
+    mkdir -p "$D"
+    QUITP=$(python3 -c "print(round(min($Q, $B + 0.1) + $PRE, 3))")
+    echo "== $NAME seg $K [$A, $B) quit $QUITP  (GPU $(ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1))  $(date +%T)"
+    RUNG "$D" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
+      -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$NAME.json" -WHTravPreroll=$PRE -WHTravMask -WHTrickPose="$D/${NAME}_pose.csv" \
+      -WHTrickDumpFrom=$A -WHTrickDumpTo=$B ${EXTRA_ARGS:-} | tail -3
+    echo "seg $K done $(date +%T): $(ls "$D/${NAME}_frames" 2>/dev/null | wc -l | tr -d ' ') frames; $(grep -o 'WH_TRICK_DUMP.*' "$D/$NAME.log" | tr '\n' ' ')"
+    K=$((K+1))
+  done
+  # ---- merge (every window must have frames)
+  NSEG=${#SEGA[@]}; OK=1
+  for ((K=0; K<NSEG; K++)); do [ -d "$TMP/$NAME/seg$K/${NAME}_frames" ] || OK=0; done
+  if [ $OK = 0 ]; then echo "merge of $NAME waits for every window ($NSEG)"; continue; fi
+  M="$TMP/$NAME/merged"; rm -rf "$M"; mkdir -p "$M"
+  N=0
+  for ((K=0; K<NSEG; K++)); do
+    for f in $(ls "$TMP/$NAME/seg$K/${NAME}_frames" | sort); do
+      ln "$TMP/$NAME/seg$K/${NAME}_frames/$f" "$M/F$(printf %05d $N).png"; N=$((N+1))
+    done
+  done
+  LAST=$((NSEG-1))
+  # determinism: the telemetry of every window's run must match the last one (same frames, same positions)
+  python3 - "$TMP/$NAME" $NSEG "$NAME" <<'PY'
+import csv, sys
+d, n, name = sys.argv[1], int(sys.argv[2]), sys.argv[3]
+ref = list(csv.DictReader(open('%s/seg%d/%s_telemetry.csv' % (d, n - 1, name))))
+for k in range(n - 1):
+    T = list(csv.DictReader(open('%s/seg%d/%s_telemetry.csv' % (d, k, name))))
+    m = min(len(T), len(ref))
+    bad = sum(1 for a, b in zip(T[:m], ref[:m]) if (a['x_m'], a['y_m'], a['z_m'], a['flip_prog'], a['flip_t']) != (b['x_m'], b['y_m'], b['z_m'], b['flip_prog'], b['flip_t']))
+    print('determinism: seg%d vs seg%d over %d common rows: %d rows differ (position / flip state)' % (k, n - 1, m, bad))
+PY
+  NT=$(( $(wc -l < "$TMP/$NAME/seg$LAST/${NAME}_telemetry.csv") - 1 ))
+  echo "merged frames $N, telemetry rows $NT"
+  ffmpeg -loglevel error -y -framerate 60 -i "$M/F%05d.png" -c:v libx264 -pix_fmt yuv420p -crf 16 -movflags +faststart "$TMP/$NAME/${NAME}_hq.mp4"
+  DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$TMP/$NAME/${NAME}_hq.mp4")
+  KBPS=$(python3 -c "print(min(12000, int(13.8e6*8/1000/float('$DUR'))))")
+  ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_hq.mp4" -c:v libx264 -preset slow -b:v ${KBPS}k -maxrate $((KBPS*3/2))k -bufsize $((KBPS*2))k \
+    -pix_fmt yuv420p -movflags +faststart "$ROUND/$NAME.mp4"
+  cp "$TMP/$NAME/seg$LAST/${NAME}_telemetry.csv" "$ROUND/"
+  gzip -c "$TMP/$NAME/seg$LAST/${NAME}_pose.csv" > "$ROUND/${NAME}_pose.csv.gz"
+  echo "movie: $ROUND/$NAME.mp4 $(stat -f %z "$ROUND/$NAME.mp4") bytes, ${DUR}s"
 done

@@ -386,16 +386,36 @@ namespace WebFlips
 				bHeader = true;
 				Rows.Reset();
 			}
+			// -WHTrickDumpFrom=<s> -WHTrickDumpTo=<s> (sequence seconds, i.e. world time minus the -WHTravPreroll pre-roll and one frame):
+			// with -dumpmovie, movie frames are written only for this window (r.DumpingMovie toggled per frame), so a long fixed-step
+			// capture can be rendered in segments of one deterministic run (r01: background-priority PNG dumps ran at ~1 frame/s)
+			float DumpFrom = -1.f, DumpTo = -1.f, Preroll = 0.f;
+			bool bDumpWin = false, bDumpWas = false;
 			void Tick()
 			{
-				if (!bInit) { bInit = true; bOn = FParse::Value(FCommandLine::Get(), TEXT("-WHTrickPose="), Path) && !Path.IsEmpty(); }
-				if (!bOn || !GEngine) return;
+				if (!bInit)
+				{
+					bInit = true; bOn = FParse::Value(FCommandLine::Get(), TEXT("-WHTrickPose="), Path) && !Path.IsEmpty();
+					bDumpWin = FParse::Value(FCommandLine::Get(), TEXT("-WHTrickDumpFrom="), DumpFrom) | FParse::Value(FCommandLine::Get(), TEXT("-WHTrickDumpTo="), DumpTo);
+					FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Preroll);
+					if (DumpTo < 0.f) DumpTo = 1e9f;
+				}
+				if (!GEngine) return;
 				UWorld* W = nullptr;
 				for (const FWorldContext& C : GEngine->GetWorldContexts())
 				{
 					if ((C.WorldType == EWorldType::Game || C.WorldType == EWorldType::PIE) && C.World()) { W = C.World(); break; }
 				}
-				if (!W) return;
+				if (bDumpWin)
+				{
+					// the flag set at the end of frame N decides whether frame N+1 is written: test N+1's sequence time
+					const double SeqNext = W ? W->GetTimeSeconds() - double(Preroll) - 1.0 / 60.0 + 1.0 / 60.0 : -1.0;
+					const bool bIn = W && SeqNext >= double(DumpFrom) - 1e-4 && SeqNext < double(DumpTo) - 1e-4;
+					GIsDumpingMovie = bIn ? -1 : 0;
+					if (bIn != bDumpWas) UE_LOG(LogTemp, Display, TEXT("WH_TRICK_DUMP %s at next-frame seq t %.4f"), bIn ? TEXT("on") : TEXT("off"), SeqNext);
+					bDumpWas = bIn;
+				}
+				if (!bOn || !W) return;
 				APlayerController* PC = W->GetFirstPlayerController();
 				ACharacter* Ch = PC ? Cast<ACharacter>(PC->GetPawn()) : nullptr;
 				const UWebTraversalComponent* Tr = Ch ? Ch->FindComponentByClass<UWebTraversalComponent>() : nullptr;
