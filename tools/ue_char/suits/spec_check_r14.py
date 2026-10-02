@@ -55,7 +55,7 @@ if iq:
     q = iq.get('Q2_ash_armpit')
     if q: L.append('| Ash armpit stitches (1120-1200, 1530-1600) | stitch-dash blobs in the armpit box / in the critic box / orientation spread deg | %s / %s / %s | **%s / %s / %s** |' % (q['r13']['dashes_in_box'], q['r13']['dashes_in_critic_box'], q['r13']['orientation_spread_deg'], q['r14']['dashes_in_box'], q['r14']['dashes_in_critic_box'], q['r14']['orientation_spread_deg']))
     q = iq.get('Q3_sage_trapezius')
-    if q: L.append('| Sage trapezius groove (head34) | dark thin-line pixels % of the box / longest dark line px | %s / %s | **%s / %s** |' % (q['r13']['dark_line_fraction_pct'], q['r13']['longest_dark_line_px'], q['r14']['dark_line_fraction_pct'], q['r14']['longest_dark_line_px']))
+    if q: L.append('| Sage trapezius groove (head34) | dark thin-line pixels %% of the box / longest dark line px | %s / %s | **%s / %s** |' % (q['r13']['dark_line_fraction_pct'], q['r13']['longest_dark_line_px'], q['r14']['dark_line_fraction_pct'], q['r14']['longest_dark_line_px']))
     q = iq.get('Q4_cinder_shoulder')
     if q: L.append('| Cinder shoulder silhouette (chest still) | contour vertices per 1000 px at eps 4 px / longest straight segment px / max turn deg | %s / %s / %s | **%s / %s / %s** |' % (q['r13'].get('vertices_per_1000px'), q['r13'].get('longest_segment_px'), q['r13'].get('max_turn_deg'), q['r14'].get('vertices_per_1000px'), q['r14'].get('longest_segment_px'), q['r14'].get('max_turn_deg')))
     tf = J('trapezius_fold_check.json')
@@ -79,7 +79,7 @@ for s in SUITS:
 jg, jg11 = J('measures/jog_verdant.json'), J('measures/r13_jog_verdant.json')
 if jg:
     L += ['', '| Verdant chevron edge at the critic\'s columns x 1320-1400 | target | round 13 | round 14 | verdict |', '|---|---|---|---|---|',
-          '| largest column-to-column jump beyond its slope | <= 2 px | %s px | **%s px** | %s |' % (jg11 and jg11.get('jump_at_critic_x1320_1400'), jg.get('jump_at_critic_x1320_1400'), jg.get('verdict_at_critic_x'))]
+          '| largest column-to-column jump beyond its slope | <= 2 px | %s px | **%s** | %s |' % (jg11 and jg11.get('jump_at_critic_x1320_1400'), ('%s px' % jg.get('jump_at_critic_x1320_1400')) if jg.get('jump_at_critic_x1320_1400') is not None else 'no edge in the critic columns', jg.get('verdict_at_critic_x') if jg.get('jump_at_critic_x1320_1400') is not None else 'n/a: since round 14 the Verdant V ends at |x| = 0.118 m (a straight piped end), so the chevron\'s upper edge no longer runs into the armpit where the r13 step was; the instrument finds no edge in its ROI. The step is gone from the frame (crop `evidence/measures/iq/chest_verdant.jpg`), not measured to 0')]
 # ---- keep-passing lines
 L += ['', '## Keep-passing lines', '', '| line | target | measured | verdict |', '|---|---|---|---|']
 c1 = J('measures/ch1_front.json')

@@ -5,22 +5,69 @@
 Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 14 author: Sonnet 5.5 (2026-10-02 from 04:00). Everything described here is committed and pushed (`origin/night1/characters`);
 `/Content` is NOT committed (script-generated).
 
-## ROUND 14: INTERIM STATE (this block is replaced by the final state when the hold has run and been measured)
+## STATE AT THE END OF ROUND 14 (read this first)
 
-Round target (director, after the r13 critic [hero 6, anim 5, enemies 5, civilians 5, IQ 5; IP PASS]): FINISH the shared mask sculpt on all 8 suits - (G1) headside profile: the silhouette dips >= 1.5 % of the head height behind the brow -> nose-tip chord at the bridge,
-(G2) the brow's front-most point >= 1 % of the head height in front of the top of the lens (lens + rim seated in an eye socket under the brow ridge; rim stays ONE closed raised band >= 6 px, lens >= 1.6x r12), (G3) Tessera AND Cinder 4K front stills: a horizontal luma line through the cheek bones has >= 3 extrema, swing >= 20;
-plus the two-round-old IQ repeats: pipe every sash end (Ash), no armpit stitch zigzag (Ash), no torn Sage trapezius groove, no faceted Cinder shoulders. Gate: no axis below r13 [6,5,5,5,5]; enemy pack / crowd unchanged; P3 owns the pawn cadence and the frame 7-8 start pop; the OWNER's sign-off on the swatch sheet is still required before any merge.
+Round target (director, after the r13 critic [hero 6, anim 5, enemies 5, civilians 5, IQ 5; IP PASS]): FINISH the shared mask sculpt on all 8 suits - G1 headside recess >= 1.5 % of the head height, G2 brow >= 1 % in front of the lens top (lens + rim seated in an eye socket under the brow ridge, rim one closed raised band >= 6 px, lens >= 1.6x r12),
+G3 Tessera AND Cinder 4K front stills: a luma line through the cheek bones with >= 3 extrema, swing >= 20 - plus the two-round-old IQ repeats (pipe every sash end, no armpit stitch zigzag, no torn Sage trapezius groove, no faceted Cinder shoulders). Gate: no axis below r13 [6,5,5,5,5]; enemy pack / crowd unchanged; the pawn's 4.0 steps/s and the frame 7-8 start pop are P3's.
+**The OWNER must approve the suits before any merge: `docs/night1/characters/round-14/SWATCH_SHEET.jpg` (8 suits, front + back + chest + head; the cheek panel seams are new on all of them).** No blind critic verdict yet: the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r14/pack` (38 pairs, key outside it, `round-14/critic_pairs.json`).
+Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed. No engine of mine is running. Resolution / hold / file table / honest problem list: `round-14/CAPTURES.md`; every number: `round-14/SPEC_CHECK.md`.
 
-What is DONE on the CPU (all committed): the sculpt (`tools/ue_char/suit8/hero_head_r14.py`, brow shelf / nasion notch / cheek planes / mouth / chin, 22 mm nose), the eyes seated in the sockets (`tools/ue_char/hero_lens_r14.py`: 61 x 28 mm, 40.5 mm from the midline, rim crest 3.1 mm),
-the de-faceted shoulders (`hero_shoulder_r14.py`, one Phong-tessellation level, +20k faces), trapezius + armpit skin weights (`hero_weights_r14.py`), `design.py` (lifted hoods + a baked face tone from the sculpt field, straight piped sash ends, torso net stops at the neck base, wedge pipe / stitch rows end below the armpit),
-`suits.json` (Cinder hood = body colour, per-suit `face.lift`), `build_characters.py` (r14 prep chain, `headfront` view, silver rims up to hood luma 0.36), the checkers (`head_check_r14.py` G1 / G2 / G3 + r13's H1 - H6, `head_profile_r14.py` mesh instrument, `iq_check_r14.py`), `chain_r14.sh`, `hold_r14.sh`, `post_r14.sh`, `spec_check_r14.py`, `make_pairs_r14.py`.
-Mesh numbers of the GLB the engine imports (`prep_hero_r14.sh`): recess 6.05 % HH, brow over the lens top 4.3 % HH, over every rim vertex 1.4 % HH, nose bump 20 % HH; lens-to-outline clearance 49 px (12 deg). Regression PASS (r8 legacy texel for texel; r14 default hashes). IP guard palette: min distance 49.6, no fails; seams worst 3.0 px.
+| line | r13 -> r14 (real game, lossless 4K stills, one hold 2026-10-02 05:32 - 05:57, 0 crashes, lock `contaminated=true`) | verdict |
+|---|---|---|
+| G1 headside recess behind the brow -> nose-tip chord (gate 1.5 % of head height) | r13 Tessera 1.11 %, Cinder 1.44 % (my instrument on the r13 stills) -> **6.5 - 6.8 %** on all 8 (mesh: 6.05 %) | PASS 8 / 8 |
+| G2 brow in front of the lens top (gate 1 %); with a 3.1 mm rim allowance | r13 -0.2 % (Tessera), -1.3 % (Cinder) -> **3.45 - 4.29 %**; with rim **2.08 - 2.93 %** | PASS 8 / 8 |
+| G3 cheek luma lines (>= 3 extrema, prominence >= 20 luma, 13 lines per still) at 12 / 0 / 25 deg | r13 Tessera 0/13, Cinder 1/13 -> **13/13 on every suit and view** (min swing 111 - 182) | PASS 8 / 8, 3 views |
+| H3 lens vs r12 (gate 1.6x) near / mean | 1.73 - 1.88x / 1.73 - 1.88x -> **1.73 - 1.83x / 1.65 - 1.81x** (Saffron 1.651 is the closest) | PASS 8 / 8 |
+| H1 nose-bridge luma / H2 nose bump / H5 seam cord / H6 inside the outline | 6/8, 8.6 - 10.3 %, 49 - 148, 8/8 -> **8/8, 9.6 - 13.3 %, 82 - 171, 8/8** | PASS 8 / 8 |
+| **H4 ONE closed raised rim >= 6 px on >= 90 % of the angles (my strict luma definition)** | 4 / 8 -> **2 / 8** (Glacier, Sage): the silver rims on the lifted hoods cross the mask's luma (Tessera 0.85 -> 0.35); the rim is a clear closed band by eye on all 8 | **FAIL 6 / 8 (own gate)** |
+| Ash armpit stitches (critic box 1120-1200 x 1530-1600): stitch-dash blobs in the armpit box | 7 -> **0** (the wedge pipe + stitches end 3.5 cm below the crease) | fixed |
+| Sage trapezius groove (head34): dark thin-line pixels in the critic's box | 10.3 % -> **0.07 %** (the net stops at the neck base) | fixed (one short crease remains) |
+| Ash sash end (critic box 1410-1440 x 700-1050) | raw, no border / stitches -> a straight plane at |x| = 0.118 m with a DEEP border cord, 2 stitch rows and an accent pipe on every end of all 8 suits; stitch dashes beyond the end 1 -> 8; end line rms 7.2 -> 6.7 px (skinning bends the plane) | fixed by eye |
+| Cinder shoulders faceted | one Phong refinement level + an unchanged silhouette contour measure (12.2 -> 10.9 vertices / 1000 px) | **NOT fixed / no visible change** |
+| CH1 front framing 0.48 - 0.62 / CH6 side + chase 3.2 - 3.8 / CH7 lean >= 15 / CH2 chase 0.39 - 0.53 | 0.543 - 0.544 / 3.542, 3.542 Hz / 33.5 deg / 0.392 | PASS |
+| keep: raised-piping cells share (r13 0.35 - 0.66) | Tessera 0.588 -> 0.485, the other seven -0.05 .. +0.07 | kept (Tessera lower) |
+| IP guard P1 - P7 / seams / OCR / swap on the pixels | min palette distance 45.0 -> 38.4 no fails; seams worst 4.3 px; OCR 1 hit = Sage chest "SONY" noise (reviewed); 7 / 7 presses, 33 ms | PASS |
+| enemy pack: lineup / fight / crowd | unchanged since r13 (wall luma 140, fight script identical to r10) | unchanged |
 
-The ONE capture hold is queued in the GPU lock (`/Users/midir/sm2-n1/_scratch/characters/r14/chain1/gpu_wrapper.log`, wrapper started 2026-10-02 04:38 behind 4 other agents' holds): it builds the content and captures everything into `$P2_SCRATCH/r14/chain1/run`. The launcher only runs when `chain1/READY_R14` exists.
-After the hold: `bash tools/ue_char/suits/post_r14.sh $P2_SCRATCH/r14/chain1/run $P2_SCRATCH/r14/chain1/run` (CPU ~10 min) -> `python3 tools/ue_char/suits/spec_check_r14.py docs/night1/characters/round-14 > docs/night1/characters/round-14/SPEC_CHECK.md` -> write `round-14/CAPTURES.md` -> `STILLS_4K=$P2_SCRATCH/r14/chain1/run/stills python3 tools/ue_char/suits/make_pairs_r14.py docs/night1/characters/round-14 $P2_SCRATCH/../critic-P2-r14/pairs.json` -> abpack (commands at the bottom).
-If the hold has not run when you read this: do NOT edit `ueimport/SK_Hero.glb`, `art/night1/characters/hero/suits/*`, `suits.json` or `build_characters.py` while the wrapper is waiting (they are the hold's inputs); to change them, re-run `tools/ue_char/suits/prep_hero_r14.sh`, regenerate the maps, and only then touch READY_R14.
+### What changed (all committed; details in `round-14/CAPTURES.md`)
+- `tools/ue_char/suit8/hero_head_r14.py` (sculpt: brow shelf +11 mm, nasion notch, 22 mm nose, cheek planes +9 / hollows -5, mouth, chin; `PARAMS` dict, in-process `main(path, dump, params, widen)` for experiments), `tools/ue_char/hero_lens_r14.py` (`setup(a_half, cx, rim_h ...)`: 61 x 28 mm lenses at 40.5 mm, rim 3.1 mm),
+  `hero_shoulder_r14.py` (one Phong-tessellation level on the shoulder / upper arm, +20k faces), `hero_weights_r14.py` (r12 armpit pass + trapezius smoothing; `--check`), `design.py` (`face` style: hood lift + baked face tone from the sculpt field + cheek panel seams; straight piped sash ends `sash.end_x` 0.118;
+  torso net stops at the neck base; wedge pipe / stitch end below the armpit; lighter seam cord), `suits.json` (Cinder hood = body; per-suit `face.lift`), `build_characters.py` (r14 prep chain, `headfront` view, silver rim up to hood luma 0.36).
+- Instruments: `head_check_r14.py` (G1 / G2 / G3 on the stills + r13's H1 - H6), `head_profile_r14.py` (the mesh silhouette, relief shading, perspective lens-to-outline clearance: the CPU design aid that told the sculpt where to go, 2 s per iteration), `iq_check_r14.py` (the four IQ defects), `prep_hero_r14.sh`, `chain_r14.sh`, `hold_r14.sh` (READY_R14 gate), `post_r14.sh`, `spec_check_r14.py`, `make_pairs_r14.py`; `test_regression.py` EXPECT_R14.
+- CPU design loop that worked: edit the field -> `prep_hero_r14.sh` -> `head_profile_r14.py --png --relief --h6` (seconds) -> a softrender head with the real maps (`_scratch/characters/r14/cpu/head_render.py`, not committed). A CPU render over-predicts luma extrema (the r13 baseline gave 3 where the engine gave 1 - 2): trust relative changes only.
 
-## Round 13 (history)
+### What to know before touching anything
+- Hold inputs: the engine imports `$P2_SCRATCH/ueimport/SK_Hero.glb` AS IT STANDS (the chain's build does NOT run build_characters 'prep'): rerun `tools/ue_char/suits/prep_hero_r14.sh` after any change to the head / lens / shoulder / weights scripts, regenerate the maps (`hero_suit_r8.py` for Tessera 8192, `gen_suits.py` for the others 4096; write them to a scratch dir and copy over) after any `design.py` / `suits.json` change, rerun `test_regression.py` (update EXPECT_R14 deliberately).
+  A queued hold is gated by `<chain dir>/READY_R14` (the launcher waits 4 min for it, then releases); never edit the snapshot scripts `.chain_r14_run.sh` / `.hold_r14_run.sh` while a hold uses them.
+- The sculpt is `z`-only displacement windowed by n_z; the paint (design.py, evaluated on the ORIGINAL browser mesh at each texel's rest-pose x, y) uses the same field for the baked tone, so changing `field_mm` changes the tone too (regenerate the maps).
+- The lens + rim sit on the sculpted surface through r8's height field (`hero_lens_r8.head_height_field`, a 2 mm envelope): a deeper socket lowers the rim automatically; the nose-end rim vertex (x ~ 8 mm, y 1.664) is the front-most one (T2b 1.4 % HH of margin).
+- LESSONS: (1) the G3 luma line cannot be won by relief alone on a dark hood (the stage key's large-scale gradient dominates and the sun only gives 10 - 20 luma of relief) - lighten the albedo AND put contrast in the albedo (cords, tone); (2) a polished silver rim is a bad rim on a mid-luma hood: its reflections sit at the hood's luma; (3) the first line of defence against wasted holds is the CPU instruments + a full prep dry run (`prep_hero_r14.sh` and the regression test), then queue EARLY with the READY gate and keep working while the lock is busy (4 other agents' holds = 55 min);
+  (4) `sleep N; cmd` chains are blocked by the harness: use `until`-loops with a timeout; (5) grep every `replace` for its occurrence count; LOOK at the frames before the numbers.
+
+### Next steps (priority order)
+1. The owner's IP / suit sign-off on `round-14/SWATCH_SHEET.jpg` (cheek panel seams on every suit; Plum apricot as in r13); no merge before it. 2. Read the round-14 critic verdict (`critic/round-14-CRITIC.md` once written) and fix its biggest gap.
+Candidates I saw myself: (a) H4: a rim that contrasts at every angle (try a dark non-metallic rim with a bright inner lip, or an accent-lit rim edge) - needs one hold (`STEPS="build stills"`, ~7 min), (b) Cinder's faceted shoulder: find the real cause (the DEEP panel edge is cut by skin weights; look at the panel boundary and the weight ramp at the deltoid before refining more),
+(c) the remaining creases (left trapezius of Sage, Glacier / Ash armpit: the arm panel folds under the arm; `hero_weights_r14.py --check` counts them), (d) the seams' look (the outer cheek seam reads as a track in profile), (e) the enemy axis (r13 list: closed fingers on the grips, >= 1.5 m spacing and turn-taking in the fight, hit FX; P2's paused enemy work), (f) the crowd cut at 7.48 s.
+3. P3 items (the playable pawn's cadence 4.0 steps/s and the frame 7 - 8 start pop) belong to the traversal brief (numbers in `round-14/SPEC_CHECK.md`, unchanged: clip switches A_Hero_idle -> A_Hero_walk @0.817 s -> jog @0.867 s -> run @0.983 s).
+
+### Commands (round 14)
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters UE_WAIT_SKIP=1
+bash tools/ue_char/suits/prep_hero_r14.sh                                                    # hero GLB (CPU, ~8 s) + mesh profile numbers
+python3 tools/ue_char/hero_suit_r8.py --out $P2_SCRATCH/r14/tex_new/hero && python3 tools/ue_char/suits/gen_suits.py --out $P2_SCRATCH/r14/tex_new/suits   # maps (CPU ~6 min, parallel), then copy into art/night1/characters/hero/{tex,suits} (git-ignored)
+python3 tools/ue_char/suits/test_regression.py                                              # r8 legacy texel for texel + r14 default hashes
+OUT=$P2_SCRATCH/r14/chainN; mkdir -p $OUT; cp tools/ue_char/suits/chain_r14.sh tools/ue_char/suits/.chain_r14_run.sh; cp tools/ue_char/suits/hold_r14.sh tools/ue_char/suits/.hold_r14_run.sh; touch $OUT/READY_R14
+nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters --timeout 28800 -- bash tools/ue_char/suits/.hold_r14_run.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &     # STEPS="build stills" for a short re-shoot
+bash tools/ue_char/suits/post_r14.sh $OUT/run $OUT/run                                       # CPU ~10 min: fills docs/night1/characters/round-14 + evidence
+python3 tools/ue_char/suits/spec_check_r14.py docs/night1/characters/round-14 > docs/night1/characters/round-14/SPEC_CHECK.md
+STILLS_4K=$OUT/run/stills LINEUP34=1 python3 tools/ue_char/suits/make_pairs_r14.py docs/night1/characters/round-14 /Users/midir/sm2-n1/_scratch/critic-P2-r14/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r14/pack /Users/midir/sm2-n1/_scratch/critic-P2-r14/pairs.json
+```
+Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`.
+
+## Round 13 and earlier (history)
+
+### Round 13 state (history)
 
 Round target (director, after the r12 critic [hero 5, anim 5, enemies 4, civilians 5, IQ 5; IP PASS]): sculpt the shared mask head; lenses >= 1.6x r12 with one closed raised rim each; the black face seam as raised piping; merge gate: enemy pack at the r10 content, keep r12's passing lines,
 Verdant / Saffron / Plum without IP watch items. **The OWNER must approve the suits before any merge: `docs/night1/characters/round-13/SWATCH_SHEET.jpg` (8 suits, front + back + chest + head).** No blind critic verdict yet; the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r13/pack` (28 pairs, key outside it).
