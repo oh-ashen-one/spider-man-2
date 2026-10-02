@@ -7,6 +7,7 @@
 # Frames: wpos is the UE world position in cm; the browser frame is (x, y up, z) metres = (X, Z, Y) / 100.
 
 PARK_INC = '/Project/Terrain/Park.ush'
+FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
 
 def materials(pm):
@@ -84,7 +85,7 @@ return g * lerp(0.8, 1.04, h) * gain;''',
         outputs=BASE + [('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True))
     # ez-tree leaf cards (eztrees.js ezLeafMaterial): the photo spray becomes a value map + twig mask, recoloured per instance with the autumn palette (aTintA -> aTintB,
     # custom data 0..2 / 3..5), crown self-occlusion from the per-leaf exposure (uv1.x), the odd dry brown spray; two-sided foliage (light passes through the leaves)
-    M.append(dict(name='M_TerrainLeaves', include=None, code='''
+    M.append(dict(name='M_TerrainLeaves', include=FOLI_INC, code='''
 float4 tx = Texture2DSample(tLeaf, tLeafSampler, float2(uv0.x, 1.0 - uv0.y));
 float lum = dot(tx.rgb, float3(0.3, 0.59, 0.11));
 float twig = 1.0 - smoothstep(-0.03, 0.02, tx.g - max(tx.r, tx.b) - 0.015);
@@ -96,19 +97,48 @@ leaf *= 0.5 + 1.25 * lum;
 float expo = saturate(uv1.x);
 float occ = lerp(0.36, 1.05, pow(expo, 1.3));
 float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
-Op = tx.a; Sub = c * 0.85; Rough = 0.78;
+float bnd = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);   // r02: the ez-tree LOD band (L0 < 20 m, L1 20-44 m): UE drew L1 out to 520 m
+Op = tx.a * bnd; Sub = c * 0.85; Rough = 0.78;
 return c;''',
-        inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5), ('gain', 'scalar', 1.0)],
+        inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
+                ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')], two_sided=True, blend='masked', foliage=True, nanite=True))
+    # ez-tree bark / park trunks (vertex colour = ambient occlusion, flat bark tint) with the same LOD band clip
+    M.append(dict(name='M_TerrainBark', include=FOLI_INC, code='''
+float3 c = lerp(tint.rgb, vc.rgb * tint.rgb, usevc);
+Op = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);
+Rough = roughp; return c;''',
+        inputs=[('vc', 'vc', None), ('tint', 'vector', (0.33, 0.29, 0.25, 1)), ('usevc', 'scalar', 1.0), ('roughp', 'scalar', 0.92), ('wpos', 'wpos', None), ('cam', 'cam', None),
+                ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS')], blend='masked', nanite=True))
+    # near leaf-card canopies (browser pool `trees-*-near`, 44-165 m, casts shadows): the city's leaf atlas + the lobe-fitted card / core geometry, per-instance autumn tints
+    M.append(dict(name='M_TerrainCards', include=FOLI_INC, code='''
+float op; float3 sub;
+float3 c = TerrainLeafCards(tAtlas, tAtlasSampler, uv0, uv1, float3(a0, a1, a2), float3(b0, b1, b2), wn, wpos, cam, band, Parameters.SvPosition.xy, t, op, sub);
+Op = op; Sub = sub * gain; Rough = 0.78;
+return c * gain;''',
+        inputs=[('tAtlas', 'tex', 'leaf_atlas'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
+                ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
         outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')], two_sided=True, blend='masked', foliage=True))
+    # lumpy clump crowns (browser pool `trees-*-crown`, 165-520 m, crownMaterial): procedural clumps of leaf speckle, ragged see-through silhouette, normal from the clump height field
+    M.append(dict(name='M_TerrainClump', include=FOLI_INC, code='''
+float op; float3 nW;
+float3 c = TerrainClumpCrown(wpos, cam, wn, uv1, float3(a0, a1, a2), float3(b0, b1, b2), rnd, band, Parameters.SvPosition.xy, t, bump, op, nW);
+Op = op; NormalW = nW; Rough = 0.88;
+return c * gain;''',
+        inputs=[('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5), ('rnd', 'pir', None),
+                ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0), ('bump', 'scalar', 1.0)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS'), ('NormalW', 3, 'MP_NORMAL')], blend='masked'))
     # far crowns: the city's opaque canopy-mass blobs. They are ONLY wanted beyond the ez-tree range (browser: 520 m); per-instance cull distances did not hide them in UE (v1 / v2 stills),
     # so the material clips them by camera distance (fade-in 480 .. 560 m) and tints them with the tree's own autumn palette (custom data = aTintA / aTintB)
-    M.append(dict(name='M_TerrainCrown', include=None, code='''
+    M.append(dict(name='M_TerrainCrown', include=FOLI_INC, code='''
 float d = length(wpos - cam) * 0.01;
-Op = smoothstep(480.0, 560.0, d);
+Op = tfBand(d, band, Parameters.SvPosition.xy, t);   // r02: the browser's dithered hand-over (crown -> crownfar over 478-520 m), nothing nearer
 float nz = 0.5 + 0.5 * sin(wpos.x * 0.011 + 1.7 * sin(wpos.y * 0.0093)) * cos(wpos.y * 0.0127);
 float3 c = lerp(float3(a0, a1, a2), float3(b0, b1, b2), 0.5) * lerp(0.7, 1.15, nz) * gain;
 Rough = 0.95;
 return c;''',
-        inputs=[('wpos', 'wpos', None), ('cam', 'cam', None), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5), ('gain', 'scalar', 1.0)],
+        inputs=[('wpos', 'wpos', None), ('cam', 'cam', None), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
+                ('band', 'vector', (478.4, 520, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
         outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS')], blend='masked'))
     return M

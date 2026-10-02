@@ -1,0 +1,123 @@
+// Homage fan game. Not an official Marvel, Sony or Insomniac product; no affiliation.
+// Piece E (terrain), round 2: the park-tree distance chain and the browser's clump-crown shader, hand-translated to HLSL.
+//   browser: src/world/pool.js (dithered LOD fades), src/world/trees.js (crownMaterial = lumpy clump crowns 165-520 m, leafMaterial = leaf-card canopies 44-165 m)
+// UE draws every HISM instance at every distance (per-instance cull distances are not reliable: v1 / v2 stills showed the flat crown hulls at every range), so each LOD band
+// is a material clip by camera distance with the browser's screen-door dither (resolved by TSR). Used through the Custom node include path /Project/Terrain/Foliage.ush.
+// All float literals carry an 'f' suffix on purpose (bare literals in ternaries become FP64 on Metal; build_terrain.py's fix_literals only touches the Custom-node bodies).
+#pragma once
+
+float tfIGN(float2 p) { return frac(52.9829189f * frac(dot(p, float2(0.06711056f, 0.00583715f)))); }
+
+// pool.js aLod = (in0, in1, out0, out1) metres: fade in over [in0, in1], out over [out0, out1]; the near LOD fading out and the far LOD fading in use the same dither value n,
+// so there is neither a hole nor a double layer. Returns 1 = keep the pixel.
+// Not applied in shadow-depth and Lumen card-capture passes: there the camera is the light / the card, not the player (the pool then casts / bounces at every distance).
+float tfBand(float d, float4 band, float2 pix, float t)
+{
+#if SHADOW_DEPTH_SHADER || LUMEN_CARD_CAPTURE
+    return 1.0f;
+#else
+    float n = frac(tfIGN(pix) + frac(t * 37.0f) * 1.618034f);
+    float vin  = band.y > band.x ? saturate((d - band.x) / (band.y - band.x)) : 1.0f;
+    float vout = band.w > band.z ? saturate((band.w - d) / (band.w - band.z)) : 1.0f;
+    return (n >= vout || n < 1.0f - vin) ? 0.0f : 1.0f;
+#endif
+}
+
+// ---- value noise (a sin-free hash: the browser's sin(dot) hash loses precision at 1000+ m world coordinates on a GPU)
+float tfH3(float3 p) { p = frac(p * 0.1031f); p += dot(p, p.yzx + 33.33f); return frac((p.x + p.y) * p.z); }
+float tfVn(float3 p)
+{
+    float3 i = floor(p), f = frac(p);
+    f = f * f * (3.0f - 2.0f * f);
+    float a = lerp(lerp(tfH3(i), tfH3(i + float3(1.0f, 0.0f, 0.0f)), f.x), lerp(tfH3(i + float3(0.0f, 1.0f, 0.0f)), tfH3(i + float3(1.0f, 1.0f, 0.0f)), f.x), f.y);
+    float b = lerp(lerp(tfH3(i + float3(0.0f, 0.0f, 1.0f)), tfH3(i + float3(1.0f, 0.0f, 1.0f)), f.x), lerp(tfH3(i + float3(0.0f, 1.0f, 1.0f)), tfH3(i + float3(1.0f, 1.0f, 1.0f)), f.x), f.y);
+    return lerp(a, b, f.z);
+}
+// clump height field (trees.js crownMaterial): clumps (~1.6 m) of sub-clumps (~0.5 m); n3 = leaf speckle (~0.2 m), returned through the out parameter
+float tfClump(float3 cp, out float n1, out float n2, out float n3)
+{
+    n1 = tfVn(cp * 0.62f); n2 = tfVn(cp * 2.1f + 3.1f); n3 = tfVn(cp * 5.3f + 7.7f);
+    return n1 * 0.65f + n2 * 0.35f;
+}
+// bump height used for the normal (browser: dFdx / dFdy of crClump * 3 + n3 * 0.5)
+float tfBumpH(float3 cp)
+{
+    float n1, n2, n3; float c = tfClump(cp, n1, n2, n3);
+    return c * 3.0f + n3 * 0.5f;
+}
+
+// The lumpy clump crown (trees.js crownMaterial), 165-520 m. wpos / cam in UE cm; wn = world vertex normal; aLeaf = (exposure, per-lobe variation); tA / tB = the tree's autumn
+// palette (per-instance custom data); rnd = per-instance random (decorrelates the clump noise between crowns); band = LOD dither band (m); pix = SvPosition.xy; t = time (s).
+// Returns the base colour; op = 0 / 1 mask (ragged silhouette + LOD band), nW = bumped world normal.
+float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float3 tA, float3 tB, float rnd, float4 band, float2 pix, float t, float bumpGain,
+                         out float op, out float3 nW)
+{
+    float3 toCam = cam - wpos;
+    float dist = length(toCam) * 0.01f;
+    float3 V = toCam / max(length(toCam), 1.0f);
+    float3 N = normalize(wn);
+    float3 cp = wpos * 0.01f + float3(rnd * 37.1f, rnd * 53.7f, rnd * 29.3f);
+    float n1, n2, n3;
+    float crClump = tfClump(cp, n1, n2, n3);
+    float cov = smoothstep(0.18f, 0.55f, crClump * 0.8f + n3 * 0.35f);
+    float expo = saturate(aLeaf.x);
+    float hsel = 0.5f + (n2 - 0.5f) * 0.7f + (aLeaf.y - 0.5f) * 0.35f + (n1 - 0.5f) * 0.4f;
+    float3 leaf = lerp(tA, tB, smoothstep(0.1f, 0.9f, hsel));
+    leaf *= 0.74f + 0.34f * n3;
+    leaf = frac(n3 * 17.3f + aLeaf.y * 3.1f) > 0.97f ? leaf * float3(0.55f, 0.4f, 0.3f) : leaf;      // dry leaves
+    float3 c = lerp(tB * 0.42f, leaf, smoothstep(0.3f, 0.62f, crClump + n3 * 0.22f));                // deep gaps between the clumps
+    c *= lerp(float3(1.0f, 1.0f, 1.0f), float3(1.12f, 1.1f, 0.8f), smoothstep(0.62f, 0.9f, n2) * 0.6f); // sunlit yellowing leaf tips
+    float occ = lerp(0.3f, 1.14f, pow(expo, 1.25f)) * lerp(0.66f, 1.1f, smoothstep(0.3f, 0.75f, crClump)); // dark skirts, sunlit domes
+    // silhouette: grazing faces keep only the leaf coverage -> ragged, see-through crown edges (stochastic threshold, resolved by TSR)
+    float facing = abs(dot(N, V));
+    float alpha = lerp(cov * 1.25f, 1.0f, smoothstep(0.3f, 0.72f, facing));
+    float nn = frac(tfIGN(pix + 5.0f) + frac(t * 37.0f) * 2.618034f);
+    op = (alpha < lerp(0.25f, 0.75f, nn)) ? 0.0f : tfBand(dist, band, pix, t);
+    // normal: the clump height field's gradient (finite differences in world space), strength grows with the pixel footprint like the browser's dFdx bump
+    float e = 0.12f;
+    float h0 = tfBumpH(cp);
+    float3 g = float3(tfBumpH(cp + float3(e, 0.0f, 0.0f)) - h0, tfBumpH(cp + float3(0.0f, e, 0.0f)) - h0, tfBumpH(cp + float3(0.0f, 0.0f, e)) - h0) / e;
+    g -= N * dot(g, N);
+    float k = clamp(0.0012f * dist, 0.04f, 0.25f) * bumpGain;
+    nW = normalize(N - g * k);
+    return c * occ;
+}
+
+// The leaf-card canopy (trees.js leafMaterial), 44-165 m, from the city's leaf atlas (R value, G hue selector, >= 0.97 twig, B spray depth, A coverage); the solid core spheres carry
+// aLeaf.x >= 2 and box-projected UVs. Returns the base colour; op = coverage mask (stochastic threshold + LOD band); sub = foliage transmission colour.
+float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv, float2 aLeaf, float3 tA, float3 tB, float3 wn, float3 wpos, float3 cam, float4 band, float2 pix, float t,
+                        out float op, out float3 sub)
+{
+    float2 gx = ddx(uv), gy = ddy(uv);
+    float3 toCam = cam - wpos;
+    float dist = length(toCam) * 0.01f;
+    float3 V = toCam / max(length(toCam), 1.0f);
+    float core = aLeaf.x >= 1.5f ? 1.0f : 0.0f;
+    float2 luv = core > 0.5f ? frac(uv) : uv;
+    float4 tx = Texture2DSampleGrad(tAtlas, tAtlasSampler, float2(luv.x, 1.0f - luv.y), float2(gx.x, -gx.y), float2(gy.x, -gy.y));
+    float expo = core > 0.5f ? (aLeaf.x - 2.0f) : aLeaf.x;
+    if (core > 0.5f)
+    {
+        float2 l2 = frac(uv * 0.7f + 0.31f);
+        float4 t2 = Texture2DSampleGrad(tAtlas, tAtlasSampler, float2(l2.x, 1.0f - l2.y), float2(gx.x, -gx.y) * 0.7f, float2(gy.x, -gy.y) * 0.7f);
+        float cov = max(tx.a, t2.a);
+        tx = tx.a > 0.5f ? tx : t2;
+        tx.r = tx.g > 0.96f ? 0.55f : (tx.a > 0.5f ? tx.r * 0.85f : 0.45f);
+        tx.b = 0.0f; tx.g = min(tx.g, 0.94f);
+        float facing = abs(dot(normalize(wn), V));
+        tx.a = facing > 0.45f ? 1.0f : cov;       // grazing core surface (its silhouette) takes the leaf coverage: the solid mass never shows a faceted edge
+    }
+    float twig = tx.g >= 0.97f ? 1.0f : 0.0f;
+    float hsel = tx.g * 0.8f + aLeaf.y * 0.55f - 0.18f;
+    float3 leaf = lerp(tA, tB, smoothstep(0.15f, 0.85f, hsel));
+    float odd = frac(tx.g * 13.7f + aLeaf.y * 5.3f);                                   // a scatter of dry brown / still-green leaves
+    leaf = odd > 0.93f ? float3(0.13f, 0.06f, 0.025f) : (odd < 0.035f ? float3(0.16f, 0.14f, 0.035f) : leaf);
+    leaf *= 0.42f + 0.72f * tx.r;
+    float occ = lerp(0.4f, 1.0f, pow(saturate(expo), 1.4f)) * lerp(0.62f, 1.0f, tx.b);
+    if (core > 0.5f) occ = lerp(0.24f, 0.42f, saturate(expo));
+    float3 c = (twig > 0.5f ? float3(0.085f, 0.06f, 0.042f) : leaf) * occ;
+    float nn = frac(tfIGN(pix + 17.0f) + frac(t * 37.0f) * 2.618034f);
+    op = (tx.a < lerp(0.2f, 0.7f, nn)) ? 0.0f : tfBand(dist, band, pix, t);
+    sub = c * 0.85f;
+    return c;
+}

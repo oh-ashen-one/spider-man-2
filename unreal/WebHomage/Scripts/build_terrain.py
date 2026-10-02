@@ -101,7 +101,7 @@ TEXD = ROOT + '/Textures'
 def _step_tex():
     srcs = [(os.path.join(PUB, 'grass_col.png'), 'grass_col', True), (os.path.join(PUB, 'noise.png'), 'noise', False), (os.path.join(PUB, 'asphalt_col.png'), 'asphalt_col', True),
             (os.path.join(PUB, 'water_nrm.png'), 'water_nrm', False), (os.path.join(PREP, 'pathmask.png'), 'pathmask', False)] + \
-            [(os.path.join(PREP, 'leaf_' + n + '.png'), 'leaf_' + n, True) for n in ('oak', 'ash', 'aspen', 'pine')]
+            [(os.path.join(PREP, 'leaf_' + n + '.png'), 'leaf_' + n, True) for n in ('oak', 'ash', 'aspen', 'pine')] + [(os.path.join(PREP, 'leaf_atlas.png'), 'leaf_atlas', False)]
     import_files([s[0] for s in srcs], TEXD)
     for f, n, srgb in srcs:
         t = load(f'{TEXD}/{n}')
@@ -109,6 +109,7 @@ def _step_tex():
         if n == 'noise': tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
         elif n == 'pathmask':
             tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP, wrap=False); t.set_editor_property('never_stream', True)
+        elif n == 'leaf_atlas': tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)   # data atlas (G >= 0.97 = twig): linear, uncompressed, tiled
         elif n.startswith('leaf_'): tex_settings(t, True, wrap=False)
         else: tex_settings(t, srgb)
     EAL.save_directory(TEXD, only_if_is_dirty=False, recursive=True)
@@ -124,7 +125,7 @@ def fix_literals(code):
 def sampler_for(t):
     return unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if t.get_editor_property('srgb') else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
 
-def make_material(name, include, code, inputs, outputs, two_sided=False, world_normal=True, blend='opaque', foliage=False):
+def make_material(name, include, code, inputs, outputs, two_sided=False, world_normal=True, blend='opaque', foliage=False, nanite=False):
     """inputs: list of (name, kind, arg): kind in tex|uv|vc|wpos|wn|cam|scalar|vector|time|pir.  outputs: list of (name, n, property); the first is the return value."""
     path = f'{MAT}/{name}'
     if EAL.does_asset_exist(path):
@@ -185,7 +186,8 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
     for i, (n, k, prop) in enumerate(outputs):
         if prop is None: continue
         mel.connect_material_property(c, '' if i == 0 else n, prop)
-    for u in (unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES,):
+    # Nanite usage flag (ez-tree L1 meshes are Nanite): without it the game logs 'missing usage flag Nanite! Default Material will be used in game' and draws the grey default material (r01 warm-up log)
+    for u in (unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES,) + ((unreal.MaterialUsage.MATUSAGE_NANITE,) if nanite else ()):
         mel.set_material_usage(m, u)
     mel.recompile_material(m)
     EAL.save_asset(path)
@@ -202,7 +204,7 @@ def _step_mat():
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
     for d in _materials_module()['materials'](PM):
         make_material(d['name'], d['include'], d['code'], [(n, k, (f'{TEXD}/{a}' if k in ('tex', 'texparam') else a)) for n, k, a in d['inputs']],
-                      [(n, k, getattr(MP, p)) for n, k, p in d['outputs']], two_sided=d.get('two_sided', False), blend='masked' if d.get('blend') == 'masked' else 'opaque', foliage=bool(d.get('foliage')))
+                      [(n, k, getattr(MP, p)) for n, k, p in d['outputs']], two_sided=d.get('two_sided', False), blend='masked' if d.get('blend') == 'masked' else 'opaque', foliage=bool(d.get('foliage')), nanite=bool(d.get('nanite')))
     log('materials done')
 
 def mi(name, parent, scalars=None, vectors=None):
@@ -279,34 +281,44 @@ def _step_foliage():
     for nm, amp in (('TuftLow', 3.0), ('TuftMid', 7.0), ('TuftHigh', 12.0)): mi(nm, 'M_TerrainGrass', {'windamp': amp, 'gain': 1.7})   # v2 stills: tufts read darker than the lawn (browser blades are lit yellow-green)
     log('foliage prototypes done')
 
-# ------------------------------------------------------------------------------------------------ park woodland (ez-trees, per-instance autumn tints)
+# ------------------------------------------------------------------------------------------------ park woodland (ez-trees + the browser's tree distance chain, per-instance autumn tints)
+# browser (trees.js / eztrees.js / pool.js): ez L0 < 20 m -> ez L1 < 44 m -> `trees-*-near` leaf-card canopies 44-165 m (shadows) -> `trees-*-crown` lumpy clump crowns 165-520 m ->
+# `trees-*-crownfar` blobs >= 520 m, trunks `trunks-*` (near / mid / far LODs) under the card + crown LODs. UE draws every HISM instance at every distance, so each pool is a HISM whose
+# material clips by camera distance with the pool's dithered band (Foliage.ush tfBand; the band comes from the export: near / far / fadeIn / fadeOut).
 TREED = ROOT + '/Trees'
 TREE_RE = re.compile(r'^ez_(park|elm|conifer)\d_l[01]_(leaves|bark)$')
+CHAIN_RE = re.compile(r'^(trees_(park|elm|conifer)_(near|crown)|trunks_(park|elm|conifer)(_mid|_far)?)$')
+POOL_RE = re.compile(r'^(ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-(near|crown|crownfar)|trunks-(park|elm|conifer)(-mid|-far)?)$')
 def leaf_name(rec):
     u = (rec.get('mat') or {}).get('map') or ''
     return os.path.basename(u).split('.')[0] or 'oak'
+def pool_band(d):
+    """(in0, in1, out0, out1) metres, exactly pool.js aLod: fade in over [near - fadeIn, near], out over [far - fadeOut, far]"""
+    near, far = float(d.get('near') or 0.0), float(d.get('far') or 3200.0)
+    fi, fo = float(d.get('fadeIn') or 0.0), float(d.get('fadeOut') or 0.0)
+    return (near - fi if near > 0 else 0.0, near, far - fo if fo > 0 else far, far)
 @step('trees')
 def _step_trees():
     recs = [p for p in MAN['protos'] if TREE_RE.match(p['name'])]
     for nan in (False, True):    # LOD1 (and only LOD1) is Nanite, like the city's ez-tree props
         grp = [p for p in recs if (p['name'].split('_')[2] == 'l1') == nan]
         import_files([os.path.join(EXPORT, p['file']) for p in grp], TREED + '/_in', mesh_pipeline(nan))
-    for p in recs:
+    chain = [p for p in MAN['protos'] if CHAIN_RE.match(p['name'])]
+    import_files([os.path.join(EXPORT, p['file']) for p in chain], TREED + '/_in', mesh_pipeline(False))
+    for p in recs + chain:
         nm = p['name']; src = f'{TREED}/_in/{nm}/StaticMeshes/{nm}'; dst = f'{TREED}/SM_{nm}'
         if not EAL.does_asset_exist(src): log('MISSING tree proto', src); continue
         EAL.rename_asset(src, dst); sm = load(dst)
-        if nm.endswith('_leaves'):
-            ln = leaf_name(p); mp = f'{MAT}/Inst/MI_Leaves_{ln}'
-            if not EAL.does_asset_exist(mp):
-                m = at.create_asset('MI_Leaves_' + ln, MAT + '/Inst', unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
-                mel.set_material_instance_parent(m, load(f'{MAT}/M_TerrainLeaves'))
-                mel.set_material_instance_texture_parameter_value(m, 'tLeaf', load(f'{TEXD}/leaf_{ln}')); EAL.save_asset(mp)
-            finish_mesh(sm, load(mp), False, nanite=nm.split('_')[2] == 'l1')
-        else:
-            finish_mesh(sm, mi('Bark', 'M_TerrainVC', {'usevc': 1.0, 'roughp': 0.92}, {'tint': (0.33, 0.29, 0.25, 1.0)}), False, nanite=nm.split('_')[2] == 'l1')
+        if TREE_RE.match(nm):
+            nan = nm.split('_')[2] == 'l1'
+            if nm.endswith('_leaves'): finish_mesh(sm, load(f'{MAT}/M_TerrainLeaves'), False, nanite=nan)
+            else: finish_mesh(sm, load(f'{MAT}/M_TerrainBark'), False, nanite=nan)
+        elif nm.startswith('trunks_'): finish_mesh(sm, load(f'{MAT}/M_TerrainBark'), False)
+        elif nm.endswith('_near'): finish_mesh(sm, load(f'{MAT}/M_TerrainCards'), False)
+        else: finish_mesh(sm, load(f'{MAT}/M_TerrainClump'), False)
         EAL.save_asset(dst)
     if EAL.does_directory_exist(TREED + '/_in'): EAL.delete_directory(TREED + '/_in')
-    log('tree prototypes', len(recs))
+    log('tree prototypes', len(recs), '+ chain', len(chain))
 
 # ------------------------------------------------------------------------------------------------ maps
 def U(x, y, z): return unreal.Vector(x * 100.0, z * 100.0, y * 100.0)   # browser metres -> UE cm
@@ -422,55 +434,67 @@ def build_land(path):
             log('park lamps', len(sel))
 
     def _sec_trees():
-        # park woodland: the browser's ez-trees (LOD0 < 22 m, LOD1 to 520 m, the city's far crowns take over beyond), one HISM per archetype pool, aTintA / aTintB as custom data 0..5
-        nt = 0
-        for pool, d in INS.items():
-            sp = f'{TREED}/SM_' + pool.replace('-', '_')
-            if not re.match(r'^ez-(park|elm|conifer)\d-l[01]-(leaves|bark)$', pool) or not EAL.does_asset_exist(sp) or not d['items']: continue
-            l1 = '-l1-' in pool; leaves = pool.endswith('leaves')
-            rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]
+        # park woodland: one HISM per browser pool (full island item lists), aTintA / aTintB as custom data 0..5, per-pool LOD band in the material (see the trees step)
+        nt = 0; counts = {}
+        def pool_material(pool, d):
+            """a material instance per pool: parent by pool kind, LOD band from the export"""
+            b = pool_band(d); vec = {'band': (b[0], b[1], b[2], b[3])}
+            nm = 'Pool_' + pool.replace('-', '_')
+            if pool.startswith('ez-') and pool.endswith('-leaves'):
+                rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]; ln = leaf_name(rec)
+                m = mi(nm, 'M_TerrainLeaves', {'gain': 1.0}, vec)
+                mel.set_material_instance_texture_parameter_value(m, 'tLeaf', load(f'{TEXD}/leaf_{ln}')); EAL.save_asset(f'{MAT}/Inst/MI_{nm}')
+                return m
+            if pool.startswith(('ez-', 'trunks-')): return mi(nm, 'M_TerrainBark', {'usevc': 1.0, 'roughp': 0.92}, dict(vec, tint=(0.33, 0.29, 0.25, 1.0)))
+            if pool.endswith('-near'): return mi(nm, 'M_TerrainCards', {'gain': 1.0}, vec)
+            if pool.endswith('-crownfar'): return mi(nm, 'M_TerrainCrown', {'gain': 1.0}, vec)
+            return mi(nm, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, vec)
+        order = sorted(INS.keys(), key=lambda k: (0 if k.startswith('ez-') else 1, k))
+        for pool in order:
+            d = INS[pool]
+            if not POOL_RE.match(pool) or not d.get('items'): continue
+            nmu = pool.replace('-', '_'); crownfar = pool.endswith('-crownfar')
+            if crownfar:      # the city's own far-crown blob mesh (20-tri lobes); only drawn >= 520 m by the material band
+                sp = None
+                for suf in ['', '_v2', '_v3', '_v4', '_v5', '_v6']:
+                    if EAL.does_asset_exist(f'/Game/City/Props/SM_{nmu}{suf}'): sp = f'/Game/City/Props/SM_{nmu}{suf}'
+                if sp is None: sp = f'{TREED}/SM_{nmu}' if EAL.does_asset_exist(f'{TREED}/SM_{nmu}') else None
+                if sp is None: log('no far-crown asset for', pool); continue
+            else:
+                sp = f'{TREED}/SM_{nmu}'
+                if not EAL.does_asset_exist(sp): log('no mesh for', pool); continue
+            tinted = pool.startswith(('ez-',)) and pool.endswith('leaves') or pool.startswith('trees-')
+            l1 = '-l1-' in pool
             a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + pool, folder='Terrain/Trees')
             c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
             c.set_static_mesh(load(sp))
-            if leaves: c.set_editor_property('num_custom_data_floats', 6)
-            try:
-                c.set_editor_property('instance_end_cull_distance', 52000 if l1 else 2200)
-                if l1: c.set_editor_property('instance_start_cull_distance', 2000)
-            except Exception as ex: log('WARN cull distance', str(ex)[:100])
-            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c, indirect=l1)
+            if tinted: c.set_editor_property('num_custom_data_floats', 6)
+            try: c.set_material(0, pool_material(pool, d))
+            except Exception as ex: log('WARN material', pool, str(ex)[:160])
+            # per-instance cull distance: only a cost optimisation for pools that need no shadow / Lumen presence beyond their band (the band itself is the material clip)
+            cull = None
+            if pool.startswith('ez-'): cull = (4800 if l1 else 2500)
+            elif pool in ('trunks-park', 'trunks-elm', 'trunks-conifer'): cull = 7200
+            elif pool.endswith('-mid'): cull = 20000
+            if cull:
+                try: c.set_editor_property('instance_end_cull_distance', int(cull))
+                except Exception as ex: log('WARN cull distance', str(ex)[:100])
+            casts = not (pool.endswith(('-crown', '-crownfar', '-far')))       # browser: crown LODs and far trunks cast no shadows; cards / ez / near + mid trunks do
+            c.set_cast_shadow(casts)
+            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            lite(c, indirect=(l1 or pool.endswith(('-crown', '-crownfar'))))   # the crown hulls (low poly) stand in for the canopy in Lumen's scene; cards / trunks / ez L0 stay out of it
             xs = []
             for it in d['items']:
                 s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
                 rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
                 xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])))
             ids = c.add_instances(xs, True, True)
-            if leaves:
+            if tinted:
                 for k, it in enumerate(d['items']):
                     e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
                     for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
-            nt += len(xs)
-            # far crowns (the city's opaque canopy-mass LOD): only beyond the ez-tree range (520 m); the city's own always-on instances are hidden in City_Geo_T
-        for pool, nm in (('trees-park-crownfar', 'trees_park_crownfar'), ('trees-elm-crownfar', 'trees_elm_crownfar'), ('trees-conifer-crownfar', 'trees_conifer_crownfar')):
-            sp = None
-            for suf in ['', '_v2', '_v3', '_v4', '_v5', '_v6']:
-                if EAL.does_asset_exist(f'/Game/City/Props/SM_{nm}{suf}'): sp = f'/Game/City/Props/SM_{nm}{suf}'
-            if sp is None or pool not in INS or not INS[pool]['items']: log('no far-crown asset / items for', pool); continue
-            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_far_' + nm, folder='Terrain/Trees')
-            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-            c.set_static_mesh(load(sp)); c.set_editor_property('num_custom_data_floats', 6)
-            c.set_material(0, mi('Crown', 'M_TerrainCrown', {'gain': 1.0}))   # distance-clipped (>= 520 m) + autumn tint: per-instance cull distances did not hide the blobs in the v1 / v2 stills
-            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c, indirect=True)
-            xs = []
-            for it in INS[pool]['items']:
-                s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
-                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
-                xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])))
-            ids = c.add_instances(xs, True, True)
-            for k, it in enumerate(INS[pool]['items']):
-                e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
-                for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
-            nt += len(xs)
-        log('park woodland instances', nt)
+            nt += len(xs); counts[pool] = len(xs)
+        log('park woodland instances', nt, 'in', len(counts), 'pools')
 
     for nm_, fn_ in (('meshes', _sec_meshes), ('tufts', _sec_tufts), ('props', _sec_props), ('trees', _sec_trees)): soft(nm_, fn_)
     return world

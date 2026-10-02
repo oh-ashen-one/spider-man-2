@@ -49,6 +49,8 @@ PRE = '''#define Texture2DSample(T, S, UV) T.Sample(S, UV)
 #define Texture2DSampleLevel(T, S, UV, L) T.SampleLevel(S, UV, L)
 #define Texture2DSampleBias(T, S, UV, B) T.SampleBias(S, UV, B)
 #define Texture2DSampleGrad(T, S, UV, DX, DY) T.SampleGrad(S, UV, DX, DY)
+struct FStubParams { float4 SvPosition; };
+static FStubParams Parameters = { float4(640.5f, 360.5f, 0.0f, 1.0f) };   // the Custom node body sees UE's FMaterialPixelParameters as `Parameters`
 '''
 def inline_includes(src, depth=0):
     def rep(m):
@@ -66,6 +68,8 @@ def wrap(d):
         elif k == 'uv': params.append('float2 %s' % n); args.append('float2(0.3, 0.7)')
         elif k == 'wpos': params.append('float3 wpos'); args.append('float3(%s)' % '12345.0, -67890.0, 55.0')
         elif k == 'vc': params.append('float3 vc'); args.append('float3(0.3, 0.4, 0.5)')
+        elif k == 'cam': params.append('float3 cam'); args.append('float3(1500.0, -2500.0, 6200.0)')
+        elif k == 'wn': params.append('float3 wn'); args.append('float3(0.0, 0.6, 0.8)')
         elif k == 'vector': params.append('float4 %s' % n); args.append('float4(1, 1, 1, 1)')
         else: params.append('float %s' % n); args.append('0.5')
     ty = {1: 'float', 2: 'float2', 3: 'float3'}

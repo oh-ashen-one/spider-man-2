@@ -1,0 +1,11 @@
+#!/bin/bash
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+# Terrain r02 capture hold: ONE slot hold = warm-up (shader compile + shader sanity check), the nine terrain stills at 4K (shots.json, v3 shore cameras included), then the two movies with the hero hidden.
+# The terrain content is rebuilt BEFORE the slot (nullrhi commandlet, no GPU): see HANDOFF.md "Rebuild recipe". Enqueue with:
+#   /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh
+set -uo pipefail
+export HOLD_START=$(date +%s)
+HERE="$(cd "$(dirname "$0")" && pwd)"; ROUND="$HERE/round-02"
+mkdir -p "$ROUND/stills"
+export BASE_IDS="" HIDE_HERO=1 WARM_QUIT="${WARM_QUIT:-20}" PRIO_IDS="${PRIO_IDS:-p1_south p10_lawn_eye p2_reservoir p6_west_shore}"
+"$HERE/capture_round.sh" "$ROUND" warm stills moves

@@ -19,7 +19,9 @@
     [/^park-setpieces$/, 'setpieces'],
   ];
   // plain InstancedMesh / Pool props that belong to the terrain (positions are the full island list, not the view-dependent near set)
-  const INST = /^(parkReeds|park-blankets|parklamp|parklampFar|parkLampPool|ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-crownfar)$/;   // + the park woodland's ez-trees (per-instance autumn tints aTintA / aTintB, LOD0 + LOD1)
+  const INST = /^(parkReeds|park-blankets|parklamp|parklampFar|parkLampPool|ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-(near|crown|crownfar)|trunks-(park|elm|conifer)(-mid|-far)?)$/;
+  // r02: + the browser's park-tree distance chain beyond the ez-trees: `trees-*-near` (leaf-card canopies 44-165 m, shadows), `trees-*-crown` (lumpy clump crowns 165-520 m, crownMaterial),
+  // `trunks-*` (near / mid / far trunk LODs). They were never exported in round 1, so UE stretched the 20-44 m ez L1 LOD to 520 m and drew the flat crownfar hulls at every distance.   // + the park woodland's ez-trees (per-instance autumn tints aTintA / aTintB, LOD0 + LOD1)
 
   function attrArray(a) {
     const n = a.count, k = a.itemSize, out = new Float32Array(n * k);
@@ -126,7 +128,7 @@
     }
     for (const P of [...(window.__pools ?? [])]) {
       const name = P.mesh?.name || ''; if (!INST.test(name)) continue;
-      instances[name] = { near: P.near, far: P.far, n: P.items.length, kind: 'pool', items: P.items.filter(it => !it.hidden).map(it => {
+      instances[name] = { near: P.near, far: P.far, fadeIn: P.fadeIn, fadeOut: P.fadeOut, shadowFar: P.shadowFar, n: P.items.length, kind: 'pool', items: P.items.filter(it => !it.hidden).map(it => {
         const o = { x: +it.x.toFixed(3), y: +it.y.toFixed(3), z: +it.z.toFixed(3), ry: +(it.ry || 0).toFixed(4), s: +(it.s ?? 1).toFixed(4) };
         if (it.rx) o.rx = +it.rx.toFixed(4); if (it.rz) o.rz = +it.rz.toFixed(4); if (it.scale3) o.s3 = it.scale3.map(v => +v.toFixed(4));
         if (it.color) o.c = Array.from(it.color).map(v => +v.toFixed(4));
