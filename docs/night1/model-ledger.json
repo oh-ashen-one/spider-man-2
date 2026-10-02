@@ -768,6 +768,19 @@
     6,
     7
    ]
+  },
+  {
+   "piece": "E Terrain",
+   "round": 3,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    3
+   ]
   }
  ],
  "agents": [
