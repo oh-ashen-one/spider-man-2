@@ -72,6 +72,9 @@
           "upper": "body",
           "fore": "sleeve",
           "other_fore": "bands"
+        },
+        "face": {
+          "lift": 0.0
         }
       }
     },
@@ -142,7 +145,7 @@
     {
       "id": "cinder",
       "name": "Cinder",
-      "concept": "warm charcoal with cyan: curved yoke, brick net, nested rhombus mark, plain hood",
+      "concept": "warm charcoal with cyan: curved yoke, brick net, nested rhombus mark, plain hood in the body colour (round 14: relief reads)",
       "style": {
         "palette": {
           "body": "#44403d",
@@ -204,7 +207,8 @@
           0.62,
           0.5,
           0.42
-        ]
+        ],
+        "hood": "body"
       }
     },
     {
@@ -339,7 +343,10 @@
           0.6,
           0.63,
           0.66
-        ]
+        ],
+        "face": {
+          "lift": 0.6
+        }
       }
     },
     {
@@ -410,7 +417,10 @@
           0.62,
           0.38
         ],
-        "sleeves": false
+        "sleeves": false,
+        "face": {
+          "lift": 0.0
+        }
       }
     },
     {

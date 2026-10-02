@@ -71,12 +71,14 @@ if 'prep' in STEPS:
     # round 08: the ORIGINAL hero suit (Tessera: procedural base colour / normal / orm on the hero UV atlas, tools/ue_char/suit8) and the rebuilt eyes (one closed
     # bezel ring sealed to a lens conformed to the mask) in the UE-only hero GLB; replaces the round-05 browser-suit quality pass (hero_hand_fix / hero_suit_r5 / hero_lens_r5)
     subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r8.py'], check=True, capture_output=True, env=_ENV)
-    # round 13: ONE script sculpts the shared hero mask head (brow, eye sockets, nose, cheeks, mouth, chin: tools/ue_char/suit8/hero_head_r13.py) so all 8 suits inherit it, then
-    # the eyes are rebuilt on the sculpted surface (>= 1.6x wider lenses, one closed raised rim each: tools/ue_char/hero_lens_r13.py; r8's hero_lens_r8.py is its library)
-    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_head_r13.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r13.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
-    # round 12: smooth the torso-side / armpit skin weights (the idle / run poses folded the side of the chest: the sash jog, weave flip and faceted patches)
-    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_weights_r12.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    # round 14: the shared mask sculpt is FINISHED by one script (tools/ue_char/suit8/hero_head_r14.py: a brow ridge that overhangs the lenses, a nose-bridge notch, cheek-bone planes,
+    # mouth bulge, chin plane - round 13's sculpt was hero_head_r13.py), then the eyes are re-seated in the eye sockets under the brow (tools/ue_char/hero_lens_r14.py: >= 1.6x r12 width,
+    # one closed raised rim each; r8's hero_lens_r8.py is its library), the shoulders / upper arms are de-faceted (hero_shoulder_r14.py: one Phong-tessellation refinement level) and the
+    # skin weights are smoothed on the torso side / armpit (round 12) AND the trapezius (round 14: hero_weights_r14.py applies r12's pass first)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_head_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_shoulder_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_weights_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
     subprocess.run(['python3', WT + '/tools/ue_char/eval/underlayer.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
@@ -1252,8 +1254,10 @@ if 'skins' in STEPS:
             deep_, crown_, body_, accd_ = _c('deep', '#071a21'), _c('crown', '#0b3441'), _c('body', '#0f4452'), _c('accent_d', '#ad5c08')
             role_ = stl_.get('hood', 'deep')
             hc_ = [0.5 * a + 0.5 * b for a, b in zip(deep_, crown_)] if role_ == 'deep' else {'body': body_, 'crown': crown_, 'accent_d': accd_}[role_]
+            lift_ = float(stl_.get('face', {}).get('lift', 1.0)) if role_ == 'deep' else 0.0      # round 14: design.py lifts a 'deep' hood toward the body colour (face.lift, default 1.0)
+            hc_ = [a * (1.0 - lift_) + b * lift_ for a, b in zip(hc_, body_)]
             luma_ = 0.2126 * hc_[0] + 0.7152 * hc_[1] + 0.0722 * hc_[2]
-            dark_mask = luma_ < 0.20
+            dark_mask = luma_ < 0.12      # round 14: every hood is now >= 0.17 (sRGB luma): a dark graphite rim (luma ~15) contrasts with all of them at every angle; a polished silver one crosses a mid mask's luma
             frame_ = mi('MI_HeroFrame_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_LensFrame'),
                         scal={'Roughness': 0.25 if dark_mask else 0.22, 'Specular': 0.6, 'Metallic': 0.9},
                         vec={'Color': (0.22, 0.22, 0.24, 1.0) if dark_mask else (0.06, 0.06, 0.065, 1.0)})
@@ -1344,7 +1348,8 @@ if 'skinsmap' in STEPS:
     # off the face), 1.25 m, aim 166.5 so the whole head is in frame (the nose bump is measured against the head height there)
     VIEWS = [('front', KS.FRONT, 0.0, 785.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 785.0, 92.0, 8.0, 40.0),
              ('chest', KS.CLOSEUP, 0.0, 150.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, -13.0, 100.0, 164.0, 0.0, 26.0),
-             ('head34', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0), ('headside', KS.CLOSEUP, 65.0, 125.0, 166.5, 0.0, 26.0)]
+             ('head34', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0), ('headside', KS.CLOSEUP, 65.0, 125.0, 166.5, 0.0, 26.0),
+             ('headfront', KS.CLOSEUP, -25.0, 100.0, 164.0, 0.0, 26.0)]       # round 14: 'headfront' = the 'head' framing straight on (0 deg): the cheek-line luma test of the critic's "front stills"
     shots = []
     SHOT_S = 3.0
     for i, nm in enumerate(names):

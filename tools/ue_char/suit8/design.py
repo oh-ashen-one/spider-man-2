@@ -51,6 +51,9 @@ DEFAULT_STYLE = dict(
     # round 12: relief.kind 'piping' = every panel / net line is a RAISED rounded cord (height profile, glossier roughness) and the net / piping / panel
     # lines are layered UNDER the sash and chevron panels (colour, height and roughness); 'r8' = the round-08 flat print (grooves, net over the sash),
     # kept so tools/ue_char/suits/test_regression.py can still prove the round-08 maps texel for texel.
+    # round 14: the sculpted mask reads on a dark hood only if the hood is not near-black and the relief carries a baked tone (the "cavity / highlight" tone of the
+    # sculpt field of tools/ue_char/suit8/hero_head_r14.py: raised features up to +up of the albedo, hollows down to -dn).  lift = how far a 'deep' hood is mixed toward the body colour.
+    face=dict(tone_up=0.34, tone_dn=0.42, lift=1.0, amp_mm=8.0),
     relief=dict(kind='piping', net=1.30, pipe=1.80, ring=1.80, glyph=1.40, sash=0.60, border=1.60, rough_pipe=0.34, rough_net=0.40, cavity=0.35, net_tone=0.38, seam=2.2, rough_hood=0.50, rough_crown=0.60),
 )
 
@@ -393,9 +396,16 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             d_s = ax - 0.0 * y                                           # vertical band down the sternum
         y_lo, y_hi = (1.045, 1.44) if sa['kind'] != 'yoke' else (1.20, 1.50)
         zone_s = tors_w * body_w * ss(y, y_lo, y_lo + 0.045) * (1 - ss(y, y_hi, y_hi + 0.03)) * cover(ax - 0.160, aa)
+        end_x = sa.get('end_x', 0.118)
         if PIPE:     # round 12: CRISP panel ends (the skin-weight / height ramps faded the sash end over centimetres: a dark smear at the cut end in the 4K chest view)
-            zone_s = ss(tors_w, 0.45, 0.55) * body_w * cover(y_lo + 0.0225 - y, aa) * cover(y - (y_hi + 0.015), aa) * cover(ax - 0.160, aa)
-        if sa['kind'] == 'placket': zone_s = tors_w * body_w * front * cover(1.083 - y, aa) * cover(y - 1.43, aa)      # hard ends: belt to collar
+            # round 14 (critic r13: "the Ash sash end is raw"): the ends are STRAIGHT planes (the skin-weight cut of r12 left a ragged, unfinished end line) and every end is
+            # finished like the long edges: DEEP border cord, two rows of stitching, an accent pipe just outside (below)
+            e_lo = y - (y_lo + 0.0225); e_hi = (y_hi + 0.015) - y; e_x = end_x - ax
+            zone_s = ss(tors_w, 0.30, 0.40) * body_w * cover(-np.minimum(np.minimum(e_lo, e_hi), e_x), aa)
+            sash_ends = [(e_x, y), (e_lo, x), (e_hi, x)]
+        if sa['kind'] == 'placket':
+            zone_s = tors_w * body_w * front * cover(1.083 - y, aa) * cover(y - 1.43, aa)      # hard ends: belt to collar
+            if PIPE: sash_ends = [(y - 1.083, x), (1.43 - y, x)]
         hw = sa['half']
         offs = [0.0] if sa['kind'] != 'double' else [-sa['gap'] * 0.5, sa['gap'] * 0.5]
         t_s = np.asarray(sa['along'], np.float32)
@@ -407,6 +417,12 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             else:
                 C.lay(zone_s * band(d_s - o, hw, aa), DEEP, rough=0.8)
                 C.lay(zone_s * band(d_s - o, hw - 0.004, aa), AMBER, h=0.25, rough=0.50)
+    if PIPE and zone_s is not None:
+        for o in offs:
+            pan = band(d_s - o, sa['half'], aa)
+            for e_, al_ in sash_ends:
+                _, h_e = cord(e_ - 0.0021, 0.0021, aa, RL['border'])
+                C.lay(zone_s * pan * cover(e_ - 0.0042, aa), DEEP, h=h_e, rough=RL['rough_pipe'] + 0.06)          # round 14: the DEEP border cord along every sash END (same 4.2 mm as the long edges)
     # round 12: everything laid after this point that is not part of the sash goes UNDER it (colour, height, roughness): sash_cov masks it
     sash_cov = np.zeros(x.shape, np.float32)
     if PIPE and zone_s is not None:
@@ -502,6 +518,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     nd_thR = segnet('thigh.R', 'shin.R', 0.078, 0.062); nd_thL, nn_thL = netd(P, J('thigh.L'), J('shin.L'), 0.078, 0.062, kind=nk, scale=nsc, nodes=True)
     nd_shR = segnet('shin.R', 'foot.R', 0.052, 0.050); nd_shL = segnet('shin.L', 'foot.L', 0.052, 0.050)
     z_up = tors_w * body_w * ss(y, 1.30, 1.38) * (1 - m_side)
+    if PIPE: z_up = z_up * (1.0 - ss(y, 1.425, 1.455))       # round 14 (critic r13: the Sage trapezius groove is torn): the torso net stops at the neck base - on the oblique trapezius slope the cords stretch over a few texels and read as torn creases
     knots = nk in ('diamond', 'square', 'brick', 'hex')
     # amber net on the DEEP right upper arm; DEEP hairline net on the amber right forearm
     zR = arm_w * R_ * (armU + shoulder_arm) * ss(ax, 0.17, 0.22) * (1 - plate_m) * (1.0 if upper_deep else 0.0)
@@ -590,7 +607,8 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     L(body_w * tors_w * band(y - 1.0305, pip, aa), AMBER, dist=y - 1.0305, **PK)
     if tk['on']:
         L(body_w * np.clip(tors_w + thigh, 0, 1) * band(cut_d, pip * 1.3, aa) * ss(1.03 - y, -0.002, 0.004), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=cut_d, hw=pip * 1.3)
-    L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12), AMBER_D, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
+    wtop = (1.0 - ss(y, 1.195, 1.235)) if PIPE else 1.0       # round 14 (critic r13: the Ash armpit stitches zigzag): the wedge pipe + stitch rows end 3.5 cm below the armpit crease (the surface folds there and the dashes pile up)
+    L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12) * wtop, AMBER_D, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
     # top-stitching beside the piping (dashed, light teal): belt, hip-wrap cut, sash edges, side wedge
     STa = 0.85
     L(body_w * tors_w * np.maximum(stitch(y - 1.0795, x, aa), stitch(y - 1.0305, x, aa)) * STa, STITCH, h=0.12, rough=0.7)
@@ -600,15 +618,37 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         for o in offs:
             hw_ = sa['half']
             C.lay(zone_s * np.maximum(stitch(d_s - o - hw_, P @ t_s, aa, off=0.0030) * (d_s - o > 0.0), stitch(d_s - o + hw_, P @ t_s, aa, off=0.0030) * (d_s - o < 0.0)) * STa, STITCH, h=0.12, rough=0.7)
-    L(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * STa, STITCH, h=0.12, rough=0.7)
+            if PIPE:     # round 14: the sash ENDS are finished like the long edges: two stitch rows (inside the border cord and 3 mm outside) and an accent pipe 5.8 mm outside the end
+                tw_ = ss(tors_w, 0.30, 0.40) * body_w
+                for e_, al_ in sash_ends:
+                    pan = band(d_s - o, hw_, aa) * tw_
+                    ext = pan * cover(-(e_ + 0.0045), aa)
+                    C.lay(ext * stitch(e_, al_, aa, off=0.0030) * STa, STITCH, h=0.12, rough=0.7)
+                    L(pan * cover(-(e_ + 0.0070), aa) * band(e_ + 0.0058, 0.0014, aa), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=e_ + 0.0058, hw=0.0014)
+    L(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * wtop * STa, STITCH, h=0.12, rough=0.7)
 
     # ------------------------------------------------------------------ mask / hood
     yb = (1.668 if PIPE else 1.662) + 0.46 * z          # round 13: the crown piping arc moves up with the bigger lenses (it sits on the sculpted brow ridge)
     crown = is_head * cover(yb - y, aa)                         # above the boundary
     hood_col = ROLE[S['hood']]
-    if PIPE and S['hood'] == 'deep': hood_col = 0.5 * DEEP + 0.5 * TEAL_D        # round 13: a near-black hood hides the sculpted relief (luma ~14 in the 4K stills): halfway to the crown colour
+    FC = S['face']
+    if PIPE and S['hood'] == 'deep':
+        hood_col = 0.5 * DEEP + 0.5 * TEAL_D        # round 13: a near-black hood hides the sculpted relief (luma ~14 in the 4K stills): halfway to the crown colour
+        hood_col = hood_col * (1.0 - FC['lift']) + TEAL * FC['lift']       # round 14: dark hoods (Tessera / Plum) go on toward the body colour: the cheek-line luma test needs an albedo luma of ~50+
     C.lay(is_head, hood_col, rough=RL.get('rough_hood', 0.80) if PIPE else 0.80)       # round 13: a satin hood (0.50) catches the key light on the sculpted brow / nose / cheeks
     C.lay(crown, TEAL_D, rough=RL.get('rough_crown', 0.74) if PIPE else 0.74)
+    if PIPE and (FC['tone_up'] > 0 or FC['tone_dn'] > 0):
+        # round 14: baked relief tone.  The sculpt field (hero_head_r14.field_mm, evaluated at this texel's rest-pose x, y exactly as it displaced the vertex) in units of amp_mm:
+        # + on the brow ridge, cheek bones, nose, alae, mouth, chin (lighter); - in the eye sockets, hollows, the nostril undercut, the groove (darker).
+        zone_f = (y > 1.545) & (y < 1.76) & (ax < 0.095) & (is_head > 0.01) & (nz > 0.2)
+        if zone_f.any():
+            import hero_head_r14 as HH14
+            hf = np.zeros(x.shape, np.float32)
+            hf[zone_f] = HH14.field_mm(ax[zone_f].astype(np.float64), y[zone_f].astype(np.float64)).astype(np.float32)
+            wz_f = ss(np.clip(nz, 0, 1), 0.32, 0.68)
+            tn = np.clip(hf * wz_f / FC['amp_mm'], -1.0, 1.0)
+            mul = 1.0 + FC['tone_up'] * np.maximum(tn, 0.0) - FC['tone_dn'] * np.maximum(-tn, 0.0)
+            C.col = np.clip(C.col * np.where(is_head > 0.01, mul, 1.0)[..., None], 0, 1)
     if S['crown']['edge']:
         L(is_head * band(y - yb, 0.0018, aa), AMBER, h=0.5, rough=0.45, H=RL['pipe'], dist=y - yb, hw=0.0018)
     ck = S['crown']['kind']
@@ -625,7 +665,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             C.lay(crown * ss(y, 1.70, 1.74) * band(dch, 0.0024, aa), AMBER_D, h=0.30, rough=0.5)
     if PIPE:     # round 13: the face seam (critic r12: a 12 px black kinked ink seam on every suit) is a RAISED cord in the body colour, a lit / shadow pair, not ink
         seam_a, seam_h = cord(x, 0.0017, aa, RL['seam'])
-        C.lay(is_head * cover(-z, aa) * seam_a, TEAL, h=seam_h, rough=RL['rough_pipe'] + 0.05)
+        C.lay(is_head * cover(-z, aa) * seam_a, 0.72 * TEAL + 0.28 * STITCH, h=seam_h, rough=RL['rough_pipe'] + 0.05)     # round 14: a lighter tint than the lifted hood (a cord in the hood colour would only show by its shading)
     else:
         C.lay(is_head * cover(np.abs(x) - 0.0011, aa) * cover(-z, aa), INK, h=-0.3, rough=0.9)       # dorsal seam (round 08 legacy)
     if S['brow'] != 'none':
