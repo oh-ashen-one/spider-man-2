@@ -73,7 +73,10 @@ def main():
         for nm, c in (('H0_base', []), ('H1_hfc0', [pin('fog.FogCutoffDistance', 0), pin('atm.HeightFogContribution', 0)]),
                       ('H3_cut', [pin('fog.FogCutoffDistance', 700000), pin('atm.HeightFogContribution', 1)]),
                       ('H5_cut_hfc0', [pin('fog.FogCutoffDistance', 700000), pin('atm.HeightFogContribution', 0)]),
-                      ('H4_amb0', [pin('fog.FogCutoffDistance', 0), pin('fog.SkyAtmosphereAmbientContributionColorScale', [0, 0, 0, 1])])):
+                      ('H4_amb0', [pin('fog.FogCutoffDistance', 0), pin('fog.SkyAtmosphereAmbientContributionColorScale', [0, 0, 0, 1])]),
+                      # a dip of the fog's max opacity around the cutoff flip: the sky is then (nearly) unfogged on both sides of the switch, so the step is invisible
+                      ('H6_op.15', [pin('fog.FogCutoffDistance', 0), pin('fog.FogMaxOpacity', 0.15)]),
+                      ('H7_op.4', [pin('fog.FogCutoffDistance', 0), pin('fog.FogMaxOpacity', 0.4)])):
             H.append(G('%s_h%g' % (nm, h), h, ['S4', 'S4w'], c))
     json.dump({'groups': H}, open(os.path.join(out, 'plan_h.json'), 'w'), indent=1)
 
