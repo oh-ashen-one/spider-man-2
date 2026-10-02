@@ -22,6 +22,7 @@ RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"; STILL_FPS="$WH_CAPTURE_MAXFPS"   # r03: kept for the r2gpu stills after the movies
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
+BASE_ROOT="${BASE_ROOT:-/Game/Terrain}"
 TROOT="${TERRAIN_ROOT:-/Game/Terrain}"   # r04: the content root of this round's build (a side-by-side /Game/TerrainR4 keeps /Game/Terrain readable while a new build is made)
 TDIR="$UE_DIR/Content/${TROOT#/Game/}"
 [ -f "$TDIR/Maps/V_p1_south.umap" ] || { echo "terrain content missing ($TDIR/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
@@ -85,8 +86,9 @@ movie() {  # <name> <script.json> <quit seconds>
 # (r02: the round-01 'turn 3' in-hold rebuild block was removed: the terrain content is rebuilt BEFORE taking the slot, never inside the hold)
 if want moves; then
   export WH_CAPTURE_MAXFPS="${MOVIE_MAXFPS:-20}"
-  movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"
-  movie t5_avenue_to_park t5_avenue_to_park.json "${MOVE_QUIT:-15.4}"
+  MOVIES="${MOVIES:-t4_lawn_sprint t5_avenue_to_park}"   # r04: MOVIES="t4_lawn_sprint" = only that movie
+  [[ " $MOVIES " =~ " t4_lawn_sprint " ]] && movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"
+  [[ " $MOVIES " =~ " t5_avenue_to_park " ]] && movie t5_avenue_to_park t5_avenue_to_park.json "${MOVE_QUIT:-15.4}"
 fi
 # r03: round-02 content built side by side into /Game/TerrainR2 (scratch copy of the r02 scripts) -> the same stills' GPU ms under the same hold, for "capture GPU ms vs r2"
 if want r2gpu && [ -f "$UE_DIR/Content/TerrainR2/Maps/V_p1_south.umap" ]; then
@@ -108,5 +110,12 @@ if want t5probe; then
     WH_CAPTURE_MAXFPS=60 RUN "$TMP/probe_$N" -map $TROOT/Maps/Manhattan_Terrain -res 960x540 -quit "${PROBE_QUIT:-15.6}" -name "probe_$N" -timeout 600 -- -nullrhi -benchmark -fps=60 -WHTravScript="$J" -WHTravCsv="$ROUND/t5_probe/$N.csv" | tail -2
   done
   python3 "$HERE/../../../tools/terrain/t5_score.py" "$ROUND/t5_probe" "$ROUND/t5_probe/scores.json" | tee "$ROUND/t5_probe/scores.txt"
+fi
+
+# r04: GPU ms of the same two stills on the previous build (BASE_ROOT, default /Game/Terrain = the HEAD content without the r04 lawn) and on this build again, inside this hold (same GPU state)
+if want basegpu && [ -f "$UE_DIR/Content/${BASE_ROOT#/Game/}/Maps/V_p1_south.umap" ]; then
+  export WH_CAPTURE_MAXFPS="$STILL_FPS"
+  for ID in ${BASEGPU_IDS:-p1_south p10_lawn_eye}; do STILL_ROOT=$BASE_ROOT STILL_TAG="${BASE_TAG:-r03p2-head}" STILL_NOKEEP=1 still V_ "$ID"; done
+  for ID in ${BASEGPU_IDS:-p1_south p10_lawn_eye}; do STILL_TAG="${STILL_TAG:-r04}-again" STILL_NOKEEP=1 still V_ "$ID"; done
 fi
 echo "done: $ROUND"
