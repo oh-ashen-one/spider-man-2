@@ -60,13 +60,13 @@ if has stills; then
 import json
 d = json.load(open("$SJ")); t0 = 0.0; out = []
 for k in range(d['stills']):
-    out.append('%.1f' % (t0 + 2.2)); t0 += d['shot_s'] + (1.0 if k == 0 else 0.0)
+    out.append('%.1f' % (t0 + (3.7 if k == 0 else 2.2))); t0 += d['shot_s'] + (1.0 if k == 0 else 0.0)      # round 13: the FIRST still at 3.7 s (the first run's 2.2 s caught the 8192 px Tessera maps still streaming in: a white mannequin)
 print(','.join(out), end='')
 PY
 )
   log "stills: 4K, internal 3840x2160, EV $EV"; gpu stills
-  NS=$(python3 -c "import json;d=json.load(open('$SJ'));print(int(d['stills']*d['shot_s']+1+8))")      # last still at stills*shot_s + 1 - 0.8 s, 8 s of margin
-  Scripts/run_game.sh "$OUT/stills" -map $MAP -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -perf 3:$((NS - 5)) -quit $NS -name skins -timeout 1800 \
+  NS=$(python3 -c "import json;d=json.load(open('$SJ'));print(int(d['stills']*d['shot_s']+1+8))")      # last still at stills*shot_s + 1 - 0.8 s of STAGE time; the quit time counts from process start (~35 s of start-up): +40 s (round 13 first run: quit at NS lost the last 7 stills, re-shot in the same hold)
+  Scripts/run_game.sh "$OUT/stills" -map $MAP -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -perf 3:$((NS + 25)) -quit $((NS + 40)) -name skins -timeout 1800 \
       -- -WHCharShot=0 -WHStageShot="$TIMES" -WHExposure=$EV < /dev/null | tail -3
   check "$OUT/stills" skins
   python3 - <<PY

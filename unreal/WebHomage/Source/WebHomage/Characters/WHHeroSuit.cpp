@@ -22,6 +22,7 @@ namespace
 {
 	const FName SuitSlot(TEXT("SpiderSuit"));
 	const FName LensSlot(TEXT("Lens"));
+	const FName FrameSlot(TEXT("LensFrame"));
 	TWeakObjectPtr<UWHHeroSuitSubsystem> GLive;
 	FString GPendingConsole;   // `wh.Suit <x>` typed before the subsystem finished its initial sync
 
@@ -156,6 +157,7 @@ void UWHHeroSuitSubsystem::ApplyToHeroes(bool bScanWorld)
 	if (!Suits.IsValidIndex(Index)) return;
 	UMaterialInterface* Mat = Suits[Index].Material;
 	UMaterialInterface* Lens = Suits[Index].LensMaterial;
+	UMaterialInterface* Frame = Suits[Index].FrameMaterial;
 	TArray<USkeletalMeshComponent*> T; CollectTargets(T, bScanWorld);
 	for (USkeletalMeshComponent* M : T)
 	{
@@ -164,6 +166,8 @@ void UWHHeroSuitSubsystem::ApplyToHeroes(bool bScanWorld)
 		if (M->GetMaterial(Slot) != Mat) { M->SetMaterial(Slot, Mat); M->SetTextureForceResidentFlag(true); }
 		const int32 LSlot = Lens ? M->GetMaterialIndex(LensSlot) : INDEX_NONE;
 		if (LSlot != INDEX_NONE && M->GetMaterial(LSlot) != Lens) M->SetMaterial(LSlot, Lens);
+		const int32 FSlot = Frame ? M->GetMaterialIndex(FrameSlot) : INDEX_NONE;
+		if (FSlot != INDEX_NONE && M->GetMaterial(FSlot) != Frame) M->SetMaterial(FSlot, Frame);
 	}
 }
 

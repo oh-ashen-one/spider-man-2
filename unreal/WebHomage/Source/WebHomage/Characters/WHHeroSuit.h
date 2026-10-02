@@ -33,6 +33,8 @@ struct WEBHOMAGE_API FWHHeroSuitEntry
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Suit") TObjectPtr<UMaterialInterface> Material = nullptr;
 	/** Optional: the lens material of this suit (slot 'Lens'); null keeps whatever the mesh has. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Suit") TObjectPtr<UMaterialInterface> LensMaterial = nullptr;
+	/** Round 13, optional: the rim material of this suit's eyes (slot 'LensFrame'): a dark graphite rim on a mid / pale mask, a gunmetal one on a near-black mask; null keeps whatever the mesh has. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Suit") TObjectPtr<UMaterialInterface> FrameMaterial = nullptr;
 };
 
 UCLASS(BlueprintType)

@@ -414,7 +414,7 @@ if 'mat' in STEPS:
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
     # round 13: the rim of the sculpted eyes is polished gunmetal (base 0.30 / 0.30 / 0.33, metallic 0.9; r12: matte near-black 0.006 / 0.011 / 0.013, invisible on a dark mask = 'rimless'): the sky and the key light
     # run along its raised profile, so it reads on every suit's mask while staying a dark ring against the glossy lens
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.25, 'Specular': 0.6, 'Metallic': 0.9}, vec={'Color': (0.30, 0.30, 0.33, 1)})
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.25, 'Specular': 0.6, 'Metallic': 0.9}, vec={'Color': (0.22, 0.22, 0.24, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
@@ -907,11 +907,6 @@ if 'maps5' in STEPS:
         skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
         spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
         ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
-        try:    # round 13 (critic r12: 'lighting is washed out'): the pale sunlit wall pushed auto exposure up (wall luma 208 of 255 in r04 AND r12, the same in both: the EV of the skins stage did NOT leak into this map, measured); -0.6 EV bias + a weaker enemy fill give the lineup contrast
-            ps_ = ppv.get_editor_property('settings')
-            ps_.set_editor_property('override_auto_exposure_bias', True); ps_.set_editor_property('auto_exposure_bias', float(ARGS.get('lineup_ev', -0.6)))
-            ppv.set_editor_property('settings', ps_)
-        except Exception as ex: log('lineup exposure bias not set', str(ex)[:120])
         spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
         box((0, 0, -10), (80, 30, 0.2), 'M_Env_Asphalt', 'Road')
         box((0, 1900, 0), (80, 8, 0.3), 'M_Env_Sidewalk', 'Sidewalk_N')
@@ -1221,7 +1216,7 @@ if 'skins' in STEPS:
         """-> (material, lens material) of one suit; textures NeverStream (a swap is one frame), BC7 base colour."""
         sid = e_['id']
         if e_.get('texture_set') == 'hero':
-            return load(ROOT + '/Hero/Materials/MI_Hero_Suit'), load(ROOT + '/Hero/Materials/MI_Hero_Lens')
+            return load(ROOT + '/Hero/Materials/MI_Hero_Suit'), load(ROOT + '/Hero/Materials/MI_Hero_Lens'), load(ROOT + '/Hero/Materials/MI_Hero_LensFrame')
         D_ = ART + '/hero/suits/' + sid
         if not all(os.path.exists(D_ + k) for k in ('_basecolor.png', '_normal.png', '_orm.png')):
             raise RuntimeError('maps missing for %s (run tools/ue_char/suits/gen_suits.py)' % sid)
@@ -1248,16 +1243,33 @@ if 'skins' in STEPS:
             lens_ = mi('MI_HeroLens_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_HeroLens'),
                        scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.67 * lin[0], 0.67 * lin[1], 0.67 * lin[2], 1.0)})
         except Exception as ex: log('lens instance failed', sid, str(ex)[:120])
-        return mat_, lens_
+        # round 13: the rim of the eyes per suit (WHHeroSuitEntry.FrameMaterial): polished silver-gunmetal on a near-black mask, dark graphite on a mid / pale one (a rim that matches its mask is
+        # invisible: the r12 'rimless' read; r13's first run with one silver rim for every suit: 3 of 8 suits had a closed rim >= 6 px, the mid / pale masks lost it)
+        frame_ = None
+        try:
+            stl_ = e_.get('style', {}); pl_ = stl_.get('palette', {})
+            def _c(k, dflt): h_ = pl_.get(k, dflt); return [int(h_[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
+            deep_, crown_, body_, accd_ = _c('deep', '#071a21'), _c('crown', '#0b3441'), _c('body', '#0f4452'), _c('accent_d', '#ad5c08')
+            role_ = stl_.get('hood', 'deep')
+            hc_ = [0.5 * a + 0.5 * b for a, b in zip(deep_, crown_)] if role_ == 'deep' else {'body': body_, 'crown': crown_, 'accent_d': accd_}[role_]
+            luma_ = 0.2126 * hc_[0] + 0.7152 * hc_[1] + 0.0722 * hc_[2]
+            dark_mask = luma_ < 0.20
+            frame_ = mi('MI_HeroFrame_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_LensFrame'),
+                        scal={'Roughness': 0.25 if dark_mask else 0.22, 'Specular': 0.6, 'Metallic': 0.9},
+                        vec={'Color': (0.22, 0.22, 0.24, 1.0) if dark_mask else (0.06, 0.06, 0.065, 1.0)})
+            log('skins: rim', sid, 'hood luma %.3f' % luma_, 'silver' if dark_mask else 'graphite')
+        except Exception as ex: log('frame instance failed', sid, str(ex)[:160])
+        return mat_, lens_, frame_
     entries = []
     for e_ in SUITS_CFG['suits']:
         sid = e_['id']
         try:
-            mat_, lens_ = make_suit(e_)
+            mat_, lens_, frame_ = make_suit(e_)
             if mat_ is None: raise RuntimeError('no material')
             en = unreal.WHHeroSuitEntry()
             en.set_editor_property('id', sid); en.set_editor_property('display_name', e_.get('name', sid)); en.set_editor_property('material', mat_)
             if lens_ is not None: en.set_editor_property('lens_material', lens_)
+            if frame_ is not None: en.set_editor_property('frame_material', frame_)
             entries.append(en)
             log('skins: suit', len(entries) - 1, sid, mat_.get_name(), 'lens', lens_.get_name() if lens_ is not None else None)
         except Exception as ex_:

@@ -34,7 +34,11 @@ def hex_rgb(h):
     return np.array([int(h[i:i + 2], 16) for i in (1, 3, 5)], np.float32) / 255.0
 
 
-def lens_colour(suit):
+R12_LENS = {'plum': '#5ee0b4'}      # the round-12 Plum had a mint lens (round 13 recoloured it apricot): the r12 baseline is detected with the colour it had
+
+
+def lens_colour(suit, r12=False):
+    if r12 and suit in R12_LENS: return hex_rgb(R12_LENS[suit])
     for s in SUITS:
         if s['id'] == suit:
             pal = s.get('style', {}).get('palette', {})
@@ -76,9 +80,9 @@ def hue_dist(h1, h2):
     d = np.abs(h1 - h2); return np.minimum(d, 1 - d)
 
 
-def lens_masks(im, suit, min_area=4000):
+def lens_masks(im, suit, min_area=4000, r12=False):
     """The two lens components: pixels of the lens hue, bright, in the upper face; the two largest components of area >= min_area."""
-    acc = lens_colour(suit)
+    acc = lens_colour(suit, r12)
     ha, sa, va = rgb2hsv(acc)
     x = im / 255.0
     mx = x.max(2); mn = x.min(2); v = mx; s = (mx - mn) / (mx + 1e-6)
@@ -238,7 +242,7 @@ def front(path, suit, dump=None, r12=None):
     out['nose'] = nose_profiles(im, masks, sil, int(max(rims[0]['median'], rims[1]['median'], 6)))
     out['seam'] = seam_check(im, masks, sil)
     if r12:
-        im2 = load(r12); sil2 = silhouette(im2); m2 = lens_masks(im2, suit)
+        im2 = load(r12); sil2 = silhouette(im2); m2 = lens_masks(im2, suit, r12=True)
         if len(m2) == 2:
             b2 = [bbox(m) for m in m2]; w2 = [int(b[1] - b[0] + 1) for b in b2]
             ye2 = int(0.5 * (b2[0][2] + b2[0][3])); r2 = np.nonzero(sil2[ye2])[0]; hw2 = int(r2.max() - r2.min() + 1)
