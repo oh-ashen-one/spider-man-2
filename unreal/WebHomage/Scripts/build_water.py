@@ -440,6 +440,19 @@ Emis = 0;
 //   0-2 T_WaterContact width / height (full 8192) and mip count (16); 3 its Load() at the texel the file reads 0 m (8 m full scale);
 //   4 SampleLevel at that UV (8 m); 5 SampleLevel at open water 10 m off the wall (file 11.7 m; 32 m); 6-7 B width / height;
 //   8-9 B at the 0 m / open UVs; 10 C height; 11-12 C at the 0 m / open UVs; 13 T_ShoreDist at the open UV (400 m full scale)
+// r05 Dbg 10: far contact line diagnosis (harbour_high rendered no line). Emissive grey in interleaved 40-px screen columns:
+//   column mod 3 = 0: contact-map distance / 32 m; 1: pixel footprint foot / 8 m; 2: the far-line coverage (recomputed here)
+[branch] if (Dbg > 9.5) {
+    float2 cuF = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
+    float inb = (all(cuF > 0.0) && all(cuF < 1.0)) ? 1.0 : 0.0;
+    float cdF = lerp(%(cmax).1f, Texture2DSampleLevel(tC, tCSampler, saturate(cuF), 0).r * %(cmax).1f, inb);
+    float ce1F = max(0.5 + CBias, FarPx * foot);
+    float cv = (1.0 - smoothstep(0.4 * ce1F, ce1F, cdF)) * (1.0 - nearW);
+    float k = fmod(floor(Parameters.SvPosition.x / 40.0), 3.0);
+    float dg = k < 0.5 ? saturate(cdF / 32.0) : (k < 1.5 ? saturate(foot / 8.0) : saturate(cv));
+    Emis = dg.xxx * DbgK * 0.01; Opac = 1.0; NormalW = float3(0, 0, 1); Rough = 1.0;
+    return dg.xxx;
+}
 [branch] if (Dbg > 8.5) {
     float2 sp = Parameters.SvPosition.xy * View.ViewSizeAndInvSize.zw;
     float uu = sp.x / 0.48, yb = (sp.y - 0.54) / 0.032, bb = floor(yb);
