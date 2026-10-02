@@ -1,4 +1,20 @@
-# River water: handoff after round 02 (Opus 5.5)
+# River water: handoff, round 03 IN PROGRESS (Opus 5.5)
+
+> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe. See `DISCLAIMER.md`.
+
+## Round 03 status (live; the round-02 handoff follows below)
+- Code done and pushed (`night1/water`): `build_water.py` r03 shader (resolved 0.15-0.5 m wind chop `T_WaterChop`, two scroll directions;
+  near-field (<= 150 m) GGX roughness <= 0.08 with true texture gradients, no mip bias; streak / slick terms deleted; whitecap / contact foam
+  faded to zero by 150 m; one spectrum realization + no chop / foam / contact-map lookup beyond 150 m; shore map resampled to 2048^2 so it
+  mips; cream foam albedo). New params: MicroK, SpecK, RoughN. Defaults ChopK 2.4, MicroK 1.6, ScatK 0.06, SpecK 1.6, FarVarK 0.25.
+- `tools/water/water_spec.py`: harbour crop (native-4K x0-2400 y1300-2100), pale blobs, sparkle width, PASS/FAIL table (`all`).
+- `tools/water/perf_summary.py`: per-pass costs. FINDING: round 02's "SingleLayerWater 3.68 ms" was the CSV profiler's footer row (value 2160)
+  inside the mean; the true r02 SLW pass was 0.80 ms (river_low) / 1.25 (river_sun) / 0.57 (S4) at TSR 67 %.
+- `tools/water/emu_river_low.py`: CPU emulation used to choose the start params / variants (calibrated on the r02 frame, rough).
+- GPU: ONE capture hold queued (`_scratch/water/r03/hold_r03.sh`: build + 1080p variants + autopick + final build + round-03 stills + dollies)
+  and a perf chain (`r03/perf_chain.sh`, exclusive native-100 % perf after the hold). Logs: `_scratch/water/r03/hold.log`, `perf_chain.log`.
+  If this session died: check `gpu_status.sh`; if neither runs, re-queue the same two commands (see the scripts' headers).
+
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe. See `DISCLAIMER.md`.
 
