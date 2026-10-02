@@ -28,7 +28,7 @@
 - Hold 3 (13:24-14:04): r3 complete (engine quit normally at 13:58:30); gpu_slot's max hold then stopped the frame MOVE to the exFAT scratch
   (> 5 min for 1,824 PNGs); frames moved + encoded by hand. r3 = r02 (same topOut loop under the fire-escape deck, 6.43 s; 7 kit-overlap
   frames; 0 fall / stuck / mid-air). `capture_round.sh` run timeout margin now 450 s.
-- 14:04 hold "r4 a1" queued (driver `holds_r03c.sh`); a1 will likely be skipped by the budget guard -> queue
+- 14:36 hold "r4 a1" running (driver `holds_r03c.sh`); a1 will likely be skipped by the budget guard -> queue
   `ISLAND_IN_LOCK=1 gpu_slot.sh capture --label island -- docs/night1/island/capture_round.sh docs/night1/island/round-03 a1` afterwards.
 - Then: route checks r1/r3/r4 (`python3 tools/export/island_route_check.py _scratch/island/export/island <csv> --out ...`),
   `python3 docs/night1/island/critic_prep_r03.py` + abpack, round-03/README.md.
