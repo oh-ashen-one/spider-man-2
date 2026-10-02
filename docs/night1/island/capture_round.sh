@@ -4,7 +4,7 @@
 #   <round>/<route>.mp4              1920x1080 60 fps (run_game.sh -movie: fixed 1/60 s step), H.264, <= 15 MB
 #   <round>/<route>_telemetry.csv    per-frame traversal telemetry (WebTravScript)
 #   <round>/stills/<name>_*.jpg      3840x2160 stills (JPEG q90 from the PNG)
-# usage: docs/night1/island/capture_round.sh <round dir> [run ...]      runs: warmup r1 r2 r3 r4 a1 (default all)
+# usage: docs/night1/island/capture_round.sh <round dir> [run ...]      runs: warmup r1 r2 r3 r4 ab a1 (default: all but ab)
 # Heavy frames go to the island scratch (/Users/midir/sm2-n1/_scratch/island/capture); nothing heavy stays in the repo.
 set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
@@ -24,7 +24,12 @@ gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0
 if want warmup; then
   echo "== warm-up (shader / DDC compile, not kept)  $(gpu)"
   rm -rf "$TMP/warmup"
-  RUN "$TMP/warmup" -map "$MAP" -res 960x540 -quit ${WARM_QUIT:-25} -name warmup -timeout 2300 -- -benchmark -fps=60 -WHTravScript="$SCR/r1_north_avenue.json" | tail -3
+  # (island r02) the warm-up also writes the traversal's primitive dump (-WHTravDumpPrims, WebTravWorld.cpp round 20): checked by
+  # tools/export/island_dump_check.py (every visible facade / roofs / detail / fire-escape tile a QueryOnly complex solid)
+  RUN "$TMP/warmup" -map "$MAP" -res 960x540 -quit ${WARM_QUIT:-25} -name warmup -timeout 2300 -- -benchmark -fps=60 -WHTravScript="$SCR/r1_north_avenue.json" \
+    -WHTravDumpPrims="$TMP/warmup/prims.csv" | tail -3
+  grep -h "WebTravWorld:" "$TMP/warmup/warmup.log" | sed 's/^.*Display: //' > "$ROUND/warmup_webtravworld_log.txt"
+  [ -f "$TMP/warmup/prims.csv" ] && gzip -9 -c "$TMP/warmup/prims.csv" > "$ROUND/prims_dump.csv.gz"
 fi
 route() {  # name script
   local NAME="$1" JSON="$2"
@@ -54,6 +59,16 @@ want r1 && route r1_north_avenue r1_north_avenue.json
 want r2 && route r2_south_avenue r2_south_avenue.json
 want r3 && route r3_crosstown_east r3_crosstown_east.json
 want r4 && route r4_wallrun_roofs r4_wallrun_roofs.json
+# (island r02) A/B for traversal's default: r1 with the instanced props / trees solid (-WHTravIsmSolid=1), telemetry only (fixed 1/60 s step,
+# so the sim is the movie run's; 960x540, no frames kept)
+if want ab; then
+  echo "== r1_ism_solid (A/B, telemetry)  $(gpu)"
+  rm -rf "$TMP/r1_ism_solid"
+  RUN "$TMP/r1_ism_solid" -map "$MAP" -res 960x540 -quit ${QUIT:-30.4} -name r1_ism_solid -timeout 2300 -- -benchmark -fps=60 -WHTravIsmSolid=1 \
+    -WHTravScript="$SCR/r1_north_avenue.json" -WHTravCsv="$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" | tail -3
+  cp "$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" "$ROUND/" 2>/dev/null
+  grep -h "WebTravWorld:" "$TMP/r1_ism_solid/r1_ism_solid.log" | sed 's/^.*Display: //' > "$ROUND/r1_ism_solid_log_excerpt.txt"
+fi
 if want a1; then
   for A in a1_high_north a1_high_south; do
     echo "== $A (3840x2160 still)  $(gpu)"
