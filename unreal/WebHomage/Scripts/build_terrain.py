@@ -172,6 +172,8 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
             e = mel.create_material_expression(m, unreal.MaterialExpressionVertexNormalWS, -900, y)
         elif kind == 'cam':
             e = mel.create_material_expression(m, unreal.MaterialExpressionCameraPositionWS, -900, y)
+        elif kind == 'sun':   # r03: direction TO the SkyAtmosphere sun (light index arg); the golden rig's sun is atmosphere light 0
+            e = mel.create_material_expression(m, unreal.MaterialExpressionSkyAtmosphereLightDirection, -900, y); e.set_editor_property('light_index', int(arg or 0))
         elif kind == 'scalar':
             e = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -900, y)
             e.set_editor_property('parameter_name', n); e.set_editor_property('default_value', arg)
@@ -287,8 +289,11 @@ def _step_foliage():
 # material clips by camera distance with the pool's dithered band (Foliage.ush tfBand; the band comes from the export: near / far / fadeIn / fadeOut).
 TREED = ROOT + '/Trees'
 TREE_RE = re.compile(r'^ez_(park|elm|conifer)\d_l[01]_(leaves|bark)$')
-CHAIN_RE = re.compile(r'^(trees_(park|elm|conifer)_(near|crown)|trunks_(park|elm|conifer)(_mid|_far)?)$')
-POOL_RE = re.compile(r'^(ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-(near|crown|crownfar)|trunks-(park|elm|conifer)(-mid|-far)?)$')
+CHAIN_RE = re.compile(r'^(trees_(park|elm|conifer)_(near|lod1|crown)|trunks_(park|elm|conifer)(_mid|_far)?)$')
+# r03: `trees-*-lod1` = the 165-520 m leaf-card band (exported by collect_terrain.js from trees.js canopyGeometry with the LOD1 card recipe); `trees-*-crownfar` is no longer built:
+# the clump hull (`trees-*-crown`, M_TerrainClump) takes the >= 520 m band itself (CROWN_BAND)
+POOL_RE = re.compile(r'^(ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-(near|lod1|crown)|trunks-(park|elm|conifer)(-mid|-far)?)$')
+CROWN_BAND = (520.0, 3200.0)
 def leaf_name(rec):
     u = (rec.get('mat') or {}).get('map') or ''
     return os.path.basename(u).split('.')[0] or 'oak'
@@ -317,7 +322,7 @@ def _step_trees():
             if nm.endswith('_leaves'): finish_mesh(sm, load(f'{MAT}/M_TerrainLeaves'), False, nanite=nan)
             else: finish_mesh(sm, load(f'{MAT}/M_TerrainBark'), False, nanite=nan)
         elif nm.startswith('trunks_'): finish_mesh(sm, load(f'{MAT}/M_TerrainBark'), False)
-        elif nm.endswith('_near'): finish_mesh(sm, load(f'{MAT}/M_TerrainCards'), False)
+        elif nm.endswith(('_near', '_lod1')): finish_mesh(sm, load(f'{MAT}/M_TerrainCards'), False)
         else: finish_mesh(sm, load(f'{MAT}/M_TerrainClump'), False)
         EAL.save_asset(dst)
     if EAL.does_directory_exist(TREED + '/_in'): EAL.delete_directory(TREED + '/_in')
@@ -442,7 +447,7 @@ def build_land(path):
         nt = 0; counts = {}
         def pool_material(pool, d):
             """a material instance per pool: parent by pool kind, LOD band from the export"""
-            b = pool_band(d); vec = {'band': (b[0], b[1], 0.0, 0.0)}
+            b = CROWN_BAND if pool.endswith('-crown') else pool_band(d); vec = {'band': (b[0], b[1], 0.0, 0.0)}
             nm = 'Pool_' + pool.replace('-', '_')
             if pool.startswith('ez-') and pool.endswith('-leaves'):
                 rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]; ln = leaf_name(rec)
@@ -450,9 +455,9 @@ def build_land(path):
                 mel.set_material_instance_texture_parameter_value(m, 'tLeaf', load(f'{TEXD}/leaf_{ln}')); EAL.save_asset(f'{MAT}/Inst/MI_{nm}')
                 return m
             if pool.startswith(('ez-', 'trunks-')): return mi(nm, 'M_TerrainBark', {'usevc': 1.0, 'roughp': 0.92}, dict(vec, tint=(0.33, 0.29, 0.25, 1.0)))
-            if pool.endswith('-near'): return mi(nm, 'M_TerrainCards', {'gain': 1.0}, vec)
+            if pool.endswith(('-near', '-lod1')): return mi(nm, 'M_TerrainCards', {'gain': 1.0}, vec)
             if pool.endswith('-crownfar'): return mi(nm, 'M_TerrainCrown', {'gain': 1.0}, vec)
-            return mi(nm, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, vec)
+            return mi(nm, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, vec)   # r03: only >= 520 m (CROWN_BAND), bump at the browser's 3.0 / 0.5 (Foliage.ush tfBumpH)
         order = sorted(INS.keys(), key=lambda k: (0 if k.startswith('ez-') else 1, k))
         for pool in order:
             d = INS[pool]
@@ -483,10 +488,21 @@ def build_land(path):
             if cull:
                 try: c.set_editor_property('instance_end_cull_distance', int(cull))
                 except Exception as ex: log('WARN cull distance', str(ex)[:100])
-            casts = not (pool.endswith(('-crown', '-crownfar', '-far')))       # browser: crown LODs and far trunks cast no shadows; cards / ez / near + mid trunks do
+            casts = not (pool.endswith(('-crown', '-crownfar', '-far', '-lod1')))       # browser: LOD1 cards, crown LODs and far trunks cast no shadows; near cards / ez / near + mid trunks do
             c.set_cast_shadow(casts)
             c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
-            lite(c, indirect=(l1 or pool.endswith(('-crown', '-crownfar'))))   # the crown hulls (low poly) stand in for the canopy in Lumen's scene; cards / trunks / ez L0 stay out of it
+            # r03 (why r02 cards crushed to black): this project runs Lumen with HARDWARE ray tracing. UE 5.8 puts every drawn primitive into the ray-tracing scene as visible to
+            # indirect rays whatever affect_dynamic_indirect_lighting says (RayTracingInstanceMask.cpp: "only path tracing obeys the AffectsDynamicIndirectLighting flag"), and Lumen's
+            # minimal any-hit shader (LumenHardwareRayTracingCommon.ush LumenMinimalRayAnyHitShader) never evaluates an opacity mask: every leaf pool was an OPAQUE shell to Lumen, and the
+            # crown hull (no band clip outside the raster passes) closed a solid ball around every card canopy at every distance. Sky / bounce rays from a leaf pixel hit that shell
+            # at once -> no sky light, black pockets, which r02 patched with a constant emissive. Fix: foliage pools leave the ray-tracing scene (they still occlude Lumen through its
+            # screen traces, and the sun through virtual shadow maps); bark / trunks stay in it.
+            foliage = not (pool.startswith('trunks-') or pool.endswith('-bark'))
+            lite(c, indirect=not foliage)
+            if foliage:
+                for k_, v_ in (('visible_in_ray_tracing', False), ('affect_indirect_lighting_while_hidden', False)):
+                    try: c.set_editor_property(k_, v_)
+                    except Exception as ex: log('WARN', k_, str(ex)[:100])
             xs = []
             for it in d['items']:
                 s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
@@ -499,15 +515,63 @@ def build_land(path):
                     for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
             nt += len(xs); counts[pool] = len(xs)
         log('park woodland instances', nt, 'in', len(counts), 'pools')
+        # r03 pass 2: Lumen-only shade proxy. With every leaf pool out of the ray-tracing scene nothing occluded the sky under the canopy (pass 1: the lawn under the trees was
+        # fully sky-lit, the p1 foreground lost its shade). A lighter proxy: the crown hull of each tree at PROXY_K of its size about the crown centre, hidden in game but kept for
+        # Lumen (visible in ray tracing + affect_indirect_lighting_while_hidden -> bVisibleInLumenScene, PrimitiveSceneProxy.cpp): it sits inside the card shell (the cards' clumps
+        # are at 0.58-0.96 of the lobe radius), so outward sky rays from a leaf escape while rays into the crown and up from the ground are occluded. No shadows, no camera visibility.
+        PROXY_K = 0.6
+        for kind in ('park', 'elm', 'conifer'):
+            pool = 'trees-%s-crown' % kind; d = INS.get(pool); sp = f'{TREED}/SM_trees_{kind}_crown'
+            if not d or not d.get('items') or not EAL.does_asset_exist(sp): log('no shade proxy for', kind); continue
+            sm_ = load(sp); bb = sm_.get_bounds(); cz = bb.origin.z   # crown centre height (cm, local)
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_shadeproxy_' + kind, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(sm_); c.set_editor_property('num_custom_data_floats', 6)
+            c.set_material(0, mi('Proxy_' + kind, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, {'band': (0.0, 100000.0, 0.0, 0.0)}))
+            c.set_cast_shadow(False); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            for k_, v_ in (('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', True), ('visible_in_ray_tracing', True),
+                           ('affect_indirect_lighting_while_hidden', True), ('visible_in_reflection_captures', False), ('visible_in_real_time_sky_captures', False)):
+                try: c.set_editor_property(k_, v_)
+                except Exception as ex: log('WARN proxy', k_, str(ex)[:100])
+            xs = []
+            for it in d['items']:
+                s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                loc = U(it['x'], it['y'], it['z']); loc.z += (1.0 - PROXY_K) * cz * s_ * s3[1]
+                xs.append(unreal.Transform(loc, rot, unreal.Vector(PROXY_K * s_ * s3[0], PROXY_K * s_ * s3[2], PROXY_K * s_ * s3[1])))
+            c.add_instances(xs, False, True)
+            for k, it in enumerate(d['items']):
+                e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
+                for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
+            a.set_actor_hidden_in_game(True)
+            try: c.set_visibility(True)   # hidden through the actor flag (in game), the component stays 'visible' for the Lumen-while-hidden path
+            except Exception: pass
+            log('shade proxy', kind, len(xs), 'instances, k', PROXY_K, 'crown centre z %.0f cm' % cz)
 
     for nm_, fn_ in (('meshes', _sec_meshes), ('tufts', _sec_tufts), ('props', _sec_props), ('trees', _sec_trees)): soft(nm_, fn_)
     return world
 
+WATER_LEVEL = '/Game/Water/Maps/Water_River'   # r03: the merged river water (Scripts/build_water.py, built in this worktree) in every terrain map
+def water_levels():
+    return [WATER_LEVEL] if EAL.does_asset_exist(WATER_LEVEL) else []
+def hide_flat_water(path):
+    """build_water.py hides the city's flat WaterPlane in City_Midtown_Geo; City_Geo_T is a copy made before the water existed: hide it there too (collision kept: traversal floor)"""
+    if not water_levels(): return
+    unreal.EditorLoadingAndSavingUtils.load_map(path)
+    n = 0
+    for a in eas.get_all_level_actors():
+        if a.get_actor_label() == 'WaterPlane':
+            a.static_mesh_component.set_visibility(False, False); a.set_actor_hidden_in_game(True); n += 1
+    les.save_current_level()
+    log('flat WaterPlane hidden in', path, ':', n, '(expected 1)')
 def city_geo_copy(src):
     """a private copy of the city geometry level in which the city's flat park ribbons / lawns and its ez-tree LOD1 park woodland are hidden in game (terrain supersedes them: tinted trees,
     LOD0, real ground); the original level (and the baseline maps VB_*) stay untouched"""
     dst = ROOT + '/City_Geo_T'
-    if EAL.does_asset_exist(dst): return dst
+    if EAL.does_asset_exist(dst):
+        try: hide_flat_water(dst)
+        except Exception: log('hide_flat_water FAILED'); traceback.print_exc()
+        return dst
     try:
         if not EAL.duplicate_asset(src, dst): raise RuntimeError('could not duplicate ' + src)
         unreal.EditorLoadingAndSavingUtils.load_map(dst)
@@ -531,7 +595,7 @@ def build_persistent(path):
     CITY_GEO = city_geo_copy(CITY_GEO)
     world = open_level(path)
     have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
-    for lp in (CITY_GEO, BOXES, RIG, ACTORS, ROOT + '/Terrain_Land'):
+    for lp in [CITY_GEO, BOXES, RIG, ACTORS, ROOT + '/Terrain_Land'] + water_levels():
         if not any(('/' + lp.split('/')[-1] + ':') in h or h.endswith(lp.split('/')[-1]) for h in have):
             unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
     les.set_current_level_by_name(str(world.get_name()))
@@ -551,7 +615,7 @@ def build_views():
             path = ROOT + '/Maps/' + pre + sh['id']
             world = open_level(path)
             have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
-            for lp in [CITY_GEO_V if land else CITY_GEO, BOXES, RIG, ACTORS] + ([ROOT + '/Terrain_Land'] if land else []):
+            for lp in [CITY_GEO_V if land else CITY_GEO, BOXES, RIG, ACTORS] + ([ROOT + '/Terrain_Land'] if land else []) + water_levels():
                 if not any(('/' + lp.split('/')[-1] + ':') in h or h.endswith(lp.split('/')[-1]) for h in have):
                     unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
             les.set_current_level_by_name(str(world.get_name()))

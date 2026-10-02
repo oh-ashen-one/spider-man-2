@@ -30,6 +30,11 @@ if PREV:   # previous round vs this round (same camera: p1 / p2 / p10; the r02 s
      ('progress-reservoir',  S('p2_reservoir'), PS('p2_reservoir'), 'two versions of the same view over the park water basin (one is the newer build)'),
      ('progress-lawn-eye',   S('p10_lawn_eye'), PS('p10_lawn_eye'), 'two versions of the same eye-level lawn view (one is the newer build)'),
     ]
+    if os.environ.get('SHORE_PROGRESS'):   # r03: the shore cameras are unchanged since r02 -> shore progress pairs too
+        pairs += [
+         ('progress-shore-west', S('p6_west_shore'), PS('p6_west_shore'), 'two versions of the same waterfront view (one is the newer build)'),
+         ('progress-shore-east', S('p7_east_shore'), PS('p7_east_shore'), 'two versions of the same river shoreline view (one is the newer build)'),
+        ]
 M = lambda n: os.path.join(R, n + '.mp4')
 pairs += [
  ('move-lawn-sprint',  M('t4_lawn_sprint'),     REFROOT + 'streets/clips/centralpark-path-walk__cp_0026-0035.mp4', 'ground-level run along a park lawn and path, trees and lamps beside the route'),

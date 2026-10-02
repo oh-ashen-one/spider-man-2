@@ -19,7 +19,7 @@ HOLD_START="${HOLD_START:-$(date +%s)}"; HOLD_BUDGET="${HOLD_BUDGET:-2100}"   # 
 time_ok() { [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
 RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 # GPU etiquette (2026-10-01 20:43: the first terrain warm-up pinned the GPU and WindowServer starved): throttle every run so the GPU idles between frames
-export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"
+export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"; STILL_FPS="$WH_CAPTURE_MAXFPS"   # r03: kept for the r2gpu stills after the movies
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 [ -f "$UE_DIR/Content/Terrain/Maps/V_p1_south.umap" ] || { echo "terrain content missing (Content/Terrain/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
@@ -43,7 +43,11 @@ still() {  # <prefix> <id>
   time_ok || { echo "== SKIP still $NAME (hold budget used up)"; return; }
   echo "== still $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
-  RUN "$TMP/$NAME" -map "/Game/Terrain/Maps/$NAME" -res 3840x2160 -shots "${STILL_AT:-2}" -quit "${STILL_QUIT:-3}" -name "$NAME" -timeout 1500 -- -benchmark -fps=30 | tail -2
+  local ROOTP="${STILL_ROOT:-/Game/Terrain}"
+  RUN "$TMP/$NAME" -map "$ROOTP/Maps/$NAME" -res 3840x2160 -shots "${STILL_AT:-2}" -quit "${STILL_QUIT:-3}" -perf "${STILL_PERF:-0.8:1.9}" -name "$NAME" -timeout 1500 -- -benchmark -fps=30 | tail -2
+  # r03: the capture's own GPU frame time (RHIGetGPUFrameCycles over game 0.8-1.9 s, frame-capped run: GPU ms is per frame, not throughput)
+  grep -ah "WH_PERF " "$TMP/$NAME/$NAME.log" | sed 's/^.*WH_PERF /'"${STILL_TAG:-r03}"' '"$NAME"' /' >> "$ROUND/gpu_ms.txt"
+  [ -n "${STILL_NOKEEP:-}" ] && return
   for p in "$TMP/$NAME"/${NAME}_*.png; do
     [ -f "$p" ] || continue
     local OUT="$ROUND/stills/$ID.jpg"; [ "$PRE" = VB_ ] && OUT="$ROUND/stills/base_$ID.jpg"
@@ -80,5 +84,13 @@ if want moves; then
   export WH_CAPTURE_MAXFPS="${MOVIE_MAXFPS:-20}"
   movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"
   movie t5_avenue_to_park t5_avenue_to_park.json "${MOVE_QUIT:-15.4}"
+fi
+# r03: round-02 content built side by side into /Game/TerrainR2 (scratch copy of the r02 scripts) -> the same stills' GPU ms under the same hold, for "capture GPU ms vs r2"
+if want r2gpu && [ -f "$UE_DIR/Content/TerrainR2/Maps/V_p1_south.umap" ]; then
+  export WH_CAPTURE_MAXFPS="$STILL_FPS"
+  if time_ok; then echo "== r2 warm-up  $(gpu)"; rm -rf "$TMP/warm_r2"
+    RUN "$TMP/warm_r2" -map /Game/TerrainR2/Maps/V_p1_south -res 960x540 -quit 20 -name warm_r2 -timeout 2300 -- -benchmark -fps=30 | tail -2; fi
+  for ID in ${R2GPU_IDS:-p1_south p10_lawn_eye}; do STILL_ROOT=/Game/TerrainR2 STILL_TAG=r02 STILL_NOKEEP=1 still V_ "$ID"; done
+  for ID in ${R2GPU_IDS:-p1_south p10_lawn_eye}; do STILL_TAG=r03-again STILL_NOKEEP=1 still V_ "$ID"; done   # r03 again right after (same GPU state)
 fi
 echo "done: $ROUND"

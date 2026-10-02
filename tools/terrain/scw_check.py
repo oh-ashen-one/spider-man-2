@@ -41,6 +41,13 @@ def regen_custom(usf, mat):
     if gone: return usf, 'dump has outputs the material no longer has: %s' % gone
     sig = ', '.join(keep + old_out + ['inout %s %s' % (ty[k], n) for n, k in extra])
     body = mat['code'].strip('\n')
+    # r03: inputs the material has but the dump lacks (new input pins) become locals of the body with the type UE passes (texture objects cannot be faked: reported)
+    pnames = [x.split()[-1] for x in keep]
+    tyk = {'wn': 'float3', 'sun': 'float3', 'wpos': 'float3', 'cam': 'float3', 'vector': 'float3', 'vc': 'float3', 'uv': 'float2'}
+    for n, k, _ in mat['inputs']:
+        if n in pnames: continue
+        if k in ('tex', 'texparam'): return usf, 'new texture input %s cannot be checked against this dump' % n
+        t_ = tyk.get(k, 'float'); body = '%s %s = (%s)0.5f;\n' % (t_, n, t_) + body
     out = usf[:m.start()] + m.group(1) + sig + m.group(3) + body + m.group(5) + usf[m.end():]
     if extra:    # every call site (Nanite permutations call it in several places): append fresh locals for the new outputs
         pos = 0

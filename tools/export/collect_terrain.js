@@ -136,6 +136,40 @@
         return o; }) };
       await sendProto(name, P.geo, P.mat);
     }
+    // ---- 2b. r03: the 165-520 m band of the park kinds as clustered leaf-card canopies (round-02 critic: the `trees-*-crown` clump hulls read as faceted boulders).
+    // The browser's own LOD1 generator: trees.js canopyGeometry() with CARDS[kind][2..3] (cards / card size) + solid core 0.85, 4 core lobes, detail 0 — exactly the
+    // `trees-street-far` recipe, which trees.js builds only for the street kind. canopyGeometry is module-private, so its source (with addCore) is taken from the served
+    // trees.js and evaluated against the app's own three.js module + layout.js mulberry32; the crown lobes are the ez-tree-fitted ones trees.js uses (eztrees.js
+    // buildEzArchetypes().lobes). Check: the same code with the LOD0 parameters must reproduce the exported `trees-*-near` geometry vertex for vertex.
+    try {
+      const raw = (await import('/src/world/trees.js?raw')).default;
+      const served = await (await fetch('/src/world/trees.js')).text();
+      const threeUrl = (served.match(/from\s+["']([^"']*\/three[^"']*)["']/) || [])[1];
+      const THREE = await import(threeUrl);
+      const a0 = raw.indexOf('function canopyGeometry('), a1 = raw.indexOf('\nlet LEAF_TEX');
+      if (!threeUrl || a0 < 0 || a1 < a0) throw new Error('canopyGeometry source not found (three ' + threeUrl + ')');
+      const canopyGeometry = new Function('THREE', 'mulberry32', raw.slice(a0, a1) + '\nreturn canopyGeometry;')(THREE, L.mulberry32);
+      const cardsDecl = raw.match(/const CARDS = (\{[^;]*\});/);
+      const CARDS = new Function('return ' + cardsDecl[1])();
+      const EZM = await import('/src/world/eztrees.js');
+      const EZA = EZM.buildEzArchetypes();
+      for (const kind of ['park', 'elm', 'conifer']) {
+        const nearName = 'trees-' + kind + '-near', near = instances[nearName];
+        const NP = [...(window.__pools ?? [])].find(p => p.mesh?.name === nearName);
+        const lobes = EZA.lobes(kind);
+        if (!near || !NP || !lobes?.length) { log.push('lod1 ' + kind + ': SKIPPED (near pool ' + !!near + ', lobes ' + (lobes?.length ?? 0) + ')'); continue; }
+        // reproduction check: LOD0 parameters (trees.js buildTrees: seed 7 + name.length, core 0.27, coreDetail 1 for park kinds) vs the exported near geometry
+        const chk = canopyGeometry({ lobes, cards: CARDS[kind][0], size: CARDS[kind][1], seed: 7 + kind.length, core: 0.27, coreDetail: 1 });
+        const pa = chk.attributes.position.array, pb = NP.geo.attributes.position.array;
+        let same = pa.length === pb.length; for (let i = 0; same && i < pa.length; i += 97) same = Math.abs(pa[i] - pb[i]) < 1e-4;
+        const geo = canopyGeometry({ lobes, cards: CARDS[kind][2], size: CARDS[kind][3], seed: 17 + kind.length, core: 0.85, coreLobes: 4, coreDetail: 0 });
+        const nm = 'trees-' + kind + '-lod1', N0 = 165, F0 = 520;
+        instances[nm] = { near: N0, far: F0, fadeIn: Math.max(10, N0 * 0.08), fadeOut: Math.max(10, F0 * 0.08), shadowFar: 0, n: near.n, kind: 'pool', items: near.items, generated: true,
+          recipe: { cards: CARDS[kind][2], size: CARDS[kind][3], core: 0.85, coreLobes: 4, coreDetail: 0, seed: 17 + kind.length, lod0_reproduced: same } };
+        await sendProto(nm, geo, NP.mat);
+        log.push('lod1 ' + kind + ': ' + CARDS[kind][2] + ' cards x ' + CARDS[kind][3] + ' m + core, ' + geo.attributes.position.count + ' verts, ' + near.items.length + ' instances, LOD0 reproduced: ' + same);
+      }
+    } catch (e) { log.push('lod1 FAILED ' + e.message); }
     log.push('instances ' + Object.keys(instances).join(','));
     // ---- 3. park grass mask (grass.js parkMask: 1 m texels, R = blade density, G = blade height, 0 on paths / water / rocks / museum lot)
     let mask = null;

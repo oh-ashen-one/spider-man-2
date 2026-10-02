@@ -1,13 +1,39 @@
-# Terrain (piece E) — HANDOFF (round 02 done: captures, measurements, critic pack; E8 numeric target NOT met)
+# Terrain (piece E) — HANDOFF (round 03 done: pass-1 captures, measurements, critic pack; numeric target NOT met; pass 2 built, not captured)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
 Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain`, dev port 5209 (Vite, exports only; stopped).
 Owns `/Game/Terrain`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_terrain_shaders.mjs}`, `tools/terrain/`, `unreal/WebHomage/Scripts/{build_terrain.py,terrain_materials.py}`,
-`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E8 added), `SHOTLIST.md`, `shots.json` (p3 / p6 / p7 cameras changed in round 02).
-Nothing of this piece is running (no engine, no Vite, no queued ticket). Content (`/Game/Terrain`) in this worktree is built from the committed scripts (pass-3 state); it is never committed.
+`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E9 added in r03), `SHOTLIST.md`, `shots.json` (unchanged since r02).
+**Nothing of this piece is running** (no engine, no Vite, no hold, no waiter). Content in this worktree = the PASS-2 scripts (committed HEAD); the round-03 captures are PASS 1 (see below).
+`unreal/WebHomage/Content/TerrainR2` (130 MB) = the round-02 scripts built side by side for the GPU-ms pair (scratch content, never committed; rebuild with `_scratch/terrain/r03/run_r02copy.sh`; delete when done).
+`unreal/WebHomage/Content/Water` = the merged water built here by `build_water.py` (scratch inputs in `_scratch/terrain/water`).
 
-## Round 02 outcome (2026-10-02, details and numbers: `round-02/README.md`)
+## Round 03 outcome (2026-10-02, Opus 5.5; details: `round-03/README.md`)
+Target (Fable): canopy reads as leaves at every distance. Done in pass 1 (captured): 165-520 m band = leaf-card LOD1 from the browser's own trees.js `canopyGeometry` (LOD0 reproduced vertex for vertex as a check),
+clump hull only >= 520 m with bump 3.0 / 0.5, crownfar dropped; **root cause of the black cards found and fixed**: Lumen HWRT puts every drawn primitive in the ray-tracing scene regardless of
+`affect_dynamic_indirect_lighting` and never evaluates opacity masks, so all leaf pools were opaque shells (hull around every canopy) -> foliage pools `visible_in_ray_tracing = False`;
+constant leaf emissive replaced by AO from exposure + shade / distance-weighted fill; water sublevel in the terrain maps (p6 / p7 / p8 now show the merged river); silhouette + dark-pocket tests.
+| test (pass 1, `round-03/`) | result | r02 |
+|---|---|---|
+| E9a 24 crown crops >= 9 | **FAIL** 5 / 24, min 4.28, median 7.74 (far 11-12, mid 6.7-9.8, foreground 4.3-7.8) | 10 / 24, min 5.41 |
+| E9b flat patch > 40 px incl. dark pockets (p1) | **PASS** 24.7 px, dark pockets 0.06 % | 126.8 px |
+| E9c straight silhouette p10 | **FAIL** 47.2 px (one near leaf-spray quad edge) | 75.6 px (hull facets) |
+| GPU ms (same hold, r02 built side by side) | p1 156-161 vs 164; p10 90-92 vs 89 | |
+| E1 lawn | p10 7.43 / 6.34 (up), p9 2.63, p4 1.41 | |
+Why E9a fell: the LOD1 cores read as smooth round puffs; with all foliage out of ray tracing nothing shades the lawn under the canopy, so foreground boxes that held black pockets now hold smooth lit lawn.
+Blind critic pack (pass 1): `/Users/midir/sm2-n1/_scratch/critic-E-r03/pack` (16 pairs: 9 views vs refs, 5 progress pairs r02 vs r03 incl. both shore views, 2 movies; key outside), `pairs.json` beside it.
+
+## NEXT (in this order)
+1. Capture PASS 2 (content is already built from HEAD; no rebuild needed unless scripts change): `cd <worktree> && /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round3.sh`
+   (detach it: `_scratch/terrain/r03/hold_r03.sh` under nohup). Before that, move pass-1 media aside (`_scratch/terrain/r03/pass1_media` already holds a copy) and delete `round-03/gpu_ms.txt` (it appends).
+   Then `tools/terrain/measure_round.sh docs/night1/terrain/round-03`; keep whichever pass scores better; rebuild the pack (`SHORE_PROGRESS=1 python3 tools/terrain/make_pairs.py docs/night1/terrain/round-03 <pack>/pairs.json docs/night1/terrain/round-02` + `abpack.py`).
+   **The warm-up has now been stopped twice by the health monitor (08:40, 10:38; the second one was my own 960x540 warm-up pinning the GPU).** `round3.sh` now caps 4K stills at 4 fps. Consider `WANT` without `warm`
+   (pass `capture_round.sh <round> stills moves r2gpu`: the first still compiles shaders anyway) and watch `health.log` during the first launch; stop at once if it pins again.
+2. If pass 2 still misses E9a: the foreground boxes are now lawn-under-canopy (need shade: the pass-2 proxy) and the near cards' leaf contrast; the mid band is the LOD1 core.
+3. Deferred to r4 (Sonnet): aerial lawn E1 >= 8 and saturation >= 0.70, blade tufts instead of star sprites, pond-bank rocks, esplanade dressing; p6 water seam (lighter rectangle near the seawall, untraced).
+
+## Round 02 outcome (history) (2026-10-02, details and numbers: `round-02/README.md`)
 Target: trees / canopy at swing height (round-01 critic's biggest gap). Done: the browser's whole park-tree chain is ported with dithered per-pool distance bands (`Shaders/Terrain/Foliage.ush` + `M_TerrainLeaves / Bark / Cards / Clump / Crown`, 46 HISM pools, 47,710 instances), Nanite flag on the ez materials,
 physically scaled ambient fill, lawn grade, brighter blankets, cameras p3 / p6 / p7 fixed, round-01 movies with the dev-suit emblem `git rm`ed, round-02 movies with the hero hidden.
 | result of the final render (pass 3, `round-02/`) | |
@@ -20,7 +46,7 @@ physically scaled ambient fill, lawn grade, brighter blankets, cameras p3 / p6 /
 
 Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-E-r02/pack` (key `pack.key.json` outside; `pairs.json`; 14 pairs). Not judged yet. Merge preconditions (no emblem movies, a reservoir-reference pair) are done; the Reservoir pair uses a park-water-basin frame because the private refs contain no Reservoir frame.
 
-## NEXT (round 3), in this order
+## Round-02 plan for round 3 (history: items 1a, 1b done in r03)
 1. Judge the pack, then fix the one biggest gap. Likely candidates from my own look at the frames: (a) the far crowns (165-520 m) read as bumpy boulders (the browser's 4-lobe crown LOD with strong bump): smaller lobes / more of them, or leaf-card clusters, softer bump at < 300 m;
    (b) the ambient fill `Emis = c * 1800 * (0.4 + 0.6 expo)` in `terrain_materials.py` (M_TerrainLeaves, M_TerrainCards) is constant: close leaves in the sun go pale (`t4_lawn_sprint` 3 s): scale it down with distance < 10 m and by shade; the foreground canopy (SD 6-7) still lacks contrast and black pockets remain in the p1 foreground;
    (c) aerial lawn micro-detail (E1 1.3-2.8): tiled grass_nrm micro-normal + high-frequency albedo at < 1 m, bigger / brighter tufts; (d) pond-bank rocks are white lumps (p3); (e) the t5 perimeter ground at 13-15 s is the city's flat grey asphalt (city piece).
@@ -46,7 +72,8 @@ Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-E-r02/pack` (key `pack.k
 - `unreal/WebHomage/Scripts/build_terrain.py` (steps clean, tex, mat, mesh, foliage, trees, map, views; fail-soft): materials from `terrain_materials.py`; `/Game/Terrain/Terrain_Land` sublevel (ground tagged WHGround, tufts HISM x3 wind classes, props, 46 tree-chain HISM pools with a material instance per pool carrying `band = (near, far, 0)`),
   `City_Geo_T` (private copy of the city geometry level with the city's flat park ribbons / lawns / ez park trees hidden in game), `/Game/Terrain/Maps/Manhattan_Terrain`, still maps `V_<id>` / baseline `VB_<id>` from `shots.json`.
 
-## Rebuild recipe (CPU steps need no slot)
+## Rebuild recipe (CPU steps need no slot; nullrhi commandlets are not renderers for the health monitor)
+0. r03: after merging the integration branch run `unreal/WebHomage/Scripts/build_editor.sh`; water: `SM2_WATER_SCR=/Users/midir/sm2-n1/_scratch/terrain/water python3 unreal/WebHomage/Scripts/build_water.py --steps inputs,ue` BEFORE `run_build.sh` (the terrain maps add `/Game/Water/Maps/Water_River` when it exists).
 1. `npx vite --port 5209 --host 127.0.0.1 --strictPort` (needs `npm ci`), `node tools/export/export_terrain.mjs`, `python3 tools/terrain/prep_terrain.py`, `node tools/export/gen_terrain_shaders.mjs`, `python3 tools/terrain/check_hlsl.py`, `python3 tools/terrain/scw_check.py`.
 2. Base Manhattan content exists in this worktree's `unreal/WebHomage/Content` (round-01 recipe: `git show 77d0946:docs/night1/terrain/HANDOFF.md`).
 3. `build_terrain.py` through the nullrhi commandlet: `tools/terrain/run_build.sh [steps]` (writes the job wrapper, touches `_scratch/terrain/BUILDING`, runs `UnrealEditor ... -run=pythonscript -unattended -nullrhi`; only when none of your engines is running).
