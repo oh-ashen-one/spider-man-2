@@ -142,6 +142,7 @@ public:
 	int32 LookYawDir = 0;
 	double GndStop = 1.0, GndStopExtra = 2.4, GndStopR = 0.9, GndYawOk = 0.0;
 	bool bGndYawOk = false; int32 GndStopped = 0;
+	double GndFloorPull = 1.0, GndFloorPullMin = 0.6; // round 24: on foot / perched, pull the chase spot in rather than over a raised roof feature
 	double GndHoldLens = 1.0, GndLensRelease = 1.5; bool bGndLensHold = false; FVector GndStopPos = FVector::ZeroVector; // round 24: the lens is held where a ground orbit stop began
 	bool bCamEnclosed = false;
 	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipMaxStepYawDeg = 2.4;

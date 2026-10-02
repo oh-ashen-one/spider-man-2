@@ -391,6 +391,18 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
 	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
 	double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -SkyCamBelow, SkyK) + OU;
+	// round 24 (capture c 9.87 s: the perch recenter swung the chase spot over a 1.8 m rooftop box; the floor clamp popped the lens up 1 m per
+	// frame and the slew-limited pitch left the hero under the bottom edge for 0.17 s): on foot / perched the spot is pulled in toward the
+	// hero (down to GndFloorPullMin of the distance) until its floor is no higher than the camera height wants
+	if (GndFloorPull > 0.0 && (P.Mode == EWebTravMode::Ground || P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Land) && !bFlipCam)
+	{
+		for (double K : { 1.0, 0.9, 0.8, 0.7, 0.6 })
+		{
+			if (K < GndFloorPullMin - 1e-3) break;
+			const FVector Dk = Hero + BackR * (BackDist * K) + Right * (0.3 + AnchorShift * SideK);
+			if (World.GroundHeight(Dk.X, Dk.Y, ZWant + 0.3) + 0.4 <= ZWant + 0.3) { Desired = Dk; break; }
+		}
+	}
 	// round 16: trick camera spot = FlipDistNow m from the hero on the held world azimuth, FlipDrop m under his body centre
 	// (the chase camera state -- Desired / CamXY / CamZ -- keeps running through the trick, so the blend-out has no jump; the trick spot is
 	// blended onto its result in POLAR coordinates around the hero: azimuth, radius, height -- a Cartesian lerp of two spots 45 deg apart
@@ -851,7 +863,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
-		{TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndLensRelease"), &GndLensRelease}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
+		{TEXT("GndFloorPull"), &GndFloorPull}, {TEXT("GndFloorPullMin"), &GndFloorPullMin}, {TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndLensRelease"), &GndLensRelease}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }

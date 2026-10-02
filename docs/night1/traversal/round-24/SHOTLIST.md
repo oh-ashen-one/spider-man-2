@@ -2,7 +2,7 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-- Build: branch `night1/traversal`, commit `a041a236`, UE 5.8.3, map `/Game/Maps/Manhattan` (golden preset; the integrated lit city built in this worktree by `unreal/WebHomage/Scripts/build_manhattan.py`; hero = the `/Game/Traversal/HeroDev` dev proxy).
+- Build: branch `night1/traversal`, commit `ac4a6be6`, UE 5.8.3, map `/Game/Maps/Manhattan` (golden preset; the integrated lit city built in this worktree by `unreal/WebHomage/Scripts/build_manhattan.py`; hero = the `/Game/Traversal/HeroDev` dev proxy).
 - Reproduce: `docs/night1/traversal/capture_round.sh <round dir>` (runs `unreal/WebHomage/Scripts/run_game.sh`, real `-game`, offscreen).
 - Game mode `AWebTravGameMode` -> pawn `AWebTravCharacter`. Hero: the browser build's GLB (`public/assets/spiderman.glb`, 58 bones, 79 clips at 30 fps) imported by `build_traversal.py` into `/Game/Traversal/HeroDev` (dev proxy), animated by the C++ `UWebTravAnimInstance` (clip nodes with the browser's per-transition blend times, 3-way swing blend by arc phase, web-hand arm aimed at the anchor, air-phase clip timelines that differ from the previous cycle, procedural roll/pitch sway in the air, whole-body trick spins). Tricks happen only when the trick input is pressed. Web strands = chain of thin cylinders.
 - Round 06 wall-run: body up along the wall, chest toward it, torso leaned back 0.16 rad; the hero's sprint clip plays at 1.8-2.6 steps/s mapped from wall speed 6-14 m/s. Top-out: air sub-state `topOut` playing the `releaseFlip` clip, then the `landTopOut` landing (`perchLand` clip, 0.62 s) before idle. Hero textures are forced resident; `capture_round.sh` renders an unrecorded warm-up pass, then runs each sequence with a 0.8 s pre-roll (`-WHTravPreroll`: start pose rendered, simulation not stepped, camera state restored) that is cut from the video; video and still times are sequence times.
@@ -59,9 +59,9 @@ Spawn: position [250, 240, 24] m, yaw -90 deg, camera pitch 0.12 rad, initial ve
 | 0.000 | stick (x right, y fwd) = [0, 1], heading (world yaw deg) = -90, RMB swing up |
 | 0.400 | autoChain down, releasePhase = 0.55, gap = 0.8, repressVz = -12.0, trickEvery = 3, skyEvery = 0, skyTricks = 1, skyRepressH = 30, skyPhase = 0.8, skyMax = 2.8 |
 
-Measured over the video (935 frames, 15.57 s): speed 22.0-44.8 m/s; height above the floor 6.4-35.4 m; Y (north = -Y) travelled -426 m; vertical FOV 58.0-70.7 deg; camera distance 3.5-5.2 m; max momentum-chain level 0; tricks: backDouble.
+Measured over the video (935 frames, 15.57 s): speed 22.0-44.8 m/s; height above the floor 6.5-34.6 m; Y (north = -Y) travelled -433 m; vertical FOV 58.0-72.3 deg; camera distance 3.5-5.2 m; max momentum-chain level 0; tricks: backDouble.
 
-State sequence (mode/sub-state, start time s): air 0.00 -> swing 0.40 -> air/release 1.67 -> air 2.07 -> air/dive 3.62 -> swing 3.77 -> air/release 5.15 -> air 5.55 -> air/dive 7.08 -> swing 7.23 -> air/trick 8.27 -> air 9.73 -> air/dive 10.67 -> swing 10.80 -> air/release 12.37 -> air 12.77 -> air/dive 14.18 -> swing 14.32
+State sequence (mode/sub-state, start time s): air 0.00 -> swing 0.40 -> air/release 1.67 -> air 2.07 -> air/dive 3.37 -> swing 3.52 -> air/release 4.90 -> air 5.30 -> air/dive 6.85 -> swing 7.00 -> air/trick 8.03 -> air 9.48 -> air/dive 10.35 -> swing 10.50 -> air/release 11.97 -> air 12.37 -> air/dive 13.72 -> swing 13.85 -> air/release 15.17 -> air 15.57
 
 ## c_wallrun_perch — Swing into a facade -> wall-run up -> perch
 
@@ -82,9 +82,9 @@ Spawn: position [250, 240, 22] m, yaw -90 deg, camera pitch 0.12 rad, initial ve
 | 8.500 | E zip down |
 | 8.600 | E zip up |
 
-Measured over the video (629 frames, 10.47 s): speed 0.0-34.1 m/s; height above the floor 0.4-23.7 m; Y (north = -Y) travelled -47 m; vertical FOV 58.0-66.8 deg; camera distance 1.1-4.9 m; max momentum-chain level 0; tricks: none.
+Measured over the video (629 frames, 10.47 s): speed 0.0-37.9 m/s; height above the floor 0.5-24.4 m; Y (north = -Y) travelled -52 m; vertical FOV 58.0-65.3 deg; camera distance 1.8-10.9 m; max momentum-chain level 0; tricks: none.
 
-State sequence (mode/sub-state, start time s): swing 0.00 -> air/release 1.70 -> wall/wallRun 2.07 -> air/topOut 4.52 -> land/landTopOut 5.63 -> ground 5.98 -> zip 8.50 -> zip/zipFlight 8.55 -> zip 8.73 -> perch/perchLand 8.88 -> perch 9.38
+State sequence (mode/sub-state, start time s): swing 0.00 -> air/release 1.70 -> air 2.10 -> ground 2.37 -> air 2.40 -> wall/wallRun 2.55 -> air/topOut 4.33 -> land/landTopOut 5.50 -> ground 5.85 -> zip 8.50 -> zip/zipFlight 8.55 -> zip 8.75 -> perch/perchLand 8.92 -> perch 9.42
 
 ## f1_flow_backDouble — Round 17 flow flips over the roofline: backDouble on every release
 
