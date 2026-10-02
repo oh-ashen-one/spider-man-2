@@ -384,9 +384,12 @@ def checks_r05(res):
     if r:
         add('GATE seawall band >= 12 px (Y >= 180) on >= 60 % of wall rows', r['rows_ge12px_pct'], r['rows_ge12px_pct'] >= 60)
         if r.get('dolly_rows_ge6px_pct_min') is not None:
-            add('GATE band present in every 4 fps dolly frame (min rows >= 6 px at 1080p >= 30 %)', r['dolly_rows_ge6px_pct_min'], r['dolly_rows_ge6px_pct_min'] >= 30)
-            add('GATE band change between 4 fps frames xor/or >= 0.2 (mean; min reported)', [r['dolly_band_change_xor_over_or'], r['dolly_band_change_min']],
-                r['dolly_band_change_xor_over_or'] >= 0.2)
+            # presence per frame = >= 50 band pixels against the still's wall line; the row share is informative only (the dolly camera moves
+            # 32 m along the wall, so the static edge line leaves the wall near the pier corner late in the clip)
+            add('GATE band present in every 4 fps dolly frame (>= 50 band px; min row share at 1080p reported)', [r['dolly_samples_with_band_pct'], r['dolly_rows_ge6px_pct_min']],
+                r['dolly_samples_with_band_pct'] >= 100)
+            add('GATE band change between consecutive 4 fps frames xor/or >= 0.2 (every pair: min; mean reported)', [r['dolly_band_change_min'], r['dolly_band_change_xor_over_or']],
+                r['dolly_band_change_min'] >= 0.2)
     r = res.get('harbour_high_4k.jpg')
     if r:
         if r.get('contact_line'):

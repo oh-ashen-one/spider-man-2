@@ -371,20 +371,16 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
     float pat = NZG(p / 1.9 + float2(t * 0.004, 0.0), 1.0 / 1.9).r * 0.62 + NZG(p / 0.63 + float2(0.0, t * 0.006), 1.0 / 0.63).g * 0.5;
     wf = saturate(smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov)) * nearW;
 }
-// r05: far contact line (beyond the near field, out to FoamFar m, only within 80 m of land on the shore map): the same contact map, a
-//      narrower band and no sub-metre pattern (it would alias at 1 km); it breathes with the swell (lap) so the line is never static
-[branch] if (nearW < 1.0 && shore < 80.0 && dist < FoamFar && FoamFarK > 0.0) {
-    float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
-    float craw = 1.0;
-    [branch] if (all(cu > 0.0) && all(cu < 1.0)) {
-        if (CSel < 0.5) craw = Texture2DSampleLevel(tC, tCSampler, cu, 0).r;
-        else if (CSel < 1.5) craw = Texture2DSampleLevel(tC2, tC2Sampler, cu, 0).r;
-        else craw = Texture2DSampleLevel(tC3, tC3Sampler, cu, 0).r;
-    }
-    float cdF = craw * %(cmax).1f;
+// r05: far contact line (beyond the near field, out to FoamFar m): the same contact map, no sub-metre pattern (it would alias at 1 km); it
+//      breathes with the swell (lap). Branch-free and without a shore-map gate (final hold 1: the gated, branched form rendered nothing; the
+//      8 m/px layout shore distance reads 70-100 m at the built tip seawall): away from shores the map itself returns 32 m (no foam)
+{
+    float2 cuF = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
+    float inb = (all(cuF > 0.0) && all(cuF < 1.0)) ? 1.0 : 0.0;
+    float cdF = lerp(%(cmax).1f, Texture2DSampleLevel(tC, tCSampler, saturate(cuF), 0).r * %(cmax).1f, inb);
     float lapF = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest;
     float fF = NZG(p / 9.0 + float2(t * 0.012, -t * 0.008), 1.0 / 9.0).b;
-    // hold 1: a 1-2 m band is < 1 px at 1 km from swing height: the band reaches at least FarPx pixel footprints
+    // a 1-2 m band is < 1 px at 1 km from swing height (hold 1: line in 0.3 pct of columns): the band reaches at least FarPx pixel footprints
     float ce1F = max(0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, FarPx * foot * (0.8 + 0.4 * lapF));
     float cfF = 1.0 - smoothstep(0.4 * ce1F, ce1F, cdF);
     wf = max(wf, saturate(cfF * FoamFarK * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, dist)));
