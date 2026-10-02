@@ -46,6 +46,44 @@ def smooth_target(hours, ys, hold, slope, sigma_frames=5, iters=60):
     return t
 
 
+def design_target(hours, ys, clips=None, anchors=(), slope=1.3, clip_free=1.2, clip_k=0.08, step=0.25, ymax=200.0, anchor_w=2e4):
+    """round 06, hold 6: the target curve of the closed loop = the curve closest to the measured one (weighted least squares in relative luma) whose frame-to-frame change is <= `slope` Y,
+    with the measured values pinned at the `anchors` (hours of the golden / night / dawn stills the other spec lines depend on) and a ceiling where the frame clips (any channel >= 250):
+    frames with clipped % above `clip_free` may not exceed measured * max(0.5, 1 - clip_k * (clip - clip_free)). Exact dynamic programme over a luma grid (the cost is separable per frame).
+    Returns (target array, info). Unlike smooth_target it can RAISE a valley (a dusk that darkens faster than `slope` is spread out), which is what a slower exposure descent means."""
+    y = np.asarray(ys, float); n = len(y); hrs = np.asarray(hours, float)
+    clip = np.zeros(n) if clips is None else np.asarray(clips, float)
+    levels = np.arange(0.0, ymax + step, step); L = len(levels); k = int(np.floor(slope / step + 1e-9))
+    pin = np.zeros(n, bool)
+    for h in anchors:
+        i = int(np.argmin(np.abs(((hrs - h + 12) % 24) - 12))); pin[i] = True      # one frame per anchor (neighbouring measured frames may differ by more than `slope`)
+    ceil = np.where(clip > clip_free, y * np.maximum(0.5, 1.0 - clip_k * (clip - clip_free)), 1e9)
+    INF = 1e18
+    def cost(i):
+        c = (levels - y[i]) ** 2 / (y[i] + 10.0) ** 2
+        if pin[i]: c = c * anchor_w                                  # soft pin (a hard one can be infeasible: the measured neighbours of an anchor may differ by more than `slope`)
+        c = np.where(levels > ceil[i] + 1e-9, c + 50.0 * (levels - ceil[i]) ** 2 / (y[i] + 10.0) ** 2 + 0.05, c)   # soft ceiling
+        return c
+    D = np.empty((n, L)); P = np.empty((n, L), np.int32)
+    D[0] = cost(0) * 1e3   # start on the measured value
+    for i in range(1, n):
+        prev = D[i - 1]
+        # min over the window [j - k, j + k] of prev: sliding minimum with argmin
+        best = np.full(L, INF); arg = np.zeros(L, np.int32)
+        for d in range(-k, k + 1):
+            lo, hi = max(0, -d), min(L, L - d)
+            cand = prev[lo + d:hi + d]
+            better = cand < best[lo:hi]
+            best[lo:hi] = np.where(better, cand, best[lo:hi]); arg[lo:hi] = np.where(better, np.arange(lo + d, hi + d), arg[lo:hi])
+        D[i] = best + cost(i); P[i] = arg
+    j = int(np.argmin(D[-1] + cost(n - 1) * 1e3))
+    T = np.empty(n)
+    for i in range(n - 1, -1, -1):
+        T[i] = levels[j]; j = int(P[i][j]) if i > 0 else j
+    info = {'max_step': float(np.abs(np.diff(T)).max()), 'rms_change': float(np.sqrt(np.mean((T - y) ** 2))), 'raised_max': float((T - y).max()), 'lowered_max': float((y - T).max())}
+    return T, info
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('lapse'); ap.add_argument('keys'); ap.add_argument('--keys-hours', dest='kh', required=True)
     ap.add_argument('--hold', default=''); ap.add_argument('--slope', type=float, default=1.0); ap.add_argument('--window', type=float, default=0.25)

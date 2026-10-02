@@ -187,9 +187,14 @@ def apply(doc, K):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--knobs', default=''); ap.add_argument('--out', default=''); ap.add_argument('--in-place', action='store_true')
+    ap.add_argument('--bias-overrides', default='', help='json {hour: pp.AutoExposureBias} (lapse_loop.py output) merged into the knob twilight_overrides')
     a = ap.parse_args()
     K = copy.deepcopy(KNOBS)
     if a.knobs: K.update(json.load(open(a.knobs)))
+    if a.bias_overrides:
+        ov = {k: dict(v) for k, v in (K.get('twilight_overrides') or {}).items()}
+        for hh, b in json.load(open(a.bias_overrides)).items(): ov.setdefault(str(float(hh)), {})['pp.AutoExposureBias'] = float(b)
+        K['twilight_overrides'] = ov
     doc = base_doc()
     d = apply(doc, K)
     txt = json.dumps(d, indent=1)
