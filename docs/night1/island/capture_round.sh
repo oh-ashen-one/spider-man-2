@@ -52,8 +52,8 @@ route() {  # name script
     ffmpeg -loglevel error -y "${IN[@]}" -c:v libx264 -preset slow -b:v ${KB}k -pass 2 -pix_fmt yuv420p -movflags +faststart -an "$ROUND/$NAME.mp4" )
   rm -rf "$PL"
   echo "$NAME.mp4 2-pass ${KB}k $(stat -f %z "$ROUND/$NAME.mp4") bytes, $(ls "$TMP/$NAME/${NAME}_frames" | wc -l | tr -d ' ') frames"
-  # contact frames for the critic pack (1080p jpg at 5 / 12 / 20 / 28 s)
-  for s in 5 12 20 28; do f=$(printf "%05d" $((s * 60))); [ -f "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" ] && \
+  # contact frames for the critic pack (1080p jpg at 5 / 12 / 20 / 26 / 28 s; r03: 26 + 28 s are the r2 road-band test frames)
+  for s in 5 12 20 26 28; do f=$(printf "%05d" $((s * 60))); [ -f "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" ] && \
     ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" -q:v 3 "$ROUND/stills/${NAME}_t${s}s_1920x1080.jpg"; done
   rm -rf "$TMP/$NAME/${NAME}_frames"
 }

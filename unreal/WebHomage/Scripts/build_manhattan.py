@@ -35,9 +35,11 @@ UE = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Conte
 # (island r01) piece A (Island) owns this file: one scratch, the detailed region is a tile rectangle (default Midtown 7 x 9 = M1), env:
 #   SM2_MANHATTAN_SCR (default _scratch/island), SM2_ISLAND_TILES ix0,iz0,ix1,iz1 (default -3,-5,3,3), SM2_ISLAND_REGION export folder name
 #   (default midtown; the old 3 x 3 = -1,-2,1,0 / midtown3x3), SM2_ISLAND_MIN_FREE_GB (default 150: the export refuses to start below it)
+# (island r03) M2: the default detailed region is the WHOLE island (ix -4..3, iz -14..13, export folder 'island'); M1 = SM2_ISLAND_TILES=-3,-5,3,3
+#   SM2_ISLAND_REGION=midtown
 SCR = os.environ.get('SM2_MANHATTAN_SCR', '/Users/midir/sm2-n1/_scratch/island')
-TILES = os.environ.get('SM2_ISLAND_TILES', '-3,-5,3,3')
-REGION = os.environ.get('SM2_ISLAND_REGION', 'midtown')
+TILES = os.environ.get('SM2_ISLAND_TILES', '-4,-14,3,13')
+REGION = os.environ.get('SM2_ISLAND_REGION', 'island')
 MIN_FREE_GB = float(os.environ.get('SM2_ISLAND_MIN_FREE_GB', '150'))
 EXPORT = os.path.join(SCR, 'export', REGION)
 WP_MAP = os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')   # (island r01) a test map name builds beside the real one
@@ -62,11 +64,16 @@ def log(*a):
     print('[build_manhattan %s]' % time.strftime('%H:%M:%S'), *a, flush=True)
 
 
+TIMINGS = []   # (island r03) every build step / sub-command timed -> <SCR>/logs/build_timings_<region>.json
+
+
 def sh(cmd, cwd=WT, env=None, log_name=None):
     log('$', cmd if isinstance(cmd, str) else ' '.join(cmd))
+    t0 = time.time()
     out = open(os.path.join(SCR, 'logs', log_name), 'w') if log_name else None
     r = subprocess.run(cmd, cwd=cwd, env={**os.environ, **(env or {})}, shell=isinstance(cmd, str),
                        stdout=out or None, stderr=subprocess.STDOUT if out else None)
+    TIMINGS.append({'cmd': log_name or (cmd if isinstance(cmd, str) else ' '.join(cmd))[:120], 'seconds': round(time.time() - t0, 1), 'rc': r.returncode})
     if r.returncode != 0:
         raise SystemExit('command failed (%d): %s%s' % (r.returncode, cmd, ('  log: ' + out.name) if out else ''))
 
@@ -105,6 +112,8 @@ def ue_python(name, code, env=None, timeout=7200):
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
     bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l]
     log('UE commandlet %s: rc %d, %.0f s, %d python error lines' % (name, r.returncode, time.time() - t0, len(bad)))
+    TIMINGS.append({'cmd': 'UE ' + name, 'seconds': round(time.time() - t0, 1), 'rc': r.returncode,
+                    'steps': [l.split('LogPython: ')[-1][:160] for l in txt.splitlines() if 'LogPython: [build_city' in l][-60:]})
     if bad:
         print('\n'.join(bad[:30]))
         raise SystemExit('python error in ' + name + ' (log ' + lg + ')')
@@ -253,12 +262,19 @@ def main():
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
     t0 = time.time()
-    for s in STEPS_ALL:
-        if s in want:
-            log('=== step', s); t = time.time()
-            globals()['step_' + s]()
-            log('=== step %s done in %.0f s' % (s, time.time() - t))
-    log('all done in %.0f s' % (time.time() - t0))
+    tj = os.path.join(SCR, 'logs', 'build_timings_%s.json' % REGION)
+    done = []
+    try:
+        for s in STEPS_ALL:
+            if s in want:
+                log('=== step', s); t = time.time()
+                globals()['step_' + s]()
+                done.append({'step': s, 'seconds': round(time.time() - t, 1)})
+                log('=== step %s done in %.0f s' % (s, time.time() - t))
+    finally:
+        json.dump({'region': REGION, 'tiles': TILES, 'steps_wanted': want, 'steps_done': done, 'commands': TIMINGS,
+                   'total_seconds': round(time.time() - t0, 1), 'finished': time.strftime('%Y-%m-%d %H:%M:%S')}, open(tj, 'w'), indent=1)
+    log('all done in %.0f s (timings %s)' % (time.time() - t0, tj))
 
 
 # ================================================================================================ inside Unreal: the maps
