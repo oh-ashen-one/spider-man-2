@@ -364,7 +364,9 @@ PHASE_G = 0.55
 GLITTER = 0.5
 # material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
-PARAMS = {'ChopK': 2.0, 'MicroK': 1.0, 'ScatK': 0.2, 'FarVarK': 0.25, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 1.0}   # r03 start (see HANDOFF)
+# r03 start (CPU emulation of the river_low near crop against the round-02 frame, see docs/night1/water/round-03/NOTES.md): dark body
+# (ScatK 0.06: the body radiance set the r02 trough floor p1 46), steeper resolved chop, F0 x1.6 (SpecK) for the sky / mist reflections
+PARAMS = {'ChopK': 2.4, 'MicroK': 1.6, 'ScatK': 0.06, 'FarVarK': 0.25, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 1.6}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
