@@ -34,6 +34,9 @@ def track(path, png=None, tag=''):
         if best is None or prof[r] > best[0]: best = (prof[r], sx, r)
     if best is None or best[0] < 8: return dict(ok=False, why='no cord')
     _, sx, sr = best
+    # the cord's own colour (chromaticity at the seed, 30 columns): the track stops where the ridge has another colour (an arm's accent net line beyond the torso edge, a sash border)
+    sub_rgb = a[y0:y1, x0:x1]
+    ref = np.median(np.stack([sub_rgb[sr, c] / max(sub_rgb[sr, c].sum(), 1e-6) for c in range(max(0, sx - 15), min(W, sx + 15))]), axis=0)
     rows = {}
     for direction in (1, -1):
         r = float(sr); miss = 0
@@ -43,7 +46,8 @@ def track(path, png=None, tag=''):
             lo, hi = max(0, int(r) - wdw), min(H, int(r) + wdw + 1)
             seg = R[lo:hi, c]
             k = int(np.argmax(seg))
-            if seg[k] >= (10 if miss == 0 else 14):
+            px = sub_rgb[min(H - 1, lo + k), c]; okc = float(np.abs(px / max(px.sum(), 1e-6) - ref).sum()) < 0.16
+            if seg[k] >= (10 if miss == 0 else 14) and okc:
                 # the cord's CENTRE: the middle of the run of rows around the peak whose ridge is >= half the peak (the lit flank and the shadow flank swap with the light)
                 a_, b_ = k, k
                 while a_ > 0 and seg[a_ - 1] >= 0.5 * seg[k]: a_ -= 1

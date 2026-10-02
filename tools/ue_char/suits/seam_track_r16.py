@@ -27,7 +27,7 @@ def head_box(L, rgb):
     return d
 
 
-def track(path, png=None, tag='', suit=None):
+def track(path, png=None, tag='', suit=None, y_start=60):
     rgb = np.asarray(Image.open(path).convert('RGB')).astype(np.float32)
     L = luma(rgb)
     H, W = L.shape
@@ -36,9 +36,9 @@ def track(path, png=None, tag='', suit=None):
     cx = W // 2
     xs = {}
     x = None; miss = 0; ref = None; chs = []
-    for y in range(60, H - 40):
+    for y in range(y_start, H - 40):
         if x is None:
-            seg = B[y, cx - 400:cx + 400]; j = int(np.argmax(seg)) + cx - 400
+            seg = B[y, cx - 160:cx + 160]; j = int(np.argmax(seg)) + cx - 160      # the portrait is centred on the face: the seam is within +-160 px of the centre column
             rid = B[y, j] - 0.5 * (B[y, j - 32] + B[y, j + 32])
             if rid > 25 and np.std(L[y, j - 200:j - 40]) < 25 and np.std(L[y, j + 40:j + 200]) < 25: x = float(j); xs[y] = x
             continue
@@ -63,7 +63,9 @@ def track(path, png=None, tag='', suit=None):
             miss += 1
             if miss > 250: break
     ys = np.array(sorted(xs)); xv = np.array([xs[k] for k in ys])
-    if len(ys) < 300: return dict(ok=False, why='short track %d' % len(ys))
+    if len(ys) < 300:
+        if y_start < 500: return track(path, png, tag, suit, y_start=y_start + 220)      # the crown's stripes can hide the seed: start lower (below the crown piping)
+        return dict(ok=False, why='short track %d' % len(ys))
     # rows where the seam runs UNDER an accent piece (the jaw vent's honeycomb / slots, the crown stripes' ends): >= 8 % of the +-80 px band around the track's median column is
     # accent-family colour (colour direction within 20 deg of the suit's accent / accent_d, as in back_bleed_r16.py) - the seam is covered there, those rows are dropped
     if suit is not None:
