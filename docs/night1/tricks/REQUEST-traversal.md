@@ -15,3 +15,10 @@ mapping, but the hooks that CALL them live in traversal-owned files. Round 1 nee
    `WebFlips::ChooseForInput(0, 0, K, Air, Last)` for the longest one that fits instead.
 
 Nothing else in traversal is needed: programs, shapes, tempo variation and the pose logger are inside WebTravFlips.cpp.
+
+## Seen in the round-1 reel (traversal-owned, not fixed by C)
+3. **Trick camera inside a facade at an avenue turn.** `t60_trick_reel` ~13.6-13.9 s (frontDouble's kick-out while the chain turns from the
+   y -560 street into 5th Av at x ~250): the held 3/4 trick view sits inside / against the corner building's facade (blurred brick fills
+   the frame). The held world azimuth (TRICK_CAMERA_SPEC) does not re-check obstruction when the travel heading turns under it.
+4. **A flip whose catch swings into a corner tower starts a vertical wall-run** (probe, a west turn into the 10 m cross street at y 80
+   mid-backTripleChain: 30 s of wall-run up a 166 m tower). Not in the reel (route changed), noted for the corridor / catch logic.
