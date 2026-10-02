@@ -2,7 +2,7 @@
 """Terrain r04 lawn prep (piece E, CPU only). Replaces the r01-r03 star-sprite tufts (9 blades, SM_tuft) by dense blade-clump grass and adds the lawn / blanket detail textures.
 Inputs: <export>/terrain.json + parkmask.rgba (browser grass density / height mask), <prep>/pathmask.png (path + drive coverage, written by prep_terrain.py).
 Outputs in <prep>:
-  grass_near_<k>.glb  4 variants: a 1.8 m disc of ~330 blades (clumps of 22-34 blades + loose single blades), 3 tris per blade, unit height, vertex colour R = height along the blade,
+  grass_near_<k>.glb  4 variants: a 2.3 m disc of ~1150 blades (clumps of 22-34 blades + loose single blades), 3 tris per blade, unit height, vertex colour R = height along the blade,
                       G = per-blade random, B = per-clump random, normals = blade-plane normal blended 55 % toward up (two-sided foliage shading)
   grass_far_<k>.glb   2 variants: a 3.2 m disc of ~230 wider, taller blades (the 16-60 m layer)
   grass_near.bin / grass_far.bin   float32 records [x, z, yaw, xy scale, height m] (browser frame) scattered over the grass mask: jittered grid (1.5 m / 2.6 m cells), kept by the browser density
@@ -61,8 +61,8 @@ img = np.stack([weave, lvl, np.clip(0.5 + 0.25 * slub, 0, 1), np.ones_like(weave
 Image.fromarray((img * 255 + 0.5).astype(np.uint8), 'RGBA').save(os.path.join(PREP, 'blanket_weave.png'))
 print('blanket_weave.png 256x256')
 
-# ------------------------------------------------------------------ blade patches
-def make_patch(seed, radius, n_clumps, per_clump, loose, hlo, hhi, w_lo, w_hi, lean_lo, lean_hi):
+# ------------------------------------------------------------------ blade patches (r04 v2: after a Cycles preview the first 650-blade 1.9 m discs left ~45 % of the ground bare)
+def make_patch(seed, radius, n_clumps, per_clump, loose, hlo, hhi, w_lo, w_hi, lean_lo, lean_hi, crad_lo, crad_hi, min_gap):
     rng = np.random.default_rng(seed)
     P, Nn, C, I = [], [], [], []
     def blade(bx, bz, hk, w, dirv, lean, g, b):
@@ -83,9 +83,9 @@ def make_patch(seed, radius, n_clumps, per_clump, loose, hlo, hhi, w_lo, w_hi, l
         tries += 1
         a = rng.uniform(0, 2 * math.pi); r = radius * 0.92 * math.sqrt(rng.uniform())
         c = (r * math.cos(a), r * math.sin(a))
-        if all((c[0] - o[0]) ** 2 + (c[1] - o[1]) ** 2 > (0.30 * radius / 1.8 * 2) ** 2 * 0.55 for o in centres): centres.append(c)
+        if all((c[0] - o[0]) ** 2 + (c[1] - o[1]) ** 2 > min_gap ** 2 for o in centres): centres.append(c)
     for c in centres:
-        crad = rng.uniform(0.10, 0.19) * radius / 1.8 * 1.6; cb = rng.uniform(); chh = rng.uniform(0.82, 1.12)
+        crad = rng.uniform(crad_lo, crad_hi); cb = rng.uniform(); chh = rng.uniform(0.82, 1.12)
         for _ in range(int(rng.integers(per_clump[0], per_clump[1] + 1))):
             a = rng.uniform(0, 2 * math.pi); r = crad * abs(rng.standard_normal()) * 0.7
             bx, bz = c[0] + r * math.cos(a), c[1] + r * math.sin(a)
@@ -98,8 +98,8 @@ def make_patch(seed, radius, n_clumps, per_clump, loose, hlo, hhi, w_lo, w_hi, l
         blade(r * math.cos(a), r * math.sin(a), rng.uniform(hlo, hhi) * 0.9, rng.uniform(w_lo, w_hi), (math.cos(ang), math.sin(ang)), rng.uniform(lean_lo, lean_hi), rng.uniform(), rng.uniform())
     return np.array(P, np.float32), np.array(Nn, np.float32), np.array(C, np.float32), np.array(I, np.int64)
 
-NEAR = dict(radius=0.95, n_clumps=14, per_clump=(28, 42), loose=120, hlo=0.62, hhi=1.0, w_lo=0.011, w_hi=0.018, lean_lo=0.04, lean_hi=0.10)
-FAR = dict(radius=1.7, n_clumps=11, per_clump=(22, 32), loose=60, hlo=0.6, hhi=1.0, w_lo=0.018, w_hi=0.030, lean_lo=0.06, lean_hi=0.16)
+NEAR = dict(radius=1.15, n_clumps=26, per_clump=(30, 44), loose=200, hlo=0.62, hhi=1.0, w_lo=0.011, w_hi=0.019, lean_lo=0.05, lean_hi=0.12, crad_lo=0.12, crad_hi=0.22, min_gap=0.30)
+FAR = dict(radius=1.7, n_clumps=12, per_clump=(24, 34), loose=70, hlo=0.6, hhi=1.0, w_lo=0.018, w_hi=0.030, lean_lo=0.06, lean_hi=0.16, crad_lo=0.2, crad_hi=0.34, min_gap=0.5)
 tri_total = {}
 for name, cfg, nv in (('near', NEAR, 4), ('far', FAR, 2)):
     for k in range(nv):
