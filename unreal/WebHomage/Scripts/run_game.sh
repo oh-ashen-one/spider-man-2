@@ -49,6 +49,7 @@ ARGS+=(-WHQuitAt="$QUIT")
 RESW=${RES%%x*}
 if [ -n "$PERF" ] && [ "${GPU_SLOT_HELD:-}" = "perf" ]; then EXECS="t.MaxFPS 0"   # only real perf runs (exclusive perf lock) are uncapped
 elif [ "$MOVIE" = 1 ] && [ "${RESW:-0}" -lt 2560 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-30}"
+elif [ "${RESW:-0}" -ge 2560 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-8}"   # 03:45: a 4K frame takes > 50 ms, so 20 fps still pinned the GPU
 else EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-20}"; fi
 [ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
 ARGS+=(-ExecCmds="$EXECS")
