@@ -32,10 +32,10 @@ if t and t.get('probes') and t11 and t11.get('probes'):
         t11['probes'][0]['luma'], t11['probes'][0]['local_panel_median'], t['probes'][0]['luma'], t['probes'][0]['local_panel_median'], t['probes'][0]['inside_panel']))
 jg, jg11 = J('measures/jog_verdant.json'), J('measures/r11_jog_verdant.json')
 if jg:
-    L += ['', '| Verdant chevron edge, armpit region x 1150-1900 y 1350-1950 (4K chest) | target | round 11 | round 12 | verdict |', '|---|---|---|---|---|',
-          '| largest column-to-column jump of the panel edge beyond its slope | <= 2 px | %s px | **%s px** | %s |' % (jg11 and jg11.get('worst_jump_px'), jg.get('worst_jump_px'), jg.get('verdict')),
-          '| max deviation of the edge from a 61 px quadratic fit (top / bottom) | (info) | %s / %s | %s / %s | |' % (
-              jg11 and jg11['edges'].get('top', {}).get('max_dev_px'), jg11 and jg11['edges'].get('bottom', {}).get('max_dev_px'), jg['edges'].get('top', {}).get('max_dev_px'), jg['edges'].get('bottom', {}).get('max_dev_px'))]
+    L += ['', '| Verdant chevron edge, lower edge, x 1290-1640 y 1500-1850 of the 4K chest (the critic.s jog at 1333-1357, 1610-1680) | target | round 11 | round 12 | verdict |', '|---|---|---|---|---|',
+          '| largest column-to-column jump of the edge beyond its slope at the critic\'s columns x 1320-1400 | <= 2 px | %s px | **%s px** | %s |' % (jg11 and jg11.get('jump_at_critic_x1320_1400'), jg.get('jump_at_critic_x1320_1400'), jg.get('verdict_at_critic_x')),
+          '| the same over the whole tracked edge (x 1290-1640) | <= 2 px | %s px at %s | **%s px** at %s | %s |' % (jg11 and jg11.get('max_jump_px'), jg11 and jg11.get('jump_at'), jg.get('max_jump_px'), jg.get('jump_at'), jg.get('verdict')),
+          '| max deviation of the edge from a 61 px quadratic fit | (info) | %s px | %s px | |' % (jg11 and jg11.get('max_dev_px'), jg.get('max_dev_px'))]
 fc = J('fold_check.json')
 if fc:
     p = fc['poses']

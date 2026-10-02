@@ -52,8 +52,8 @@ for s in tessera verdant plum cinder glacier ash saffron sage; do
   python3 $T relief "docs/night1/characters/round-11/stills/skin_${s}_chest_4k.jpg" > "$M/r11_relief_${s}.json"
   python3 $T sash "docs/night1/characters/round-11/stills/skin_${s}_chest_4k.jpg" --accent "$a" --probe 1412 1240 > "$M/r11_sash_${s}.json"
 done
-python3 $T jog "$S/skin_verdant_chest_4k.png" --accent "$(acc verdant)" --roi 1150 1350 1900 1950 > "$M/jog_verdant.json"
-python3 $T jog "docs/night1/characters/round-11/stills/skin_verdant_chest_4k.jpg" --accent "$(acc verdant)" --roi 1150 1350 1900 1950 > "$M/r11_jog_verdant.json"
+python3 $T jog "$S/skin_verdant_chest_4k.png" --accent "$(acc verdant)" --roi 1290 1500 1640 1850 > "$M/jog_verdant.json"
+python3 $T jog "docs/night1/characters/round-11/stills/skin_verdant_chest_4k.jpg" --accent "$(acc verdant)" --roi 1290 1500 1640 1850 > "$M/r11_jog_verdant.json"
 # --- CH1 on the front stills, CH6 / CH7 / CH10 on the stage-hero clips, the pawn's cadence and start pop (P3 numbers)
 python3 tools/ue_char/suits/loco_r12.py ch1 "$S"/skin_*_front_4k.png > "$M/ch1_front.json"
 [ -f "$R/hero_run_chase.mp4" ] && { python3 tools/ue_char/eval/video_checks.py head_bob "$R/hero_run_chase.mp4" 0.3 5.3 > "$M/ch6_chase_headbob.json"; python3 tools/ue_char/suits/loco_r12.py bob "$R/hero_run_chase.mp4" 0.3 5.3 > "$M/ch6_chase_bob.json"; python3 tools/ue_char/eval/video_checks.py hero_run "$R/hero_run_chase.mp4" 0.3 5.3 > "$M/ch2_ch7_chase.json"; }

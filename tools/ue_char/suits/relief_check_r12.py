@@ -100,7 +100,7 @@ def accent_mask(im, accent, tol_h=14.0):
     return ((dh < tol_h) & (s > 0.30) & (v > 0.35) & hero).astype(np.uint8)
 
 
-def panels(im, accent, min_frac=0.004):
+def panels(im, accent, min_frac=0.004, inner=True):
     m = accent_mask(im, accent)
     m = cv2.morphologyEx(m, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (19, 19)))     # accent NETS / piping (thin) are not panels
     m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (25, 25)))    # a dark line crossing a panel stays inside it
@@ -112,7 +112,7 @@ def panels(im, accent, min_frac=0.004):
     keep = np.zeros_like(m)
     H, W = m.shape
     if n < 2: return keep
-    inner_ok = [i for i in range(1, n) if st[i, 0] > 0 and st[i, 0] + st[i, 2] < W and st[i, 1] > 0]      # a panel lies inside the hero: a region touching the frame edge is background / a cut-off limb
+    inner_ok = [i for i in range(1, n) if (not inner) or (st[i, 0] > 0 and st[i, 0] + st[i, 2] < W and st[i, 1] > 0)]      # a panel lies inside the hero: a region touching the frame edge is background / a cut-off limb
     if not inner_ok: return keep
     big = int(max(st[i, 4] for i in inner_ok))
     for i in inner_ok:
@@ -170,33 +170,42 @@ def sash(img, accent, roi=None, overlay=None, probes=()):
     return res
 
 
-def jog(img, accent, roi):
+def jog(img, accent, roi, overlay=None):
+    """Continuity of the sash / chevron LOWER EDGE: per column the end of the longest run of warm accent pixels (luma > 60, R - B > 40), 9-column running median; the track is compared with a 61 px quadratic fit; jumps are measured between neighbouring columns only, beyond the local slope.
+    A fold or a jog of the border shows as one large jump (round 11 Verdant: the 24 px step at x 1333-1357)."""
     im = cv2.imread(img)[roi[1]:roi[3], roi[0]:roi[2]]
-    pm = panels(im, accent, min_frac=0.02)
-    H, W = pm.shape
-    out = {}
-    for side in ('top', 'bottom'):
-        xs, ys = [], []
-        for x in range(W):
-            col = np.nonzero(pm[:, x])[0]
-            if len(col) < 8: continue
-            xs.append(x); ys.append(col.min() if side == 'top' else col.max())
-        xs = np.array(xs); ys = np.array(ys, float)
-        if len(xs) < 80: out[side] = dict(columns=int(len(xs))); continue
-        fit = np.zeros_like(ys)
-        for i in range(len(xs)):
-            sel = np.abs(xs - xs[i]) <= 30
-            c = np.polyfit(xs[sel], ys[sel], 2) if sel.sum() >= 5 else None
-            fit[i] = np.polyval(c, xs[i]) if c is not None else ys[i]
-        dev = np.abs(ys - fit)
-        slope = np.gradient(fit, xs)
-        jump = np.abs(np.diff(ys) - slope[:-1] * np.diff(xs))
-        # ignore the panel's real ends (first / last 5 columns) and the silhouette
-        core = slice(5, len(xs) - 5)
-        out[side] = dict(columns=int(len(xs)), max_dev_px=round(float(dev[core].max()), 2), max_jump_px=round(float(jump[5:-5].max()), 2),
-                         at_x=int(xs[core][np.argmax(dev[core])] + roi[0]))
-    worst = max([v.get('max_jump_px', 0) for v in out.values()] + [0])
-    return dict(image=img, accent=accent, roi=roi, edges=out, worst_jump_px=worst, verdict='PASS' if worst <= 2.0 else 'FAIL')
+    L = luma(im); H, W = L.shape
+    f = im.astype(np.float32)
+    panel = ((L > 60) & (f[..., 2] - f[..., 0] > 40)).astype(np.int8)    # the warm accent panel (R - B > 40): its lower edge meets the dark border strip
+    xs, ys = [], []
+    for x in range(W):
+        c_ = np.concatenate([[0], panel[:, x], [0]]); d_ = np.diff(c_)
+        st_, en_ = np.nonzero(d_ == 1)[0], np.nonzero(d_ == -1)[0]
+        if len(st_) == 0: continue
+        k = int(np.argmax(en_ - st_))
+        if en_[k] - st_[k] < 12 or en_[k] >= H: continue                        # the panel's lower edge must lie inside the crop
+        xs.append(x); ys.append(float(en_[k]))
+    xs = np.array(xs); ys = np.array(ys, float)
+    if len(xs) < 60: return dict(image=img, roi=roi, columns=int(len(xs)), verdict='n/a')
+    ys = ndi.median_filter(ys, size=9, mode='nearest')      # isolated twill / shading pixels go, a real step (a run of columns) stays
+    fit = np.zeros_like(ys)
+    for i in range(len(xs)):
+        sel = np.abs(xs - xs[i]) <= 30
+        fit[i] = np.polyval(np.polyfit(xs[sel], ys[sel], 2), xs[i]) if sel.sum() >= 5 else ys[i]
+    dev = np.abs(ys - fit); slope = np.gradient(fit, xs)
+    adj = np.diff(xs) == 1
+    jump = np.where(adj, np.abs(np.diff(ys) - slope[:-1]), 0.0)
+    jump[:15] = 0; jump[-15:] = 0                         # the first / last 15 columns of the track: the panel's cut end and the crop border
+    k = int(np.argmax(jump))
+    if overlay:
+        ov = im.copy()
+        for x_, y_ in zip(xs, ys): cv2.circle(ov, (int(x_), int(y_)), 1, (255, 0, 255), -1)
+        cv2.imwrite(overlay, ov)
+    sel = (xs[:-1] + roi[0] >= 1320) & (xs[:-1] + roi[0] <= 1400)       # the critic's round-11 jog columns (1333-1357) +- margin
+    jr = float(jump[sel].max()) if sel.any() else None
+    return dict(image=img, roi=roi, columns=int(len(xs)), max_dev_px=round(float(dev.max()), 2), max_jump_px=round(float(jump.max()), 2),
+                jump_at=[int(xs[k] + roi[0]), int(ys[k] + roi[1])], jump_at_critic_x1320_1400=None if jr is None else round(jr, 2),
+                verdict='PASS' if jump.max() <= 2.0 else 'FAIL', verdict_at_critic_x='PASS' if (jr is not None and jr <= 2.0) else 'FAIL')
 
 
 def main():
@@ -211,7 +220,7 @@ def main():
             v = [int(t) for t in v if t.lstrip('-').isdigit()]
             pr = list(zip(v[0::2], v[1::2]))
         r = sash(img, acc, roi, ov, pr)
-    elif cmd == 'jog': r = jog(img, acc, roi)
+    elif cmd == 'jog': r = jog(img, acc, roi, ov)
     else: raise SystemExit(__doc__)
     print(json.dumps(r))
 
