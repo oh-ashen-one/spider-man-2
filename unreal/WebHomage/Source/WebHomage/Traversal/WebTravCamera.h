@@ -129,6 +129,10 @@ public:
 	double SettleDownMin = 5.5, SettleDownMax = 11.5, SettleT0 = 0.25, SettleT1 = 0.5;
 	// round 13 (critic r12: one-frame cuts): no cut -- the camera OUTPUT is slew-limited per 1/60 s (position first, the view re-aimed at
 	// the hero by the same correction, then pitch / yaw). SlewFlags (telemetry): 1 = position limited, 2 = pitch, 4 = yaw this frame.
+	// round 20: hero visibility lift (m, spring) + telemetry: visible probe points (0-4) and the camera enclosed by geometry
+	double VisUp = 0.0, VisUpV = 0.0, VisUpGoal = 0.0, VisHold = 0.0;
+	int32 VisPts = 4;
+	bool bCamEnclosed = false;
 	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipMaxStepYawDeg = 2.4;
 	int32 SlewFlags = 0;
 	/** Round 16: pick the held trick view at the release frame (TC1/TC2). Sets FlipAz / FlipOffDeg / FlipDistSel / FlipTier. */
