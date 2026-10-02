@@ -45,11 +45,27 @@ def main():
             if r['mode'] in ('air',): air = True
             if air and r['mode'] in ('land', 'ground', 'perch'):
                 td = r; break
+        # did the fall pass THROUGH a drawn platform (fire-escape deck / roof / any collision.json top) between two frames?
+        import numpy as np
+        thru = []
+        prev = None
+        for r in after:
+            x, y, z = f(r, 'x_m'), f(r, 'y_m'), f(r, 'z_m') - BODY_H
+            if prev is not None and z < prev[2]:
+                idx = D.near(x, y)
+                if idx.size:
+                    S = D.S[idx]; kk = D.k[idx]
+                    m = (S[:, 0] - 0.2 <= x) & (x <= S[:, 3] + 0.2) & (S[:, 1] - 0.2 <= y) & (y <= S[:, 4] + 0.2) & (S[:, 5] <= prev[2] + 0.05) & (S[:, 5] > z + 0.1)
+                    m &= np.isin(kk, ('fireescape', 'fireescape_kit', 'roof', 'wall', 'coping', 'parapet', 'ledge', 'cornice', 'equipment', 'bulkhead'))
+                    for i in np.nonzero(m)[0][:3]: thru.append([round(f(r, 't'), 3), str(kk[i]), round(float(S[i, 5]), 2)])
+            prev = (x, y, z)
+            if td is not None and r is td: break
+        rep['fell_through_platforms'] = thru[:20]
         if td is not None:
             x, y, z = f(td, 'x_m'), f(td, 'y_m'), f(td, 'z_m') - BODY_H
             what, dz = D.support(x, y, z, tol=0.45)
             rep['touchdown'] = {'t': f(td, 't'), 'mode': td['mode'], 'sub': td['sub'], 'feet': [x, y, round(z, 2)], 'surface': what, 'dz_m': round(dz, 3),
-                                'pass': what is not None}
+                                'pass': what is not None and not thru}
     if out: json.dump(rep, open(out, 'w'), indent=1)
     print(json.dumps(rep, indent=1))
 
