@@ -8,17 +8,22 @@
 
 float tfIGN(float2 p) { return frac(52.9829189f * frac(dot(p, float2(0.06711056f, 0.00583715f)))); }
 
-// pool.js aLod = (in0, in1, out0, out1) metres: fade in over [in0, in1], out over [out0, out1]; the near LOD fading out and the far LOD fading in use the same dither value n,
-// so there is neither a hole nor a double layer. Returns 1 = keep the pixel.
+// pool.js aLod: a pool fades IN over [near - fadeIn, near] and OUT over [far - fadeOut, far] (metres). band = (near, far, 0): the fades are pool.js's defaults (fadeIn = max(10, 0.08 near)
+// when near > 0, fadeOut = max(10, 0.08 far); build_terrain.py checks every pool of the export against them). The near LOD fading out and the far LOD fading in use the same dither
+// value n, so there is neither a hole nor a double layer. Returns 1 = keep the pixel.
+// (UE passes a VectorParameter to a Custom node as float3, never float4: a float4 `band` parameter failed to compile in the r02 warm-up.)
 // Not applied in shadow-depth and Lumen card-capture passes: there the camera is the light / the card, not the player (the pool then casts / bounces at every distance).
-float tfBand(float d, float4 band, float2 pix, float t)
+float tfBand(float d, float3 band, float2 pix, float t)
 {
 #if SHADOW_DEPTH_SHADER || LUMEN_CARD_CAPTURE
     return 1.0f;
 #else
+    float dNear = band.x, dFar = band.y;
+    float fin = dNear > 0.0f ? max(10.0f, dNear * 0.08f) : 0.0f;
+    float fout = max(10.0f, dFar * 0.08f);
     float n = frac(tfIGN(pix) + frac(t * 37.0f) * 1.618034f);
-    float vin  = band.y > band.x ? saturate((d - band.x) / (band.y - band.x)) : 1.0f;
-    float vout = band.w > band.z ? saturate((band.w - d) / (band.w - band.z)) : 1.0f;
+    float vin  = fin > 0.0f ? saturate((d - (dNear - fin)) / fin) : 1.0f;
+    float vout = saturate((dFar - d) / fout);
     return (n >= vout || n < 1.0f - vin) ? 0.0f : 1.0f;
 #endif
 }
@@ -49,7 +54,7 @@ float tfBumpH(float3 cp)
 // The lumpy clump crown (trees.js crownMaterial), 165-520 m. wpos / cam in UE cm; wn = world vertex normal; aLeaf = (exposure, per-lobe variation); tA / tB = the tree's autumn
 // palette (per-instance custom data); rnd = per-instance random (decorrelates the clump noise between crowns); band = LOD dither band (m); pix = SvPosition.xy; t = time (s).
 // Returns the base colour; op = 0 / 1 mask (ragged silhouette + LOD band), nW = bumped world normal.
-float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float3 tA, float3 tB, float rnd, float4 band, float2 pix, float t, float bumpGain,
+float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float3 tA, float3 tB, float rnd, float3 band, float2 pix, float t, float bumpGain,
                          out float op, out float3 nW)
 {
     float3 toCam = cam - wpos;
@@ -85,10 +90,14 @@ float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float
 
 // The leaf-card canopy (trees.js leafMaterial), 44-165 m, from the city's leaf atlas (R value, G hue selector, >= 0.97 twig, B spray depth, A coverage); the solid core spheres carry
 // aLeaf.x >= 2 and box-projected UVs. Returns the base colour; op = coverage mask (stochastic threshold + LOD band); sub = foliage transmission colour.
-float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv, float2 aLeaf, float3 tA, float3 tB, float3 wn, float3 wpos, float3 cam, float4 band, float2 pix, float t,
+float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv, float2 aLeaf, float3 tA, float3 tB, float3 wn, float3 wpos, float3 cam, float3 band, float2 pix, float t,
                         out float op, out float3 sub)
 {
+#if RAYTRACINGSHADER || RAYHITGROUPSHADER
+    float2 gx = float2(0.0f, 0.0f), gy = float2(0.0f, 0.0f);      // no derivatives in ray tracing hit shaders
+#else
     float2 gx = ddx(uv), gy = ddy(uv);
+#endif
     float3 toCam = cam - wpos;
     float dist = length(toCam) * 0.01f;
     float3 V = toCam / max(length(toCam), 1.0f);

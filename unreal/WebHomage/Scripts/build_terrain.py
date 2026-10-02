@@ -293,10 +293,13 @@ def leaf_name(rec):
     u = (rec.get('mat') or {}).get('map') or ''
     return os.path.basename(u).split('.')[0] or 'oak'
 def pool_band(d):
-    """(in0, in1, out0, out1) metres, exactly pool.js aLod: fade in over [near - fadeIn, near], out over [far - fadeOut, far]"""
+    """(near, far, 0, 0) metres: the pool's distance band. Foliage.ush tfBand derives the dithered fades from them with pool.js's defaults (fadeIn = max(10, 0.08 near) if near > 0, fadeOut = max(10, 0.08 far));
+    a Custom node receives a VectorParameter as float3, so the band is (near, far, 0). The export's own fadeIn / fadeOut are checked against the defaults (a mismatch is logged)."""
     near, far = float(d.get('near') or 0.0), float(d.get('far') or 3200.0)
-    fi, fo = float(d.get('fadeIn') or 0.0), float(d.get('fadeOut') or 0.0)
-    return (near - fi if near > 0 else 0.0, near, far - fo if fo > 0 else far, far)
+    fi = (max(10.0, near * 0.08) if near > 0 else 0.0); fo = max(10.0, far * 0.08)
+    if abs(fi - float(d.get('fadeIn') or 0.0)) > 0.01 or abs(fo - float(d.get('fadeOut') or 0.0)) > 0.01:
+        log('WARN pool fades differ from the pool.js defaults: near %.1f far %.1f fadeIn %s fadeOut %s' % (near, far, d.get('fadeIn'), d.get('fadeOut')))
+    return (near, far, 0.0, 0.0)
 @step('trees')
 def _step_trees():
     recs = [p for p in MAN['protos'] if TREE_RE.match(p['name'])]
@@ -439,7 +442,7 @@ def build_land(path):
         nt = 0; counts = {}
         def pool_material(pool, d):
             """a material instance per pool: parent by pool kind, LOD band from the export"""
-            b = pool_band(d); vec = {'band': (b[0], b[1], b[2], b[3])}
+            b = pool_band(d); vec = {'band': (b[0], b[1], 0.0, 0.0)}
             nm = 'Pool_' + pool.replace('-', '_')
             if pool.startswith('ez-') and pool.endswith('-leaves'):
                 rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]; ln = leaf_name(rec)

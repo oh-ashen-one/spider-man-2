@@ -140,6 +140,6 @@ float3 c = lerp(float3(a0, a1, a2), float3(b0, b1, b2), 0.5) * lerp(0.7, 1.15, n
 Rough = 0.95;
 return c;''',
         inputs=[('wpos', 'wpos', None), ('cam', 'cam', None), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
-                ('band', 'vector', (478.4, 520, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
-        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS')], blend='masked'))
+                ('band', 'vector', (520, 3200, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS')], blend='masked', nanite=True))
     return M

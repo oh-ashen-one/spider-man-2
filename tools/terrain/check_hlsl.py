@@ -70,7 +70,7 @@ def wrap(d):
         elif k == 'vc': params.append('float3 vc'); args.append('float3(0.3, 0.4, 0.5)')
         elif k == 'cam': params.append('float3 cam'); args.append('float3(1500.0, -2500.0, 6200.0)')
         elif k == 'wn': params.append('float3 wn'); args.append('float3(0.0, 0.6, 0.8)')
-        elif k == 'vector': params.append('float4 %s' % n); args.append('float4(1, 1, 1, 1)')
+        elif k == 'vector': params.append('float3 %s' % n); args.append('float3(520.0, 3200.0, 0.0)')   # UE passes a VectorParameter to a Custom node as float3 (the r02 warm-up caught float4 vs float3)
         else: params.append('float %s' % n); args.append('0.5')
     ty = {1: 'float', 2: 'float2', 3: 'float3'}
     for n, k, _ in d['outputs'][1:]: params.append('out %s %s' % (ty[k], n)); args.append('o_%s' % n)
