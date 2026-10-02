@@ -84,7 +84,7 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
   holds pass (river_low hp 11.7 / mean 62, autocorr 0.076 / 0.024, C14 22.0); harbour_high hp 8.19 + 187 crest-highlight "blobs" FAIL;
   seawall foam 0 FAIL (Dbg 4: no contact coverage). CPU emulation says the contact map reads ~1 m at the wall pixels, so the GPU should
   have shown foam: hold 2 has `Dbg 7` (cdm / under-water ray / cf) and `Dbg 8` (world-position stripes) stills to find out why.
-- Capture hold 2 queued 08:08 (08:53: third in the FIFO behind characters and traversal; a health-monitor PAUSE 08:40 was lifted) (`_scratch/water/r04/hold_r04b.sh`, log `r04/hold2.log`, pid `r04/hold2.pid`; variants
+- Capture hold 2 queued 08:08 (09:24: second in the FIFO behind traversal; a health-monitor PAUSE 08:40 was lifted) (`_scratch/water/r04/hold_r04b.sh`, log `r04/hold2.log`, pid `r04/hold2.pid`; variants
   `r04/variants2.json`: CBias 0.8 / 1.6 / 2.4, BendK 0.7 / 1.0, ChopFar 800 / 1500); gate file `r04/decide.json` (else
   `auto_params.json`). Perf chain 2 (`r04/perf_chain2.sh`, pid `r04/perf_chain2.pid`) runs the exclusive native-100 % perf right after.
   If this session is gone: when `hold2.log` says `HOLD r04b DONE`, run `bash _scratch/water/r04/post_r04.sh`, wait for
