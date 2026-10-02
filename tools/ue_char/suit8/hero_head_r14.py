@@ -53,9 +53,9 @@ NOSE_H = np.array([0.0,   4.0,   11.0,  17.0,  20.5,  17.0,  11.0,  6.0,   2.6, 
 NOSE_S = np.array([0.012, 0.0115, 0.0105, 0.0092, 0.0080, 0.0070, 0.0062, 0.0056, 0.0052, 0.0050, 0.0055])    # lateral sigma (m)
 
 PARAMS = dict(
-    brow_amp=12.5, brow_y=1.7075, brow_sy=0.0056, brow_arch=0.0125, brow_x0=0.060, brow_x1=0.092,        # round 15: brow 11 -> 12.5 mm
+    brow_amp=13.5, brow_y=1.7075, brow_sy=0.0056, brow_arch=0.0125, brow_x0=0.060, brow_x1=0.092,        # round 15: brow 11 -> 13.5 mm
     glabella=2.5,
-    socket_amp=-8.0, socket_x=0.041, socket_y=1.6715, socket_sx=0.033, socket_sy=0.0165,                    # round 15: socket -5.2 -> -8.0 mm (the lens + rim sit 2.8 mm deeper under the brow)
+    socket_amp=-8.8, socket_x=0.041, socket_y=1.6715, socket_sx=0.033, socket_sy=0.0165,                    # round 15: socket -5.2 -> -8.8 mm (the lens + rim sit 3.6 mm deeper under the brow)
     canthus_amp=-7.5, canthus_x=0.0125, canthus_y=1.6665, canthus_sx=0.0085, canthus_sy=0.0125,           # round 15: -5.0 -> -7.5; the inner corner of each eye: between the lens end and the nose bridge
     cheek_amp=9.0, cheek_x=0.050, cheek_y=1.6405, cheek_sx=0.0155, cheek_sy=0.0105,
     hollow_amp=-5.0, hollow_x=0.042, hollow_y=1.6195,
