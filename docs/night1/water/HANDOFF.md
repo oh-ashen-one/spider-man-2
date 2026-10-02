@@ -59,7 +59,8 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
 | dolly autocorrelation at 80 px | <= 0.10 | 0.224 | **0.006** (river_low), 0.041 (river_sun) pass |
 | C14 at S4 | 5..35 | 41.0 | **22.0** pass (look rig changed: far shore 151 vs 171) |
 | piling / seawall contact foam | present | none | **present** (`crop_river_low_4k_seawall_foam.jpg`) |
-| water GPU cost | <= 2.5 ms | 1.54 / 1.15 | see `round-02/perf.json` (PERF section below) |
+| water GPU cost (frame delta vs flat plane, exclusive lock, 4K TSR 67 %) | <= 2.5 ms | -0.01 / +6.41 (noisy) | **+1.23** river_low / **+0.42** S4 / -0.31 river_sun pass |
+| water GPU cost (sum of water passes) | <= 2.5 ms | 1.54 / 1.15 | 4.55 river_low / 0.97 S4 / 4.16 river_sun FAIL at near views |
 
 Why river_low cannot get its glints: in that framing the golden sun (compass az 238, elev 9) is behind-left of the camera, so the only
 highlights are sky reflections; the near water reaching Y >= 140 would need reflectance ~0.75 of a ~155 sky. Brighter water (variant G,
@@ -77,5 +78,21 @@ ChopK 1.6 ScatK 0.3) reached p99.5 144 / 0.7 % glints but mean Y 100. The into-t
    shore at coast-mesh level, but piers outside the exported detail tiles may be missing).
 6. Queue reality: one GPU hold takes ~1-2 h of waiting; batch everything (build + variants + captures) into one hold.
 
-## PERF
-(filled at the end of the round, see below)
+## PERF (round-02/perf.json, perf_gpu.json; NOTES.md has the table)
+`GPU-LOCK: class=perf exclusive=yes util_before=0% util_after=0% util_during_avg=59.9% wait_s=7573.75 instances_before=0 instances_max=1 contaminated=false`.
+End-to-end frame cost over the flat plane is inside budget, but the SingleLayerWater pass itself reads 3.6-3.7 ms at the near views (round 01
+0.75): the next round should slim the pixel shader (fewer slope samples at distance, drop the second realization beyond ~150 m, cheaper
+contact lookup) and re-measure.
+
+## Next round (suggested order)
+1. Critic verdict on `_scratch/critic-W-r02/pack` (7 pairs: river_sun vs into-the-sun ref, river_low vs pier ref, harbour_high vs aerial
+   golden waterfront, S4 vs aerial river, previous-vs-this still + dolly, sun dolly).
+2. river_low near-crop detail (hp sd 8.5 -> 12) without brightening: sharper GGX (lower VAR_K) on the resolved layers.
+3. Slim the SLW pixel shader (see PERF).
+4. Point SM2_WATER_EXPORT at the island export when it exists; check `/Game/Maps/Manhattan_WP` gets the water and its flat plane is hidden.
+5. Foam tint (cream, lower albedo) so the seawall band does not clip in the golden key.
+
+## State at hand-off
+- Nothing running (no engine, no hold, no waiter). Content (Manhattan + /Game/Water, round-02 defaults) is built in this worktree's
+  `unreal/WebHomage/Content` (git-ignored); Intermediate / DerivedDataCache kept for the next round (rebuild is ~10 min + queue).
+- Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones, ~1.4 GB), iteration stills, logs; dolly PNG frames deleted.

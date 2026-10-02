@@ -58,3 +58,19 @@ river_low 4K near crop: mean Y 79.3, rgb (86, 79, 61), p1 46, p99.5 122, high-pa
 river_sun 4K near crop: mean Y 136.8, p99.5 248.6, high-pass sd 27.3, glint 44.9 %.
 harbour_high 4K: mean Y 80.5. C14 at S4: 22.0 (4K) / 21.0 (1080); far shore 151.0, river 129.0.
 Dollies: autocorrelation at 80 px 0.006 (river_low; round 01 0.224) / 0.041 (river_sun); water dT per 10-fps sample 3.06 / 7.30 (round 01 1.47).
+
+## GPU cost (`perf.json`, sidecar `perf_gpu.json`)
+3840x2160 output, TSR 67 % (internal 2573x1447), static camera, t = 16..36 s, `tools/perf_ue/run_perf.py -csvGpuStats`, all six maps in ONE
+exclusive lock: `GPU-LOCK: class=perf exclusive=yes util_before=0% util_after=0% util_during_avg=59.9% wait_s=7573.75 instances_before=0 instances_max=1 contaminated=false`.
+
+| view | GPU avg ms water / flat base | frame delta | SingleLayerWater | SLW depth prepass | LumenReflections delta | sum of water passes |
+|---|---|---|---|---|---|---|
+| Water_View_RiverLow | 25.89 / 24.67 | +1.23 | 3.68 | 0.24 | +0.66 | 4.55 |
+| Water_Perf_S4 | 30.85 / 30.43 | +0.42 | 0.58 | 0.28 | +0.12 | 0.97 |
+| Water_View_RiverSun | 21.11 / 21.42 | -0.31 | 3.64 | 0.26 | +0.29 | 4.16 |
+
+Reading: end to end the round-02 water costs **+1.23 ms** (river_low), **+0.42 ms** (S4) and **-0.31 ms** (river_sun, noise) of GPU frame time over
+the flat P1 plane: inside the 2.5 ms budget. The per-pass stats tell a different story at the near, water-filled views: the SingleLayerWater
+pass reads **3.6-3.7 ms** (round 01: 0.75 at river_low), so the attributable-pass sum is 4.2-4.6 ms there (0.97 at S4). The M3 overlaps passes
+(the per-pass sum exceeds the frame delta), so the frame delta is the honest total, but the SLW pixel shader got ~5x heavier and is the
+first thing to cut next round (8 biased slope-texture samples + 3 wave/streak noise lookups + 8192x2625 contact-map sample per pixel).
