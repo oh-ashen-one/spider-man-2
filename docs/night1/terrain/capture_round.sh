@@ -18,6 +18,8 @@ GPU="${GPU_CMD:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"
 HOLD_START="${HOLD_START:-$(date +%s)}"; HOLD_BUDGET="${HOLD_BUDGET:-2100}"   # the lock kills a hold after 40 min: stop launching new runs after 35 min
 time_ok() { [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
 RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
+# GPU etiquette (2026-10-01 20:43: the first terrain warm-up pinned the GPU and WindowServer starved): throttle every run so the GPU idles between frames
+export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 [ -f "$UE_DIR/Content/Terrain/Maps/V_p1_south.umap" ] || { echo "terrain content missing (Content/Terrain/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
@@ -28,7 +30,7 @@ BASE_IDS="${BASE_IDS:-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"   # bas
 if want warm; then
   echo "== warm-up (shader compile, not kept)  $(gpu)"
   rm -rf "$TMP/warm"
-  RUN "$TMP/warm" -map /Game/Terrain/Maps/V_p1_south -res 960x540 -quit "${WARM_QUIT:-40}" -name warm -timeout 2300 -- -benchmark -fps=30 | tail -3
+  RUN "$TMP/warm" -map /Game/Terrain/Maps/V_p1_south -res 960x540 -quit "${WARM_QUIT:-12}" -name warm -timeout 2300 -- -benchmark -fps=30 | tail -3
 fi
 still() {  # <prefix> <id>
   local PRE="$1" ID="$2" NAME="$1$2"
@@ -69,6 +71,7 @@ movie() {  # <name> <script.json> <quit seconds>
   rm -rf "$TMP/$NAME/${NAME}_frames"
 }
 if want moves; then
+  export WH_CAPTURE_MAXFPS="${MOVIE_MAXFPS:-20}"
   movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"
   movie t5_avenue_to_park t5_avenue_to_park.json "${MOVE_QUIT:-15.4}"
 fi
