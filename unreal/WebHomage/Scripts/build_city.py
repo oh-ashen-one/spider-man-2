@@ -1253,7 +1253,36 @@ def spawn_boxes(wp=False):
     # /Engine/BasicShapes/Cube (one instance per box). WebTravWorld.cpp needs no change: IsTravCube() accepts any invisible Cube static-mesh
     # component and its ISM branch indexes one box per instance. One actor per box ('actor', the default) spawned at ~51 -> ~19 actors/s
     # (53 k boxes 1,077 s, 57 k boxes 2,203 s): it cannot scale to the whole island (~140 k boxes).
-    if os.environ.get('SM2_WHBOX_MODE', 'actor') == 'ism':
+    # (island r03) SM2_WHBOX_MODE=comp (default): one always-loaded actor per 256 m tile ("WHBoxes__t<ix>_<iz>") holding one PLAIN (non-instanced)
+    # invisible BlockAll /Engine/BasicShapes/Cube StaticMeshComponent per box ("WHBox_<n>", relative = world transform under a static scene root).
+    # WebTravWorld.cpp (SolidMode 2) indexes IsTravCube() per component from P->Bounds, so the index is identical to one actor per box; the
+    # actor mode's cost was UEditorEngine::AddActor -> FCachedActorLabels::Populate(World) per spawn (every label of the world hashed: quadratic,
+    # ~3 h for the island's ~140 k boxes; docs/night1/island/probe_spawn_r03.py). 'actor' stays available (SM2_WHBOX_MODE=actor).
+    mode = os.environ.get('SM2_WHBOX_MODE', 'comp')
+    if mode == 'comp':
+        by_tile = {}
+        for b in rows: by_tile.setdefault(tile_key((b[0] + b[3]) / 2, (b[2] + b[5]) / 2), []).append(b)
+        tb = time.time()
+        for tk, bs in sorted(by_tile.items()):
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='WHBoxes__t' + tk, folder='City/TraversalBoxes')
+            root_h = sds.k2_gather_subobject_data_for_instance(a)[0]
+            rh, fail = sds.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=root_h, new_class=unreal.SceneComponent, blueprint_context=None))
+            root = unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(rh))
+            root.set_mobility(unreal.ComponentMobility.STATIC)
+            for x0, y0, z0, x1, y1, z1 in bs:
+                h, fail = sds.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=rh, new_class=unreal.StaticMeshComponent, blueprint_context=None))
+                c = unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(h))
+                c.set_static_mesh(cube)
+                c.set_relative_location(U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), False, False)
+                c.set_relative_scale3d(unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))   # the cube is 100 cm: scale = size in metres
+                c.set_collision_profile_name('BlockAll'); c.set_visibility(False); c.set_cast_shadow(False)
+                c.set_mobility(unreal.ComponentMobility.STATIC)
+                n += 1
+            set_spatial(a, False, wp)
+            if len(by_tile) > 20 and n and (sorted(by_tile).index(tk) % 20 == 19): log('WHBox comp tiles %d / %d, %d boxes, %.0f s' % (sorted(by_tile).index(tk) + 1, len(by_tile), n, time.time() - tb))
+        log('WHBox comp tiles', len(by_tile), 'cube components', n, '%.0f s' % (time.time() - tb))
+        return n
+    if mode == 'ism':
         by_tile = {}
         for b in rows: by_tile.setdefault(tile_key((b[0] + b[3]) / 2, (b[2] + b[5]) / 2), []).append(b)
         for tk, bs in sorted(by_tile.items()):
@@ -1438,7 +1467,9 @@ if 'map' in STEPS:
 COLL_LEVEL = TESTS + '/City_Midtown_Collision'
 if 'coll' in STEPS:
     open_level(COLL_LEVEL)
-    nb = spawn_boxes(False)
+    # (island r03) the island's game map is the WP map (step 'wp' spawns its own boxes); the classic level stays an (empty) placeholder so
+    # build_manhattan.py's classic maps still load, unless SM2_ISLAND_COLL_BOXES=1
+    nb = spawn_boxes(False) if os.environ.get('SM2_ISLAND_COLL_BOXES', '0') == '1' else 0
     les.save_current_level()
     log('collision level', COLL_LEVEL, nb, 'WHBox cubes')
 
