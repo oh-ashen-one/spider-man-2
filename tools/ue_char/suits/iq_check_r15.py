@@ -6,8 +6,9 @@
   Q5  Ash sash end ("a lime cord floats 40 px off the Ash sash end, box 1490-1540 x 760-1150"): the accent pipe (thin lime blob left of the lime panel) must JOIN the end: per row of the pipe,
       the number of non-dark pixels between the pipe's right edge and the DEEP border cord (first pixel with luma < 55) is the gap; the gate is <= 5 px at the 90th percentile of the rows
       and no pipe pixel further than 5 px from the border; the same crop is saved for the eye
-  Q6  Verdant armpit piping ("pinched, box 1160-1270 x 1150-1270"): the amber cord that crosses the box: its vertical thickness per column along the cord's path (columns where the cord exists
-      at both sides of the box); pinch = the smallest thickness / the median thickness (1 = even; a gap = 0); the gate is >= 0.5
+  Q6  Verdant armpit piping ("pinched, box 1160-1270 x 1150-1270"): the amber cord near the box: its vertical thickness per column along the cord's own run (first to last column, without the
+      tapered ends); pinch = the smallest thickness / the median thickness (1 = even; a gap or a point = 0); the gate is >= 0.5.  Round 15 ends the cord at the shoulder cap's edge on the arm
+      (cap.r_in 7.5 cm on the torso side) instead of running it over the armpit crease, so the report also says where the cord starts / ends
   Q7  texture stretch under the brow (headside stills): the hood trim line (the suit's accent colour) over the brow: the width of its 20 -> 80 % edge rise and its thickness (px, perpendicular to
       the line, median over the columns of a window 30 - 200 px behind the brow tip) against (a) the same measure on the trim 520 - 780 px behind it (the temple, no relief): gate brow / temple <= 1.5,
       and (b) the same suit's round-14 still: the brow edge rise r15 / r14 (the 4096 base colour at 0.7 - 1.0 mm per texel smeared the brow trim; the 8192 map of round 15 should sharpen it).
@@ -82,12 +83,17 @@ def q6_armpit(im, accent, box=(1160, 1150, 1270, 1270), wide=(1040, 1040, 1420, 
         if not n: th.append(0); continue
         sizes = ndi.sum(colm, lab, range(1, n + 1)); th.append(int(sizes.max()))
     th = np.array(th, np.float64)
-    inside = th[80:-80]
-    ok_ends = th[:80].max() > 3 and th[-80:].max() > 3
+    nz = np.nonzero(th > 0)[0]
     med = float(np.median(th[th > 0])) if (th > 0).any() else 0.0
-    pinch = float(inside.min() / med) if med > 0 else 0.0
-    return dict(box=list(box), cord_columns=int((th > 0).sum()), median_thickness_px=round(med, 1), min_thickness_in_box_px=int(inside.min()), pinch_ratio=round(pinch, 2),
-                columns_in_box_without_cord=int((inside == 0).sum()), cord_on_both_sides=bool(ok_ends), Q6_unpinched_ge_0p5=bool(pinch >= 0.5))
+    if len(nz) < 20 or med <= 0:
+        return dict(box=list(box), cord_columns=int(len(nz)), cord_found=False, Q6_unpinched_ge_0p5=False)
+    first, last = int(nz[0]), int(nz[-1])
+    inner = th[first + 8:max(last - 14, first + 9)]            # the cord's own run, without the tapered ends (the cord may END before the box: then it is not crossing the crease at all)
+    pinch = float(inner.min() / med) if len(inner) else 0.0
+    gaps = int((inner == 0).sum())
+    ends_in_box = bool(box[0] - 80 + last < box[2])
+    return dict(box=list(box), cord_found=True, cord_columns=int(len(nz)), first_col=box[0] - 80 + first, last_col=box[0] - 80 + last, cord_ends_before_box_right_edge=ends_in_box,
+                median_thickness_px=round(med, 1), min_thickness_px=int(inner.min()) if len(inner) else 0, pinch_ratio=round(pinch, 2), gap_columns_in_run=gaps, Q6_unpinched_ge_0p5=bool(pinch >= 0.5))
 
 
 def trim_edge_width(im, accent, win):
