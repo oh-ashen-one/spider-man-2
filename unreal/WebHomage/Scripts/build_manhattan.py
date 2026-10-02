@@ -202,7 +202,10 @@ def step_city():
     # (island r01 resume) SM2_ISLAND_CITY_STEPS re-runs only some build_city.py steps on the existing /Game/City content, e.g. "wp" after the
     # 2026-10-01 14:24 reboot killed the pass in the WP step (the 64 min import before it had saved everything else)
     steps = os.environ.get('SM2_ISLAND_CITY_STEPS', 'clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp')
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), env)
+    # (island r03) the whole-island pass runs > 2 h (761 new meshes: import ~72 min + collision rebuild ~60 min, then kit / map / wp): the 7,200 s
+    # default timeout killed it at 07:24; SM2_ISLAND_UE_TIMEOUT (s, default 6 h) for this commandlet
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), env,
+              timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
 
 
 def step_traversal():
