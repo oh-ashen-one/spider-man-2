@@ -16,6 +16,7 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAR_BOX = (450, 192, 1350, 236)     # x0, y0, x1, y1 at 1080p: S4 far_shore of docs/night1/city/spec_regions.json
 SKY_ROWS = 90
+DISK_R = 40                         # px: how far from the predicted moon pixel the centre of the disk blob may lie
 
 
 def load(p, w=1920):
@@ -89,10 +90,12 @@ def moon_disk(im, pose, hour):
     try:
         import cv2
         n, lab, st, cen = cv2.connectedComponentsWithStats(m, connectivity=8)
+        # (round 06 fix) the disk is the largest blob whose centre lies within DISK_R px of the predicted pixel (the first version compared every blob in the search window against the
+        # best one with a distance factor that let a far speck replace the disk: it read 2 px for a 21.7 px disk)
         best = None
         for i in range(1, n):
             dist = math.hypot(cen[i][0] + x0 - px, cen[i][1] + y0 - py)
-            if best is None or st[i, cv2.CC_STAT_AREA] > st[best, cv2.CC_STAT_AREA] * (1.0 if dist < r else 0.0): best = i
+            if dist <= DISK_R and (best is None or st[i, cv2.CC_STAT_AREA] > st[best, cv2.CC_STAT_AREA]): best = i
         area = float(st[best, cv2.CC_STAT_AREA]) if best else 0.0
         out.update({'blob_area_px': area, 'disk_diameter_px': round(2 * math.sqrt(area / math.pi), 1), 'blob_centre_px': [round(float(cen[best][0] + x0), 1), round(float(cen[best][1] + y0), 1)] if best else None})
     except Exception as e:

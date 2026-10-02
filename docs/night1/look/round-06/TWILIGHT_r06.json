@@ -662,11 +662,11 @@
     "elevation": 37.9,
     "azimuth": 118.1,
     "peak_Y": 255.0,
-    "blob_area_px": 21.0,
-    "disk_diameter_px": 5.2,
+    "blob_area_px": 2322.0,
+    "disk_diameter_px": 54.4,
     "blob_centre_px": [
-     957.9,
-     185.1
+     958.7,
+     73.2
     ]
    },
    "sky_hp_std_box250_incl_moon": 2.8479394912719727,
@@ -696,17 +696,17 @@
     "elevation": 37.9,
     "azimuth": 118.1,
     "peak_Y": 255.0,
-    "blob_area_px": 9.0,
-    "disk_diameter_px": 3.4,
+    "blob_area_px": 12631.0,
+    "disk_diameter_px": 126.8,
     "blob_centre_px": [
-     1063.1,
-     136.3
+     986.5,
+     54.8
     ]
    },
    "sky_hp_std_box250_incl_moon": 3.238532304763794,
    "sky_hp_std_box250_excl_moon": 3.264127254486084,
    "mean_Y": 42.63159942626953,
-   "L25_pass": false
+   "L25_pass": true
   },
   {
    "file": "tod_S4m_1920x1080_Mv3_h22.jpg",
@@ -730,17 +730,17 @@
     "elevation": 37.9,
     "azimuth": 118.1,
     "peak_Y": 255.0,
-    "blob_area_px": 2.0,
-    "disk_diameter_px": 1.6,
+    "blob_area_px": 18569.0,
+    "disk_diameter_px": 153.8,
     "blob_centre_px": [
-     988.5,
-     192.0
+     947.9,
+     92.7
     ]
    },
    "sky_hp_std_box250_incl_moon": 3.287386894226074,
    "sky_hp_std_box250_excl_moon": 3.3251595497131348,
    "mean_Y": 42.13238525390625,
-   "L25_pass": false
+   "L25_pass": true
   },
   {
    "file": "tod_S4m_1920x1080_Mv4_h22.jpg",
@@ -764,17 +764,17 @@
     "elevation": 37.9,
     "azimuth": 118.1,
     "peak_Y": 255.0,
-    "blob_area_px": 1.0,
-    "disk_diameter_px": 1.1,
+    "blob_area_px": 2828.0,
+    "disk_diameter_px": 60.0,
     "blob_centre_px": [
-     919.0,
-     188.0
+     957.9,
+     72.7
     ]
    },
    "sky_hp_std_box250_incl_moon": 3.461104154586792,
    "sky_hp_std_box250_excl_moon": 3.41548490524292,
    "mean_Y": 41.807899475097656,
-   "L25_pass": false
+   "L25_pass": true
   },
   {
    "file": "tod_S4m_1920x1080_h22.jpg",
@@ -798,11 +798,11 @@
     "elevation": 37.9,
     "azimuth": 118.1,
     "peak_Y": 255.0,
-    "blob_area_px": 3.0,
-    "disk_diameter_px": 2.0,
+    "blob_area_px": 371.0,
+    "disk_diameter_px": 21.7,
     "blob_centre_px": [
-     1063.3,
-     136.3
+     961.1,
+     72.1
     ]
    },
    "sky_hp_std_box250_incl_moon": 2.2031006813049316,
