@@ -3,9 +3,9 @@
 """Round 13 hero eyes on the SCULPTED mask (tools/ue_char/suit8/hero_head_r13.py): the round-08 construction (one closed bezel ring sealed to a lens, both conformed to
 the mask surface z(x, y), the bezel's outer foot buried in the mask) with the round-13 numbers:
 
-  * lens >= 1.6x the round-12 width (r12: 38.5 mm x 17.7 mm, 12 deg tilt, blade shape; r13: 66 mm x ~30 mm (1.71x)), an ORIGINAL rounded pill / bean outline (tilt 3 deg, a
-    little taller toward the nose, arched top; NOT a teardrop and not the slanted blade of r12), centred 40.5 mm from the midline, so it stays inside the mask outline;
-  * ONE closed raised rim 3.9 mm wide (2.8 mm of lip + 1.1 mm shoulder; 30 px at 4K head close-ups, the gate is 6 px), 3.6 mm proud of the mask (r12: 4.3 / 2.3 mm), dark gunmetal in the material (MI_Hero_LensFrame, polished so it reads on a dark mask);
+  * lens >= 1.6x the round-12 width (r12: 38.5 mm x 17.7 mm, 12 deg tilt, blade shape; r13: 63 mm x ~30 mm (1.65x)), an ORIGINAL rounded pill / bean outline (tilt 3 deg, a
+    little taller toward the nose, arched top; NOT a teardrop and not the slanted blade of r12), centred 39 mm from the midline, so it stays inside the mask outline;
+  * ONE closed raised rim 3.4 mm wide (2.8 mm of lip + 0.6 mm shoulder; ~28 px at 4K head close-ups, the gate is 6 px), 3.6 mm proud of the mask (r12: 4.3 / 2.3 mm), dark gunmetal in the material (MI_Hero_LensFrame, polished so it reads on a dark mask);
   * a curved glossy lens: edge 0.8 mm + a 2.6 mm dome;
   * the surface under the eye comes from the sculpted mask: 2 mm envelope (r8: 5 mm) so the rim follows the eye socket and the nose bridge without floating.
 
@@ -18,12 +18,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import hero_lens_r8 as H  # noqa: E402
 
-A_HALF, B_HALF = 33.0, 13.5        # mm, lens half length / half height before the arch and the taper
+A_HALF, B_HALF = 31.5, 13.8        # mm, lens half length / half height before the arch and the taper
 TILT_DEG = 3.0
-H.CENTER_X, H.CENTER_Y = 0.0405, 1.6695
+H.CENTER_X, H.CENTER_Y = 0.0390, 1.6700
 H.N_OUT = 96
 H.RINGS = 10
-H.BEZEL = [(0.0, 0.8), (0.0, 2.8), (0.8, 3.5), (1.9, 3.6), (3.0, 2.4), (3.9, 0.9), (4.5, -0.9)]     # (outward offset mm, height above the mask mm); first = lens edge
+H.BEZEL = [(0.0, 0.8), (0.0, 2.8), (0.7, 3.5), (1.6, 3.6), (2.6, 2.4), (3.4, 0.9), (3.9, -0.9)]     # (outward offset mm, height above the mask mm); first = lens edge
 H.LENS_EDGE_H, H.LENS_DOME_H = 0.8, 2.6
 H.TILT = np.radians(TILT_DEG)
 

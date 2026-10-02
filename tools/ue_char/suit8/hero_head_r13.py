@@ -150,6 +150,11 @@ def sculpt(P, N, UV, J, W, F):
     nz = np.clip(n0[:, 2], 0, 1)
     wz = ss(nz, 0.32, 0.68)
     P2 = P.copy(); P2[:, 2] += (h * wz).astype(np.float32)
+    # temple / cheek-bone width: the egg is 168 mm wide at the eyes and the lenses wrap around its sides, so the head gets 6 mm wider each side at the eye level
+    # (x only: tapering to 0 toward the centre line, the jaw, the crown and the back of the head).  Without it the 63 mm lenses reach the silhouette at a 12 deg view.
+    ax_ = np.abs(P[:, 0].astype(np.float64))
+    wx = 0.006 * ss(ax_, 0.035, 0.080) * G(P[:, 1].astype(np.float64) - 1.672, 0.030) * ss(P[:, 2].astype(np.float64), -0.06, 0.01)
+    P2[:, 0] += (np.sign(P[:, 0]) * wx).astype(np.float32)
     n1 = welded_normals(P2, F)
     Nn = N + (n1 - n0)
     Nn = (Nn / (np.linalg.norm(Nn, axis=1, keepdims=True) + 1e-12)).astype(np.float32)

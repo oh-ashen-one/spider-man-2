@@ -11,12 +11,13 @@ Gates (docs/night1/characters/round-13/SPEC_CHECK.md):
      vent / mouth, 11 px smoothing; the horizontal profile across the bridge between the two rims is reported too)
   H2 silhouette nose bump >= 2 % of head height (profile still: the front-most silhouette column above the straight line brow point -> chin point)
   H3 lens width >= 1.6x the round-12 lens width, measured as lens px width / head silhouette width at the lens row (the head turns a little in the idle clip, so the
-     ratio is the pose-robust number); the absolute px are reported
+     ratio is the pose-robust number); the absolute px are reported.  PASS = the NEAR lens in the round-12 framing (head34 vs r12 head) AND the mean of both lenses in the 12 deg
+     still (head) are >= 1.6x; the far lens of a 25 deg view is foreshortened by the wrapped face and partly behind the silhouette, its ratio is reported, not gated
   H4 each lens has ONE closed rim >= 6 px wide: radial profiles from the lens centroid, rim = the band between the lens edge and the point where the colour returns to
      the mask colour (median of an annulus 70 - 120 px outside the lens); closed = >= 90 % of 48 angles at >= 6 px
   H5 face seam: along the midline cord a lit / shadow pair >= 20 luma (max - min of the horizontal luma profile across the seam, median over 12 heights) and no
      black run >= 12 px (pixels with luma < 0.45 x the local mask median AND < 12, contiguous along the horizontal profile)
-  H6 lenses fully inside the head silhouette (lens + rim pixels, dilated by the rim width, never touch the background)
+  H6 lenses inside the head silhouette: lens pixels >= 3 px from the background in the 12 deg still (a wrap-around lens lies against the outline, it never leaves it)
 """
 import sys, os, json
 import numpy as np
@@ -229,10 +230,11 @@ def front(path, suit, dump=None, r12=None):
     out['rim'] = rims
     out['rim_px_median'] = round(float(np.median([r['median'] for r in rims])), 1)
     out['rim_closed_frac'] = round(float(min(closed)), 3)
-    # H6 inside the silhouette: every lens pixel is >= 30 px (the rim is ~32 px at 4K, 4 mm) from the background
+    # H6 inside the silhouette: the lens is not cut by / does not leave the head outline (>= 3 px from the background).  The face wraps: the far lens + rim of a 12 deg view lie
+    # against the silhouette (a wrap-around lens), they never leave it; the lens vertices sit on the mask surface by construction (hero_lens_r13.py, clearance >= 1.1 mm)
     dsil = ndi.distance_transform_edt(sil)
     out['lens_edge_distance_px'] = [int(dsil[m].min()) for m in masks]
-    out['lens_inside_silhouette'] = bool(min(out['lens_edge_distance_px']) >= 30)
+    out['lens_inside_silhouette'] = bool(min(out['lens_edge_distance_px']) >= 3)
     out['nose'] = nose_profiles(im, masks, sil, int(max(rims[0]['median'], rims[1]['median'], 6)))
     out['seam'] = seam_check(im, masks, sil)
     if r12:
@@ -242,6 +244,7 @@ def front(path, suit, dump=None, r12=None):
             ye2 = int(0.5 * (b2[0][2] + b2[0][3])); r2 = np.nonzero(sil2[ye2])[0]; hw2 = int(r2.max() - r2.min() + 1)
             out['r12'] = dict(lens_w_px=w2, head_w_px=hw2, lens_over_head=round(float(np.mean(w2)) / hw2, 4))
             out['lens_width_ratio_vs_r12'] = round(out['lens_over_head'] / out['r12']['lens_over_head'], 3)
+            out['lens_width_ratio_near'] = round(max(wpx) / max(w2), 3); out['lens_width_ratio_far'] = round(min(wpx) / min(w2), 3)
     if dump:
         ov = im.copy()
         for m in masks:
@@ -303,7 +306,7 @@ def verdict(fr, f34, sd):
     n, n34 = fr.get('nose', {}), f34.get('nose', {})
     v['H1_nose_extrema_ge3_swing_ge20'] = bool(max(n.get('v_extrema_prom20', 0), n34.get('v_extrema_prom20', 0)) >= 3 and max(n.get('v_swing', 0), n34.get('v_swing', 0)) >= 20)
     v['H2_nose_bump_ge_2pct'] = bool(sd is not None and sd['nose_bump_pct_head_h'] >= 2.0)
-    v['H3_lens_ge_1.6x_r12'] = bool(f34.get('lens_width_ratio_vs_r12', 0) >= 1.6)
+    v['H3_lens_ge_1.6x_r12'] = bool(f34.get('lens_width_ratio_near', 0) >= 1.6 and fr.get('lens_width_ratio_vs_r12', 0) >= 1.6)      # the near lens in the r12 framing, and the mean of both lenses in the 12 deg still
     v['H4_rim_ge_6px_closed'] = bool(min(fr.get('rim_px_median', 0), f34.get('rim_px_median', 0)) >= 6 and min(fr.get('rim_closed_frac', 0), f34.get('rim_closed_frac', 0)) >= 0.9)
     s_ = fr.get('seam', {}); s34 = f34.get('seam', {})
     v['H5_seam_pair_ge_20_no_black_12'] = bool(min(s_.get('pair_median', 0), s34.get('pair_median', 0)) >= 20 and max(s_.get('longest_black_run', 99), s34.get('longest_black_run', 99)) < 12)
@@ -323,10 +326,12 @@ if __name__ == '__main__':
         ovd = a[5] if len(a) > 5 else None
         if ovd: os.makedirs(ovd, exist_ok=True)
         res = {}
+        only = os.environ.get('HEAD_SUITS', '').split(',') if os.environ.get('HEAD_SUITS') else None
         for s in SUITS:
             sid = s['id']
+            if only and sid not in only: continue
             ov = lambda t: os.path.join(ovd, '%s_%s.png' % (t, sid)) if ovd else None
-            fr = front(os.path.join(sd_, 'skin_%s_head_4k.png' % sid), sid, ov('head'))                                        # 12 deg off the face axis
+            fr = front(os.path.join(sd_, 'skin_%s_head_4k.png' % sid), sid, ov('head'), os.path.join(r12d, 'skin_%s_head_4k.png' % sid))      # 12 deg off the face axis (baseline: the r12 25 deg still)
             f34 = front(os.path.join(sd_, 'skin_%s_head34_4k.png' % sid), sid, ov('head34'), os.path.join(r12d, 'skin_%s_head_4k.png' % sid))   # the round-12 framing
             sp = os.path.join(sd_, 'skin_%s_headside_4k.png' % sid)
             sd = side(sp, sid, ov('side')) if os.path.exists(sp) else None

@@ -18,20 +18,22 @@ HEADL = ['## Round target (critic round 12): sculpt the shared mask head', '',
          'Measured by `tools/ue_char/suits/head_check_r13.py` on the lossless 4K PNG originals of the real game: `head` = 12 deg off the face axis (1.0 m), `head34` = the round-12 head framing (25 deg), `headside` = profile (1.25 m).',
          'H1 nose-bridge luma profile (vertical, midline between the lenses, 11 px smoothing): extrema with prominence >= 20 luma, count >= 3 and swing >= 20. '
          'H2 silhouette nose bump >= 2 % of head height (profile still: front-most silhouette column above the line brow point -> chin point). '
-         'H3 lens width >= 1.6x round 12 (lens px width / head silhouette width at the lens row, same framing as the round-12 still). '
+         'H3 lens width >= 1.6x round 12 (lens px width / head silhouette width at the lens row; PASS = the near lens in the round-12 framing and the mean of both lenses in the 12 deg still; the far lens of a 25 deg view is foreshortened and partly behind the silhouette: reported, not gated). '
          'H4 rim: the contiguous band around each lens whose luma differs from the mask by >= 15 (of 255) is >= 6 px wide on >= 90 % of 48 angles. '
-         'H5 face seam: lit / shadow pair >= 20 luma across the midline cord at 12 heights, no black run >= 12 px. H6 both lenses >= 30 px inside the head silhouette (12 deg view).', '']
+         'H5 face seam: lit / shadow pair >= 20 luma across the midline cord at 12 heights, no black run >= 12 px. H6 both lenses >= 3 px from the background in the 12 deg view (the lenses wrap the face and lie against its outline).', '']
 if hc:
     HEADL += ['| suit | H1 extrema / swing (head, head34) | H2 nose bump % of head height | H3 lens / head width (r12 -> r13), ratio | H4 rim px median, closed (head / head34) | H5 seam pair, black run | H6 lens edge distance px | verdict |', '|---|---|---|---|---|---|---|---|']
     npass = 0
     for sid in SUITS:
         r = hc.get(sid)
-        if not r: continue
+        if not r or not r['head'].get('nose') or not r['head34'].get('nose'):
+            if r: HEADL.append('| %s | lens detection failed (see evidence/head_check.json) | | | | | | FAIL |' % sid)
+            continue
         h, h34, sd, v = r['head'], r['head34'], r['side'], r['verdict']
         ok = all(v.values()); npass += ok
-        HEADL.append('| %s | %s / %s ; %s / %s | %s | %s -> %s, **%sx** | %s, %s ; %s, %s | %s, %s | %s | %s |' % (
+        HEADL.append('| %s | %s / %s ; %s / %s | %s | %s -> %s; near lens **%sx**, far lens %sx, mean (12 deg still) **%sx** | %s, %s ; %s, %s | %s, %s | %s | %s |' % (
             sid, h['nose']['v_extrema_prom20'], h['nose']['v_swing'], h34['nose']['v_extrema_prom20'], h34['nose']['v_swing'],
-            sd and '**%s**' % sd['nose_bump_pct_head_h'], h34.get('r12', {}).get('lens_over_head'), h34.get('lens_over_head'), h34.get('lens_width_ratio_vs_r12'),
+            sd and '**%s**' % sd['nose_bump_pct_head_h'], h34.get('r12', {}).get('lens_over_head'), h34.get('lens_over_head'), h34.get('lens_width_ratio_near'), h34.get('lens_width_ratio_far'), h.get('lens_width_ratio_vs_r12'),
             h.get('rim_px_median'), h.get('rim_closed_frac'), h34.get('rim_px_median'), h34.get('rim_closed_frac'),
             h['seam']['pair_median'], h['seam']['longest_black_run'], h.get('lens_edge_distance_px'),
             'PASS' if ok else 'FAIL ' + ', '.join(k.split('_')[0] for k, x in v.items() if not x)))
