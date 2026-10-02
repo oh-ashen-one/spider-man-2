@@ -6,6 +6,7 @@
 set -uo pipefail
 R="$(cd "$1" && pwd)"; REPO="$(cd "$(dirname "$0")/../.." && pwd)"; cd "$REPO"; REF=/Users/midir/spiderman-learnings/refs/streets
 S=$R/stills
+cp /Users/midir/sm2-n1/_scratch/terrain/prep/lawn_stats.json "$R/lawn_prep_stats.json" 2>/dev/null && echo "grass scatter stats -> $R/lawn_prep_stats.json"
 python3 tools/terrain/lawn_stats.py "$R/lawn_stats.json" "$S/p4_greatlawn.jpg:1700,1000,512,400:critic p4_greatlawn" "$S/p10_lawn_eye.jpg:1300,1700,512,460:critic p10_lawn_eye" \
   "$S/p10_lawn_eye.jpg:2240,1856,512,512:guard p10" "$S/p4_greatlawn.jpg:3520,1856,512,512:guard p4" "$S/p9_park_panorama.jpg:512,1856,512,512:guard p9" | tee "$R/lawn_stats.txt"
 # references, same tool: native 1920x1080 and put on the 4K output grid (x2); lawn windows picked by eye on the frames (no character, no sky)
