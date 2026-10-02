@@ -1,17 +1,17 @@
 {
  "name": "r3_crosstown_east",
- "note": "Island r01 route 3 (30 s): airborne swing chain EAST along the cross street at y 640 m (new tiles: Chelsea -> Flatiron), from x -560 at 30 m.",
+ "note": "Island r01 route 3 (30 s): airborne swing chain EAST along the cross street at y 640 m (new tiles), from x -300 at 40 m, 26 m/s. (r01 take 1 started at x -560 / 30 m / 24 m/s: the first rope (anchor 36 m) swung the hero BACK west, the re-press found nothing toward the region edge and it landed at 5.3 s and ran the sidewalk.)",
  "seed": 1234,
  "spawn": {
   "pos": [
-   -560,
+   -300,
    640,
-   30
+   40
   ],
   "yaw": 0,
   "camPitch": 0.12,
   "vel": [
-   24,
+   26,
    0,
    0
   ]
