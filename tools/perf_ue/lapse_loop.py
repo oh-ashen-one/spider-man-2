@@ -21,12 +21,13 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--cvars', default=''); ap.add_argument('--iters', type=int, default=4)
     ap.add_argument('--deadline', type=float, default=0.0); ap.add_argument('--keys-hours', default='5.6,6.25,6.5,6.8,7.0,7.2,7.4,18.8,19.2,19.5,19.8,20.2,20.6,21.0')
     ap.add_argument('--hold', default='4.9,7.6,8.0,9.5,13,16.5,18.4,21.4,0'); ap.add_argument('--slope', type=float, default=1.3); ap.add_argument('--gain', type=float, default=0.8)
-    ap.add_argument('--window', type=float, default=0.25); ap.add_argument('--substeps', type=int, default=1); ap.add_argument('--anchor-w', type=float, default=2e3); ap.add_argument('--from-it', type=int, default=0, help='first iteration number (a continued loop)'); ap.add_argument('--doc', default='', help='table document (default: the committed Scripts/look_presets.json)')
+    ap.add_argument('--window', type=float, default=0.25); ap.add_argument('--substeps', type=int, default=1); ap.add_argument('--max-delta', type=float, default=1.3, help='largest total change (EV) of a key bias from the starting table'); ap.add_argument('--anchor-w', type=float, default=2e3); ap.add_argument('--from-it', type=int, default=0, help='first iteration number (a continued loop)'); ap.add_argument('--doc', default='', help='table document (default: the committed Scripts/look_presets.json)')
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     doc = json.load(open(a.doc)) if a.doc else look_tod.load_doc()
     kh = [float(x) for x in a.keys_hours.split(',')]; hold = [float(x) for x in a.hold.split(',') if x]
     sets = []; overrides = {}
+    base_bias = {k['h']: k['p']['pp.AutoExposureBias'] for k in look_tod.expand(doc, [])['keys']}
     for it in range(a.from_it, a.from_it + a.iters):
         if a.deadline and time.time() + 200 > a.deadline: print('loop: deadline close, stopping before iteration', it); break
         tab = look_tod.expand(doc, sets)
@@ -49,6 +50,7 @@ def main():
             dh = ((hr - h + 12) % 24) - 12; w = np.clip(1.0 - np.abs(dh) / a.window, 0.0, None)
             if w.sum() <= 0: continue
             nb = float(nk[h]['pp.AutoExposureBias']) + a.gain * float((w * dev).sum() / w.sum())
+            nb = min(max(nb, base_bias[h] - a.max_delta), base_bias[h] + a.max_delta)
             sets.append('h=%g:pp.AutoExposureBias=%.4f' % (h, nb)); overrides[str(h)] = round(nb, 4)
         json.dump(overrides, open(os.path.join(out, 'bias_overrides.json'), 'w'), indent=1)
     print('overrides', json.dumps(overrides))
