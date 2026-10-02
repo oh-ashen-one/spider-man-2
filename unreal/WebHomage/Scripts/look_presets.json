@@ -1145,9 +1145,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -1247,9 +1247,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
@@ -1422,9 +1422,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -1618,9 +1618,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -1814,9 +1814,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -1917,9 +1917,9 @@
      "sun.SurfaceGain": 0.004126,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
@@ -2096,9 +2096,9 @@
      "sun.SurfaceGain": 0.001803,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -2292,9 +2292,9 @@
      "sun.SurfaceGain": 0.001254,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -2488,9 +2488,9 @@
      "sun.SurfaceGain": 0.001106,
      "sunc.VolumetricScatteringIntensity": 0.0164,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -2684,9 +2684,9 @@
      "sun.SurfaceGain": 0.001142,
      "sunc.VolumetricScatteringIntensity": 0.0936,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -2880,9 +2880,9 @@
      "sun.SurfaceGain": 0.001326,
      "sunc.VolumetricScatteringIntensity": 0.2187,
      "sunc.CloudScatteredLuminanceScale": [
-      0.175,
-      0.175,
-      0.175,
+      0.075,
+      0.075,
+      0.075,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -2982,9 +2982,9 @@
      "sun.SurfaceGain": 0.001693,
      "sunc.VolumetricScatteringIntensity": 0.3743,
      "sunc.CloudScatteredLuminanceScale": [
-      0.2,
-      0.2,
-      0.2,
+      0.1,
+      0.1,
+      0.1,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
@@ -3157,9 +3157,9 @@
      "sun.SurfaceGain": 0.002358,
      "sunc.VolumetricScatteringIntensity": 0.5432,
      "sunc.CloudScatteredLuminanceScale": [
-      0.225,
-      0.225,
-      0.225,
+      0.125,
+      0.125,
+      0.125,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -3353,9 +3353,9 @@
      "sun.SurfaceGain": 0.003525,
      "sunc.VolumetricScatteringIntensity": 0.7076,
      "sunc.CloudScatteredLuminanceScale": [
-      0.25,
-      0.25,
-      0.25,
+      0.15,
+      0.15,
+      0.15,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -3549,9 +3549,9 @@
      "sun.SurfaceGain": 0.005458,
      "sunc.VolumetricScatteringIntensity": 0.8502,
      "sunc.CloudScatteredLuminanceScale": [
-      0.275,
-      0.275,
-      0.275,
+      0.175,
+      0.175,
+      0.175,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -3675,9 +3675,9 @@
      "sun.SurfaceGain": 0.008634,
      "sunc.VolumetricScatteringIntensity": 0.9532,
      "sunc.CloudScatteredLuminanceScale": [
-      0.3,
-      0.3,
-      0.3,
+      0.2,
+      0.2,
+      0.2,
       1.0
      ],
      "moonc.VolumetricScatteringIntensity": 0.1
@@ -3846,9 +3846,9 @@
      "sun.SurfaceGain": 0.013913,
      "sunc.VolumetricScatteringIntensity": 0.9991,
      "sunc.CloudScatteredLuminanceScale": [
-      0.3875,
-      0.3875,
-      0.3875,
+      0.3,
+      0.3,
+      0.3,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -4042,9 +4042,9 @@
      "sun.SurfaceGain": 0.022866,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.475,
-      0.475,
-      0.475,
+      0.4,
+      0.4,
+      0.4,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -4238,9 +4238,9 @@
      "sun.SurfaceGain": 0.038195,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.5625,
-      0.5625,
-      0.5625,
+      0.5,
+      0.5,
+      0.5,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -4364,9 +4364,9 @@
      "sun.SurfaceGain": 0.064347,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.65,
-      0.65,
-      0.65,
+      0.6,
+      0.6,
+      0.6,
       1.0
      ],
      "moonc.VolumetricScatteringIntensity": 0.1
@@ -4535,9 +4535,9 @@
      "sun.SurfaceGain": 0.108944,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.7375,
-      0.7375,
-      0.7375,
+      0.7,
+      0.7,
+      0.7,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -4731,9 +4731,9 @@
      "sun.SurfaceGain": 0.185892,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.825,
-      0.825,
-      0.825,
+      0.8,
+      0.8,
+      0.8,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -4927,9 +4927,9 @@
      "sun.SurfaceGain": 0.320733,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.9125,
-      0.9125,
-      0.9125,
+      0.9,
+      0.9,
+      0.9,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -6015,7 +6015,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.95,
+     "pp.AutoExposureBias": 0.85,
      "pp.AutoExposureHighPercent": 95.0,
      "fog.FogInscatteringLuminance": [
       0.156,
@@ -7279,9 +7279,9 @@
      "sun.SurfaceGain": 0.037787,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.9375,
-      0.9375,
-      0.9375,
+      0.925,
+      0.925,
+      0.925,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -7475,9 +7475,9 @@
      "sun.SurfaceGain": 0.022739,
      "sunc.VolumetricScatteringIntensity": 1.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.875,
-      0.875,
-      0.875,
+      0.85,
+      0.85,
+      0.85,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -7671,9 +7671,9 @@
      "sun.SurfaceGain": 0.013877,
      "sunc.VolumetricScatteringIntensity": 0.9991,
      "sunc.CloudScatteredLuminanceScale": [
-      0.8125,
-      0.8125,
-      0.8125,
+      0.775,
+      0.775,
+      0.775,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -7867,9 +7867,9 @@
      "sun.SurfaceGain": 0.008621,
      "sunc.VolumetricScatteringIntensity": 0.9532,
      "sunc.CloudScatteredLuminanceScale": [
-      0.75,
-      0.75,
-      0.75,
+      0.7,
+      0.7,
+      0.7,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -8063,9 +8063,9 @@
      "sun.SurfaceGain": 0.005455,
      "sunc.VolumetricScatteringIntensity": 0.8502,
      "sunc.CloudScatteredLuminanceScale": [
-      0.6875,
-      0.6875,
-      0.6875,
+      0.625,
+      0.625,
+      0.625,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -8259,9 +8259,9 @@
      "sun.SurfaceGain": 0.003545,
      "sunc.VolumetricScatteringIntensity": 0.7076,
      "sunc.CloudScatteredLuminanceScale": [
-      0.625,
-      0.625,
-      0.625,
+      0.55,
+      0.55,
+      0.55,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -8455,9 +8455,9 @@
      "sun.SurfaceGain": 0.00239,
      "sunc.VolumetricScatteringIntensity": 0.5432,
      "sunc.CloudScatteredLuminanceScale": [
-      0.5625,
-      0.5625,
-      0.5625,
+      0.475,
+      0.475,
+      0.475,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -8556,9 +8556,9 @@
      "sun.SurfaceGain": 0.001682,
      "sunc.VolumetricScatteringIntensity": 0.3743,
      "sunc.CloudScatteredLuminanceScale": [
-      0.5,
-      0.5,
-      0.5,
+      0.4,
+      0.4,
+      0.4,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
@@ -8731,9 +8731,9 @@
      "sun.SurfaceGain": 0.001258,
      "sunc.VolumetricScatteringIntensity": 0.2187,
      "sunc.CloudScatteredLuminanceScale": [
-      0.4583,
-      0.4583,
-      0.4583,
+      0.3533,
+      0.3533,
+      0.3533,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -8927,9 +8927,9 @@
      "sun.SurfaceGain": 0.001017,
      "sunc.VolumetricScatteringIntensity": 0.0936,
      "sunc.CloudScatteredLuminanceScale": [
-      0.4167,
-      0.4167,
-      0.4167,
+      0.3067,
+      0.3067,
+      0.3067,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9123,9 +9123,9 @@
      "sun.SurfaceGain": 0.000906,
      "sunc.VolumetricScatteringIntensity": 0.0164,
      "sunc.CloudScatteredLuminanceScale": [
-      0.375,
-      0.375,
-      0.375,
+      0.26,
+      0.26,
+      0.26,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9319,9 +9319,9 @@
      "sun.SurfaceGain": 0.000924,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.3333,
-      0.3333,
-      0.3333,
+      0.2133,
+      0.2133,
+      0.2133,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9515,9 +9515,9 @@
      "sun.SurfaceGain": 0.001172,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.2917,
-      0.2917,
-      0.2917,
+      0.1667,
+      0.1667,
+      0.1667,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9628,9 +9628,9 @@
      "sun.SurfaceGain": 0.002359,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.25,
-      0.25,
-      0.25,
+      0.12,
+      0.12,
+      0.12,
       1.0
      ],
      "pp.AutoExposureMinBrightness": 1.0,
@@ -9801,9 +9801,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.225,
-      0.225,
-      0.225,
+      0.1025,
+      0.1025,
+      0.1025,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9997,9 +9997,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.2,
-      0.2,
-      0.2,
+      0.085,
+      0.085,
+      0.085,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10193,9 +10193,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.175,
-      0.175,
-      0.175,
+      0.0675,
+      0.0675,
+      0.0675,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10389,9 +10389,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10585,9 +10585,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10698,9 +10698,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
@@ -10867,9 +10867,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -11063,9 +11063,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -11178,9 +11178,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
@@ -11334,7 +11334,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 10.5,
-     "pp.AutoExposureBias": -0.5032,
+     "pp.AutoExposureBias": -0.3532,
      "pp.BloomIntensity": 0.49234374999999997,
      "pp.BloomThreshold": 0.6459375000000004,
      "pp.VignetteIntensity": 0.44617187499999994,
@@ -11351,9 +11351,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -11416,7 +11416,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.705,
+     "pp.AutoExposureBias": -0.555,
      "sky.Intensity": 0.12,
      "fill.N": 0.04,
      "fill.E": 0.025,
@@ -11460,9 +11460,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.15,
-      0.15,
-      0.15,
+      0.05,
+      0.05,
+      0.05,
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
