@@ -21,7 +21,8 @@ float3 TerrainLawnR4(Texture2D tDet, SamplerState tDetSampler, Texture2D tNoise,
   float4 d2 = Texture2DSample(tDet, tDetSampler, q2);
   float4 d3 = Texture2DSample(tDet, tDetSampler, q3);
   // clump / blade mottling: the three scales add (std 0.07 + 0.11 + 0.10 of the luminance + grain 0.05)
-  float mott = (d1.r - 0.5f) * 0.34f + (d2.r - 0.5f) * 0.52f + (d3.r - 0.5f) * 0.46f + (d1.a - 0.5f) * 0.22f;
+  // r04 hold 1 measured ~half of what the numpy simulation predicted (guard p4 hp6 SD 4.7, p9 5.4; target 8): the fine scales (d1 / d2, 0.3-1 m) get ~2x, the coarse 16 m patches stay (no more blotches, more grain)
+  float mott = (d1.r - 0.5f) * 0.36f + (d2.r - 0.5f) * 0.62f + (d3.r - 0.5f) * 0.26f + (d1.a - 0.5f) * 0.22f;
   c *= clamp(1.0f + k.x * mott, 0.55f, 1.55f);
   // wear / dirt patches 0.3-3 m with ragged edges, mostly where the grass is thin (G field high)
   float wr = smoothstep(0.70f, 0.84f, d3.g * 0.55f + d2.g * 0.45f + 0.12f * (d1.g - 0.5f));

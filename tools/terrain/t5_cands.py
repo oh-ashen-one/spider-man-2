@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """r04: candidate routes for docs/night1/terrain/scripts/t5_avenue_to_park.json (headless telemetry probes pick the one whose last 5 s cross the park at 25-40 m).
 Writes <outdir>/*.json (traversal scripts: spawn + keys; north = -y, 5th Av at x = 250, the park rectangle x -234..234, y -2151..-569).
-usage: t5_cands.py <outdir>"""
+usage: t5_cands.py <outdir> [refine]"""
 import json, os, sys
 out = sys.argv[1]; os.makedirs(out, exist_ok=True)
 def script(name, note, spawn, keys, tune=None):
@@ -16,6 +16,18 @@ def air_keys(sky, th, hd, repress=99.0): return [{'t': 0.0, 'move': [0, 1], 'hea
 for k in [air_keys(0, 0, 0)]:
     for kk in k:
         for key in [x for x, v in kk.items() if v is None]: del kk[key]
+REFINE = len(sys.argv) > 2 and sys.argv[2] == 'refine'   # r04 hold 2: variants around the hold-1 winner s5_y290_sky1_hang25 (59 % of the last 5 s over the park at 25-40 m, 78 % over the park, lands at 15.0 s)
+T0 = 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9'
+CR = [
+ ('w0_s5_again', 'hold-1 winner (control)', FOOT(-290), foot_keys(1, 9.0, -130), T0),
+ ('w1_y300_hang15', 'foot start y -300 (park entry ~0.3 s earlier), hang 0.15', FOOT(-300), foot_keys(1, 9.0, -130), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.15,SkyHangVz=9'),
+ ('w2_y290_hang10', 'hang 0.10, hang band |vz| < 12', FOOT(-290), foot_keys(1, 9.0, -130), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.10,SkyHangVz=12'),
+ ('w3_y290_peak34_40', 'apex 34-40 m with hang 0.15', FOOT(-290), foot_keys(1, 9.0, -130), 'SkyPeakMin=34,SkyPeakMax=40,SkyHangK=0.15,SkyHangVz=10'),
+ ('w4_y300_h140', 'heading -140 from 9 s, hang 0.15', FOOT(-300), foot_keys(1, 9.0, -140), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.15,SkyHangVz=9'),
+ ('w5_y310_hang12', 'foot start y -310, hang 0.12, apex 32-38 m', FOOT(-310), foot_keys(1, 9.5, -130), 'SkyPeakMin=32,SkyPeakMax=38,SkyHangK=0.12,SkyHangVz=10'),
+ ('w6_y290_t95', 'heading change at 9.5 s, hang 0.15', FOOT(-290), foot_keys(1, 9.5, -130), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.15,SkyHangVz=9'),
+ ('w7_y320_hang10', 'foot start y -320, hang 0.10, apex 32-38 m', FOOT(-320), foot_keys(1, 9.0, -125), 'SkyPeakMin=32,SkyPeakMax=38,SkyHangK=0.10,SkyHangVz=12'),
+]
 C = [
  ('f2_y290_h130_sky1', 'foot start y -290, heading -130 from 9 s, sky launches', FOOT(-290), foot_keys(1, 9.0, -130)),
  ('f3_y250_h125_sky1', 'foot start y -250, heading -125 from 8 s, sky launches', FOOT(-250), foot_keys(1, 8.0, -125)),
@@ -29,9 +41,9 @@ C = [
  ('s6_y260_sky1_hang25', 'airborne start (250, -260, 26), heading -120 from 9 s, sky launches capped at a 30-36 m peak with a long apex hang', AIR(-260, 26), air_keys(1, 9.0, -120), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9'),
  ('s3_y240_sky1_hang', 'airborne start (250, -240, 26), heading -120 from 9.5 s, sky launches 30-45 m peak with more hang', AIR(-240, 26), air_keys(1, 9.5, -120), 'SkyPeakMin=30,SkyPeakMax=45,SkyHangK=0.4'),
 ]
-for c in C:
+for c in (CR if REFINE else C):
     n, note, sp, ks = c[:4]
     for kk in ks:
         for key in [x for x, v in kk.items() if v is None]: del kk[key]
     script(n, note, sp, ks, c[4] if len(c) > 4 else None)
-print('%d candidates in %s' % (len(C), out))
+print('%d candidates in %s' % (len(CR if REFINE else C), out))

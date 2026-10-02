@@ -113,6 +113,9 @@ def _step_tex():
         elif n == 'leaf_atlas': tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)   # data atlas (G >= 0.97 = twig): linear, uncompressed, tiled
         elif n.startswith('leaf_'): tex_settings(t, True, wrap=False)
         else: tex_settings(t, srgb)
+        if n in ('grass_col', 'noise', 'asphalt_col', 'water_nrm', 'lawn_detail', 'blanket_weave'):
+            try: t.set_editor_property('never_stream', True)   # r04: a still (2 s of game time) / the first movie frames otherwise show the lowest mips: the p10 blanket and the start-of-run gravel path read flat
+            except Exception as ex: log('WARN never_stream', n, str(ex)[:80])
     EAL.save_directory(TEXD, only_if_is_dirty=False, recursive=True)
     log('textures done')
 

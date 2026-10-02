@@ -8,7 +8,7 @@
 
 PARK_INC = '/Project/Terrain/Park.ush'
 LAWN_GRADE = (0.54, 1.22, 0.10, 1.0)   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
-LAWN_K = (0.55, 0.14, 1.0, 1.0)        # r04 Lawn.ush: (detail amplitude, mowing-stripe amplitude, grass saturation)
+LAWN_K = (1.0, 0.16, 1.0, 1.0)        # r04 Lawn.ush: (detail amplitude, mowing-stripe amplitude, grass saturation)
 LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand-written; Park.ush is generated)
 FILL = 450.0   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
@@ -44,16 +44,16 @@ c = lerp(c, float3(0.0742, 0.0704, 0.0648) * (0.9 + 0.2 * n2.r) * (0.82 + 0.36 *
 r = lerp(r, 0.9, max(edge, dr));
 float Lk = dot(c, float3(0.2126, 0.7152, 0.0722));   // soft luma knee: sunlit light gravel must not clip under the golden rig (same idea as the city sidewalk's SunK)
 c *= lerp(1.0, min(1.0, (0.30 + (Lk - 0.30) * 0.3) / max(Lk, 0.0001)), step(0.30, Lk));
-Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE))
+Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); Spec = lerp(0.04, 0.25, max(edge, dr)); return c * gain;   // r04: Spec 0.04 on turf (UE default 0.5: at the p10 eye height (73 deg incidence) the Fresnel term mirrored the sky: display blue 49 on a lawn whose albedo blue is 0.004)''',
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR')]))
     # coast / plaza lawns: the same lawn shader, lawn variant (meadow everywhere, no ball fields / ponds / woodland floor)
     M.append(dict(name='M_TerrainLawn', include=LAWN_INC, code='''
 float r; float3 n;
 float2 p = wpos.xy * 0.01;
 float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n);
 c = TerrainLawnR4(tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk);
-Rough = r; NormalW = n; return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE))
+Rough = r; NormalW = n; Spec = 0.04; return c * gain;''',
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR')]))
     # City Hall Park / Bowling Green / Battery lawns (ground.js 'mapLawns': grass_col at 7 m x tint 0xb4b89a)
     M.append(dict(name='M_TerrainMapLawn', include=None, code='''
 float2 p = wpos.xy * 0.01;
@@ -104,11 +104,11 @@ g *= lerp(0.72, 1.28, vc.g) * lerp(0.9, 1.1, rnd);
 g = lerp(g, float3(0.3, 0.23, 0.05) * lerp(0.4, 1.0, h), step(0.988, vc.g) * 0.85);
 AO = lerp(0.3, 1.0, smoothstep(0.0, 0.6, h));
 Sub = g * 0.55;
-Rough = 0.8; NormalW = normalize(lerp(wn, float3(0.0, 0.0, 1.0), 0.4));
+Rough = 0.8; Spec = 0.05; NormalW = normalize(lerp(wn, float3(0.0, 0.0, 1.0), 0.4));
 return g * gain;''',
         inputs=[('vc', 'vc', None), ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('t', 'time', None), ('rnd', 'pir', None), ('windamp', 'scalar', 2.0), ('gain', 'scalar', 1.0),
                 ('fade0', 'scalar', 12.0), ('fade1', 'scalar', 17.5), ('near0', 'scalar', 0.0), ('near1', 'scalar', 0.0), ('rootz', 'scalar', 19.0)],
-        outputs=BASE + [('AO', 1, 'MP_AMBIENT_OCCLUSION'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True, foliage=True))
+        outputs=BASE + [('AO', 1, 'MP_AMBIENT_OCCLUSION'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Spec', 1, 'MP_SPECULAR'), ('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True, foliage=True))
     # r04 picnic blankets: woven gingham (256^2 tile = 0.24 m), fringed ends (masked comb), fold shading (world-space wrinkle normal); replaces the flat M_TerrainVC2 tints (critic r3: pale / maroon slabs)
     M.append(dict(name='M_TerrainBlanket', include=None, code='''
 float2 t2 = float2(uv0.x * 7.5, uv0.y * 6.25);

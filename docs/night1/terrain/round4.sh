@@ -17,7 +17,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-4}" MOVIE_MAXFPS="${MOVIE_MAXFPS:-12}" WARM_QUIT="${WARM_QUIT:-75}" HIDE_HERO=1 BASE_IDS=""   # movies: 1080p, fixed 1/60 s step, frame cap 12 fps (r03: 20) so the GPU idles between frames
 case "${STAGE:-A}" in
   A) # hold 1 = the whole round in one hold: safe warm-up, the nine 4K stills (lawn / canopy gate p10 p4 p9 p1 first), the t5 route probes (nullrhi, picks the best candidate), the t4 + t5 movies, GPU ms of p1 / p10 HEAD vs r04
-     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04 PROBE_DIR="$HERE/round-04/t5_candidates"
+     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04 PROBE_DIR="${PROBE_DIR:-$HERE/round-04/t5_candidates}"
      ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=("t5probe" "moves" "basegpu");;
   B) # hold 2: everything the first hold did not take (the other five stills + the t5 movie on the chosen route); BASE_IDS stays empty
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" ONLY_IDS="${ONLY_IDS:-p2_reservoir p3_lake p6_west_shore p7_east_shore p8_pier}" PRIO_IDS="${PRIO_IDS-}" STILL_TAG="${STILL_TAG:-r04}" MOVIES=t5_avenue_to_park
