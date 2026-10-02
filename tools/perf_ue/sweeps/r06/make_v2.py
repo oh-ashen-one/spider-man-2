@@ -35,6 +35,12 @@ KNOBS = {
     'tw_warm': {'dusk': [(18.8, 0.0), (19.2, 0.4), (19.5, 0.8), (19.8, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.6), (6.25, 1.0), (6.8, 0.8), (7.3, 0.2), (7.6, 0.0)]},
     'tw_factor': [4.0, 1.6, 0.6],
     'tw_sky_scale': 0.5, 'tw_fill_scale': 0.3, 'tw_amb': 0.3,
+    # round-06 hold-2 findings: the sky unfogged at EVERY hour (cutoff 7e5 on every key) = no cutoff switch at all (golden S4 117.6 -> 99.9, far band 168 -> 141); hero lights 1.6 x nominal;
+    # golden: red highlights down (S7 clipped 3.6 -> 1.6 %), shade fill .2 (Y<10 on S1 / S3 / S6 / S8 under 8 %)
+    'cutoff_all': 700000.0,
+    'hero_scale': 1.6,
+    'golden_set': {'pp.ColorGainHighlights': [0.55, 0.72, 0.72, 1.0], 'mpc.ShadeFill': 0.2},
+    'golden_hours': [7.6, 18.4],
     'twilight_overrides': {},      # {hour: {param: value}} applied last (sweep results go here)
 }
 
@@ -115,6 +121,10 @@ def apply(doc, K):
             sset['fog.SkyAtmosphereAmbientContributionColorScale'] = [round(1 - (1 - K['tw_amb']) * w, 4)] * 3 + [1.0]
         if ww > 0: sset['atm.SkyLuminanceFactor'] = [round(1 + (f - 1) * ww, 4) for f in K['tw_factor']] + [1.0]
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
+        if K.get('cutoff_all') is not None: sset['fog.FogCutoffDistance'] = K['cutoff_all']
+        if h in K.get('golden_hours', []):
+            for pk, pv in K['golden_set'].items(): sset[pk] = pv
+        if 'hero' in sset and K.get('hero_scale') is not None: sset['hero'] = round(sset['hero'] * K['hero_scale'], 3)
     return d
 
 
