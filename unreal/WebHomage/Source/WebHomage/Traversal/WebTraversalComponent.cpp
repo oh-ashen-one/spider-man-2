@@ -2160,6 +2160,36 @@ bool UWebTraversalComponent::TryMantleSetback(const FVector& N0)
 		S.Kin.Type = EKin::Mantle; S.Kin.P0 = S.Pos; S.Kin.P1 = Mid; S.Kin.P2 = P1; S.Kin.N0 = N; S.Kin.N1 = N2; S.Kin.Sp = Sp; S.Kin.bRun = true;
 		S.Kin.Dur = FMath::Clamp((FVector::Dist(S.Pos, Mid) + FVector::Dist(Mid, P1)) / Sp, 0.14, 0.38);
 		S.Kin.Inward = Wf.Point;
+		if (MantleStep > 0.5f)
+		{ // round 21 (critic r20: "mid-facade hop at c 3.55 s", limbs 3 m off the wall): cross the setback ON its surfaces -- up the lip,
+		  // round the edge, along the ledge top (normal up), cut the inner corner, onto the next face; the IK stride keeps running on
+		  // whichever surface is under him, so every limb stays on it
+			const double D = WallDist;
+			const FVector InW = -N;
+			const double Dn = FMath::Max(0.6, Wf.Distance - WallDist);
+			const FVector C(S.Pos.X - N.X * WallDist, S.Pos.Y - N.Y * WallDist, 0.0); // old face plane at the hero
+			double TopZ = LedgeZ;
+			for (double Fr : { 0.25, 0.5, 0.8 })
+			{
+				FTravHit Tp; const FVector Q = C + InW * (Dn * Fr);
+				if (TravWorld.Raycast(FVector(Q.X, Q.Y, LedgeZ + 3.2), FVector(0, 0, -1), 4.5, Tp) && Tp.Normal.Z > 0.5) TopZ = FMath::Max(TopZ, Tp.Point.Z);
+			}
+			const FVector Zu(0, 0, 1), NE = (N + Zu).GetSafeNormal();
+			const double Cut = FMath::Min(0.5, FMath::Max(0.1, Dn - 2.0 * D) * 0.5);
+			FKin& K = S.Kin;
+			K.MNum = 0;
+			auto AddQ = [&K](const FVector& Q, const FVector& Nq) { if (K.MNum < 6) { K.MQ[K.MNum] = Q; K.MN[K.MNum] = Nq; K.ML[K.MNum] = K.MNum ? K.ML[K.MNum - 1] + FVector::Dist(K.MQ[K.MNum - 1], Q) : 0.0; ++K.MNum; } };
+			AddQ(S.Pos, N);
+			if (S.Pos.Z < TopZ - 0.05) AddQ(FVector(S.Pos.X, S.Pos.Y, TopZ - 0.05), N);
+			AddQ(FVector(C.X, C.Y, TopZ) + NE * D, NE);
+			AddQ(FVector(C.X, C.Y, TopZ) + InW * 0.15 + Zu * D, Zu);
+			AddQ(FVector(C.X, C.Y, TopZ) + InW * FMath::Max(0.3, Dn - D - Cut) + Zu * D, Zu);
+			AddQ(FVector(C.X, C.Y, TopZ) + InW * (Dn - D) + Zu * (D + Cut + 0.25), N2);
+			K.MS = 0; K.CurN = N; K.CurPt = S.Pos - N * D;
+			K.Dur = FMath::Max(0.1, K.ML[K.MNum - 1] / Sp);
+			K.P2 = K.MQ[K.MNum - 1];
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV setback step: ledge top z %.2f, depth %.2f m, path %.2f m, %.2f s"), TopZ, Dn, K.ML[K.MNum - 1], K.Dur);
+		}
 		++SetbackCount;
 		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall setback mantled at ledge z %.1f (next face %.1f m in): the run continues"), LedgeZ, Wf.Distance - WallDist);
 		return true;
@@ -2203,6 +2233,33 @@ void UWebTraversalComponent::StepWallHop(double Hs)
 void UWebTraversalComponent::StepKin(double Hs)
 {
 	FKin& K = S.Kin;
+	if (K.Type == EKin::Mantle && K.MNum > 1)
+	{ // round 21: surface-following setback step (distance along the centre polyline at the run speed)
+		K.MS = FMath::Min(K.MS + K.Sp * Hs, K.ML[K.MNum - 1]);
+		int32 Sg = 1;
+		while (Sg < K.MNum - 1 && K.ML[Sg] < K.MS) ++Sg;
+		const double L0 = K.ML[Sg - 1], L1 = K.ML[Sg];
+		const double F = L1 > L0 + 1e-6 ? FMath::Clamp((K.MS - L0) / (L1 - L0), 0.0, 1.0) : 1.0;
+		const FVector Prev = S.Pos;
+		S.Pos = FMath::Lerp(K.MQ[Sg - 1], K.MQ[Sg], F);
+		K.CurN = FMath::Lerp(K.MN[Sg - 1], K.MN[Sg], F).GetSafeNormal();
+		const double Dd = S.W.Dist;
+		K.CurPt = S.Pos - K.CurN * Dd;
+		const FVector Tan = (K.MQ[Sg] - K.MQ[Sg - 1]).GetSafeNormal();
+		S.Vel = Tan * K.Sp;
+		S.W.Up = Tan; S.W.Point = K.CurPt;
+		(void)Prev;
+		if (K.MS >= K.ML[K.MNum - 1] - 1e-6)
+		{
+			const FKin KK = K;
+			S.Kin.Type = EKin::None; S.Kin.MNum = 0;
+			const FVector Pt = KK.Inward;
+			const double RK = S.W.RunK;
+			EnterWall(KK.N1, FVector(Pt.X, Pt.Y, S.Pos.Z), true, KK.Sp);
+			S.W.RunV = FMath::Max(S.W.RunV, KK.Sp); S.WallCooldown = 0.0; S.W.Up = ZUP; S.W.RunK = RK;
+		}
+		return;
+	}
 	K.T += Hs / K.Dur;
 	const double U = FMath::Min(1.0, K.T);
 	const double E = U * U * (3 - 2 * U);
@@ -2800,17 +2857,31 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		// round 06 (critic r05, ref wall-run): head-up climb-run — body up = along the wall, chest to the wall, torso leaned
 		// back off it while running (runK). The browser's "run cycle rotated onto the wall" frame (body up = normal) is gone.
 		FWall& W = S.W;
-		const FVector N = W.Normal;
+		const bool bMStep = S.Kin.Type == EKin::Mantle && S.Kin.MNum > 0; // round 21: crossing a setback on its surfaces
+		const FVector N = bMStep ? S.Kin.CurN : W.Normal;
 		const bool bGait = UWebTravAnimInstance::bWallGait;
 		const bool bRunning = (S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip || (bGait && S.Sub == N_wallRunSide && W.bFast);
 		W.RunK = Damp(W.RunK, bRunning ? 1 : 0, bRunning ? 9 : 7, Dt);
 		FVector Along = W.Up - N * FVector::DotProduct(W.Up, N);
 		if (Along.SizeSquared() < 1e-4) Along = ZUP;
 		Along.Normalize();
+		// round 21 (critic r20: "the side-run is a plank"; ref side run: raised torso, head leading): a side run raises the body axis
+		// WallSideRaiseDeg above the run line toward the wall's up axis (the legs keep striding along the run line)
+		if (bGait && S.Sub == N_wallRunSide && WallSideRaiseDeg > 0.f && S.Kin.Type != EKin::Mantle)
+		{
+			FVector WU = ZUP - N * FVector::DotProduct(ZUP, N);
+			FVector Perp = WU - Along * FVector::DotProduct(WU, Along);
+			if (Perp.SizeSquared() > 1e-4)
+			{
+				Perp.Normalize();
+				const double Ar = FMath::DegreesToRadians(double(WallSideRaiseDeg)) * FMath::Clamp(W.RunK, 0.0, 1.0);
+				Along = (Along * FMath::Cos(Ar) + Perp * FMath::Sin(Ar)).GetSafeNormal();
+			}
+		}
 		Fwd = -N; Up = Along;
 		S.Pitch = -(bGait ? double(WallGaitLeanR) : WallRunLean) * W.RunK; // round 19: the IK stride leans further off the wall (hands reach it)
 		if (bTrickCancel && S.Sub == N_wallRunSide) S.Pitch *= 0.4; // round 20: a side run keeps the head on the run line (lean 40 %)
-		Rate = 14;
+		Rate = bMStep ? 26 : 14; // round 21: the body follows the surface round the ledge lip / inner corner
 		break;
 	}
 	default:
@@ -2836,8 +2907,9 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 	{
 		const FWall& W = S.W;
 		const double ToPlane = W.Dist;
+		const FVector SurfN = (S.Kin.Type == EKin::Mantle && S.Kin.MNum > 0) ? S.Kin.CurN : W.Normal; // round 21
 		// feet 0.30 m off the wall when crawling, WallRunFootOff when running (the striding foot reaches the wall)
-		RootPos = S.Pos + W.Normal * (FMath::Lerp(0.30, UWebTravAnimInstance::bWallGait ? double(WallGaitFootOffR) : WallRunFootOff, W.RunK) - ToPlane) - BodyUp * H;
+		RootPos = S.Pos + SurfN * (FMath::Lerp(0.30, UWebTravAnimInstance::bWallGait ? double(WallGaitFootOffR) : WallRunFootOff, W.RunK) - ToPlane) - BodyUp * H;
 	}
 	else RootPos = S.Pos - BodyUp * H;
 	if (S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch) RootPos.Z = S.Pos.Z - H + S.StepOff;
@@ -2867,6 +2939,7 @@ void UWebTraversalComponent::WriteAnim(const FQuat& Q)
 	A.Wall.Normal = S.W.Normal; A.Wall.Move = S.W.Move; A.Wall.bFast = S.W.bFast; A.Wall.Phase = float(S.W.Phase);
 	A.Wall.RunK = S.Mode == EWebTravMode::Wall ? float(S.W.RunK) : 0.f;
 	A.Wall.Point = S.W.Point * 100.0; A.Wall.Up = S.W.Up;
+	if (S.Mode == EWebTravMode::Wall && S.Kin.Type == EKin::Mantle && S.Kin.MNum > 0) { A.Wall.Normal = S.Kin.CurN; A.Wall.Point = S.Kin.CurPt * 100.0; } // round 21: the support surface
 	A.Perch.Point = S.P.Pos * 100.0; A.Perch.Normal = S.P.Normal; A.Perch.Kind = S.P.Kind; A.Perch.Impact = S.P.Impact * 100.0;
 	A.LandingSeverity = float(S.LandSeverity); A.Trick = S.Trick; A.TrickSide = float(S.TrickSide); A.TrickDur = float(S.TrickDur);
 	A.bDive = S.bDive || S.bGliding; A.bGlide = S.bGliding;

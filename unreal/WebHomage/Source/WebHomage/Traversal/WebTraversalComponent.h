@@ -60,6 +60,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipRange = 260.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
+	// round 21 (-WHTravTune): side-run torso raised this many degrees above the run line toward the wall's up axis (0 = r20 plank);
+	// MantleStep 1 = a setback is crossed ON the surfaces (up the lip, along the ledge top, onto the next face; limbs stay on them), 0 = r20 hop
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideRaiseDeg = 25.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MantleStep = 1.f;
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
@@ -345,6 +349,9 @@ private:
 		// wallHop
 		double TA = 0, TB = 0, F0 = 0, Apex = 0, LandTop = 0, DTot = 0, ExitSpeed = 0;
 		FVector Inward = FVector::ZeroVector;
+		// round 21 surface-following setback step: centre polyline (m), surface normal per vertex, cumulative length, distance travelled
+		FVector MQ[6], MN[6]; double ML[6] = { 0 }; int32 MNum = 0; double MS = 0;
+		FVector CurN = FVector::ZeroVector, CurPt = FVector::ZeroVector; // current support surface (normal, closest point) while stepping
 	};
 	struct FQuick
 	{
