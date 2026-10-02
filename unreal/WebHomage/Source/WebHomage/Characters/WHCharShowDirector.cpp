@@ -4,6 +4,7 @@
 #include "Characters/WHCharStage.h"
 #include "Characters/WHHeroSuit.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "AnimationRuntime.h"
 #include "EngineUtils.h"
 #include "Misc/FileHelper.h"
 #include "HAL/FileManager.h"
@@ -147,7 +148,24 @@ void AWHCharShowDirector::Tick(float Dt)
 		Loc = (S.Kind == EWHShotKind::Orbit ? Aim : SmoothAim) + Dir * S.Distance + FVector(0, 0, S.CamHeight);
 	}
 	const FVector Look = (S.Kind == EWHShotKind::Orbit ? Aim : SmoothAim);
-	Cam->SetActorLocationAndRotation(Loc, (Look - Loc).Rotation());
+	FRotator CamRot = (Look - Loc).Rotation();
+	if (S.bHeadLock)
+		if (USkeletalMeshComponent* SK = Tgt->FindComponentByClass<USkeletalMeshComponent>())
+			if (SK->GetSkeletalMeshAsset())
+			{
+				const FReferenceSkeleton& RS = SK->GetSkeletalMeshAsset()->GetRefSkeleton();
+				const int32 HB = RS.FindBoneIndex(FName(TEXT("head")));
+				if (HB != INDEX_NONE)
+				{
+					const FTransform RefW = FAnimationRuntime::GetComponentSpaceTransformRefPose(RS, HB) * SK->GetComponentTransform();
+					const FTransform NowW = SK->GetBoneTransform(HB);
+					const FQuat Dq = NowW.GetRotation() * RefW.GetRotation().Inverse();
+					Loc = NowW.GetLocation() + Dq.RotateVector(Loc - RefW.GetLocation());
+					CamRot = (Dq * CamRot.Quaternion()).Rotator();
+					if (bCut) UE_LOG(LogTemp, Display, TEXT("WH_HEADLOCK shot %d head turn %.2f deg (yaw %.2f pitch %.2f roll %.2f)"), Idx, FMath::RadiansToDegrees(Dq.GetAngle()), Dq.Rotator().Yaw, Dq.Rotator().Pitch, Dq.Rotator().Roll);
+				}
+			}
+	Cam->SetActorLocationAndRotation(Loc, CamRot);
 	Cam->GetCameraComponent()->SetFieldOfView(S.FOV);
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 		if (PC->GetViewTarget() != Cam) PC->SetViewTarget(Cam);

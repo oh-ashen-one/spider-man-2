@@ -40,6 +40,10 @@ struct WEBHOMAGE_API FWHShot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") int32 Suit = -1;
 	/** Round 11: the shot's target is player 0's pawn (the real playable hero) instead of Target. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") bool bTargetPlayer = false;
+	/** Round 16 (P2 skins): a CLOSEUP portrait locked to the target's HEAD bone: the camera is placed and aimed as the shot would place it for the head in its reference
+	 *  (bind) pose, then moved rigidly with the head's current world transform (so the idle head turn / tilt does not swing the face off the camera axis).  Used by the
+	 *  'headfront' still: the face's centre seam then lies in the camera's plane. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") bool bHeadLock = false;
 };
 
 UCLASS()

@@ -1328,11 +1328,14 @@ if 'skinsmap' in STEPS:
         chan = unreal.LightingChannels(); chan.set_editor_property('channel0', True); chan.set_editor_property('channel1', True)
         hs.get_editor_property('mesh').set_editor_property('lighting_channels', chan)
         return hs
-    def sshot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, label='', suit=-1, player=False):
+    def sshot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, label='', suit=-1, player=False, head_lock=False):
         sh = unreal.WHShot()
         for k, v in (('kind', kind), ('duration', dur), ('distance', dist), ('aim_height', aim), ('cam_height', camh), ('fov', fov),
                      ('orbit_deg_per_sec', orbit), ('azimuth', az), ('label', label), ('suit', suit), ('target_player', player)):
             sh.set_editor_property(k, v)
+        if head_lock:      # round 16 (critic r15: "the Cinder centre seam zig-zags ~60 px" = the idle head turn seen by a body-fixed camera): the portrait follows the head bone
+            try: sh.set_editor_property('head_lock', True)
+            except Exception as ex: log('head_lock not available (old C++ module?)', str(ex)[:120])
         if t is not None: sh.set_editor_property('target', t)
         return sh
     def save_skins_map(MAP, shots):
@@ -1357,7 +1360,8 @@ if 'skinsmap' in STEPS:
     FIRST_EXTRA = float(os.environ.get('P2_FIRST_EXTRA', '1.0'))
     for i, nm in enumerate(names):
         for j, (vn, kd, az, dist, aim, camh, fov) in enumerate(VIEWS):
-            shots.append(sshot(hero_s, kd, SHOT_S + (FIRST_EXTRA if (i == 0 and j == 0) else 0.0), dist, aim, camh, fov, 0.0, az, label='%s %s' % (nm, vn), suit=i if j == 0 else -1))
+            shots.append(sshot(hero_s, kd, SHOT_S + (FIRST_EXTRA if (i == 0 and j == 0) else 0.0), dist, aim, camh, fov, 0.0, az, label='%s %s' % (nm, vn), suit=i if j == 0 else -1,
+                               head_lock=(vn == 'headfront' and os.environ.get('P2_HEADLOCK', '1') == '1')))
     N_STILL = len(shots)
     ORBIT_S, ORBIT_RATE = 1.5, 40.0
     for i, nm in enumerate(names):          # continuous 40 deg/s orbit across the suit changes (the azimuth continues from shot to shot)
