@@ -28,7 +28,7 @@ def main():
     for e in cfg['suits']:
         sid = e['id']
         row = []
-        for v, (fw, ow) in (('front', (0.46, WF)), ('back', (0.46, WB)), ('chest', (0.82, WC))):
+        for v, (fw, ow) in (('front', (0.46, WF)), ('back', (0.46, WB)), ('chest', (0.82, WC)), ('head', (0.667, 520))):      # round 13: + the sculpted head
             p = os.path.join(d, 'skin_%s_%s_4k.jpg' % (sid, v))
             if os.path.exists(p): row.append(crop_center(cv2.imread(p), fw, ow, H))
             else: row.append(np.full((H, ow, 3), 40, np.uint8))

@@ -1,10 +1,54 @@
-# P2 Characters: handoff (round 12, first-pass piece G: hero skins)
+# P2 Characters: handoff (round 13, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 12 author: Opus 5.5 (2026-10-01 evening); round 11: Sonnet 5.5.
-Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `build_fight.sh`, see Commands).
-Scope since the director's first-pass plan (`git show origin/Opus-5.5-Loop-Night-1:docs/night1/director/PLAN-firstpass.md`, piece G): **the HERO ONLY**. Thugs, fight, crowd are PAUSED (their rounds 05 - 10 below stay as the record).
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 13 author: Sonnet 5.5 (2026-10-01 night, orchestrated from the director's r13 target).
+Everything is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated, rebuilt by `build_fight.sh`, see Commands). Scope: the HERO ONLY (+ the enemy-pack merge gate).
+
+## STATE OF ROUND 13 (read this first)
+
+Round target (director, after the r12 critic [hero 5, anim 5, enemies 4, civilians 5, IQ 5; IP PASS]): SCULPT the shared mask head (brow, eye sockets, nose bridge + tip, cheek bones, mouth, chin),
+lenses >= 1.6x their r12 width each with ONE closed raised dark rim sealed to a curved glossy lens, the 12 px black face seam replaced by raised piping; merge gate: the enemy pack back to the
+r10 content (7 enemies in the lineup, weapons, exposure; fight clip = the unchanged r10 choreography), keep r12's passing lines, Verdant / Saffron / Plum with no IP watch items.
+
+### What was built (all CPU-side, committed)
+| piece | file |
+|---|---|
+| head sculpt (numpy; one script on the hero GLB, so all 8 suits inherit it): 2 levels of conforming refinement of the front face zone (~2 mm triangles), Gaussian relief field (brow ridge + glabella, eye sockets, nose bridge / tip / alae / undercut, cheek bones + hollows, mouth bulge + groove, chin), z-displacement windowed by n_z, 6 mm temple widening, delta normals (welded by position) | `tools/ue_char/suit8/hero_head_r13.py` |
+| eyes on the sculpted surface: 63 mm x 28 mm pill / bean lenses (r12: 38.5 x 17.7 mm, 12 deg blade; now 3 deg tilt, arched, rounded ends; NOT a teardrop), 3.4 mm raised rim 3.6 mm proud (r12 4.3 / 2.3 mm), lens edge 0.8 + 2.6 mm dome; r8's `hero_lens_r8.py` is the library (monkey-patched outline / profile / 2 mm envelope) | `tools/ue_char/hero_lens_r13.py` |
+| rim material: polished gunmetal (`MI_Hero_LensFrame`: base 0.30 / 0.30 / 0.33, metallic 0.9, roughness 0.25; r12 matte near-black = invisible on a dark mask) | `Scripts/build_characters.py` ('mat') |
+| face seam: a raised cord in the body colour (`relief.seam` 2.2 mm, was an INK groove 2.2 mm wide); satin hood (`rough_hood` 0.50), hood colour halfway to the crown colour (near-black hoods hid the relief), crown piping arc + brow flashes moved up (the lenses grew); the glyph on the sash is laid in DEEP (Cinder: cyan on cyan) | `tools/ue_char/suit8/design.py` |
+| Plum: jade / mint accent -> apricot gold (`#f2b36b`) (the r12 critic's "watch Plum's purple + mint") | `tools/ue_char/suits/suits.json` |
+| Char_Skins views: `head` (12 deg off the face, 1.0 m), `head34` (the r12 framing exactly, for the lens comparison), `headside` (profile, 1.25 m); 6 views x 8 suits | `Scripts/build_characters.py` ('skinsmap') |
+| Char_Lineup: 7 enemies (the grey hood is back at the end of the row, 100 cm spacing), -0.6 EV bias, enemy fill 1.4 -> 1.0 lux | `Scripts/build_characters.py` ('map') |
+| pass test of the head on the 4K stills (H1 - H6, definitions in the file header) | `tools/ue_char/suits/head_check_r13.py` (+ `spec_check_r13.py`) |
+| chain / post / pairs | `tools/ue_char/suits/chain_r13.sh`, `post_r13.sh`, `make_pairs_r13.py` |
+
+Prep order (CPU, `$P2_SCRATCH/ueimport/SK_Hero.glb`): `prep_glbs.py` -> `hero_head_r13.py` -> `hero_lens_r13.py` -> `hero_weights_r12.py` (build_characters.py 'prep' does the same). The maps (`hero_suit_r8.py` Tessera 8192 +
+`gen_suits.py` 7 x 4096) were regenerated with the final design (`art/night1/characters/hero/suits/`, git-ignored); `test_regression.py` PASS (r8 legacy texel for texel + the r13 default hashes).
+
+### Honest findings of this round (measured, not asserted)
+- **The skins-stage EV did NOT leak into `Char_Lineup`.** r04 and r12 lineups have the same exposure (wall 208.3 / 207.5 of 255). The washed-out look is the pale sunlit wall + the fill; this round's -0.6 EV / weaker fill is a real change, not a revert. The r12 lineup had 6 enemies since round 05 (the grey hood twin was dropped), the r10 critic's "7 enemies" counted the 6 + the hero.
+- Lens width vs head width is limited by the face: at x = 0.07 m the mask surface is already ~60 deg from the view axis, so in a 25 deg view the far lens is foreshortened and runs against the silhouette. Gate H3 is therefore: the NEAR lens in the r12 framing and the MEAN of both lenses in the 12 deg still (the far-lens ratio is reported). The 6 mm temple widening and the 63 mm width are the compromise (66 / 72 mm touched or left the outline).
+- CPU soft-render numbers (not evidence) on the final GLB: nose bump 8.7 % of the head height, lens 1.65x model width (63 vs 38.5 mm).
+- Grips: the pipe / bat sit across a loose fist (tool `tools/ue_char/fight/weapon_clip_check.py`, r10 fit unchanged, CPU previews in the round dir if captured); the lineup stands in the hero idle (the guard idle holds the weapon vertically in front of the face).
+
+### The capture chain (ONE GPU-lock hold, ~15 - 25 min) and what to do next
+Queued in the GPU lock at 2026-10-02 00:00 (wrapper PID in `$P2_SCRATCH/r13/chain_wrapper.pid`, log `$P2_SCRATCH/r13/chainA/gpu_wrapper.log`): the lock's holder `look hold1.sh` had been
+running > 3 h (not mine), 3 jobs ahead. If the wrapper is still alive, LEAVE IT (never start a second engine, never kill it unless the owner asks); the chain then runs by itself (build -> 4K stills of 8 suits x 6 views -> lineup x2 -> pawn swap -> orbit -> hero / chase / fight / crowd movies).
+When `$P2_SCRATCH/r13/chainA/chain.log` ends with `chain done`:
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters
+OUT=$P2_SCRATCH/r13/chainA
+bash tools/ue_char/suits/post_r13.sh $OUT $OUT                      # CPU, ~6 min: fills docs/night1/characters/round-13 (stills, sheet, clips, evidence) + head_check.json
+python3 tools/ue_char/suits/spec_check_r13.py docs/night1/characters/round-13 > docs/night1/characters/round-13/SPEC_CHECK.md
+STILLS_4K=$OUT/stills python3 tools/ue_char/suits/make_pairs_r13.py docs/night1/characters/round-13 /Users/midir/sm2-n1/_scratch/critic-P2-r13/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r13/pack /Users/midir/sm2-n1/_scratch/critic-P2-r13/pairs.json
+```
+then LOOK at every head still (the gates are numbers, the critic is blind and visual), write `round-13/CAPTURES.md`, rewrite this file, commit, push. If a gate fails, the first levers are: `hero_head_r13.py` `field_mm` amplitudes, `hero_lens_r13.py` `A_HALF` / `BEZEL`, the `MI_Hero_LensFrame` parameters, `design.py` `rough_hood` / hood colour / `seam`; a new hold is needed only for engine-side content (maps are rebuilt on CPU, the GLB in seconds).
+
+
+## Round 12 and earlier (history)
 
 ## STATE AT THE END OF ROUND 12 (read this first)
 
