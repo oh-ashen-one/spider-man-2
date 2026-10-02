@@ -848,7 +848,7 @@ if 'map' in STEPS:
                  shot(hero_jump, K.SIDE, 6.5, 620, 110, 0, 42, restart=[hero_jump], label='hero run -> jump side'),                   # 3  @17
                  shot(hero_tt, K.CLOSEUP, 4, 95, 135, 5, 30, label='suit fabric close-up (chest)'),                                   # 4  @23.5
                  shot(crew_center, K.WIDE, 6, 0, 95, 0, 55, wl=(LX, LY - 950, 165), label='enemy lineup (7) wide'),                  # 5  @27.5
-                 shot(crew_center, K.WIDE, 5, 0, 95, 0, 50, wl=(LX - 900, LY - 780, 175), label='enemy lineup 3/4'),                  # 6  @33.5
+                 shot(crew_center, K.WIDE, 5, 0, 95, 0, 50, wl=(LX - 420, LY - 900, 165), label='enemy lineup 3/4'),                  # 6  @33.5
                  shot(track, K.SIDE, 6, 420, 95, 10, 64, restart=[thug_l, brute_l, track], label='thug + brute side tracking (4.2 m)'),  # 7  @38.5
                  shot(thug_l, K.SIDE, 5, 300, 92, 5, 62, restart=[thug_l], label='thug side tracking 3 m'),                          # 8  @44.5
                  shot(brute_l, K.SIDE, 5, 300, 100, 5, 66, restart=[brute_l], label='brute side tracking 3 m'),                      # 9  @49.5
