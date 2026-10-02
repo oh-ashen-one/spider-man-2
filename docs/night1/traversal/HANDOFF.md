@@ -2,10 +2,13 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 23 IN PROGRESS, 2026-10-02, Opus 5.5): code built + pushed (commit after 9ad5222); hold 1 queued through the GPU lock
-(`_scratch/traversal/r23/hold1.sh`, log `hold1.log`; copy in `round-23/tools/`): -nullrhi probes of w2 / c -> `r23_checks.py` -> if the r22 critic
-tests pass on the probes, real captures of all 11 clips into `round-23/` (time-guarded; leftovers listed in `_scratch/traversal/r23/LEFT`), else
-variant probes (`VARIANTS`, -WHGaitTune) to pick new compiled defaults.**
+**Status (round 23 RESUMED 05:05, 2026-10-02, Opus 5.5, after the 04:40 API 502):** hold 1 (`round-23/tools/probe1_check_ba60f84.txt`) showed the
+ba60f84 build PASSES V23 a/b/c on both windows (w2 bbox windows 85/85, c 67/67) but Z23 FAILED (w2 zip flew up the 300 m tower, no perch by 7.2 s:
+nothing in front of the facade-facing wall camera within 58 m) and c's torso was 28-35 deg off wall-up (c climbs a 33 deg diagonal).
+Fixes committed after ba60f84: `WallZipFarRange` 90 (second zip search off a wall, any direction but through the facade, run direction preferred)
+and `WallVertMaxDeg` 10 (a vertical-dominant run keeps its run line within 10 deg of wall-up). Hold 2 queued 05:10 (`_scratch/traversal/r23/hold2.sh`,
+log `hold2.log`; copy `round-23/tools/hold2.sh`): probes -> if fail, -WHTravTune variants and the first passing one becomes the compiled default
+(header sed + rebuild) -> captures of all 11 clips (guard 1950 s) -> leftovers `LEFT` run by hold3 (queued when hold2 starts).**
 Round 22 critic FAILED TARGET (7/6/6/6/6/7, `critic/round-22-CRITIC.md`, mergeable: no axis below r21): biggest gap = the VERTICAL wall run
 "slides frozen, legs together, bbox_w .082-.088 for 1.5 s". Director r23 target: fix the excursion, not the cadence -- recovery toe >= .25 m off the
 face with the knee .35-.50 m at mid-swing, stance foot on the face, contacts alternate <= .18 s, torso 5-20 deg off wall-up, hips <= .45 m; pass the
