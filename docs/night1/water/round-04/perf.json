@@ -1,0 +1,23 @@
+{
+ "_note": "config native100 (3840x2160 output), static camera, exclusive gpu_slot perf lock; frame_delta = water - flat base GPU avg; SingleLayerWater = that pass alone (absolute); water_passes_sum = SLW + SLW depth prepass + LumenReflections/Basepass/Prepass deltas",
+ "Water_View_RiverLow": {
+  "gpu_avg_ms_water": 37.924,
+  "gpu_avg_ms_base": 38.726,
+  "internal": "3840x2160",
+  "frame_delta": -0.8,
+  "SingleLayerWater": 1.094,
+  "SLW_depth_prepass": 0.466,
+  "LumenReflections_delta": 0.984,
+  "Basepass_delta": -0.03,
+  "Prepass_delta": -0.0,
+  "contaminated": false,
+  "water_passes_sum": 2.51,
+  "slw_depth_lumen_sum": 2.54
+ },
+ "Water_Perf_S4": {
+  "error": "missing run"
+ },
+ "Water_View_RiverSun": {
+  "error": "missing run"
+ }
+}

@@ -18,7 +18,7 @@ would need `build_editor.sh`.
 | dolly autocorr low / sun (hold) | <= 0.10 | 0.053 / 0.015 | **0.076 / 0.024** PASS |
 | S4 C14 (hold) | 5..35 | 17.9 | **22.0** PASS |
 | river_sun sparkle width | >= 50 % | 37.8 | **50.5** PASS |
-| perf at river_low (frame delta / SLW + depth prepass + Lumen refl delta) | <= 2.5 / <= 2.5 ms | -0.25 / 2.69 | `round-04/perf.json` (PERF_STATUS below) |
+| perf at river_low (frame delta / SLW + depth prepass + Lumen refl delta) | <= 2.5 / <= 2.5 ms | -0.25 / 2.69 | **-0.80 / 2.54** (FAIL by 0.04; S4 / river_sun not re-run) |
 
 Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-W-r04/pack`, with `pack.key.json` beside it and `pairs.json`. 7 pairs: 4 against
 references and 3 previous-vs-this (seawall foam crop, harbour_high, river_low dolly).
@@ -58,9 +58,8 @@ imports the integrator's `build_manhattan.py` and redirects SCR / EXPORT / TEX t
 `_scratch/showcase/manhattan/`). `build_water.py --steps ue` rebuilds only `/Game/Water` (~2.5 min commandlet).
 
 ## State at hand-off
-- PERF_STATUS (11:15: still queued, next in line): the exclusive perf hold (`$S/r04/perf_chain2.sh`, pid in `r04/perf_chain2.pid`, log `r04/perf_chain2.log`) was queued
-  at 10:12, 4th in the FIFO. When the log says `PERF CHAIN DONE`, `round-04/perf.json` and `perf_gpu.json` hold the numbers (gate field:
-  `slw_depth_lumen_sum`). If it is still waiting and nobody owns it, it is safe to leave it: it only runs the 6 water perf maps.
-- No engine of ours is running. Content: `/Game/Water` is built with the r04 defaults.
+- Perf done 11:20 (exclusive, uncontaminated, river_low pair only: the chain's 720 s budget ran out). Next round: one sample less in
+  the near field (see NOTES PERF) and a perf chain budget of ~2200 s under a raised `GPU_SLOT_PERF_MAX_HOLD`, or one map pair per hold.
+- No engine, driver or waiter of ours is running (`stop_ue.sh` run on this worktree at 11:21: stopped cleanly). Content: `/Game/Water` is built with the r04 defaults.
 - Scratch: `r04/` (scripts, hold logs, `hold1_round/` = hold 1's full capture set, contact map of r03 in `r04/contact_r03/`),
   `iter/r04`, `iter/r04b` (full-res iteration PNGs), `cap/` (dolly PNG frames, ~6 GB; delete once the next round has its own).

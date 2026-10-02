@@ -45,7 +45,7 @@ Iteration stills: `iter/` (hold 1) and `iter/h2_*` (hold 2), downscaled to 1920 
 | river_low / river_sun dolly autocorr 80 px (hold) | <= 0.10 | 0.053 / 0.015 | **0.076 / 0.024** PASS |
 | S4 C14 (hold) | 5 to 35 | 17.9 | **22.0** PASS |
 | river_sun sparkle width (r03 target) | >= 50 % | 37.8 | **50.5 %** PASS |
-| perf at river_low: frame delta / SLW+depth+Lumen-refl | <= 2.5 / <= 2.5 ms | -0.25 / 2.69 | see `perf.json` (exclusive hold queued at 10:12) |
+| perf at river_low: frame delta / SLW + depth prepass + Lumen refl delta | <= 2.5 / <= 2.5 ms | -0.25 / 2.69 | **-0.80 PASS / 2.54 FAIL by 0.04** (1.09 + 0.47 + 0.98) |
 
 `harbour_sun_high` water crop: x 0-3840, y 700-2160. A strip of the far shore intrudes at the top right (x > ~3000, y < ~880).
 
@@ -81,3 +81,15 @@ Iteration stills: `iter/` (hold 1) and `iter/h2_*` (hold 2), downscaled to 1920 
 - 4 against references: harbour_sun_high vs `streets/waterfront-og__og_0244`, harbour_high vs `streets/skyline-perch-nm__nm_0846`,
   river_low vs `river-pier-golden`, river_sun vs `waterfront-perch-trailer`.
 - 3 previous-vs-this: seawall foam crop, harbour_high, river_low dolly.
+
+## PERF (`perf.json`, `perf_gpu.json`)
+Exclusive `gpu_slot perf` at native 3840x2160, 100 % (no TSR upscale), static camera, frames 16 to 31 s, water map against the same map
+with P1's flat plane. `GPU-LOCK: class=perf exclusive=yes util_before=0% util_after=35% util_during_avg=8.8% wait_s=3318
+instances_before=0 instances_max=2 contaminated=false`. ioreg Device Utilization before the hold: 0 %. Only the river_low pair ran: the
+chain's 720 s budget ran out before river_sun, because each run took ~6 min. S4 and river_sun were not re-measured this round.
+| view | GPU frame water / flat (ms) | frame delta | SLW pass | SLW depth prepass | Lumen refl delta | SLW + depth + LR |
+|---|---|---|---|---|---|---|
+| river_low | 37.92 / 38.73 | **-0.80** PASS | 1.09 (r03 1.00) | 0.47 | +0.98 (r03 +1.22) | **2.54** FAIL (<= 2.5; r03 2.69) |
+The grazing-view far roughness floor (`GrazeRough`) took 0.24 ms off Lumen reflections. The 64 m layer and the sun-side clamp added 0.09 ms
+to the SLW pass. One sample less would close the last 0.04 ms (for example the 64 m layer only when `down` > 0, or the second gust
+sample). The negative frame delta is run-to-run noise against the flat base, not a saving.
