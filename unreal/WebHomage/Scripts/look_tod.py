@@ -78,6 +78,8 @@ def preset_params(P):
     o['weather'] = 0.0
     # (round 06) hero rim / fill light scale (1 = the AWHLookHeroLight intensities) and the moon's own light properties (disk size, disk colour scale, cloud luminance scale): driver targets moonc.*
     o['sun.SurfaceGain'] = 1.0   # (round 06, hold 9) multiplier of the sun's surface light (diffuse / specular scale), keyed to 0 through the sunset / sunrise ramp tails
+    # (round 07) the sun light's own volumetric-fog scattering (the sun under the horizon lit the volumetric fog unshadowed: the glowing band toward the sun at 19:30-20:30) and its cloud luminance scale
+    o['sunc.VolumetricScatteringIntensity'] = 1.0; o['sunc.CloudScatteredLuminanceScale'] = [1.0, 1.0, 1.0, 1.0]
     o['sun.RampLo'] = -2.5; o['sun.RampHi'] = 3.5   # (round 06) sun surface-light ramp limits in degrees of sun elevation (C++ AWHLookTimeOfDay::Apply: diffuse / specular scale = smoothstep(lo, hi, elevation))
     o['cloudv.Layout_GlobalTexturePlacement'] = [0.0, 0.0, 0.0, 0.0]   # (round 06) cloud pattern placement (the moonlit cloud pattern of the night keys is chosen with it)
     o['cloudv.CloudWind'] = [0.0, 0.0, 0.0, 0.0]   # (round 06) the engine cloud material drifts with Time x CloudWind: the cloud field was a function of the session time (the moon was behind a cloud in some captures); frozen

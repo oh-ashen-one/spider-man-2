@@ -304,12 +304,16 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 		// multiplied by a table gain `sun.SurfaceGain` (default 1) that the keys take to 0 before the lux of the sky light falls.
 		const float SurfG = FMath::Clamp(G(TEXT("sun.SurfaceGain"), 1.f), 0.f, 1.f);
 		const float WorldK = FMath::SmoothStep(RampLo, RampHi, SunElev) * SurfG;
-		if (FMath::Abs(WorldK - SunWorldK) > 1e-3f || (WorldK == 0.f) != (SunWorldK == 0.f))
+		// (round 07) the update threshold is RELATIVE (1 %): the absolute 1e-3 of round 06 quantised the tail of the ramp in steps of 1e-3 x 40000 lux = 40 lux of unshadowed sun, the last of which
+		// was dropped in one frame (part of the 19:40 lapse cliff)
+		if (FMath::Abs(WorldK - SunWorldK) > FMath::Max(1e-7f, 0.01f * FMath::Max(WorldK, SunWorldK)) || (WorldK == 0.f) != (SunWorldK == 0.f))
 		{
 			S->SetDiffuseScale(WorldK); S->SetSpecularScale(WorldK); SunWorldK = WorldK;
 			if (!bSunLitWorld) { S->SetLightingChannels(true, false, false); bSunLitWorld = true; }   // undo the round-05 channel switch if a map still carries it
 		}
-		S->SetCastShadows(WorldK > 0.02f);
+		// (round 07) the sun casts shadows while it puts more than ~0.5 lux on the surfaces (round 06: only above WorldK 0.02 = ~800 lux, so the shadowed streets were lit by the unshadowed tail of the
+		// ramp at once - a step); the moon still takes the shadows only once the sun's surface light is 0 (SunWorldK < 0.01 there)
+		S->SetCastShadows(WorldK * S->Intensity > 0.5f);
 	}
 	if (UDirectionalLightComponent* M = MoonL.Get())
 	{

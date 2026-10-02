@@ -49,6 +49,17 @@ Stills settled **≥ 8 s after each hour change** (run_r06.py: first pose of an 
 | L24b | at 06:30-07:30 and 19:00-20:30 the sky band of the still that **faces the sun** has **B-R ≤ -20** | after 20:30 the sky may be neutral / blue (L8 ±13 at 22:00 stands: no warm-glow demand past 20:30). Facing stills: S4e (perch turned to compass azimuth 60, dawn) and S4w (azimuth 250, dusk), `tools/perf_ue/sky_poses.json`; S7 faces west and is also reported |
 | L24c | sun surface light is 0 below -2.5 deg and the moon's surface light is keyed in only after 20:00 (both logged 0 at 19:48): no sunlit tower tops under a black sky | `wh.ToDDump` / WH_TOD log |
 | L26 | dawn has its own look: S1 luma Pearson correlation (480x270) of 07:36 against 18:24 **≤ 0.6** (round 05: 0.85; dawn vs noon 0.37) | `twilight_check.py` (S1 stills at hours 6-8.5 against the 18.4 still) |
+### L27 twilight dome continuity (added round 07, from the round-06 critic verdict `critic/round-06-CRITIC.md`, "Biggest gap"; supersedes the sign rule of L24a and the open-ended L24b at these hours)
+Settled stills (>= 8 s after the hour change) S4 and S4w at 19:30, 19:48, 20:00, 20:30 and S4 and S4e at 06:30, 07:00. Instrument: `tools/perf_ue/dome_check.py` (1920x1080).
+| id | target | note |
+|---|---|---|
+| L27a | sky band (rows 0-89) **>= 10 Y above** the far band (box 450,192,1350,236) | rows 0-89 of the perch poses are 2-5.5 deg above the horizon (pitch -17.9, fov 75): the horizon glow strip |
+| L27b | **no 8-row step > 25 Y** of the row-mean luma in rows 100-300 | the height fog must meet the sky continuously: `fog.FogCutoffDistance` 0 on every key (the fog applies to the sky pixels), no cutoff switch at any key; the worst 240-px column band is reported as a diagnostic |
+| L27c | rows 0-150 **clipped (any channel >= 250) <= 0.3 %** | the round-06 twilight clouds clipped red ("lava streaks") |
+| L27d | sun-facing sky band (S4w dusk, S4e dawn) **B-R within -90 .. -20** | r05's warm floor plus r06's saturation ceiling: -247 is clipped red, not warmth |
+| L27e | S4 frame mean at 20:30 **>= its 22:00 mean** | no dark pit between the blue hour and the night |
+| L27f | the L23b lapse (stitched x4 / x16): max frame-to-frame jump **<= 3 Y, p99 <= 1.5**; the sun's surface light decays **geometrically over >= 20 game minutes** (round 07: x3.3 per 6 min from 18:33 to 0.5 lux at 19:30, 0 from 19:33; dawn mirrored 06:30-07:27; `sun.SurfaceGain` keys every 3 game minutes, `tools/perf_ue/sweeps/r07/make_v3.py`) while the sky dome carries the exposure; L24c is then met by a lit dome, not a hard sun cut | the C++ applies the surface scale with a 1 % relative threshold (round 06: an absolute 1e-3 = 40 lux steps) and keeps the sun's shadows while it puts > 0.5 lux on the surfaces |
+Floors (no regression vs round-06 hold C): L25a moon >= 20.5 px / peak 255, night L3 / L8 8 of 8, L26 <= 0.6, golden L1 7 of 8 with S4 <= 100, L22a >= 1.99 %.
 ### L25 night sky (added round 06)
 | id | target | note |
 |---|---|---|
