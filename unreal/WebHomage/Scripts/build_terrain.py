@@ -425,6 +425,7 @@ def build_land(path):
                 chunk = items[b * len(items) // k:(b + 1) * len(items) // k]
                 if not chunk: continue
                 col = [sum(r[7 + q] for r in chunk) / len(chunk) if len(chunk[0]) >= 10 else 0.4 for q in range(3)]
+                col = [min(1.0, 1.3 * math.sqrt(v)) for v in col]   # r02: the exported instance colours are linearised twice (0x3a4a6a -> 0.003): near-black slabs on the lawn (critic r1); sqrt undoes it
                 m = mi('Blanket%d' % b, 'M_TerrainVC2', {'usevc': 0.0, 'roughp': 0.9}, {'tint': (col[0], col[1], col[2], 1.0)})
                 hism(a, f'{PROD}/SM_park_blankets', [T_matrix(r) for r in chunk], cull=15000, shadows=False, material=m)
         if 'parklamp' in INS and EAL.does_asset_exist(f'{PROD}/SM_parklamp'):

@@ -4,6 +4,8 @@
 # The terrain content is rebuilt BEFORE the slot (nullrhi commandlet, no GPU): see HANDOFF.md "Rebuild recipe". Enqueue with:
 #   /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh
 set -uo pipefail
+# a rebuild of the terrain content (nullrhi commandlet, no GPU) may still be running when the ticket comes up: wait for it (it writes this sentinel), max 15 min
+for _ in $(seq 1 180); do [ -e /Users/midir/sm2-n1/_scratch/terrain/BUILDING ] || break; sleep 5; done
 export HOLD_START=$(date +%s)
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROUND="$HERE/round-02"
 mkdir -p "$ROUND/stills"

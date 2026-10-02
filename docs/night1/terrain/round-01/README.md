@@ -29,3 +29,7 @@ GPU: `ioreg` utilisation was 0-4 % before every launch (logged per run in `_scra
 1. Opaque low-poly crown blobs ("green polyhedra") in the tree canopy at every distance: per-instance cull distances did not hide the city's far-crown instances. v3 (committed, not rendered): `M_TerrainCrown` clips them by camera distance (< 520 m) and tints them.
 2. Lawn micro-detail soft (E1). 3. Grass tufts dark next to the lawn (v3: gain 1.7). 4. Pier / shore stills (`p6`-`p8`) frame buildings, not the shore (v3 cameras in `shots.json`).
 5. The hero in the movies is the default HeroDev red-and-blue suit with a white emblem: this worktree's base build skips the characters step (original-suit generator belongs to the characters piece). Judge the terrain, not the suit.
+
+## Round 2 note (movies removed)
+`t4_lawn_sprint.mp4`, `t5_avenue_to_park.mp4` and their contact frames were removed from the tree in round 2 (`git rm`): they showed the hero's dev-suit emblem (critic r1 brand flag). Their telemetry CSVs / log excerpts stay.
+Round-02 movies are captured with the hero hidden (`ShowFlag.SkeletalMeshes 0`). History keeps the old files (`git show 77d0946:docs/night1/terrain/round-01/t4_lawn_sprint.mp4`).

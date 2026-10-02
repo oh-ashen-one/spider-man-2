@@ -7,6 +7,7 @@
 # Frames: wpos is the UE world position in cm; the browser frame is (x, y up, z) metres = (X, Z, Y) / 100.
 
 PARK_INC = '/Project/Terrain/Park.ush'
+LAWN_GRADE = (0.68, 1.16, 0.62, 1.0)   # r02 lawn albedo grade (R, G, B): greener, more saturated (critic r1 secondary: G/R >= 1.05, saturation >= 0.55)
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
 
@@ -19,7 +20,7 @@ def materials(pm):
     # (the browser draws the paths as alpha-blended ribbons; here they are a baked mask so there is no z-fight and the edges stay soft)
     M.append(dict(name='M_TerrainPark', include=PARK_INC, code='''
 float r; float3 n;
-float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 0.0, r, n);
+float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 0.0, r, n) * grade.rgb;   // r02: lawn grade (critic r1: the lawn reads khaki, G/R 0.81-0.97 vs 1.14-1.17 on the reference)
 float2 p = wpos.xy * 0.01;
 ''' + consts + '''
 float4 pm = Texture2DSample(tPath, tPathSampler, (p - mo) / ms);
@@ -37,13 +38,13 @@ r = lerp(r, 0.9, max(edge, dr));
 float Lk = dot(c, float3(0.2126, 0.7152, 0.0722));   // soft luma knee: sunlit light gravel must not clip under the golden rig (same idea as the city sidewalk's SunK)
 c *= lerp(1.0, min(1.0, (0.30 + (Lk - 0.30) * 0.3) / max(Lk, 0.0001)), step(0.30, Lk));
 Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0)], outputs=BASE))
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE)], outputs=BASE))
     # coast / plaza lawns: the same lawn shader, lawn variant (meadow everywhere, no ball fields / ponds / woodland floor)
     M.append(dict(name='M_TerrainLawn', include=PARK_INC, code='''
 float r; float3 n;
-float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n);
+float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n) * grade.rgb;
 Rough = r; NormalW = n; return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0)], outputs=BASE))
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE)], outputs=BASE))
     # City Hall Park / Bowling Green / Battery lawns (ground.js 'mapLawns': grass_col at 7 m x tint 0xb4b89a)
     M.append(dict(name='M_TerrainMapLawn', include=None, code='''
 float2 p = wpos.xy * 0.01;
