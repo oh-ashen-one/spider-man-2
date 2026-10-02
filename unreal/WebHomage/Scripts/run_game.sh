@@ -44,7 +44,12 @@ ARGS+=(-WHQuitAt="$QUIT")
 # 2026-10-01 18:12 (WindowServer starvation probe failing with one 1080p capture at GPU 100 %): non-perf captures are frame-capped so the
 # GPU idles between frames and WindowServer gets its slice. Movie captures use a fixed 1/60 s step, so their frames are unchanged.
 # Perf runs stay uncapped. Override with WH_CAPTURE_MAXFPS.
-if [ -n "$PERF" ]; then EXECS="t.MaxFPS 0"; elif [ "$MOVIE" = 1 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-30}"; else EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-45}"; fi
+# 20:43: a native-4K still capture pinned the GPU (a 4K frame takes > 22 ms, so a 45 fps cap never engages): stills and any capture
+# >= 2560 px wide run at <= 20 fps (fixed-step captures produce the same frames, just slower).
+RESW=${RES%%x*}
+if [ -n "$PERF" ] && [ "${GPU_SLOT_HELD:-}" = "perf" ]; then EXECS="t.MaxFPS 0"   # only real perf runs (exclusive perf lock) are uncapped
+elif [ "$MOVIE" = 1 ] && [ "${RESW:-0}" -lt 2560 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-30}"
+else EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-20}"; fi
 [ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
 ARGS+=(-ExecCmds="$EXECS")
 if [ "$MOVIE" = 1 ]; then rm -f "$PROJ_DIR"/Saved/Screenshots/MacEditor/MovieFrame*.png; ARGS+=(-benchmark -fps=60 -dumpmovie); fi

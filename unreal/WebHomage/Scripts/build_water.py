@@ -162,6 +162,12 @@ def step_ue():
         if n % 12 == 0: log('3+ Unreal instances running, waiting')
         n += 1; time.sleep(5)
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
+    # r02: start from an empty /Game/Water on disk. Rebuilding M_RiverWater in place (delete_all_material_expressions + new graph) compiled
+    # in a fresh project but left a material that failed to compile for SF_METAL_SM6 on every later rebuild (default material in game).
+    cw = os.path.realpath(os.path.join(PROJ, 'Content', 'Water'))
+    if not cw.startswith(os.path.realpath(WT) + '/'): raise SystemExit('refusing to delete ' + cw)
+    if os.path.isdir(cw):
+        import shutil; shutil.rmtree(cw); log('removed', cw)
     lg = os.path.join(SCR, 'logs', 'water_ue.log')
     t0 = time.time()
     with open(lg + '.stdout', 'w') as so:
