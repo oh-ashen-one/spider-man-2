@@ -36,6 +36,10 @@ struct WEBHOMAGE_API FWHShot
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> RestartWalkers;
 	/** Round 05: with a non-empty Director.ManagedActors list, only these (plus the shot's target) are visible during the shot; every other managed actor is hidden. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") TArray<TObjectPtr<AActor>> ShowActors;
+	/** Round 11 (hero skins): >= 0 = switch the hero to this suit when the shot starts (UWHHeroSuitSubsystem, the same path as `wh.Suit`). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") int32 Suit = -1;
+	/** Round 11: the shot's target is player 0's pawn (the real playable hero) instead of Target. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Shot") bool bTargetPlayer = false;
 };
 
 UCLASS()
@@ -50,7 +54,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") bool bLoop = true;
 	/** Round 05: actors whose visibility the director controls per shot (see FWHShot::ShowActors): a hero shot never shows another hero or a thug in the background. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Director") TArray<TObjectPtr<AActor>> ManagedActors;
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 private:
+	void LogBones(float Ts);
+	FString BoneLogPath, BoneLogBuf;
+	// round 09: -WHStageShot=t1,t2 (stage clock = this director's shot clock): screenshots at STAGE times, not at the automation's own clock, which leads the stage clock by a
+	// varying 0.4 - 2.4 s in a real-time run (measured on the round-09 fight stills); files <WHShotDir>/<WHShotName>_<nn>_t<ttt.t>.png like -WHShotAt
+	TArray<double> StageShots; int32 NextStageShot = 0; FString StageShotDir, StageShotName;
 	UPROPERTY() TObjectPtr<ACameraActor> Cam;
 	float T = 0.f;
 	int32 LastShot = -1;
