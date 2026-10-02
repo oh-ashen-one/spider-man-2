@@ -1,11 +1,26 @@
-# P2 Characters: handoff (round 13, first-pass piece G: hero skins)
+# P2 Characters: handoff (round 14, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 13 author: Sonnet 5.5 (2026-10-01 23:30 - 2026-10-02 04:10). Everything is committed and pushed (`origin/night1/characters`);
-`/Content` is NOT committed (script-generated, rebuilt by `build_fight.sh`, see Commands). Scope: the HERO ONLY (+ the enemy-pack merge gate). No engine of mine is running; the GPU-lock wrappers of this round have all finished.
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 14 author: Sonnet 5.5 (2026-10-02 from 04:00). Everything described here is committed and pushed (`origin/night1/characters`);
+`/Content` is NOT committed (script-generated).
 
-## STATE AT THE END OF ROUND 13 (read this first)
+## ROUND 14: INTERIM STATE (this block is replaced by the final state when the hold has run and been measured)
+
+Round target (director, after the r13 critic [hero 6, anim 5, enemies 5, civilians 5, IQ 5; IP PASS]): FINISH the shared mask sculpt on all 8 suits - (G1) headside profile: the silhouette dips >= 1.5 % of the head height behind the brow -> nose-tip chord at the bridge,
+(G2) the brow's front-most point >= 1 % of the head height in front of the top of the lens (lens + rim seated in an eye socket under the brow ridge; rim stays ONE closed raised band >= 6 px, lens >= 1.6x r12), (G3) Tessera AND Cinder 4K front stills: a horizontal luma line through the cheek bones has >= 3 extrema, swing >= 20;
+plus the two-round-old IQ repeats: pipe every sash end (Ash), no armpit stitch zigzag (Ash), no torn Sage trapezius groove, no faceted Cinder shoulders. Gate: no axis below r13 [6,5,5,5,5]; enemy pack / crowd unchanged; P3 owns the pawn cadence and the frame 7-8 start pop; the OWNER's sign-off on the swatch sheet is still required before any merge.
+
+What is DONE on the CPU (all committed): the sculpt (`tools/ue_char/suit8/hero_head_r14.py`, brow shelf / nasion notch / cheek planes / mouth / chin, 22 mm nose), the eyes seated in the sockets (`tools/ue_char/hero_lens_r14.py`: 61 x 28 mm, 40.5 mm from the midline, rim crest 3.1 mm),
+the de-faceted shoulders (`hero_shoulder_r14.py`, one Phong-tessellation level, +20k faces), trapezius + armpit skin weights (`hero_weights_r14.py`), `design.py` (lifted hoods + a baked face tone from the sculpt field, straight piped sash ends, torso net stops at the neck base, wedge pipe / stitch rows end below the armpit),
+`suits.json` (Cinder hood = body colour, per-suit `face.lift`), `build_characters.py` (r14 prep chain, `headfront` view, silver rims up to hood luma 0.36), the checkers (`head_check_r14.py` G1 / G2 / G3 + r13's H1 - H6, `head_profile_r14.py` mesh instrument, `iq_check_r14.py`), `chain_r14.sh`, `hold_r14.sh`, `post_r14.sh`, `spec_check_r14.py`, `make_pairs_r14.py`.
+Mesh numbers of the GLB the engine imports (`prep_hero_r14.sh`): recess 6.05 % HH, brow over the lens top 4.3 % HH, over every rim vertex 1.4 % HH, nose bump 20 % HH; lens-to-outline clearance 49 px (12 deg). Regression PASS (r8 legacy texel for texel; r14 default hashes). IP guard palette: min distance 49.6, no fails; seams worst 3.0 px.
+
+The ONE capture hold is queued in the GPU lock (`/Users/midir/sm2-n1/_scratch/characters/r14/chain1/gpu_wrapper.log`, wrapper started 2026-10-02 04:38 behind 4 other agents' holds): it builds the content and captures everything into `$P2_SCRATCH/r14/chain1/run`. The launcher only runs when `chain1/READY_R14` exists.
+After the hold: `bash tools/ue_char/suits/post_r14.sh $P2_SCRATCH/r14/chain1/run $P2_SCRATCH/r14/chain1/run` (CPU ~10 min) -> `python3 tools/ue_char/suits/spec_check_r14.py docs/night1/characters/round-14 > docs/night1/characters/round-14/SPEC_CHECK.md` -> write `round-14/CAPTURES.md` -> `STILLS_4K=$P2_SCRATCH/r14/chain1/run/stills python3 tools/ue_char/suits/make_pairs_r14.py docs/night1/characters/round-14 $P2_SCRATCH/../critic-P2-r14/pairs.json` -> abpack (commands at the bottom).
+If the hold has not run when you read this: do NOT edit `ueimport/SK_Hero.glb`, `art/night1/characters/hero/suits/*`, `suits.json` or `build_characters.py` while the wrapper is waiting (they are the hold's inputs); to change them, re-run `tools/ue_char/suits/prep_hero_r14.sh`, regenerate the maps, and only then touch READY_R14.
+
+## Round 13 (history)
 
 Round target (director, after the r12 critic [hero 5, anim 5, enemies 4, civilians 5, IQ 5; IP PASS]): sculpt the shared mask head; lenses >= 1.6x r12 with one closed raised rim each; the black face seam as raised piping; merge gate: enemy pack at the r10 content, keep r12's passing lines,
 Verdant / Saffron / Plum without IP watch items. **The OWNER must approve the suits before any merge: `docs/night1/characters/round-13/SWATCH_SHEET.jpg` (8 suits, front + back + chest + head).** No blind critic verdict yet; the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r13/pack` (28 pairs, key outside it).
