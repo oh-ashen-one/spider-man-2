@@ -1,56 +1,53 @@
-# Terrain (piece E) — HANDOFF (round 02: pass 2 rendered, measured and packed; pass 3 partly rendered, 3b queued in the GPU lock)
+# Terrain (piece E) — HANDOFF (round 02 done: captures, measurements, critic pack; E8 numeric target NOT met)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain`, dev port 5209 (Vite, exports only).
+Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain`, dev port 5209 (Vite, exports only; stopped).
 Owns `/Game/Terrain`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_terrain_shaders.mjs}`, `tools/terrain/`, `unreal/WebHomage/Scripts/{build_terrain.py,terrain_materials.py}`,
-`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E8 added), `SHOTLIST.md`, `shots.json`.
+`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E8 added), `SHOTLIST.md`, `shots.json` (p3 / p6 / p7 cameras changed in round 02).
+Nothing of this piece is running (no engine, no Vite, no queued ticket). Content (`/Game/Terrain`) in this worktree is built from the committed scripts (pass-3 state); it is never committed.
 
-## Round 02 target and what was done
-Target (round-01 critic's biggest gap): trees / canopy at swing height. The flat hull crowns were the browser's `crownfar` pool drawn at every distance (HISM / Nanite ignore per-instance cull distances); the browser's `trees-*-near` (leaf cards 44-165 m) and
-`trees-*-crown` (lumpy clump crowns 165-520 m) pools were never exported. Now (all committed; Content is generated, never committed):
-- `collect_terrain.js` exports the whole park-tree chain (`trees-{park,elm,conifer}-{near,crown,crownfar}`, `trunks-*`) with each pool's `near / far / fadeIn / fadeOut`.
-- Every band is a dithered material clip by camera distance (`unreal/WebHomage/Shaders/Terrain/Foliage.ush`: `tfBand`, `TerrainClumpCrown` = port of trees.js `crownMaterial`, `TerrainLeafCards` = port of `leafMaterial`) on 46 HISM pools / 47,710 instances
-  (`build_terrain.py`, one material instance per pool, band = (near, far, 0): UE hands a VectorParameter to a Custom node as **float3**). ez L0 < 20 m, ez L1 to 44 m, leaf cards 44-165 m, clump crowns 165-520 m, `M_TerrainCrown` (crownfar) only >= 520 m.
-  The clip is skipped in shadow-depth and Lumen-card-capture passes (`SHADOW_DEPTH_SHADER`, `LUMEN_CARD_CAPTURE`; Nanite depth-only raster defines `SHADOW_DEPTH_SHADER` too), so trees still cast shadows / bounce light at every distance.
-  Derivatives are not used in ray tracing hit shaders (`RAYTRACINGSHADER`). The ez materials carry the Nanite usage flag (the round-01 game log said "missing usage flag Nanite ... Default Material will be used in game").
-- Secondary: lawn albedo grade `LAWN_GRADE` (`terrain_materials.py`), picnic blankets brightened (their exported colours are linearised twice: near-black slabs), shots `p3` (raised), `p6`, `p7` (cameras moved: p6 sat above a pier-shed roof, p7 inside the far-bank masses).
-- Merge preconditions: the two round-01 movies (and their contact frames) with the dev suit emblem are `git rm`ed; round-02 movies hide the hero (`ShowFlag.SkeletalMeshes 0`, verified on the frames); the park-reservoir pair uses a park-water-basin aerial frame cut from the library's pond clip
-  (no frame of the Reservoir itself exists in the private refs: all street / traversal stills were scanned).
+## Round 02 outcome (2026-10-02, details and numbers: `round-02/README.md`)
+Target: trees / canopy at swing height (round-01 critic's biggest gap). Done: the browser's whole park-tree chain is ported with dithered per-pool distance bands (`Shaders/Terrain/Foliage.ush` + `M_TerrainLeaves / Bark / Cards / Clump / Crown`, 46 HISM pools, 47,710 instances), Nanite flag on the ez materials,
+physically scaled ambient fill, lawn grade, brighter blankets, cameras p3 / p6 / p7 fixed, round-01 movies with the dev-suit emblem `git rm`ed, round-02 movies with the hero hidden.
+| result of the final render (pass 3, `round-02/`) | |
+|---|---|
+| E8 crown crops (24 boxes, p1_south 4K, sigma 3) | **FAIL**: min 5.41, median 8.34, max 13.66, 10 / 24 >= 9 (far 10.3-13.7, mid 8.1-10.3, near-right 5.4-13.1, foreground 6.3-7.5) |
+| E8 flat hull faces > 40 px | p10 PASS (12 px); p1 FAIL: 2 black shadow pockets (max 108 px, luma 25-37) |
+| E1 lawn crops | round-1 boxes 3 of 4 lower (they contain tree parts); pure-lawn windows: p10 4.74 -> 5.32, aerial p9 2.81 -> 2.33, p4 1.52 -> 1.33 |
+| lawn colour | met on pure-lawn windows (G/R 1.12-1.40, sat 0.58-0.64) |
+| E2 / E3 / E7 | 89.9 % / 0 gaps / ground mode 803 of 803 frames |
 
-## Pass 1 (rendered 2026-10-02 01:33-01:49, hold 955 s; stills / movies kept local in `round-02/pass1/`, numbers committed there)
-First run of the new materials: the **warm-up check caught a real compile failure** (float4 vs float3 `band`; hold aborted after 41 s, fixed, re-queued). Pass 1 numbers (`round-02/pass1/crown_stats.txt`, 24 hand-picked 150 px crown crops of p1_south):
-far / mid crowns 6.6-10.5, near-right 6.9-10.0, foreground crowns (dark: luma 21-66) 2.2-5.9 -> **E8 FAIL** (min 2.23, median 6.66; round-01 on the same boxes: median 6.0). Flat hull faces: p10_lawn_eye max 20 px (PASS), p1_south max 72 px
-(dark crushed foreground patches, not lit hull faces). Lawn: vivid green now (p10 crop G/R 1.20, sat 0.51; aerial crops G/R 0.78-0.96), E1 guard boxes 6.47 / 3.66 / 4.79 / 11.76 vs round 1 4.92 / 4.65 / 6.93 / 15.09 (the p9 / p4 boxes of round 1 contain tree parts).
-Visuals: p2 Reservoir, p4 Great Lawn, p9 panorama, p8 pier read well; foreground canopy too dark; far crowns read as yellow lumpy "potatoes"; p6 / p7 cameras were against buildings (fixed for pass 2).
+Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-E-r02/pack` (key `pack.key.json` outside; `pairs.json`; 14 pairs). Not judged yet. Merge preconditions (no emblem movies, a reservoir-reference pair) are done; the Reservoir pair uses a park-water-basin frame because the private refs contain no Reservoir frame.
 
-## Pass 2 (rendered 2026-10-02 03:44-04:08, committed in `round-02/`; critic pack built from it)
-Changes since pass 1: crown contrast up (`Foliage.ush`: extra ~1 m octave, bump weights 3 / 0.5 -> 7.5 / 0.2, deeper gaps, clump contrast 0.42-1.35, tilt 0.0026 x distance), lawn grade (0.54, 1.20, 0.46), cameras p3 / p6 / p7, ambient-fill `Emis` on the leaf materials.
-Result (`round-02/README.md`, `crown_stats.txt`): far / mid crowns 8.2-13.8 (most >= 9), dark foreground crowns still 2.2-5.7 (luma 21-66), 9 / 24 crops >= 9 -> **E8 not met**; p10 has no flat hull face > 40 px, p1 has 3 dark crushed patches (max 82 px).
-**Diagnosis of the unchanged foreground**: `Emis` was wired (probed with a nullrhi commandlet) but 0.65 x albedo is ~1000x too small: the golden rig is physical (sun 44000 lux, EV 8.2-13, sunlit albedo A radiates ~10000 A cd/m2) -> pass 3 uses `Emis = c * 1800 * (0.4 + 0.6 expo)` (about a 15 % fill).
-The pass-2 p7 camera sat inside a far-city mass (the browser export's `farCity*` boxes overhang the water up to 35 m along z -1080..-320 on both shores): p7 moved to z -1270 (no mass within 250 m of the shore). p6 (z -820) rendered fine.
-A pass-1 -> pass-2 health event is documented in the README (monitor stopped the first 4K still launch with `WS-STARVED`, auto-pause, auto-lift after 10 calm min).
+## NEXT (round 3), in this order
+1. Judge the pack, then fix the one biggest gap. Likely candidates from my own look at the frames: (a) the far crowns (165-520 m) read as bumpy boulders (the browser's 4-lobe crown LOD with strong bump): smaller lobes / more of them, or leaf-card clusters, softer bump at < 300 m;
+   (b) the ambient fill `Emis = c * 1800 * (0.4 + 0.6 expo)` in `terrain_materials.py` (M_TerrainLeaves, M_TerrainCards) is constant: close leaves in the sun go pale (`t4_lawn_sprint` 3 s): scale it down with distance < 10 m and by shade; the foreground canopy (SD 6-7) still lacks contrast and black pockets remain in the p1 foreground;
+   (c) aerial lawn micro-detail (E1 1.3-2.8): tiled grass_nrm micro-normal + high-frequency albedo at < 1 m, bigger / brighter tufts; (d) pond-bank rocks are white lumps (p3); (e) the t5 perimeter ground at 13-15 s is the city's flat grey asphalt (city piece).
+2. Re-measure with the same 24 crown boxes (`round-NN/crops.json`, `tools/terrain/crown_stats.py`) so numbers stay comparable; a round that changes framing must re-pick boxes with `tools/terrain/grid_overlay.py`.
+3. Not built: pickets, wet bands, pond shallows, ballfield fences, Met-like museum (skipped on purpose), lamp night look, collision on rocks / esplanades; street trees island-wide belong to the island piece.
 
-## Pass 3 (partly rendered 2026-10-02 05:19-05:22 into `docs/night1/terrain/round-02b/`; 3b queued)
-Pass 3 = pass 2 + the physical emissive fill (`Emis = c * 1800 * (0.4 + 0.6 expo)`) + p7 camera at z -1270. It rendered `p1_south`, `p10_lawn_eye`, `p2_reservoir`, `p6_west_shore`, `p3_lake` and was then **stopped by the health monitor** (05:22:39 `WS-STARVED`, gpu 100 %, ws_cpu 2 %,
-auto-pause, slots demoted to 1; a `look` perf engine was rendering at the same time = two heavy renders). I killed my own hold scripts by PID so nothing relaunches after the auto-lift. The effect of the fill is large: foreground canopy luma 40 -> 90, crown-crop min SD 2.25 -> 5.41, median 8.34 (same), 10 / 24 crops >= 9,
-foreground crops 5.4-7.5 (round-02b `crown_stats`); p1_south now shows bright, leafy, autumn-tinted foreground trees. A flat patch > 40 px remains in p1_south (108 px max: the fill flattens deep shade).
-**3b (queued)**: the missing stills `p4_greatlawn p7_east_shore p8_pier p9_park_panorama` + both movies into the same `round-02b/`: `ROUND_NAME=round-02b ONLY_IDS="p4_greatlawn p7_east_shore p8_pier p9_park_panorama" PRIO_IDS="" gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh`
-(waiter pid in `_scratch/terrain/round2_hold.pid`, log `_scratch/terrain/logs/round2_hold_e.log`). If a pause is active the lock waits; do not lift it yourself (auto-lift after 10 calm minutes); if it is stopped again, stop and report (2 stops already).
-When round-02b is complete: `crops.json` (copy of round-02's), `tools/terrain/measure_round.sh docs/night1/terrain/round-02b`, then `make_pairs.py docs/night1/terrain/round-02b ... docs/night1/terrain/round-01` + `abpack.py` (the pass-2 pack is the fallback); say in `round-02/README.md` which pass the pack uses.
+## GPU etiquette learned this round (read before enqueueing)
+- The queue is slow (0.7-2 h per turn): rebuild the content BEFORE enqueueing (nullrhi, ~2-9 min, touch `_scratch/terrain/BUILDING` while it runs: `round2.sh` waits for it), enqueue early, never rebuild inside the hold, always `--timeout 28800`.
+- `round2.sh` = warm-up (+ shader check: aborts the hold on `Failed to compile Material`) + 9 stills + 2 movies; env `ROUND_NAME` (output dir), `ONLY_IDS`, `PRIO_IDS` (empty = none), `BASE_IDS` (empty = no baselines), `HIDE_HERO=1` (movies). `capture_round.sh` is the engine of it.
+- **The health monitor stopped my engine twice** (`WS-STARVED`: GPU 100 %, WindowServer CPU ~2 %, probe fail) at the first 4K still launch, both times while another engine was rendering. Do not lift a pause (it auto-lifts after 10 calm minutes); after a second stop kill your own hold scripts by PID so nothing relaunches, and resume only the missing shots.
+- Never `pgrep -f` a pattern that appears in your own command line (it matched my wait loops); use bounded `until` loops, not sleep chains.
 
-## Offline shader verification (new, saves GPU-lock turns)
-- `python3 tools/terrain/check_hlsl.py`: every material body through DXC with UE's parameter types (VectorParameter = float3). 12 / 12.
-- `python3 tools/terrain/scw_check.py`: UE's own `ShaderCompileWorker` (CPU only) recompiles every dumped permutation under `unreal/WebHomage/Saved/ShaderDebugInfo/METAL_SM6/M_Terrain*` with the CURRENT `Foliage.ush` and the CURRENT Custom-node bodies of
-  `terrain_materials.py` regenerated into the dumped wrapper (27 permutations: base pass, depth, shadow depth, Nanite raster HW / micropoly, Nanite base pass + Lumen card, ray tracing any-hit). Dumps exist only for permutations that failed once.
-- The hold driver's warm-up stops the hold (exit 4) when the game log shows `Failed to compile Material` / shader errors.
+## Offline shader verification (saves GPU-lock turns; caught two real bugs this round)
+- `python3 tools/terrain/check_hlsl.py`: every material body through DXC with UE's parameter types (**VectorParameter = float3**, TextureCoordinate = float2, ...). 12 / 12.
+- `python3 tools/terrain/scw_check.py`: UE's own `ShaderCompileWorker` (CPU only) recompiles every dumped permutation under `unreal/WebHomage/Saved/ShaderDebugInfo/METAL_SM6/M_Terrain*` with the CURRENT `Foliage.ush` and the CURRENT Custom-node bodies of `terrain_materials.py` regenerated into the dumped wrapper
+  (27 permutations: base pass, depth, shadow depth, Nanite HW / micropoly raster, Nanite base pass + Lumen card, ray tracing any-hit; new output pins are appended). Dumps exist only for permutations that failed once (the Saved dir of this worktree holds them). `SM2_FOLIAGE_SRC=<file>` tests a candidate `Foliage.ush` from scratch.
+- Emissive units: the golden rig is physical (sun 44000 lux, EV 8.2-13): a sunlit albedo A radiates ~10000 A cd/m2; an emissive of 1 is invisible (pass 2 lost a render to that).
 
-## Not built / known
-Pickets, wet bands, pond shallows, ballfield fences, Met-like museum (skipped on purpose), lamp night look, collision on rocks / esplanades; street trees island-wide belong to the island piece; lawn micro-detail (E1) is still the round-01 shader;
-the t5 "flat grey perimeter ground" (critic secondary 2) is city ground, not touched; crown hulls still read as lumpy blobs at 165-520 m (4-lobe crown LOD of the browser).
+## What exists (all committed; Content is generated, never committed)
+- `tools/export/export_terrain.mjs` + `collect_terrain.js`: headless-Chrome export of the TERRAIN kinds island-wide (park ground, lawns, ponds / Reservoir, furniture, rock outcrops, ez-tree prototypes + instances with autumn tints, the park-tree chain pools with their bands) -> `<scratch>/export` (~30 s).
+- `tools/terrain/prep_terrain.py`: path / drive mask, grass tuft prototype + 527 k tufts, rock outcrops (Met-like museum dropped on purpose), `ParkData.ush`, leaf textures + the city leaf atlas, stats (E2). `tools/export/gen_terrain_shaders.mjs` -> `Shaders/Terrain/Park.ush`.
+- `tools/terrain/shore_audit.py` (E3; granite bulkhead patch closes the browser coast's 12 gaps), `crop_manual.py` (E1), `crown_stats.py` (E8: crown crops sigma 3 + flat-face detector, lawn and sky excluded), `grid_overlay.py`, `measure_round.sh`, `make_pairs.py` + `tools/night1/abpack.py` (pack).
+- `unreal/WebHomage/Scripts/build_terrain.py` (steps clean, tex, mat, mesh, foliage, trees, map, views; fail-soft): materials from `terrain_materials.py`; `/Game/Terrain/Terrain_Land` sublevel (ground tagged WHGround, tufts HISM x3 wind classes, props, 46 tree-chain HISM pools with a material instance per pool carrying `band = (near, far, 0)`),
+  `City_Geo_T` (private copy of the city geometry level with the city's flat park ribbons / lawns / ez park trees hidden in game), `/Game/Terrain/Maps/Manhattan_Terrain`, still maps `V_<id>` / baseline `VB_<id>` from `shots.json`.
 
 ## Rebuild recipe (CPU steps need no slot)
-1. `npx vite --port 5209 --host 127.0.0.1 --strictPort` (needs `npm ci`), `node tools/export/export_terrain.mjs`, `python3 tools/terrain/prep_terrain.py`, `node tools/export/gen_terrain_shaders.mjs`, `python3 tools/terrain/check_hlsl.py`.
+1. `npx vite --port 5209 --host 127.0.0.1 --strictPort` (needs `npm ci`), `node tools/export/export_terrain.mjs`, `python3 tools/terrain/prep_terrain.py`, `node tools/export/gen_terrain_shaders.mjs`, `python3 tools/terrain/check_hlsl.py`, `python3 tools/terrain/scw_check.py`.
 2. Base Manhattan content exists in this worktree's `unreal/WebHomage/Content` (round-01 recipe: `git show 77d0946:docs/night1/terrain/HANDOFF.md`).
-3. `build_terrain.py` through the nullrhi commandlet (about 2 min, no GPU): wrapper `_scratch/terrain/jobs_terrain_r02.py` (`JOB_ARGS steps clean,tex,mat,mesh,foliage,trees,map,views`); touch `_scratch/terrain/BUILDING` while it runs (the hold driver waits for it, max 15 min).
-4. Captures only through the lock, always `--timeout 28800`. Never `pgrep -f` a pattern that appears in your own command line (it matched my wait loops).
+3. `build_terrain.py` through the nullrhi commandlet: `tools/terrain/run_build.sh [steps]` (writes the job wrapper, touches `_scratch/terrain/BUILDING`, runs `UnrealEditor ... -run=pythonscript -unattended -nullrhi`; only when none of your engines is running).
+4. Captures only through the lock: `ROUND_NAME=round-03 gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh`; then `tools/terrain/measure_round.sh`, `make_pairs.py`, `abpack.py`.

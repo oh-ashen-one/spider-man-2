@@ -7,12 +7,12 @@
     150,
     150
    ],
-   "hp_sd": 10.25,
-   "mean_luma": 140.4,
+   "hp_sd": 9.92,
+   "mean_luma": 141.0,
    "rgb_mean": [
-    164.8,
-    139.0,
-    83.4
+    165.2,
+    139.7,
+    84.6
    ],
    "image": "p1_south.jpg"
   },
@@ -23,12 +23,12 @@
     150,
     150
    ],
-   "hp_sd": 11.0,
-   "mean_luma": 151.5,
+   "hp_sd": 11.28,
+   "mean_luma": 152.6,
    "rgb_mean": [
-    181.1,
-    149.6,
-    83.6
+    182.0,
+    150.7,
+    84.7
    ],
    "image": "p1_south.jpg"
   },
@@ -39,12 +39,12 @@
     150,
     150
    ],
-   "hp_sd": 13.66,
-   "mean_luma": 154.0,
+   "hp_sd": 13.83,
+   "mean_luma": 155.7,
    "rgb_mean": [
-    185.7,
-    151.9,
-    82.2
+    187.2,
+    153.8,
+    83.4
    ],
    "image": "p1_south.jpg"
   },
@@ -55,12 +55,12 @@
     150,
     150
    ],
-   "hp_sd": 9.78,
-   "mean_luma": 93.1,
+   "hp_sd": 9.85,
+   "mean_luma": 92.0,
    "rgb_mean": [
-    113.0,
-    90.6,
-    53.3
+    111.9,
+    89.5,
+    53.4
    ],
    "image": "p1_south.jpg"
   },
@@ -71,12 +71,12 @@
     150,
     150
    ],
-   "hp_sd": 9.6,
-   "mean_luma": 92.3,
+   "hp_sd": 9.56,
+   "mean_luma": 95.2,
    "rgb_mean": [
-    113.5,
-    89.2,
-    52.8
+    116.8,
+    92.2,
+    54.2
    ],
    "image": "p1_south.jpg"
   },
@@ -87,12 +87,12 @@
     150,
     150
    ],
-   "hp_sd": 10.3,
-   "mean_luma": 95.5,
+   "hp_sd": 10.1,
+   "mean_luma": 95.2,
    "rgb_mean": [
-    117.6,
-    92.4,
-    53.2
+    117.3,
+    92.0,
+    53.3
    ],
    "image": "p1_south.jpg"
   },
@@ -103,12 +103,12 @@
     150,
     150
    ],
-   "hp_sd": 10.3,
-   "mean_luma": 97.3,
+   "hp_sd": 9.95,
+   "mean_luma": 97.7,
    "rgb_mean": [
-    118.9,
-    94.1,
-    56.5
+    119.3,
+    94.6,
+    57.3
    ],
    "image": "p1_south.jpg"
   },
@@ -119,12 +119,12 @@
     150,
     150
    ],
-   "hp_sd": 8.67,
-   "mean_luma": 88.5,
+   "hp_sd": 8.35,
+   "mean_luma": 89.0,
    "rgb_mean": [
-    106.4,
-    86.0,
-    54.5
+    107.0,
+    86.5,
+    54.8
    ],
    "image": "p1_south.jpg"
   },
@@ -135,12 +135,12 @@
     150,
     150
    ],
-   "hp_sd": 13.09,
-   "mean_luma": 126.0,
+   "hp_sd": 13.59,
+   "mean_luma": 125.1,
    "rgb_mean": [
-    153.8,
-    123.7,
-    64.7
+    153.9,
+    122.7,
+    62.4
    ],
    "image": "p1_south.jpg"
   },
@@ -151,12 +151,12 @@
     150,
     150
    ],
-   "hp_sd": 8.08,
-   "mean_luma": 74.2,
+   "hp_sd": 8.22,
+   "mean_luma": 73.5,
    "rgb_mean": [
-    89.8,
-    71.9,
-    45.2
+    88.7,
+    71.2,
+    45.5
    ],
    "image": "p1_south.jpg"
   },
@@ -167,12 +167,12 @@
     150,
     150
    ],
-   "hp_sd": 9.08,
-   "mean_luma": 77.6,
+   "hp_sd": 8.46,
+   "mean_luma": 77.0,
    "rgb_mean": [
-    94.0,
-    75.2,
-    46.9
+    92.8,
+    74.6,
+    47.3
    ],
    "image": "p1_south.jpg"
   },
@@ -183,12 +183,12 @@
     150,
     150
    ],
-   "hp_sd": 10.78,
-   "mean_luma": 121.2,
+   "hp_sd": 11.18,
+   "mean_luma": 129.3,
    "rgb_mean": [
-    154.8,
-    117.9,
-    50.1
+    163.5,
+    126.4,
+    54.2
    ],
    "image": "p1_south.jpg"
   },
@@ -199,12 +199,12 @@
     150,
     150
    ],
-   "hp_sd": 8.59,
-   "mean_luma": 82.9,
+   "hp_sd": 8.36,
+   "mean_luma": 81.3,
    "rgb_mean": [
-    102.9,
-    80.0,
-    45.5
+    100.4,
+    78.4,
+    45.7
    ],
    "image": "p1_south.jpg"
   },
@@ -215,12 +215,12 @@
     150,
     150
    ],
-   "hp_sd": 7.97,
-   "mean_luma": 55.9,
+   "hp_sd": 7.49,
+   "mean_luma": 55.4,
    "rgb_mean": [
     70.6,
-    53.3,
-    30.5
+    52.6,
+    30.3
    ],
    "image": "p1_south.jpg"
   },
@@ -231,12 +231,12 @@
     150,
     150
    ],
-   "hp_sd": 5.41,
-   "mean_luma": 74.9,
+   "hp_sd": 3.93,
+   "mean_luma": 42.9,
    "rgb_mean": [
-    89.8,
-    74.5,
-    37.6
+    55.0,
+    40.3,
+    24.4
    ],
    "image": "p1_south.jpg"
   },
@@ -247,12 +247,12 @@
     150,
     150
    ],
-   "hp_sd": 6.28,
-   "mean_luma": 129.2,
+   "hp_sd": 4.21,
+   "mean_luma": 66.3,
    "rgb_mean": [
-    162.2,
-    122.0,
-    79.8
+    89.0,
+    60.0,
+    39.0
    ],
    "image": "p1_south.jpg"
   },
@@ -263,12 +263,12 @@
     150,
     150
    ],
-   "hp_sd": 6.34,
-   "mean_luma": 96.9,
+   "hp_sd": 3.03,
+   "mean_luma": 37.1,
    "rgb_mean": [
-    124.0,
-    90.8,
-    57.5
+    50.3,
+    33.2,
+    22.4
    ],
    "image": "p1_south.jpg"
   },
@@ -279,12 +279,12 @@
     150,
     150
    ],
-   "hp_sd": 7.49,
-   "mean_luma": 125.3,
+   "hp_sd": 5.66,
+   "mean_luma": 61.0,
    "rgb_mean": [
-    145.6,
-    127.6,
-    60.6
+    75.0,
+    59.7,
+    31.5
    ],
    "image": "p1_south.jpg"
   },
@@ -295,12 +295,12 @@
     150,
     150
    ],
-   "hp_sd": 6.94,
-   "mean_luma": 114.6,
+   "hp_sd": 4.97,
+   "mean_luma": 50.3,
    "rgb_mean": [
-    125.8,
-    118.2,
-    66.5
+    55.2,
+    51.1,
+    33.9
    ],
    "image": "p1_south.jpg"
   },
@@ -311,12 +311,12 @@
     150,
     150
    ],
-   "hp_sd": 7.03,
-   "mean_luma": 115.6,
+   "hp_sd": 5.18,
+   "mean_luma": 53.3,
    "rgb_mean": [
-    131.3,
-    117.9,
-    62.2
+    62.6,
+    52.7,
+    32.4
    ],
    "image": "p1_south.jpg"
   },
@@ -327,12 +327,12 @@
     150,
     150
    ],
-   "hp_sd": 6.76,
-   "mean_luma": 89.3,
+   "hp_sd": 2.52,
+   "mean_luma": 31.4,
    "rgb_mean": [
-    99.0,
-    91.5,
-    52.6
+    37.3,
+    30.4,
+    21.4
    ],
    "image": "p1_south.jpg"
   },
@@ -343,12 +343,12 @@
     150,
     150
    ],
-   "hp_sd": 7.24,
-   "mean_luma": 53.7,
+   "hp_sd": 2.58,
+   "mean_luma": 36.4,
    "rgb_mean": [
-    56.6,
-    56.3,
-    32.4
+    39.0,
+    37.8,
+    22.1
    ],
    "image": "p1_south.jpg"
   },
@@ -359,12 +359,12 @@
     150,
     150
    ],
-   "hp_sd": 7.24,
-   "mean_luma": 55.1,
+   "hp_sd": 2.25,
+   "mean_luma": 21.3,
    "rgb_mean": [
-    58.8,
-    57.1,
-    34.9
+    24.8,
+    20.7,
+    15.7
    ],
    "image": "p1_south.jpg"
   },
@@ -375,12 +375,12 @@
     150,
     150
    ],
-   "hp_sd": 6.65,
-   "mean_luma": 76.0,
+   "hp_sd": 2.48,
+   "mean_luma": 31.9,
    "rgb_mean": [
-    84.1,
-    78.7,
-    40.9
+    35.8,
+    32.1,
+    20.4
    ],
    "image": "p1_south.jpg"
   }
@@ -389,48 +389,56 @@
  "flat": [
   {
    "image": "p1_south.jpg",
-   "foliage_pct": 16.2,
-   "flat_pct_of_foliage": 5.82,
-   "max_flat_width_px": 108.3,
-   "patches_wider_than_40_px": 2,
+   "foliage_pct": 8.4,
+   "flat_pct_of_foliage": 11.47,
+   "max_flat_width_px": 82.0,
+   "patches_wider_than_40_px": 3,
    "widest": [
     {
-     "width_px": 108.3,
-     "area_px": 7690,
+     "width_px": 82.0,
+     "area_px": 8445,
      "centre_xy": [
-      310,
-      2128
+      625,
+      1898
      ]
     },
     {
-     "width_px": 81.0,
-     "area_px": 8414,
+     "width_px": 72.1,
+     "area_px": 5004,
      "centre_xy": [
-      621,
-      1894
+      325,
+      2133
+     ]
+    },
+    {
+     "width_px": 57.2,
+     "area_px": 5931,
+     "centre_xy": [
+      2136,
+      1583
      ]
     }
    ]
   },
   {
    "image": "p10_lawn_eye.jpg",
-   "foliage_pct": 12.3,
-   "flat_pct_of_foliage": 0.13,
-   "max_flat_width_px": 12.2,
+   "foliage_pct": 9.4,
+   "flat_pct_of_foliage": 0.18,
+   "max_flat_width_px": 12.8,
    "patches_wider_than_40_px": 0,
    "widest": []
   }
  ],
  "summary": {
   "crown_crops": 24,
-  "min_hp_sd": 5.41,
-  "median_hp_sd": 8.34,
-  "max_hp_sd": 13.66,
+  "min_hp_sd": 2.25,
+  "median_hp_sd": 8.29,
+  "max_hp_sd": 13.83,
   "pass_crown_sd_ge_9": false,
   "reference_hp_sd": [],
   "max_flat_width_px": {
-   "p1_south.jpg": 108.3,
-   "p10_lawn_eye.jpg": 12.2
+   "p1_south.jpg": 82.0,
+   "p10_lawn_eye.jpg": 12.8
   },
   "pass_no_flat_hull_face_gt_40px": false
  }

@@ -3,7 +3,7 @@
   "pass_E1": false,
   "crops": 7,
   "min_hp_sd": 1.33,
-  "max_hp_sd": 13.54
+  "max_hp_sd": 12.82
  },
  "crops": [
   {
@@ -14,8 +14,8 @@
     512,
     512
    ],
-   "hp_sd": 6.1,
-   "mean_luma": 68.9
+   "hp_sd": 6.23,
+   "mean_luma": 68.7
   },
   {
    "image": "p10_lawn_eye.jpg",
@@ -25,8 +25,8 @@
     512,
     512
    ],
-   "hp_sd": 5.32,
-   "mean_luma": 73.4
+   "hp_sd": 5.38,
+   "mean_luma": 73.0
   },
   {
    "image": "p9_park_panorama.jpg",
@@ -36,8 +36,8 @@
     512,
     512
    ],
-   "hp_sd": 4.32,
-   "mean_luma": 77.5
+   "hp_sd": 4.31,
+   "mean_luma": 77.6
   },
   {
    "image": "p9_park_panorama.jpg",
@@ -47,7 +47,7 @@
     512,
     512
    ],
-   "hp_sd": 5.72,
+   "hp_sd": 5.78,
    "mean_luma": 69.8
   },
   {
@@ -69,8 +69,8 @@
     512,
     512
    ],
-   "hp_sd": 13.54,
-   "mean_luma": 96.4
+   "hp_sd": 12.82,
+   "mean_luma": 78.2
   },
   {
    "image": "p4_greatlawn.jpg",
@@ -81,7 +81,7 @@
     512
    ],
    "hp_sd": 1.33,
-   "mean_luma": 104.4
+   "mean_luma": 105.0
   }
  ]
 }

@@ -18,7 +18,7 @@
     3840,
     2160
    ],
-   "grass_pixels_pct": 11.1,
+   "grass_pixels_pct": 8.6,
    "candidates": 0,
    "all_candidates_hp_sd": null,
    "crops": []
@@ -29,7 +29,7 @@
     3840,
     2160
    ],
-   "grass_pixels_pct": 8.9,
+   "grass_pixels_pct": 8.5,
    "candidates": 0,
    "all_candidates_hp_sd": null,
    "crops": []
@@ -40,7 +40,7 @@
     3840,
     2160
    ],
-   "grass_pixels_pct": 7.4,
+   "grass_pixels_pct": 7.0,
    "candidates": 0,
    "all_candidates_hp_sd": null,
    "crops": []
@@ -51,12 +51,12 @@
     3840,
     2160
    ],
-   "grass_pixels_pct": 19.5,
+   "grass_pixels_pct": 19.6,
    "candidates": 2,
    "all_candidates_hp_sd": {
     "min": 5.42,
-    "median": 5.47,
-    "max": 5.51
+    "median": 5.49,
+    "max": 5.55
    },
    "crops": [
     {
@@ -68,7 +68,7 @@
      ],
      "grass_share": 0.97,
      "hp_sd": 5.42,
-     "mean_luma": 139.5
+     "mean_luma": 140.1
     }
    ]
   },
@@ -89,7 +89,7 @@
     3840,
     2160
    ],
-   "grass_pixels_pct": 40.7,
+   "grass_pixels_pct": 40.4,
    "candidates": 0,
    "all_candidates_hp_sd": null,
    "crops": []
