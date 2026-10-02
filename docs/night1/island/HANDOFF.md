@@ -12,7 +12,7 @@
   log `_scratch/island/logs/build_r03.log`, commandlet log `city_pass1.log`; started 05:24). WHBox cubes = per-tile components
   (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
 - 07:24: the city_pass1 commandlet hit build_manhattan's 7,200 s subprocess timeout mid-finish (killed, -nullrhi: no GPU); ~420 finished meshes were saved. Timeout now SM2_ISLAND_UE_TIMEOUT (6 h). Resumed 07:25 with SM2_ISLAND_CITY_STEPS=mesh,kit,fsky,map,coll,wp (log build_r03b.log): only the still-missing meshes are imported.
-- 08:26: resumed pass still finishing the detail (Nanite) meshes (~17 per 10 min), then ~345 small ones.
+- 08:37: mesh step done (419 resumed meshes in 4,325 s); kit step (whole-island street kit + fire-escape tiles) running, then fsky, map, coll, wp.
 - Next: when the build ends -> captures (`capture_round.sh docs/night1/island/round-03 warmup r1 r2 r3 r4 a1`, GPU lock), route checks,
   `tools/export/island_r2_check.py`, `tools/export/island_road_band.py` on r2 t26/t28 stills, critic pack `_scratch/critic-A-r03`.
 - Build timings: `_scratch/island/logs/build_timings_island.json` (every invocation appended).
