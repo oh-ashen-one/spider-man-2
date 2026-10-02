@@ -17,17 +17,16 @@ for k in [air_keys(0, 0, 0)]:
     for kk in k:
         for key in [x for x, v in kk.items() if v is None]: del kk[key]
 C = [
- ('b0_r03_control', 'round-03 route (control)', FOOT(-120), foot_keys(0, 0, 0)),
- ('f1_y290_h130_sky0', 'foot start y -290, heading -130 from 9 s', FOOT(-290), foot_keys(0, 9.0, -130)),
  ('f2_y290_h130_sky1', 'foot start y -290, heading -130 from 9 s, sky launches', FOOT(-290), foot_keys(1, 9.0, -130)),
  ('f3_y250_h125_sky1', 'foot start y -250, heading -125 from 8 s, sky launches', FOOT(-250), foot_keys(1, 8.0, -125)),
- ('f4_y330_h125_sky0', 'foot start y -330, heading -125 from 9.5 s', FOOT(-330), foot_keys(0, 9.5, -125)),
  ('a1_y200_h130_sky1', 'airborne start (250, -200, 26), heading -130 from 8.5 s, sky launches, re-press at -12 m/s', AIR(-200, 26), air_keys(1, 8.5, -130, -12.0)),
- ('a2_y200_h130_sky0', 'airborne start (250, -200, 26), heading -130 from 8.5 s', AIR(-200, 26), air_keys(0, 8.5, -130)),
  ('a3_y240_h120_sky1', 'airborne start (250, -240, 26), heading -120 from 9.5 s, sky launches', AIR(-240, 26), air_keys(1, 9.5, -120)),
  ('a4_y160_h135_sky2', 'airborne start (250, -160, 26), heading -135 from 7.5 s, every 2nd release a sky launch', AIR(-160, 26), air_keys(2, 7.5, -135, -12.0)),
  ('s1_y200_sky1_peak40', 'airborne start (250, -200, 26), heading -130 from 8.5 s, sky launches capped at a 26-40 m peak', AIR(-200, 26), air_keys(1, 8.5, -130, -12.0), 'SkyPeakMin=26,SkyPeakMax=40,SkyLaunchVzMax=42'),
  ('s2_y290_sky1_peak40', 'foot start y -290, heading -130 from 9 s, sky launches capped at a 26-40 m peak', FOOT(-290), foot_keys(1, 9.0, -130), 'SkyPeakMin=26,SkyPeakMax=40,SkyLaunchVzMax=42'),
+ ('s4_y200_sky1_hang25', 'airborne start (250, -200, 26), heading -130 from 8.5 s, sky launches capped at a 30-36 m peak with a long apex hang', AIR(-200, 26), air_keys(1, 8.5, -130, -12.0), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9'),
+ ('s5_y290_sky1_hang25', 'foot start y -290, heading -130 from 9 s, sky launches capped at a 30-36 m peak with a long apex hang', FOOT(-290), foot_keys(1, 9.0, -130), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9'),
+ ('s6_y260_sky1_hang25', 'airborne start (250, -260, 26), heading -120 from 9 s, sky launches capped at a 30-36 m peak with a long apex hang', AIR(-260, 26), air_keys(1, 9.0, -120), 'SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9'),
  ('s3_y240_sky1_hang', 'airborne start (250, -240, 26), heading -120 from 9.5 s, sky launches 30-45 m peak with more hang', AIR(-240, 26), air_keys(1, 9.5, -120), 'SkyPeakMin=30,SkyPeakMax=45,SkyHangK=0.4'),
 ]
 for c in C:

@@ -1,15 +1,20 @@
 {
  "name": "t5_avenue_to_park",
- "note": "foot start y -330, heading -125 from 9.5 s",
+ "note": "airborne start (250, -260, 26), heading -120 from 9 s, sky launches capped at a 30-36 m peak with a long apex hang",
  "seed": 1234,
  "spawn": {
   "pos": [
    250,
-   -330,
-   0.95
+   -260,
+   26
   ],
   "yaw": -90,
-  "camPitch": 0.14
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -22,
+   0
+  ]
  },
  "keys": [
   {
@@ -19,33 +24,25 @@
     1
    ],
    "heading": -90,
-   "sprint": true
+   "swing": false
   },
   {
-   "t": 1.8,
-   "jump": true
-  },
-  {
-   "t": 2.2,
-   "jump": false
-  },
-  {
-   "t": 2.6,
-   "swing": true,
+   "t": 0.4,
    "autoChain": true,
    "releasePhase": 0.55,
    "gap": 0.8,
    "repressVz": 99.0,
    "trickEvery": 0,
-   "skyEvery": 0,
+   "skyEvery": 1,
    "skyTricks": 1,
    "skyRepressH": 30,
    "skyPhase": 0.8,
    "skyMax": 2.8
   },
   {
-   "t": 9.5,
-   "heading": -125
+   "t": 9.0,
+   "heading": -120
   }
- ]
+ ],
+ "tune": "SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9"
 }

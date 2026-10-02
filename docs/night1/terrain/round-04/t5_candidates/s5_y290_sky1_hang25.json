@@ -1,11 +1,11 @@
 {
  "name": "t5_avenue_to_park",
- "note": "round-03 route (control)",
+ "note": "foot start y -290, heading -130 from 9 s, sky launches capped at a 30-36 m peak with a long apex hang",
  "seed": 1234,
  "spawn": {
   "pos": [
    250,
-   -120,
+   -290,
    0.95
   ],
   "yaw": -90,
@@ -37,11 +37,16 @@
    "gap": 0.8,
    "repressVz": 99.0,
    "trickEvery": 0,
-   "skyEvery": 0,
+   "skyEvery": 1,
    "skyTricks": 1,
    "skyRepressH": 30,
    "skyPhase": 0.8,
    "skyMax": 2.8
+  },
+  {
+   "t": 9.0,
+   "heading": -130
   }
- ]
+ ],
+ "tune": "SkyPeakMin=30,SkyPeakMax=36,SkyHangK=0.25,SkyHangVz=9"
 }
