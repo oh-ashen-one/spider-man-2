@@ -54,7 +54,7 @@ back at r03's value (37.8 -> 38.4) with GrazeRough 0 and the far-field calm. Not
 off beyond 500 m) keeps the far-shore reflection and brings the sparkle width back.
 
 ## harbour_high contact line: still none
-The far line renders at river level (the far pier across the basin in `river_low_4k.jpg` has a foam line, rows ~1030-1060), but not at the
+The far line renders at river level (the far pier across the basin in `river_low_4k.jpg` has a foam line, rows ~1080-1100), but not at the
 island tip seen from 260 m. Both forms (branched and shore-gated in final hold A, branch-free and ungated in B) gave 0.6 %. A CPU ray-cast of
 the edge pixels (camera from views.json) reads the map at 3-11 m two pixels below the edge and a footprint of ~2.7 m (band >= 16 m with
 FarPx 6), which should give coverage ~0.7; so either the ray-cast does not match the engine camera there or the map does not hold the

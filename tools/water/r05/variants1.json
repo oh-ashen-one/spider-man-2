@@ -1,0 +1,105 @@
+{
+ "DBG9": {
+  "Dbg": 9,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "DBG7C1": {
+  "Dbg": 7,
+  "CSel": 1,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "C1": {
+  "CSel": 1,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "C1F": {
+  "CSel": 1,
+  "FoamK": 2.8,
+  "CBias": 1.4,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "C2": {
+  "CSel": 2,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "SC0": {
+  "ShoreCalm": 0,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "SC150": {
+  "ShoreCalm": 150,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "SC380": {
+  "ShoreCalm": 380,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "L2": {
+  "LongK": 2.0,
+  "MidK": 1.5,
+  "ShoreCalm": 300,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "S6": {
+  "SunSpecK": 0.6,
+  "_views": [
+   "harbour_sun_high"
+  ]
+ },
+ "S4": {
+  "SunSpecK": 0.4,
+  "_views": [
+   "harbour_sun_high"
+  ]
+ },
+ "S25": {
+  "SunSpecK": 0.25,
+  "_views": [
+   "harbour_sun_high"
+  ]
+ },
+ "HC1": {
+  "CSel": 1,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "HC1F2": {
+  "CSel": 1,
+  "FoamFarK": 2.0,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "HDBG4": {
+  "Dbg": 4,
+  "CSel": 1,
+  "_views": [
+   "harbour_high"
+  ]
+ },
+ "HC2": {
+  "CSel": 2,
+  "_views": [
+   "harbour_high"
+  ]
+ }
+}
