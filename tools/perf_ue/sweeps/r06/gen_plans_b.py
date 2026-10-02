@@ -53,6 +53,12 @@ def main():
     P.append(G('G9_h18.4', 18.4, allp, [pin('pp.AutoExposureBias', 1.0), pin('pp.ColorGainHighlights', [0.55, 0.72, 0.72, 1.0]), pin('mpc.ShadeFill', 0.2)], settle_first=10))
     P.append(G('G10_h18.4', 18.4, allp, [pin('pp.AutoExposureBias', 1.0), pin('pp.ColorGainHighlights', [0.55, 0.72, 0.72, 1.0]), pin('mpc.ShadeFill', 0.2),
                                             pin('atm.MieScatteringScale', g['atm.MieScatteringScale'] * 0.6), pin('atm.AerialPespectiveViewDistanceScale', 3.5)], settle_first=10))
+    # sky fog switch: hold-1 sweep H showed cutoff 7e5 (sky unfogged) at 18.4 takes S4 from 117.6 to 99.9 (far band 168 -> 141, sky B-R -61 -> -86). If the sky is unfogged at EVERY hour there is no cutoff
+    # step at all: golden with the best-guess combination, day, dawn
+    P.append(G('G11_cut_h18.4', 18.4, allp, [pin('fog.FogCutoffDistance', 700000), pin('pp.AutoExposureBias', 1.0), pin('pp.ColorGainHighlights', [0.55, 0.72, 0.72, 1.0]), pin('mpc.ShadeFill', 0.2)], settle_first=10))
+    P.append(G('Day0_h13', 13.0, ['S4', 'S8', 'S1']))
+    P.append(G('Day1_cut_h13', 13.0, ['S4', 'S8', 'S1'], [pin('fog.FogCutoffDistance', 700000)]))
+    P.append(G('Dawn1_cut_h7.6', 7.6, ['S4', 'S4e'], [pin('fog.FogCutoffDistance', 700000)]))
     P.append(G('Mb0_h22', 22.0, ['S4m', 'S4']))
     P.append(G('Mb1_h22', 22.0, ['S4m', 'S4'], [pin('moonc.LightSourceAngle', 1.0), pin('moonc.CloudScatteredLuminanceScale', [3, 3, 3, 1]), pin('cloud.Cloud_GlobalCoverage', 0.2), pin('cloud.Cloud_GlobalDensity', 0.025)]))
     P.append(G('Mb2_h22', 22.0, ['S4m', 'S4'], [pin('moonc.LightSourceAngle', 1.0), pin('moonc.CloudScatteredLuminanceScale', [4, 4, 4, 1]), pin('cloud.Cloud_GlobalCoverage', 0.12), pin('cloud.Cloud_GlobalDensity', 0.02), pin('stars', 2.5)]))
