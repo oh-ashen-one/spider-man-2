@@ -1,4 +1,4 @@
-# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 12:00)
+# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 13:25)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -21,7 +21,11 @@
   block at x 192-216 (topOut / wall-run / fire-escape landing at 41 m), then climbs roofs to z 95 m: t26/t28 stills show roofs / a wall,
   no road (road band t26 paint 7.4 % std 25.7, t28 0.7 % std 37.8: FAIL). Feet-overlap 20 frames (fire-escape decks during the wall-run,
   traversal REQUEST §2). Traversal steering, not content; nothing in the route was changed to game the test.
-- 11:54 holds 2 (r1 r3) and 3 (r4 a1) queued; 6th in the GPU FIFO (slots = 1, DEMOTED).
+- Hold 2 (12:21-13:00): with 3-4 engines on the GPU r1 rendered at ~45 frames/min; to keep gpu_slot's max hold (SIGTERM, SIGKILL after
+  10 s) off a rendering engine, `_scratch/island/r1_guard.sh` stopped r1 with stop_ue.sh at t=29.1 s (1,751 frames kept, encoded by hand)
+  and r3 never started. r1 (`route_check_r1.json`): 0 fall / stuck / mid-air / wall-air, 0 feet overlap, 0 webs on nothing, 1,142 m.
+  `capture_round.sh` now skips a route without 1,500 s of hold left and passes run_game `-timeout` = hold left - 150 s.
+- 13:24 hold "r3" running (driver `holds_r03c.sh`, pid in `_scratch/island/holds_r03.pid`), then hold "r4 a1".
 - Then: route checks r1/r3/r4 (`python3 tools/export/island_route_check.py _scratch/island/export/island <csv> --out ...`),
   `python3 docs/night1/island/critic_prep_r03.py` + abpack, round-03/README.md.
 
