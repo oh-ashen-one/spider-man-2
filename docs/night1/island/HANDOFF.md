@@ -1,4 +1,4 @@
-# Island (piece A) — HANDOFF (round 01 finished except r3 take 2 + the ISM in-game check)
+# Island (piece A) — HANDOFF (round 01 done except r3 take 2 + the ISM in-game check, both blocked by the 20:43 GPU auto-pause)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -17,16 +17,17 @@ Owns `tools/export/*`, `Scripts/build_city.py`, `Scripts/build_manhattan.py`, `S
   inputs `pairs.json`, built by `prep_pairs.py` (copy: `docs/night1/island/critic_prep_r01.py`) then
   `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py <pack> <pairs.json>`. Rebuild it after r3 take 2.
 
-## In flight at hand-off time
-- **Hold B** (queued in the GPU lock, PID in `_scratch/island/capture.pid`, log `_scratch/island/logs/holdB.log`): one slot hold running
-  `_scratch/island/holdB.sh` = (1) `verify_map.sh /Game/Maps/Manhattan_WP_ism _scratch/island/verify_ism r1 r4` (telemetry-only, 960x540;
-  log `verify_ism.log`) and (2) `capture_round.sh round-01 r3` (r3 take 2 from x -300 / 40 m / 26 m/s; log `capture_r01e.log`).
-  The health monitor auto-PAUSED all launches at 20:43 (WindowServer starved under another piece's capture): the waiter just waits.
-- When hold B finishes: route-check r3 (`python3 tools/export/island_route_check.py <export> round-01/r3_crosstown_east_telemetry.csv --out
-  round-01/route_check_r3.json`), update the README table, re-run `prep_pairs.py` + abpack, commit. Compare `verify_ism/route_check.json` and the
-  `WebTravWorld:` lines (expect ~56.5 k *instance* boxes) with the actor build; if they match, make `ism` the default in `spawn_boxes` and
-  rebuild `Manhattan_WP` (`SM2_WHBOX_MODE=ism SM2_ISLAND_CITY_STEPS=wp python3 unreal/WebHomage/Scripts/build_manhattan.py --steps city,map`,
-  ~2 min). The test map `/Game/Maps/Manhattan_WP_ism` can then be deleted (git-ignored Content).
+## Not done (blocked by the GPU auto-pause) — do these first
+Hold B never ran: queued 20:41, the health monitor auto-PAUSED every launch at 20:43 (WindowServer starved under another piece's capture),
+`gpu_slot` wait-timed-out at 21:53 (exit 75). Nothing of the island is running. When `/Users/midir/sm2-n1/_scratch/gpu/PAUSED` is gone:
+`/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label island -- /Users/midir/sm2-n1/island/docs/night1/island/holdB_r01.sh`
+(~25 min hold) = (1) `verify_map.sh /Game/Maps/Manhattan_WP_ism _scratch/island/verify_ism r1 r4` (telemetry-only ISM collision check, log
+`_scratch/island/logs/verify_ism.log`) and (2) r3 take 2 movie (route now starts x -300 / 40 m / 26 m/s; log `capture_r01e.log`). Then:
+route-check r3 (`python3 tools/export/island_route_check.py /Users/midir/sm2-n1/_scratch/island/export/midtown
+docs/night1/island/round-01/r3_crosstown_east_telemetry.csv --out docs/night1/island/round-01/route_check_r3.json`), README table, re-run
+`/Users/midir/sm2-n1/_scratch/critic-A-r01/prep_pairs.py` + abpack, commit. ISM verdict: `verify_ism/route_check.json` must show 0 events
+and the game log `WebTravWorld:` line ~56.5 k *instance* boxes; then make `ism` the default in `spawn_boxes` and rebuild `Manhattan_WP`
+(`SM2_WHBOX_MODE=ism SM2_ISLAND_CITY_STEPS=wp python3 unreal/WebHomage/Scripts/build_manhattan.py --steps city,map`, ~2 min).
 
 ## Rebuild from scratch
 `python3 unreal/WebHomage/Scripts/build_manhattan.py` (all steps; editor closed; ~94 min with actor boxes, ~60 min expected with
