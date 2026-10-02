@@ -741,6 +741,19 @@
     6,
     7
    ]
+  },
+  {
+   "piece": "E Terrain",
+   "round": 2,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    3,
+    3
+   ]
   }
  ],
  "agents": [

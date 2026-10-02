@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-02T04:30",
+ "updated": "2026-10-02T06:55",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -896,6 +896,14 @@
    "verdict": "fails",
    "gap": "Vertical wall-run freezes (no alternating stride); zip from side-run never lands; camera too tight after zip",
    "notes": "Merged (no axis below r21). Side wall-run fixed: upright, legs apart 7/10 at 12 fps, sunlit facade."
+  },
+  {
+   "t": "2026-10-02T06:55",
+   "piece": "E Terrain",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Canopy must read as leaves at every distance: clustered leaf-card canopy 165-520 m, remove the constant emissive fill and light the cards with the engine; crown crops SD >= 9",
+   "notes": "First terrain merge (at/above r1 on every axis, won 3/3 progress pairs)."
   }
  ],
  "perf": [
