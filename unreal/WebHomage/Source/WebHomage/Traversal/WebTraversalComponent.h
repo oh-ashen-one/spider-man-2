@@ -54,7 +54,7 @@ public:
 	// round 20 tunables (-WHTravTune=Name=V): wall-gait torso lean off the facade (rad), air body-to-velocity alignment speed band (m/s),
 	// setback look-ahead above a ledge (m), E-from-wall facade-top search range (m)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitLeanR = 0.08f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.42f; // round 21 (r20 .30): hips ~.5 m off the facade so the forward-bent driven knee clears it
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV0 = 22.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV1 = 28.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 5.f;
