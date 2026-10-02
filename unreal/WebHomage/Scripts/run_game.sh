@@ -41,7 +41,17 @@ if [ -z "$QUIT" ]; then
   elif [ -n "$SHOTS" ]; then QUIT=$(python3 -c "print(max(map(float,'$SHOTS'.split(',')))+2)"); else QUIT=20; fi
 fi
 ARGS+=(-WHQuitAt="$QUIT")
-EXECS="t.MaxFPS 0"; [ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
+# 2026-10-01 18:12 (WindowServer starvation probe failing with one 1080p capture at GPU 100 %): non-perf captures are frame-capped so the
+# GPU idles between frames and WindowServer gets its slice. Movie captures use a fixed 1/60 s step, so their frames are unchanged.
+# Perf runs stay uncapped. Override with WH_CAPTURE_MAXFPS.
+# 20:43: a native-4K still capture pinned the GPU (a 4K frame takes > 22 ms, so a 45 fps cap never engages): stills and any capture
+# >= 2560 px wide run at <= 20 fps (fixed-step captures produce the same frames, just slower).
+RESW=${RES%%x*}
+if [ -n "$PERF" ] && [ "${GPU_SLOT_HELD:-}" = "perf" ]; then EXECS="t.MaxFPS 0"   # only real perf runs (exclusive perf lock) are uncapped
+elif [ "$MOVIE" = 1 ] && [ "${RESW:-0}" -lt 2560 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-30}"
+elif [ "${RESW:-0}" -ge 2560 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-8}"   # 03:45: a 4K frame takes > 50 ms, so 20 fps still pinned the GPU
+else EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-20}"; fi
+[ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
 ARGS+=(-ExecCmds="$EXECS")
 if [ "$MOVIE" = 1 ]; then rm -f "$PROJ_DIR"/Saved/Screenshots/MacEditor/MovieFrame*.png; ARGS+=(-benchmark -fps=60 -dumpmovie); fi
 ARGS+=("${EXTRA[@]+"${EXTRA[@]}"}")
