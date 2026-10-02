@@ -49,7 +49,7 @@ float tfClump(float3 cp, out float n1, out float n2, out float n3)
 float tfBumpH(float3 cp)
 {
     float n1, n2, n3; float c = tfClump(cp, n1, n2, n3);
-    return c * 7.5f + n3 * 0.2f;       // r02: 3.0 / 0.5 -> 7.5 / 0.2 (the r02 first render measured crown crops at 6.6-8 high-pass SD)
+    return c * 3.0f + n3 * 0.5f;       // r03: back at the browser's 3.0 / 0.5 (r02 had 7.5 / 0.2: crown SD from hull noise; the hull now draws only >= 520 m, the 165-520 m band is leaf cards)
 }
 
 // The lumpy clump crown (trees.js crownMaterial), 165-520 m. wpos / cam in UE cm; wn = world vertex normal; aLeaf = (exposure, per-lobe variation); tA / tB = the tree's autumn
@@ -131,3 +131,15 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
     sub = c * 0.85f;
     return c;
 }
+
+// r03: residual ambient fill weight for the leaf materials (replaces r02's constant Emis = c * 1800 * (0.4 + 0.6 expo)). The canopy is lit by the engine (sun + two-sided foliage
+// transmission + Lumen sky / bounce, with the crown pools out of the ray-tracing scene); what is left is a small fill that is 0 on sun-facing outer leaves (direct sun),
+// 0 within 10 m of the camera (the r02 t4 sprint showed pale mint leaves next to the lens), ramps in to 30 m and grows into the shaded crown interior.
+// expo = leaf exposure (0 inside / underneath .. 1 outer shell), N = canopy vertex normal (world), L = direction TO the sun (SkyAtmosphere light 0), dist = metres to the camera.
+float tfFillW(float expo, float3 N, float3 L, float dist)
+{
+    float sunFacing = saturate(dot(normalize(N), L) * 2.5f + 0.15f);
+    float sunlit = sunFacing * smoothstep(0.4f, 0.8f, expo);
+    return (1.0f - sunlit) * (1.0f - 0.5f * expo) * smoothstep(10.0f, 30.0f, dist);
+}
+
