@@ -638,7 +638,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
 	// round 20 (capture c 9.0-10.0 s: after the perch landing a look-up held from the zip aim left the crouched hero cut by the bottom edge,
 	// centre at 0.92 of the frame): perched / on foot, his centre stays at or above 0.66 of the frame height and the look offset recentres fast
-	if (P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Ground)
+	// (round 24, hold B c 8.50-8.57 s: the zip fired from the roof switched the framing to the air rule and the standing hero dipped out of
+	//  the bottom edge for 4 frames -- the clamp also holds through the zip's first 0.25 s)
+	if (P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Ground || (P.Mode == EWebTravMode::Zip && P.ModeT < 0.25))
 	{
 		PitchDown = FMath::Max(PitchDown, DownToHero - FMath::Atan((0.66 - 0.5) * 2.0 * TanHalfV));
 		if (P.Mode == EWebTravMode::Perch && LastLook > 0.3) UserPitch = Damp(UserPitch, 0.0, 4.0, Dt);

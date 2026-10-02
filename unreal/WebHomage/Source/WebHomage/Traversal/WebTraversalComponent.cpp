@@ -654,7 +654,7 @@ void UWebTraversalComponent::Corridor(double Hs, const FVector& InD)
 		{
 			const double AOff = CorrWallD[W1] + FVector::DotProduct(S.Sw.Anchor - S.Pos, N1) - 0.5 * (CorrWallD[W] + CorrWallD[W1]);
 			Target = FMath::Clamp(AOff * double(WeaveK), -double(WeaveAmp), double(WeaveAmp));
-			if (AltChain > 0.f) Target *= double(AltWeaveK); // round 24 (T7 "low point over the street centre", clear of the sidewalk trees)
+			if (bAltSwing) Target *= double(AltWeaveK); // round 24 (T7 "low point over the street centre", clear of the sidewalk trees)
 		}
 		else bFree = FMath::Abs(Off) < double(WeaveAmp) + 2.0;
 		if (!bFree)
@@ -825,6 +825,8 @@ bool UWebTraversalComponent::FacadeAnchor(FTravAnchor& A) const
 void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd, const FVector* Turn, double HS)
 {
 	FSwing& Sw = S.Sw;
+	struct FAltArcClear { bool& B; ~FAltArcClear() { B = false; } } AltArcClear{ bAltArcNext }; // round 24: one swing per altitude release
+	bAltSwing = AltChain > 0.f && bAltArcNext;
 	S.Chain = S.SinceSwing <= CHAIN_BUF ? FMath::Min(CHAIN_MAX, S.Chain + 1) : 0; // user r10g momentum chain
 	Emit(N_swingChain, 0.f, 0.f, float(S.Chain));
 	Sw.Anchor = A.Point; Sw.Normal = A.Normal; Sw.Kind = A.Kind; Sw.ModelT = 0.1;
@@ -855,7 +857,8 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 			BottomFeet = FMath::Max(double(ArcLowMin), HEntry - Drop); // round 10: 3 -> ArcLowMin (5 m)
 			// round 24 (T7 altitude chain): a swing entered from the roofline altitude dives to AltLowLo..AltLowHi m over the street,
 			// alternating the low / high half of the band (consecutive arcs differ by >= 1 m)
-			if (AltChain > 0.f && !S.bSky && HEntry >= double(AltEntryMin))
+			// (hold B r24: only after an altitude release -- the opening swing of c / x2 / r1 from a 22 m spawn changed their r23 paths)
+			if (AltChain > 0.f && bAltArcNext && !S.bSky && HEntry >= double(AltEntryMin))
 			{
 				const double Mid = 0.5 * double(AltLowLo + AltLowHi), Rj = double(Rng.FRand());
 				BottomFeet = FMath::Max(double(ArcLowMin), S.SwingIdx % 2 ? FMath::Lerp(double(AltLowLo), Mid - 0.5, Rj) : FMath::Lerp(Mid + 0.5, double(AltLowHi), Rj));
@@ -1741,7 +1744,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 				{
 					if (Target > 0.0 && !bRoofOut) FlowRoofUsed = RoofOver;
 					const double Want = bAltRel ? FMath::Max(bRoofOut || Target <= 0.0 ? double(FlowApexMin) : WantRaw, WantAlt) : WantRaw;
-					if (bAltRel) { AltApexWant = AltApexNow; ++AltRelIdx; }
+					if (bAltRel) { AltApexWant = AltApexNow; ++AltRelIdx; bAltArcNext = true; }
 					double Lo = 0.0, Hi = bAltRel ? double(FMath::Max(FlowApexVzMax, AltFlowVzMax)) : double(FlowApexVzMax);
 					if (FlowApexGain(Hi, FP) <= Want) Lo = Hi;
 					else for (int32 It = 0; It < 30; ++It) { const double Md = 0.5 * (Lo + Hi); (FlowApexGain(Md, FP) < Want ? Lo : Hi) = Md; }
@@ -1771,7 +1774,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 		{ // round 24 (T7 altitude chain): solve the release for an apex AltApexNow m over the floor -- the velocity turns up toward it
 		  // (speed kept, <= AltTurnDeg, horizontal >= AltHMin, vz <= AltVzMax); more climb than needed goes forward as the r07 pop
 			const double D = AltApexNow - HeightAboveFloor();
-			AltApexWant = AltApexNow; ++AltRelIdx;
+			AltApexWant = AltApexNow; ++AltRelIdx; bAltArcNext = true;
 			if (D <= 1.0) PopForward();
 			else
 			{

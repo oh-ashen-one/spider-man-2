@@ -17,5 +17,5 @@
   T4 web-less 12.37-14.30 1.93 s: pose changes 19/19 at 0.1 s  subs ['apex', 'dive', 'fall', 'release', 'rise'] -> ok
   T4 -> PASS
 == CAM hard gate (critic r23 secondary 1)
-  c_wallrun_perch 7.7-8.5 s (49 rows): hero_in_frame 26/49, hero_occl max 1.000, cam-hero min 2.23 m, yaw -88.9 -> 3.6 (turn -), max backtrack 95.0 deg, crane max 2.58 m -> FAIL [geometry part (frame, distance, reversal): GEOM_FAIL]
-  c zip 8.5000 -> perch 8.7833 (last perch/perchIdle)
+  c_wallrun_perch 7.7-8.5 s (49 rows): hero_in_frame 48/49, hero_occl max 0.000, cam-hero min 3.83 m, yaw -88.6 -> -115.3 (turn -), max backtrack 0.0 deg, crane max 0.00 m -> FAIL [geometry part (frame, distance, reversal): GEOM_FAIL]
+  c zip 8.5000 -> perch 8.8833 (last perch/perchIdle)

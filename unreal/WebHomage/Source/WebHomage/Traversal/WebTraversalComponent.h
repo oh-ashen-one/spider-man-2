@@ -87,6 +87,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenAhead = 35.f; // round 24: open street needed ahead (m; 0 = always)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenUp = 8.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltWeaveK = 0.4f; // round 24: corridor weave scale (low points near the centre)
+	bool bAltArcNext = false, bAltSwing = false; // round 24: the next / current swing follows an altitude release (alt arc + centred weave)
 	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
 	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
 	/** Round 24: vertical release speed that tops out D m higher (StepAir gravity: G, x0.55 under |vz| 3.5). */
