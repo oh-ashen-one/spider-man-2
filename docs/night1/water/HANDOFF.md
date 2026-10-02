@@ -58,7 +58,7 @@ imports the integrator's `build_manhattan.py` and redirects SCR / EXPORT / TEX t
 `_scratch/showcase/manhattan/`). `build_water.py --steps ue` rebuilds only `/Game/Water` (~2.5 min commandlet).
 
 ## State at hand-off
-- PERF_STATUS: the exclusive perf hold (`$S/r04/perf_chain2.sh`, pid in `r04/perf_chain2.pid`, log `r04/perf_chain2.log`) was queued
+- PERF_STATUS (10:45: still queued, 4th): the exclusive perf hold (`$S/r04/perf_chain2.sh`, pid in `r04/perf_chain2.pid`, log `r04/perf_chain2.log`) was queued
   at 10:12, 4th in the FIFO. When the log says `PERF CHAIN DONE`, `round-04/perf.json` and `perf_gpu.json` hold the numbers (gate field:
   `slw_depth_lumen_sum`). If it is still waiting and nobody owns it, it is safe to leave it: it only runs the 6 water perf maps.
 - No engine of ours is running. Content: `/Game/Water` is built with the r04 defaults.
