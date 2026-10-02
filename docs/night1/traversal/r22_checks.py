@@ -184,15 +184,21 @@ for name in ('f1_flow_backDouble', 'f4_chain_flips', 'c_wallrun_perch', 'a_swing
     P(f'  {name}: rows r21 {len(A)} / r22 {len(B)}, {len(cols)} common columns, differing cells {sum(diff.values())}'
       + (f' in {sorted(diff.items(), key=lambda x: -x[1])[:8]}' if diff else ' -> BIT-IDENTICAL'))
 
-P('\n== G22  ground locomotion blend (characters critic: idle -> run was a 1-frame weight pop): r1 roof run, ground rows')
-rows = clip('r1_roofrun_zip')
-if rows:
-    g = [i for i, r in enumerate(rows) if r['mode'] == 'ground']
-    jumps = []
-    for i, j in zip(g, g[1:]):
-        if j != i + 1: continue
-        if rows[i]['anim_clip'] != rows[j]['anim_clip']:
-            jumps.append((fl(rows[j], 't'), rows[i]['anim_clip'], rows[j]['anim_clip'], fl(rows[i], 'anim_weight'), fl(rows[j], 'anim_weight')))
-    P(f'  r1: {len(g)} ground rows; dominant-clip changes {len(jumps)}: ' + ', '.join(f'{t:.2f}s {a}->{b} w {wa:.2f}->{wb:.2f}' for t, a, b, wa, wb in jumps[:8]))
+P('\n== G22  ground locomotion blend (characters critic: idle -> run was a 1-frame weight pop). anim_weight is the TOTAL clip weight (always 1),')
+P('         so the check is the largest single-frame pose_sig jump on ground rows (r1 roof run), r21 vs r22; no shot-list clip has a standing start')
+for d, tag in ((PREV, 'r21'), (RD, 'r22')):
+    p = os.path.join(d, 'r1_roofrun_zip_telemetry.csv')
+    if not os.path.exists(p): continue
+    rows = load(p)
+    def ps(i):
+        try: return [float(x) for x in rows[i]['pose_sig'].split()]
+        except (ValueError, KeyError): return None
+    js = []
+    for i, r in enumerate(rows[:-2]):
+        if r['mode'] != 'ground': continue
+        a, b = ps(i + 1), ps(i + 2)
+        if a and b: js.append((max(abs(x - y) for x, y in zip(a, b)), r['t'], r['sub']))
+    js.sort(reverse=True)
+    P(f'  {tag} r1: {len(js)} ground rows, largest pose_sig jumps ' + ', '.join(f'{x:.3f} at {t} s ({s})' for x, t, s in js[:3]))
 
 with open(os.path.join(RD, 'R22_CHECK.txt'), 'w') as f: f.write('\n'.join(OUT) + '\n')
