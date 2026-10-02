@@ -88,6 +88,7 @@ def main(tel, pose=None):
             if t1 > t0: d.setdefault(round(t0 * 10), da / (t1 - t0))
         return d
     for p, cs in progs.items():
+        cs = [c for c in cs if c['scale'] > 0]   # wallFront (wall top-out) is one fixed program, not a release variant
         for a in range(len(cs)):
             for b in range(a + 1, len(cs)):
                 sa, sb = series(cs[a], 'flip_rate_dps'), series(cs[b], 'flip_rate_dps')
@@ -100,14 +101,14 @@ def main(tel, pose=None):
                 P('   %-16s %.2f s vs %.2f s: program %.0f deg/s, rendered %.0f deg/s over %d samples -> %s' % (p, cs[a]['t0'], cs[b]['t0'], dm, dr, len(ks), 'PASS' if dm >= 40 and dr >= 40 else 'FAIL'))
     P('V1 %s (%d same-type pairs, %d >= 40 deg/s on both)' % ('PASS' if v1 and all(x[1] >= 40 and x[2] >= 40 for x in v1) else ('FAIL' if v1 else 'NO PAIRS'), len(v1), sum(1 for x in v1 if x[1] >= 40 and x[2] >= 40)))
     # ---- V2
-    sc = [c['scale'] for c in I]
+    sc = [c['scale'] for c in I if c['scale'] > 0]   # wallFront (wall top-out) is not a release variant: scale 0
     if sc:
         dev = [abs(s - 1) for s in sc]
         P('V2 duration scale per instance: min %.3f max %.3f (spread %+.0f %% .. %+.0f %%); instances deviating >= 10 %%: %d of %d; all within 22 %%: %s' % (
             min(sc), max(sc), (min(sc) - 1) * 100, (max(sc) - 1) * 100, sum(1 for d in dev if d >= 0.10), len(sc), all(d <= 0.22 for d in dev)))
         for p, cs in progs.items():
-            if len(cs) > 1:
-                s2 = [c['scale'] for c in cs]
+            s2 = [c['scale'] for c in cs if c['scale'] > 0]
+            if len(s2) > 1:
                 P('   %-16s scales %s (same-type spread %.0f %%)' % (p, ' '.join('%.3f' % x for x in s2), (max(s2) / min(s2) - 1) * 100))
         ok = min(sc) <= 0.9 and max(sc) >= 1.1 and all(d <= 0.22 for d in dev)
         P('V2 %s (needs instances below 0.90 and above 1.10, none beyond +-22 %%)' % ('PASS' if ok else 'FAIL'))

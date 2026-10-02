@@ -139,7 +139,25 @@ KEYED = {
         (0.0, _tuck(-0.3, -0.25, (0.25, 0.45, 0.65))),
         (0.4, _tuck(0.2, 0.2, (0.42, 0.7, 0.9))),
         (0.72, _tuck(-0.05, 0.0)),
-        (1.0, _tuck(-0.3, -0.3, (0.28, 0.5, 0.7))),
+        (1.0, _tuck(-0.5, -0.5, (0.25, 0.45, 0.62))),
+    ],
+    # Tricks C r01 reach (catch prep; critic pose.py rule: the r23 reach was a held pose -> slow limb samples when the body turns slowly):
+    # the web arm (right) is already up out of the kick-out; the head SPOTS (chin down, eyes on the next anchor's swing line), then the
+    # legs scissor through (left knee up, right leg long, then swapped) while the web arm climbs higher and forward, the free arm sweeps
+    # down and out, and the head lifts to the web
+    "flipReach": [
+        (0.0, dict(_REACH, neck=(0.35, 1, 0), head=(0.7, 0.72, 0))),
+        (0.45, _pose((0.08, 0.05, 0.02), ((0.3, 0.2, 1.0), (0.4, 0.35, 1.0)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
+                     ((0.8, -0.6, 0.1), (-0.2, -1.0, 0.05)), ((0.0, -1.0, 0.08), (-0.25, -1.0, 0.04)), neck=(0.1, 1, 0), head=(0.22, 1, 0))),
+        (1.0, _pose((0.02, -0.02, -0.04), ((0.15, -0.6, 1.0), (0.25, -0.5, 0.9)), ((0.6, 1.0, 0.2), (0.7, 1.0, 0.12)),
+                    ((0.3, -0.95, 0.08), (-0.05, -1.0, 0.04)), ((0.65, -0.75, 0.1), (-0.35, -1.0, 0.05)), neck=(-0.05, 1, 0), head=(-0.22, 1, 0))),
+    ],
+    # Tricks C r01 pencil (backSingle's inverted hold): straight and glued legs throughout, the arms travel from low diagonals through
+    # level to a high V (the body stays a line; the arms keep the hold alive)
+    "flipPencil": [
+        (0.0, dict(SHAPES["flipPencil"])),
+        (0.5, dict(SHAPES["flipPencil"], upperArm=(0.1, 0.12, 1.0), forearm=(0.1, 0.25, 1.0))),
+        (1.0, dict(SHAPES["flipPencil"], upperArm=(0.1, 0.9, 0.55), forearm=(0.05, 1.0, 0.42))),
     ],
     # round 18 pike: it STARTS at the release (frontPikeSwan) with the arms raised and the body long, and folds through the hold -- the arms
     # reach forward and down while the straight legs lift -- into the r17 pike (left hand at the ankles, right arm swept wide and back)

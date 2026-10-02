@@ -60,11 +60,13 @@ namespace WebFlips
 			// comes up for the catch). round 14: Tuck 1.20 s eased, Kickout 0.60 s at <= ~100 deg/s; catch 1.60 s after the release
 			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 1.20f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.60f} }, 3.5f, 1.5f, 0.2f);
 			// front pike into a slow inverted swan that unwinds, tuck up, reach (round 14: pike 0.40 / swan 0.55 / tuck 0.38 / reach 0.26 s)
-			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.26f} });
+			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.36f} });
 			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens into its own inverted straddle, tucks, reach
-			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Straddle, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.24f} }, 4.0f, 1.2f);
+			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Straddle, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.36f} }, 4.0f, 1.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
-			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.24f} });
+			// Tricks C r01: every program's final Reach is >= 0.36 s, so the catch window (CatchOpen 0.16 s before the end) opens only after
+			// >= 0.2 s of the open reach -- r01 probe: backSingle's 0.24 s reach was caught 0.08 s in, straight out of a 446 deg/s tuck
+			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.38f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing
 			Add(TEXT("wallFront"), 360.f, { {S::Tuck, 0.27f}, {S::Layout, 0.3f}, {S::Tuck, 0.27f}, {S::Throne, 0.3f} }, 0.f, 0.f);
 			// ---- Tricks C round 1 (owner: "look like a gymnast", "many tricks"): the gymnastics vocabulary, built from the same keyed shapes.
@@ -74,24 +76,26 @@ namespace WebFlips
 			// base program peaks <= ~650 deg/s (a fast 0.85x variant stays <= ~770). Twists: a body can only finish a WHOLE number of
 			// twists facing along its travel (a half twist lands facing back), so the 180 / 540 programs do their named twist inside the
 			// flip and turn the last half in slowly as they open toward the catch (the catch-turn), never as a spring at the attach.
+			// Release push (Boost / Up, m/s) 2.0 / 1.0 on every new program (r01 probe: 3.5 / 1.5 on a flip every release took the chain from
+			// 39 to 60 m/s in 12 s and through the avenue corner into a facade).
 			// front tuck: set, tight tuck, kick out, reach for the web
-			Add(TEXT("frontSingle"), 360.f, { {S::Tuck, 0.74f, 0.f, 0.9f, 0.7f}, {S::Kickout, 0.44f}, {S::Reach, 0.22f} });
+			Add(TEXT("frontSingle"), 360.f, { {S::Tuck, 0.74f, 0.f, 0.9f, 0.7f}, {S::Kickout, 0.44f}, {S::Reach, 0.22f} }, 2.0f, 1.0f);
 			// front double tuck with a kick-out (the front twin of backDouble)
-			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 1.40f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.54f}, {S::Reach, 0.2f} }, 3.5f, 1.5f, 0.2f);
+			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 1.40f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.54f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
 			// back pike: the body folds at the hips with straight legs (keyed pike), opens into the kick-out
-			Add(TEXT("backPike"), -360.f, { {S::Pike, 0.72f, 0.f, 1.0f, 0.6f}, {S::Kickout, 0.46f}, {S::Reach, 0.22f} });
+			Add(TEXT("backPike"), -360.f, { {S::Pike, 0.72f, 0.f, 1.0f, 0.6f}, {S::Kickout, 0.46f}, {S::Reach, 0.22f} }, 2.0f, 1.0f);
 			// back layout: one straight line all the way round (hips / knees >= 170 deg), arms by the sides, opens to the reach
-			Add(TEXT("backLayout"), -360.f, { {S::Layout, 0.92f, 0.f, 0.5f, 0.4f}, {S::Reach, 0.40f} });
+			Add(TEXT("backLayout"), -360.f, { {S::Layout, 0.92f, 0.f, 0.5f, 0.4f}, {S::Reach, 0.40f} }, 2.0f, 1.0f);
 			// barani: front pike with a half twist (180 deg, arms wrapped), then the straddle flings open out of the wrap and turns the last half in toward the catch
-			Add(TEXT("barani"), 360.f, { {S::Pike, 0.50f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.34f, 180.f}, {S::Straddle, 0.46f, 180.f}, {S::Reach, 0.26f} });
+			Add(TEXT("barani"), 360.f, { {S::Pike, 0.50f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.34f, 180.f}, {S::Straddle, 0.46f, 180.f}, {S::Reach, 0.36f} }, 2.0f, 1.0f);
 			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, opens straight back into the layout, reach
-			Add(TEXT("fullTwist"), -360.f, { {S::Layout, 0.34f, 0.f, 0.5f, 0.f}, {S::Twist, 0.52f, 360.f}, {S::Layout, 0.32f}, {S::Reach, 0.34f} }, 4.0f, 1.2f);
+			Add(TEXT("fullTwist"), -360.f, { {S::Layout, 0.34f, 0.f, 0.5f, 0.f}, {S::Twist, 0.52f, 360.f}, {S::Layout, 0.32f}, {S::Reach, 0.38f} }, 2.0f, 1.0f);
 			// rudi: front flip with one and a half twists (540 deg) wrapped tight, the catch-turn finishes the last half in the open straddle
-			Add(TEXT("rudi"), 360.f, { {S::Pike, 0.40f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.66f, 540.f}, {S::Straddle, 0.48f, 180.f}, {S::Reach, 0.26f} }, 4.0f, 1.2f);
+			Add(TEXT("rudi"), 360.f, { {S::Pike, 0.40f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.66f, 540.f}, {S::Straddle, 0.48f, 180.f}, {S::Reach, 0.36f} }, 2.0f, 1.0f);
 			// chain: three back rotations in one release with a shape per rotation (owner clip S3: tuck -> layout -> tuck -> straddle -> tuck
 			// -> open, 3 rotations in 2.8 s, ~385 deg/s mean)
 			Add(TEXT("backTripleChain"), -1080.f, { {S::Tuck, 0.60f, 0.f, 0.9f, 0.3f}, {S::Layout, 0.40f}, {S::Tuck, 0.52f, 0.f, 0.3f, 0.3f}, {S::Straddle, 0.36f},
-				{S::Tuck, 0.52f, 0.f, 0.3f, 0.6f}, {S::Kickout, 0.44f}, {S::Reach, 0.2f} }, 3.5f, 1.5f, 0.2f);
+				{S::Tuck, 0.52f, 0.f, 0.3f, 0.6f}, {S::Kickout, 0.44f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
 			return P;
 		}
 
