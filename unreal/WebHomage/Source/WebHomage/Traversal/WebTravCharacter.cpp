@@ -1484,7 +1484,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 			FVector::Dist(M->GetBoneLocation(TEXT("foot_L")), M->GetBoneLocation(TEXT("foot_R"))) / 100.0);
 	}
 	// round 24: altitude-chain apex want (m over the floor), camera turn direction of the user look, ground / perch crane lift (m)
-	const FString Cols24 = FString::Printf(TEXT(",%.1f,%d,%.2f,%d"), Traversal->AltApexWant, Cam.LookYawDir, Cam.GndCrane, Cam.GndStopped);
+	const FString Cols24 = FString::Printf(TEXT(",%.1f,%d,%.2f,%d"), Traversal->AltApexWant, Cam.LookYawDir, Cam.GndCrane, Cam.GndStopped + (Cam.bGndLensHold ? 2 : 0));
 	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24);
 }
 
