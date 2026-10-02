@@ -33,6 +33,7 @@ R07 = {
     'tw_maxev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMaxBrightness (hold A: the sun-facing stills were clamped by it and clipped)
     'tw_minev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMinBrightness (hold B: the twilight exposure sat on its MIN clamp, so the sun-facing views blew out at the S4 bias)
     'bias_curve': None,    # {'dusk': [(h, bias)], 'dawn': [...]}: pp.AutoExposureBias on EVERY key inside the range (no zigzag between main keys and snapshot keys); --bias-overrides apply after it
+    'tw_set': None,        # {param: {'dusk': [(h, number | [r, g, b, a])], 'dawn': [...]}}: explicit values of any param inside the listed hours (e.g. cloudv.Cloud_AlbedoColor)
     'moon_vol': None,      # number: moonc.VolumetricScatteringIntensity on every key
     'golden_sky': None,    # {'hours': [..], 'factor': [r, g, b]} SkyLuminanceFactor on golden keys (golden S4 <= 100 with the fog on the sky)
     'v2': {},              # make_v2 knob overrides (tw_fac_pts, tw_cloud, twilight_overrides, ...)
@@ -114,6 +115,10 @@ def apply(K, R):
         if mn is not None: s['pp.AutoExposureMinBrightness'] = round(mn, 3)
         bc = sch('bias_curve')
         if bc is not None and str(h) not in BIAS_OV: s['pp.AutoExposureBias'] = round(bc, 4)
+        for pn, tab in (R.get('tw_set') or {}).items():
+            if tab.get(ph):
+                vv = make_v2.sched(h, [(p0, p1) for p0, p1 in tab[ph]])
+                if vv is not None: s[pn] = [round(x, 5) for x in vv] if isinstance(vv, list) else round(vv, 5)
         mx = sch('tw_maxev')
         if mx is not None: s['pp.AutoExposureMaxBrightness'] = round(mx, 3)
         if R.get('moon_vol') is not None: s['moonc.VolumetricScatteringIntensity'] = float(R['moon_vol'])
