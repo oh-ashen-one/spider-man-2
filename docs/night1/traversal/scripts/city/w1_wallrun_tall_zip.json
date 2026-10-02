@@ -1,0 +1,62 @@
+{
+ "name": "w1_wallrun_tall_zip",
+ "note": "Round 19 (owner: wall-run 'super cooked'; E does nothing while running on the side of buildings): c's swing-to-wall shifted 95 m south onto the 97 m tower facade at x 266 (y 88-122): the long vertical wall-run shows the procedural IK stride (feet + hands on the facade); E mid-wall at 3.6 s -> zip to this facade's top edge (nearest place) -> perch; E on the perch at 6.2 s.",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   250,
+   145,
+   22
+  ],
+  "yaw": -90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -22,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "swing": true
+  },
+  {
+   "t": 0.9,
+   "heading": 0
+  },
+  {
+   "t": 1.7,
+   "swing": false
+  },
+  {
+   "t": 3.6,
+   "zip": true
+  },
+  {
+   "t": 3.7,
+   "zip": false
+  },
+  {
+   "t": 4.6,
+   "move": [
+    0,
+    0
+   ],
+   "heading": false
+  },
+  {
+   "t": 6.2,
+   "zip": true
+  },
+  {
+   "t": 6.3,
+   "zip": false
+  }
+ ]
+}

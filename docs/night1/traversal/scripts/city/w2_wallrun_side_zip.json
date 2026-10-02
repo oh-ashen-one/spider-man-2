@@ -1,0 +1,63 @@
+{
+ "name": "w2_wallrun_side_zip",
+ "note": "Round 19: as w1, then stick sideways on the wall from 2.4 s (horizontal side run along the facade, IK stride), E at 3.5 s -> zip to the nearest place.",
+ "seed": 1234,
+ "spawn": {
+  "pos": [
+   250,
+   145,
+   22
+  ],
+  "yaw": -90,
+  "camPitch": 0.12,
+  "vel": [
+   0,
+   -22,
+   0
+  ]
+ },
+ "keys": [
+  {
+   "t": 0.0,
+   "move": [
+    0,
+    1
+   ],
+   "heading": -90,
+   "swing": true
+  },
+  {
+   "t": 0.9,
+   "heading": 0
+  },
+  {
+   "t": 1.7,
+   "swing": false
+  },
+  {
+   "t": 2.4,
+   "move": [
+    1,
+    0
+   ],
+   "heading": false,
+   "sprint": true
+  },
+  {
+   "t": 3.5,
+   "zip": true
+  },
+  {
+   "t": 3.6,
+   "zip": false
+  },
+  {
+   "t": 3.7,
+   "move": [
+    0,
+    0
+   ],
+   "sprint": false
+  }
+ ]
+}

@@ -183,7 +183,10 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		const double K = Dt * 60.0;
 		const FVector D = CamPos - LastOutPos;
 		const double Lm = MaxStepPosM * K;
-		if (D.Size() > Lm)
+		// round 20: the position slew never leaves the lens behind a wall (T19 beats "never a cut")
+		const bool bSlewHidden = D.Size() > Lm && World.LineBlocked(P.Pos + FVector(0, 0, 0.3), LastOutPos + D.GetSafeNormal() * Lm);
+		if (bSlewHidden) SlewFlags |= 8;
+		else if (D.Size() > Lm)
 		{
 			const FVector NewPos = LastOutPos + D.GetSafeNormal() * Lm;
 			const FRotator A0 = (P.Pos - CamPos).Rotation(), A1 = (P.Pos - NewPos).Rotation();
@@ -202,6 +205,7 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		if (CamRot.Pitch > CapUpDeg + 0.5) CamRot.Pitch = CapUpDeg + 0.5;
 	}
 	bLensTouch = World.SphereOverlaps(CamPos, 0.25);
+	bCamEnclosed = World.Enclosed(CamPos);
 	LastOutPos = CamPos; LastOutRot = CamRot; bOutInit = true;
 	// speed motion blur: none on foot / walls, ramps in over fast swings / dives / zips
 	const bool bGroundish = M == EWebTravMode::Ground || M == EWebTravMode::Land || M == EWebTravMode::Wall;
@@ -531,6 +535,42 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			Cam = FMath::Lerp(Cam, WallClear, Smooth(WallK, 0.0, 1.0));
 		}
 	}
+	// ---- round 20 (critic r19 camera 4: after a zip a parapet hides the perched hero for 1.3 s; frames inside facades): the camera must SEE the
+	// body, not only clear a sphere from the chest. Four probe points (head .. knees) are line-traced from the lens against all visible
+	// collision; under 3 visible -> lift the camera (then pull it in) to the first spot that sees >= 3, fast (0.08 s spring), held 0.8 s.
+	{
+		const FVector Pts[4] = { Hero + FVector(0, 0, 0.6), Hero + FVector(0, 0, 0.2), Hero - FVector(0, 0, 0.3), Hero - FVector(0, 0, 0.7) };
+		auto Vis = [&](const FVector& C) { int32 Nv = 0; for (const FVector& Q : Pts) { if (!World.LineBlocked(C, Q)) ++Nv; } return Nv; };
+		const FVector Base = Cam;
+		FVector Lifted = Base + FVector(0, 0, VisUp);
+		ClearFrom(From, Lifted, Lifted);
+		const int32 V0 = Vis(Lifted);
+		// round 20 (capture r1 8.1 s: perched, 3 of 4 probe points visible but the parapet hid his legs, occl .48): perched, every probe point counts
+		const int32 NeedVis = P.Mode == EWebTravMode::Perch ? 4 : 3;
+		if (V0 < NeedVis && !bFlipCam)
+		{
+			double Found = -1.0;
+			for (double Up : { 0.0, 0.6, 1.2, 1.8, 2.6, 3.5, 4.5, 6.0 })
+			{
+				FVector C2 = Base + FVector(0, 0, Up);
+				ClearFrom(From, C2, C2);
+				if (Vis(C2) >= NeedVis) { Found = Up; break; }
+			}
+			if (Found >= 0.0) { VisUpGoal = Found; VisHold = 0.8; }
+		}
+		else if (V0 >= NeedVis)
+		{
+			VisHold -= Dt;
+			if (VisHold <= 0.0)
+			{ // relax only when the unlifted spot also sees the body
+				FVector C0 = Base; ClearFrom(From, C0, C0);
+				if (Vis(C0) >= NeedVis) VisUpGoal = 0.0;
+			}
+		}
+		SD(VisUp, VisUpV, VisUpGoal, VisUpGoal > VisUp ? 0.07 : 0.4, Dt);
+		if (VisUp > 0.01) { FVector C3 = Base + FVector(0, 0, VisUp); ClearFrom(From, C3, Cam); }
+		VisPts = Vis(Cam);
+	}
 	CamPos = Cam;
 	LastComposeHero = Hero; bHaveComposeHero = true;
 	HeroDist = FVector::Dist(CamPos, Hero);
@@ -549,6 +589,13 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		// round 06: when collision lifts the camera high over the hero (roof edges), look down far enough that his centre
 		// stays at or above 0.62 of the frame height (the fixed 22 deg limit dropped him off the bottom edge)
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
+	// round 20 (capture c 9.0-10.0 s: after the perch landing a look-up held from the zip aim left the crouched hero cut by the bottom edge,
+	// centre at 0.92 of the frame): perched / on foot, his centre stays at or above 0.66 of the frame height and the look offset recentres fast
+	if (P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Ground)
+	{
+		PitchDown = FMath::Max(PitchDown, DownToHero - FMath::Atan((0.66 - 0.5) * 2.0 * TanHalfV));
+		if (P.Mode == EWebTravMode::Perch && LastLook > 0.3) UserPitch = Damp(UserPitch, 0.0, 4.0, Dt);
+	}
 	// round 05: at each web attach, look up enough that the anchor on the facade (and a band of sky) is on screen for
 	// ~0.7 s, then settle back (spring); the hero stays in frame below
 	double LookWant = 0.0, FovWant = 0.0;

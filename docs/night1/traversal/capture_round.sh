@@ -37,6 +37,15 @@ SEQS=(
   "f3_flow_corkscrew f3_flow_corkscrew.json ${F3Q:-9.0} ${F3T:-2.4,3.0}"
   "f4_chain_flips f4_chain_flips.json ${F4Q:-13.3} ${F4T:-3.0,6.0}"   # round 18: 3 flips, a plain release where the catch guard finds no web (9.12 s), the 4th flip 10.88 s, its catch ~12.5 s + 0.8 s (r17: 12.2 s, the 4th flip missed its catch)
   "f5_canyon_backDouble f5_canyon_backDouble.json ${F5Q:-9.0} ${F5T:-2.4,3.0}"
+  # round 19 (owner playtest 2026-10-01): wall-run IK stride + E from a wall run / side run / roof run / perch
+  "w1_wallrun_tall_zip w1_wallrun_tall_zip.json ${W1Q:-7.5} 1.8,2.6"
+  "w2_wallrun_side_zip w2_wallrun_side_zip.json ${W2Q:-6.5} 2.4,3.0"
+  "r1_roofrun_zip r1_roofrun_zip.json ${R1Q:-9.5} 6.0,7.0"
+  "s1_high_swing s1_high_swing.json ${S1Q:-6.0} 0.6,1.2"
+  # round 20 (critic r19 owner bugs): RMB cancels a flip / a wall run into a swing (<= 0.1 s); mouse look injected into a scripted chain
+  "x1_rmb_cancel_flip x1_rmb_cancel_flip.json ${X1Q:-4.0} 1.8,2.2"
+  "x2_rmb_cancel_wall x2_rmb_cancel_wall.json ${X2Q:-5.0} 3.25,3.6"
+  "m1_mouse_swing m1_mouse_swing.json ${M1Q:-6.0} 1.5,3.5"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
@@ -59,7 +68,7 @@ for entry in "${SEQS[@]}"; do
   QUITP=$(python3 -c "print(round($QUIT + $PRE, 3))")
   wait_slot
   RUN "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit "$QUITP" -name "$NAME" -movie -timeout 3000 \
-    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE | tail -3
+    -exec "r.ScreenPercentage 100" -- -WHTravScript="$SCR/$JSON" -WHTravPreroll=$PRE -WHTravMask ${EXTRA_ARGS:-} $( [ "$NAME" = m1_mouse_swing ] && echo -WHTravInputTest=mouseLook -WHMouseTestPx=${M1PX:-40} ) | tail -3
   FR="$TMP/$NAME/${NAME}_frames"
   if [ -d "$FR" ] && [ -f "$TMP/$NAME/${NAME}_telemetry.csv" ]; then
     NF=$(ls "$FR" | wc -l | tr -d ' '); NT=$(( $(wc -l < "$TMP/$NAME/${NAME}_telemetry.csv") - 1 ))

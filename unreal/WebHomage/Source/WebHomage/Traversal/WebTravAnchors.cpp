@@ -136,6 +136,8 @@ bool FWebTravAnchors::ConeRays(const FVector& Pos, const FVector& Fwd, FTravAnch
 	return bFound;
 }
 
+bool FWebTravAnchors::bHighFix = true;
+
 bool FWebTravAnchors::Find(const FVector& Pos, const FVector& Fwd, const FVector* Turn, double Speed, double FloorZ, FTravAnchor& Out) const
 {
 	const FVector Want = Turn ? (Fwd * 0.55 + *Turn * 0.9).GetSafeNormal() : Fwd;
@@ -156,14 +158,17 @@ bool FWebTravAnchors::Find(const FVector& Pos, const FVector& Fwd, const FVector
 		  70, 5, 9, 72, 2, 22, 0.5, 1.3 },
 		{ FMath::Clamp(16.0 + Speed * 0.7, 22.0, 46.0), 26, 95, 4, 8, 95, 4, 40, 0.3, 1.4 },
 	};
+	// round 19 (owner playtest: "eventually your right-click swing breaks" -- it broke once he was high, e.g. after a wall run up a tower):
+	// above the band the search aimed 1.5-2.5 m over the body, and TryStartSwing refuses any web under AnchorMinAbove (3 m) -> every
+	// candidate rejected, a dead button over the roofs. High now aims >= 4 m (+4 m target) above the body.
 	if (bHigh)
 	{
-		for (FPass& P : Passes) { P.MinAbove = 1.5; P.ElevLo = 0.12; }
+		for (FPass& P : Passes) { P.MinAbove = bHighFix ? 4.0 : 1.5; P.ElevLo = 0.12; }
 	}
 	TArray<FCand> List;
 	for (const FPass& P : Passes)
 	{
-		const FVector D(Pos.X + Want.X * P.Ahead, Pos.Y + Want.Y * P.Ahead, FMath::Max(Pos.Z + P.MinAbove + 1.0, FMath::Min(Pos.Z + P.Up, Band)));
+		const FVector D(Pos.X + Want.X * P.Ahead, Pos.Y + Want.Y * P.Ahead, FMath::Max(Pos.Z + P.MinAbove + (bHigh && bHighFix ? 4.0 : 1.0), FMath::Min(Pos.Z + P.Up, Band)));
 		FaceCandidates(Pos, D, Want, Right, P, Turn, List);
 		int32 Tries = 0;
 		for (const FCand& C : List)
@@ -185,7 +190,7 @@ bool FWebTravAnchors::Find(const FVector& Pos, const FVector& Fwd, const FVector
 	for (const FTravZipPoint& P : Pts)
 	{
 		const FVector Rel = P.Pos - Pos;
-		if (Rel.Z < 1.0 || P.Pos.Z - FloorZ < 6.0) continue;
+		if (Rel.Z < (bHighFix ? 3.0 : 1.0) || P.Pos.Z - FloorZ < 6.0) continue; // round 19: >= TryStartSwing's 3 m
 		const double Ahead = Rel.X * Want.X + Rel.Y * Want.Y;
 		if (Ahead < 1.0) continue;
 		const double L = Rel.Size();
