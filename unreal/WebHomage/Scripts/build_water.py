@@ -308,11 +308,13 @@ slT += slL * lk;
 %(lay)s
 // ---- r03 resolved wind chop 0.15-0.5 m: two realizations, two scroll directions (near field only; beyond, all of it is sub-pixel variance)
 float2 slC = 0; float lostC = 1.0;
-[branch] if (nearW > 0.0) {
+// r04: seen from above (down -> 1) the resolved chop continues to ChopFar m (0.15-0.5 m waves are 1-3 px there from swing height)
+float chopW = max(nearW, down * (1.0 - smoothstep(ChopFar * 0.6, ChopFar, dist)));
+[branch] if (chopW > 0.0) {
     lostC = 0.0;
     %(chop)s
-    slC *= nearW * 0.70711;
-    lostC = lerp(1.0, lostC, nearW);
+    slC *= chopW * 0.70711;
+    lostC = lerp(1.0, lostC, chopW);
 }
 float ck = ChopK * gk, mk = ChopK * MicroK * gk * %(crms).4f;
 slT *= ck; varL *= ck * ck;
@@ -412,8 +414,8 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 # round-03 captures: autopick variant V3 (lowest penalty on the 1080p iteration stills, docs/night1/water/round-03/iter/autopick.json)
 PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
-          'LongK': 2.0, 'FarRough': 0.3, 'TopVarK': 0.25, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
-          'CBias': 1.2, 'SunClampK': 1.0, 'MidK': 2.0}
+          'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
+          'CBias': 1.6, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

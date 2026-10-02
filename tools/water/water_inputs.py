@@ -82,9 +82,16 @@ SKIP = ('farCityMass', 'horizonSkirt', 'farsky', 'facade', 'roofs', 'signage', '
         'coast_f', 'farLand', 'palisades')   # far shores (NJ / Brooklyn / Queens, >= 1.2 km from the island) get no contact foam
 
 
-def contact_map(export_dir, png_path, px_min=0.5, max_px=8192):
+CONTACT_LEVELS = (0.0, 0.8, 1.6, 2.0, 2.3)   # r04: crossings at the water line AND up to 2.3 m above it (the bulkhead lip at +2.36 m; see contact_map)
+
+
+def contact_map(export_dir, png_path, px_min=0.5, max_px=8192, levels=CONTACT_LEVELS):
     # 8192 px on the long side: ~1.1 m/px for the whole island's shore (bilinear distance keeps the band edge smooth)
-    """-> dict(box=[x0, z0, w, h] browser metres (UE X = x, UE Y = z), px, segments, files)"""
+    """-> dict(box=[x0, z0, w, h] browser metres (UE X = x, UE Y = z), px, segments, files)
+    r04: the island's coast_m bulkheads lean landward below the water (river_low: lip at x -767.8 / y +0.76, foot at x -755.8 / y -10.8), so
+    their water-line crossing lies ~2.4 m UNDER the visible lip and the camera never sees water against it (no foam band). Crossings are
+    therefore taken at several levels from the water line up to 2.3 m above it (just under the +2.36 m lip) (the seaward-most edge the viewer sees meeting the water);
+    a vertical pile gives the same line at every level."""
     import cv2, glbio
     # positions in the export are relative to each mesh's tile centre (manifest.json 'center', browser metres)
     man = json.load(open(os.path.join(export_dir, 'manifest.json')))
@@ -97,24 +104,28 @@ def contact_map(export_dir, png_path, px_min=0.5, max_px=8192):
         except Exception:
             continue
         P = g['attrs']['POSITION'] + np.asarray(ctr, float)[None, :]; I = g['index'].reshape(-1, 3)
-        if P[:, 1].min() > WATER_Y or P[:, 1].max() < WATER_Y: continue
-        d = P[:, 1] - WATER_Y
-        D = d[I]
-        cross = (D.min(1) < 0) & (D.max(1) > 0)
-        if not cross.any(): continue
-        T = I[cross]; Dt = D[cross]
-        out = []
-        for a, b in ((0, 1), (1, 2), (2, 0)):              # edge crossings: each crossing triangle has exactly two
-            da, db = Dt[:, a], Dt[:, b]
-            m = (da < 0) != (db < 0)
-            u = np.where(m, da / np.where(m, da - db, 1.0), np.nan)
-            pa, pb = P[T[:, a]], P[T[:, b]]
-            out.append(np.where(m[:, None], pa + (pb - pa) * u[:, None], np.nan)[:, [0, 2]])
-        E = np.stack(out, 1)                                # (n, 3 edges, 2)
-        ok = np.isfinite(E[..., 0])
-        two = ok.sum(1) == 2
-        E, ok = E[two], ok[two]
-        pts = E[ok].reshape(-1, 2, 2)
+        if P[:, 1].min() > WATER_Y or P[:, 1].max() < WATER_Y: continue   # must still reach the water line itself
+        lv = []
+        for dz in levels:
+            d = P[:, 1] - (WATER_Y + dz)
+            D = d[I]
+            cross = (D.min(1) < 0) & (D.max(1) > 0)
+            if not cross.any(): continue
+            T = I[cross]; Dt = D[cross]
+            out = []
+            for a, b in ((0, 1), (1, 2), (2, 0)):              # edge crossings: each crossing triangle has exactly two
+                da, db = Dt[:, a], Dt[:, b]
+                m = (da < 0) != (db < 0)
+                u = np.where(m, da / np.where(m, da - db, 1.0), np.nan)
+                pa, pb = P[T[:, a]], P[T[:, b]]
+                out.append(np.where(m[:, None], pa + (pb - pa) * u[:, None], np.nan)[:, [0, 2]])
+            E = np.stack(out, 1)                                # (n, 3 edges, 2)
+            ok = np.isfinite(E[..., 0])
+            two = ok.sum(1) == 2
+            E, ok = E[two], ok[two]
+            lv.append(E[ok].reshape(-1, 2, 2))
+        if not lv: continue
+        pts = np.concatenate(lv)
         segs.append(pts); used.append(os.path.basename(f)); core.append(os.path.basename(f).startswith(('coast_m', 'seawall')))
     if not segs: raise SystemExit('contact_map: no geometry crosses the water plane in ' + export_dir)
     # map box = the island's own shore (coast_m* + seawalls) + 200 m; far bulkheads / bridge piers outside it are dropped
