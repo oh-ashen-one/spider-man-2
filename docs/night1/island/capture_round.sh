@@ -28,16 +28,23 @@ if want warmup; then
   rm -rf "$TMP/warmup"
   # (island r02) the warm-up also writes the traversal's primitive dump (-WHTravDumpPrims, WebTravWorld.cpp round 20): checked by
   # tools/export/island_dump_check.py (every visible facade / roofs / detail / fire-escape tile a QueryOnly complex solid)
-  RUN "$TMP/warmup" -map "$MAP" -res 960x540 -quit ${WARM_QUIT:-25} -name warmup -timeout 2300 -- -benchmark -fps=60 -WHTravScript="$SCR/r1_north_avenue.json" \
+  RUN "$TMP/warmup" -map "$MAP" -res 960x540 -quit ${WARM_QUIT:-25} -name warmup -timeout $(run_timeout 2300) -- -benchmark -fps=60 -WHTravScript="$SCR/r1_north_avenue.json" \
     -WHTravDumpPrims="$TMP/warmup/prims.csv" | tail -3
   grep -h "WebTravWorld:" "$TMP/warmup/warmup.log" | sed 's/^.*Display: //' > "$ROUND/warmup_webtravworld_log.txt"
   [ -f "$TMP/warmup/prims.csv" ] && gzip -9 -c "$TMP/warmup/prims.csv" > "$ROUND/prims_dump.csv.gz"
 fi
+# (island r03) never let gpu_slot's max hold (2,400 s: SIGTERM, then SIGKILL after 10 s) hit a rendering engine: a route starts only if
+# ISLAND_ROUTE_BUDGET_S (default 1,500 s: a 30 s 1080p60 movie took 13-25 min under a shared GPU) is left before the hold ends.
+T_HOLD0=$(date +%s); HOLD_MAX=${GPU_SLOT_CAPTURE_MAX_HOLD:-2400}
+budget_ok() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) )); if [ "$left" -lt "${1:-${ISLAND_ROUTE_BUDGET_S:-1500}}" ]; then echo "== SKIP $2: only ${left} s left in the hold"; return 1; fi; }
+# run_game.sh's own -timeout (SIGTERM, 60 s wait) ends a slow run 150 s before the hold does (r03 r1: 3 engines on the GPU, 45 frames / min)
+run_timeout() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) - 150 )); [ "$left" -gt "$1" ] && left=$1; echo "$left"; }
 route() {  # name script
   local NAME="$1" JSON="$2"
+  budget_ok "" "$NAME" || return 0
   echo "== $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
-  RUN "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit ${QUIT:-30.4} -name "$NAME" -movie -timeout 2300 \
+  RUN "$TMP/$NAME" -map "$MAP" -res 1920x1080 -quit ${QUIT:-30.4} -name "$NAME" -movie -timeout $(run_timeout 2300) \
     -- -WHTravScript="$SCR/$JSON" -WHTravCsv="$TMP/$NAME/${NAME}_telemetry.csv" | tail -4
   cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/" 2>/dev/null
   grep -h "WebTravWorld:\|LogWorldPartition.*[Ss]treaming\|WH_QUIT" "$TMP/$NAME/$NAME.log" | sed 's/^.*Display: //' | head -5 > "$ROUND/${NAME}_log_excerpt.txt"
@@ -66,7 +73,7 @@ want r4 && route r4_wallrun_roofs r4_wallrun_roofs.json
 if want ab; then
   echo "== r1_ism_solid (A/B, telemetry)  $(gpu)"
   rm -rf "$TMP/r1_ism_solid"
-  RUN "$TMP/r1_ism_solid" -map "$MAP" -res 960x540 -quit ${QUIT:-30.4} -name r1_ism_solid -timeout 2300 -- -benchmark -fps=60 -WHTravIsmSolid=1 \
+  RUN "$TMP/r1_ism_solid" -map "$MAP" -res 960x540 -quit ${QUIT:-30.4} -name r1_ism_solid -timeout $(run_timeout 2300) -- -benchmark -fps=60 -WHTravIsmSolid=1 \
     -WHTravScript="$SCR/r1_north_avenue.json" -WHTravCsv="$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" -WHTravDumpPrims="$TMP/r1_ism_solid/prims.csv" | tail -3
   [ -f "$TMP/r1_ism_solid/prims.csv" ] && gzip -9 -c "$TMP/r1_ism_solid/prims.csv" > "$ROUND/prims_dump_ism_solid.csv.gz"
   cp "$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" "$ROUND/" 2>/dev/null
@@ -74,9 +81,10 @@ if want ab; then
 fi
 if want a1; then
   for A in a1_high_north a1_high_south; do
+    budget_ok 600 "$A" || continue
     echo "== $A (3840x2160 still)  $(gpu)"
     rm -rf "$TMP/$A"
-    RUN "$TMP/$A" -map "$MAP" -res 3840x2160 -shots 0.6 -quit 2.0 -name "$A" -timeout 1200 -- -benchmark -fps=60 -WHTravScript="$SCR/$A.json" | tail -2
+    RUN "$TMP/$A" -map "$MAP" -res 3840x2160 -shots 0.6 -quit 2.0 -name "$A" -timeout $(run_timeout 1200) -- -benchmark -fps=60 -WHTravScript="$SCR/$A.json" | tail -2
     for p in "$TMP/$A"/${A}_*.png; do [ -f "$p" ] && sips -s format jpeg -s formatOptions 90 "$p" --out "$ROUND/stills/$(basename "${p%.png}")_3840x2160.jpg" >/dev/null; done
   done
 fi
