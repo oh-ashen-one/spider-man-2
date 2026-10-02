@@ -10,7 +10,8 @@ float2 lwRot(float2 p, float a) { float cs = cos(a), sn = sin(a); return float2(
 // c = lawn albedo from TerrainParkEntry (linear, ungraded), p = metres (browser x, z), grade = lawn grade (r, g, b), k = (detail amplitude, stripe amplitude, saturation)
 float3 TerrainLawnR4(Texture2D tDet, SamplerState tDetSampler, Texture2D tNoise, SamplerState tNoiseSampler, float2 p, float3 c, float3 grade, float3 k)
 {
-  float gm = smoothstep(0.0f, 0.03f, c.g - 0.9f * c.r);                 // 1 on grass, 0 on clay / dirt / gravel / rock
+  // 1 on grass, 0 on clay / dirt: the raw lawn texture has brown speckles too (R / G up to 2.4, but dark: R < 0.2), the infield clay / cinder is bright (R 0.25-0.48) and red (R / G 1.2-1.7)
+  float gm = 1.0f - smoothstep(0.25f, 0.33f, c.r) * smoothstep(1.12f, 1.3f, c.r / max(c.g, 0.0001f));
   float3 cg = c * grade;                                                // r02 grade with the r04 blue: the reference lawn's blue is 16 / 255 against our 55
   c = lerp(c * float3(0.78f, 0.66f, 0.55f), cg, gm);                    // non-grass: slightly darker, redder (clay infields read pale before)
   float2 q1 = p / 1.15f;
