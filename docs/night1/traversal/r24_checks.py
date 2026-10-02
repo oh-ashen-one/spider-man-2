@@ -60,7 +60,7 @@ def t7(rows, label):
                 h = hf(rows[k]); occ = max(occ, fl(rows[k], 'hero_occl', 0.0) if (lr is None or h < low) else 0.0)
                 if h < low: low, lr = h, rows[k]
                 k += 1
-            complete = k < n
+            complete = k < n or fl(lr, 't') < fl(rows[-1], 't') - 0.05   # the low point is known once he rises out of it
             off, wid = street_offset(fl(lr, 'x_m'), fl(lr, 'y_m'), fl(lr, 'vx'), fl(lr, 'vy'))
             ev.append(dict(t=t_rel, rel=h_rel, apex=apex, low=low, tlow=fl(lr, 't'), drop=apex - low, occ=occ, off=off, wid=wid, sub=sub, trick=tr,
                            complete=complete, hs=fl(rows[i], 'hspeed_mps'), vz=fl(rows[i], 'vz'), want=fl(rows[i], 'alt_apex_want_m', -1)))
@@ -148,11 +148,12 @@ def cam_gate(rows, label, t0=7.7, t1=8.5):
     back = 0.0; best = un[0]
     for y in un:
         best = min(best, y) if sg < 0 else max(best, y)
-        back = max(back, (y - best) * -sg * -1 if False else (y - best) * (1 if sg < 0 else -1))
+        back = max(back, (y - best) if sg < 0 else (best - y))   # yaw moved back against the turn
     crane = max(fl(r, 'cam_gnd_crane_m', 0) for r in w)
     ok = inf == len(w) and occ <= 0.02 and dmin >= 3.0 and back <= 2.0
     P(f"  {label} {t0}-{t1} s ({len(w)} rows): hero_in_frame {inf}/{len(w)}, hero_occl max {occ:.3f}, cam-hero min {dmin:.2f} m, "
-      f"yaw {un[0]:.1f} -> {un[-1]:.1f} (turn {'-' if sg < 0 else '+'}), max backtrack {back:.1f} deg, crane max {crane:.2f} m -> {'PASS' if ok else 'FAIL'}")
+      f"yaw {un[0]:.1f} -> {un[-1]:.1f} (turn {'-' if sg < 0 else '+'}), max backtrack {back:.1f} deg, crane max {crane:.2f} m -> {'PASS' if ok else 'FAIL'}"
+      f" [geometry part (frame, distance, reversal): {'GEOM_OK' if inf == len(w) and dmin >= 3.0 and back <= 2.0 else 'GEOM_FAIL'}]")
     return ok
 P(f"== r24 checks on {D}")
 p = find(CLIP)

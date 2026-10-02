@@ -244,6 +244,22 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// round 18: also BEFORE a predicted flow-flip release (bFlipPre): the view is chosen and blended in ahead of the release, so the trick window
 	// (release .. catch + 0.5 s) opens on the held 3/4 view (critic r17 TC-A: the blend-in inside the window gave offset p5 20-29, range 34)
 	const bool bFlipCam = P.bFlip || P.bFlipSoon || P.bFlipPre;
+	// ---- round 24 (critic r23 c 7.7-8.5 s, probe v1: the orbit search + crane still swung the view back 47-105 deg): on foot / perched a user
+	// camera turn STOPS where the chase spot behind the hero would enter geometry (the look yaw is held at the last clear yaw while the turn
+	// pushes into the wall; turning back is free). Clear = a GndStopR m sphere swept from the chest to GndStopExtra m past the chase spot.
+	{
+		const bool bGnd = GndMinDist > 0.0 && GndStop > 0.0 && (P.Mode == EWebTravMode::Ground || P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Land) && !bFlipCam;
+		if (bGnd)
+		{
+			const FVector B(-FMath::Cos(Yaw), -FMath::Sin(Yaw), 0.0);
+			const FVector Spot = Hero + B * (ChaseDist + GndStopExtra) + FVector(0, 0, ChaseHeight);
+			double Hd = 0.0;
+			const bool bBlocked = World.SphereOverlaps(Chest, 0.22) ? false : World.SphereSweep(Chest, Spot, GndStopR, Hd);
+			if (!bBlocked) { GndYawOk = Yaw; bGndYawOk = true; GndStopped = 0; }
+			else if (bGndYawOk && LastLook < GndLookHold) { AutoYaw += WrapA(GndYawOk - Yaw); Yaw = GndYawOk; GndStopped = 1; }
+		}
+		else { bGndYawOk = false; GndStopped = 0; }
+	}
 	if (bFlipCam && !bFlipWas)
 	{
 		const bool bStillIn = FlipK > 0.05 && !bFlipAbort; // the previous trick's view is still blended (a chain): keep its distance, move its azimuth
@@ -509,6 +525,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (DL < CamWallSoft) Want += CamWallSoft - DL;
 		SD(WallPush, WallPushV, Want, 0.15, Dt);
 		double Push = WallPush;
+		if (GndStopped) Push = 0.0; // round 24: the stopped ground orbit is not slid along the wall (that read as a yaw reversal)
 		if (DR < CamWallHard) Push = FMath::Min(Push, -(CamWallHard - DR));
 		if (DL < CamWallHard) Push = FMath::Max(Push, CamWallHard - DL);
 		Push *= 1.0 - FlipKs; // round 16 (TC11): the trick camera never yaws round the hero -- the dolly-in along the held axis replaces the push
@@ -819,7 +836,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
-		{TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
+		{TEXT("GndStop"), &GndStop}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }

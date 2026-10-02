@@ -1,6 +1,6 @@
 {
  "name": "a_swing_chain_city",
- "note": "Round 13, lit city: airborne swing chain north up the Midtown avenue (x = 250 m, north = -Y). autoChain: release on the rising front (phase 0.55), re-press after 0.8 s; every 3rd release is a flow flip (program chosen by height, starts at the release, next web in its final reach). (r10-r12: every 2nd release a sky launch.)",
+ "note": "Round 13, lit city: airborne swing chain north up the Midtown avenue (x = 250 m, north = -Y). autoChain: release on the rising front (phase 0.55), re-press after 0.8 s; every 3rd release is a flow flip (program chosen by height, starts at the release, next web in its final reach). (r10-r12: every 2nd release a sky launch.) Round 24: the player re-presses the web once falling at 12 m/s (altitude chain: the release climbs to the roofline first).",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -31,7 +31,7 @@
    "autoChain": true,
    "releasePhase": 0.55,
    "gap": 0.8,
-   "repressVz": 99.0,
+   "repressVz": -12.0,
    "trickEvery": 3,
    "skyEvery": 0,
    "skyTricks": 1,
