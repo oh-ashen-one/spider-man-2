@@ -1,11 +1,21 @@
-# Island (piece A) — HANDOFF (round 02 done, 2026-10-02 04:35)
+# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 05:35)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/island` (pushed), worktree `/Users/midir/sm2-n1/island`, scratch `/Users/midir/sm2-n1/_scratch/island` (exFAT SD card:
-skip `._*` AppleDouble files). Owns `tools/export/*`, `Scripts/build_city.py`, `Scripts/build_manhattan.py`, `Shaders/City/`, `/Game/City`,
-`/Game/Tests/City`, `/Game/Maps/Manhattan*`, `docs/night1/island/`. Never edit `Source/WebHomage/Traversal` (requests go in
-`REQUEST-traversal-r02.md`).
+## Round 03 (M2 whole island) — state when this was written
+- Merged `origin/Opus-5.5-Loop-Night-1` (aad3ac3). Export of the whole island done (ix -4..3, iz -14..13: 1,793 tile meshes, 23.58 M tris,
+  3.08 GB, 172 s) at `_scratch/island/export/island`; city_prep + city_extra done (885 s + 191 s; 173,097 WHBox boxes).
+- I5 island-wide (`round-03/coll_audit.json`): phantom 0.25 %, hollow 0.37 %, facadeLod inside region 0.
+- signs.png rows sanitised (CHASE BANK -> HARBOR SAVINGS etc., `IP_EXCLUSIONS.md`), verified on `_scratch/island/tex/signs.png`.
+- Every M1 GLB is byte-identical in the island export (1,032 / 1,032 md5), so the Unreal rebuild is incremental:
+  `docs/night1/island/build_r03.sh` (`SM2_ISLAND_MESH_ONLY=missing`, steps tex,mesh,kit,fsky,map,coll,wp + build_manhattan map;
+  log `_scratch/island/logs/build_r03.log`, commandlet log `city_pass1.log`; started 05:24). WHBox cubes = per-tile components
+  (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
+- Next: when the build ends -> captures (`capture_round.sh docs/night1/island/round-03 warmup r1 r2 r3 r4 a1`, GPU lock), route checks,
+  `tools/export/island_r2_check.py`, `tools/export/island_road_band.py` on r2 t26/t28 stills, critic pack `_scratch/critic-A-r03`.
+- Build timings: `_scratch/island/logs/build_timings_island.json` (every invocation appended).
+
+# (round 02 handoff, kept for reference)
 
 ## Round 02 result — read `round-02/README.md`
 Target: collision that matches what is drawn under traversal r20 (merged at 70e914a). Done + measured:
