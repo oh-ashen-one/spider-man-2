@@ -1,6 +1,6 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Tricks C round 1: side-by-side contact sheets of OUR flips vs the owner's reference clip at matched phases (shape held).
-#   python3 tools/tricks/ab_sheet.py <ours.mp4> <telemetry.csv> <out.jpg> [--owner <owner.mov>] [--ours-only]
+#   python3 tools/tricks/ab_sheet.py <ours.mp4> <telemetry.csv> <out.jpg> [--owner <owner.mov>] [--ours-only | --owner-only] [--nolabel]
 # One row per phase (tuck, pike, layout, inverted pencil, straddle, throne / upright spread, twist, open-out / catch reach): the owner frame
 # (FLIPS_SPEC segment times) on the left, then up to 3 of our frames from DIFFERENT programs at the middle of a held segment of that shape
 # (telemetry flip_shape = flip_shape_legs), cropped around the hero's pixel box (px_*) so he fills ~0.3 of the crop height like the owner
@@ -27,6 +27,8 @@ def main():
     ours, tel, out = a[0], a[1], a[2]
     owner = a[a.index('--owner') + 1] if '--owner' in a else '/Users/midir/sm2-n1/_scratch/refs/owner/flips_owner_2026-09-29.mov'
     ours_only = '--ours-only' in a
+    owner_only = '--owner-only' in a
+    nolabel = '--nolabel' in a
     T = list(csv.DictReader(open(tel)))
     # held segments: runs of the same shape on body + legs inside one program instance
     segs, cur = [], None
@@ -41,7 +43,7 @@ def main():
             cur = None
     tmp = tempfile.mkdtemp(prefix='absheet_', dir='/Users/midir/sm2-n1/_scratch/tricks')
     font = ImageFont.load_default()
-    ncol = 3 if ours_only else 4
+    ncol = 3 if ours_only else (2 if owner_only else 4)
     sheet = Image.new('RGB', (CW * ncol, CH * len(ROWS)), (20, 20, 20))
     dr = ImageDraw.Draw(sheet)
     for ri, shape in enumerate(ROWS):
@@ -49,11 +51,12 @@ def main():
         c0 = 0
         if not ours_only:
             ts = OWNER_T.get(shape, [])
-            if ts:
-                im = grab(owner, ts[0], os.path.join(tmp, 'o_%s.png' % shape)).resize((CW, CH))
-                sheet.paste(im, (0, y))
-                dr.text((6, y + 6), 'REFERENCE %s  t %.2f s' % (shape, ts[0]), fill=(255, 255, 0), font=font)
+            for oi, ot in enumerate(ts[:2 if owner_only else 1]):
+                im = grab(owner, ot, os.path.join(tmp, 'o_%s_%d.png' % (shape, oi))).resize((CW, CH))
+                sheet.paste(im, (oi * CW, y))
+                if not nolabel: dr.text((oi * CW + 6, y + 6), 'REFERENCE %s  t %.2f s' % (shape, ot), fill=(255, 255, 0), font=font)
             c0 = 1
+            if owner_only: continue
         # our segments of this shape: longest per program first, different programs
         cand = sorted([s for s in segs if s['shape'] == shape and len(s['rows']) >= 6], key=lambda s: -len(s['rows']))
         used, picks = set(), []
@@ -79,7 +82,7 @@ def main():
                 im = im.crop((int(bx), int(by), int(bx + cw), int(by + ch)))
             im = im.resize((CW, CH))
             sheet.paste(im, ((c0 + ci) * CW, y))
-            dr.text(((c0 + ci) * CW + 6, y + 6), 'OURS %s  %s  t %.2f s' % (shape, s['prog'], t), fill=(0, 255, 255), font=font)
+            if not nolabel: dr.text(((c0 + ci) * CW + 6, y + 6), 'OURS %s  %s  t %.2f s' % (shape, s['prog'], t), fill=(0, 255, 255), font=font)
     sheet.save(out, quality=88)
     print('sheet', out, sheet.size)
 

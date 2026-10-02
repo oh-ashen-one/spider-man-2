@@ -6,4 +6,4 @@ unreal/WebHomage/Scripts/build_editor.sh > /Users/midir/sm2-n1/_scratch/tricks/b
 W=/Users/midir/sm2-n1/_scratch/tricks/route; mkdir -p $W
 FIXED_KEYS=12.63:90,29.97:180 python3 tools/tricks/auto_route.py docs/night1/tricks/scripts/t60_trick_reel.json $W/t60_fitted.json $W 2>&1 | grep -v "^run_game\|WH_QUIT"
 cp $W/t60_fitted.json docs/night1/tricks/scripts/t60_trick_reel.json
-NOHOLD=1 SEGS="0:20,20:40,40:60.5" SEG_ONLY=0 tools/tricks/capture.sh docs/night1/tricks/round-01 t60_trick_reel
+NOHOLD=1 SEGS="0:25,25:42.5,42.5:60.5" SEG_ONLY=1 tools/tricks/capture.sh docs/night1/tricks/round-01 t60_trick_reel
