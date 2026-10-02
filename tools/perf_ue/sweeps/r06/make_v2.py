@@ -1,0 +1,115 @@
+#!/usr/bin/env python3
+# Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+"""P4 round 06: builds the round-06 time-of-day table ("tod" block of Scripts/look_presets.json) from the round-05 one + a knob file, so every change is one reviewable script.
+  python3 make_v2.py --knobs knobs_v2.json --out <doc.json>            (writes a full look_presets.json document; use --in-place to rewrite Scripts/look_presets.json)
+Structure (independent of any measurement; the numbers are in the knob file / KNOBS below):
+  * keys: extra keys through the twilights so every ramp is shaped by >= 3 keys (dusk 18.8 19.5 20.2 21.0 21.4, dawn 5.6 6.5 7.2) built as mixes of their neighbours, then overridden;
+  * city lights schedule u(h) (0 = day, 1 = night) drives mpc.EmissiveScale (log), NightK, DnTime, InteriorGain, ShopGain, ShadeFill: the x11 dusk emissive ramp spreads over 18.8-21.0
+    (10-90 % in ~1.1 h instead of 36 min), dawn mirrored;
+  * moon.Intensity keyed in only after 20:00 (0 until 20.2, 9 lux at 21.4): no moonlit surfaces in the blue hour; moon disk / cloud properties (moonc.*);
+  * hero (exposure-relative rim / fill / top) and herofill (the traversal character's 5000 cd fill) by hour;
+  * exposure windows widened at the twilights (max EV) so a bright excursion is metered down, not clamped;
+  * dawn base `dawn`: cooler, hazier (own palette, not golden mirrored).
+"""
+import argparse, copy, json, math, os, sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+WT = os.path.abspath(os.path.join(HERE, '..', '..', '..', '..'))
+PRESETS = os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'look_presets.json')
+
+# ----------------------------------------------------------------------------------------------- knobs (defaults = the pre-measurement design)
+KNOBS = {
+    # city lights schedule u(h): (hour, u) anchors, piecewise linear, cyclic
+    'u_dusk': [(18.8, 0.0), (19.2, 0.07), (19.5, 0.20), (19.8, 0.42), (20.2, 0.72), (20.6, 0.90), (21.0, 1.0)],
+    'u_dawn': [(5.6, 1.0), (6.25, 0.60), (6.8, 0.20), (7.2, 0.05), (7.6, 0.0)],
+    'moon': {19.8: 0.0, 20.2: 0.0, 20.6: 2.5, 21.0: 6.0, 21.4: 9.0},
+    'hero': {18.4: 0.0, 19.2: 0.2, 19.8: 0.7, 20.6: 1.0, 6.25: 1.0, 6.8: 0.3, 7.6: 0.0},
+    'herofill': {18.4: 1.0, 19.2: 0.5, 19.8: 0.1, 20.6: 0.0, 6.25: 0.0, 6.8: 0.3, 7.6: 1.0},
+    'night_cloud': {'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015},
+    'moonc': {'moonc.LightSourceAngle': 0.52, 'moonc.CloudScatteredLuminanceScale': [1, 1, 1, 1], 'moonc.AtmosphereSunDiskColorScale': [1, 1, 1, 1]},
+    # fog cutoff is a switch (the driver steps it at the middle of the segment): explicit 0 / 700000 on every new key, never a mix. 0 = fog applies to the sky pixels, 7e5 = sky unfogged
+    'cutoff': {18.8: 0, 19.5: 0, 20.2: 0, 21.0: 700000, 21.4: 700000, 5.6: 700000, 6.5: 0, 7.2: 0},
+    'twilight_overrides': {},      # {hour: {param: value}} applied last (sweep results go here)
+}
+
+
+def u_of(h, anchors):
+    pts = sorted(anchors)
+    if h <= pts[0][0]: return pts[0][1]
+    if h >= pts[-1][0]: return pts[-1][1]
+    for (h0, u0), (h1, u1) in zip(pts, pts[1:]):
+        if h0 <= h <= h1: return u0 + (u1 - u0) * (h - h0) / (h1 - h0)
+
+
+def city_u(h, K):
+    if 18.0 <= h <= 24.0 or h < 0.5: return u_of(h, K['u_dusk']) if h >= 18.0 else 1.0
+    if h < 4.9: return 1.0
+    if h <= 7.6: return u_of(h, K['u_dawn'])
+    return 0.0
+
+
+def lerp(a, b, t): return a + (b - a) * t
+
+
+def apply(doc, K):
+    d = copy.deepcopy(doc); T = d['tod']
+    P = d['presets']
+    gold, night = P['golden']['mpc'], P['night']['mpc']
+    # dawn base: cooler and hazier than golden_am (placeholder values until the dawn sweep is read; see HANDOFF)
+    T['derived']['dawn'] = {'from': 'golden_am', 'set': dict(K.get('dawn_set', {}))}
+    keys = {k['h']: k for k in T['keys']}
+    def key(h, base, mix=None, **s):
+        e = {'h': h, 'base': base, 'set': dict(s)}
+        if mix: e['mix'] = mix
+        keys[h] = e
+    nc = K['night_cloud']
+    # dusk
+    key(18.8, 'golden', ['dusk', 0.5], **{'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015})
+    key(19.5, 'dusk', ['blue', 0.5], **{'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015})
+    key(20.2, 'blue', ['night', 0.5], **nc)
+    key(21.0, 'night', **nc)
+    key(21.4, 'night', **nc)
+    # dawn
+    key(5.6, 'night', ['blue', 0.3], **nc)
+    key(6.5, 'blue', ['dusk_am', 0.5], **{'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015})
+    key(7.2, 'dusk_am', ['golden_am', 0.5], **{'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015})
+    keys[7.6]['base'] = 'dawn'
+    for h, k in keys.items():
+        u = city_u(h, K)
+        s = k.setdefault('set', {})
+        s['mpc.EmissiveScale'] = round(gold['EmissiveScale'] * (night['EmissiveScale'] / gold['EmissiveScale']) ** u, 4)
+        s['mpc.NightK'] = round(u, 4); s['mpc.DnTime'] = round(night['DnTime'] * u, 2)
+        for n in ('InteriorGain', 'ShopGain', 'ShadeFill'): s['mpc.' + n] = round(lerp(gold[n], night[n], u), 4)
+        for n, tab in (('moon.Intensity', K['moon']), ('hero', K['hero']), ('herofill', K['herofill'])):
+            pts = sorted(tab.items())
+            if n == 'moon.Intensity': s[n] = round(u_of(h, pts) if pts[0][0] <= h <= pts[-1][0] else (9.0 if (h >= 21.4 or h < 5.0) else 0.0), 3)
+            elif n in ('hero', 'herofill'):
+                dusk_pts = sorted((a, b) for a, b in tab.items() if a >= 18.0); dawn_pts = sorted((a, b) for a, b in tab.items() if a < 12.0)
+                if h >= 18.0: s[n] = round(u_of(h, dusk_pts), 3)
+                elif h <= 7.6: s[n] = round(u_of(h, dawn_pts), 3)
+                else: s[n] = 0.0 if n == 'hero' else 1.0
+        for pk, pv in K['moonc'].items(): s[pk] = pv
+        if h in K['cutoff']: s['fog.FogCutoffDistance'] = K['cutoff'][h]
+        for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): s[pk] = pv
+    T['keys'] = [keys[h] for h in sorted(keys)]
+    return d
+
+
+def main():
+    ap = argparse.ArgumentParser(); ap.add_argument('--knobs', default=''); ap.add_argument('--out', default=''); ap.add_argument('--in-place', action='store_true')
+    a = ap.parse_args()
+    K = copy.deepcopy(KNOBS)
+    if a.knobs: K.update(json.load(open(a.knobs)))
+    doc = json.load(open(PRESETS))
+    d = apply(doc, K)
+    txt = json.dumps(d, indent=1)
+    if a.in_place: open(PRESETS, 'w').write(txt)
+    elif a.out: open(a.out, 'w').write(txt)
+    sys.path.insert(0, os.path.join(WT, 'unreal', 'WebHomage', 'Scripts'))
+    import look_tod
+    t = look_tod.expand(d)
+    print('keys', [k['h'] for k in t['keys']], 'params', len(t['keys'][0]['p']))
+
+
+if __name__ == '__main__':
+    main()
