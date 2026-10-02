@@ -18,7 +18,20 @@ bool UWebTravAnimInstance::bAirSpeedPose = true;
 double UWebTravAnimInstance::ChestSign = 1.0;
 // round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
 static double GaitHandLat = -3.0, GaitElbowOut = 0.12; // r20 c capture: w/h .70 with hands 3 cm outside the shoulders and elbows out .35
-static double GaitTop = 0.76, GaitBot = 0.90, GaitLift = 0.04, GaitKneeOffT = 2.0, GaitLatT = -2.0, GaitKneeOutT = 0.0; // r20 probe g6: knee gap med .17 max .32 m in the run (g2 .43-.46, r19 .55-.59): longer legs under the hips, feet on the body line
+static double GaitTop = 0.42, GaitBot = 0.96, GaitLift = 0.0, GaitKneeOffT = 2.0, GaitLatT = -2.0, GaitKneeOutT = 0.0; // r20 probe g6: knee gap med .17 max .32 m in the run (g2 .43-.46, r19 .55-.59): longer legs under the hips, feet on the body line
+// round 21 (critic r20: "the side-run is a plank with the legs together"; each foot moved only ~0.14 x leg length per stride): a sprint
+// stride. Touchdown high under the body (Top = .42 leg lengths below the hip), push to full extension (Bot .96), and a high-knee recovery:
+// the swing foot comes up past the touchdown point to Hi (.28) at Kp (.75 of the swing) and paws back down (probe sweep r21: .50/.36 ->
+// w1 legs apart 2/6 frames at 8 fps, .42/.28 -> 3/6, .40/.26/Sig .45 -> c touchdown gap .35 s); the swing foot leaves the
+// wall by SwOff cm (the knee lifts off it through the pole); stance share Sig. Along-run foot gap peaks ~.45 m every step (offline model),
+// the lateral track is unchanged (knee gap across the run stays at the hip width). Cadence CadMin..CadMax steps/s (>= 5.6: a foot
+// touches down every <= .18 s). r20 = -WHGaitTune=Top=0.76,Bot=0.90,Lift=0.04,Hi=0,SwOff=0,Sig=0.42,CadMin=3.4,CadMax=6,CadBase=2.6,CadK=0.2
+// Knee pole: r19/r20 pointed the knees AWAY from the wall (U + .7 N) -- with the foot on the wall below a hip .38 m off it that bend is
+// nearly anti-parallel to the leg (unstable, straight legs or a reversed / splayed knee). r21: knees bend FORWARD like a runner's (toward
+// the chest = the wall, and up the run): pole U + PoleN * N with PoleN -.35, hips further off the wall (WallGaitFootOffR .42) so the
+// driven knee clears the facade. r20 = PoleN=0.7
+static double GaitPoleN = -0.35;
+static double GaitHi = 0.28, GaitKp = 0.75, GaitSwOff = 15.0, GaitSig = 0.40, GaitCadMin = 5.6, GaitCadMax = 6.6, GaitCadBase = 3.2, GaitCadK = 0.22;
 
 namespace
 {
@@ -48,6 +61,9 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 				if (K == TEXT("Top")) GaitTop = X; else if (K == TEXT("Bot")) GaitBot = X; else if (K == TEXT("Lift")) GaitLift = X;
 				else if (K == TEXT("KneeOff")) GaitKneeOffT = X; else if (K == TEXT("Lat")) GaitLatT = X; else if (K == TEXT("KneeOut")) GaitKneeOutT = X;
 				else if (K == TEXT("HandLat")) GaitHandLat = X; else if (K == TEXT("ElbowOut")) GaitElbowOut = X;
+				else if (K == TEXT("Hi")) GaitHi = X; else if (K == TEXT("Kp")) GaitKp = X; else if (K == TEXT("SwOff")) GaitSwOff = X;
+				else if (K == TEXT("Sig")) GaitSig = X; else if (K == TEXT("CadMin")) GaitCadMin = X; else if (K == TEXT("CadMax")) GaitCadMax = X;
+				else if (K == TEXT("CadBase")) GaitCadBase = X; else if (K == TEXT("CadK")) GaitCadK = X; else if (K == TEXT("PoleN")) GaitPoleN = X;
 			}
 		}
 	}
@@ -454,8 +470,8 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 			U = (U - N * FVector::DotProduct(U, N)).GetSafeNormal();
 			if (U.IsNearlyZero()) U = (CT.InverseTransformVectorNoScale(FVector::UpVector) - N * FVector::DotProduct(CT.InverseTransformVectorNoScale(FVector::UpVector), N)).GetSafeNormal();
 			Frame.WallN = N; Frame.WallU = U; Frame.WallP = CT.InverseTransformPosition(A.Wall.Point);
-			// cadence: 3.4 steps/s at 4 m/s .. 6 steps/s at 17 m/s (ref wallrun-glass-midday ~5 steps/s)
-			const float StepsPerS = FMath::Clamp(2.6f + 0.2f * A.Speed, 3.4f, 6.0f);
+			// cadence: r20 3.4 steps/s at 4 m/s .. 6 steps/s at 17 m/s (ref wallrun-glass-midday ~5 steps/s); r21 5.6 .. 6.6 (a touchdown every <= .18 s)
+			const float StepsPerS = FMath::Clamp(float(GaitCadBase + GaitCadK * A.Speed), float(GaitCadMin), float(GaitCadMax));
 			WallGaitPh = FMath::Fmod(WallGaitPh + Dt * StepsPerS * 0.5f, 1.f);
 		}
 		Frame.GaitPh = WallGaitPh;
@@ -753,7 +769,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const FVector Base = Hip - N * DH; // hip projected onto the wall
 			const double OTd = -GaitTop * Ll, OTo = -FMath::Min(GaitBot * Ll, FMath::Sqrt(FMath::Max(1.0, FMath::Square(0.97 * Ll) - FMath::Square(DH - 7.0))));
 			const float Phi = FMath::Fmod(Ph + (L == 0 ? 0.f : 0.5f), 1.f);
-			const float Sig = 0.42f;
+			const float Sig = float(FMath::Clamp(GaitSig, 0.2, 0.7));
 			double O, Off, Lat;
 			bool bStance = Phi < Sig;
 			// round 20 (critic r19 "splayed-knee frog scramble", w/h .73): narrow track, knees forward (off the wall) not out, shorter knee drive
@@ -761,11 +777,17 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			else
 			{
 				const float K = (Phi - Sig) / (1.f - Sig);
-				O = FMath::Lerp(OTo, OTd, double(Ease(K))) + GaitLift * Ll * FMath::Square(FMath::Sin(PI * K));
-				Off = 6.0 + GaitKneeOff * FMath::Sin(PI * K); Lat = GaitLat + 1.5 * FMath::Sin(PI * K);
+				if (GaitHi > 0.0)
+				{ // round 21: high-knee recovery -- up past the touchdown point to Hi, then paw down onto the wall
+					const double OHi = -GaitHi * Ll, Kp = FMath::Clamp(GaitKp, 0.3, 0.95);
+					O = K < Kp ? FMath::Lerp(OTo, OHi, double(Ease(float(K / Kp)))) : FMath::Lerp(OHi, OTd, double(Ease(float((K - Kp) / (1.0 - Kp)))));
+				}
+				else O = FMath::Lerp(OTo, OTd, double(Ease(K)));
+				O += GaitLift * Ll * FMath::Square(FMath::Sin(PI * K));
+				Off = 6.0 + GaitKneeOff * FMath::Sin(PI * K) + GaitSwOff * FMath::Sin(PI * FMath::Min(1.f, K * 1.15f)); Lat = GaitLat + 1.5 * FMath::Sin(PI * K);
 			}
 			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
-			const FVector Pole = U * 1.0 + Sd * (Sg * GaitKneeOut) + N * 0.7;
+			const FVector Pole = U * 1.0 + Sd * (Sg * GaitKneeOut) + N * GaitPoleN; // round 21: forward knees (r20 + N * 0.7)
 			const FVector ToeUp = (U * 0.9 - N * 0.25).GetSafeNormal();
 			TwoBone(Th, Sh, Ft, Tgt, Pole, W, &ToeUp, bStance ? 0.85f * W : 0.3f * W);
 		}

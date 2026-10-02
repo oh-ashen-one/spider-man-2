@@ -39,7 +39,7 @@ SEQS=(
   "f5_canyon_backDouble f5_canyon_backDouble.json ${F5Q:-9.0} ${F5T:-2.4,3.0}"
   # round 19 (owner playtest 2026-10-01): wall-run IK stride + E from a wall run / side run / roof run / perch
   "w1_wallrun_tall_zip w1_wallrun_tall_zip.json ${W1Q:-7.5} 1.8,2.6"
-  "w2_wallrun_side_zip w2_wallrun_side_zip.json ${W2Q:-6.5} 2.4,3.0"
+  "w2_wallrun_side_zip w2_wallrun_side_zip.json ${W2Q:-7} 2.4,3.0"
   "r1_roofrun_zip r1_roofrun_zip.json ${R1Q:-9.5} 6.0,7.0"
   "s1_high_swing s1_high_swing.json ${S1Q:-6.0} 0.6,1.2"
   # round 20 (critic r19 owner bugs): RMB cancels a flip / a wall run into a swing (<= 0.1 s); mouse look injected into a scripted chain
