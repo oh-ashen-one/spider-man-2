@@ -43,6 +43,10 @@ struct FWebTravAnimFrame
 	float WallW = 0.f;
 	FVector WallN = FVector::ForwardVector, WallP = FVector::ZeroVector, WallU = FVector::UpVector;
 	float GaitPh = 0.f;
+	// round 22: upright side run (runner side-on to the facade): SideUpW = blend (0 = the r21 chest-to-wall stride), WallZ = the wall's up
+	// axis (component space); WallU is then the run direction
+	float SideUpW = 0.f;
+	FVector WallZ = FVector::UpVector;
 	// round 19 (owner: swing / in-air poses at speed): procedural leg shaping while swinging (legs trail the velocity at the arc bottom,
 	// knees tuck on the rise) and the free arm opening against the arc; weights 0..1
 	float SwingLegW = 0.f, SwingTuck = 0.f, SwingFreeArmW = 0.f;
@@ -124,6 +128,9 @@ private:
 	float NodeT = 0.f, FadeT = 1.f, FadeDur = 0.2f, TotalWeight = 0.f;
 	TArray<FWebTravAnimLayer> PrevLayers;
 	float LocoPhase = 0.f, WallRunPhase = 0.f;
+	// round 22 (characters critic: idle -> run was a 1-frame weight pop): smoothed ground locomotion weights idle / walk / jog / run / sprint
+	float GroundW[5] = { 1.f, 0.f, 0.f, 0.f, 0.f };
+	bool bGroundWInit = false;
 	float WallGaitPh = 0.f;
 	float PendingTuckW = 0.f;
 public:
