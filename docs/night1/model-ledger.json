@@ -781,6 +781,19 @@
     4,
     3
    ]
+  },
+  {
+   "piece": "W River water",
+   "round": 3,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    4,
+    5,
+    5,
+    2,
+    4
+   ]
   }
  ],
  "agents": [
