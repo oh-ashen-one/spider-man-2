@@ -1,0 +1,43 @@
+{
+ "frames_measured": 532,
+ "frames_without_hero_pixels": 0,
+ "bbox_mean_luma_min": 27.2,
+ "bbox_mean_luma_p5": 38.3,
+ "bbox_mean_luma_mean": 59.0,
+ "bbox_mean_luma_max": 104.9,
+ "threshold": 40.0,
+ "frames_below_threshold": 48,
+ "first_frames_below": [
+  350,
+  351,
+  352,
+  353,
+  354,
+  355,
+  356,
+  357,
+  358,
+  359,
+  360,
+  361
+ ],
+ "p10_of_bbox_mean": 27.6,
+ "p90_of_bbox_mean": 108.3,
+ "L15b_frames_with_clipped_px": 502,
+ "L15b_max_clipped_px_in_box": 864,
+ "L15b_first_frames_with_clipped": [
+  0,
+  1,
+  2,
+  3,
+  4,
+  5,
+  6,
+  7,
+  8,
+  9,
+  10,
+  11
+ ],
+ "box": "hero pixel box of the P3 hero-only depth capture (-WHTravMask), 1920x1080 px"
+}
