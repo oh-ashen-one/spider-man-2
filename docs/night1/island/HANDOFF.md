@@ -1,4 +1,4 @@
-# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 10:45)
+# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 12:00)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -13,9 +13,17 @@
   (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
 - Build DONE 10:43 (rc 0): mesh 4,325 s (resumed part) + kit 5,360 s + map/fsky ~9 min + WP 1,600 s (1,642 meshes, 272 kit, 198,063 instances, 173,097 WHBox components in 973 s); build_manhattan map 34 s. Timings: round-03/build_timings_island.json. Content 1.5 GB.
 - 10:45: captures queued (holds_r03.sh); 11:25 driver swapped for docs/night1/island/holds_r03b.sh (3 h queue wait per hold; it adopted the hold-1 waiter pid 80362). Pid in _scratch/island/holds_r03.pid, log _scratch/island/logs/holds_r03.log.
-- Next: when the build ends -> captures (`capture_round.sh docs/night1/island/round-03 warmup r1 r2 r3 r4 a1`, GPU lock), route checks,
-  `tools/export/island_r2_check.py`, `tools/export/island_road_band.py` on r2 t26/t28 stills, critic pack `_scratch/critic-A-r03`.
-- Build timings: `_scratch/island/logs/build_timings_island.json` (every invocation appended).
+- 11:54 hold 1 done (warmup + r2, 959 s hold). Game log: `172553 building boxes indexed ... 173097 WHBox cubes de-collided`, 775 visible
+  solids (ctf3, QueryOnly), dump `round-03/dump_check.json` (55/55 facade/roofs/detail/fire-escape tiles solid; far-off rows overlapping
+  the region = far shore + Roosevelt Island land by name, as r02).
+- r2 (`round-03/r2_check.json`, `route_check_r2.json`, `road_band_r2.json`): no unanswered release, 68.8 % of 16 gaps <= 0.5 s, 0 webs
+  on nothing, BUT max gap 2.65 s (t 20.1) and 52 ground/land frames after t=1 s: at y ~700 (Madison Sq.) the chain swings west into the
+  block at x 192-216 (topOut / wall-run / fire-escape landing at 41 m), then climbs roofs to z 95 m: t26/t28 stills show roofs / a wall,
+  no road (road band t26 paint 7.4 % std 25.7, t28 0.7 % std 37.8: FAIL). Feet-overlap 20 frames (fire-escape decks during the wall-run,
+  traversal REQUEST §2). Traversal steering, not content; nothing in the route was changed to game the test.
+- 11:54 holds 2 (r1 r3) and 3 (r4 a1) queued; 6th in the GPU FIFO (slots = 1, DEMOTED).
+- Then: route checks r1/r3/r4 (`python3 tools/export/island_route_check.py _scratch/island/export/island <csv> --out ...`),
+  `python3 docs/night1/island/critic_prep_r03.py` + abpack, round-03/README.md.
 
 # (round 02 handoff, kept for reference)
 
