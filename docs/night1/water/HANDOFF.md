@@ -82,5 +82,5 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
 - New view `harbour_sun_high` (views.json, SHOTLIST, capture_round). Checker: `water_spec.py sunhigh|foam`, r04 checks.
 - Capture hold queued 06:50 (`_scratch/water/r04/hold_r04.sh`, log `r04/hold.log`, pid in `r04/hold.pid`): build + iteration stills,
   decision gate (`r04/decide.json`, else `r04/auto_params.json`), final build, stills, dollies into `docs/night1/water/round-04/`.
-  If this session is gone: check `hold.log`; when it says `HOLD r04 DONE`, run the perf hold (see r03 `perf_chain.sh`, maps incl. native100)
+  07:43: still queued (first in line behind traversal). If this session is gone: check `hold.log`; when it says `HOLD r04 DONE`, run the perf hold (see r03 `perf_chain.sh`, maps incl. native100)
   and `water_spec.py all docs/night1/water/round-04 --json .../spec.json`.
