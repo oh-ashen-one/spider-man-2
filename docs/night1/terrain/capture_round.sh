@@ -70,6 +70,34 @@ movie() {  # <name> <script.json> <quit seconds>
     ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" -q:v 3 "$ROUND/stills/${NAME}_t${s}s_1920x1080.jpg"; done
   rm -rf "$TMP/$NAME/${NAME}_frames"
 }
+if want moves && [ -f /Users/midir/sm2-n1/_scratch/terrain/turn3_final ]; then
+  # turn 3 = round-01 FINAL pass in one hold: rebuild the terrain content with the fixes found in the v1 stills, warm-up, all stills again (v1 kept in stills_v1/), then the movies
+  S3=/Users/midir/sm2-n1/_scratch/terrain; M3=$S3/manhattan; WT3="$(cd "$HERE/../../.." && pwd)"
+  UE3="/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor"
+  STEPS3=$(cat $S3/turn3_rebuild_steps 2>/dev/null || echo "clean,tex,mat,mesh,foliage,trees,map,views")
+  echo "== final: rebuild terrain steps=$STEPS3 $(date +%H:%M:%S)"
+  cat > $S3/jobs_terrain_final.py <<PY
+import os, traceback
+import unreal
+unreal.SystemLibrary.execute_console_command(None, 'Module Load StaticMeshEditor')
+ns = {'__file__': '$WT3/unreal/WebHomage/Scripts/build_terrain.py', '__name__': '__main__', 'JOB_ARGS': {'steps': '$STEPS3'}}
+try: exec(compile(open(ns['__file__']).read(), ns['__file__'], 'exec'), ns)
+except Exception: traceback.print_exc()
+PY
+  SM2_TERRAIN_SCRATCH=$S3 "$UE3" "$WT3/unreal/WebHomage/WebHomage.uproject" -run=pythonscript -script=$S3/jobs_terrain_final.py -unattended -nullrhi -nosplash -RenderOffScreen -NoSound -NoCrashReports -abslog=$M3/logs/terrain_final.log
+  echo "== final: rebuild done rc=$? $(date +%H:%M:%S)"
+  mkdir -p "$ROUND/stills_v1"; cp -p "$ROUND"/stills/*.jpg "$ROUND/stills_v1/" 2>/dev/null
+  want_save=("${WANT[@]}"); WANT=(warm stills)
+  if want warm; then
+    echo "== warm-up (shader compile, not kept)  $(gpu)"; rm -rf "$TMP/warm"
+    RUN "$TMP/warm" -map /Game/Terrain/Maps/V_p1_south -res 960x540 -quit "${WARM_QUIT:-12}" -name warm -timeout 2300 -- -benchmark -fps=30 | tail -3
+  fi
+  PRIO="${PRIO_IDS:-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"
+  for ID in $PRIO; do still V_ "$ID"; done
+  for ID in $BASE_IDS; do [ -f "$ROUND/stills/base_$ID.jpg" ] || still VB_ "$ID"; done
+  for ID in $IDS; do [[ " $PRIO " =~ " $ID " ]] || still V_ "$ID"; done
+  WANT=("${want_save[@]}")
+fi
 if want moves; then
   export WH_CAPTURE_MAXFPS="${MOVIE_MAXFPS:-20}"
   movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"

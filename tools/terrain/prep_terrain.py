@@ -126,7 +126,7 @@ print('tuft.glb: %d blades, %d verts' % (blades, len(PP)))
 # ------------------------------------------------------------------ tuft scatter over the grass mask (browser frame x, z)
 M = np.fromfile(os.path.join(EXP, T['mask']['file']), np.uint8).reshape(PH, PW, 4)
 dens = M[..., 0] / 255.0; hgt = M[..., 1] / 255.0
-PER_M2 = float(os.environ.get('SM2_TUFT_PER_M2', '0.55'))
+PER_M2 = float(os.environ.get('SM2_TUFT_PER_M2', '1.6'))
 cell = 1.0 / math.sqrt(PER_M2)
 nx, nz = int((PARK['x1'] - PARK['x0']) / cell), int((PARK['z1'] - PARK['z0']) / cell)
 gi, gj = np.meshgrid(np.arange(nx), np.arange(nz))
@@ -138,7 +138,7 @@ keep = jit[..., 2] < dens[mj, mi]
 pi_ = np.clip(np.floor((x - PX0) / TEXEL).astype(int), 0, MW - 1); pj_ = np.clip(np.floor((z - PZ0) / TEXEL).astype(int), 0, MH - 1)
 keep &= (COV[pj_, pi_] == 0) & (DRV[pj_, pi_] == 0)
 h = (0.06 + 0.4 * hgt[mj, mi]) * (0.7 + 0.6 * jit[..., 3])                  # grass.js blade height (m) x clump height (unit tuft is ~0.85 m high)
-rec = np.stack([x[keep], z[keep], rng.uniform(0, 2 * math.pi, keep.sum()), rng.uniform(0.8, 1.35, keep.sum()), h[keep]], 1).astype(np.float32)
+rec = np.stack([x[keep], z[keep], rng.uniform(0, 2 * math.pi, keep.sum()), rng.uniform(0.9, 1.5, keep.sum()), np.maximum(h[keep], 0.085)], 1).astype(np.float32)
 rec.tofile(os.path.join(PREP, 'tufts.bin'))
 print('tufts: %d instances (%.2f / m2 target), %.1f %% of cells kept' % (len(rec), PER_M2, 100 * keep.mean()))
 

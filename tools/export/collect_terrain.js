@@ -19,7 +19,7 @@
     [/^park-setpieces$/, 'setpieces'],
   ];
   // plain InstancedMesh / Pool props that belong to the terrain (positions are the full island list, not the view-dependent near set)
-  const INST = /^(parkReeds|park-blankets|parklamp|parklampFar|parkLampPool|ez-(park|elm|conifer)\d-l[01]-(leaves|bark))$/;   // + the park woodland's ez-trees (per-instance autumn tints aTintA / aTintB, LOD0 + LOD1)
+  const INST = /^(parkReeds|park-blankets|parklamp|parklampFar|parkLampPool|ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-crownfar)$/;   // + the park woodland's ez-trees (per-instance autumn tints aTintA / aTintB, LOD0 + LOD1)
 
   function attrArray(a) {
     const n = a.count, k = a.itemSize, out = new Float32Array(n * k);

@@ -169,6 +169,8 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
             e = mel.create_material_expression(m, unreal.MaterialExpressionWorldPosition, -900, y)
         elif kind == 'wn':
             e = mel.create_material_expression(m, unreal.MaterialExpressionVertexNormalWS, -900, y)
+        elif kind == 'cam':
+            e = mel.create_material_expression(m, unreal.MaterialExpressionCameraPositionWS, -900, y)
         elif kind == 'scalar':
             e = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -900, y)
             e.set_editor_property('parameter_name', n); e.set_editor_property('default_value', arg)
@@ -274,7 +276,7 @@ def _step_foliage():
         EAL.save_asset(dst)
     if EAL.does_directory_exist(PROD + '/_in'): EAL.delete_directory(PROD + '/_in')
     # three wind classes of the tuft material (tall tufts sway more)
-    for nm, amp in (('TuftLow', 3.0), ('TuftMid', 7.0), ('TuftHigh', 12.0)): mi(nm, 'M_TerrainGrass', {'windamp': amp})
+    for nm, amp in (('TuftLow', 3.0), ('TuftMid', 7.0), ('TuftHigh', 12.0)): mi(nm, 'M_TerrainGrass', {'windamp': amp, 'gain': 1.7})   # v2 stills: tufts read darker than the lawn (browser blades are lit yellow-green)
     log('foliage prototypes done')
 
 # ------------------------------------------------------------------------------------------------ park woodland (ez-trees, per-instance autumn tints)
@@ -364,7 +366,11 @@ def build_land(path):
             sp = f'{MESHD}/{r["kind"]}/SM_{r["name"]}'
             if not EAL.does_asset_exist(sp): continue
             # park lawn + city-park lawns sit 3 cm above the city's own flat ribbons / lawns (same height 0.17 m): they are covered, never z-fighting, and the city assets stay untouched
-            a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 3.0 if r['name'] in ('park', 'mapLawns') else 0.0), label=r['name'], folder='Terrain/' + r['kind'])
+            zoff = 3.0 if r['name'] in ('park', 'mapLawns') else 0.0
+            if r['name'].startswith('parkWater'):   # the city's flat land polygon (y -0.06) runs under every pond and would hide water below it: water surfaces are raised to y -0.03
+                wi = 0 if r['name'] == 'parkWater' else int(r['name'].split('_n')[1]) - 1
+                zoff = (-0.03 - TJ['water'][wi]['y']) * 100.0
+            a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, zoff), label=r['name'], folder='Terrain/' + r['kind'])
             a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
             if r['name'] == 'park' or r['name'].startswith(('mapLawns', 'coastLawn', 'parkWater')): a.tags = [unreal.Name('WHGround')]
             if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
@@ -443,6 +449,27 @@ def build_land(path):
                     e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
                     for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
             nt += len(xs)
+            # far crowns (the city's opaque canopy-mass LOD): only beyond the ez-tree range (520 m); the city's own always-on instances are hidden in City_Geo_T
+        for pool, nm in (('trees-park-crownfar', 'trees_park_crownfar'), ('trees-elm-crownfar', 'trees_elm_crownfar'), ('trees-conifer-crownfar', 'trees_conifer_crownfar')):
+            sp = None
+            for suf in ['', '_v2', '_v3', '_v4', '_v5', '_v6']:
+                if EAL.does_asset_exist(f'/Game/City/Props/SM_{nm}{suf}'): sp = f'/Game/City/Props/SM_{nm}{suf}'
+            if sp is None or pool not in INS or not INS[pool]['items']: log('no far-crown asset / items for', pool); continue
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_far_' + nm, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(load(sp)); c.set_editor_property('num_custom_data_floats', 6)
+            c.set_material(0, mi('Crown', 'M_TerrainCrown', {'gain': 1.0}))   # distance-clipped (>= 520 m) + autumn tint: per-instance cull distances did not hide the blobs in the v1 / v2 stills
+            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c, indirect=True)
+            xs = []
+            for it in INS[pool]['items']:
+                s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])))
+            ids = c.add_instances(xs, True, True)
+            for k, it in enumerate(INS[pool]['items']):
+                e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
+                for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
+            nt += len(xs)
         log('park woodland instances', nt)
 
     for nm_, fn_ in (('meshes', _sec_meshes), ('tufts', _sec_tufts), ('props', _sec_props), ('trees', _sec_trees)): soft(nm_, fn_)
@@ -459,7 +486,7 @@ def city_geo_copy(src):
         hid = 0
         for a in eas.get_all_level_actors():
             lb = a.get_actor_label()
-            if lb.startswith(('ISM_ez_park', 'ISM_ez_elm', 'ISM_ez_conifer')) or (isinstance(a, unreal.StaticMeshActor) and lb.startswith(('parkPaths', 'mapLawns'))):
+            if lb.startswith(('ISM_ez_park', 'ISM_ez_elm', 'ISM_ez_conifer', 'ISM_trees_park_crownfar', 'ISM_trees_elm_crownfar', 'ISM_trees_conifer_crownfar')) or (isinstance(a, unreal.StaticMeshActor) and lb.startswith(('parkPaths', 'mapLawns'))):
                 a.set_actor_hidden_in_game(True); hid += 1
         les.save_current_level()
         log('City_Geo_T: hid', hid, 'city actors (park ribbons / lawns / ez park trees)')

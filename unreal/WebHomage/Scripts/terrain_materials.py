@@ -100,4 +100,15 @@ Op = tx.a; Sub = c * 0.85; Rough = 0.78;
 return c;''',
         inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5), ('gain', 'scalar', 1.0)],
         outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')], two_sided=True, blend='masked', foliage=True))
+    # far crowns: the city's opaque canopy-mass blobs. They are ONLY wanted beyond the ez-tree range (browser: 520 m); per-instance cull distances did not hide them in UE (v1 / v2 stills),
+    # so the material clips them by camera distance (fade-in 480 .. 560 m) and tints them with the tree's own autumn palette (custom data = aTintA / aTintB)
+    M.append(dict(name='M_TerrainCrown', include=None, code='''
+float d = length(wpos - cam) * 0.01;
+Op = smoothstep(480.0, 560.0, d);
+float nz = 0.5 + 0.5 * sin(wpos.x * 0.011 + 1.7 * sin(wpos.y * 0.0093)) * cos(wpos.y * 0.0127);
+float3 c = lerp(float3(a0, a1, a2), float3(b0, b1, b2), 0.5) * lerp(0.7, 1.15, nz) * gain;
+Rough = 0.95;
+return c;''',
+        inputs=[('wpos', 'wpos', None), ('cam', 'cam', None), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5), ('gain', 'scalar', 1.0)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS')], blend='masked'))
     return M
