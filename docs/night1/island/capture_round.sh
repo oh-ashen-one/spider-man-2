@@ -37,8 +37,9 @@ fi
 # ISLAND_ROUTE_BUDGET_S (default 1,500 s: a 30 s 1080p60 movie took 13-25 min under a shared GPU) is left before the hold ends.
 T_HOLD0=$(date +%s); HOLD_MAX=${GPU_SLOT_CAPTURE_MAX_HOLD:-2400}
 budget_ok() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) )); if [ "$left" -lt "${1:-${ISLAND_ROUTE_BUDGET_S:-1500}}" ]; then echo "== SKIP $2: only ${left} s left in the hold"; return 1; fi; }
-# run_game.sh's own -timeout (SIGTERM, 60 s wait) ends a slow run 150 s before the hold does (r03 r1: 3 engines on the GPU, 45 frames / min)
-run_timeout() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) - 150 )); [ "$left" -gt "$1" ] && left=$1; echo "$left"; }
+# run_game.sh's own -timeout (SIGTERM, 60 s wait) ends a slow run 450 s before the hold does (r03 r1: 3 engines on the GPU, 45 frames / min;
+# r03 r3: moving 1,824 1080p PNGs to the exFAT scratch took > 5 min after the engine quit)
+run_timeout() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) - 450 )); [ "$left" -gt "$1" ] && left=$1; echo "$left"; }
 route() {  # name script
   local NAME="$1" JSON="$2"
   budget_ok "" "$NAME" || return 0

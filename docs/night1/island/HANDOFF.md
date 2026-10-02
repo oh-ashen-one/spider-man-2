@@ -1,4 +1,4 @@
-# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 13:25)
+# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 14:10)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -25,7 +25,11 @@
   10 s) off a rendering engine, `_scratch/island/r1_guard.sh` stopped r1 with stop_ue.sh at t=29.1 s (1,751 frames kept, encoded by hand)
   and r3 never started. r1 (`route_check_r1.json`): 0 fall / stuck / mid-air / wall-air, 0 feet overlap, 0 webs on nothing, 1,142 m.
   `capture_round.sh` now skips a route without 1,500 s of hold left and passes run_game `-timeout` = hold left - 150 s.
-- 13:24 hold "r3" running (~55 frames/min; 13:55 at ~1,450 frames), driver `holds_r03c.sh` (pid in `_scratch/island/holds_r03.pid`), then hold "r4 a1".
+- Hold 3 (13:24-14:04): r3 complete (engine quit normally at 13:58:30); gpu_slot's max hold then stopped the frame MOVE to the exFAT scratch
+  (> 5 min for 1,824 PNGs); frames moved + encoded by hand. r3 = r02 (same topOut loop under the fire-escape deck, 6.43 s; 7 kit-overlap
+  frames; 0 fall / stuck / mid-air). `capture_round.sh` run timeout margin now 450 s.
+- 14:04 hold "r4 a1" queued (driver `holds_r03c.sh`); a1 will likely be skipped by the budget guard -> queue
+  `ISLAND_IN_LOCK=1 gpu_slot.sh capture --label island -- docs/night1/island/capture_round.sh docs/night1/island/round-03 a1` afterwards.
 - Then: route checks r1/r3/r4 (`python3 tools/export/island_route_check.py _scratch/island/export/island <csv> --out ...`),
   `python3 docs/night1/island/critic_prep_r03.py` + abpack, round-03/README.md.
 
