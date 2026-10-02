@@ -51,7 +51,8 @@ if has build; then      # the content build nested in this hold (gpu_slot passes
   log "build: clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap"
   BUILD_STDOUT="$OUT/build.stdout" bash "$WT/tools/ue_char/fight/build_fight.sh" clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap 2>&1 | tail -3 | tee -a "$OUT/chain.log"
   cp "$WT/unreal/WebHomage/Saved/Logs/characters_build.log" "$OUT/characters_build.log" 2>/dev/null
-  if ! grep -q "skinsmap saved True True" "$OUT/characters_build.log" || ! grep -q "map saved /Game/Tests/Characters/Char_Fight True" "$OUT/characters_build.log"; then log "build FAILED: no render"; exit 5; fi
+  if ! grep -q "skinsmap saved True True" "$OUT/characters_build.log" || ! grep -q "map saved /Game/Tests/Characters/Char_Fight True" "$OUT/characters_build.log" || ! grep -q "skins ok: 8 suits" "$OUT/characters_build.log"; then log "build FAILED (or fewer than 8 suits): no render"; exit 5; fi
+  grep -E "skins: rim|frame instance failed|skins: suit .* FAILED" "$OUT/characters_build.log" | sed 's/^.*LogPython: //' | tee -a "$OUT/chain.log"
   grep -E "weave from pre-skinned|weave-from-position FAILED" "$OUT/characters_build.log" | sed 's/^.*LogPython: //' | tee -a "$OUT/chain.log"
 fi
 

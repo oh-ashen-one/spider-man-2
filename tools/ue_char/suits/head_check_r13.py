@@ -80,7 +80,7 @@ def hue_dist(h1, h2):
     d = np.abs(h1 - h2); return np.minimum(d, 1 - d)
 
 
-def lens_masks(im, suit, min_area=4000, r12=False):
+def lens_masks(im, suit, min_area=4000, r12=False, sil=None):
     """The two lens components: pixels of the lens hue, bright, in the upper face; the two largest components of area >= min_area."""
     acc = lens_colour(suit, r12)
     ha, sa, va = rgb2hsv(acc)
@@ -91,6 +91,7 @@ def lens_masks(im, suit, min_area=4000, r12=False):
     dlt = mx - mn + 1e-9
     hh = np.where(mx == r, ((g - b) / dlt) % 6, np.where(mx == g, (b - r) / dlt + 2, (r - g) / dlt + 4)) / 6.0
     m = (hue_dist(hh, ha) < 0.045) & (s > max(0.18, 0.45 * sa)) & (v > 0.42)
+    if sil is not None: m &= ndi.binary_erosion(sil, iterations=4)          # a cyan lens colour matches the sky at the outline: only pixels inside the head
     m = ndi.binary_opening(m, iterations=2)
     m = ndi.binary_closing(m, iterations=6)
     lab, n = ndi.label(m)
@@ -222,7 +223,7 @@ def seam_check(im, masks, sil):
 def front(path, suit, dump=None, r12=None):
     im = load(path)
     sil = silhouette(im)
-    masks = lens_masks(im, suit)
+    masks = lens_masks(im, suit, sil=sil)
     out = dict(suit=suit, file=os.path.basename(path), lenses=len(masks))
     if len(masks) < 2: out['ok'] = False; return out
     bb = [bbox(m) for m in masks]
@@ -247,7 +248,7 @@ def front(path, suit, dump=None, r12=None):
     out['nose'] = nose_profiles(im, masks, sil, int(max(rims[0]['median'], rims[1]['median'], 6)))
     out['seam'] = seam_check(im, masks, sil)
     if r12:
-        im2 = load(r12); sil2 = silhouette(im2); m2 = lens_masks(im2, suit, r12=True)
+        im2 = load(r12); sil2 = silhouette(im2); m2 = lens_masks(im2, suit, r12=True, sil=sil2)
         if len(m2) == 2:
             b2 = [bbox(m) for m in m2]; w2 = [int(b[1] - b[0] + 1) for b in b2]
             ye2 = int(0.5 * (b2[0][2] + b2[0][3])); r2 = np.nonzero(sil2[ye2])[0]; hw2 = int(r2.max() - r2.min() + 1)
