@@ -68,6 +68,20 @@ private:
 	// round 16: -WHStageShotQuit = quit the game 3 s (stage clock) after the LAST stage shot (a contended GPU slows the stage clock: a process-time -quit lost 33 of 56 stills)
 	bool bStageShotQuit = false; double StageQuitAt = -1.0; bool bStageQuitDone = false;
 	int32 WaitTexDoneShot = -1; double WaitTexWall = 0.0;     // round 16: -WHStageWaitTextures
+	// round 17 capture protocol (-WHSettleFrames=N [-WHSettleSeconds=S] [-WHStageShotRel]): a stage shot is NOT taken the moment its stage time arrives.  The stage clock, every skeletal animation and the
+	// camera are frozen; the shot waits until (1) no asset (texture / material) is still compiling, no shader is compiling and every texture of the visible actors is fully resident
+	// (r16: the lineup was taken 5 frames / 9 s into a 0.55 fps run: copper blotches = unresident / unconverged, ghost weapons = TAA history), then (2) counts N RENDERED frames (GFrameCounter ticks)
+	// in which the camera and the poses did not move AND at least S world seconds (auto exposure), and only then requests the screenshot.  Any movement resets the count.
+	int32 SettleFrames = 0; double SettleSeconds = 2.0; bool bStageShotRel = false;
+	int32 SettleState = 0;                       // 0 idle, 1 waiting for residency, 2 counting static frames, 3 screenshot requested
+	int32 SettleCount = 0, SettleResets = 0, SettleLastTexBad = 0; uint64 SettleShotFrame = 0, SettleFrame0 = 0; double SettleWall0 = 0.0, SettleWorld0 = 0.0, SettleCountWorld0 = 0.0;
+	FVector SettleSigLoc = FVector::ZeroVector; FRotator SettleSigRot = FRotator::ZeroRotator; double SettleSigPose = 0.0; bool bSettleSigValid = false;
+	bool bSettleCvars = false, bSettleFinished = false; uint64 SettleQuitFrame = 0; double SettleQuitWall = 0.0;
+	int32 PreloadTicks = 0;                      // round 17: -WHPreload (movies): finish every asset compile + stream everything in on the 2nd tick, before the first recorded frame
+	void TickSettle();
+	void PauseAllAnims(bool bPause);
+	bool AllVisibleTexturesResident(int32& OutBad, FString& OutFirstBad) const;
+	double PoseSignature() const;
 	UPROPERTY() TObjectPtr<ACameraActor> Cam;
 	float T = 0.f;
 	int32 LastShot = -1;

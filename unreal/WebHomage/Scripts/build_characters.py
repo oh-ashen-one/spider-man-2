@@ -1064,8 +1064,8 @@ if 'maps5' in STEPS:
         cit_center5 = spawn(unreal.TargetPoint, (500, CY5, 0), label='CitizensCenter')
         civ_all5 = civ5 + [civ_track5]
         crowd_shots = [
-            mkshot(civ_track5, K5.SIDE, 8, 1150, 100, 45, 64, restart=civ_all5, label='crowd walking past a tracking camera'),                      # 0 @0
-            mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @8
+            mkshot(civ_track5, K5.SIDE, 12, 1150, 100, 45, 64, restart=civ_all5, label='crowd walking past a tracking camera'),                     # 0 @0  (round 17: 8 -> 12 s: the r14-r16 crowd clip's 7.483 s cut was this shot ending at 8 s and the director cutting to 'crowd wide'; the clip is 8 s)
+            mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @12
         save_map(TESTS + '/' + map_name, crowd_shots)
     crowd_map('Char_Crowd', MID7, NEAR7)
     if 'mapavoid' in STEPS:      # only when asked: telemetry test of the avoidance on the OLD (colliding) layout, nullrhi run, no captures
@@ -1370,7 +1370,7 @@ if 'skinsmap' in STEPS:
     # ---- Char_SkinsPlay (the real pawn)
     skins_stage('SkinsPlay', True)
     # the pawn's origin is its capsule centre (0.95 m): aim 0; ORBIT with 0 deg/s = a world-fixed azimuth that follows the runner exactly (SIDE / THREE_QUARTER smooth the aim and lag a 9.8 m/s runner)
-    pshots = [sshot(None, KS.ORBIT, 10.0, 520.0, 0.0, 10.0, 40.0, 0.0, -90.0, label='playable pawn, side (T swaps the suit)', player=True),
+    pshots = [sshot(None, KS.ORBIT, 16.0, 520.0, 0.0, 10.0, 40.0, 0.0, -90.0, label='playable pawn, side (T swaps the suit)', player=True),      # round 17: 10 -> 16 s: the r16 clip's 9.933 s 'yaw snap' was THIS shot ending (10 s) and the director cutting to the front 3/4 shot; the clip is 11.4 s
               sshot(None, KS.ORBIT, 6.0, 480.0, 0.0, 20.0, 40.0, 0.0, -45.0, label='playable pawn, front 3/4', player=True)]
     ok2 = save_skins_map(TESTS + '/Char_SkinsPlay', pshots)
     _json0.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,

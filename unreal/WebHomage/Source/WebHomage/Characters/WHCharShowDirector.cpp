@@ -20,6 +20,15 @@
 #include "Misc/App.h"
 #include "Engine/Texture2D.h"
 #include "Materials/MaterialInterface.h"
+#include "Components/MeshComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "AssetCompilingManager.h"
+#include "ShaderCompiler.h"
+#include "ContentStreaming.h"
+#include "HAL/IConsoleManager.h"
+#include "HAL/PlatformTime.h"
+#include "Engine/World.h"
+#include "UObject/UObjectIterator.h"
 
 AWHCharShowDirector::AWHCharShowDirector()
 {
@@ -57,6 +66,12 @@ void AWHCharShowDirector::BeginPlay()
 			bStageShotQuit = FParse::Param(FCommandLine::Get(), TEXT("WHStageShotQuit"));
 			StageShotDir = FPaths::ProjectSavedDir() / TEXT("WHCaptures"); FParse::Value(FCommandLine::Get(), TEXT("WHShotDir="), StageShotDir);
 			StageShotName = TEXT("shot"); FParse::Value(FCommandLine::Get(), TEXT("WHShotName="), StageShotName);
+			// round 17: -WHStageShotRel = the times are relative to this director's start clock (the lineup: shot 5 starts at the sum of the first five shot durations)
+			bStageShotRel = FParse::Param(FCommandLine::Get(), TEXT("WHStageShotRel"));
+			if (bStageShotRel) for (double& St : StageShots) St += double(T);
+			FParse::Value(FCommandLine::Get(), TEXT("WHSettleFrames="), SettleFrames);
+			double Ss = 0.0; if (FParse::Value(FCommandLine::Get(), TEXT("WHSettleSeconds="), Ss)) SettleSeconds = Ss;
+			if (SettleFrames > 0) UE_LOG(LogTemp, Display, TEXT("WH_SETTLE protocol on: %d static rendered frames + %.1f world s after every texture of the visible actors is resident; %d shots at stage T (rel=%d)"), SettleFrames, SettleSeconds, StageShots.Num(), bStageShotRel ? 1 : 0);
 		}
 	}
 	if (FParse::Value(FCommandLine::Get(), TEXT("WHBoneLog="), BoneLogPath) && !BoneLogPath.IsEmpty())
@@ -105,6 +120,17 @@ void AWHCharShowDirector::LogBones(float Ts)
 void AWHCharShowDirector::Tick(float Dt)
 {
 	Super::Tick(Dt);
+	{   // round 17: -WHPreload (movie runs, whose frames are a fixed 1/60 s step and cannot wait): block until no texture / material is compiling and everything is streamed in
+		static const bool bPreload = FParse::Param(FCommandLine::Get(), TEXT("WHPreload"));
+		if (bPreload && PreloadTicks < 3 && ++PreloadTicks == 2)
+		{
+			if (IConsoleVariable* Cv = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Streaming.FullyLoadUsedTextures"))) Cv->Set(1);
+			const double P0 = FPlatformTime::Seconds();
+			FAssetCompilingManager::Get().FinishAllCompilation();
+			IStreamingManager::Get().StreamAllResources(5.0f);
+			UE_LOG(LogTemp, Display, TEXT("WH_PRELOAD all assets compiled + streamed in %.1f s wall (frame %llu)"), FPlatformTime::Seconds() - P0, GFrameCounter);
+		}
+	}
 	if (!Cam || Shots.Num() == 0) return;
 	// round 16: -WHStageWaitTextures holds the STAGE clock while the target's suit textures are not fully streamed in (r16 hold 2: at 1.4 fps on a contended GPU the first
 	// suit's 8192 px maps were still a low mip when its stills were taken), at most 180 s of wall time per shot
@@ -133,8 +159,10 @@ void AWHCharShowDirector::Tick(float Dt)
 		else if (Ic != WaitTexDoneShot && WaitTexWall > 0.0) UE_LOG(LogTemp, Display, TEXT("WH_STAGE_WAIT_TEX shot %d: resident=%d after %.1f s wall"), Ic, bReady ? 1 : 0, WaitTexWall);
 		if (!bHoldClock && Ic != WaitTexDoneShot) { WaitTexDoneShot = Ic; WaitTexWall = 0.0; }
 	}
-	if (!bHoldClock) T += Dt;
+	if (!bHoldClock && SettleState == 0) T += Dt;
 	if (!BoneLogPath.IsEmpty() && Dt > 0.f) LogBones(T);
+	if (SettleFrames > 0) TickSettle();
+	else
 	while (NextStageShot < StageShots.Num() && double(T) >= StageShots[NextStageShot])
 	{
 		const FString File = StageShotDir / FString::Printf(TEXT("%s_%02d_t%05.1f.png"), *StageShotName, NextStageShot, StageShots[NextStageShot]);
@@ -163,6 +191,7 @@ void AWHCharShowDirector::Tick(float Dt)
 	if (Idx != LastShot && ManagedActors.Num() > 0)
 		for (AActor* M : ManagedActors)
 			if (M) M->SetActorHiddenInGame(!(M == Tgt || S.ShowActors.Contains(M)));
+	if (SettleState != 0 && bSettleSigValid) return;      // round 17: the camera is frozen while a shot settles (no cut can happen: the stage clock is held)
 	const FVector Base = Tgt->GetActorLocation();
 	const FVector Aim = Base + FVector(0, 0, S.AimHeight);
 	const bool bCut = Idx != LastShot; LastShot = Idx;
@@ -214,4 +243,132 @@ void AWHCharShowDirector::Tick(float Dt)
 	Cam->GetCameraComponent()->SetFieldOfView(S.FOV);
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 		if (PC->GetViewTarget() != Cam) PC->SetViewTarget(Cam);
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// round 17 capture protocol (see the header): residency first, then N static rendered frames, then the screenshot
+void AWHCharShowDirector::PauseAllAnims(bool bPause)
+{
+	for (TObjectIterator<USkeletalMeshComponent> It; It; ++It)
+		if (It->GetWorld() == GetWorld()) It->bPauseAnims = bPause;
+}
+
+bool AWHCharShowDirector::AllVisibleTexturesResident(int32& OutBad, FString& OutFirstBad) const
+{
+	OutBad = 0; OutFirstBad.Empty();
+	TSet<const UTexture*> Seen;
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+	{
+		const AActor* A = *It;
+		if (A->IsHidden() || A == this) continue;
+		TArray<UMeshComponent*> Comps; A->GetComponents<UMeshComponent>(Comps);
+		for (UMeshComponent* MC : Comps)
+		{
+			if (!MC || !MC->IsVisible()) continue;
+			for (int32 m = 0; m < MC->GetNumMaterials(); ++m)
+				if (UMaterialInterface* MI = MC->GetMaterial(m))
+				{
+					TArray<UTexture*> Used; MI->GetUsedTextures(Used, EMaterialQualityLevel::Num, true, GMaxRHIFeatureLevel, true);
+					for (UTexture* Tx : Used)
+					{
+						if (!Tx || Seen.Contains(Tx)) continue;
+						Seen.Add(Tx);
+						bool bBad = !Tx->IsAsyncCacheComplete();
+						if (UTexture2D* T2 = Cast<UTexture2D>(Tx))
+						{
+							if (!T2->IsFullyStreamedIn()) bBad = true;
+							if (T2->GetNumMips() > 0 && T2->GetNumResidentMips() < T2->GetNumMips() && !T2->IsFullyStreamedIn()) bBad = true;
+						}
+						if (bBad) { ++OutBad; if (OutFirstBad.IsEmpty()) OutFirstBad = Tx->GetName(); }
+					}
+				}
+		}
+	}
+	return OutBad == 0;
+}
+
+// a cheap fingerprint of every skeletal mesh's pose: component location + the head / root bone location
+double AWHCharShowDirector::PoseSignature() const
+{
+	double Sig = 0.0; int32 k = 1;
+	for (TObjectIterator<USkeletalMeshComponent> It; It; ++It)
+	{
+		if (It->GetWorld() != GetWorld() || !It->IsVisible()) continue;
+		const FVector L = It->GetComponentLocation();
+		FVector B = L;
+		if (It->GetBoneIndex(FName(TEXT("head"))) != INDEX_NONE) B = It->GetBoneLocation(FName(TEXT("head")), EBoneSpaces::WorldSpace);
+		Sig += (L.X + 2.0 * L.Y + 3.0 * L.Z + 5.0 * B.X + 7.0 * B.Y + 11.0 * B.Z) * double(k++);
+	}
+	return Sig;
+}
+
+void AWHCharShowDirector::TickSettle()
+{
+	UWorld* W = GetWorld();
+	const double Now = FPlatformTime::Seconds();
+	if (SettleState == 0)
+	{
+		if (NextStageShot >= StageShots.Num() || double(T) < StageShots[NextStageShot]) return;
+		SettleState = 1; SettleWall0 = Now; SettleWorld0 = W->GetTimeSeconds(); SettleFrame0 = GFrameCounter; bSettleSigValid = false; SettleResets = 0; SettleLastTexBad = -1;
+		PauseAllAnims(true);
+		if (!bSettleCvars)
+		{
+			bSettleCvars = true;
+			if (IConsoleVariable* Cv = IConsoleManager::Get().FindConsoleVariable(TEXT("r.Streaming.FullyLoadUsedTextures"))) Cv->Set(1);
+		}
+		IStreamingManager::Get().StreamAllResources(2.0f);
+		UE_LOG(LogTemp, Display, TEXT("WH_SETTLE shot %d: stage clock + animations + camera frozen at T=%.3f (frame %llu); waiting for assets / textures"), NextStageShot, T, GFrameCounter);
+		return;
+	}
+	if (SettleState == 1)
+	{
+		const int32 Rem = FAssetCompilingManager::Get().GetNumRemainingAssets();
+		const bool bShaders = GShaderCompilingManager && GShaderCompilingManager->IsCompiling();
+		int32 Bad = 0; FString First; const bool bTex = AllVisibleTexturesResident(Bad, First);
+		const double Wait = Now - SettleWall0;
+		if (Bad != SettleLastTexBad && Wait > 1.0) { SettleLastTexBad = Bad; UE_LOG(LogTemp, Display, TEXT("WH_SETTLE shot %d: %.1f s wall: %d assets compiling, shaders %d, %d textures not resident (first %s)"), NextStageShot, Wait, Rem, bShaders ? 1 : 0, Bad, *First); }
+		if (Rem == 0 && bTex && (!bShaders || Wait > 120.0)) { if (bShaders) UE_LOG(LogTemp, Warning, TEXT("WH_SETTLE shot %d: shaders still compiling after %.0f s, textures resident: counting anyway"), NextStageShot, Wait); }
+		else if (Wait < 300.0) { if (Rem > 0 && Wait > 4.0 && !bSettleFinished) { bSettleFinished = true; FAssetCompilingManager::Get().FinishAllCompilation(); } return; }
+		else UE_LOG(LogTemp, Warning, TEXT("WH_SETTLE shot %d: residency wait TIMED OUT after %.0f s (assets %d, shaders %d, bad textures %d %s)"), NextStageShot, Wait, Rem, bShaders ? 1 : 0, Bad, *First);
+		SettleState = 2; SettleCount = 0; SettleCountWorld0 = W->GetTimeSeconds(); bSettleSigValid = false;
+		UE_LOG(LogTemp, Display, TEXT("WH_SETTLE shot %d: resident after %.1f s wall (%llu frames); counting static rendered frames"), NextStageShot, Wait, GFrameCounter - SettleFrame0);
+		return;
+	}
+	if (SettleState == 2)
+	{
+		APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0);
+		const FVector CL = Cam ? Cam->GetActorLocation() : FVector::ZeroVector; const FRotator CR = Cam ? Cam->GetActorRotation() : FRotator::ZeroRotator;
+		const double Pose = PoseSignature();
+		const bool bViewOk = !PC || PC->GetViewTarget() == Cam;
+		if (!bSettleSigValid || !bViewOk || !CL.Equals(SettleSigLoc, 0.02) || !CR.Equals(SettleSigRot, 0.002) || FMath::Abs(Pose - SettleSigPose) > 0.02)
+		{
+			if (bSettleSigValid) ++SettleResets;
+			SettleSigLoc = CL; SettleSigRot = CR; SettleSigPose = Pose; bSettleSigValid = true; SettleCount = 0; SettleCountWorld0 = W->GetTimeSeconds();
+			return;
+		}
+		++SettleCount;
+		if ((SettleCount % 8) == 0)
+		{
+			int32 Bad = 0; FString First;
+			if (!AllVisibleTexturesResident(Bad, First) || FAssetCompilingManager::Get().GetNumRemainingAssets() > 0) { SettleState = 1; SettleWall0 = Now; UE_LOG(LogTemp, Display, TEXT("WH_SETTLE shot %d: a texture became non-resident again (%s): back to waiting"), NextStageShot, *First); return; }
+		}
+		const double WorldS = W->GetTimeSeconds() - SettleCountWorld0;
+		const double WallWait = Now - SettleWall0;
+		if ((SettleCount >= SettleFrames + 2 && WorldS >= SettleSeconds) || WallWait > 600.0)
+		{
+			const FString File = StageShotDir / FString::Printf(TEXT("%s_%02d_t%05.1f.png"), *StageShotName, NextStageShot, StageShots[NextStageShot]);
+			FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
+			SettleShotFrame = GFrameCounter; SettleState = 3;
+			UE_LOG(LogTemp, Display, TEXT("WH_STAGE_SHOT %s stage T=%.3f world=%.3f settle_frames=%d static_world_s=%.2f resets=%d wall_s=%.1f%s"), *File, T, W->GetTimeSeconds(), SettleCount, WorldS, SettleResets, Now - SettleWall0, WallWait > 600.0 ? TEXT(" SETTLE_TIMEOUT") : TEXT(""));
+		}
+		return;
+	}
+	if (SettleState == 3)
+	{
+		if (!FScreenshotRequest::IsScreenshotRequested() && GFrameCounter >= SettleShotFrame + 3)
+		{
+			PauseAllAnims(false); SettleState = 0; bSettleSigValid = false; ++NextStageShot;
+			if (bStageShotQuit && NextStageShot >= StageShots.Num()) StageQuitAt = double(T) + 3.0;
+		}
+	}
 }
