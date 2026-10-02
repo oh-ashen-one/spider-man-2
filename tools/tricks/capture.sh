@@ -46,12 +46,26 @@ for NAME in "$@"; do
   for ((K=0; K<NSEG; K++)); do [ -d "$TMP/$NAME/seg$K/${NAME}_frames" ] || OK=0; done
   if [ $OK = 0 ]; then echo "merge of $NAME waits for every window ($NSEG)"; continue; fi
   M="$TMP/$NAME/merged"; rm -rf "$M"; mkdir -p "$M"
-  N=0
-  for ((K=0; K<NSEG; K++)); do
-    for f in $(ls "$TMP/$NAME/seg$K/${NAME}_frames" | sort); do
-      ln "$TMP/$NAME/seg$K/${NAME}_frames/$f" "$M/F$(printf %05d $N).png"; N=$((N+1))
-    done
-  done
+  # stitch by SEQUENCE frame: in a window starting at A s, dumped frame j shows sequence frame round(A*60) - 3 + j (render readback latency;
+  # r01: window 1's frames 0-1 were stale, its frame 2 matched the earlier run's frame for 24.983 s pixel for pixel). A window dir holding
+  # ALIGNED (window 0 rebuilt from an earlier run) maps j -> j. Frames already covered by the previous window are skipped.
+  N=$(python3 - "$TMP/$NAME" "$NAME" "$M" "$SEGL" <<'PY'
+import os, sys
+d, name, m, segl = sys.argv[1:5]
+last, n = -1, 0
+for k, sg in enumerate(segl.split(',')):
+    a = float(sg.split(':')[0]); fr = os.path.join(d, 'seg%d' % k, name + '_frames')
+    files = sorted(os.listdir(fr))
+    aligned = os.path.exists(os.path.join(d, 'seg%d' % k, 'ALIGNED'))
+    for j, f in enumerate(files):
+        q = j if aligned else int(round(a * 60)) - 3 + j
+        if (not aligned and j < 2) or q <= last: continue
+        if q != last + 1: print('GAP before sequence frame %d (window %d)' % (q, k), file=sys.stderr)
+        os.link(os.path.join(fr, f), os.path.join(m, 'F%05d.png' % n)); n += 1; last = q
+    print('window %d: last sequence frame %d' % (k, last), file=sys.stderr)
+print(n)
+PY
+)
   LAST=$((NSEG-1))
   # determinism: the telemetry of every window's run must match the last one (same frames, same positions)
   python3 - "$TMP/$NAME" $NSEG "$NAME" <<'PY'
