@@ -47,7 +47,7 @@ ARGS+=(-WHQuitAt="$QUIT")
 # 20:43: a native-4K still capture pinned the GPU (a 4K frame takes > 22 ms, so a 45 fps cap never engages): stills and any capture
 # >= 2560 px wide run at <= 20 fps (fixed-step captures produce the same frames, just slower).
 RESW=${RES%%x*}
-if [ -n "$PERF" ]; then EXECS="t.MaxFPS 0"
+if [ -n "$PERF" ] && [ "${GPU_SLOT_HELD:-}" = "perf" ]; then EXECS="t.MaxFPS 0"   # only real perf runs (exclusive perf lock) are uncapped
 elif [ "$MOVIE" = 1 ] && [ "${RESW:-0}" -lt 2560 ]; then EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-30}"
 else EXECS="t.MaxFPS ${WH_CAPTURE_MAXFPS:-20}"; fi
 [ -n "$EXEC" ] && EXECS="$EXECS,$EXEC"
