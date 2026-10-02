@@ -12,7 +12,21 @@ Studio was shared by 3-5 other Unreal processes, which made 1080p runs take 35 s
 2. **Hold 2** (12:36:07-12:57, stopped by me with `stop_ue.sh` after 2 stills): the build waited ~6 min for other agents' instances and
    then took 458 s; each 1080p run took ~4 min, so the planned variant pass + final set could not fit the 2400 s max hold (whose end is a
    SIGTERM / SIGKILL of the process group). Two stills were kept (`iter/h2_*`): enough to settle the colour question.
-3. **Final hold** (`_scratch/water/r05/final.sh`, re-runnable, per-run deadline): build, then the round-05 set in priority order.
+3. **Final hold A** (13:18:23-13:52:35, build a6a35140 of build_water.py; evidence kept in `_scratch/water/r05/finalA/`): build 9.5 min
+   under load, river_low_4k, river_low_dolly (967 frames at ~1 frame/s), harbour_high_4k, river_low_1080; the rest skipped by the per-run
+   deadline (the hold ended at 2052 s, never near the 2400 s kill). Results that changed the build:
+   - seawall gate 1 PASS: band >= 12 px on 97.3 % of wall rows, mean 41.8 px, band luma 203 (`water_spec.py foam`).
+   - gate 2 PASS by the critic's wording: band present in all 40 samples at 4 fps, XOR/OR mean 0.37, minimum over consecutive pairs 0.201;
+     dolly autocorr(80 px) 0.064. (A per-frame row share against the still's wall line dips to 8 % late in the clip, where the moving
+     camera brings the pier corner in: the band is continuous there, `iter` has the frame.)
+   - river_low near crop HOLDS FAILED: hp sd 10.68 (>= 12), mean Y 80.1 (<= 80). By depth band the far rows of the crop lost structure
+     (hp 14.9 -> 10.8, Y 66 -> 92): ShoreCalm also removed the r04 gains on 100-300 m river-level water. Fixed: the calm now applies seen
+     from above or beyond 300-500 m only.
+   - harbour_high far contact line FAILED: 0.6 % of seawall columns. Ray-casting the edge pixels: the map reads 3-11 m two pixels below the
+     visible edge, the shore gate value is 41-82 m (it cut part of the band), and even where my CPU evaluation of the formula gives wf ~0.7
+     nothing rendered. Rebuilt branch-free and without the shore gate.
+   - harbour_high reflections: under-island 21.2 Y darker than open water, streak spread 36.2 (r03 44.0, r04 22.3), hp sd 8.22.
+4. **Final hold B** (`final.sh`, re-runnable, per-run deadline, built once per build_water.py hash): the round-05 set from the fixed build.
 
 ## Foam gate: diagnosis and fix
 - **`Dbg 9` (hold 1) clears the import path.** Thermometer bands (`iter/h1_DBG9_river_low_00_t016.0.jpg`, identical at t 45 s) read in-engine:

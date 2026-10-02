@@ -8,15 +8,13 @@ the spectrum, chop and noise textures are generated, the distance maps are raste
 code. The branch was NOT re-merged with `Opus-5.5-Loop-Night-1` this round: upstream has 19 newer commits, including traversal C++, which
 would need `build_editor.sh`.
 
-## ROUND 05 IN PROGRESS (Opus 5.5, started 2026-10-02 11:20) - resume from here if this session stopped
-- Merged `origin/Opus-5.5-Loop-Night-1` (de80d8ef) and rebuilt the editor C++ with `build_editor.sh` (OK).
-- Code (committed): `Dbg 9` thermometer diagnosis of the contact texture (GetDimensions / Load / SampleLevel at fixed UVs), contact maps
-  B (half-res, Interchange, NeverStream) and C (half-res, legacy TextureFactory) selectable with `CSel`, TEXINFO lines in the build log,
-  far contact line (`FoamFarK`, `FoamFar`), `ShoreCalm` (far-field gains fade near land: island reflections), `GrazeRough` 0, `SunSpecK`.
-- Scripts in `/Users/midir/sm2-n1/_scratch/water/r05/`: `hold1.sh` (1080p diagnosis + variants `variants1.json`, report `report_r05a.py
-  iter/r05a`), `hold2.sh` (final build from `final_params.json` + stills + dollies), `post_r05.sh` (CPU post + spec.json). Both holds are
-  queued through `gpu_slot.sh` behind `hold1_gate.sh` / `hold2_gate.sh`, which release the slot unless `READY1` / `READY2` exist.
-- Next: read `iter/r05a/report.json` (Dbg 9 values), pick CSel / ShoreCalm / SunSpecK / FoamFarK into `r05/final_params.json`, touch READY2.
+## ROUND 05 IN PROGRESS (Opus 5.5) - resume from here if this session stopped
+- Read `docs/night1/water/round-05/NOTES.md` first (Dbg 9 result, foam fix, holds so far).
+- State 14:05: hold 1 (diagnosis) and final hold A done; final hold B queued: `gpu_slot.sh capture --label water -- bash
+  /Users/midir/sm2-n1/_scratch/water/r05/final_gate.sh` (runs `final.sh` only if `r05/READY3` exists). `final.sh` is re-runnable: it builds
+  once per build_water.py hash, then captures whatever round-05 output is missing or older than the build, with a per-run deadline (never
+  reaches the lock's 2400 s SIGKILL). Re-enqueue it until `round-05` has all 10 stills + 2 dollies, then `bash _scratch/water/r05/post_r05.sh`,
+  critic pack (`_scratch/critic-W-r05/pairs.json`, abpack.py), NOTES numbers, this handoff.
 
 ## Round 04 result (`round-04/NOTES.md`, `round-04/spec.json`)
 | check | target | r03 | r04 |
