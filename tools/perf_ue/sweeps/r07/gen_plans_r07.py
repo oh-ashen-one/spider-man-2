@@ -16,7 +16,7 @@ def main():
     if a.set == 'golden':
         P.append({'name': 'h18.4', 'hour': 18.4, 'cmds': [], 'shots': allp, 'settle_first': 10})
     elif a.set == 'dome':
-        for h in (19.5, 19.8, 20.0, 20.5): P.append({'name': 'h%g' % h, 'hour': h, 'cmds': [], 'shots': ['S4', 'S4w']})
+        for h in (19.0, 19.5, 19.8, 20.0, 20.5): P.append({'name': 'h%g' % h, 'hour': h, 'cmds': [], 'shots': ['S4', 'S4w']})
         for h in (6.5, 7.0): P.append({'name': 'h%g' % h, 'hour': h, 'cmds': [], 'shots': ['S4', 'S4e']})
         P.append({'name': 'h22', 'hour': 22.0, 'cmds': [], 'shots': ['S4', 'S4m'], 'settle_first': 12})
         P.append({'name': 'h18.4', 'hour': 18.4, 'cmds': [], 'shots': allp, 'settle_first': 10})
