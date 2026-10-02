@@ -252,8 +252,8 @@ float4 nA = NZ(p / 620.0), nB = NZ(p / 230.0 + float2(t * 0.0009, 0.37));
 float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
 float along = dot(p, wdir), across = dot(p, float2(-wdir.y, wdir.x)) + (nB.g - 0.5) * 5.0;   // r02: warp 26 -> 5 m (warped streaks closed into loops = the ring artifact)
 float slick = smoothstep(0.62, 0.76, NZ(float2(along / 1100.0, across / 70.0)).b) * (1.0 - gust * 0.8) * 0.9;
-float streak = smoothstep(0.66, 0.82, NZ(float2(along / 380.0, across / 11.0) + float2(0.13, 0.71)).r) * smoothstep(0.4, 0.62, NZ(float2(along / 140.0, across / 40.0) + float2(0.51, 0.29)).g) * 0.7;
-streak = max(streak, smoothstep(0.6, 0.82, NZ(float2(p.x / 34.0, p.y / 520.0) + float2(t * 0.0008, t * 0.003)).g) * 0.45);
+float streak = smoothstep(0.66, 0.82, NZ(float2(along / 380.0, across / 11.0) + float2(0.13, 0.71)).r) * smoothstep(0.4, 0.62, NZ(float2(along / 140.0, across / 40.0) + float2(0.51, 0.29)).g) * 0.35;
+streak = max(streak, smoothstep(0.6, 0.82, NZ(float2(p.x / 34.0, p.y / 520.0) + float2(t * 0.0008, t * 0.003)).g) * 0.25);
 float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleLevel(tS, tSSampler, su, 0).r * 400.0 : 400.0;
 float nearS = 1.0 - smoothstep(6.0, 70.0, shore);
@@ -331,7 +331,7 @@ PHASE_G = 0.55
 GLITTER = 1.0
 # material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
-PARAMS = {'ChopK': 1.0, 'ScatK': 0.55, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 1.0}
+PARAMS = {'ChopK': 2.6, 'ScatK': 0.2, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 0.3}   # r02 pick: variant E (river_low near mean Y 75, C14 21)
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
