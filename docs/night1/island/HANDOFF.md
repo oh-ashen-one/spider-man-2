@@ -12,7 +12,7 @@
   log `_scratch/island/logs/build_r03.log`, commandlet log `city_pass1.log`; started 05:24). WHBox cubes = per-tile components
   (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
 - Build DONE 10:43 (rc 0): mesh 4,325 s (resumed part) + kit 5,360 s + map/fsky ~9 min + WP 1,600 s (1,642 meshes, 272 kit, 198,063 instances, 173,097 WHBox components in 973 s); build_manhattan map 34 s. Timings: round-03/build_timings_island.json. Content 1.5 GB.
-- 10:45: captures queued: docs/night1/island/holds_r03.sh (pid in _scratch/island/holds_r03.pid, log _scratch/island/logs/holds_r03.log); GPU was PAUSED (10:38 auto-pause, not ours) with 3 waiters ahead.
+- 10:45: captures queued: docs/night1/island/holds_r03.sh (pid in _scratch/island/holds_r03.pid, log _scratch/island/logs/holds_r03.log). 11:15 still waiting in the GPU FIFO (water perf + look ahead).
 - Next: when the build ends -> captures (`capture_round.sh docs/night1/island/round-03 warmup r1 r2 r3 r4 a1`, GPU lock), route checks,
   `tools/export/island_r2_check.py`, `tools/export/island_road_band.py` on r2 t26/t28 stills, critic pack `_scratch/critic-A-r03`.
 - Build timings: `_scratch/island/logs/build_timings_island.json` (every invocation appended).
