@@ -24,6 +24,10 @@ the critic: w2 box tall 13/41, luma 14-27, F22 4/10.
 Queue state: two holds enqueued 00:31 (`_scratch/traversal/r22/holdA.log` / `holdB.log`, PIDs in `hold*.pid`): A = 18 -nullrhi probes
 (`r22/PROBES`) -> pick -> w1/w2 scripts -> waits <= 6 min for `r22/GO` (extra game args) or `NOGO` -> captures `SEQS_A` (c w2 w1 x2 s1 r1);
 B = `SEQS_B` (a f1 f4 x1 m1). The lock queue was stuck behind a 3 h look hold and waiters launched with the old 1-slot env.
+01:07: the health monitor clamped `slots` to 1 (WindowServer strain); the two holds had been launched with a 2-slot env, so they were stopped
+(SIGTERM, own waiters only) and re-enqueued at 01:08 under the 1-slot env (`holdA_try1.log` = the first attempt). To resume: if `r22/PROBES_DONE`
+is missing and no traversal hold is queued (`gpu_status.sh`), re-run the two `gpu_slot.sh capture --label traversal -- r22/batch_{a,b}.sh` holds
+(`GPU_SLOT_CAPTURE_WAIT_TIMEOUT=14400`, nohup, logs `r22/hold{A,B}.log`).
 
 ## 1. Architecture map (Source/WebHomage/Traversal)
 
