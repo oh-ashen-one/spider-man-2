@@ -54,12 +54,12 @@ def field_mm(x, y):
     h = np.zeros_like(x)
     # brow ridge: a bar above the eye, arching a little toward the temple, + glabella
     yb = 1.709 - 0.014 * (ax / 0.07) ** 2
-    h += 4.6 * G(y - yb, 0.0062) * (1 - ss(ax, 0.060, 0.088))
-    h += 1.6 * G2(ax, y, 0.0, 1.699, 0.012, 0.007)
+    h += 5.8 * G(y - yb, 0.0062) * (1 - ss(ax, 0.060, 0.088))
+    h += 2.0 * G2(ax, y, 0.0, 1.699, 0.012, 0.007)
     # forehead above the brow: a gentle rise then back
-    h += -1.3 * G(y - 1.727, 0.010) * (1 - ss(ax, 0.05, 0.085))
+    h += -1.6 * G(y - 1.727, 0.010) * (1 - ss(ax, 0.05, 0.085))
     # eye sockets: a broad hollow under the ridge, the lens + rim sit in it
-    h += -3.4 * G2(ax, y, 0.042, 1.670, 0.026, 0.0140)
+    h += -4.2 * G2(ax, y, 0.042, 1.670, 0.026, 0.0140)
     # nose: bridge ridge (height / width as a function of y) + rounded tip + alae + undercut
     hy = np.interp(y, NOSE_Y, NOSE_H, left=0.0, right=0.0)
     sy = np.interp(y, NOSE_Y, NOSE_S)
@@ -69,12 +69,12 @@ def field_mm(x, y):
     h += -3.4 * G2(ax, y, 0.0, 1.6275, 0.0150, 0.0042)                  # nostril undercut / columella shadow
     h += -1.8 * G2(ax, y, 0.0, 1.617, 0.020, 0.0045)                    # philtrum hollow
     # cheek bones and the hollows below them
-    h += 4.2 * G2(ax, y, 0.060, 1.658, 0.0165, 0.0125)
-    h += -2.4 * G2(ax, y, 0.052, 1.622, 0.015, 0.0125)
+    h += 5.2 * G2(ax, y, 0.060, 1.658, 0.0165, 0.0125)
+    h += -3.0 * G2(ax, y, 0.052, 1.622, 0.015, 0.0125)
     # mouth bulge + groove below it + chin
-    h += 2.6 * G(y - 1.610, 0.0075) * G(ax, 0.030)
-    h += -2.2 * G(y - 1.5965, 0.0042) * G(ax, 0.027)
-    h += 5.2 * G2(ax, y, 0.0, 1.581, 0.020, 0.0105)
+    h += 3.2 * G(y - 1.610, 0.0075) * G(ax, 0.030)
+    h += -2.8 * G(y - 1.5965, 0.0042) * G(ax, 0.027)
+    h += 6.5 * G2(ax, y, 0.0, 1.581, 0.020, 0.0105)
     return h
 
 

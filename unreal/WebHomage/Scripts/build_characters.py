@@ -412,9 +412,9 @@ if 'mat' in STEPS:
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-    # round 13: the rim of the sculpted eyes is polished dark gunmetal (r12: matte near-black 0.006 / 0.011 / 0.013, invisible on a dark mask = 'rimless'): the sky and the key light
+    # round 13: the rim of the sculpted eyes is polished gunmetal (base 0.30 / 0.30 / 0.33, metallic 0.9; r12: matte near-black 0.006 / 0.011 / 0.013, invisible on a dark mask = 'rimless'): the sky and the key light
     # run along its raised profile, so it reads on every suit's mask while staying a dark ring against the glossy lens
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.26, 'Specular': 0.6, 'Metallic': 0.85}, vec={'Color': (0.075, 0.078, 0.085, 1)})
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.25, 'Specular': 0.6, 'Metallic': 0.9}, vec={'Color': (0.30, 0.30, 0.33, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v

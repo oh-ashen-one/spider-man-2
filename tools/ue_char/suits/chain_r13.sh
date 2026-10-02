@@ -11,12 +11,13 @@
 #     fight   Char_Fight shot 0 (wide), 1080p60 -movie, the round-10 scripted fight unchanged (0.6 s warm-up + 8 s)
 #     crowd   Char_Crowd shot 0 (tracking), 1080p60 -movie (8 s)
 #     lineup  Char_Lineup shot 5 (the 7-enemy lineup, wide), 4K real-time still at 3.0 s
+# (round 13: the lineup block runs right after the stills: the two most important results first, in case the 40 min hold limit ends the chain)
 # Two engine runs without WH_QUIT (crash) -> the chain stops (RULES.md).
 set -u
 WT="$(cd "$(dirname "$0")/../../.." && pwd)"
 export P2_SCRATCH="${P2_SCRATCH:-/Users/midir/sm2-n1/_scratch/characters}"
 OUT="${1:?out dir}"; mkdir -p "$OUT"
-STEPS="${STEPS:-stills pawn orbit hero chase fight crowd lineup}"
+STEPS="${STEPS:-stills lineup pawn orbit hero chase fight crowd}"
 EV="${EV:-10.0}"
 T0=$(date +%s); log() { echo "[r13 $(date +%H:%M:%S) +$(( $(date +%s) - T0 ))s] $*" | tee -a "$OUT/chain.log"; }
 has() { case " $STEPS " in *" $1 "*) return 0;; esac; return 1; }
@@ -80,6 +81,15 @@ PY
   grep -E "WH_SUIT|WH_STAGE_SHOT|WH_EXPOSURE" "$OUT/stills/skins.log" > "$OUT/stills/suit_log.txt" 2>/dev/null
 fi
 
+if has lineup; then
+  log "Char_Lineup shot 5 (7 enemies) 4K still"; gpu lineup
+  Scripts/run_game.sh "$OUT/lineup" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 3.0 -perf 2:5 -quit 6 -name lineup -timeout 1200 -- -WHCharShot=5 < /dev/null | tail -3
+  check "$OUT/lineup" lineup
+  log "Char_Lineup shot 6 (3/4) 4K still"; gpu lineup34
+  Scripts/run_game.sh "$OUT/lineup34" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 3.0 -perf 2:5 -quit 6 -name lineup34 -timeout 1200 -- -WHCharShot=6 < /dev/null | tail -3
+  check "$OUT/lineup34" lineup34
+fi
+
 if has pawn; then
   find "$CFG" -name GameUserSettings.ini -delete 2>/dev/null
   log "pawn swap movie"; gpu pawn
@@ -101,12 +111,4 @@ has hero && { log "Char_Hero shots 1-3 movie"; movie hero $HERO 1 18.5; }
 has chase && { log "Char_Hero shots 6-7 movie"; movie chase $HERO 6 12.5; }
 has fight && { log "Char_Fight wide movie"; movie fight $FIGHT 0 9.4; }
 has crowd && { log "Char_Crowd tracking movie"; movie crowd $CROWD 0 8.6; }
-if has lineup; then
-  log "Char_Lineup shot 5 (7 enemies) 4K still"; gpu lineup
-  Scripts/run_game.sh "$OUT/lineup" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 3.0 -perf 2:5 -quit 6 -name lineup -timeout 1200 -- -WHCharShot=5 < /dev/null | tail -3
-  check "$OUT/lineup" lineup
-  log "Char_Lineup shot 6 (3/4) 4K still"; gpu lineup34
-  Scripts/run_game.sh "$OUT/lineup34" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 3.0 -perf 2:5 -quit 6 -name lineup34 -timeout 1200 -- -WHCharShot=6 < /dev/null | tail -3
-  check "$OUT/lineup34" lineup34
-fi
 log "chain done (hold used $(( $(date +%s) - T0 )) s), crashes $CRASHES"

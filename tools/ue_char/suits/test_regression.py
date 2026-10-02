@@ -3,7 +3,7 @@
 """Regression guard of the suit generator.
   1. LEGACY (round 08): design.py with relief.kind 'r8' (hero_suit_r8.py --legacy-r8) must reproduce the round-08 Tessera maps texel for texel
      (md5 of the 1024 px base colour / normal / ORM written by the ROUND-08 code, before design.py got a style argument).
-  2. DEFAULT (round 12, Tessera stays the default suit): raised piping, net / piping under the sash, torso-side cavity AO: the 1024 px maps of round 12.
+  2. DEFAULT (round 13; round 12 plus the face-seam cord, satin hood, higher crown piping / brow flashes, glyph colour over the sash; Tessera stays the default suit): raised piping, net / piping under the sash, torso-side cavity AO: the 1024 px maps of round 12.
      A deliberate design change updates EXPECT_R12 in the same commit (and says so in the round's HANDOFF).
   python3 tools/ue_char/suits/test_regression.py        (CPU, ~20 s)  -> exit 1 on a mismatch"""
 import sys, os, hashlib, tempfile, subprocess
@@ -11,9 +11,10 @@ import cv2
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
 EXPECT_R8 = {'suit_basecolor_r8.png': '66e3b691813cc83cd9dc7bd20bdf0c59', 'suit_normal_r8.png': '09f0c6554c3a706529387e78ea4ff2e8', 'suit_orm_r8.png': 'ad1be27f39d2b4d5bb77f124125d5a8f'}
-EXPECT_R12 = {'suit_basecolor_r8.png': '7b0905060f99c1e94c283208ee4b262c', 'suit_normal_r8.png': 'efa874d66249c9fd3c6c2601167c10e0', 'suit_orm_r8.png': '65e1bd9aeb876e3489777807abe22ad3'}
+EXPECT_R12_ROUND12 = {'suit_basecolor_r8.png': '7b0905060f99c1e94c283208ee4b262c', 'suit_normal_r8.png': 'efa874d66249c9fd3c6c2601167c10e0', 'suit_orm_r8.png': '65e1bd9aeb876e3489777807abe22ad3'}   # history (round 12)
+EXPECT_R12 = {'suit_basecolor_r8.png': '59664749a6f2bb13db597088de70aad4', 'suit_normal_r8.png': 'c2e2b31393364aac92175bcf36d2ce3b', 'suit_orm_r8.png': '55bf7f082df45b5c768986564f382a5a'}   # round 13: raised face seam cord, satin hood (0.50), crown piping + brow flashes moved up, glyph on the sash in DEEP
 bad = 0
-for tag, extra, expect in (('legacy r8', ['--legacy-r8'], EXPECT_R8), ('default r12', [], EXPECT_R12)):
+for tag, extra, expect in (('legacy r8', ['--legacy-r8'], EXPECT_R8), ('default r13', [], EXPECT_R12)):
     out = tempfile.mkdtemp()
     subprocess.run([sys.executable, os.path.join(WT, 'tools', 'ue_char', 'hero_suit_r8.py'), '--n', '1024', '--out', out] + extra, check=True, capture_output=True)
     for f, h in expect.items():
