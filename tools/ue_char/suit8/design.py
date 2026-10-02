@@ -665,7 +665,21 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             C.lay(crown * ss(y, 1.70, 1.74) * band(dch, 0.0024, aa), AMBER_D, h=0.30, rough=0.5)
     if PIPE:     # round 13: the face seam (critic r12: a 12 px black kinked ink seam on every suit) is a RAISED cord in the body colour, a lit / shadow pair, not ink
         seam_a, seam_h = cord(x, 0.0017, aa, RL['seam'])
-        C.lay(is_head * cover(-z, aa) * seam_a, 0.72 * TEAL + 0.28 * STITCH, h=seam_h, rough=RL['rough_pipe'] + 0.05)     # round 14: a lighter tint than the lifted hood (a cord in the hood colour would only show by its shading)
+        fcol = 0.55 * TEAL + 0.45 * STITCH
+        C.lay(is_head * cover(-z, aa) * seam_a, fcol, h=seam_h, rough=RL['rough_pipe'] + 0.05)     # round 14: a lighter tint than the lifted hood (a cord in the hood colour would only show by its shading)
+        if S['face'].get('cheek_seams', True):
+            # round 14: two raised PANEL SEAMS per cheek (the critic's G3 line - a horizontal luma line through the cheek bones - crosses them): the outer one runs from the eye frame down
+            # the cheek bone plane to the jaw (bowing outward below the cheek bone), the inner one from the nose-bridge flank toward the mouth piece.  Light raised cords (like the face seam):
+            # their luma contrast does not depend on the sun, which on a dark hood gives the sculpt only a 10 - 20 luma swing.
+            def panel_seam(xc, g, ya, yb, hwc, Hc):
+                dd = (ax - xc) / np.sqrt(1.0 + g * g)
+                a_c, h_c = cord(dd, hwc, aa, Hc)
+                msk = is_head * cover(-z, aa) * cover(y - ya, aa) * cover(yb - y, aa)
+                C.lay(msk * a_c, fcol, h=h_c, rough=RL['rough_pipe'] + 0.05)
+            s1 = np.maximum((1.640 - y) / 0.05, 0.0)
+            panel_seam(0.056 + 0.012 * s1 * s1, -0.48 * s1, 1.662, 1.570, 0.0016, RL['seam'] * 0.85)
+            u2 = np.clip((1.659 - y) / 0.039, 0.0, 1.0)
+            panel_seam(0.0185 + 0.021 * u2 ** 1.5, -0.8077 * np.sqrt(u2), 1.659, 1.620, 0.0015, RL['seam'] * 0.85)
     else:
         C.lay(is_head * cover(np.abs(x) - 0.0011, aa) * cover(-z, aa), INK, h=-0.3, rough=0.9)       # dorsal seam (round 08 legacy)
     if S['brow'] != 'none':

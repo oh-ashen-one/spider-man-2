@@ -129,7 +129,7 @@ def cheek_lines(path, suit, dump=None):
 
 def verdict(fr, f34, fz, sd, ch):
     """fr = 12 deg head still, f34 = 25 deg, fz = 0 deg (headfront), sd = profile, ch = {view: cheek_lines}."""
-    v = H13.verdict(fr, f34, sd)
+    v = H13.verdict(fr, f34, {'nose_bump_pct_head_h': (sd.get('H2') if sd.get('H2') is not None else 0.0)} if sd else None)
     v['G1_recess_ge_1.5pct'] = bool(sd and sd.get('G1_recess_pct_head_h') is not None and sd['G1_recess_pct_head_h'] >= 1.5)
     v['G2_brow_over_lens_top_ge_1pct'] = bool(sd and sd.get('G2_pct_head_h') is not None and sd['G2_pct_head_h'] >= 1.0)
     v['G2b_brow_over_lens_plus_rim_ge_1pct'] = bool(sd and sd.get('G2_with_rim_pct_head_h') is not None and sd['G2_with_rim_pct_head_h'] >= 1.0)

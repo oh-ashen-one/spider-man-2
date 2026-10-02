@@ -3,7 +3,7 @@
 """Regression guard of the suit generator.
   1. LEGACY (round 08): design.py with relief.kind 'r8' (hero_suit_r8.py --legacy-r8) must reproduce the round-08 Tessera maps texel for texel
      (md5 of the 1024 px base colour / normal / ORM written by the ROUND-08 code, before design.py got a style argument).
-  2. DEFAULT (round 14; round 13 plus the lifted hood + baked face tone, piped sash ends, neck-base net stop, armpit stitch end; Tessera stays the default suit): raised piping, net / piping under the sash, torso-side cavity AO: the 1024 px maps.
+  2. DEFAULT (round 14; round 13 plus the lifted hood + baked face tone, piped sash ends, neck-base net stop, armpit stitch end, cheek panel seams; Tessera stays the default suit): raised piping, net / piping under the sash, torso-side cavity AO: the 1024 px maps.
      A deliberate design change updates EXPECT_R14 in the same commit (and says so in the round's HANDOFF).
   python3 tools/ue_char/suits/test_regression.py        (CPU, ~20 s)  -> exit 1 on a mismatch"""
 import sys, os, hashlib, tempfile, subprocess
@@ -13,7 +13,7 @@ WT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
 EXPECT_R8 = {'suit_basecolor_r8.png': '66e3b691813cc83cd9dc7bd20bdf0c59', 'suit_normal_r8.png': '09f0c6554c3a706529387e78ea4ff2e8', 'suit_orm_r8.png': 'ad1be27f39d2b4d5bb77f124125d5a8f'}
 EXPECT_R12_ROUND12 = {'suit_basecolor_r8.png': '7b0905060f99c1e94c283208ee4b262c', 'suit_normal_r8.png': 'efa874d66249c9fd3c6c2601167c10e0', 'suit_orm_r8.png': '65e1bd9aeb876e3489777807abe22ad3'}   # history (round 12)
 EXPECT_R13 = {'suit_basecolor_r8.png': '9055668912fbc29d852137f46be4a075', 'suit_normal_r8.png': 'c2e2b31393364aac92175bcf36d2ce3b', 'suit_orm_r8.png': '55bf7f082df45b5c768986564f382a5a'}   # history (round 13: raised face seam cord, satin hood (0.50), hood halfway to the crown colour, crown piping + brow flashes moved up, glyph on the sash in DEEP)
-EXPECT_R14 = {'suit_basecolor_r8.png': '68bc1cd21f0661d3b0e36a6838fb6c82', 'suit_normal_r8.png': 'dd64324dabf169d37ebca1644412d100', 'suit_orm_r8.png': '704ff99e3469481fed357f88522e0f8f'}   # round 14: Tessera hood lifted to the body colour + the baked face tone of the sculpt field, piped (straight, border + stitch rows + accent pipe) sash ends, torso net stops at the neck base, wedge pipe / stitch rows end below the armpit, lighter seam cord
+EXPECT_R14 = {'suit_basecolor_r8.png': '6df77485a86aef086d6acddd351f0513', 'suit_normal_r8.png': '9138e45913d0e22ea01a4070fd5d19fa', 'suit_orm_r8.png': 'a7eb0b1c0ca9eda7b39b6bf4a6e9d20d'}   # round 14: Tessera hood lifted to the body colour + the baked face tone of the sculpt field, two raised cheek panel seams per side, piped (straight, border + stitch rows + accent pipe) sash ends, torso net stops at the neck base, wedge pipe / stitch rows end below the armpit, lighter seam cord
 bad = 0
 for tag, extra, expect in (('legacy r8', ['--legacy-r8'], EXPECT_R8), ('default r14', [], EXPECT_R14)):
     out = tempfile.mkdtemp()
