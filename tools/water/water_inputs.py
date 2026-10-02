@@ -140,6 +140,10 @@ def contact_map(export_dir, png_path, px_min=0.5, max_px=8192, levels=CONTACT_LE
     for (x0, z0), (x1, z1) in Q:
         cv2.line(img, (int(x0), int(z0)), (int(x1), int(z1)), 0, 1, cv2.LINE_8, 4)
     dist = cv2.distanceTransform(img, cv2.DIST_L2, 5) * px
+    # r04: written power-of-two (bilinear resample; the box / UV mapping is unchanged). The 2625 x 8192 NPOT map read >= 4 m at the
+    #      river_low bulkhead in-engine (Dbg 7) where the file reads ~1 m: the non-power-of-two texture did not map 1:1 onto UV 0..1
+    pw, ph = 1 << int(math.ceil(math.log2(nw))), 1 << int(math.ceil(math.log2(nh)))
+    if (pw, ph) != (nw, nh): dist = cv2.resize(dist, (pw, ph), interpolation=cv2.INTER_LINEAR)
     cv2.imwrite(png_path, np.clip(dist / CONTACT_MAX * 255.0 + 0.5, 0, 255).astype(np.uint8))
     return dict(box=[float(lo[0]), float(lo[1]), nw * px, nh * px], px=px, size=[nw, nh], segments=int(len(S)), files=used)
 

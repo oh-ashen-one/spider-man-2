@@ -415,7 +415,7 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
           'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
-          'CBias': 1.6, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0}
+          'CBias': 0.8, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
