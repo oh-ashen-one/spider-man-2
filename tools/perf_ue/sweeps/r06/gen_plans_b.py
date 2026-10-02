@@ -40,6 +40,8 @@ def main():
         P.append(G('B0_h%g' % h, h, ['S4', 'S4e' if h < 12 else 'S4w']))
     for h in (20.0, 20.5):   # clouds off: does the warm tint reach the top rows of the sun-facing sky?
         P.append(G('B1_nocloud_h%g' % h, h, ['S4w'], [pin('cloud.Cloud_GlobalCoverage', -0.3)]))
+    for h in (6.5, 19.8, 20.0, 20.5):   # a warm Rayleigh colour makes the whole twilight sky (and its ambient) orange, independent of the sun's depression: B-R of the sun-facing band
+        P.append(G('B2_ray_h%g' % h, h, ['S4', 'S4e' if h < 12 else 'S4w'], [pin('atm.RayleighScattering', [0.9, 0.45, 0.2, 1.0])]))
     b = E(7.6)
     mist = [pin('sun.Temperature', 6500), pin('fog.FogHeightFalloff', 0.5), pin('fog.StartDistance', 0), pin('fog.FogInscatteringLuminance', [0.5, 0.56, 0.68, 1.0]), pin('fog.FogMaxOpacity', 0.9),
             pin('pp.ColorContrast', [1.0, 1.0, 1.0, 1.0])]
