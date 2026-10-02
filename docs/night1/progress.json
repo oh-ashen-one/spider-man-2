@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-01T20:40",
+ "updated": "2026-10-02T04:30",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 20,
+   "round": 22,
    "verdict": "fails \u2014 lowest 6 (opus)",
-   "gap": "Wall-run is still a scramble: upright alternating sprint; camera after a swing-cancel (yaw <= 90 deg/s, distance >= 3.5 m); roofline apex every 4 s"
+   "gap": "Vertical wall-run freezes (no alternating stride); zip from side-run never lands; camera too tight after zip"
   },
   {
    "id": "P4",
@@ -880,6 +880,22 @@
    "verdict": "fails",
    "gap": "Wall-run is still a scramble: upright alternating sprint; camera after a swing-cancel (yaw <= 90 deg/s, distance >= 3.5 m); roofline apex every 4 s",
    "notes": "Merged (no axis below r18). Owner playtest bugs 5/6 PASS: swing always available incl. cancel from wall-run, zip from side-run, air pose at speed, perch camera, mouse look."
+  },
+  {
+   "t": "2026-10-02T00:10",
+   "piece": "P3 Traversal",
+   "round": 21,
+   "verdict": "fails",
+   "gap": "wallRunSide upright parkour sprint: torso within 30 deg of wall-up, along-run foot separation >= 0.6 m peak, sunlit facade, hero bbox height >= width in >= 80 % of side-run frames",
+   "notes": "Merged (ties r20 on every axis, wins progress-wallrun: real stride 5.6-6.6 steps/s, knees toward the wall, setback crossed on the ledge)."
+  },
+  {
+   "t": "2026-10-02T04:30",
+   "piece": "P3 Traversal",
+   "round": 22,
+   "verdict": "fails",
+   "gap": "Vertical wall-run freezes (no alternating stride); zip from side-run never lands; camera too tight after zip",
+   "notes": "Merged (no axis below r21). Side wall-run fixed: upright, legs apart 7/10 at 12 fps, sunlit facade."
   }
  ],
  "perf": [

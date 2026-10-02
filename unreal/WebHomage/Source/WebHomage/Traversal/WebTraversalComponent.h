@@ -54,12 +54,26 @@ public:
 	// round 20 tunables (-WHTravTune=Name=V): wall-gait torso lean off the facade (rad), air body-to-velocity alignment speed band (m/s),
 	// setback look-ahead above a ledge (m), E-from-wall facade-top search range (m)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitLeanR = 0.08f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.42f; // round 21 (r20 .30): hips ~.5 m off the facade so the forward-bent driven knee clears it
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV0 = 22.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV1 = 28.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipRange = 260.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
+	// round 21 (-WHTravTune): side-run torso raised this many degrees above the run line toward the wall's up axis (0 = r20 plank);
+	// MantleStep 1 = a setback is crossed ON the surfaces (up the lip, along the ledge top, onto the next face; limbs stay on them), 0 = r20 hop
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideRaiseDeg = 25.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MantleStep = 1.f;
+	// round 22 (critic r21 "side-run slither": box wider than tall; director target: upright parkour sprint, torso within 30 deg of the
+	// wall's up axis, facing along the run line): WallSideUpright 1 = the side run is an upright runner side-on to the facade (body up =
+	// wall-up leaned WallSideLeanDeg forward along the run line and WallSideOutDeg out from the wall so the feet reach it; chest along the
+	// run line); 0 = the r21 frame (chest to the wall, body WallSideRaiseDeg above the run line). WallSideFootOff = root offset (m) before the
+	// out-tilt (feet ~.1 m off the facade, hips ~.4 m)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideUpright = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideLeanDeg = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideOutDeg = 16.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideFootOff = 0.36f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideClimbDamp = 10.f; // round 22 (r21 3): climb-speed decay on a sideways run (1/s)
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
@@ -332,7 +346,7 @@ private:
 	{
 		FVector Normal = FVector::ForwardVector, Up = FVector::UpVector, Point = FVector::ZeroVector, LockDir = FVector::ZeroVector;
 		FVector2D Move = FVector2D::ZeroVector;
-		double RunV = 0, Phase = 0, Off = 0, Dist = 0.38, RunK = 0, LockMx = 0, ZipT = 0;
+		double RunV = 0, Phase = 0, Off = 0, Dist = 0.38, RunK = 0, LockMx = 0, ZipT = 0, SideUpK = 0; // round 22: SideUpK 0..1 upright side-run blend
 		bool bFast = false, bLockDir = false, bZipWeb = false;
 	};
 	struct FKin
@@ -345,6 +359,9 @@ private:
 		// wallHop
 		double TA = 0, TB = 0, F0 = 0, Apex = 0, LandTop = 0, DTot = 0, ExitSpeed = 0;
 		FVector Inward = FVector::ZeroVector;
+		// round 21 surface-following setback step: centre polyline (m), surface normal per vertex, cumulative length, distance travelled
+		FVector MQ[6], MN[6]; double ML[6] = { 0 }; int32 MNum = 0; double MS = 0;
+		FVector CurN = FVector::ZeroVector, CurPt = FVector::ZeroVector; // current support surface (normal, closest point) while stepping
 	};
 	struct FQuick
 	{

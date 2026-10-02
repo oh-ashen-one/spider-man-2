@@ -1225,7 +1225,9 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("flip_prog,flip_t,flip_pitch_deg,flip_twist_deg,flip_rate_dps,flip_shape,flip_shape_legs,body_axis_deg,body_pitch_deg,body_roll_deg,flip_armed,flipcam_k,flipcam_yaw_deg,flipcam_elev_deg,flipcam_sky,sky_tall_m,sky_peak_want_m,cam_slew,hero_fill_cd,flipcam_sun_deg,view_sun_deg,flow_roof_m,flow_rise_m,flipcam_glare,flipcam_dist_m,flipcam_tier,flipcam_abort,flipcam_zk,cam_lens25,flow_apex_want_z,flow_gap_m,")
 		TEXT("in_cap,vp_cap,vp_focus,look_px,ground_src,wall_ik_w,gait_ph,swing_leg_w,tuck_w,tuck_wrist_shin_m,tuck_knee_gap_m,flip_scale,foot_wall_l,foot_wall_r,hand_wall_l,hand_wall_r,zip_why,")
 		TEXT("body_vel_deg,body_wallup_deg,cam_enclosed,vis_pts,vis_up_m,setbacks,topouts,tunnel_stops,cam_slew8,zip_reach_w,solid_mode,")
-		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px"));
+		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px,")
+		TEXT("foot_sep_run_m,knee_gap_lat_m,knee_wall_l,knee_wall_r,limb_wall_max_m,body_run_elev_deg,")
+		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1423,7 +1425,56 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 			Traversal->SetbackCount, Traversal->TopOutCount, Traversal->TunnelStops, (Cam.SlewFlags & 8) ? 1 : 0, ZipW, Traversal->TravWorld.SolidMode)
 			+ FString::Printf(TEXT(",%d,%.3f,%.3f,%.0f,%.0f,%d"), Traversal->FlipCancels, AirFW, AirTK, VisTop, VisBottom, VisPx);
 	}
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20);
+	// round 21 (critic r20 W test split): on a wall, foot separation ALONG the run axis (ankles), knee gap ACROSS it, knees / every
+	// hand+toe distance off the support surface, and the body axis' signed angle above the run line toward the wall's up axis
+	FString Cols21 = TEXT(",-1,-1,-1,-1,-1,-999");
+	if (bHeroMesh && A.Mode == EWebTravMode::Wall)
+	{
+		const USkeletalMeshComponent* M = GetMesh();
+		const FVector N = A.Wall.Normal.GetSafeNormal(), WP = A.Wall.Point;
+		FVector U = A.Wall.Up - N * FVector::DotProduct(A.Wall.Up, N);
+		const FVector Zp = FVector::UpVector - N * FVector::DotProduct(FVector::UpVector, N);
+		if (U.SizeSquared() < 1e-4) U = Zp;
+		U = U.GetSafeNormal();
+		const FVector Sd = FVector::CrossProduct(U, N).GetSafeNormal();
+		auto Bn = [M](const TCHAR* B) { return M->GetBoneLocation(B); };
+		const double Sep = FMath::Abs(FVector::DotProduct(Bn(TEXT("foot_L")) - Bn(TEXT("foot_R")), U)) / 100.0;
+		const double KLat = FMath::Abs(FVector::DotProduct(Bn(TEXT("shin_L")) - Bn(TEXT("shin_R")), Sd)) / 100.0;
+		const double KwL = FVector::DotProduct(Bn(TEXT("shin_L")) - WP, N) / 100.0, KwR = FVector::DotProduct(Bn(TEXT("shin_R")) - WP, N) / 100.0;
+		double LMax = 0.0;
+		for (const TCHAR* B : { TEXT("toe_L"), TEXT("toe_R"), TEXT("hand_L"), TEXT("hand_R") }) LMax = FMath::Max(LMax, FMath::Abs(FVector::DotProduct(Bn(B) - WP, N)) / 100.0);
+		const FVector Ax = (Bn(TEXT("head")) - Bn(TEXT("hips"))).GetSafeNormal();
+		FVector Pp = Zp - U * FVector::DotProduct(Zp, U);
+		if (Pp.SizeSquared() < 1e-4) Pp = Sd;
+		Pp = Pp.GetSafeNormal();
+		const double Elev = FMath::RadiansToDegrees(FMath::Atan2(FVector::DotProduct(Ax, Pp), FVector::DotProduct(Ax, U)));
+		Cols21 = FString::Printf(TEXT(",%.3f,%.3f,%.3f,%.3f,%.3f,%.1f"), Sep, KLat, KwL, KwR, LMax, Elev);
+	}
+	// round 22 (director r22 target: torso within 30 deg of the wall's up axis, facing along the run line): 3D angle of the torso (hips ->
+	// neck / head) to the wall-up axis, angle of the chest (mesh forward) to the run line (along the facade), upright side-run blend
+	FString Cols22 = TEXT(",-1,-1,0,-1");
+	if (bHeroMesh && A.Mode == EWebTravMode::Wall)
+	{
+		const USkeletalMeshComponent* M = GetMesh();
+		const FVector N = A.Wall.Normal.GetSafeNormal();
+		FVector Zp = FVector::UpVector - N * FVector::DotProduct(FVector::UpVector, N);
+		Zp = Zp.IsNearlyZero() ? FVector::UpVector : Zp.GetSafeNormal();
+		FVector U = A.Wall.Up - N * FVector::DotProduct(A.Wall.Up, N);
+		U -= Zp * FVector::DotProduct(U, Zp);
+		const FVector Ax = (M->GetBoneLocation(TEXT("head")) - M->GetBoneLocation(TEXT("hips"))).GetSafeNormal();
+		const double Tw = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(Ax, Zp), -1.0, 1.0)));
+		double Ch = -1.0;
+		if (!U.IsNearlyZero())
+		{
+			FVector F = Traversal->Anim.BodyQ.GetForwardVector();
+			F -= Zp * FVector::DotProduct(F, Zp);
+			if (!F.IsNearlyZero()) Ch = FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(FVector::DotProduct(F.GetSafeNormal(), U.GetSafeNormal()), -1.0, 1.0)));
+		}
+		FVector DA = M->GetBoneLocation(TEXT("foot_L")) - M->GetBoneLocation(TEXT("foot_R"));
+		DA -= N * FVector::DotProduct(DA, N); // ankle separation in the facade plane (along the run + up the wall)
+		Cols22 = FString::Printf(TEXT(",%.1f,%.1f,%.2f,%.3f"), Tw, Ch, A.Wall.SideUp, DA.Size() / 100.0);
+	}
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22);
 }
 
 // ------------------------------------------------------------------ live input (round 19)

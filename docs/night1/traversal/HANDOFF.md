@@ -1,43 +1,46 @@
-# P3 Traversal + camera — handoff (after round 20)
+# P3 Traversal + camera — handoff (after round 22)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 20, 2026-10-01 19:45, Opus 5.5): fixes built, all 11 shot-list movies captured (1080p, real `-game`, offscreen, through the GPU lock) and checked; blind critic pack built, critic NOT run yet.**
-Round 19 critic FAILED (swing 6, camera 4, moves 4, body 5; `critic/round-19-CRITIC.md`); r19 was not merged. Round 20 = owner-playtest / critic r19 fixes.
-Round dir `docs/night1/traversal/round-20/` (movies <= 15 MB, telemetry, `R20_CHECK.txt`, `R19_CHECK.txt`, `SHOTLIST.md`, `inputtest_mouselook.log`).
-Critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r20/pack` (built by `_scratch/critic-P3-r20/make_pairs.sh`; refcuts are scratch-only copies of r19's, never committed).
-Older history: r19 handoff `git show 9f28ab2:docs/night1/traversal/HANDOFF.md`, rounds 01-18 `git show 047a342:docs/night1/traversal/HANDOFF.md`.
+**Status (round 22, 2026-10-02 03:35, Opus 5.5): fix built, all 11 shot-list movies captured (real `-game`, offscreen, 1920x1080 internal = output,
+through the GPU lock) + `w2_r21route`, measured (`round-22/R22_CHECK.txt`), blind critic pack built (`_scratch/critic-P3-r22/pack`); critic NOT run yet.**
+Round 21 critic FAILED TARGET (7/6/6/6/6/7; `critic/round-21-CRITIC.md`): side run "a slither" (box wider than tall in 29/44 w2 frames), facade luma 15-30.
+Director r22 target: wallRunSide = upright parkour sprint on a SUNLIT facade (torso <= 30 deg off wall-up / >= 60 deg above the run line, chest along
+the run line, alternating contacts <= .18 s, along-run foot sep peak >= .6 m and >= .3 m for >= 70 %), box h >= w in >= 80 % of w1+w2 side frames,
+facade luma >= 45, no mullion over the hero, w2 3.1-3.85 s at 12 fps legs apart >= 7/10; keep c's r21 numbers; TC-A..K frozen (no WebTravCamera edits);
+no flip-code edits (f1/f4 bit-identical to r21). If the 12 fps test failed: freeze the wall run and switch to swing/camera (it passed: see §8).
+Older history: r21 handoff `git show 5f1970b:docs/night1/traversal/HANDOFF.md`, r20 `git show aa5b205:...`, r19 `git show 9f28ab2:...`, r01-18 `git show 047a342:...`.
 
-Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`,
-`unreal/WebHomage/Scripts/build_traversal.py`, `docs/night1/traversal/**`. Branch `night1/traversal`, worktree `~/sm2-n1/traversal`.
-Integration (`origin/Opus-5.5-Loop-Night-1`) merged at f8e61ff. GPU cap is ONE heavy renderer; every engine run goes through
-`/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh`; `PAUSED` = no launches (CPU work only); stop with `stop_ue.sh "<worktree>"`, never kill -9.
-**Uncommitted, not ours:** `unreal/WebHomage/Scripts/run_game.sh` was edited in this worktree at 18:12 by the orchestrator (non-perf captures capped
-at `t.MaxFPS 30/45`, WindowServer safety). Leave it in place (do not revert, do not commit it as ours). Editing it mid-run broke the a_swing_chain
-run of batch B (`line 61: syntax error`); a was re-captured in batch C.
+Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`, `unreal/WebHomage/Scripts/build_traversal.py`,
+`docs/night1/traversal/**`. Branch `night1/traversal`, worktree `~/sm2-n1/traversal`. Integration `origin/Opus-5.5-Loop-Night-1` merged at the r22 start
+(fast-forward; it carries the orchestrator's run_game.sh frame cap that sat uncommitted here -- byte-identical, nothing lost). GPU: every engine run
+through `/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh`; `PAUSED` = no launches; stop with `stop_ue.sh "<worktree>"`, never kill -9.
 
-## 0. Round 20 — what changed and what the frames / numbers say
-
-All A/B-able by a command-line flag (default = round 20).
-
-| # | Critic r19 / owner item | Fix (file) | Measured (round-20 captures, `R20_CHECK.txt`) |
+## 0. Round 22 -- what changed (A/B at run time)
+| # | Item | Fix (file) | A/B flag (r21 values) |
 |---|---|---|---|
-| 1 | Wall-run "frog scramble" (w/h .73, knee gap .55-.59) | IK stride shape g6: feet under the hips on the body line, longer legs (`GaitTop .76 / Bot .90 / Lat -2 cm / KneeOff 2`), wall-gait entry blend 0.12 -> 0.07 s, hands on the shoulder line and elbows tucked (`GaitHandLat -3`, `GaitElbowOut .12`); `-WHGaitTune=Top=,Bot=,Lift=,KneeOff=,Lat=,KneeOut=,HandLat=,ElbowOut=` (`Anim/WebTravAnimInstance.cpp`) | knee gap med .16-.17 m, max .32 m in steady runs (entry frames up to .48); c vertical rows: body-to-wall-up <= 15 deg 87 % (med 6.8 deg); rendered vertical w/h med .67 (c, camera below-side) / .40 (x2 vertical run); side-run body-to-run <= 20 deg 84 % (w1) / 70 % (w2) |
-| 2 | Perch camera: parapet hides the hero; bbox / occl telemetry wrong | (a) facadeTop zips perch on the HIGHEST top within 0.15-0.6 m of the edge (the parapet), not the roof behind it (`NearestZip`, `-WHPerchTopFix=0` = r19); (b) perched / on foot the hero's centre stays above 0.66 of the frame and the look offset recentres fast (`WebTravCamera.cpp`); (c) perched, all 4 visibility probe points must see the body before the lift relaxes (was 3); (d) telemetry `hero_vis_*` = visible mask pixels (r20 WIP) | K: c / w1 / w2 perch occl 0.00 after +0.3 s (PASS; batch B: w1 perch now at z 99.0 on the parapet, was 97.7 behind it); r1: 0.51 in batch B -> 0.32 with fix (c) (batch D; ~0.3 s at 8.1 s, threshold 0.30: still a marginal FAIL) |
-| 3 | RMB during a trick / wall run waits 0.47-1.08 s | Fresh RMB cancels a flip / top-out / armed flip into a swing in the same step (r20 WIP, `-WHTrickCancel=0`); on a wall: kick along the DISPLAYED view or the run line and, when the street search finds nothing, a web up the facade ahead (`FacadeAnchor`, `-WHFacadeWeb=0`); the behind / too-low anchor rejection now happens before the fallback | X: x1 flip cancel +0.00 s, x2 side-run cancel +0.00 s (r19 +0.18 s / none), s1 vertical-run cancel +0.00 s (r19 +1.05 s), every scripted catch-window press +0.00 s |
-| 4 | E from a side run must reach a perch | facadeTop range (r20 WIP) + parapet top | Z: w1 3.60 s wallRunSide -> perch 5.02 s z 99.0; w2 3.50 s -> perch 5.08 s z 99.0; c / r1 perch |
-| 5 | Air pose with speed; fallCalm upright at 43-51 m/s | speed-dependent air pose (arch -> track, r20 WIP, `-WHAirSpeedPose=0`) | A / S: a 4.25 s 42 m/s body-to-velocity 12.5 deg, 10.25 s 53 m/s 4.6 deg (probe); >= 44 m/s rows: body-to-velocity med 11 deg, 3 fallCalm rows (a) |
-| 6 | Mouse look unproven | `-WHTravInputTest=mouseLook` injects hardware-form mouse events INSIDE the scripted m1 chain; capture uses 40 px/frame (`-WHMouseTestPx`, the project's MouseX axis sensitivity is .07) | m1: 4800 px right -> camera yaw turned 44.7 deg while swinging, then pitch -20.9 -> +8.0 deg (`round-20/inputtest_mouselook.log` = the standalone 6 px test: 7.2 deg) |
-| 7 | Black frames in f1 / f4 | the r20 rope-wrap guard keeps f4 on the y -560 street axis (r19 drifted to y -525, an unlit courtyard) | C: f1 / f4 0 dark frames (min luma 65.5 / 66.4, mean 85.3); Y: f4 y -560.5..-555.2 PASS; x2 2 frames at luma 24.9 (dark glass facade) |
-| 8 | Keep r19's flip variation + tight tuck | unchanged | V: every backDouble / frontPikeSwan pair differs 55-352 deg/s (corkscrew pair 24 deg/s FAIL); T: backDouble tucks wrist-shin .04 m, knees .16 m, held .85-1.10 s PASS; short tucks (frontPikeSwan / wallFront) .13-.23 s (known) |
+| 1 | Side run = plank / slither | `WallSideUpright`: upright runner side-on to the facade -- body up = wall-up leaned `WallSideLeanDeg` 14 fwd along the run line and `WallSideOutDeg` 16 out from the wall, chest along the run line, root `WallSideFootOff` .36 m (feet ~.1 m off the face, hips ~.36 m); `W.SideUpK` blends it in (12/s) / out (8/s) (`WebTraversalComponent.cpp` Orient) | `-WHTravTune=WallSideUpright=0` |
+| 2 | Run line diagonal for 0.5 s (torso "above the run line" only ~40 deg) | a sideways stick on the wall sheds the climb speed at `WallSideClimbDamp` 10/s (r21 3/s) (`StepWall`) | `-WHTravTune=WallSideClimbDamp=3` |
+| 3 | Legs / arms for the upright run | `FWebTravAnimFrame::SideUpW`, `WallZ`: legs stride along the run line under the hips (touchdown .45 / toe-off .50 leg lengths, smootherstep recovery, heel tuck .55, stance reach .95), knees forward; sprint arm pump contralateral, elbows back; shoulders counter-rotate about the body axis (`Anim/WebTravAnimInstance.cpp`). Recovery toe off the face: default 14 cm, **captures used `-WHGaitTune=SSw=28`** (14 cm left one foot within .08 m of the face, 2 touchdowns only) -- make 28 the default next round | `-WHGaitTune=STd=,STo=,STuck=,SSw=,SReach=,SArm=` |
+| 4 | Characters critic: idle -> run 1-frame weight pop | ground locomotion weights (idle/walk/jog/run/sprint) move <= 1/0.18 s per s (`GroundW`; the node's first frame snaps; moving phase rate = r21) | `-WHGaitTune=GBlend=0.02` |
+| 5 | Telemetry | `torso_wallup_deg` (3D hips->head vs wall-up), `chest_run_deg`, `side_up_k`, `ankle_sep_plane_m` | -- |
+| 6 | Sunlit route | w2 on the west face of the 284 m tower at x -229.4 (y -57..-41, z ~64): sun yaw -178 elev 8, the hinterland west of x -256 shadows every low west face (the city collision region is x -256..512, y -512..256 -- the heightmap's y < -512 "towers" have NO collision); this face clears it above ~48 m. Jump from the west avenue onto the face (0.95 s), vertical wall run, sideways sprint 2.85-3.98 s, E 4.0 s. The fin at y -40 ends the run. Script `scripts/city/w2_wallrun_side_zip.json` (variant t2_h, `round-22/tools/`) | r21 route: `git show 5f1970b:docs/night1/traversal/scripts/city/w2_wallrun_side_zip.json` (captured as `w2_r21route`) |
 
-Captures: 1920x1080 movies, internal 1920x1080 (`r.ScreenPercentage 100`, TSR + Lumen), fixed 1/60 s step, 0.8 s pre-roll trimmed, no 4K stills.
-GPU shared -> every run `contaminated` (no perf claim). Final movies by build: A `8261138` = f1 f4; B `8b4d356` = x1 x2 m1; C/D `40baf8f` = a s1 c w1 w2 r1 (SHOTLIST lists each).
-Batch A wall clips kept in scratch for A/B: `_scratch/traversal/r20/batchA/`.
-
-New scripts: `x1_rmb_cancel_flip`, `x2_rmb_cancel_wall` (stick turns along the run at the press), `m1_mouse_swing`. Probes: `_scratch/traversal/r20/probe*.sh`
-(nullrhi, one `gpu_slot.sh capture` hold each, ~2 min) -> `probe/chkN/R20_CHECK.txt`. Checker: `python3 docs/night1/traversal/r20_checks.py <round dir>`
-(F / C / Y / K / W / Z / A / R / X / S / I / L; W now splits vertical w/h from the side-run thin/long ratio).
+**Measured (`round-22/R22_CHECK.txt`, checker `python3 docs/night1/traversal/r22_checks.py <round> --sheets <dir> --prev docs/night1/traversal/round-21`; on round-21 it reproduces the critic):**
+| Test | r21 | r22 |
+|---|---|---|
+| B22 box h >= w, w1 + w2 side frames | 58/86 (w2 13/41) | **114/114** (w2 69/69, h/w med 1.93; w1 45/45) |
+| L22 facade luma (12 fps side frames) | w2 15-22, w1 15-27 | **w2 94-142 (14/14 >= 45)**; w1 15-29 (r21 route, not moved) |
+| hero_occl (mullion) max on side frames | w2 .29 | **w2 .02** (w1 .18) |
+| F22 w2 3.1-3.85 s @12 fps legs apart (along-run >= .3 m) | 4/10 | **9/10** (in-plane 10/10) |
+| torso <= 30 deg off wall-up / >= 60 deg above run line / chest-to-run | -- / 0 % (med 28) / -- | w2 100 % (med 19.9) / 97 % (med 78) / med 4 deg |
+| along-run ankle sep peak, share >= .3 m | .58, 49 % | w2 .87, 76 % |
+| touchdowns, longest gap | 4, .183 s | w2 8, **.167 s** |
+| c vertical run (limbs, touchdown gaps, 15 deg) | .30 m, med .150 / .383, 82 % | identical (c differs from r21 only in its roof-run ground rows 5.9-7.0 s = the ground blend) |
+| f1 / f4 / a telemetry vs r21 | -- | **bit-identical** (145 columns, 0 cells) |
+Sheets: `round-22/sheets/w2_wallrun_side_zip_3.1-3.9_12fps.png` (sunlit, upright stride, glass reflections), `w1_wallrun_tall_zip_side_12fps.png`.
+w1 / x2 / w2_r21route were captured in hold A with the first r22 build (no `WallSideClimbDamp`, SSw 14): their side runs climb diagonally (above-run-line
+med 38-42 deg) and w1 / w2_r21route have 1-2 long touchdown gaps (.30-.32 s). w1 is still on the shadowed r21 route (the t1 tower probes never reached the lit band).
 
 ## 1. Architecture map (Source/WebHomage/Traversal)
 
@@ -161,31 +164,37 @@ trick at 1.4 s (frontPikeSwan), drop 3.05-3.3 s, zip 3.35 s. The r12 `f*_sky_*` 
 Never `pkill -f` a pattern that can match your own gpu_slot / batch processes (round 13 killed its own capture batch with `[c]ap_batch.sh f[14]_`):
 kill by PID.
 
-## 6. Known issues / open (after round 20)
-- **r1 perch** occl .32 for ~0.3 s at 8.1 s (camera orbit from the scripted look turn passes behind a roof object; lift reacts in ~0.3 s).
-- **Vertical w/h** in c reads .67 (target .55) from the below-side wall camera; the x2 vertical run reads .40. Judge on the frames; next lever is the
-  wall camera angle (more side-on) or `-WHGaitTune=HandLat=,ElbowOut=`.
-- **Wall-gait entry**: the first 3-4 frames of a run still carry the clip's knee gap (.40-.48 m).
-- **s1 vertical run** body-to-wall-up only 27 % within 15 deg (short 0.4 s run after a 33 m/s impact; the body is still rotating up).
-- **x2**: after the facade swing a held stick into the wall puts him back on the wall (by design); 2 frames of dark glass facade (luma 25).
-- **Corkscrew** variation pair 24 deg/s (< 40); short tucks (frontPikeSwan / wallFront) close < 0.25 s.
-- **Mouse stop** (owner bug 5): the injection proves the input path turns the camera; the live "stops working" report is still only
-  watchdogged (`WH_INPUT` log lines), not reproduced offscreen.
-- Pre-existing: foliage not counted in hero_occl, web on > 45 % of a, Times Square billboard brand check is P4's.
+## 6. Known issues / open (after round 22)
+- **w1 not on the sunlit tower** (director asked w1 AND w2): probes t1_a / t1_b (jump at the tower face, vertical run, E at 3.6 s) stayed below the lit band
+  (z < 50); try spawning at z ~50 (podium top is 32-33 m, x -234..-228) or a later E. Recapture w1 + x2 with the final build and `SSw=28`.
+- Side-run camera on corners: the first tower attempt (t2_c, spawn y -61) hit the recessed core face (x -224.4) in the notch and wrapped the corner --
+  the wall camera swung 90 deg and lost the hero (hero_occl 1.0, cx -0.22). Keep side runs >= 4 m from face ends; the camera is frozen (TC-A..K).
+- The tower face is reached by a jump from the avenue, not a swing (no swing anchor put the hero on a lit face in the 18 route probes; the swing routes
+  south of y -512 hit faces with no collision or south faces). A swing entry needs anchors near x -250, y -60..-30 at z >= 50.
+- G22 cannot be measured from telemetry (`anim_weight` = total clip weight); no shot-list clip has a standing start.
+- Carried: x2 post-cancel camera whip (cx .17, 2.5 m); T7 roofline altitude; web on 55 % of a (T3 45 %); tuck wrist-shin .34-.45 m; repeated glide pose
+  (a 4.25 / 10.25 / 14 s); s1 sun flare; leaves over the hands (a 12 s); "POP TH… SUMM…" billboard (P4).
 
 ## 7. Critic history (summary; full table in `git show 047a342:docs/night1/traversal/HANDOFF.md` §7)
 | Round | Scores (swing/camera/web/moves/body, flips) | Biggest gap |
 |---|---|---|
-| r16 | 7/5/6/6/6, flips 6 | tricks shot into a dark facade facing the sun |
-| r17 | 7/6/6/6/6, flips 6 | frozen inverted split |
 | r18 | 7/6/6/6/6, flips 7 -- FAILS TARGET | every trick a canned playback, loose tuck; wall-run is a crawl |
-| r19 | 6/4/6/4/5, flips 7 -- FAILS TARGET (`critic/round-19-CRITIC.md`) | wall-run frog scramble; black frames; parapet hides perch; RMB waits |
-| r20 | not judged yet -- pack `_scratch/critic-P3-r20/pack` (wallrun, wallrun-flip, swing-chain, multi-flip, chain-flips vs refs; r19 vs r20 wall-run progress) | -- |
+| r19 | 6/4/6/4/5, flips 7 -- FAILS TARGET | wall-run frog scramble; black frames; parapet hides perch; RMB waits |
+| r20 | 7/6/6/6/6, flips 7 -- FAILS TARGET | side-run plank, legs together; c setback = 3 m hop; w2 side run 0.31 s |
+| r21 | 7/6/6/6/6, flips 7 -- FAILS TARGET (`critic/round-21-CRITIC.md`), merged | side run a slither (box wider than tall 29/44), facade luma 15-30 |
+| r22 | not judged yet -- pack `_scratch/critic-P3-r22/pack` (side runs w1 / w2 vs S3 side run, vertical vs glass, swing / flips, r21 vs r22 side-run progress) | -- |
 
 ## 8. Queue for the next session
-1. Run the blind critic on `/Users/midir/sm2-n1/_scratch/critic-P3-r20/pack` (do not hand it `pack.key.json`); record `critic/round-20-CRITIC.md` + §7.
-2. To re-capture a movie with the current build: `cd /Users/midir/sm2-n1/_scratch/traversal/r20 && SKIP_WARM=1 /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label traversal -- ./cap_batch.sh <seqs>`
-   (never while `PAUSED` exists, never build while it runs), then `python3 docs/night1/traversal/r20_checks.py docs/night1/traversal/round-20`.
-3. Ask the integrator to merge night1/traversal if the critic passes (nothing below r18: swing 7, camera 6, web 6, moves 6, body 6, flips 7).
-4. Polish per §6 (vertical w/h, entry frames), then the r18 secondaries.
-5. Teardown: `_scratch/traversal/capture/*` frame folders and `_scratch/traversal/r20/probe/*` can go once the r20 critic has run.
+1. Run the blind critic on `/Users/midir/sm2-n1/_scratch/critic-P3-r22/pack` (key `pack.key.json` stays outside the pack; rebuild with
+   `round-22/tools/critic_make_pairs.sh`); record `critic/round-22-CRITIC.md` + §7.
+2. The 12 fps frame test PASSED (9/10), so per the director the next target is decided after the critic. Director's fallback list if the wall run is
+   frozen: swing/camera -- camera after a swing-cancel yaw <= 90 deg/s and distance >= 3.5 m; roofline apex every 4 s; web on-screen <= 45 %
+   (camera items need a TC unfreeze from the director). Owner priority #1: the most beautiful swinging.
+3. Small r22 follow-ups: make `SSw=28` the compiled default; w1 onto the tower; recapture w1 + x2 with the final build.
+4. Re-capture recipe: `_scratch/traversal/r22/batch_a.sh` (probes -> pick -> GO/NOGO -> captures `SEQS_A`), `batch_b.sh` (tower probes -> pick ->
+   w2 + `SEQS_B`); wrap each in ONE `GPU_SLOT_CAPTURE_WAIT_TIMEOUT=14400 nohup .../gpu_slot.sh capture --label traversal -- <batch>` (max hold 40 min;
+   copies in `round-22/tools/`). The GPU queue was 2-3 h per hold tonight; launch holds with the CURRENT `slots` value (the monitor clamped it to 1 at
+   01:04; waiters keep the env they started with -- r22 stopped and re-queued its own waiters). Then `r22_checks.py` + `make_shotlist.py`.
+5. Ask the integrator to merge night1/traversal if the critic passes (no axis below r21 [7,6,6,6,6,7]).
+6. Teardown once the r22 critic has run: `_scratch/traversal/r22/probe/*`, `_scratch/critic-P3-r21/` (the 27 GB capture frame folders
+   `_scratch/traversal/capture/*` were deleted at the end of r22; the movies + telemetry are committed).
