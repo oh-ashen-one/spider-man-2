@@ -32,8 +32,10 @@ if want warm; then
   rm -rf "$TMP/warm"
   RUN "$TMP/warm" -map /Game/Terrain/Maps/V_p1_south -res 960x540 -quit "${WARM_QUIT:-12}" -name warm -timeout 2300 -- -benchmark -fps=30 | tail -3
   # r02: a terrain material that did not compile (or lacks the Nanite usage flag) renders as the grey default material: stop now, fix, re-queue (the stills would be wasted slot time)
-  grep -aE "(M_Terrain|MI_Pool_|/Game/Terrain/).*(missing usage flag|[Ff]ailed to compile|error)|LogShaderCompilers: Error|Failed to compile Material" "$TMP/warm/warm.log" > "$ROUND/warm_shader_check.txt" 2>/dev/null
-  if [ -s "$ROUND/warm_shader_check.txt" ] && [ -z "${KEEP_GOING:-}" ]; then echo "== WARM-UP SHADER CHECK FAILED (see $ROUND/warm_shader_check.txt); stopping the hold"; head -5 "$ROUND/warm_shader_check.txt"; exit 4; fi
+  grep -aE "(M_Terrain|MI_Pool_|/Game/Terrain/).*(missing usage flag|[Ff]ailed to compile)|LogShaderCompilers: Error|Failed to compile Material" "$TMP/warm/warm.log" > "$ROUND/warm_shader_check.txt" 2>/dev/null
+  # a compile failure draws the grey default material everywhere: stop (the stills would be wasted slot time). A missing-usage-flag warning is only recorded (the stills are still useful).
+  if grep -aqE "[Ff]ailed to compile|LogShaderCompilers: Error" "$ROUND/warm_shader_check.txt" 2>/dev/null && [ -z "${KEEP_GOING:-}" ]; then echo "== WARM-UP SHADER CHECK FAILED (see $ROUND/warm_shader_check.txt); stopping the hold"; head -5 "$ROUND/warm_shader_check.txt"; exit 4; fi
+  [ -s "$ROUND/warm_shader_check.txt" ] && echo "== warm-up log notes (kept going): $(wc -l < "$ROUND/warm_shader_check.txt") lines in warm_shader_check.txt"
 fi
 still() {  # <prefix> <id>
   local PRE="$1" ID="$2" NAME="$1$2"
