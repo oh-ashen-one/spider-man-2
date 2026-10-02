@@ -1,4 +1,4 @@
-# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 05:35)
+# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 10:45)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -11,8 +11,8 @@
   `docs/night1/island/build_r03.sh` (`SM2_ISLAND_MESH_ONLY=missing`, steps tex,mesh,kit,fsky,map,coll,wp + build_manhattan map;
   log `_scratch/island/logs/build_r03.log`, commandlet log `city_pass1.log`; started 05:24). WHBox cubes = per-tile components
   (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
-- 07:24: the city_pass1 commandlet hit build_manhattan's 7,200 s subprocess timeout mid-finish (killed, -nullrhi: no GPU); ~420 finished meshes were saved. Timeout now SM2_ISLAND_UE_TIMEOUT (6 h). Resumed 07:25 with SM2_ISLAND_CITY_STEPS=mesh,kit,fsky,map,coll,wp (log build_r03b.log): only the still-missing meshes are imported.
-- 08:37: mesh step done (419 resumed meshes in 4,325 s); kit step 5,360 s (272 tiles); fsky + classic map ~9 min; 10:17 WP step populating.
+- Build DONE 10:43 (rc 0): mesh 4,325 s (resumed part) + kit 5,360 s + map/fsky ~9 min + WP 1,600 s (1,642 meshes, 272 kit, 198,063 instances, 173,097 WHBox components in 973 s); build_manhattan map 34 s. Timings: round-03/build_timings_island.json. Content 1.5 GB.
+- 10:45: captures queued: docs/night1/island/holds_r03.sh (pid in _scratch/island/holds_r03.pid, log _scratch/island/logs/holds_r03.log); GPU was PAUSED (10:38 auto-pause, not ours) with 3 waiters ahead.
 - Next: when the build ends -> captures (`capture_round.sh docs/night1/island/round-03 warmup r1 r2 r3 r4 a1`, GPU lock), route checks,
   `tools/export/island_r2_check.py`, `tools/export/island_road_band.py` on r2 t26/t28 stills, critic pack `_scratch/critic-A-r03`.
 - Build timings: `_scratch/island/logs/build_timings_island.json` (every invocation appended).
