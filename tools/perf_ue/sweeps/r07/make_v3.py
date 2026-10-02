@@ -31,6 +31,8 @@ R07 = {
     'tw_maxop': None,      # {'dusk': [(h, value)], 'dawn': [...]}: fog.FogMaxOpacity
     'tw_dens': None,       # {'dusk': [(h, mult)], 'dawn': [...]}: multiplier of fog.FogDensity
     'tw_maxev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMaxBrightness (hold A: the sun-facing stills were clamped by it and clipped)
+    'tw_minev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMinBrightness (hold B: the twilight exposure sat on its MIN clamp, so the sun-facing views blew out at the S4 bias)
+    'bias_curve': None,    # {'dusk': [(h, bias)], 'dawn': [...]}: pp.AutoExposureBias on EVERY key inside the range (no zigzag between main keys and snapshot keys); --bias-overrides apply after it
     'moon_vol': None,      # number: moonc.VolumetricScatteringIntensity on every key
     'golden_sky': None,    # {'hours': [..], 'factor': [r, g, b]} SkyLuminanceFactor on golden keys (golden S4 <= 100 with the fog on the sky)
     'v2': {},              # make_v2 knob overrides (tw_fac_pts, tw_cloud, twilight_overrides, ...)
@@ -58,6 +60,9 @@ def geo_hours(R):
 
 
 def side(h): return 'dusk' if h >= 12 else 'dawn'
+
+
+BIAS_OV = set()
 
 
 def apply(K, R):
@@ -105,6 +110,10 @@ def apply(K, R):
         if mo is not None: s['fog.FogMaxOpacity'] = round(mo, 4)
         md = sch('tw_dens')
         if md is not None: s['fog.FogDensity'] = round(b['fog.FogDensity'] * md, 6)
+        mn = sch('tw_minev')
+        if mn is not None: s['pp.AutoExposureMinBrightness'] = round(mn, 3)
+        bc = sch('bias_curve')
+        if bc is not None and str(h) not in BIAS_OV: s['pp.AutoExposureBias'] = round(bc, 4)
         mx = sch('tw_maxev')
         if mx is not None: s['pp.AutoExposureMaxBrightness'] = round(mx, 3)
         if R.get('moon_vol') is not None: s['moonc.VolumetricScatteringIntensity'] = float(R['moon_vol'])
@@ -123,7 +132,7 @@ def main():
     if a.knobs: R.update(json.load(open(a.knobs)))
     if a.bias_overrides:
         v2 = R.setdefault('v2', {}); ov = {k: dict(v) for k, v in (v2.get('twilight_overrides') or K.get('twilight_overrides') or {}).items()}
-        for hh, bb in json.load(open(a.bias_overrides)).items(): ov.setdefault(str(float(hh)), {})['pp.AutoExposureBias'] = float(bb)
+        for hh, bb in json.load(open(a.bias_overrides)).items(): ov.setdefault(str(float(hh)), {})['pp.AutoExposureBias'] = float(bb); BIAS_OV.add(str(float(hh)))
         v2['twilight_overrides'] = ov
     d, rep = apply(K, R)
     txt = json.dumps(d, indent=1)
