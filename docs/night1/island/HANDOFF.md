@@ -15,10 +15,12 @@ complex; WHBox cubes index only). Done so far (all pushed on `night1/island`):
   solids, web_air_drawn, re-web gaps, landings); `tools/export/island_dump_check.py` for the `-WHTravDumpPrims` dump.
 - r01 telemetry re-checked with the new checker: `round-02/route_check_r01_baseline.json` (r4 332 overlap frames, r3 140 trunk frames).
 - `REQUEST-traversal-r02.md` (ISM cubes per instance; IsmSolid default).
-Running (headless, my PIDs in `_scratch/island/*.pid`): rebuild `SM2_ISLAND_DROP_MAPS=Manhattan_WP_ism SM2_ISLAND_CITY_STEPS=kit,collide,map,wp
+Rebuild DONE 23:03 (2,743 s: collide 466 meshes, kit 50 streetkit + 50 fire-escape solids, WP populate 793 meshes = 117 ground /
+383 solid / 291 visual-only, 56,816 WHBox actors). Was: `SM2_ISLAND_DROP_MAPS=Manhattan_WP_ism SM2_ISLAND_CITY_STEPS=kit,collide,map,wp
 python3 unreal/WebHomage/Scripts/build_manhattan.py --steps city,map` (log `_scratch/island/logs/build_r02.log`), then
-`docs/night1/island/holds_r02.sh` (waits for the build, then 3 GPU-lock holds; log `_scratch/island/logs/holds_r02.log`). The GPU was
-PAUSED (20:43 auto-pause) when the round started; the driver waits up to 6 h per hold.
+`docs/night1/island/holds_r02.sh` (PID in `_scratch/island/holds_r02.pid`; queued 23:04 behind 7 waiters; 3 GPU-lock holds; log
+`_scratch/island/logs/holds_r02.log`; waits up to 6 h per hold). If the session died: check that log; re-run the driver for the missing
+batches (edit its batch list) — never run two drivers. Critic pack: `python3 docs/night1/island/critic_prep_r02.py` then abpack.
 After captures: `python3 tools/export/island_route_check.py <export> round-02/*_telemetry.csv --out round-02/route_check.json`,
 `python3 tools/export/island_dump_check.py <export> <(gunzip -c round-02/prims_dump.csv.gz) --out round-02/dump_check.json`, README, critic pack.
 
