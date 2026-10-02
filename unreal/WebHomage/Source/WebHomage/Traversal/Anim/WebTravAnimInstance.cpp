@@ -18,10 +18,11 @@ bool UWebTravAnimInstance::bAirSpeedPose = true;
 double UWebTravAnimInstance::ChestSign = 1.0;
 // round 20 wall-gait shape (critic r19: knee gap <= .35 m, w/h <= .55): short choppy stride high on the body, narrow track
 static double GaitHandLat = -3.0, GaitElbowOut = 0.12; // r20 c capture: w/h .70 with hands 3 cm outside the shoulders and elbows out .35
-static double GaitTop = 0.50, GaitBot = 0.96, GaitLift = 0.0, GaitKneeOffT = 2.0, GaitLatT = -2.0, GaitKneeOutT = 0.0; // r20 probe g6: knee gap med .17 max .32 m in the run (g2 .43-.46, r19 .55-.59): longer legs under the hips, feet on the body line
+static double GaitTop = 0.42, GaitBot = 0.96, GaitLift = 0.0, GaitKneeOffT = 2.0, GaitLatT = -2.0, GaitKneeOutT = 0.0; // r20 probe g6: knee gap med .17 max .32 m in the run (g2 .43-.46, r19 .55-.59): longer legs under the hips, feet on the body line
 // round 21 (critic r20: "the side-run is a plank with the legs together"; each foot moved only ~0.14 x leg length per stride): a sprint
-// stride. Touchdown high under the body (Top = .50 leg lengths below the hip), push to full extension (Bot .96), and a high-knee recovery:
-// the swing foot comes up past the touchdown point to Hi (.36) at Kp (.75 of the swing) and paws back down; the swing foot leaves the
+// stride. Touchdown high under the body (Top = .42 leg lengths below the hip), push to full extension (Bot .96), and a high-knee recovery:
+// the swing foot comes up past the touchdown point to Hi (.28) at Kp (.75 of the swing) and paws back down (probe sweep r21: .50/.36 ->
+// w1 legs apart 2/6 frames at 8 fps, .42/.28 -> 3/6, .40/.26/Sig .45 -> c touchdown gap .35 s); the swing foot leaves the
 // wall by SwOff cm (the knee lifts off it through the pole); stance share Sig. Along-run foot gap peaks ~.45 m every step (offline model),
 // the lateral track is unchanged (knee gap across the run stays at the hip width). Cadence CadMin..CadMax steps/s (>= 5.6: a foot
 // touches down every <= .18 s). r20 = -WHGaitTune=Top=0.76,Bot=0.90,Lift=0.04,Hi=0,SwOff=0,Sig=0.42,CadMin=3.4,CadMax=6,CadBase=2.6,CadK=0.2
@@ -30,7 +31,7 @@ static double GaitTop = 0.50, GaitBot = 0.96, GaitLift = 0.0, GaitKneeOffT = 2.0
 // the chest = the wall, and up the run): pole U + PoleN * N with PoleN -.35, hips further off the wall (WallGaitFootOffR .42) so the
 // driven knee clears the facade. r20 = PoleN=0.7
 static double GaitPoleN = -0.35;
-static double GaitHi = 0.36, GaitKp = 0.75, GaitSwOff = 15.0, GaitSig = 0.40, GaitCadMin = 5.6, GaitCadMax = 6.6, GaitCadBase = 3.2, GaitCadK = 0.22;
+static double GaitHi = 0.28, GaitKp = 0.75, GaitSwOff = 15.0, GaitSig = 0.40, GaitCadMin = 5.6, GaitCadMax = 6.6, GaitCadBase = 3.2, GaitCadK = 0.22;
 
 namespace
 {
