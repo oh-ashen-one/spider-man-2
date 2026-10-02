@@ -1,19 +1,18 @@
 {
  "name": "w1_wallrun_tall_zip",
- "note": "Round 19 (owner: wall-run 'super cooked'; E does nothing while running on the side of buildings): c's swing-to-wall shifted 95 m south onto the 97 m tower facade at x 266 (y 88-122): the long vertical wall-run shows the procedural IK stride (feet + hands on the facade); E mid-wall at 3.6 s -> zip to this facade's top edge (nearest place) -> perch; E on the perch at 6.2 s.",
  "seed": 1234,
  "spawn": {
   "pos": [
-   250,
-   145,
-   22
+   -240,
+   -50,
+   56
   ],
-  "yaw": -90,
+  "yaw": 0,
   "camPitch": 0.12,
   "vel": [
+   11,
    0,
-   -22,
-   0
+   5
   ]
  },
  "keys": [
@@ -23,16 +22,12 @@
     0,
     1
    ],
-   "heading": -90,
-   "swing": true
+   "heading": 0,
+   "sprint": true
   },
   {
-   "t": 0.9,
-   "heading": 0
-  },
-  {
-   "t": 1.7,
-   "swing": false
+   "t": 0.6,
+   "heading": false
   },
   {
    "t": 3.6,
@@ -43,20 +38,21 @@
    "zip": false
   },
   {
-   "t": 4.6,
+   "t": 3.8000000000000003,
    "move": [
     0,
     0
    ],
-   "heading": false
+   "sprint": false
   },
   {
    "t": 6.2,
    "zip": true
   },
   {
-   "t": 6.3,
+   "t": 6.300000000000001,
    "zip": false
   }
- ]
+ ],
+ "note": "Round 23: w1 on the sunlit 300 m tower west face (x ~-229.4, lit above ~48 m): jump onto the face from the podium height, vertical wall run, E at 3.6 s -> zip (facade top > 110 m up: nearest visible roof edge) -> perch, E on the perch at 6.2 s. Variant t1_d."
 }

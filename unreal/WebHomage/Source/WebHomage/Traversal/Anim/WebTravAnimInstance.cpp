@@ -31,6 +31,22 @@ static double GaitTop = 0.42, GaitBot = 0.96, GaitLift = 0.0, GaitKneeOffT = 2.0
 // the chest = the wall, and up the run): pole U + PoleN * N with PoleN -.35, hips further off the wall (WallGaitFootOffR .42) so the
 // driven knee clears the facade. r20 = PoleN=0.7
 static double GaitPoleN = -0.35;
+// round 22 upright side run (-WHGaitTune=STd=,STo=,STuck=,SSw=,SReach=,SArm=): touchdown ahead / toe-off behind (leg lengths, along the run
+// line), recovery heel tuck (share of the drop), recovery toe off the facade (cm), stance leg reach (leg lengths), arm pump reach (arm lengths)
+static float GroundBlendS = 0.18f; // round 22: ground locomotion weight blend (s), -WHGaitTune=GBlend=
+static double SideTd = 0.45, SideTo = 0.50, SideTuck = 0.55, SideSwOff = 28.0, SideReach = 0.95, SideArmFwd = 0.40; // r23: SSw 14 -> 28 (r22 captures ran -WHGaitTune=SSw=28)
+// round 23 (critic r22: "the vertical run slides frozen, legs together, bbox_w .082-.088 for 1.5 s"; director: fix the EXCURSION, not the
+// cadence): vertical wall-run sprint. -WHGaitTune=VKick=,VSw=,VTr=,VKt=,VTrack=,VKneeLat=,VHip=,VRoll=,VArmOut=,VArmUp=,VArmK=
+//   VKick   blend of the r23 recovery / arm pump over the r21 stride (0 = r22 exactly)
+//   VSw     recovery ankle off the face at mid-swing (cm): the recovery leg trails OUT from the facade after toe-off (sprinter follow-through)
+//   VTr     recovery foot height at the trail peak (leg lengths below the hip), VKt = share of the swing spent trailing out before the
+//           knee drives the foot back up onto the face at the touchdown point
+//   VTrack  extra lateral track per foot (cm); VKneeLat = sideways share of the recovery knee bend at mid-swing (knee near the hip plane)
+//   VHip    hips at most this far off the face (cm; r22 ~.5 m)
+//   VRoll   torso side roll with the stride (deg)
+//   VArmOut sprint arm pump: the back-swinging elbow / hand flares this far out to the side (cm) -- the silhouette widens on every step
+//   VArmUp  forward reach of the pump (arm lengths up the run line), VArmK = threshold of the out flare (share of the back swing)
+static double VKick = 1.0, VSw = 34.0, VTr = 0.80, VKt = 0.45, VTrack = 4.0, VKneeLat = 0.70, VHip = 40.0, VRoll = 4.0, VArmOut = 22.0, VArmUp = 0.35, VArmK = 0.5;
 static double GaitHi = 0.28, GaitKp = 0.75, GaitSwOff = 15.0, GaitSig = 0.40, GaitCadMin = 5.6, GaitCadMax = 6.6, GaitCadBase = 3.2, GaitCadK = 0.22;
 
 namespace
@@ -64,6 +80,12 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 				else if (K == TEXT("Hi")) GaitHi = X; else if (K == TEXT("Kp")) GaitKp = X; else if (K == TEXT("SwOff")) GaitSwOff = X;
 				else if (K == TEXT("Sig")) GaitSig = X; else if (K == TEXT("CadMin")) GaitCadMin = X; else if (K == TEXT("CadMax")) GaitCadMax = X;
 				else if (K == TEXT("CadBase")) GaitCadBase = X; else if (K == TEXT("CadK")) GaitCadK = X; else if (K == TEXT("PoleN")) GaitPoleN = X;
+				else if (K == TEXT("GBlend")) GroundBlendS = float(FMath::Max(0.02, X));
+				else if (K == TEXT("STd")) SideTd = X; else if (K == TEXT("STo")) SideTo = X; else if (K == TEXT("STuck")) SideTuck = X;
+				else if (K == TEXT("SSw")) SideSwOff = X; else if (K == TEXT("SReach")) SideReach = X; else if (K == TEXT("SArm")) SideArmFwd = X;
+				else if (K == TEXT("VKick")) VKick = X; else if (K == TEXT("VSw")) VSw = X; else if (K == TEXT("VTr")) VTr = X; else if (K == TEXT("VKt")) VKt = X;
+				else if (K == TEXT("VTrack")) VTrack = X; else if (K == TEXT("VKneeLat")) VKneeLat = X; else if (K == TEXT("VHip")) VHip = X;
+				else if (K == TEXT("VRoll")) VRoll = X; else if (K == TEXT("VArmOut")) VArmOut = X; else if (K == TEXT("VArmUp")) VArmUp = X; else if (K == TEXT("VArmK")) VArmK = X;
 			}
 		}
 	}
@@ -229,20 +251,42 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 	{ // locomotion anchors (browser LOCO): walk 1.6, jog 4.5, run 8.5, sprint 14 m/s; one shared normalized phase
 		struct FL { const TCHAR* C; float V; };
 		static const FL Loco[] = { { TEXT("walk"), 1.6f }, { TEXT("jog"), 4.5f }, { TEXT("run"), 8.5f }, { TEXT("sprint"), 14.f } };
-		if (Sp < 0.25f) { Add(TEXT("idle"), T, 1.f, true); return; }
+		// target weights (round 21 logic: idle below 0.25 m/s, idle -> walk below 1.6 m/s, then the two bracketing anchors)
+		float Want[5] = { 0.f, 0.f, 0.f, 0.f, 0.f };
 		int32 K = 0;
 		while (K < 3 && Sp > Loco[K + 1].V) ++K;
-		const float W1 = K < 3 ? FMath::Clamp((Sp - Loco[K].V) / (Loco[K + 1].V - Loco[K].V), 0.f, 1.f) : 0.f;
-		UAnimSequence* S0 = Clip(Loco[K].C);
+		if (Sp < 0.25f) Want[0] = 1.f;
+		else
+		{
+			const float W1 = K < 3 ? FMath::Clamp((Sp - Loco[K].V) / (Loco[K + 1].V - Loco[K].V), 0.f, 1.f) : 0.f;
+			const float IdleW = Sp < Loco[0].V ? 1.f - Sp / Loco[0].V : 0.f;
+			Want[0] = IdleW;
+			for (int32 J = K; J <= FMath::Min(K + 1, 3); ++J) Want[1 + J] += (J == K ? 1.f - W1 : W1) * (1.f - IdleW);
+		}
+		// round 22 (characters critic: hard idle -> run clip switch, weight 1.0 in one frame): every weight moves at most 1 / GroundBlendS
+		// per second, so a full idle <-> run change takes >= GroundBlendS (0.18 s); the node's first frame snaps (the node crossfade covers it)
+		const float Dt = GetDeltaSeconds();
+		if (!bGroundWInit) { for (int32 J = 0; J < 5; ++J) GroundW[J] = Want[J]; bGroundWInit = true; }
+		else
+		{
+			const float Stp = Dt / GroundBlendS;
+			float Sum = 0.f;
+			for (int32 J = 0; J < 5; ++J) { GroundW[J] = Want[J] > GroundW[J] ? FMath::Min(Want[J], GroundW[J] + Stp) : FMath::Max(Want[J], GroundW[J] - Stp); Sum += GroundW[J]; }
+			if (Sum > 1e-4f) for (int32 J = 0; J < 5; ++J) GroundW[J] /= Sum; else GroundW[0] = 1.f;
+		}
+		// shared normalized phase advances with the dominant moving anchor (a walk-speed minimum while the run fades out)
+		int32 Kd = 1;
+		for (int32 J = 2; J < 5; ++J) if (GroundW[J] > GroundW[Kd]) Kd = J;
+		const int32 Kp = Sp < 0.25f ? Kd - 1 : K; // moving: the r21 phase rate (lower bracketing anchor)
+		UAnimSequence* S0 = Clip(Loco[Kp].C);
 		const float Len0 = S0 ? S0->GetPlayLength() : 1.f;
-		LocoPhase = FMath::Fmod(LocoPhase + GetDeltaSeconds() * (Sp / Loco[K].V) / Len0 * (Sp < Loco[0].V ? 1.f : 1.f), 1.f);
-		const float IdleW = Sp < Loco[0].V ? 1.f - Sp / Loco[0].V : 0.f;
-		Add(TEXT("idle"), T, IdleW, true);
-		for (int32 J = K; J <= FMath::Min(K + 1, 3); ++J)
+		const float SpPh = Sp < 0.25f ? Loco[Kp].V * (1.f - GroundW[0]) : Sp;
+		LocoPhase = FMath::Fmod(LocoPhase + Dt * (SpPh / Loco[Kp].V) / Len0, 1.f);
+		if (GroundW[0] > 0.001f) Add(TEXT("idle"), T, GroundW[0], true);
+		for (int32 J = 0; J < 4; ++J)
 		{
 			UAnimSequence* S = Clip(Loco[J].C);
-			const float W = (J == K ? 1.f - W1 : W1) * (1.f - IdleW);
-			if (S) Add(Loco[J].C, LocoPhase * S->GetPlayLength(), W, true);
+			if (S && GroundW[1 + J] > 0.001f) Add(Loco[J].C, LocoPhase * S->GetPlayLength(), GroundW[1 + J], true);
 		}
 		return;
 	}
@@ -415,6 +459,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	TArray<FWebTravAnimLayer> Cur;
 	PendingLegs.Reset();
 	BuildNode(CurNode, NodeT, Cur);
+	if (CurNode != NA_ground) bGroundWInit = false; // round 22
 	const float Alpha = Smooth01(FadeT / FadeDur);
 	TArray<FWebTravAnimLayer> OutL;
 	float PrevSum = 0.f;
@@ -470,11 +515,17 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 			U = (U - N * FVector::DotProduct(U, N)).GetSafeNormal();
 			if (U.IsNearlyZero()) U = (CT.InverseTransformVectorNoScale(FVector::UpVector) - N * FVector::DotProduct(CT.InverseTransformVectorNoScale(FVector::UpVector), N)).GetSafeNormal();
 			Frame.WallN = N; Frame.WallU = U; Frame.WallP = CT.InverseTransformPosition(A.Wall.Point);
+			{ // round 22: wall-up axis (component space) for the upright side run
+				FVector Z = CT.InverseTransformVectorNoScale(FVector::UpVector);
+				Z = (Z - N * FVector::DotProduct(Z, N)).GetSafeNormal();
+				Frame.WallZ = Z.IsNearlyZero() ? U : Z;
+			}
 			// cadence: r20 3.4 steps/s at 4 m/s .. 6 steps/s at 17 m/s (ref wallrun-glass-midday ~5 steps/s); r21 5.6 .. 6.6 (a touchdown every <= .18 s)
 			const float StepsPerS = FMath::Clamp(float(GaitCadBase + GaitCadK * A.Speed), float(GaitCadMin), float(GaitCadMax));
 			WallGaitPh = FMath::Fmod(WallGaitPh + Dt * StepsPerS * 0.5f, 1.f);
 		}
 		Frame.GaitPh = WallGaitPh;
+		Frame.SideUpW = bGait ? A.Wall.SideUp : 0.f;
 	}
 	// round 20: zip-flight reach (both arms toward the target until the catch)
 	{
@@ -739,20 +790,55 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 		const FVector N = Frame.WallN, U = Frame.WallU;
 		const FVector Sd = FVector::CrossProduct(U, N).GetSafeNormal(); // lateral axis (sign fixed per limb below)
 		const float Ph = Frame.GaitPh;
+		const double SU = FMath::Clamp(double(Frame.SideUpW), 0.0, 1.0); // round 22: upright side run blend
+		const FVector Zw = Frame.WallZ;
+		FVector Zb = Zw;
+		{
+			const FCompactPoseBoneIndex BHd0 = Idx(TEXT("head"));
+			if (BHd0.IsValid()) { const FVector Z0 = (CS(BHd0).GetLocation() - CS(BHips).GetLocation()).GetSafeNormal(); if (!Z0.IsNearlyZero()) Zb = Z0; }
+		}
 		auto Side = [&](const TCHAR* Bn) { const FCompactPoseBoneIndex B = Idx(Bn); return B.IsValid() && FVector::DotProduct(CS(B).GetLocation() - CS(BHips).GetLocation(), Sd) >= 0.0 ? 1.0 : -1.0; };
+		const double VW = FMath::Clamp(VKick, 0.0, 1.0) * (1.0 - SU); // round 23: vertical sprint weight (the side run keeps r22)
+		if (VW > 0.001)
+		{
+			// hips at most VHip off the face (r22 ~.5 m): the whole body moves toward it, the IK below re-plants the limbs
+			const double DHh = FVector::DotProduct(CS(BHips).GetLocation() - Frame.WallP, N);
+			if (DHh > VHip)
+			{
+				const FCompactPoseBoneIndex PH = BC.GetParentBoneIndex(BHips);
+				const FTransform PT = PH.IsValid() ? CS(PH) : FTransform::Identity;
+				const FVector NewL = CS(BHips).GetLocation() - N * ((DHh - VHip) * W * VW);
+				Pose[BHips].SetTranslation(PT.InverseTransformPosition(NewL));
+			}
+			// torso side roll toward the stance leg (rotation about the wall normal), spine only (the hips stay square to the run)
+			const double Ro = FMath::DegreesToRadians(VRoll) * FMath::Sin(2.0 * PI * double(Ph)) * W * VW;
+			RotateCS(Idx(TEXT("spine1")), FQuat(N, Ro * 0.5));
+			RotateCS(Idx(TEXT("spine2")), FQuat(N, Ro * 0.5));
+		}
 		// shoulders counter-twist with the arms: the planting hand's shoulder comes toward the wall (rotation about the run axis U)
 		{
 			const FCompactPoseBoneIndex BSh = Idx(TEXT("upperArm_R"));
 			const double SR = BSh.IsValid() ? Side(TEXT("upperArm_R")) : 1.0;
 			// rotation about U by +a moves the +Sd side by a * (U x Sd) = a * (-N) ... sign from the geometry:
 			const double Toward = FVector::DotProduct(FVector::CrossProduct(U, Sd * SR), -N) >= 0.0 ? 1.0 : -1.0;
-			const double Tw = 0.20 * FMath::Cos(2.0 * PI * (Ph - 0.2)) * Toward * W; // right hand mid-contact at Ph 0.2
+			const double Tw = 0.20 * FMath::Cos(2.0 * PI * (Ph - 0.2)) * Toward * W * (1.0 - SU); // right hand mid-contact at Ph 0.2
 			RotateCS(Idx(TEXT("spine2")), FQuat(U, Tw * 0.6));
 			RotateCS(Idx(TEXT("spine1")), FQuat(U, Tw * 0.4));
 			RotateCS(BHips, FQuat(U, -Tw * 0.35));
 			// head up the wall a little (looks where he runs)
 			const FCompactPoseBoneIndex BHd = Idx(TEXT("head"));
-			if (BHd.IsValid()) RotateCS(BHd, FQuat(FVector::CrossProduct(N, U).GetSafeNormal(), -0.18 * W));
+			if (BHd.IsValid()) RotateCS(BHd, FQuat(FVector::CrossProduct(N, U).GetSafeNormal(), -0.18 * W * (1.0 - SU)));
+			// round 22 upright side run: shoulders counter-rotate about the body axis with the arm pump (forward arm's shoulder forward)
+			if (SU > 0.01 && BSh.IsValid())
+			{
+				const FVector PR = CS(BSh).GetLocation() - CS(BHips).GetLocation();
+				const double Sgn = FVector::DotProduct(FVector::CrossProduct(Zb, PR), U) >= 0.0 ? 1.0 : -1.0;
+				const double ArmR = FMath::Cos(2.0 * PI * double(Ph)); // right arm (L 1) forward amount, see the arm loop
+				const double Tu = 0.16 * ArmR * Sgn * W * SU;
+				RotateCS(Idx(TEXT("spine2")), FQuat(Zb, Tu * 0.6));
+				RotateCS(Idx(TEXT("spine1")), FQuat(Zb, Tu * 0.4));
+				RotateCS(BHips, FQuat(Zb, -Tu * 0.45));
+			}
 		}
 		// legs: stance sweeps the planted foot down the wall (push), swing drives the knee up and out
 		for (int32 L = 0; L < 2; ++L)
@@ -786,10 +872,61 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 				O += GaitLift * Ll * FMath::Square(FMath::Sin(PI * K));
 				Off = 6.0 + GaitKneeOff * FMath::Sin(PI * K) + GaitSwOff * FMath::Sin(PI * FMath::Min(1.f, K * 1.15f)); Lat = GaitLat + 1.5 * FMath::Sin(PI * K);
 			}
-			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
-			const FVector Pole = U * 1.0 + Sd * (Sg * GaitKneeOut) + N * GaitPoleN; // round 21: forward knees (r20 + N * 0.7)
-			const FVector ToeUp = (U * 0.9 - N * 0.25).GetSafeNormal();
-			TwoBone(Th, Sh, Ft, Tgt, Pole, W, &ToeUp, bStance ? 0.85f * W : 0.3f * W);
+			FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
+			FVector Pole = U * 1.0 + Sd * (Sg * GaitKneeOut) + N * GaitPoleN; // round 21: forward knees (r20 + N * 0.7)
+			FVector ToeUp = (U * 0.9 - N * 0.25).GetSafeNormal();
+			float EndW = bStance ? 0.85f : 0.3f;
+			if (VW > 0.001)
+			{ // round 23: vertical sprint -- stance foot flat on the face (wider track); the recovery foot trails OUT from the face after
+			  // toe-off (ankle VSw off it at mid-swing, near-straight leg, knee by the hip plane bending partly sideways), then the knee drives
+			  // it back up onto the face at the touchdown point
+				const double LatV = GaitLat + VTrack;
+				FVector TgtV, PoleV = Pole, ToeV = ToeUp;
+				float EndV = EndW;
+				if (bStance) { const float K = Phi / Sig; TgtV = Base + U * FMath::Lerp(OTd, OTo, double(K)) + N * 2.0 + Sd * (Sg * LatV); }
+				else
+				{
+					const double K = double((Phi - Sig) / (1.f - Sig)), Kt = FMath::Clamp(VKt, 0.15, 0.85);
+					const double OTr = -VTr * Ll;
+					const double OV = K < Kt ? FMath::Lerp(OTo, OTr, double(Ease(float(K / Kt)))) : FMath::Lerp(OTr, OTd, double(Ease(float((K - Kt) / (1.0 - Kt)))));
+					const double Sw = FMath::Pow(FMath::Sin(PI * K), 0.8);
+					TgtV = Base + U * OV + N * (2.0 + VSw * Sw) + Sd * (Sg * (LatV + 3.0 * Sw));
+					const FVector PoleMid = (U * 1.0 + Sd * (Sg * VKneeLat) + N * (1.0 - VKneeLat) * 0.45).GetSafeNormal();
+					PoleV = FMath::Lerp(Pole.GetSafeNormal(), PoleMid, Sw).GetSafeNormal();
+					ToeV = FMath::Lerp(ToeUp, (-U * 0.8 + N * 0.35).GetSafeNormal(), Sw).GetSafeNormal(); // pointed, trailing toe
+					EndV = 0.5f;
+				}
+				Tgt = FMath::Lerp(Tgt, TgtV, FMath::Clamp(VKick, 0.0, 1.0));
+				Pole = FMath::Lerp(Pole, PoleV, FMath::Clamp(VKick, 0.0, 1.0)).GetSafeNormal();
+				ToeUp = FMath::Lerp(ToeUp, ToeV, FMath::Clamp(VKick, 0.0, 1.0)).GetSafeNormal();
+				EndW = FMath::Lerp(EndW, EndV, float(FMath::Clamp(VKick, 0.0, 1.0)));
+			}
+			if (SU > 0.001)
+			{ // round 22: upright side run -- U = run line, Zw = wall-up; the stride swings along the run line under the hips, the stance foot
+			  // sweeps back along the facade (sole on it), the recovery heel kicks up and the knee drives forward, then paws down onto it
+				const double OTdU = SideTd * Ll, OToU = -SideTo * Ll;
+				double OU, DropK, OffU;
+				const bool bSt = Phi < Sig;
+				if (bSt) { const float K = Phi / Sig; OU = FMath::Lerp(OTdU, OToU, double(K)); DropK = 1.0; OffU = 3.0; }
+				else
+				{
+					const float K = (Phi - Sig) / (1.f - Sig);
+					const double K5 = double(K) * K * K * (K * (6.0 * K - 15.0) + 10.0); // smootherstep: the recovery foot passes the stance foot fast (legs apart longer)
+					OU = FMath::Lerp(OToU, OTdU, K5);
+					DropK = 1.0 - SideTuck * FMath::Sin(PI * K);
+					OffU = 3.0 + SideSwOff * FMath::Sin(PI * K);
+				}
+				const double DHf = FMath::Max(0.0, DH - OffU);
+				const double Drop = FMath::Sqrt(FMath::Max(FMath::Square(0.35 * Ll), FMath::Square(SideReach * Ll) - DHf * DHf - OU * OU)) * DropK;
+				const FVector TgtU = Base + N * OffU + U * OU - Zw * Drop;
+				const FVector PoleU = U * 1.0 + N * 0.2;
+				const FVector ToeU = (U * 0.9 - Zw * 0.15 - N * 0.15).GetSafeNormal();
+				Tgt = FMath::Lerp(Tgt, TgtU, SU);
+				Pole = FMath::Lerp(Pole, PoleU, SU).GetSafeNormal();
+				ToeUp = FMath::Lerp(ToeUp, ToeU, SU).GetSafeNormal();
+				EndW = FMath::Lerp(EndW, bSt ? 0.8f : 0.35f, float(SU));
+			}
+			TwoBone(Th, Sh, Ft, Tgt, Pole, W, &ToeUp, EndW * W);
 		}
 		// arms: contralateral to the legs (right hand with the left foot); plant above the shoulder, pull down to the hip
 		for (int32 L = 0; L < 2; ++L)
@@ -818,10 +955,38 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 				O = FMath::Lerp(ODn, OUp, double(Ease(K)));
 				Off = 4.0 + 16.0 * FMath::Sin(PI * K); Lat = GaitHandLat + 2.0 * FMath::Sin(PI * K);
 			}
-			const FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
-			const FVector Pole = Sd * (Sg * GaitElbowOut) - U * 0.9 + N * 0.45; // round 20: elbows down / back, not out
-			const FVector Fingers = (U * 0.85 + Sd * (Sg * 0.2) - N * 0.15).GetSafeNormal();
-			TwoBone(UA, FA, HA, Tgt, Pole, W, &Fingers, bPlant ? 0.8f * W : 0.25f * W);
+			FVector Tgt = Base + U * O + N * Off + Sd * (Sg * Lat);
+			FVector Pole = Sd * (Sg * GaitElbowOut) - U * 0.9 + N * 0.45; // round 20: elbows down / back, not out
+			FVector Fingers = (U * 0.85 + Sd * (Sg * 0.2) - N * 0.15).GetSafeNormal();
+			float EndW = bPlant ? 0.8f : 0.25f;
+			if (VW > 0.001)
+			{ // round 23: vertical sprint arm pump, contralateral to the legs: forward = up the run line close to the face, back = down past the
+			  // hip and off the face with the elbow flaring out to the side (the silhouette widens on every step and narrows between them)
+				const double Ar = FMath::Cos(2.0 * PI * double(Phi)); // +1 = this hand at the top of its pump (the plant phase start)
+				const double OutK = FMath::Clamp((-Ar - VArmK) / FMath::Max(0.05, 1.0 - VArmK), 0.0, 1.0);
+				const double OffV = FMath::Lerp(10.0, FMath::Max(10.0, DS) + 8.0, 0.5 * (1.0 - Ar));
+				const FVector TgtV = Base + U * (La * (VArmUp * Ar - 0.30)) + N * OffV + Sd * (Sg * (GaitHandLat + VArmOut * OutK));
+				const FVector PoleV = (-U * 0.7 + N * 0.5 + Sd * (Sg * (0.15 + 0.85 * OutK))).GetSafeNormal();
+				const FVector FingV = (U * (0.4 + 0.5 * Ar) - N * 0.2 + Sd * (Sg * 0.2)).GetSafeNormal();
+				const double KV = FMath::Clamp(VKick, 0.0, 1.0);
+				Tgt = FMath::Lerp(Tgt, TgtV, KV);
+				Pole = FMath::Lerp(Pole, PoleV, KV).GetSafeNormal();
+				Fingers = FMath::Lerp(Fingers, FingV, KV).GetSafeNormal();
+				EndW = FMath::Lerp(EndW, 0.4f, float(KV));
+			}
+			if (SU > 0.001)
+			{ // round 22: upright side run -- sprint arm pump along the run line, contralateral to the legs, elbows back
+				const double Ar = FMath::Cos(2.0 * PI * double(Phi)); // +1 = this arm forward
+				const double SideN = FVector::DotProduct(Sh - CS(BHips).GetLocation(), N) >= 0.0 ? 1.0 : -1.0;
+				const FVector TgtU = Sh + U * (SideArmFwd * La * Ar) - Zb * (La * (0.45 - 0.15 * Ar)) - N * (SideN * 0.06 * La);
+				const FVector PoleU = (-U * 1.0 - Zb * 0.35 + N * (SideN * 0.3)).GetSafeNormal();
+				const FVector FingU = (U * (0.5 + 0.4 * Ar) - Zb * 0.3).GetSafeNormal();
+				Tgt = FMath::Lerp(Tgt, TgtU, SU);
+				Pole = FMath::Lerp(Pole, PoleU, SU).GetSafeNormal();
+				Fingers = FMath::Lerp(Fingers, FingU, SU).GetSafeNormal();
+				EndW = FMath::Lerp(EndW, 0.4f, float(SU));
+			}
+			TwoBone(UA, FA, HA, Tgt, Pole, W, &Fingers, EndW * W);
 		}
 	}
 	// ---- round 20: zip-flight reach -- both arms extended toward the target, hands a shoulder-width apart, elbows soft

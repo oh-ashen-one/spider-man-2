@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-02T00:10",
+ "updated": "2026-10-02T11:35",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 21,
+   "round": 23,
    "verdict": "fails \u2014 lowest 6 (opus)",
-   "gap": "wallRunSide upright parkour sprint: torso within 30 deg of wall-up, along-run foot separation >= 0.6 m peak, sunlit facade, hero bbox height >= width in >= 80 % of side-run frames"
+   "gap": "c camera hits a wall at 7.7-8.5 s (keep hero in frame, cam >= 3 m, no yaw reversal); vertical-run knees splay (lateral knee gap <= .25 m, knees drive forward, arms alternate)"
   },
   {
    "id": "P4",
@@ -134,10 +134,10 @@
    "id": "W",
    "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
    "branch": "night1/water-ab-*",
-   "state": "fixing",
-   "round": 2,
-   "verdict": "A/B: Opus 3.8 vs Sonnet 3.4 (blind) \u2014 Opus merged; FAILS vs reference",
-   "gap": "Fine ripples + sun glints, darker water (C14), take Sonnet's piling foam, remove ring artifact"
+   "state": "active",
+   "round": 3,
+   "verdict": "fails \u2014 lowest 2 (opus)",
+   "gap": "Animated contact foam at the seawall/piles/island edges (engine reads the contact map at >=4 m vs 0.6-1.9 m CPU); far-field structure at swing height"
   }
  ],
  "comparisons": [
@@ -888,6 +888,46 @@
    "verdict": "fails",
    "gap": "wallRunSide upright parkour sprint: torso within 30 deg of wall-up, along-run foot separation >= 0.6 m peak, sunlit facade, hero bbox height >= width in >= 80 % of side-run frames",
    "notes": "Merged (ties r20 on every axis, wins progress-wallrun: real stride 5.6-6.6 steps/s, knees toward the wall, setback crossed on the ledge)."
+  },
+  {
+   "t": "2026-10-02T04:30",
+   "piece": "P3 Traversal",
+   "round": 22,
+   "verdict": "fails",
+   "gap": "Vertical wall-run freezes (no alternating stride); zip from side-run never lands; camera too tight after zip",
+   "notes": "Merged (no axis below r21). Side wall-run fixed: upright, legs apart 7/10 at 12 fps, sunlit facade."
+  },
+  {
+   "t": "2026-10-02T06:55",
+   "piece": "E Terrain",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Canopy must read as leaves at every distance: clustered leaf-card canopy 165-520 m, remove the constant emissive fill and light the cards with the engine; crown crops SD >= 9",
+   "notes": "First terrain merge (at/above r1 on every axis, won 3/3 progress pairs)."
+  },
+  {
+   "t": "2026-10-02T07:25",
+   "piece": "P3 Traversal",
+   "round": 23,
+   "verdict": "fails",
+   "gap": "c camera hits a wall at 7.7-8.5 s (keep hero in frame, cam >= 3 m, no yaw reversal); vertical-run knees splay (lateral knee gap <= .25 m, knees drive forward, arms alternate)",
+   "notes": "Merged. All 6 owner playtest bugs PASS incl. wall-run animation (vertical-run legs cycle, zip ends on a perch)."
+  },
+  {
+   "t": "2026-10-02T11:25",
+   "piece": "E Terrain",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Mid-band canopy still smooth hulls in p1; lawn texture/saturation (E1); khaki river at the shore; t5 flat taupe plain",
+   "notes": "Merged (trees/canopy 3->4, no axis below r2)."
+  },
+  {
+   "t": "2026-10-02T11:35",
+   "piece": "W River water",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Animated contact foam at the seawall/piles/island edges (engine reads the contact map at >=4 m vs 0.6-1.9 m CPU); far-field structure at swing height",
+   "notes": "Merged (no axis below merged r01 Opus build). Rings gone, resolved chop, sun sparkle, SLW pass 1.0 ms."
   }
  ],
  "perf": [
