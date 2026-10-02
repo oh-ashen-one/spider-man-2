@@ -1352,9 +1352,12 @@ if 'skinsmap' in STEPS:
              ('headfront', KS.CLOSEUP, -25.0, 100.0, 164.0, 0.0, 26.0)]       # round 14: 'headfront' = the 'head' framing straight on (0 deg): the cheek-line luma test of the critic's "front stills"
     shots = []
     SHOT_S = 3.0
+    # round 15: the first still waits FIRST_EXTRA seconds longer (r14: 1.0): the eight suits' base colours are 8192 px now (21 + 3 textures compile on the first load; the r13 first run caught
+    # the 8192 Tessera maps still streaming in at 2.2 s = a white mannequin).  The chain reads first_extra from skins_shots.json: the first still is at first_extra + 2.7 s.
+    FIRST_EXTRA = float(os.environ.get('P2_FIRST_EXTRA', '1.0'))
     for i, nm in enumerate(names):
         for j, (vn, kd, az, dist, aim, camh, fov) in enumerate(VIEWS):
-            shots.append(sshot(hero_s, kd, SHOT_S + (1.0 if (i == 0 and j == 0) else 0.0), dist, aim, camh, fov, 0.0, az, label='%s %s' % (nm, vn), suit=i if j == 0 else -1))
+            shots.append(sshot(hero_s, kd, SHOT_S + (FIRST_EXTRA if (i == 0 and j == 0) else 0.0), dist, aim, camh, fov, 0.0, az, label='%s %s' % (nm, vn), suit=i if j == 0 else -1))
     N_STILL = len(shots)
     ORBIT_S, ORBIT_RATE = 1.5, 40.0
     for i, nm in enumerate(names):          # continuous 40 deg/s orbit across the suit changes (the azimuth continues from shot to shot)
@@ -1367,7 +1370,7 @@ if 'skinsmap' in STEPS:
               sshot(None, KS.ORBIT, 6.0, 480.0, 0.0, 20.0, 40.0, 0.0, -45.0, label='playable pawn, front 3/4', player=True)]
     ok2 = save_skins_map(TESTS + '/Char_SkinsPlay', pshots)
     _json0.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,
-                   first_still=0, first_orbit=N_STILL, first_pawn=0, map_stills=TESTS + '/Char_Skins', map_play=TESTS + '/Char_SkinsPlay'),
+                   first_extra=FIRST_EXTRA, first_still=0, first_orbit=N_STILL, first_pawn=0, map_stills=TESTS + '/Char_Skins', map_play=TESTS + '/Char_SkinsPlay'),
               open(SCRATCH + '/skins_shots.json', 'w'), indent=1)
     log('skinsmap saved', ok1, ok2, 'stills', N_STILL, 'orbit', len(shots) - N_STILL)
 

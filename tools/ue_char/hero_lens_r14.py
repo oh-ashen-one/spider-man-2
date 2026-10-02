@@ -33,7 +33,7 @@ def setup(a_half=None, b_half=None, cx=None, cy=None, rim_h=None, tilt=None):
     B_HALF = b_half if b_half is not None else B_HALF
     TILT_DEG = tilt if tilt is not None else TILT_DEG
     RIM_H = rim_h if rim_h is not None else RIM_H
-    H.CENTER_X = cx if cx is not None else 0.0410
+    H.CENTER_X = cx if cx is not None else 0.0425          # round 15: 41.0 -> 42.5 mm (the nose end of the rim leaves the nose flank)
     H.CENTER_Y = cy if cy is not None else 1.6700
     H.N_OUT = 96
     H.RINGS = 10
