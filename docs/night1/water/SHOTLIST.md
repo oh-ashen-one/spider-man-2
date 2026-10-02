@@ -44,3 +44,16 @@ there: glints count only on sun-facing views.
 - Hold: river_low near hp sd >= 9.9, mean Y <= 80; dolly autocorrelation <= 0.10; S4 C14 5..35. Perf at river_low (native 4K, exclusive lock):
   frame delta <= 2.5 ms AND SLW + SLW depth prepass + Lumen reflections delta <= 2.5 ms (`perf.json` `slw_depth_lumen_sum`; r03 2.69).
 - Not scored on water this round (sky ceiling, look piece): river_low p99.5 >= 150 / glints, the S4 haze band.
+
+Round 05 targets (Fable target after r04; `tools/water/water_spec.py all <round-dir>` prints them under `-- r05 round targets`; 4K native frames).
+- GATE, contact foam (critic r04 tests): `crop_river_low_4k_seawall_foam.jpg`: a band >= 12 px wide with Y >= 180 against the wall edge on >= 60 % of
+  the wall-edge rows; `river_low_dolly.mp4` at 4 fps: the band is present in every frame (>= 30 % of the rows carry >= 6 px at 1080p) and its
+  XOR / OR change between consecutive frames is >= 0.2; `harbour_high_4k.jpg`: a bright contact line >= 3 px wide along the island seawall
+  (>= 50 % of the seawall columns x 1250-2300, edge taken from the foam-free round-04 frame; `crop_harbour_high_4k_island_seawall.jpg`).
+- MERGE-BLOCKERS (back to r03): `harbour_high_4k` water under the island (x 1400-1800, y 960-1100) >= 15 Y darker than open water ~400 px left
+  (x 1000-1250); the column-mean spread over x 1000-2800 is reported too (the mirrored streaks: r03 43, r04 22); `river_low_dolly` reflects the far
+  shore (GrazeRough back to 0: no roughness >= 0.4 bought for perf); `harbour_sun_high_4k` p1 <= 55 and mean R-B <= 70 (crop y 700-2160 without the
+  far-shore strip; the upper band y 700-1100 is reported too).
+- HOLDS: river_low near hp >= 12, mean Y <= 80; dolly autocorr(80 px) <= 0.10; S4 C14 5..35; river_sun sparkle width >= 50 %; harbour_sun_high
+  glints >= 0.5 %, path columns >= 50 %, median sparkle <= 6 px; harbour_high hp sd >= 7.5 (blob rule: isolated round decal blobs only).
+- Not this round: perf (re-measure only under an attended-Mac perf lock), river_low p99.5 / S4 haze (sky), the S4 billboard (island).
