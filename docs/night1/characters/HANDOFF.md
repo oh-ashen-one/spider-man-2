@@ -36,7 +36,7 @@ v1 measures (`post_r12.sh` dry run): net no longer through the sash (Tessera pro
 but relief too weak (Tessera 41 % of cells >= 20) and the Verdant jog still 57 px (the CPU check showed the smoothing only MOVED the fold inward).
 v2/v3 (committed, maps regenerated): cord heights x2 (pipe 1.8 mm, net 1.3 mm) + mid-tone net cords (`relief.net_tone`), stage fills 0.8 -> 0.5, arm weights stripped from the chest side below the
 armpit (`strip_arm` in hero_weights_r12.py: CPU posed render shows no jog / notch on either side), crisp sash / chevron ends (the weight ramp smeared the cut end).
-chain2 (`$P2_SCRATCH/r12/chain2`, STEPS "build stills pawn orbit hero chase fight crowd lineup", build nested in the hold) is queued in the lock.
+chain2 hit the lock's 3600 s WAIT timeout (exit 75, nothing ran); re-queued 20:28 as chain3 (`$P2_SCRATCH/r12/chain3`, same steps, `gpu_slot.sh capture --timeout 14400`).
 NOTE: `unreal/WebHomage/Scripts/run_game.sh` has an uncommitted 18:12 change by someone else (frame cap for non-perf captures, WindowServer safety): left as is, not committed by P2.
 Next (if you resume here and the chain did not run): the content build was queued in the GPU lock (`build_fight.sh clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap`, needs prep outputs:
 `python3 tools/ue_char/prep_glbs.py; python3 tools/ue_char/hero_lens_r8.py $P2_SCRATCH/ueimport/SK_Hero.glb; python3 tools/ue_char/suit8/hero_weights_r12.py $P2_SCRATCH/ueimport/SK_Hero.glb`
