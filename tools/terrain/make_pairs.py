@@ -24,12 +24,11 @@ pairs = [
  ('shore-east',        S('p7_east_shore'), REF + 'river-queens-aerial__gr_0936.jpg', 'river shoreline from above with the far bank'),
  ('piers',             S('p8_pier'),       REF + 'river-pier-golden__gr_0555.jpg', 'piers and water from a low aerial position'),
 ]
-if PREV:   # previous round vs this round (same camera)
+if PREV:   # previous round vs this round (same camera: p1 / p2 / p10; the r02 shore cameras were moved, so no shore progress pair)
     pairs += [
      ('progress-park-south', S('p1_south'),     PS('p1_south'),     'two versions of the same high park view (one is the newer build)'),
      ('progress-reservoir',  S('p2_reservoir'), PS('p2_reservoir'), 'two versions of the same view over the park water basin (one is the newer build)'),
      ('progress-lawn-eye',   S('p10_lawn_eye'), PS('p10_lawn_eye'), 'two versions of the same eye-level lawn view (one is the newer build)'),
-     ('progress-west-shore', S('p6_west_shore'), PS('p6_west_shore'), 'two versions of the same shoreline view (one is the newer build)'),
     ]
 M = lambda n: os.path.join(R, n + '.mp4')
 pairs += [

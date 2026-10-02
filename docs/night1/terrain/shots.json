@@ -79,17 +79,17 @@
   {
    "id": "p7_east_shore",
    "pos": [
-    765,
-    -690,
+    770,
+    -1270,
     26
    ],
    "target": [
-    700,
-    -640,
+    702,
+    -1215,
     2
    ],
    "fov": 70,
-   "note": "East River shore from over the river looking back at the seawall + esplanade (r02: the r01 camera x 800 sat inside the far-bank masses: moved 35 m offshore)"
+   "note": "East River shore from over the river looking back at the seawall + esplanade (r02 pass 3: the far-city masses of the browser export (farCity*) overhang the water up to 35 m along z -1080..-320, so the earlier cameras at z -720 / -690 sat in or against a building; z -1270 has no mass within 250 m of the shore)"
   },
   {
    "id": "p8_pier",
