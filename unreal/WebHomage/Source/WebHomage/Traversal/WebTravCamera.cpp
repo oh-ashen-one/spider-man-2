@@ -400,7 +400,8 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		{
 			if (K < GndFloorPullMin - 1e-3) break;
 			const FVector Dk = Hero + BackR * (BackDist * K) + Right * (0.3 + AnchorShift * SideK);
-			if (World.GroundHeight(Dk.X, Dk.Y, ZWant + 0.3) + 0.4 <= ZWant + 0.3) { Desired = Dk; break; }
+			// (the floor is traced from 4 m over the hero: a trace starting under a box top misses the box)
+			if (World.GroundHeight(Dk.X, Dk.Y, Hero.Z + 4.0) + 0.4 <= ZWant + 0.3) { Desired = Dk; break; }
 		}
 	}
 	// round 16: trick camera spot = FlipDistNow m from the hero on the held world azimuth, FlipDrop m under his body centre
