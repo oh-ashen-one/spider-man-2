@@ -1,6 +1,23 @@
-# River water (A/B, Opus 5.5 build): handoff after round 01
+# River water: handoff (round 02 IN PROGRESS on `night1/water`, Opus 5.5) -- round-01 handoff kept below
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe. See `DISCLAIMER.md`.
+
+## Round 02 status (rolling; rewritten at the end of the round)
+- Worktree `~/sm2-n1/water`, branch `night1/water` (from integration 914de97), scratch `/Users/midir/sm2-n1/_scratch/water/`.
+- Code pushed: `tools/water/water_inputs.py` (slope spectrum texture + contact-distance map from the export geometry), `build_water.py`
+  round-02 shader (4 spectrum layers replace the 12 capillary sinusoids whose sum made a lattice; contact foam from the baked map; reflection
+  bend; darker body ScatK; far sheen FarVarK; no streak foam: the warped streak lines were the loop / ring artifact; rarer whitecaps),
+  views `river_sun` / `harbour_high` (+ dolly), tuning variants (`SM2_WATER_VARIANTS`), WP map hook, GPU-locked commandlet;
+  `tools/water/water_spec.py` (checker calibrated on the round-01 critic numbers); `capture_round.sh` modes; `SHOTLIST.md`.
+- Build: `_scratch/water/run_manhattan.py` (wrapper of build_manhattan.py: private scratch, export cloned from `_scratch/showcase/manhattan`,
+  GPU-locked commandlets) then build_water.py; all inside one `gpu_slot.sh capture --label water -- bash _scratch/water/hold1.sh` hold.
+- Iteration 1 (19:05): layers OK, river_sun glitter path OK, C14 6.8 (look rig changed since r01: far shore 150 vs 171); river_low near
+  mean Y 115 (too bright). Iteration 2 (19:41): material failed to compile (default material) -> VarKP input + quoted comment reverted.
+- 21:00: re-queued (60-min queue timeout hit once) the hold: build + variants C/E/J/G + autopick + final build + 1080/4K stills + dollies.
+
+---
+
+## Round 01 handoff (A/B Opus build)
 
 Branch `night1/water-ab-opus`, worktree `~/sm2-n1/water-ab-opus` (base: integration `Opus-5.5-Loop-Night-1` at 80ef6cb). UE MCP port 8780 (not used:
 everything is headless commandlets + offscreen `-game`). Owned: `/Game/Water`, `unreal/WebHomage/Scripts/build_water.py`, `docs/night1/water/`,
