@@ -22,7 +22,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--round', required=True); ap.add_argument('--shot', default='S4'); ap.add_argument('--from', dest='h0', type=float, default=4.0)
     ap.add_argument('--hours', type=float, default=24.0); ap.add_argument('--seconds', type=float, default=12.0); ap.add_argument('--res', default='1920x1080')
-    ap.add_argument('--name', default=''); ap.add_argument('--sp', default='100'); ap.add_argument('--weather', default='-1'); ap.add_argument('--timeout', type=int, default=5000)
+    ap.add_argument('--name', default=''); ap.add_argument('--sp', default='100'); ap.add_argument('--weather', default='-1'); ap.add_argument('--cmds', default='', help="';'-separated live tour commands before the pose, e.g. 'exec wh.ToDSet pp.AutoExposureSpeedUp 40'"); ap.add_argument('--timeout', type=int, default=5000)
     a = ap.parse_args()
     rnd = os.path.abspath(a.round); os.makedirs(rnd, exist_ok=True)
     s = next(x for x in json.load(open(os.path.join(UE, 'Scripts', 'city_shots.json'))) if x['id'].split('_')[0] == a.shot)
@@ -33,7 +33,8 @@ def main():
     d = os.path.join(SCR, name); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
     p, t = U(*s['pos']), U(*s['target']); r = look_rot(p, t); pl = s.get('player') or s['pos']; hh = U(pl[0], pl[1] + 1.0, pl[2])
     tf = os.path.join(d, 'tour.txt')
-    open(tf, 'w').write('%s %.1f %.1f %.1f %.4f %.4f %.4f %.2f %.1f 0 %.1f %.1f %.1f\n' % (a.shot, p[0], p[1], p[2], r[0], r[1], r[2], s.get('fov', 70), a.seconds + 30.0, hh[0], hh[1], hh[2]))
+    pre = ''.join('! %s\n' % c.strip() for c in a.cmds.split(';') if c.strip())   # e.g. faster eye adaptation: the lapse compresses 1 h into 0.5 s
+    open(tf, 'w').write(pre + '%s %.1f %.1f %.1f %.4f %.4f %.4f %.2f %.1f 0 %.1f %.1f %.1f\n' % (a.shot, p[0], p[1], p[2], r[0], r[1], r[2], s.get('fov', 70), a.seconds + 30.0, hh[0], hh[1], hh[2]))
     u = util(); t0 = time.time()
     cmd = [RUN_GAME, d, '-map', '/Game/Tests/Look/Look_Midtown_tod', '-res', a.res, '-quit', '%.2f' % (START + a.seconds + 0.1), '-name', name, '-movie',
            '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp,
@@ -67,7 +68,7 @@ def main():
     j = sorted(jumps)
     res = {'clip': os.path.basename(out), 'map': '/Game/Tests/Look/Look_Midtown_tod', 'shot': s['id'], 'output': a.res, 'internal': '%s%% of output' % a.sp,
            'hours': [a.h0, (a.h0 + a.hours) % 24.0], 'rate_h_per_s': rate, 'frames': len(keep), 'time_step': 'fixed 1/60 s (-benchmark -fps=60 -dumpmovie)',
-           'weather': a.weather, 'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0), 'bytes': os.path.getsize(out),
+           'weather': a.weather, 'live_cmds': a.cmds, 'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0), 'bytes': os.path.getsize(out),
            'frame_to_frame_mean_y_jump': {'max': round(j[-1], 3) if j else None, 'p99': round(j[int(0.99 * (len(j) - 1))], 3) if j else None, 'median': round(j[len(j) // 2], 3) if j else None},
            'per_frame': stats[::6]}
     json.dump(res, open(os.path.join(rnd, name + '.json'), 'w'), indent=1)

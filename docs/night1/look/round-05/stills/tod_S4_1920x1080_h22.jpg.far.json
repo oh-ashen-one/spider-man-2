@@ -1,0 +1,75 @@
+[
+ {
+  "file": "docs/night1/look/round-05/stills/tod_S4_1920x1080_h22.jpg",
+  "sky_Y": 33.59737014770508,
+  "far_Y": 25.229530334472656,
+  "river_Y": 29.438644409179688,
+  "near_Y": 27.90685272216797,
+  "box_mean_Y": 27.0899715423584,
+  "box_pct204": 0.01794871794871795,
+  "T1_std": {
+   "first_Y_lt_215": 0.0,
+   "first_absdY_gt_4": 100.62319028766997,
+   "first_Y_lt_sky_minus_12": 64.18263117369605
+  },
+  "T1_pass": false,
+  "T2_pass": true,
+  "lines": {
+   "C11 lap/sky": {
+    "value": 5.86,
+    "target": ">= 6.0",
+    "passed": false
+   },
+   "C11 flat8 %": {
+    "value": 48.57,
+    "target": "<= 40",
+    "passed": false
+   },
+   "C12 dBR": {
+    "value": -2.08,
+    "target": "+-10",
+    "passed": true
+   },
+   "C13 far-sky Y": {
+    "value": -8.37,
+    "target": "-35..-25",
+    "passed": false
+   },
+   "C13 far>near": {
+    "value": -2.68,
+    "target": "> 0",
+    "passed": false
+   },
+   "C14 far-river Y": {
+    "value": -4.21,
+    "target": "5..35",
+    "passed": false
+   },
+   "C15 rms far/near": {
+    "value": 0.53,
+    "target": "0.25..0.45",
+    "passed": false
+   }
+  },
+  "silhouette": {
+   "first_Y_lt_215": {
+    "std": 0.0,
+    "mean": 100.0,
+    "p5": 100.0,
+    "p95": 100.0
+   },
+   "first_absdY_gt_4": {
+    "std": 100.62319028766997,
+    "mean": 230.08615384615385,
+    "p5": 134.0,
+    "p95": 420.0
+   },
+   "first_Y_lt_sky_minus_12": {
+    "std": 64.18263117369605,
+    "mean": 189.75692307692307,
+    "p5": 138.0,
+    "p95": 420.0
+   }
+  }
+ }
+]

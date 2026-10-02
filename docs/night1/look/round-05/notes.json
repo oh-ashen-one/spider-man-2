@@ -1,0 +1,1210 @@
+[
+ {
+  "kind": "still",
+  "file": "stills/tod_S1_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S1_avenue_street",
+  "desc": "avenue canyon, street level, looking north up the 5th-Av-like avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   246,
+   2.0,
+   150
+  ],
+  "camera_target_m": [
+   251,
+   16,
+   -300
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S1_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S1_avenue_street",
+  "desc": "avenue canyon, street level, looking north up the 5th-Av-like avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   246,
+   2.0,
+   150
+  ],
+  "camera_target_m": [
+   251,
+   16,
+   -300
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S1_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S1_avenue_street",
+  "desc": "avenue canyon, street level, looking north up the 5th-Av-like avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   246,
+   2.0,
+   150
+  ],
+  "camera_target_m": [
+   251,
+   16,
+   -300
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S1_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S1_avenue_street",
+  "desc": "avenue canyon, street level, looking north up the 5th-Av-like avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   246,
+   2.0,
+   150
+  ],
+  "camera_target_m": [
+   251,
+   16,
+   -300
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S1_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S1_avenue_street",
+  "desc": "avenue canyon, street level, looking north up the 5th-Av-like avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   246,
+   2.0,
+   150
+  ],
+  "camera_target_m": [
+   251,
+   16,
+   -300
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S1_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S1_avenue_street",
+  "desc": "avenue canyon, street level, looking north up the 5th-Av-like avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   246,
+   2.0,
+   150
+  ],
+  "camera_target_m": [
+   251,
+   16,
+   -300
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S2_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S2_avenue_swing",
+  "desc": "mid-height swing view down the avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   243,
+   42,
+   185
+  ],
+  "camera_target_m": [
+   252,
+   18,
+   -350
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S2_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S2_avenue_swing",
+  "desc": "mid-height swing view down the avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   243,
+   42,
+   185
+  ],
+  "camera_target_m": [
+   252,
+   18,
+   -350
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S2_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S2_avenue_swing",
+  "desc": "mid-height swing view down the avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   243,
+   42,
+   185
+  ],
+  "camera_target_m": [
+   252,
+   18,
+   -350
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S2_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S2_avenue_swing",
+  "desc": "mid-height swing view down the avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   243,
+   42,
+   185
+  ],
+  "camera_target_m": [
+   252,
+   18,
+   -350
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S2_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S2_avenue_swing",
+  "desc": "mid-height swing view down the avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   243,
+   42,
+   185
+  ],
+  "camera_target_m": [
+   252,
+   18,
+   -350
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S2_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S2_avenue_swing",
+  "desc": "mid-height swing view down the avenue",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   243,
+   42,
+   185
+  ],
+  "camera_target_m": [
+   252,
+   18,
+   -350
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S3_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S3_rooftop_watertower",
+  "desc": "rooftop with water tower, towers behind",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   166,
+   48.5,
+   -122
+  ],
+  "camera_target_m": [
+   158,
+   51,
+   -150
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S3_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S3_rooftop_watertower",
+  "desc": "rooftop with water tower, towers behind",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   166,
+   48.5,
+   -122
+  ],
+  "camera_target_m": [
+   158,
+   51,
+   -150
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S3_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S3_rooftop_watertower",
+  "desc": "rooftop with water tower, towers behind",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   166,
+   48.5,
+   -122
+  ],
+  "camera_target_m": [
+   158,
+   51,
+   -150
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S3_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S3_rooftop_watertower",
+  "desc": "rooftop with water tower, towers behind",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   166,
+   48.5,
+   -122
+  ],
+  "camera_target_m": [
+   158,
+   51,
+   -150
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S3_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S3_rooftop_watertower",
+  "desc": "rooftop with water tower, towers behind",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   166,
+   48.5,
+   -122
+  ],
+  "camera_target_m": [
+   158,
+   51,
+   -150
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S3_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S3_rooftop_watertower",
+  "desc": "rooftop with water tower, towers behind",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   166,
+   48.5,
+   -122
+  ],
+  "camera_target_m": [
+   158,
+   51,
+   -150
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S4_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S4_perch_skyline",
+  "desc": "high perch on a glass tower top, skyline to the north-west",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   182,
+   306,
+   -92
+  ],
+  "camera_target_m": [
+   -120,
+   150,
+   -470
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S4_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S4_perch_skyline",
+  "desc": "high perch on a glass tower top, skyline to the north-west",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   182,
+   306,
+   -92
+  ],
+  "camera_target_m": [
+   -120,
+   150,
+   -470
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S4_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S4_perch_skyline",
+  "desc": "high perch on a glass tower top, skyline to the north-west",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   182,
+   306,
+   -92
+  ],
+  "camera_target_m": [
+   -120,
+   150,
+   -470
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S4_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S4_perch_skyline",
+  "desc": "high perch on a glass tower top, skyline to the north-west",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   182,
+   306,
+   -92
+  ],
+  "camera_target_m": [
+   -120,
+   150,
+   -470
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S4_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S4_perch_skyline",
+  "desc": "high perch on a glass tower top, skyline to the north-west",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   182,
+   306,
+   -92
+  ],
+  "camera_target_m": [
+   -120,
+   150,
+   -470
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S4_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S4_perch_skyline",
+  "desc": "high perch on a glass tower top, skyline to the north-west",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   182,
+   306,
+   -92
+  ],
+  "camera_target_m": [
+   -120,
+   150,
+   -470
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S5_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S5_timessq_south",
+  "desc": "Times-Square-like bowtie, from the steps looking south at the tower",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   -12,
+   6,
+   -255
+  ],
+  "camera_target_m": [
+   0,
+   48,
+   -40
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S5_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S5_timessq_south",
+  "desc": "Times-Square-like bowtie, from the steps looking south at the tower",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   -12,
+   6,
+   -255
+  ],
+  "camera_target_m": [
+   0,
+   48,
+   -40
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S5_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S5_timessq_south",
+  "desc": "Times-Square-like bowtie, from the steps looking south at the tower",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   -12,
+   6,
+   -255
+  ],
+  "camera_target_m": [
+   0,
+   48,
+   -40
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S5_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S5_timessq_south",
+  "desc": "Times-Square-like bowtie, from the steps looking south at the tower",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   -12,
+   6,
+   -255
+  ],
+  "camera_target_m": [
+   0,
+   48,
+   -40
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S5_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S5_timessq_south",
+  "desc": "Times-Square-like bowtie, from the steps looking south at the tower",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   -12,
+   6,
+   -255
+  ],
+  "camera_target_m": [
+   0,
+   48,
+   -40
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S5_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S5_timessq_south",
+  "desc": "Times-Square-like bowtie, from the steps looking south at the tower",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   -12,
+   6,
+   -255
+  ],
+  "camera_target_m": [
+   0,
+   48,
+   -40
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S6_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S6_timessq_street",
+  "desc": "Times-Square-like bowtie at street level looking north",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   8,
+   1.8,
+   -110
+  ],
+  "camera_target_m": [
+   -4,
+   26,
+   -330
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S6_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S6_timessq_street",
+  "desc": "Times-Square-like bowtie at street level looking north",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   8,
+   1.8,
+   -110
+  ],
+  "camera_target_m": [
+   -4,
+   26,
+   -330
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S6_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S6_timessq_street",
+  "desc": "Times-Square-like bowtie at street level looking north",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   8,
+   1.8,
+   -110
+  ],
+  "camera_target_m": [
+   -4,
+   26,
+   -330
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S6_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S6_timessq_street",
+  "desc": "Times-Square-like bowtie at street level looking north",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   8,
+   1.8,
+   -110
+  ],
+  "camera_target_m": [
+   -4,
+   26,
+   -330
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S6_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S6_timessq_street",
+  "desc": "Times-Square-like bowtie at street level looking north",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   8,
+   1.8,
+   -110
+  ],
+  "camera_target_m": [
+   -4,
+   26,
+   -330
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S6_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S6_timessq_street",
+  "desc": "Times-Square-like bowtie at street level looking north",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   8,
+   1.8,
+   -110
+  ],
+  "camera_target_m": [
+   -4,
+   26,
+   -330
+  ],
+  "fov_deg": 80,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S7_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S7_sunset_crosstown",
+  "desc": "sunset, mid-height looking west down a cross street into the sun",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   300,
+   30,
+   -160
+  ],
+  "camera_target_m": [
+   -300,
+   22,
+   -160
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S7_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S7_sunset_crosstown",
+  "desc": "sunset, mid-height looking west down a cross street into the sun",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   300,
+   30,
+   -160
+  ],
+  "camera_target_m": [
+   -300,
+   22,
+   -160
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S7_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S7_sunset_crosstown",
+  "desc": "sunset, mid-height looking west down a cross street into the sun",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   300,
+   30,
+   -160
+  ],
+  "camera_target_m": [
+   -300,
+   22,
+   -160
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S7_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S7_sunset_crosstown",
+  "desc": "sunset, mid-height looking west down a cross street into the sun",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   300,
+   30,
+   -160
+  ],
+  "camera_target_m": [
+   -300,
+   22,
+   -160
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S7_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S7_sunset_crosstown",
+  "desc": "sunset, mid-height looking west down a cross street into the sun",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   300,
+   30,
+   -160
+  ],
+  "camera_target_m": [
+   -300,
+   22,
+   -160
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S7_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S7_sunset_crosstown",
+  "desc": "sunset, mid-height looking west down a cross street into the sun",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   300,
+   30,
+   -160
+  ],
+  "camera_target_m": [
+   -300,
+   22,
+   -160
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S8_1920x1080_h13.jpg",
+  "preset": "tod h13",
+  "view": "S8_aerial_midtown",
+  "desc": "high swing / aerial over midtown toward the park",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   420,
+   160,
+   220
+  ],
+  "camera_target_m": [
+   0,
+   20,
+   -320
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S8_1920x1080_h13w1.jpg",
+  "preset": "tod h13w1",
+  "view": "S8_aerial_midtown",
+  "desc": "high swing / aerial over midtown toward the park",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   420,
+   160,
+   220
+  ],
+  "camera_target_m": [
+   0,
+   20,
+   -320
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S8_1920x1080_h18.4.jpg",
+  "preset": "tod h18.4",
+  "view": "S8_aerial_midtown",
+  "desc": "high swing / aerial over midtown toward the park",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   420,
+   160,
+   220
+  ],
+  "camera_target_m": [
+   0,
+   20,
+   -320
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S8_1920x1080_h19.8.jpg",
+  "preset": "tod h19.8",
+  "view": "S8_aerial_midtown",
+  "desc": "high swing / aerial over midtown toward the park",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   420,
+   160,
+   220
+  ],
+  "camera_target_m": [
+   0,
+   20,
+   -320
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S8_1920x1080_h22.jpg",
+  "preset": "tod h22",
+  "view": "S8_aerial_midtown",
+  "desc": "high swing / aerial over midtown toward the park",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   420,
+   160,
+   220
+  ],
+  "camera_target_m": [
+   0,
+   20,
+   -320
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "still",
+  "file": "stills/tod_S8_1920x1080_h7.6.jpg",
+  "preset": "tod h7.6",
+  "view": "S8_aerial_midtown",
+  "desc": "high swing / aerial over midtown toward the park",
+  "output": "1920x1080",
+  "internal": "100% of output",
+  "camera_pos_m": [
+   420,
+   160,
+   220
+  ],
+  "camera_target_m": [
+   0,
+   20,
+   -320
+  ],
+  "fov_deg": 75,
+  "game_time_s": "tour: 4 s settle per pose (first pose 10 s, +2 s at each new hour), >= 90 frames",
+  "gpu_util_before_pct": 9,
+  "wall_s": null,
+  "method": "shot tour, ONE session of Look_Midtown_tod, wh.TimeOfDay set before each hour"
+ },
+ {
+  "kind": "clip",
+  "file": "swing_tod_18h4.mp4",
+  "preset": "tod@18.4",
+  "map": "/Game/Tests/Look/Look_Midtown_tod",
+  "output": "1920x1080 60 fps H.264",
+  "internal": "100% of output (1920x1080)",
+  "frames": 719,
+  "seconds": 11.98,
+  "bytes": 14227841,
+  "script": "tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript, 0.8 s pre-roll trimmed)",
+  "time_step": "fixed 1/60 s (-benchmark -fps=60 -dumpmovie)",
+  "gpu_util_before_pct": 7,
+  "wall_s": 217,
+  "hero_bbox_mean_luma": {
+   "frames_measured": 0,
+   "frames_without_hero_pixels": 718,
+   "bbox_mean_luma_min": 0.0,
+   "bbox_mean_luma_p5": 0.0,
+   "bbox_mean_luma_mean": 0.0,
+   "bbox_mean_luma_max": 0.0,
+   "threshold": 40.0,
+   "frames_below_threshold": 0,
+   "first_frames_below": [],
+   "p10_of_bbox_mean": null,
+   "p90_of_bbox_mean": null
+  }
+ },
+ {
+  "kind": "clip",
+  "file": "swing_tod_22.mp4",
+  "preset": "tod@22",
+  "map": "/Game/Tests/Look/Look_Midtown_tod",
+  "output": "1920x1080 60 fps H.264",
+  "internal": "100% of output (1920x1080)",
+  "frames": 719,
+  "seconds": 11.98,
+  "bytes": 14312214,
+  "script": "tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript, 0.8 s pre-roll trimmed)",
+  "time_step": "fixed 1/60 s (-benchmark -fps=60 -dumpmovie)",
+  "gpu_util_before_pct": 0,
+  "wall_s": 218,
+  "hero_bbox_mean_luma": {
+   "frames_measured": 0,
+   "frames_without_hero_pixels": 718,
+   "bbox_mean_luma_min": 0.0,
+   "bbox_mean_luma_p5": 0.0,
+   "bbox_mean_luma_mean": 0.0,
+   "bbox_mean_luma_max": 0.0,
+   "threshold": 40.0,
+   "frames_below_threshold": 0,
+   "first_frames_below": [],
+   "p10_of_bbox_mean": null,
+   "p90_of_bbox_mean": null
+  }
+ }
+]
