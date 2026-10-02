@@ -1,11 +1,71 @@
-# P2 Characters: handoff (round 14, first-pass piece G: hero skins)
+# P2 Characters: handoff (round 15, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 14 author: Sonnet 5.5 (2026-10-02 from 04:00). Everything described here is committed and pushed (`origin/night1/characters`);
-`/Content` is NOT committed (script-generated).
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 15 author: Sonnet 5.5 (2026-10-02 from 06:20). Everything described here is committed and pushed (`origin/night1/characters`, which also carries the merge of `origin/Opus-5.5-Loop-Night-1` at 87dbd43 = P3 r22);
+`/Content` is NOT committed (script-generated). No engine of mine is running; the C++ editor module was rebuilt after the merge (`Scripts/build_editor.sh`, 17 s).
 
-## STATE AT THE END OF ROUND 14 (read this first)
+## STATE AT THE END OF ROUND 15 (read this first)
+
+Round target (director, after the r14 critic [hero 6, anim 5, enemies 5, civilians 5, IQ 5; IP PASS]): merge P3 r22's ground blend and re-shoot the pawn movie; R1 the lens RIM >= 1 % of the head height behind the brow on all 8 4K headside stills; Q5 the accent pipe joins the Ash sash end; every net / groove line ends on a seam cord; no texture stretch under the brow; Q6 the Verdant armpit piping unpinched.
+Gate: no axis below r14 [6,5,5,5,5], enemy pack / crowd unchanged, swatch sheet regenerated. **The OWNER must approve the suits before any merge: `docs/night1/characters/round-15/SWATCH_SHEET.jpg`.**
+No blind critic verdict yet: the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r15/pack` (42 pairs, key `pack.key.json` outside it, `round-15/critic_pairs.json`). Resolution / hold / file table / honest problem list: `round-15/CAPTURES.md`; every number: `round-15/SPEC_CHECK.md`.
+
+| line | r14 -> r15 (real game, 4K stills unless noted; one hold 2026-10-02 09:06 - 09:33, 0 crashes) | verdict |
+|---|---|---|
+| **R1** rim behind the brow (gate >= 1 % HH = 16 px) | all 8 proud / < 11 px behind -> **34 - 49 px = 2.3 - 3.3 %** | **PASS 8 / 8** |
+| **Q5** Ash pipe joins the sash end (<= 5 px) | p90 gap 33 -> **2 px** | **PASS** |
+| net / groove ends on cords (the paint itself) | open-fabric dead-end blobs 434 -> **83** (torso net 105 -> **1**); limbs not finished | torso PASS, limbs open |
+| **Q7** brow trim sharpness | smeared (4096 colour, 0.7 - 1.0 mm / texel) -> sharp (8192 colour) by eye on every crop I read; edge-rise r15 / r14 0.59 - 0.73 on four suits, ~1.0 on three, **1.55 on Ash** (noisy instrument) | by eye PASS |
+| **Q6** Verdant armpit cord | broken (13 gap columns, min 0) -> **0.46** (no gap, ends on the cap edge) | **FAIL by my own 0.5 gate** |
+| pawn luma pops 0 - 1.5 s / `anim_weight` step | 1 pop (9.5 at 0.133 s) -> **0 pops** (max 5.2); `anim_weight` is the total weight (always 1) -> vacuous | PASS / vacuous |
+| G1 / G2 / G3 (3 views) / H1 - H3 / H5 / H6 | 8 / 8 -> **8 / 8** (G1 7.8 - 8.0 %, G2 6.0 - 7.0 %) | PASS |
+| H4 (my own: ONE closed raised rim >= 6 px on >= 90 % of the angles) | 2 / 8 -> **2 / 8** (Glacier, Sage) | unchanged FAIL |
+| IP guard / seams / OCR / swap latency / regression | PASS (min palette distance 38.4 -> **49.6**), 0 OCR hits, 7 / 7 presses 33 ms, REGRESSION PASS | PASS |
+| CH1 / CH6 / CH7 / CH2 | 0.542 - 0.544 / 3.54 Hz / 32.6 deg / **0.373 (gate 0.39, edge FAIL; the r08 clip reads 0.372)** | CH2 edge FAIL, not this round |
+| enemy pack lineup / fight / crowd | unchanged (wall luma 139, fight script identical to r10) | unchanged |
+
+### What changed (all committed; details in `round-15/CAPTURES.md`)
+- **THE KEY LESSON: the head is POSED in the stills.** The idle clip pitches it back ~6 - 7 deg and the profile camera sits ~86 deg off the face axis. r14's mesh passed the rest-pose test (rim behind the brow by 1.4 % HH) and failed in the real frame (rim 18 px proud): the tilt costs ~34 px. A rest-pose CPU model with the fitted pose (`$P2_SCRATCH/r15/cpu_rim2.py`: persp_render of the head GLB with a pitch about (0, 1.60, -0.02) and yaw, `cpu_fit.py`: silhouette fit, rms 2.9 px;
+  in `tools/ue_char/suits/dev_r15/`, README there) predicted -39 px (the real stills: 34 - 49 px). Use it before any head change: it costs 2 s, a hold costs ~2 h of queue.
+- Head: brow 13.5 mm, socket -8.8, inner corner -7.5, lenses 43.5 mm from the midline, rim crest 2.6 mm (`hero_head_r14.py` PARAMS, `hero_lens_r14.py`; the paint's baked face tone reads the same PARAMS: regenerate the maps after any change).
+- Maps: base colour 8192 px for all 8 suits (`gen_suits.py --n 4096 --n-color 8192`: colour 8192, normal / ORM 4096; Tessera 8192 x 3). `build_characters.py`: `P2_FIRST_EXTRA` (the chain sets 9): the first still waits 12 s so the 24 textures compile.
+- `design.py`: the torso net is a yoke panel (hard edges, seam cords top / bottom / sides, no net on the shoulder top), the limb nets end on bands / rings / the hip-wrap piping, the Ash-style sash-end pipe lies on the end line (`sash.pipe_join`), the shoulder cap ends 7.5 cm from the arm axis on the torso side (`cap.r_in`: no cord over the armpit crease); `terminate` / `pipe_join` / `cap.r_in` switch back to r14 (`net_end_check_r15.py --r14`).
+- Pawn: MY `pawn_run.json` spawned the pawn 25 cm in the air since r11 (the "pop at frame 7 - 8" was the landing + airRise clip, not P3's blend); it spawns on the ground now.
+- Instruments: `rim_depth_r15.py`, `iq_check_r15.py` (Q5 / Q6 / Q7), `net_end_check_r15.py` (design-level dead ends: design.paint(..., dbg=...) hands out the net zones and the cord mask), `pawn_check_r15.py`, `chain_r15.sh`, `hold_r15.sh`, `post_r15.sh`, `spec_check_r15.py`, `make_pairs_r15.py`, `prep_hero_r15.sh`, `test_regression.py` EXPECT_R15.
+
+### What to know before touching anything
+- Hold inputs: the engine imports `$P2_SCRATCH/ueimport/SK_Hero.glb` AS IT STANDS (the chain's build does NOT run the 'prep' step): rerun `tools/ue_char/suits/prep_hero_r15.sh` after any change to the head / lens / shoulder / weights scripts, regenerate ALL maps after any `design.py` / `suits.json` / PARAMS change
+  (`gen_suits.py --n 4096 --n-color 8192 --only <id> --out <scratch dir>` per suit in parallel, ~3 min each; `hero_suit_r8.py --n 8192 --out <scratch dir>` for Tessera; then copy into `art/night1/characters/hero/{suits,tex}` (git-ignored); the 8 maps take 4 min on 8 cores), rerun `test_regression.py` (update EXPECT_R15 deliberately).
+  A queued hold is gated by `<chain dir>/READY_R15` (the launcher waits 4 min for it, then releases the slot); never edit the snapshot scripts `.chain_r15_run.sh` / `.hold_r15_run.sh` while a hold uses them. Files read by the build (maps, scripts, GLB) can still change while you wait in the queue, as long as they are consistent when your turn comes: I changed the sculpt twice that way.
+- This round's queue wait was 6460 s (four other agents' holds, one of 100 min): queue EARLY, with READY in place, and keep working.
+- The mesh stretch of the sculpt under the brow is 1.34 (p90) / 1.45 (max) in area root; the 8192 colour hides it. The pose / camera of the stills moves the hero ~100 - 150 px sideways between rounds: never test a fixed pixel box (the critic's Ash box 1490-1540 x 760-1150 contains no accent pixel in r15 because the pipe moved to x 1655 - 1672); the r15 instruments search for the feature.
+- LESSONS: (1) the real posed frame, not the rest pose, decides silhouette tests; (2) a thin cord (1 mm = 4 px at 4800 px/m) is destroyed by a 3 x 3 opening: do not open masks of cords; (3) a rest-pose island seam in the browser mesh shifts cords by a few mm (yoke seam jog at the armpit); (4) `sleep N; cmd` chains are blocked by the harness: use `until`-loops;
+  (5) look at the frames before the numbers (the Sage rim failure was a segmentation overreach on a pale hood: an opening + a 34 px ring fixed it, the overlay showed it at once).
+
+### Next steps (priority order)
+1. The owner's IP / suit sign-off on `round-15/SWATCH_SHEET.jpg` (the yoke seams across the chest and back are a design change on every suit); no merge before it. 2. Read the round-15 critic verdict (`critic/round-15-CRITIC.md` once written) and fix its biggest gap.
+Candidates I saw myself: (a) Q6: `cap.r_in` 6.5 cm so the ring cord ends on the arm, or smooth the armpit crease in `hero_shoulder_r14.py`; the yoke bottom seam jog at the armpit (x ~1300, y ~1320 of the Verdant chest still); (b) the limb net ends (83 blobs: left upper arm 33, thighs 40): the skin-weight ramp and island seams, use `net_end_check_r15.py` + the per-layer overlays (`tools/ue_char/suits/dev_r15/dbg_layer.py`),
+(c) H4: a dark non-metallic rim with a bright inner lip, (d) the cheek seams read as tear tracks from the eye frame (critic hero axis): end them on a jaw cord or move their start away from the lens, (e) Cinder's faceted shoulder (unchanged since r13), (f) CH2 chase framing 0.373: `Char_Hero` shot 6 camera ~5 % closer, (g) the enemy axis / the crowd cut at 7.48 s (paused P2 work).
+3. P3 items: the pawn's run cadence (4.0 steps/s) belongs to the traversal brief (`round-15/SPEC_CHECK.md`, unchanged: clip switches now A_Hero_idle -> jog @0.90 s -> run @1.00 s).
+
+### Commands (round 15)
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters UE_WAIT_SKIP=1
+bash tools/ue_char/suits/prep_hero_r15.sh                                                    # hero GLB (CPU, ~10 s) + mesh profile numbers
+# maps: 7 x  python3 tools/ue_char/suits/gen_suits.py --n 4096 --n-color 8192 --only <id> --out $P2_SCRATCH/r15/tex_new/suits   +   python3 tools/ue_char/hero_suit_r8.py --n 8192 --out $P2_SCRATCH/r15/tex_new/hero   (in parallel, nohup, ~4 min), then cp into art/night1/characters/hero/{suits,tex}
+python3 tools/ue_char/suits/test_regression.py                                              # r8 legacy texel for texel + r15 default hashes
+python3 tools/ue_char/suits/net_end_check_r15.py --n 2048 [--r14] [--png DIR]               # dead net ends of the paint (CPU, ~2 min)
+OUT=$P2_SCRATCH/r15/chainN; mkdir -p $OUT; cp tools/ue_char/suits/chain_r15.sh tools/ue_char/suits/.chain_r15_run.sh; cp tools/ue_char/suits/hold_r15.sh tools/ue_char/suits/.hold_r15_run.sh; touch $OUT/READY_R15
+nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters --timeout 28800 -- bash tools/ue_char/suits/.hold_r15_run.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &     # STEPS="build stills" for a short re-shoot (1612 s for everything)
+bash tools/ue_char/suits/post_r15.sh $OUT/run $OUT/run                                       # CPU ~10 min: fills docs/night1/characters/round-15 + evidence (then re-run iq_check_r15.py if it fails on a moved feature)
+python3 tools/ue_char/suits/spec_check_r15.py docs/night1/characters/round-15 > docs/night1/characters/round-15/SPEC_CHECK.md
+STILLS_4K=$OUT/run/stills LINEUP34=1 python3 tools/ue_char/suits/make_pairs_r15.py docs/night1/characters/round-15 /Users/midir/sm2-n1/_scratch/critic-P2-r15/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r15/pack /Users/midir/sm2-n1/_scratch/critic-P2-r15/pairs.json
+```
+Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`.
+
+## Round 14 state (history)
 
 Round target (director, after the r13 critic [hero 6, anim 5, enemies 5, civilians 5, IQ 5; IP PASS]): FINISH the shared mask sculpt on all 8 suits - G1 headside recess >= 1.5 % of the head height, G2 brow >= 1 % in front of the lens top (lens + rim seated in an eye socket under the brow ridge, rim one closed raised band >= 6 px, lens >= 1.6x r12),
 G3 Tessera AND Cinder 4K front stills: a luma line through the cheek bones with >= 3 extrema, swing >= 20 - plus the two-round-old IQ repeats (pipe every sash end, no armpit stitch zigzag, no torn Sage trapezius groove, no faceted Cinder shoulders). Gate: no axis below r13 [6,5,5,5,5]; enemy pack / crowd unchanged; the pawn's 4.0 steps/s and the frame 7-8 start pop are P3's.

@@ -22,7 +22,7 @@ sys.path.insert(0, HERE)
 import head_check_r13 as H13  # noqa: E402
 Image.MAX_IMAGE_PIXELS = None
 SUITS = H13.SUITS
-RIM_MAX = 42          # px: the rim band is <= 3.4 mm * 6650 px/m = 23 px wide face-on; the profile view foreshortens it, a pale glint can reach further
+RIM_MAX = 34          # px: the rim band is <= 3.4 mm * 6650 px/m = 23 px wide face-on; the profile view foreshortens it, a pale glint can reach further
 GATE_PCT = 1.0        # % of the head height the rim must lie behind the brow
 
 
@@ -72,7 +72,7 @@ def measure(path, suit, dump=None, cam_dist=1.25, aim_y=1.665, fov=26.0):
     cand = ring & ((dmax >= 22.0) | (np.abs(Lm - fl) >= 18.0)) & ~glasslike
     if fsat > 0.30: cand &= sat < 0.5 * fsat + 0.12            # a saturated fabric: the metal rim is the grey part
     # the fabric's own relief / tone variation inside the ring: keep the band connected to the glass edge within 4 px
-    cand = ndi.binary_opening(cand, iterations=1)
+    cand = ndi.binary_opening(cand, structure=np.ones((3, 3)), iterations=3)      # the rim is a band >= 7 px wide: shaded fabric specks and glints thinner than that are not rim
     lab2, n2 = ndi.label(cand)
     keep = np.zeros_like(cand)
     if n2:

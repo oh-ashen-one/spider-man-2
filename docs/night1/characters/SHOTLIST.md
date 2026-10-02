@@ -3,6 +3,8 @@
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 > Scope since 2026-10-01 (director PLAN-firstpass.md, piece G): the HERO only; thugs / fight / crowd are paused. The older fight / crowd / lineup shots are in `HANDOFF.md` (rounds 05 - 10).
 
+Round 15: the same shots, files in `round-15/`; the base colours are 8192 px, so the first still waits 12 s of stage time (`P2_FIRST_EXTRA=9`, `first_extra` in `skins_shots.json`), and the pawn (`pawn_run.json`) spawns on the ground (z 0.95); the pawn movie is trimmed by 0.1 s (camera-binding frames).
+
 Every shot below is the REAL game (UE 5.8.3, `-game`, offscreen) through `gpu_slot.sh`, driven by `tools/ue_char/suits/chain_r11.sh`. Map `Char_Skins` = plain floor, key sun + four fills on the hero only;
 `Char_SkinsPlay` = the same stage with the PLAYABLE pawn (`WebTravGameMode`, `AWebTravCharacter` wearing `/Game/Characters/Hero/SK_Hero` and the P2 hero clips). The suit is switched with the game's own code
 (`UWHHeroSuitSubsystem`: director shots call `SetSuit` = `wh.Suit n`; the pawn movie injects real T key presses into the player controller).

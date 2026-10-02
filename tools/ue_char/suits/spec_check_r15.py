@@ -33,7 +33,9 @@ if q5.get('r15'):
     R15.append('| Q5 Ash sash-end accent pipe (box 1490-1540 x 760-1150) | pixels between the pipe and the DEEP border cord (p90 / max) | %s / %s px | **%s / %s px** (pipe %s px wide, x %s) | %s |' % (a.get('gap_to_border_p90_px'), a.get('gap_to_border_max_px'), b.get('gap_to_border_p90_px'), b.get('gap_to_border_max_px'), b.get('pipe_width_px'), b.get('pipe_x'), 'PASS' if b.get('Q5_pipe_joins_end_le_5px') else 'FAIL'))
 if q6.get('r15'):
     a, b = q6.get('r14') or {}, q6['r15']
-    R15.append('| Q6 Verdant armpit piping (box 1160-1270 x 1150-1270) | cord thickness min / median, columns in the box without the cord | %s (%s cols) | **%s** (%s cols; min %s px, median %s px) | %s |' % (a.get('pinch_ratio'), a.get('columns_in_box_without_cord'), b.get('pinch_ratio'), b.get('columns_in_box_without_cord'), b.get('min_thickness_in_box_px'), b.get('median_thickness_px'), 'PASS' if b.get('Q6_unpinched_ge_0p5') else 'FAIL'))
+    R15.append('| Q6 Verdant armpit piping (box 1160-1270 x 1150-1270) | cord thickness min / median along its own run (1 = even, 0 = a gap); gap columns in the run | %s (min %s px, median %s px; %s gap columns) | **%s** (min %s px, median %s px; %s gap columns; the cord now ends at the shoulder cap edge, last column x %s) | %s |' % (
+        a.get('pinch_ratio'), a.get('min_thickness_px'), a.get('median_thickness_px'), a.get('gap_columns_in_run'), b.get('pinch_ratio'), b.get('min_thickness_px'), b.get('median_thickness_px'), b.get('gap_columns_in_run'), b.get('last_col'),
+        'PASS' if b.get('Q6_unpinched_ge_0p5') else 'FAIL by my own 0.5 gate (no gap any more; the cord thins toward the crease where it ends)'))
 for sid in SUITS:
     r = q7.get(sid) or {}
     if r.get('r15') and r['r15'].get('brow'):

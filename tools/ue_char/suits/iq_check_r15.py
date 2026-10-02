@@ -29,24 +29,23 @@ Image.MAX_IMAGE_PIXELS = None
 luma, sat = Q14.luma, Q14.sat
 
 
-def q5_pipe(im, accent=(168, 224, 90), box=(1400, 650, 1700, 1250)):
+def q5_pipe(im, accent=(168, 224, 90), box=(1300, 600, 2300, 1300)):       # wide box: the hero's x in the chest framing moves by ~100 px with the idle pose (r14: pipe at x 1495 - 1534, r15 1650)
     x0, y0, x1, y1 = box
     d = np.linalg.norm(im - np.array(accent, np.float32), axis=2)
     m = (d < 70) & (luma(im) > 90)
     m[:, :x0] = False; m[:, x1:] = False; m[:y0] = False; m[y1:] = False
-    m = ndi.binary_opening(m, iterations=1)
-    lab, n = ndi.label(m)
+    lab, n = ndi.label(m)      # no opening: the pipe is 1 mm = 4 - 5 px wide
     if n == 0: return dict(ok=False, why='no accent pixels')
     comps = []
     for i in range(1, n + 1):
         ys, xs = np.nonzero(lab == i)
         if len(ys) < 150: continue
         comps.append((i, len(ys), xs.min(), xs.max(), ys.min(), ys.max()))
-    if len(comps) < 2: return dict(ok=False, why='components %d' % len(comps), comps=[c[1:] for c in comps])
+    if len(comps) < 2: return dict(ok=False, why='components %d' % len(comps), comps=[[int(v) for v in c[1:]] for c in comps])
     panel = max(comps, key=lambda c: c[1])
     # the pipe: the most elongated of the other components left of the panel (height >> width)
     cand = [c for c in comps if c[0] != panel[0] and c[3] < panel[3] and (c[5] - c[4]) > 4 * max(c[3] - c[2], 1)]
-    if not cand: return dict(ok=False, why='no pipe component', comps=[c[1:] for c in comps])
+    if not cand: return dict(ok=False, why='no pipe component', comps=[[int(v) for v in c[1:]] for c in comps])
     pipe = max(cand, key=lambda c: c[5] - c[4])
     pm = lab == pipe[0]; Lm = luma(im)
     gaps = []; offs = []
@@ -60,7 +59,7 @@ def q5_pipe(im, accent=(168, 224, 90), box=(1400, 650, 1700, 1250)):
     ys, xs = np.nonzero(pm)
     return dict(ok=True, pipe_rows=[int(pipe[4]), int(pipe[5])], pipe_x=[int(pipe[2]), int(pipe[3])], pipe_width_px=round(float(np.median([np.ptp(np.nonzero(pm[r])[0]) + 1 for r in range(pipe[4] + 6, pipe[5] - 5) if pm[r].any()])), 1),
                 panel_x_min=int(panel[2]), gap_to_border_median_px=round(float(np.median(gaps)), 1), gap_to_border_p90_px=round(float(np.percentile(gaps, 90)), 1), gap_to_border_max_px=int(gaps.max()),
-                critic_box_accent_pixels=int(m[760:1150, 1490:1540].sum()),
+                critic_box_accent_pixels=int(m[760:1150, 1490:1540].sum()), pipe_center_x=int((pipe[2] + pipe[3]) // 2),
                 Q5_pipe_joins_end_le_5px=bool(np.percentile(gaps, 90) <= 5.0))
 
 
