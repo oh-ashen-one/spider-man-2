@@ -33,20 +33,33 @@ Prep order (CPU, `$P2_SCRATCH/ueimport/SK_Hero.glb`): `prep_glbs.py` -> `hero_he
 - CPU soft-render numbers (not evidence) on the final GLB: nose bump 8.7 % of the head height, lens 1.65x model width (63 vs 38.5 mm).
 - Grips: the pipe / bat sit across a loose fist (tool `tools/ue_char/fight/weapon_clip_check.py`, r10 fit unchanged, CPU previews in the round dir if captured); the lineup stands in the hero idle (the guard idle holds the weapon vertically in front of the face).
 
-### The capture chain (ONE GPU-lock hold, ~15 - 25 min) and what to do next
-Queued in the GPU lock at 2026-10-02 00:00 (wrapper PID in `$P2_SCRATCH/r13/chain_wrapper.pid`, log `$P2_SCRATCH/r13/chainA/gpu_wrapper.log`): the lock's holder `look hold1.sh` had been
-running > 3 h (not mine), 3 jobs ahead. If the wrapper is still alive, LEAVE IT (never start a second engine, never kill it unless the owner asks); the chain then runs by itself (build -> 4K stills of 8 suits x 6 views -> lineup x2 -> pawn swap -> orbit -> hero / chase / fight / crowd movies).
-When `$P2_SCRATCH/r13/chainA/chain.log` ends with `chain done`:
+### What the first hold (2026-10-02 00:45 - 01:11, `$P2_SCRATCH/r13/chainA`, 1530 s, 0 crashes) showed (measured on its frames, `head_check.json`)
+GOOD: the heads are sculpted in the real game on all 8 suits (brow, nose, cheek bones, chin, big glossy lenses in a raised metal rim, raised face-seam cord): nose bump 8.6 - 10.8 % of the head height (gate 2 %),
+lens width 1.75 - 1.9x r12 (near lens 1.9 - 1.96x), seam lit / shadow pair 49 - 147 luma (gate 20), no black run. 7 enemies in the lineup, wall luma 141 (r04 / r12: 208).
+BAD (all found by looking at the frames, then fixed on CPU, nothing of it is in the committed round dir):
+1. my lineup `-0.6 EV` block landed in `new_stage()` too: the Char_Hero / Char_Fight / Char_Crowd clips were 0.6 EV darker than r10 / r12 (CH2 / CH7 instruments then picked the sky up). Fixed (only the lineup keeps its bias).
+2. the first still (Tessera front, 2.2 s) was a white mannequin (the 8192 px maps still streaming): the first still is now taken at 3.7 s.
+3. the stills run's `-quit` counts from process start (~35 s of start-up): the last 7 stills were lost (re-shot inside the same hold by appending a block to the running snapshot; the committed chain now has +40 s).
+4. one silver rim for every suit lost the rim on mid / pale masks (H4 closed >= 90 % of the angles: 3 of 8 suits) and it is not "dark": a per-suit rim (C++ `FWHHeroSuitEntry::FrameMaterial`, compiled; build step 'skins': silver-gunmetal base 0.22 on near-black hoods, dark graphite 0.06 on the others).
+Gate status of that run (strict, my own definitions): H2 / H3 / H5 8 of 8, H1 6 of 8 (Cinder, Saffron: a near-black / seam-dominated profile), H4 3 of 8, H6 7 of 8 (Cinder far lens against the outline).
+
+### The SECOND hold (queued, runs by itself): the whole chain again
+Queued at 2026-10-02 01:15 (wrapper PID in `$P2_SCRATCH/r13/reshoot_wrapper.pid`, log `$P2_SCRATCH/r13/chainA/gpu_wrapper2.log`; 6 jobs of other agents ahead, one `look` hold had run > 3 h). The wrapper runs
+`tools/ue_char/suits/.reshoot_r13_run.sh` (snapshot of `reshoot_r13.sh`), which needs the marker `$P2_SCRATCH/r13/chainA/READY_V2` (present) and then execs the snapshot `.chain_r13b_run.sh` of `chain_r13.sh` with
+`STEPS="build stills lineup pawn orbit hero chase fight crowd" EV=10.0` into `$P2_SCRATCH/r13/chainA/v2` (~1450 s, limit 2400 s). If the wrapper is alive, LEAVE IT (never start a second engine, never kill it unless the owner asks).
+When `$P2_SCRATCH/r13/chainA/v2/chain.log` ends with `chain done`:
 ```
 export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters
-OUT=$P2_SCRATCH/r13/chainA
-bash tools/ue_char/suits/post_r13.sh $OUT $OUT                      # CPU, ~6 min: fills docs/night1/characters/round-13 (stills, sheet, clips, evidence) + head_check.json
+OUT=$P2_SCRATCH/r13/chainA/v2
+bash tools/ue_char/suits/post_r13.sh $OUT $OUT                      # CPU, ~8 min: fills docs/night1/characters/round-13 (stills, sheet, clips, evidence) + head_check.json
 python3 tools/ue_char/suits/spec_check_r13.py docs/night1/characters/round-13 > docs/night1/characters/round-13/SPEC_CHECK.md
 STILLS_4K=$OUT/stills python3 tools/ue_char/suits/make_pairs_r13.py docs/night1/characters/round-13 /Users/midir/sm2-n1/_scratch/critic-P2-r13/pairs.json
 python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r13/pack /Users/midir/sm2-n1/_scratch/critic-P2-r13/pairs.json
 ```
-then LOOK at every head still (the gates are numbers, the critic is blind and visual), write `round-13/CAPTURES.md`, rewrite this file, commit, push. If a gate fails, the first levers are: `hero_head_r13.py` `field_mm` amplitudes, `hero_lens_r13.py` `A_HALF` / `BEZEL`, the `MI_Hero_LensFrame` parameters, `design.py` `rough_hood` / hood colour / `seam`; a new hold is needed only for engine-side content (maps are rebuilt on CPU, the GLB in seconds).
-
+then LOOK at every head still and clip frame (the gates are numbers, the critic is blind and visual), check the `skins: rim <id> ... silver|graphite` lines of `characters_build.log`, write `round-13/CAPTURES.md`, rewrite this file, commit, push.
+Round-13 media of the FIRST hold are in `$P2_SCRATCH/r13/chainA` only (not committed: wrong exposure / white front); `docs/night1/characters/round-13/` holds nothing of them once post_r13.sh of the second hold has run.
+If the wrapper is gone (the lock timed out: `--timeout 28800` = 8 h) re-queue the same way (`gpu_slot.sh capture --label characters --timeout 28800 -- bash tools/ue_char/suits/.reshoot_r13_run.sh $P2_SCRATCH/r13/chainA`).
+If a gate still fails, the levers are: `hero_head_r13.py` `field_mm` amplitudes, `hero_lens_r13.py` `A_HALF` / `BEZEL`, the rim colours in `build_characters.py` ('skins'), `design.py` `rough_hood` / hood colour / `seam`; the GLB and the maps are rebuilt on CPU (seconds / 8 min), engine content needs a hold.
 
 ## Round 12 and earlier (history)
 

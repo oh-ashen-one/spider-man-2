@@ -189,8 +189,13 @@ def nose_profiles(im, masks, sil, rim_gap=10):
     hs = sm(hrow, 7)
     ph, _ = find_peaks(hs, prominence=20.0); qh, _ = find_peaks(-hs, prominence=20.0)
     swing_v = float(vs.max() - vs.min())
+    # info (not gated): the same profile on the nose FLANKS (midline +- 45 px, mean of both sides, from the lens bottom to the nose tip + 250 px): the midline column lies on the raised
+    # face-seam cord (a constant colour line), the flanks show the modelling of the nose bridge and the nostril shadows
+    ytop2 = int(max(ya1, yb1)) - 10; ybot2 = int(max(ya1, yb1)) + 260
+    fcol = 0.5 * (L[ytop2:ybot2, xc - 48:xc - 41].mean(1) + L[ytop2:ybot2, xc + 42:xc + 49].mean(1)); fvs = sm(fcol, 11)
+    pf, _ = find_peaks(fvs, prominence=20.0); qf, _ = find_peaks(-fvs, prominence=20.0)
     return dict(midline_x=xc, y_eye=y_eye, v_extrema_prom20=int(nv), v_swing=round(swing_v, 1), v_extrema_prom6=int(len(vi)),
-                h_extrema_prom20=int(len(ph) + len(qh)), h_swing=round(float(hs.max() - hs.min()), 1), v_profile=[round(float(a), 1) for a in vs[::12]])
+                h_extrema_prom20=int(len(ph) + len(qh)), h_swing=round(float(hs.max() - hs.min()), 1), flank_extrema_prom20=int(len(pf) + len(qf)), flank_swing=round(float(fvs.max() - fvs.min()), 1), v_profile=[round(float(a), 1) for a in vs[::12]])
 
 
 def seam_check(im, masks, sil):
