@@ -33,7 +33,7 @@ made them QueryOnly), `56816 WHBox cubes de-collided`.
 | sheds / shed tops / subway | 46 / 46 / 16 solid, ctf 3, QueryOnly |
 | WHBox cubes with collision after init | 0 of 56,816 (index only) |
 | far-off rows inside M1 (first build) | **6 centres inside / 9 overlapping: FAIL** -> bridges, seawall, Roosevelt Island land, far-shore tiles |
-| after `split_giants.py` (r1 / r4 game logs) | far-off components 93 -> **72**, visible solids 490 -> **642** (bridge + seawall pieces are solids now). Remaining far-off overlapping the M1 box: `SM_far*` scenery by name (far shore `farCity*` tiles from x 882 m, flat `farLand_*`); the per-row M1 count on the final build comes from the A/B run's dump (`prims_dump_ism_solid.csv.gz`, see below) |
+| after `split_giants.py` (r1 / r4 game logs; final dump `dump_check_final.json` from the A/B run) | far-off components 93 -> **72** (default mode), visible solids 490 -> **642**: bridges + seawalls are solids now. Final dump: far-off rows with centre inside M1 **2: FAIL by 2 rows, both scenery by design**: `SM_farLand_roos` (flat Roosevelt Island land strip, z 1 m, far by name) and `SM_hinterland` (the 34 km horizon ISM, centre falls inside; `excluded-ism` in default mode). Overlapping the M1 box: + far shore `SM_farCity*__t0_-1` (from x 882 m), `SM_farLand_east`. No drawn M1 building / bridge / seawall is de-collided |
 
 ## Test 2 — critic test 1 on r3 take 2 (x -300 / 40 m / 26 m/s, swing held; `route_check_r3.json`)
 r3 was captured on the first r02 build (before the bridge split; nothing near y 640 m changed).
@@ -52,7 +52,7 @@ re-press -> attach delays with the script's 0.3 s re-press gap.
 | route | r01 overlap frames (kind) | **r02** |
 |---|---|---|
 | r1 north avenue | 0 | **0** |
-| r2 south avenue | 46 (parapet 38, coping 48) | PENDING (hold 3) |
+| r2 south avenue | 46 (parapet 38, coping 48) | **0** |
 | r3 crosstown | 140 (trunk: ran through street trees on the sidewalk) | **7** (fire-escape kit, 0.09-0.20 m, airborne during the topOut loop; feet never inside) |
 | r4 wall-run / roofs | 332 (coping 313, parapet 307, kit fire escape 22) | **31**: 24 kit fire-escape (wall-run passes up through decks, 18 frames feet inside) + 7 parapet/coping (2-4 frames per top-out, 1 swing frame) |
 r4 parapet run: r01 ran 25 m INSIDE the west parapet (x 274.525, 161 overlap frames) then fell through a kit fire escape at 39.2 m.
@@ -65,12 +65,24 @@ horizontal only) -> `REQUEST-traversal-r02.md` §4.
 | line | target | r02 |
 |---|---|---|
 | I5 phantom / hollow (`coll_audit.json`) | <= 1 % / <= 2 % | **0.26 % / 0.22 %** (unchanged) |
-| I6 fall / stuck / mid-air / wall-air, drawn checks | 0 | r1 **0/0/0/0**, r3 **0/0/0/0**, r4 **0/0/0/0**, r2 PENDING. The old WHBox-based columns: r3 wall-air 8, r4 mid-air 2 + wall-air 23 — all on drawn surfaces (fire-escape faces, bulkhead tops) that have no WHBox; r20 no longer collides with WHBoxes |
-| `-WHTravIsmSolid=1` A/B on r1 (stuck + trunk overlap) | reported | PENDING (hold 3) |
-| I2 facadeLod >= 1.2 km | (M2) | 379-784 m (unchanged; M1 geometry) |
+| I6 fall / stuck / mid-air / wall-air, drawn checks | 0 | r1 **0/0/0/0**, r2 **0/0/0/0**, r3 **0/0/0/0**, r4 **0/0/0/0**. The old WHBox-based columns: r3 wall-air 8, r4 mid-air 2 + wall-air 23 — all on drawn surfaces (fire-escape faces, bulkhead tops) that have no WHBox; r20 no longer collides with WHBoxes |
+| `-WHTravIsmSolid=1` A/B on r1 (stuck + trunk overlap) | reported | see below |
+| I2 facadeLod >= 1.2 km | (M2) | 379-784 m on r1 / r3 / r4; **r2 now swings 1,273 m (r01: 801 m) and leaves M1 at y ~1,024 m after ~19 s** (frame `stills/r2_south_avenue_t20s`: facadeLod masses on plain ground). Its two webs past y 1,024 hit facadeLod walls (point-to-triangle 0.00 / 0.02 m): the far masses are solids too. Route 2 needs a later start / M2 |
+
+## IsmSolid A/B (r1, fixed 1/60 s step; `route_check_r1.json` vs `route_check_r1_ism_solid.json`, `r1_ism_solid_log_excerpt.txt`)
+| | default (`-WHTravIsmSolid=0`) | `=1` |
+|---|---|---|
+| traversal solids (game log) | 642 visible solids, 0 re-enabled | 3,955 visible solids, 3,313 re-enabled (QueryOnly) |
+| stuck events | 0 | 0 |
+| capsule overlap with trunks (collision.json CYL + UE street trees) | 0 | 0 (r1 never runs the sidewalk tree line; r01's r3 had 140 trunk frames) |
+| path in 30 s / distinct swing anchors / max re-web gap | 1,166 m / 15 / 1.73 s | 942 m / 15 / 1.52 s |
+| webs | all on buildings | one web on a street-tree branch (12.2 m, 2.5 m from the trunk at x 259.9 y 209.9, t 3.48 s) |
+Island view for traversal's default decision: trees and props can be solids at no measured stuck cost on r1, but they also become web
+targets (a branch anchor at 12 m); a trunk-run test needs a sidewalk route (r3 of r01 style).
 
 ## Files
-`r1_north_avenue.mp4`, `r3_crosstown_east.mp4`, `r4_wallrun_roofs.mp4` (1920x1080 60 fps, H.264 2-pass, <= 14.6 MB) + `_telemetry.csv`
+`r1_north_avenue.mp4`, `r2_south_avenue.mp4`, `r3_crosstown_east.mp4`, `r4_wallrun_roofs.mp4` (1920x1080 60 fps, H.264 2-pass, <= 14.7 MB); `stills/a1_high_{north,south}_*_3840x2160.jpg` + `_telemetry.csv`
 + `_log_excerpt.txt`; `stills/` contact frames; `route_check_*.json`, `route_check_r01_baseline.json` (r01 telemetry under the r02
-checker), `r4_check.json`, `dump_check.json`, `coll_audit.json`, `split_giants.json`, `gpu_hold_*.json`.
-Critic pack: `/Users/midir/sm2-n1/_scratch/critic-A-r02/pack` (`docs/night1/island/critic_prep_r02.py` + abpack).
+checker), `r4_check.json`, `dump_check.json`, `dump_check_final.json`, `prims_dump_ism_solid.csv.gz`, `route_check_r1_ism_solid.json`, `coll_audit.json`, `split_giants.json`, `gpu_hold_*.json`.
+Critic pack (9 pairs: v1-v4 routes, s1/s2 4K stills, s3/s4 frames, p1 = r4 of r01 vs r02 on the same input): `/Users/midir/sm2-n1/_scratch/critic-A-r02/pack`
+(key `pack.key.json` beside it; inputs `pairs.json`; built by `docs/night1/island/critic_prep_r02.py` + abpack).

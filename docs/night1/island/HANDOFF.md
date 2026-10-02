@@ -1,4 +1,4 @@
-# Island (piece A) — HANDOFF (round 02, 2026-10-02 04:10; hold 3 still queued)
+# Island (piece A) — HANDOFF (round 02 done, 2026-10-02 04:35)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -18,18 +18,17 @@ Target: collision that matches what is drawn under traversal r20 (merged at 70e9
   wall-run still passes up through kit decks (traversal: horizontal-only push-out).
 - r1: 0 overlaps, 0 fall / stuck / mid-air / wall-air. I5 unchanged 0.26 / 0.22 %.
 
-## Still open when this was written
-`docs/night1/island/holds_r02.sh` (PID in `_scratch/island/holds_r02.pid`, log `_scratch/island/logs/holds_r02.log`) waits for hold 3:
-`r2 ab a1` (r2 movie, r1 `-WHTravIsmSolid=1` A/B telemetry + prims dump of the final build, a1 4K stills). When it lands:
-1. `python3 tools/export/island_route_check.py /Users/midir/sm2-n1/_scratch/island/export/midtown docs/night1/island/round-02/r2_south_avenue_telemetry.csv --out docs/night1/island/round-02/route_check_r2.json`
-   and the same for `r1_ism_solid_telemetry.csv` (`route_check_r1_ism_solid.json`: compare stuck + `feet_overlap_by_kind.trunk*` with `route_check_r1.json`).
-2. `python3 tools/export/island_dump_check.py <export> <(gunzip -c docs/night1/island/round-02/prims_dump_ism_solid.csv.gz) --out docs/night1/island/round-02/dump_check_final.json` (far-off rows inside M1 on the split build).
-3. Fill the PENDING cells of `round-02/README.md`; `python3 docs/night1/island/critic_prep_r02.py` then
-   `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-A-r02/pack /Users/midir/sm2-n1/_scratch/critic-A-r02/pairs.json`
-   (the prep skips routes not captured this round). Commit + push.
-If the driver died: re-run only the missing batch: `ISLAND_IN_LOCK=1 /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label island --timeout 21600 -- docs/night1/island/capture_round.sh docs/night1/island/round-02 r2 ab a1`.
+## Captures: all done (3 holds, 04:25)
+r1, r2, r3, r4 movies + telemetry, a1 4K stills, r1 `-WHTravIsmSolid=1` A/B + its prims dump; critic pack built (9 pairs):
+`/Users/midir/sm2-n1/_scratch/critic-A-r02/pack` (key `pack.key.json`, inputs `pairs.json`, `docs/night1/island/critic_prep_r02.py`).
+Also measured after the handoff draft: r2 0 overlaps / 0 fall-stuck-mid-air-wall-air, but it now swings OUT of M1 after ~19 s (webs on
+facadeLod walls, verified on the triangles); A/B: stuck 0 / 0, trunk overlap 0 / 0, `=1` puts one web on a street-tree branch; final
+dump: 2 far-off rows with centre in M1 (`SM_farLand_roos`, `SM_hinterland`: scenery by name / horizon ISM), no M1 building, bridge or
+seawall de-collided. Nothing of the island is running (driver, rebuild and engines all exited).
 
 ## Next (round 3)
+0. r2 route: start further north (or wait for M2) so the 30 s chain stays inside the detailed region; a sidewalk route for the
+   trunk A/B. Roosevelt Island land (`farLand_roos`) is far-by-name: it is not a floor (hero would sink to the water plane).
 1. Traversal asks (REQUEST-traversal-r02.md): ISM cube per-instance index (then make `SM2_WHBOX_MODE=ism` default: WP build 20 s vs
    ~35 min), topOut loop under decks, wall-run through decks, IsmSolid default from the A/B.
 2. M2 whole island (export ~22 M tris; mesh import is the long pole). Run `split_giants.py` in city_prep (wired) — it is idempotent.
