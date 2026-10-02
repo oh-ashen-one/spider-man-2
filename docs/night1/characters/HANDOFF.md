@@ -1,19 +1,57 @@
-# P2 Characters: handoff (round 15, first-pass piece G: hero skins)
+# P2 Characters: handoff (round 16, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 15 author: Sonnet 5.5 (2026-10-02 from 06:20). Everything described here is committed and pushed (`origin/night1/characters`, which also carries the merge of `origin/Opus-5.5-Loop-Night-1` at 87dbd43 = P3 r22);
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 16 author: Opus 5.5 (2026-10-02 11:50 - 15:00 EDT); round 15: Sonnet 5.5. Everything described here is committed and pushed (`origin/night1/characters`, which carries the merge of `origin/Opus-5.5-Loop-Night-1` at 85683fa6);
 `/Content` is NOT committed (script-generated). No engine of mine is running; the C++ editor module was rebuilt after the merge (`Scripts/build_editor.sh`, 17 s).
 
-## ROUND 16 IN PROGRESS (Opus 5.5, 2026-10-02 from ~11:50 EDT) - resume from here if this session stopped
+## STATE AT THE END OF ROUND 16 (read this first)
 
-Target (director): P2 r16, raise Image quality to >= 6 by closing the r15 critic's four 4K defects without a new one: (1) no front emblem / sash on the backs (all 8 back stills committed at 4K, `back_bleed_r16.py`, gate 0 accent clusters >= 20 px in the back torso), (2) cord jogs <= 4 px where cords meet panel borders (`cord_jog_r16.py`), (3) face centre seam <= 10 px lateral per 100 px on the 8 headfront stills (`seam_track_r16.py`), (4) net_end open-fabric dead ends 83 -> 0, Verdant armpit Q6 >= 0.5, Ash notch smear gone, (5) crop pass + every r16-vs-r14 progress pair wins or ties.
-Done so far (committed + pushed): merge of origin/Opus-5.5-Loop-Night-1 (85683fa6, C++ rebuilt); CAUSE of the stair-step jogs found on the CPU (posed render of the prepped GLB, `tools/ue_char/suits/dev_r16/posed_render.py` + `strain.py`): the plain top-4 weight truncation drops spine1 on one vertex and upperArm on its neighbour under the armpit -> `tools/ue_char/suit8/hero_weights_r16.py` (pairwise spine-chain merges before truncation; edge strain max 2.6 -> 0.97; `prep_hero_r16.sh`);
-`design.py`: front-only sash (ends on z = -0.012, piped), tone-on-tone back mark (`glyph.back`), seam-tone wedge pipe on the back, GEO limb net zones (bounded by ring-cord planes + a limb radius; ring cords / yoke side seam for sleeveless suits, an inseam cord) -> net_end 4096 open fabric **0**; C++ `WHShot.bHeadLock` (headfront portrait locked to the head bone) + `build_characters.py` sets it on 'headfront'; maps regenerated (8192 colour) and installed, `test_regression.py` EXPECT_R16, IP guard PASS (min distance 39.8), seams PASS.
-The hold is QUEUED: `gpu_slot.sh capture --label characters` -> `.hold_r16_run.sh $P2_SCRATCH/r16/chain1` (READY_R16 in place). When it has run: `bash tools/ue_char/suits/post_r16.sh $P2_SCRATCH/r16/chain1/run`, `python3 tools/ue_char/suits/spec_check_r16.py docs/night1/characters/round-16 > docs/night1/characters/round-16/SPEC_CHECK.md`,
-`STILLS_4K=$P2_SCRATCH/r16/chain1/run/stills LINEUP34=1 python3 tools/ue_char/suits/make_pairs_r16.py docs/night1/characters/round-16 /Users/midir/sm2-n1/_scratch/critic-P2-r16/pairs.json`, then `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r16/pack /Users/midir/sm2-n1/_scratch/critic-P2-r16/pairs.json`; write CAPTURES.md (read the crop sheets `evidence/measures/crops/`).
+Round 16 author: Opus 5.5 (2026-10-02 11:50 - 15:00 EDT). Everything is committed and pushed (`origin/night1/characters`, which carries the merge of `origin/Opus-5.5-Loop-Night-1` at 85683fa6); `/Content` is NOT committed. **No engine of mine is running; nothing of mine is queued on the lock.**
+Round target (director, after the r15 critic [6,5,5,5,5]; owner approved the suits 11:31, r14 merged as the baseline): IQ >= 6 by closing the r15 critic's four 4K defects without a new one. No blind critic verdict yet: the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r16/pack` (56 pairs, key `pack.key.json` outside it, `round-16/critic_pairs.json`). Captures / holds / honest residual list: `round-16/CAPTURES.md`; every number: `round-16/SPEC_CHECK.md`.
 
-## STATE AT THE END OF ROUND 15 (read this first)
+| line | r15 -> r16 (real game, 4K PNG originals of hold 3, 14:04 - 14:32, 0 crashes) | verdict |
+|---|---|---|
+| (1) back bleed: accent clusters >= 20 px in the back torso (`back_bleed_r16.py`), all 8 backs committed at 4K | 1 - 8 per suit -> **0 on 8** | PASS |
+| (2) yoke cord jog under the arm (`cord_jog_r16.py`, <= 4 px) | 8 - 36 px -> **0.5 - 0.9 px** | PASS 8 / 8 |
+| (3) face seam dev100 (`seam_track_r16.py`, <= 10 px / 100 px) | Cinder 15.9, Glacier 13.8 -> **Cinder 10.9, Glacier 10.6**, 5 others 2.6 - 8.4, Verdant not tracked | **5 / 8 measured** (hold 2: 8 / 8 <= 8.8) |
+| (4) net_end open fabric / Q6 / Ash notch | 83 -> **0** / 0.46 -> **0.54** / gone | PASS |
+| kept: R1 8/8, G1 - G3 8/8, H4 2/8 -> 3/8, IP guard 49.3, OCR 1 reviewed noise hit, regression `EXPECT_R16`, swap 7/7, pawn 0 pops | | PASS |
+
+### What changed (details in `round-16/CAPTURES.md`)
+- **The stair-step jogs were skin weights**: five bones under the armpit + a plain top-4 truncation (spine1 dropped on one vertex, upperArm on its neighbour). `tools/ue_char/suit8/hero_weights_r16.py` merges spine-chain bones before truncating (`prep_hero_r16.sh`); CPU edge strain 2.6 -> 0.97. The CPU posed render that found it (`tools/ue_char/suits/dev_r16/posed_render.py`, `strain.py`: the prepped GLB skinned in its own idle clip, textured with a suit map, 4 s) reproduces in-game jogs: use it before any weight / prep change.
+- `design.py`: front-only sash (+ its end finishing gated to the front), tone-on-tone back mark (`glyph.back`), seam-tone back wedge pipe, GEO limb net zones (`net.geo`: ring-cord planes + limb radius; ring cords + yoke side seam for sleeveless suits with a directional radius; an inseam cord). Maps regenerated, `EXPECT_R16`.
+- C++ (`Source/WebHomage/Characters/WHCharShowDirector.*`): `WHShot.bHeadLock` (headfront camera in the head's midsagittal plane), `-WHStageShotQuit`, `-WHStageWaitTextures` (did not trigger in hold 3: `IsFullyStreamedIn` may not see the streaming - check before relying on it).
+
+### What to know before touching anything
+- **The lock was over-subscribed all afternoon (4 - 6 holders, "6/2 in use"), stills ran at 1.4 fps.** A process-time `-quit` then cuts the stills run (hold 1: 23 of 56) - the chain now quits after the last stage shot. A movie at ~1 fps takes ~12 min: the full chain no longer fits the 40 min max hold; split it (`STEPS=...`, `CHAIN_SNAPSHOT=` for a second snapshot name while one runs) and stop your own run with `stop_ue.sh` before the max hold (the lock SIGKILLs 10 s after its SIGTERM).
+- At 1.4 fps the first suit's 8192 maps were still a low mip in hold 2's Tessera stills: LOOK at the first suit's chest crop of every hold.
+- Hold inputs: `prep_hero_r16.sh` after any head / lens / shoulder / weights change; regenerate the maps after any `design.py` / `suits.json` change (`gen_suits.py --n 4096 --n-color 8192 --only <id>` in parallel + `hero_suit_r8.py --n 8192`, ~4 min), copy into `art/night1/characters/hero/{suits,tex}`, `test_regression.py`.
+- The seam / cord / back instruments are mine and have limits (written in their headers): the seam tracker drops rows under accent pieces (vent) and can lose the seed on Verdant's striped crown; the cord tracker follows ONE cord (the yoke bottom seam) on the image-left side; the back mask is +-0.13 m, 6 px inside the silhouette, above the belt.
+
+### Next steps (priority order)
+1. Read the round-16 critic verdict (`critic/round-16-CRITIC.md` once written) and fix its biggest gap.
+2. The face seam residual (Cinder / Glacier ~10.5 px, idle-phase dependent): either make the lower face follow the head bone (the jaw / chin neck weights in `hero_weights_*`) or measure the head plane from skinned seam vertices instead of the head bone.
+3. Seen myself, not fixed: the thin dark net line under the arm on Saffron / Sage (the left upper-arm net reaches the torso side; a directional radius like the ring cords' would end it on the arm but raised the crease-zone dead ends 42 -> 81 at 2048: needs a cord there), the shallow V of the yoke seam at the sternum, the cheek seams reading as tracks, H4, CH2 chase framing, the enemy axis / crowd cut (paused scope). P3: the pawn cadence 4.13 Hz.
+4. Re-shoot the stage-hero run / chase clips (Tessera's back changed; the r15 clips are in the pack) when the lock is less busy.
+
+### Commands (round 16)
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters UE_WAIT_SKIP=1
+bash tools/ue_char/suits/prep_hero_r16.sh                                                    # hero GLB (CPU, ~10 s), r16 weights
+python3 tools/ue_char/suits/dev_r16/posed_render.py $P2_SCRATCH/ueimport/SK_Hero.glb verdant OUT.jpg -25 0.5     # CPU posed chest view (MAPS=, DIST=, W=, REST=1)
+python3 tools/ue_char/suits/net_end_check_r15.py --n 2048                                   # dead net ends of the paint (CPU, 20 s at 2048)
+OUT=$P2_SCRATCH/r16/chainN; mkdir -p $OUT; cp tools/ue_char/suits/chain_r16.sh tools/ue_char/suits/.chain_r16b_run.sh; cp tools/ue_char/suits/hold_r16.sh tools/ue_char/suits/.hold_r16b_run.sh; touch $OUT/READY_R16
+CHAIN_SNAPSHOT=.chain_r16b_run.sh STEPS="build stills orbit" nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters --timeout 28800 -- bash tools/ue_char/suits/.hold_r16b_run.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &
+bash tools/ue_char/suits/combine_r16.sh <hold with pawn/lineups>/run <hold with stills/orbit>/run $P2_SCRATCH/r16/final
+bash tools/ue_char/suits/post_r16.sh $P2_SCRATCH/r16/final $P2_SCRATCH/r16/final               # CPU ~12 min: round-16 dir + evidence + crop sheets
+python3 tools/ue_char/suits/spec_check_r16.py docs/night1/characters/round-16 > docs/night1/characters/round-16/SPEC_CHECK.md
+STILLS_4K=$P2_SCRATCH/r16/final/stills LINEUP34=1 python3 tools/ue_char/suits/make_pairs_r16.py docs/night1/characters/round-16 /Users/midir/sm2-n1/_scratch/critic-P2-r16/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r16/pack /Users/midir/sm2-n1/_scratch/critic-P2-r16/pairs.json
+```
+Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`.
+
+## Round 15 state (history)
 
 Round target (director, after the r14 critic [hero 6, anim 5, enemies 5, civilians 5, IQ 5; IP PASS]): merge P3 r22's ground blend and re-shoot the pawn movie; R1 the lens RIM >= 1 % of the head height behind the brow on all 8 4K headside stills; Q5 the accent pipe joins the Ash sash end; every net / groove line ends on a seam cord; no texture stretch under the brow; Q6 the Verdant armpit piping unpinched.
 Gate: no axis below r14 [6,5,5,5,5], enemy pack / crowd unchanged, swatch sheet regenerated. **The OWNER must approve the suits before any merge: `docs/night1/characters/round-15/SWATCH_SHEET.jpg`.**

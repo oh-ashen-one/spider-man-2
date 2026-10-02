@@ -62,6 +62,9 @@ add('enemy-lineup', os.path.join(r12, 'enemy_lineup_4k.jpg'), R + 'characters/th
 add('fight-clip', cur('street_fight_wide.mp4'), R + 'combat/clips/plaza-fight__dn_0818-0828.mp4', 'a staged street fight, hero vs a group: judge enemy count / size in frame, hit reactions, knockdowns, choreography readability, animation quality')
 add('crowd-clip', cur('crowd_tracking.mp4'), R + 'streets/clips/street-life-pedestrians__dn_0712-0721.mp4', 'pedestrians on a sidewalk, tracking camera: judge density, variety of people, gait (no gliding / lockstep), clothing, faces')
 # progress: the merged round 14 vs this round (lossless 4K originals of both, same camera, same suit), and round 15 vs round 16 on the four r15 defects
+def stp(s_, v):      # this round's lossless original (the progress pairs compare PNG with PNG)
+    p = os.path.join(S4, 'skin_%s_%s_4k.png' % (s_, v))
+    return p if os.path.exists(p) else st(s_, v)
 def prev(name, d=None):
     d = d or P14
     p = os.path.join(d, name + '.png')
@@ -69,23 +72,23 @@ def prev(name, d=None):
 TWO = 'two renders of the same suit from the same camera: which one is better (sculpted brow / nose bridge / cheeks / chin, lenses and rim, seam, sash ends, armpit, shoulders, trapezius), and say what differs'
 BACK = 'two renders of the same suit from BEHIND, same camera: which is better? Does either show the FRONT emblem or the front sash repeated on the back, as if projected through the torso? judge line work, seams, shading'
 for s_ in ('tessera', 'plum', 'verdant', 'cinder', 'ash', 'saffron', 'glacier', 'sage'):
-    add('progress-back-%s' % s_, st(s_, 'back'), prev('skin_%s_back_4k' % s_), BACK)
+    add('progress-back-%s' % s_, stp(s_, 'back'), prev('skin_%s_back_4k' % s_), BACK)
 CHJ = TWO + ' (look at the torso side under the arm: does any cord or groove line make a stair-step / jog where it crosses the side, or meets a panel border? any smear or notch?)'
 for s_ in ('verdant', 'ash', 'cinder', 'tessera'):
-    add('progress-chest-%s' % s_, st(s_, 'chest'), prev('skin_%s_chest_4k' % s_), CHJ)
+    add('progress-chest-%s' % s_, stp(s_, 'chest'), prev('skin_%s_chest_4k' % s_), CHJ)
 HF = TWO + ' (straight-on face: is the centre seam a straight line or does it zig-zag / jog at the brow, the nose, the mouth?)'
 for s_ in ('cinder', 'tessera', 'plum', 'glacier'):
-    add('progress-headfront-%s' % s_, st(s_, 'headfront'), prev('skin_%s_headfront_4k' % s_), HF)
-add('progress-head-tessera', st('tessera', 'head'), prev('skin_tessera_head_4k'), TWO)
-add('progress-profile-verdant', st('verdant', 'headside'), prev('skin_verdant_headside_4k'), 'two profile renders of the same head from the same camera: in which does the brow overhang the lens rim (the rim sits BEHIND the brow, not proud of it), and in which is the hood trim over the brow sharp rather than smeared')
-add('progress-head-sage', st('sage', 'head34'), prev('skin_sage_head34_4k'), TWO + ' (look at the neck / trapezius creases too)')
+    add('progress-headfront-%s' % s_, stp(s_, 'headfront'), prev('skin_%s_headfront_4k' % s_), HF)
+add('progress-head-tessera', stp('tessera', 'head'), prev('skin_tessera_head_4k'), TWO)
+add('progress-profile-verdant', stp('verdant', 'headside'), prev('skin_verdant_headside_4k'), 'two profile renders of the same head from the same camera: in which does the brow overhang the lens rim (the rim sits BEHIND the brow, not proud of it), and in which is the hood trim over the brow sharp rather than smeared')
+add('progress-head-sage', stp('sage', 'head34'), prev('skin_sage_head34_4k'), TWO + ' (look at the neck / trapezius creases too)')
 add('progress-swap-pawn', os.path.join(r12, 'swap_pawn_T_key.mp4'), R13 + 'swap_pawn_T_key.mp4', 'two captures of the playable hero starting to run: which has a smoother start (no pose pop in the first 0.3 s, no snap from idle to run), and judge the suit render quality in motion')
 add('progress-lineup', os.path.join(r12, 'enemy_lineup_4k.jpg'), R13 + 'enemy_lineup_4k.jpg', 'two versions of the same enemy lineup: count the enemies, judge the weapons in their hands, the lighting / exposure, the variety of outfits')
 # the previous round (r15) vs this round (r16): the defects the r15 critic named
-add('r15-back-tessera', st('tessera', 'back'), prev('skin_tessera_back_4k', P15), BACK)
-add('r15-chest-verdant', st('verdant', 'chest'), prev('skin_verdant_chest_4k', P15), CHJ)
-add('r15-headfront-cinder', st('cinder', 'headfront'), prev('skin_cinder_headfront_4k', P15), HF)
-add('r15-chest-ash', st('ash', 'chest'), prev('skin_ash_chest_4k', P15), CHJ)
+add('r15-back-tessera', stp('tessera', 'back'), prev('skin_tessera_back_4k', P15), BACK)
+add('r15-chest-verdant', stp('verdant', 'chest'), prev('skin_verdant_chest_4k', P15), CHJ)
+add('r15-headfront-cinder', stp('cinder', 'headfront'), prev('skin_cinder_headfront_4k', P15), HF)
+add('r15-chest-ash', stp('ash', 'chest'), prev('skin_ash_chest_4k', P15), CHJ)
 if os.environ.get('LINEUP34'): add('enemy-lineup-34', os.path.join(r12, 'enemy_lineup_34_4k.jpg'), R + 'characters/thugs-group-nm__nm_0049.jpg', 'a lineup of street enemies seen three-quarter: judge variety, weapons held in the hands (gripped or floating / piercing the fingers), faces, cloth, lighting')
 json.dump(pairs, open(out, 'w'), indent=1)
 print('pairs', len(pairs), '->', out)

@@ -45,7 +45,11 @@ for s in SUITS:
     ok = bool(b.get('ok')) and b.get('dev100', 99) <= 10; n += ok
     L.append('| %s | %s -> **%s** | %s -> **%s** | %s | %s | %s |' % (s, a.get('dev100'), b.get('dev100'), a.get('range_x'), b.get('range_x'), b.get('resid_max'), b.get('n_rows'), 'PASS' if ok else 'FAIL'))
 ok_all['seam'] = n == 8
-L += ['', '%d of 8 headfront stills pass (overlays `evidence/measures/seam_track/`).' % n, '']
+L += ['', '%d of 8 headfront stills pass (overlays `evidence/measures/seam_track/`).' % n]
+h2 = J('seam_track_hold2.json')
+if h2:
+    L += ['', 'Supplementary (NOT the committed set): the same content in this round\'s hold 2 (13:01, same maps except Saffron\'s arm ring cords; idle phase differs): dev100 ' + ', '.join('%s %s' % (s_, (h2.get(s_) or {}).get('dev100')) for s_ in SUITS) + ' - the residual depends on the idle phase (the lower face is partly neck-weighted, the head lock follows the head bone only).']
+L += ['']
 ne, ne15 = J('net_end.json'), J('net_end_r15.json')
 if ne and ne15:
     t = lambda x, k: sum(e[k] for e in x)

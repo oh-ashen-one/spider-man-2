@@ -86,6 +86,7 @@ python3 tools/ue_char/suits/iq_check_r15.py "$S" "$R14S" "$M/iq" > "$E/iq_check.
 python3 tools/ue_char/suit8/hero_weights_r14.py --check "$E/trapezius_fold_check.json" > /dev/null
 # net lines that end where no cord is (design level, the paint itself): r15 vs the round-14 switches, 4096 px
 python3 tools/ue_char/suits/net_end_check_r15.py --n 4096 --json "$E/net_end.json" --png "$M/net_end" > "$E/net_end.txt" 2>&1; tail -1 "$E/net_end.txt"
+for f in "$M"/net_end/netend_*.png; do [ -f "$f" ] && ffmpeg -loglevel error -y -i "$f" -vf scale=2048:-2 -q:v 3 "${f%.png}.jpg" && rm -f "$f"; done      # 2048 px JPEG overlays (as round 15), not 4096 PNGs
 cp docs/night1/characters/round-15/evidence/net_end.json "$E/net_end_r15.json"; cp docs/night1/characters/round-15/evidence/net_end.txt "$E/net_end_r15.txt"; tail -1 "$E/net_end_r15.txt"
 # the pawn (P3's ground blend merged): luma pops 0 - 1.5 s and the anim_weight step, r14 movie / telemetry as the baseline
 [ -f "$R/swap_pawn_T_key.mp4" ] && python3 tools/ue_char/suits/pawn_check_r15.py "$R/swap_pawn_T_key.mp4" "$A/pawn/pawn_telemetry.csv" docs/night1/characters/round-15/swap_pawn_T_key.mp4 docs/night1/characters/round-15/evidence/pawn_telemetry.csv > "$E/pawn_check.json"; tail -c 300 "$E/pawn_check.json"

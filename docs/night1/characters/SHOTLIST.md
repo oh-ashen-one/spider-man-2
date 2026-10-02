@@ -3,6 +3,8 @@
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 > Scope since 2026-10-01 (director PLAN-firstpass.md, piece G): the HERO only; thugs / fight / crowd are paused. The older fight / crowd / lineup shots are in `HANDOFF.md` (rounds 05 - 10).
 
+Round 16: the same shots, files in `round-16/`; EVERY still is committed at 4K now (the backs too); the `headfront` portrait follows the head bone (`WHShot.bHeadLock`: camera in the head's midsagittal plane); the stills run quits 3 s after its last stage shot (`-WHStageShotQuit`); the stage-hero / fight / crowd clips were not re-shot (round-15 files, content unchanged).
+
 Round 15: the same shots, files in `round-15/`; the base colours are 8192 px, so the first still waits 12 s of stage time (`P2_FIRST_EXTRA=9`, `first_extra` in `skins_shots.json`), and the pawn (`pawn_run.json`) spawns on the ground (z 0.95); the pawn movie is trimmed by 0.1 s (camera-binding frames).
 
 Every shot below is the REAL game (UE 5.8.3, `-game`, offscreen) through `gpu_slot.sh`, driven by `tools/ue_char/suits/chain_r11.sh`. Map `Char_Skins` = plain floor, key sun + four fills on the hero only;
