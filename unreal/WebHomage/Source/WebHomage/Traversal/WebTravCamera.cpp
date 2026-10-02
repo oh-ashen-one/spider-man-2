@@ -35,6 +35,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 	LagOff = LagOffV = JumpOff = JumpOffV = FVector::ZeroVector;
 	bHasLastGoal = false; AnchorLean = 0.0; AnchorLeanV = 0.0;
 	bChaseInit = false; UserPitch = 0.0; OccYawGoal = OccUpGoal = 0.0;
+	GndCrane = GndCraneV = GndCraneGoal = GndClearT = 0.0; bGndLensHold = false; GndStopped = 0; // round 24
 	bOutInit = false; // round 13: a teleport / reset is allowed to move the view at once
 	bHaveComposeHero = false;
 }
@@ -42,6 +43,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 void FWebTravCamera::ApplyLook(const FVector2D& Look)
 {
 	if (FMath::Abs(Look.X) + FMath::Abs(Look.Y) > 0.001) LastLook = 0.0;
+	if (FMath::Abs(Look.X) > 0.0005) LookYawDir = Look.X > 0.0 ? 1 : -1; // round 24
 	Yaw += Look.X * Sens;
 	Pitch = FMath::Clamp(Pitch + Look.Y * Sens, -0.9, 1.25);
 	UserPitch = FMath::Clamp(UserPitch + Look.Y * Sens, -0.6, 0.6);
@@ -242,6 +244,34 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// round 18: also BEFORE a predicted flow-flip release (bFlipPre): the view is chosen and blended in ahead of the release, so the trick window
 	// (release .. catch + 0.5 s) opens on the held 3/4 view (critic r17 TC-A: the blend-in inside the window gave offset p5 20-29, range 34)
 	const bool bFlipCam = P.bFlip || P.bFlipSoon || P.bFlipPre;
+	// ---- round 24 (critic r23 c 7.7-8.5 s, probe v1: the orbit search + crane still swung the view back 47-105 deg): on foot / perched a user
+	// camera turn STOPS where the chase spot behind the hero would enter geometry (the look yaw is held at the last clear yaw while the turn
+	// pushes into the wall; turning back is free). Clear = a GndStopR m sphere swept from the chest to GndStopExtra m past the chase spot.
+	{
+		const bool bGndMode = P.Mode == EWebTravMode::Ground || P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Land;
+		const bool bGnd = GndMinDist > 0.0 && GndStop > 0.0 && bGndMode && !bFlipCam;
+		// (hold D probe c: the lens hold ended the frame the look input stopped, 8.30 s, and the drifted chase spot swung the view 42 deg back):
+		// a lens held by a stop stays held while on foot / perched until the player has left the stick alone for GndLensRelease s, and
+		// through the first 0.3 s of a zip fired from there (the zip camera then takes over under the output slew limit)
+		if (bGndLensHold && !(bGnd && LastLook < GndLensRelease) && !(P.Mode == EWebTravMode::Zip && P.ModeT < 0.3)) bGndLensHold = false;
+		if (bGnd)
+		{
+			const FVector B(-FMath::Cos(Yaw), -FMath::Sin(Yaw), 0.0);
+			const FVector Spot = Hero + B * (ChaseDist + GndStopExtra) + FVector(0, 0, ChaseHeight);
+			double Hd = 0.0;
+			const bool bBlocked = World.SphereOverlaps(Chest, 0.22) ? false : World.SphereSweep(Chest, Spot, GndStopR, Hd);
+			if (!bBlocked) { GndYawOk = Yaw; bGndYawOk = true; GndStopped = 0; }
+			else if (bGndYawOk && LastLook < GndLookHold)
+			{
+				AutoYaw += WrapA(GndYawOk - Yaw); Yaw = GndYawOk;
+				// (hold C probe, c on its r23 path: with the yaw held the chase spring / sweep still pulled the lens 1 m in and swung the view
+				//  28 deg back) -- the lens itself is held where the stop began (it saw the whole hero there), looking at the hero
+				if (!GndStopped && !bGndLensHold && bOutInit) { GndStopPos = LastOutPos; }
+				GndStopped = 1; bGndLensHold = GndHoldLens > 0.0;
+			}
+		}
+		else { bGndYawOk = false; GndStopped = 0; }
+	}
 	if (bFlipCam && !bFlipWas)
 	{
 		const bool bStillIn = FlipK > 0.05 && !bFlipAbort; // the previous trick's view is still blended (a chain): keep its distance, move its azimuth
@@ -361,6 +391,19 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
 	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
 	double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -SkyCamBelow, SkyK) + OU;
+	// round 24 (capture c 9.87 s: the perch recenter swung the chase spot over a 1.8 m rooftop box; the floor clamp popped the lens up 1 m per
+	// frame and the slew-limited pitch left the hero under the bottom edge for 0.17 s): on foot / perched the spot is pulled in toward the
+	// hero (down to GndFloorPullMin of the distance) until its floor is no higher than the camera height wants
+	if (GndFloorPull > 0.0 && (P.Mode == EWebTravMode::Ground || P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Land) && !bFlipCam)
+	{
+		for (double K : { 1.0, 0.9, 0.8, 0.7, 0.6 })
+		{
+			if (K < GndFloorPullMin - 1e-3) break;
+			const FVector Dk = Hero + BackR * (BackDist * K) + Right * (0.3 + AnchorShift * SideK);
+			// (the floor is traced from 4 m over the hero: a trace starting under a box top misses the box)
+			if (World.GroundHeight(Dk.X, Dk.Y, Hero.Z + 4.0) + 0.4 <= ZWant + 0.3) { Desired = Dk; break; }
+		}
+	}
 	// round 16: trick camera spot = FlipDistNow m from the hero on the held world azimuth, FlipDrop m under his body centre
 	// (the chase camera state -- Desired / CamXY / CamZ -- keeps running through the trick, so the blend-out has no jump; the trick spot is
 	// blended onto its result in POLAR coordinates around the hero: azimuth, radius, height -- a Cartesian lerp of two spots 45 deg apart
@@ -432,6 +475,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		return Hero + B2 * ChaseDist + FVector(0, 0, ChaseHeight + Up);
 	};
 	FVector Tmp;
+	// round 24: on foot / perched (see GndMinDist in the header)
+	const bool bGndCam = GndMinDist > 0.0 && (P.Mode == EWebTravMode::Ground || P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Land) && !bFlipCam;
+	const bool bGndTurn = bGndCam && LastLook < GndLookHold && LookYawDir != 0;
 	const double DefClear = ClearTo(Candidate(0, 0), Tmp);
 	const double DefLen = FVector::Dist(Candidate(0, 0), Hero); // unobstructed distance of the default spot
 	if (DefClear >= DefLen - 0.3) { OccYawGoal = 0; OccUpGoal = 0; }
@@ -442,6 +488,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		{
 			for (double DYw : { 0.0, 0.6, -0.6, 1.1, -1.1, 1.6, -1.6, 2.2, -2.2 })
 			{
+				if (bGndTurn && DYw * double(LookYawDir) < -1e-3) continue; // round 24: never orbit back against the user's turn
 				const double C2 = ClearTo(Candidate(DYw, Up), Tmp);
 				const double Score = FMath::Min(C2, 6.0) - 0.8 * FMath::Abs(DYw) - 0.25 * Up - (FMath::Abs(DYw - OccYawGoal) + FMath::Abs(Up - OccUpGoal) * 0.2) * 0.3;
 				if (C2 >= DefLen - 0.8 && Score > BestC) { BestC = Score; BY = DYw; BU = Up; }
@@ -451,6 +498,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	SD(OccYawOff, OccYawOffV, OccYawGoal, 0.3, Dt);
 	SD(OccUp, OccUpV, OccUpGoal, 0.3, Dt);
+	if (bGndCam && GndAbsorb > 0.0 && FMath::Abs(OccYawOff) > 1e-6)
+	{ // round 24: the orbit offset becomes the look yaw (the spot stays where it is; the default is that spot from now on: no spring back)
+		Yaw += OccYawOff; AutoYaw += OccYawOff; OccYawGoal -= OccYawOff; OccYawOff = 0.0;
+	}
 	FVector Got;
 	ClearTo(Cam, Got);
 	// round 15 (r14 f3 4.6-5.5 s: 43 frames with the lens inside a street-tree canopy while the hero swung through it): with the hero
@@ -499,6 +550,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (DL < CamWallSoft) Want += CamWallSoft - DL;
 		SD(WallPush, WallPushV, Want, 0.15, Dt);
 		double Push = WallPush;
+		if (GndStopped) Push = 0.0; // round 24: the stopped ground orbit is not slid along the wall (that read as a yaw reversal)
 		if (DR < CamWallHard) Push = FMath::Min(Push, -(CamWallHard - DR));
 		if (DL < CamWallHard) Push = FMath::Max(Push, CamWallHard - DL);
 		Push *= 1.0 - FlipKs; // round 16 (TC11): the trick camera never yaws round the hero -- the dolly-in along the held axis replaces the push
@@ -513,6 +565,26 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	const double GY = World.GroundHeight(Cam.X, Cam.Y, Cam.Z + 0.3) + 0.4;
 	if (Cam.Z < GY) Cam.Z = GY;
+	// ---- round 24 (critic r23 c 7.7-8.5 s): on foot / perched the lens never sits under GndMinDist m from the hero -- crane it up over him
+	// (raised at once, lowered once the unraised spot has been clear for 0.5 s)
+	{
+		double Goal = 0.0;
+		if (bGndCam)
+		{
+			const double R = GndMinDist + 0.2, D0 = FVector::Dist(Cam, Hero);
+			const double Hd = FVector2D(Cam.X - Hero.X, Cam.Y - Hero.Y).Size(), Dz = Cam.Z - Hero.Z;
+			if (D0 < R) Goal = FMath::Clamp(FMath::Sqrt(FMath::Max(0.0, R * R - Hd * Hd)) - Dz, 0.0, GndCraneMax);
+		}
+		if (Goal >= GndCraneGoal) { GndCraneGoal = Goal; GndClearT = 0.0; }
+		else { GndClearT += Dt; if (GndClearT > 0.5 || !bGndCam) GndCraneGoal = Goal; }
+		SD(GndCrane, GndCraneV, GndCraneGoal, GndCraneGoal > GndCrane ? GndCraneT : 0.4, Dt);
+		if (GndCrane > 0.01)
+		{
+			FVector C3 = Cam + FVector(0, 0, GndCrane);
+			ClearFrom(From, C3, C3);
+			if (FVector::Dist(C3, Hero) > FVector::Dist(Cam, Hero)) Cam = C3;
+		}
+	}
 	// ---- round 06: wall-run camera, blended in / out with a spring (held through the rising half of the top-out, so the
 	// hero clears the roof edge in frame, then handed back to the chase camera which comes up over the edge)
 	{
@@ -571,6 +643,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (VisUp > 0.01) { FVector C3 = Base + FVector(0, 0, VisUp); ClearFrom(From, C3, Cam); }
 		VisPts = Vis(Cam);
 	}
+	if (bGndLensHold && !GndStopPos.IsZero() && !World.LineBlocked(GndStopPos, Hero + FVector(0, 0, 0.3))) Cam = GndStopPos; // round 24
 	CamPos = Cam;
 	LastComposeHero = Hero; bHaveComposeHero = true;
 	HeroDist = FVector::Dist(CamPos, Hero);
@@ -591,7 +664,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		FMath::Max(FMath::DegreesToRadians(22.0), DownToHero - FMath::Atan((0.62 - 0.5) * 2.0 * TanHalfV)));
 	// round 20 (capture c 9.0-10.0 s: after the perch landing a look-up held from the zip aim left the crouched hero cut by the bottom edge,
 	// centre at 0.92 of the frame): perched / on foot, his centre stays at or above 0.66 of the frame height and the look offset recentres fast
-	if (P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Ground)
+	// (round 24, hold B c 8.50-8.57 s: the zip fired from the roof switched the framing to the air rule and the standing hero dipped out of
+	//  the bottom edge for 4 frames -- the clamp also holds through the zip's first 0.25 s)
+	if (P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Ground || (P.Mode == EWebTravMode::Zip && P.ModeT < 0.25))
 	{
 		PitchDown = FMath::Max(PitchDown, DownToHero - FMath::Atan((0.66 - 0.5) * 2.0 * TanHalfV));
 		if (P.Mode == EWebTravMode::Perch && LastLook > 0.3) UserPitch = Damp(UserPitch, 0.0, 4.0, Dt);
@@ -788,7 +863,8 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
-		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW} };
+		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
+		{TEXT("GndFloorPull"), &GndFloorPull}, {TEXT("GndFloorPullMin"), &GndFloorPullMin}, {TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndLensRelease"), &GndLensRelease}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }

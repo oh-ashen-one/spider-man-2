@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-02T11:35",
+ "updated": "2026-10-02T14:30",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -54,9 +54,9 @@
    "name": "Traversal + camera",
    "branch": "night1/traversal",
    "state": "active",
-   "round": 23,
+   "round": 24,
    "verdict": "fails \u2014 lowest 6 (opus)",
-   "gap": "c camera hits a wall at 7.7-8.5 s (keep hero in frame, cam >= 3 m, no yaw reversal); vertical-run knees splay (lateral knee gap <= .25 m, knees drive forward, arms alternate)"
+   "gap": "Rope readable on every web_on frame (two-tone strand, width clamp); perch dip at c 9.85 s; run cadence 3.2-3.8 Hz"
   },
   {
    "id": "P4",
@@ -936,6 +936,14 @@
    "verdict": "fails",
    "gap": "IQ >= 6: back emblem bleed, groove jogs, face seam, limb net ends",
    "notes": "Merged on the owner suit approval (11:31): 8 original suits with sculpted heads + in-game swap; IP gate PASS."
+  },
+  {
+   "t": "2026-10-02T14:30",
+   "piece": "P3 Traversal",
+   "round": 24,
+   "verdict": "fails",
+   "gap": "Rope readable on every web_on frame (two-tone strand, width clamp); perch dip at c 9.85 s; run cadence 3.2-3.8 Hz",
+   "notes": "Merged. Altitude swing chain: apex 33-38 m, drops 21.6-27.7 m (T7 100/100), web_on 55->41.5 %, ground-orbit camera wall-snap fixed."
   }
  ],
  "perf": [
