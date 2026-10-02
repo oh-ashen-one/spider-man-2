@@ -70,7 +70,7 @@ movie() {  # <name> <script.json> <quit seconds>
   echo "== movie $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
   RUN "$TMP/$NAME" -map $TROOT/Maps/Manhattan_Terrain -res 1920x1080 -quit "$Q" -name "$NAME" -movie -timeout 2300 -exec "r.ScreenPercentage 100${HIDE_HERO:+,ShowFlag.SkeletalMeshes 0}" \
-    -- -WHTravScript="$SCR/$JSON" -WHTravCsv="$TMP/$NAME/${NAME}_telemetry.csv" | tail -4
+    -- -WHTravScript="$([[ "$JSON" == /* ]] && echo "$JSON" || echo "$SCR/$JSON")" -WHTravCsv="$TMP/$NAME/${NAME}_telemetry.csv" | tail -4
   cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/" 2>/dev/null
   grep -h "WebTravWorld:\|WH_QUIT" "$TMP/$NAME/$NAME.log" | sed 's/^.*Display: //' | head -5 > "$ROUND/${NAME}_log_excerpt.txt"
   local CRF=23
@@ -88,7 +88,8 @@ if want moves; then
   export WH_CAPTURE_MAXFPS="${MOVIE_MAXFPS:-20}"
   MOVIES="${MOVIES:-t4_lawn_sprint t5_avenue_to_park}"   # r04: MOVIES="t4_lawn_sprint" = only that movie
   [[ " $MOVIES " =~ " t4_lawn_sprint " ]] && movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"
-  [[ " $MOVIES " =~ " t5_avenue_to_park " ]] && movie t5_avenue_to_park t5_avenue_to_park.json "${MOVE_QUIT:-15.4}"
+  T5J=t5_avenue_to_park.json; [ -f "$ROUND/t5_probe/chosen.json" ] && T5J="$ROUND/t5_probe/chosen.json"   # r04: the probe's best candidate (absolute path) wins over the committed script
+  [[ " $MOVIES " =~ " t5_avenue_to_park " ]] && movie t5_avenue_to_park "$T5J" "${MOVE_QUIT:-15.4}"
 fi
 # r03: round-02 content built side by side into /Game/TerrainR2 (scratch copy of the r02 scripts) -> the same stills' GPU ms under the same hold, for "capture GPU ms vs r2"
 if want r2gpu && [ -f "$UE_DIR/Content/TerrainR2/Maps/V_p1_south.umap" ]; then
@@ -110,6 +111,12 @@ if want t5probe; then
     WH_CAPTURE_MAXFPS=60 RUN "$TMP/probe_$N" -map $TROOT/Maps/Manhattan_Terrain -res 960x540 -quit "${PROBE_QUIT:-15.6}" -name "probe_$N" -timeout 600 -- -nullrhi -benchmark -fps=60 -WHTravScript="$J" -WHTravCsv="$ROUND/t5_probe/$N.csv" | tail -2
   done
   python3 "$HERE/../../../tools/terrain/t5_score.py" "$ROUND/t5_probe" "$ROUND/t5_probe/scores.json" | tee "$ROUND/t5_probe/scores.txt"
+  # the best candidate (highest share of the last 5 s over the park at 25-40 m, then 20-45 m; the control b0 is never chosen) becomes the t5 movie of this hold
+  BEST=$(python3 -c "
+import json
+r=[x for x in json.load(open('$ROUND/t5_probe/scores.json')) if 'error' not in x and not x['name'].startswith('b0')]
+print(r[0]['name'] if r and r[0]['in_park'] > 0.2 else '')")
+  [ -n "$BEST" ] && cp "$PD/$BEST.json" "$ROUND/t5_probe/chosen.json" && echo "== t5 route chosen: $BEST" | tee "$ROUND/t5_probe/chosen.txt"
 fi
 
 # r04: GPU ms of the same two stills on the previous build (BASE_ROOT, default /Game/Terrain = the HEAD content without the r04 lawn) and on this build again, inside this hold (same GPU state)

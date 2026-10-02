@@ -2,8 +2,8 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Terrain r04 capture hold (ONE slot hold, max 40 min). Enqueue with (detached):
 #   /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round4.sh      (env STAGE=A | B | R)
-# STAGE=A  hold 1 = lawn + canopy-gate set from the r04 build (/Game/TerrainR4): safe warm-up, p10 p4 p9 p1 at 4K, the t4 movie, the t5 route probes (nullrhi)
-# STAGE=B  hold 2 = the other five stills + the t5 movie (route chosen from the probes) + GPU ms of p1 / p10 on the HEAD content vs this build (basegpu)
+# STAGE=A  hold 1 = the whole round: safe warm-up, the nine 4K stills (p10 p4 p9 p1 first), the t5 route probes (nullrhi; the best candidate becomes the t5 movie), the t4 + t5 movies, GPU ms of p1 / p10 on the HEAD content vs this build (basegpu, if time is left)
+# STAGE=B  hold 2 = whatever hold 1 did not finish: ONLY_IDS / MOVIES / WANT from the environment, default the five non-lawn stills + the t5 movie + basegpu
 # STAGE=R  resume: ONLY_IDS / WANT / MOVIES from the environment (e.g. ONLY_IDS="p6_west_shore" WANT="stills")
 # Content is built BEFORE the slot (nullrhi commandlets, no GPU). Capture safety (two health-monitor stops on 2026-10-02): 960x540 warm-up with r.ScreenPercentage 50 and a 4 fps fixed step,
 # 4K stills stay at the 4 fps frame cap; watch /Users/midir/sm2-n1/_scratch/gpu/health.log during the first 2 minutes.
@@ -15,10 +15,9 @@ export HOLD_START=$(date +%s)
 HERE="$(cd "$(dirname "$0")" && pwd)"
 export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-4}" WARM_QUIT="${WARM_QUIT:-12}" HIDE_HERO=1 BASE_IDS=""
 case "${STAGE:-A}" in
-  A) # hold 1 (calibration + canopy gate): safe warm-up, the four lawn / canopy stills at 4K (p10 p4 p9 p1), the t4 movie, the t5 route probes (nullrhi)
-     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain ONLY_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04 \
-            MOVIES=t4_lawn_sprint PROBE_DIR="$HERE/round-04/t5_candidates"
-     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=("t5probe" "moves");;
+  A) # hold 1 = the whole round in one hold: safe warm-up, the nine 4K stills (lawn / canopy gate p10 p4 p9 p1 first), the t5 route probes (nullrhi, picks the best candidate), the t4 + t5 movies, GPU ms of p1 / p10 HEAD vs r04
+     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04 PROBE_DIR="$HERE/round-04/t5_candidates"
+     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=("t5probe" "moves" "basegpu");;
   B) # hold 2: everything the first hold did not take (the other five stills + the t5 movie on the chosen route); BASE_IDS stays empty
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" ONLY_IDS="${ONLY_IDS:-p2_reservoir p3_lake p6_west_shore p7_east_shore p8_pier}" PRIO_IDS="${PRIO_IDS-}" STILL_TAG="${STILL_TAG:-r04}" MOVIES=t5_avenue_to_park
      ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills moves basegpu); AFTER=();;
