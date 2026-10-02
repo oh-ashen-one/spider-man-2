@@ -28,3 +28,33 @@ Numbers: `python3 tools/water/water_spec.py all docs/night1/water/round-02 --jso
 ## Look rig changed since round 01
 The integrated golden rig (look piece, merged after round 01) is not the same: S4 far shore Y **150** (round 01: 171), cloudier sky.
 Round-01 vs round-02 brightness comparisons are therefore not like for like; the previous-vs-this pair in the critic pack shows it.
+
+## Files (all real game, offscreen, every run inside a `gpu_slot.sh capture --label water` hold)
+| file | map | output | internal |
+|---|---|---|---|
+| `S4_golden_{1080,4k}.jpg` | /Game/Maps/Manhattan_View_S4 | 1920x1080 / 3840x2160 | native (r.ScreenPercentage 100), t = 16 s |
+| `river_low_{1080,4k}.jpg` | /Game/Water/Maps/Water_View_RiverLow | same | native |
+| `river_sun_{1080,4k}.jpg` | /Game/Water/Maps/Water_View_RiverSun | same | native |
+| `harbour_high_{1080,4k}.jpg` | /Game/Water/Maps/Water_View_HarbourHigh | same | native |
+| `river_low_dolly.mp4`, `river_sun_dolly.mp4` | `*_Dolly` maps | 1920x1080 60 fps, 10 s (t = 6..16 s) | TSR default for 1080p output; -benchmark -fps=60 -dumpmovie; sun dolly crf 23 (size) |
+| `crop_river_low_4k_seawall_foam.jpg` | crop of river_low_4k (x 1500-2700, y 1250-2160) | | |
+| `variant_G/` | same set with variant G (ChopK 1.6, ScatK 0.3, BendK 0.5, FoamK 1.0) | | |
+| `iter1/` | first iteration (1080p) with round-02 defaults before tuning + variants A/B + debug (R = foam, G = contact, B = gust) | | |
+
+## Tuning variants (1080p river_low near crop; S4 C14) — iteration 3, 2026-10-02 00:47
+| variant | ChopK | ScatK | BendK | mean Y | p99.5 | glint >=140 | hp sd (1080) | C14 |
+|---|---|---|---|---|---|---|---|---|
+| default r02 start | 1.0 | 0.55 | 1.0 | 115.3 (iter 1) | 158 | 6.9 % | 5.0 | 6.8 |
+| G | 1.6 | 0.3 | 0.5 | 95.5 | 139 | 0.48 % | 5.6 | - |
+| C | 2.0 | 0.3 | 0.5 | 89.2 | 128 | 0.23 % | 5.6 | 16.9 |
+| **E (picked)** | 2.6 | 0.2 | 0.3 | 75.1 | 116 | 0.08 % | 5.7 | 21.0 |
+| J | 3.2 | 0.1 | 0.2 | 61.2 | 102 | 0.0 % | 5.7 | 24.3 |
+An automatic score (closest to all four near-crop targets) picked G; E was chosen by hand: it passes mean Y and keeps C14 mid-range, its
+river_sun glitter view is far closer to the into-the-sun reference (G's is washed out, mean 161), and G's extra highlights still fail.
+1080 -> 4K: high-pass sd x1.4-1.5 on the same view (G: 5.66 -> 7.95; E: 5.68 -> 8.46).
+
+## Final numbers (E, `spec.json`)
+river_low 4K near crop: mean Y 79.3, rgb (86, 79, 61), p1 46, p99.5 122, high-pass sd 8.46, glint 0.11 % (>= 130: 0.26 %).
+river_sun 4K near crop: mean Y 136.8, p99.5 248.6, high-pass sd 27.3, glint 44.9 %.
+harbour_high 4K: mean Y 80.5. C14 at S4: 22.0 (4K) / 21.0 (1080); far shore 151.0, river 129.0.
+Dollies: autocorrelation at 80 px 0.006 (river_low; round 01 0.224) / 0.041 (river_sun); water dT per 10-fps sample 3.06 / 7.30 (round 01 1.47).
