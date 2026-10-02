@@ -605,7 +605,9 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     # ------------------------------------------------------------------ mask / hood
     yb = (1.668 if PIPE else 1.662) + 0.46 * z          # round 13: the crown piping arc moves up with the bigger lenses (it sits on the sculpted brow ridge)
     crown = is_head * cover(yb - y, aa)                         # above the boundary
-    C.lay(is_head, ROLE[S['hood']], rough=RL.get('rough_hood', 0.80) if PIPE else 0.80)       # round 13: a satin hood (0.50) catches the key light on the sculpted brow / nose / cheeks
+    hood_col = ROLE[S['hood']]
+    if PIPE and S['hood'] == 'deep': hood_col = 0.5 * DEEP + 0.5 * TEAL_D        # round 13: a near-black hood hides the sculpted relief (luma ~14 in the 4K stills): halfway to the crown colour
+    C.lay(is_head, hood_col, rough=RL.get('rough_hood', 0.80) if PIPE else 0.80)       # round 13: a satin hood (0.50) catches the key light on the sculpted brow / nose / cheeks
     C.lay(crown, TEAL_D, rough=RL.get('rough_crown', 0.74) if PIPE else 0.74)
     if S['crown']['edge']:
         L(is_head * band(y - yb, 0.0018, aa), AMBER, h=0.5, rough=0.45, H=RL['pipe'], dist=y - yb, hw=0.0018)

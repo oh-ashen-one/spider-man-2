@@ -12,7 +12,10 @@ Every shot below is the REAL game (UE 5.8.3, `-game`, offscreen) through `gpu_sl
 | S1 | every suit, front, full body | `Char_Skins` shots 0, 4, 8 ... (suit i, view `front`), camera 5.6 m, FOV 40, aim 0.92 m | 4K real-time stills (`r.ScreenPercentage 100`, internal 3840x2160), stage-clock screenshot 2.2 s into the shot | `stills/skin_<suit>_front_4k.jpg` |
 | S2 | every suit, back | views `back` (camera behind) | same | `stills/skin_<suit>_back_4k.jpg` |
 | S3 | every suit, chest close-up (glyph, net, sash, stitching) | view `chest`, 1.5 m, FOV 30 (0.45 m of chest over 2160 px = 4800 px/m against 2330 texels/m) | same | `stills/skin_<suit>_chest_4k.jpg` |
-| S4 | every suit, head close-up (hood, lens, vent) | view `head`, 1.0 m, FOV 26 | same | `stills/skin_<suit>_head_4k.jpg` |
+| S4 | every suit, head close-up (round 13: the sculpted mask) | view `head`: 12 deg off the face axis, 1.0 m, FOV 26, aim 164 | same | `stills/skin_<suit>_head_4k.jpg` |
+| S4b | every suit, head in the ROUND-12 framing (25 deg, 1.0 m, aim 160): the lens-width comparison against r12 | view `head34` | same | `stills/skin_<suit>_head34_4k.jpg` |
+| S4c | every suit, head PROFILE (the nose bump against the head height) | view `headside`: 90 deg off the face axis, 1.25 m, aim 166.5 (whole head in frame) | same | `stills/skin_<suit>_headside_4k.jpg` |
+| E1 | the 7-enemy lineup (round 13: the grey hood is back, -0.6 EV, weaker fill) | `Char_Lineup` shots 5 (wide) and 6 (3/4) | 4K real-time stills at 3.0 s | `enemy_lineup_4k.jpg`, `enemy_lineup_34_4k.jpg` |
 | S5 | swatch sheet of all suits (front + back + chest) | composed from S1 - S3 | `tools/ue_char/suits/swatch_sheet.py` | `SWATCH_SHEET.jpg` |
 | S6 | the playable hero cycling through all suits with the T key | `Char_SkinsPlay` pawn shot 0 (side tracking, 10 s) | 1080p `-movie` (fixed 1/60 s), 7 injected T presses at 1.5, 2.7 ... 8.7 s | `swap_pawn_T_key.mp4` |
 | S7 | persistence: a second launch starts in the suit the first one ended in | `Char_SkinsPlay` | 960x540 still at 3 s, `-WHSuitPersist` | `persist_start.jpg`, `evidence/persist_*` |
