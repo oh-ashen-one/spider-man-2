@@ -1227,7 +1227,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("body_vel_deg,body_wallup_deg,cam_enclosed,vis_pts,vis_up_m,setbacks,topouts,tunnel_stops,cam_slew8,zip_reach_w,solid_mode,")
 		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px,")
 		TEXT("foot_sep_run_m,knee_gap_lat_m,knee_wall_l,knee_wall_r,limb_wall_max_m,body_run_elev_deg,")
-		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m"));
+		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m,alt_apex_want_m,cam_look_dir,cam_gnd_crane_m,cam_gnd_stop"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1483,7 +1483,9 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		Cols23 = FString::Printf(TEXT(",%.3f,%.3f"), FVector::DotProduct(M->GetBoneLocation(TEXT("hips")) - A.Wall.Point, N) / 100.0,
 			FVector::Dist(M->GetBoneLocation(TEXT("foot_L")), M->GetBoneLocation(TEXT("foot_R"))) / 100.0);
 	}
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23);
+	// round 24: altitude-chain apex want (m over the floor), camera turn direction of the user look, ground / perch crane lift (m)
+	const FString Cols24 = FString::Printf(TEXT(",%.1f,%d,%.2f,%d"), Traversal->AltApexWant, Cam.LookYawDir, Cam.GndCrane, Cam.GndStopped + (Cam.bGndLensHold ? 2 : 0));
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24);
 }
 
 // ------------------------------------------------------------------ live input (round 19)
