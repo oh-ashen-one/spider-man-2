@@ -741,6 +741,72 @@
     6,
     7
    ]
+  },
+  {
+   "piece": "E Terrain",
+   "round": 2,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    3,
+    3
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 23,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "E Terrain",
+   "round": 3,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "W River water",
+   "round": 3,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    4,
+    5,
+    5,
+    2,
+    4
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 14,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    5,
+    5,
+    5,
+    5
+   ]
   }
  ],
  "agents": [
