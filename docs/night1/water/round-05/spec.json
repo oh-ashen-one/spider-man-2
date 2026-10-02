@@ -1,0 +1,374 @@
+{
+ "S4_golden_4k.jpg": {
+  "file": "S4_golden_4k.jpg",
+  "C14": 15.0,
+  "far_shore_Y": 151.0,
+  "river_Y": 135.9,
+  "farfield_json": "S4_golden_4k.jpg.farfield.json"
+ },
+ "crop_river_low_4k_seawall_foam.jpg": {
+  "file": "crop_river_low_4k_seawall_foam.jpg",
+  "edge_line": [
+   -0.0724,
+   470.3
+  ],
+  "band_px_mean": 41.3,
+  "band_px_median": 43.0,
+  "rows_ge12px_pct": 96.5,
+  "band_Y_mean": 202.5,
+  "dolly": "river_low_dolly.mp4",
+  "dolly_samples_4fps": 40,
+  "dolly_band_px_mean": 4128.8,
+  "dolly_samples_with_band_pct": 100.0,
+  "dolly_band_change_xor_over_or": 0.375,
+  "dolly_band_change_min": 0.197,
+  "dolly_rows_ge6px_pct_min": 8.4,
+  "dolly_rows_ge6px_pct_mean": 50.2
+ },
+ "harbour_high_4k.jpg": {
+  "file": "harbour_high_4k.jpg",
+  "src_width": 3840,
+  "mean_Y": 84.2,
+  "rgb": [
+   97.2,
+   82.2,
+   66.6
+  ],
+  "p1": 56.3,
+  "p99_5": 115.2,
+  "highpass_sd": 8.29,
+  "glint_pct_ge140": 0.0,
+  "glint_pct_ge130": 0.01,
+  "note": "",
+  "harbour": {
+   "file": "harbour_high_4k.jpg",
+   "crop": "native 4K x0-2400 y1300-2160",
+   "mean_Y": 81.2,
+   "highpass_sd": 8.11,
+   "glint_pct_ge140": 0.0,
+   "pale_blobs_ge20px": 323,
+   "p1": 51.6,
+   "p99_5": 115.7
+  },
+  "under_island": {
+   "under_Y": 97.5,
+   "open_Y": 118.8,
+   "open_minus_under": 21.4,
+   "streak_spread": 36.4
+  },
+  "contact_line": {
+   "file": "harbour_high_4k.jpg",
+   "edge_ref": "harbour_high_4k.jpg",
+   "columns": 1050,
+   "line_px_median": 0.0,
+   "cols_ge3px_pct": 0.6
+  }
+ },
+ "harbour_sun_high_4k.jpg": {
+  "file": "harbour_sun_high_4k.jpg",
+  "src_width": 3840,
+  "mean_Y": 112.0,
+  "rgb": [
+   153.2,
+   105.2,
+   58.3
+  ],
+  "p1": 58.4,
+  "p99_5": 214.2,
+  "highpass_sd": 14.87,
+  "glint_pct_ge140": 23.01,
+  "glint_pct_ge130": 28.6,
+  "note": "",
+  "sunhigh": {
+   "file": "harbour_sun_high_4k.jpg",
+   "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
+   "mean_Y": 126.9,
+   "highpass_sd": 13.94,
+   "glint_pct": 0.53,
+   "path_cols_pct_ge2pct_rows": 100.0,
+   "path_cols_pct_any": 100.0,
+   "sparkles": 3813,
+   "sparkle_px_median": 3.0,
+   "sparkle_px_p90": 7.0,
+   "p99_5": 240.8
+  },
+  "sun_colour": {
+   "crop": {
+    "p1": 51.7,
+    "R_minus_B": 98.8,
+    "mean_RGB": [
+     168,
+     121,
+     69
+    ]
+   },
+   "upper": {
+    "p1": 90.2,
+    "R_minus_B": 114.2,
+    "mean_RGB": [
+     207,
+     158,
+     93
+    ]
+   }
+  }
+ },
+ "river_low_4k.jpg": {
+  "file": "river_low_4k.jpg",
+  "src_width": 3840,
+  "mean_Y": 78.8,
+  "rgb": [
+   85.9,
+   78.0,
+   65.4
+  ],
+  "p1": 37.6,
+  "p99_5": 117.7,
+  "highpass_sd": 10.64,
+  "glint_pct_ge140": 0.06,
+  "glint_pct_ge130": 0.08,
+  "note": ""
+ },
+ "river_low_dolly.mp4": {
+  "file": "river_low_dolly.mp4",
+  "frames": 600,
+  "sampled": 100,
+  "autocorr_80px": 0.064,
+  "autocorr_80px_max": 0.109,
+  "water_dT_per_sample": 3.65
+ },
+ "river_sun_4k.jpg": {
+  "file": "river_sun_4k.jpg",
+  "src_width": 3840,
+  "mean_Y": 139.0,
+  "rgb": [
+   170.6,
+   135.1,
+   85.4
+  ],
+  "p1": 39.1,
+  "p99_5": 248.0,
+  "highpass_sd": 23.89,
+  "glint_pct_ge140": 45.25,
+  "glint_pct_ge130": 49.67,
+  "note": "",
+  "sparkle_width_pct": 38.4
+ },
+ "_checks_r03": [
+  [
+   "river_low near hp sd >= 12",
+   10.64,
+   false
+  ],
+  [
+   "river_low near p99.5 >= 150",
+   117.7,
+   false
+  ],
+  [
+   "river_low near glints >= 1 %",
+   0.06,
+   false
+  ],
+  [
+   "river_low near mean Y <= 80",
+   78.8,
+   true
+  ],
+  [
+   "river_low near p1 <= 25",
+   37.6,
+   false
+  ],
+  [
+   "river_sun sparkle width >= 50 %",
+   38.4,
+   false
+  ],
+  [
+   "river_sun near mean Y <= 90",
+   139.0,
+   false
+  ],
+  [
+   "river_sun near glints 3..15 %",
+   45.25,
+   false
+  ],
+  [
+   "harbour crop hp sd >= 10",
+   8.11,
+   false
+  ],
+  [
+   "harbour crop glints >= 2 %",
+   0.0,
+   false
+  ],
+  [
+   "harbour crop pale blobs (>= 20 px) == 0",
+   323,
+   false
+  ],
+  [
+   "river_low_dolly.mp4 autocorr at 80 px <= 0.10",
+   0.064,
+   true
+  ],
+  [
+   "S4 C14 5..35",
+   15.0,
+   true
+  ]
+ ],
+ "_checks_r04": [
+  [
+   "harbour_high crop hp sd >= 10",
+   8.11,
+   false
+  ],
+  [
+   "harbour_high crop pale blobs (>= 20 px) == 0",
+   323,
+   false
+  ],
+  [
+   "harbour_sun_high glints (Y>=200, hp>=30) >= 0.5 %",
+   0.53,
+   true
+  ],
+  [
+   "harbour_sun_high path columns with Y>=200 >= 50 %",
+   100.0,
+   true
+  ],
+  [
+   "harbour_sun_high sparkle size median <= 6 px",
+   3.0,
+   true
+  ],
+  [
+   "seawall foam band mean >= 12 px (Y >= 180)",
+   41.3,
+   true
+  ],
+  [
+   "seawall foam rows with >= 12 px band >= 30 %",
+   96.5,
+   true
+  ],
+  [
+   "seawall foam changes between 4 fps dolly samples (xor/or >= 0.3)",
+   0.375,
+   true
+  ],
+  [
+   "river_low near hp sd >= 9.9 (hold)",
+   10.64,
+   true
+  ],
+  [
+   "river_low near mean Y <= 80 (hold)",
+   78.8,
+   true
+  ],
+  [
+   "river_low_dolly.mp4 autocorr at 80 px <= 0.10 (hold)",
+   0.064,
+   true
+  ],
+  [
+   "S4 C14 5..35 (hold)",
+   15.0,
+   true
+  ]
+ ],
+ "_checks_r05": [
+  [
+   "GATE seawall band >= 12 px (Y >= 180) on >= 60 % of wall rows",
+   96.5,
+   true
+  ],
+  [
+   "GATE band present in every 4 fps dolly frame (>= 50 band px; min row share at 1080p reported)",
+   [
+    100.0,
+    8.4
+   ],
+   true
+  ],
+  [
+   "GATE band change between consecutive 4 fps frames xor/or >= 0.2 (every pair: min; mean reported)",
+   [
+    0.197,
+    0.375
+   ],
+   false
+  ],
+  [
+   "GATE harbour_high contact line >= 3 px on >= 50 % of island seawall columns",
+   0.6,
+   false
+  ],
+  [
+   "BLOCKER harbour_high water under the island >= 15 Y darker than open water",
+   21.4,
+   true
+  ],
+  [
+   "HOLD harbour_high crop hp sd >= 7.5",
+   8.11,
+   true
+  ],
+  [
+   "BLOCKER harbour_sun_high p1 <= 55",
+   51.7,
+   true
+  ],
+  [
+   "BLOCKER harbour_sun_high R-B <= 70",
+   98.8,
+   false
+  ],
+  [
+   "HOLD harbour_sun_high glints >= 0.5 %",
+   0.53,
+   true
+  ],
+  [
+   "HOLD harbour_sun_high path columns Y>=200 >= 50 %",
+   100.0,
+   true
+  ],
+  [
+   "HOLD harbour_sun_high median sparkle <= 6 px",
+   3.0,
+   true
+  ],
+  [
+   "HOLD river_low near hp sd >= 12",
+   10.64,
+   false
+  ],
+  [
+   "HOLD river_low near mean Y <= 80",
+   78.8,
+   true
+  ],
+  [
+   "HOLD river_low_dolly autocorr 80 px <= 0.10",
+   0.064,
+   true
+  ],
+  [
+   "HOLD S4 C14 5..35",
+   15.0,
+   true
+  ],
+  [
+   "HOLD river_sun sparkle width >= 50 %",
+   38.4,
+   false
+  ]
+ ]
+}
