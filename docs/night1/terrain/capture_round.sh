@@ -75,7 +75,7 @@ if want stills; then
 fi
 movie() {  # <name> <script.json> <quit seconds>
   local NAME="$1" JSON="$2" Q="$3"
-  time_ok || { echo "== SKIP movie $NAME (hold budget used up)"; return; }
+  time_ok && [ $(( $(date +%s) - HOLD_START )) -lt "${MOVIE_START_BUDGET:-1500}" ] || { echo "== SKIP movie $NAME (hold budget: a movie may only start in the first ${MOVIE_START_BUDGET:-1500} s: hold 2 lost the t4 movie to the 40 min max hold)"; return; }
   echo "== movie $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
   RUN "$TMP/$NAME" -map $TROOT/Maps/Manhattan_Terrain -res 1920x1080 -quit "$Q" -name "$NAME" -movie -timeout 2300 -exec "r.ScreenPercentage 100${HIDE_HERO:+,ShowFlag.SkeletalMeshes 0}" \
@@ -96,9 +96,13 @@ movie() {  # <name> <script.json> <quit seconds>
 if want moves; then
   export WH_CAPTURE_MAXFPS="${MOVIE_MAXFPS:-20}"
   MOVIES="${MOVIES:-t4_lawn_sprint t5_avenue_to_park}"   # r04: MOVIES="t4_lawn_sprint" = only that movie
-  [[ " $MOVIES " =~ " t4_lawn_sprint " ]] && movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}"
   T5J=t5_avenue_to_park.json; [ -f "$ROUND/t5_probe/chosen.json" ] && T5J="$ROUND/t5_probe/chosen.json"   # r04: the probe's best candidate (absolute path) wins over the committed script
-  [[ " $MOVIES " =~ " t5_avenue_to_park " ]] && movie t5_avenue_to_park "$T5J" "${MOVE_QUIT:-15.4}"
+  for MV in $MOVIES; do   # in the order given (r04 movies hold: t5 first)
+    case "$MV" in
+      t4_lawn_sprint) movie t4_lawn_sprint t4_lawn_sprint.json "${MOVE_QUIT:-13.4}";;
+      t5_avenue_to_park) movie t5_avenue_to_park "$T5J" "${MOVE_QUIT:-15.4}";;
+    esac
+  done
 fi
 # r03: round-02 content built side by side into /Game/TerrainR2 (scratch copy of the r02 scripts) -> the same stills' GPU ms under the same hold, for "capture GPU ms vs r2"
 if want r2gpu && [ -f "$UE_DIR/Content/TerrainR2/Maps/V_p1_south.umap" ]; then
