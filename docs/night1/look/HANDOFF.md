@@ -2,18 +2,34 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-## Where round 05 stands (update at the end of the round)
-- ONE map `/Game/Tests/Look/Look_Midtown_tod` with continuous time of day: C++ `AWHLookTimeOfDay` (`wh.TimeOfDay` 0-24, `wh.Weather`, live pins `exec wh.ToDSet <param> <v>` / `wh.ToDClear`),
-  key table `Scripts/look_tod.py` from the `tod` section of `Scripts/look_presets.json` (keys at 4.9 / 6.25 / 6.8 / 7.6 / 9.5 / 13 / 16.5 / 18.4 / 19.2 / 19.8 / 20.6 h). Rebuild: `tools/perf_ue/rebuild_look.sh rigs,maps midday,golden,night,tod`.
-- Final chain: `tools/perf_ue/sweeps/r05/final_r05.sh build,tour,lapse,clips` (each step its own `gpu_slot.sh capture` hold; log `$SM2_LOOK_SCRATCH/r05/final2.log`). Measure: `tools/perf_ue/tod_tests.py --dir docs/night1/look/round-05/stills --out docs/night1/look/round-05/TESTS_tod --map 'h18.4=golden,h22=night,h13w1=midday,h13=midday,h19.8=night,h7.6=golden'`.
-- Sweeps this session (one game session each, `sweeps/run_r05.py --plan sweeps/r05/plan_<x>.json`, results `round-05/sweeps/<X>_TESTS.md`):
-  T1 = first full hour tour after the rebuild (`sweeps/T1_TESTS.md`, sheet `T1_tour_sheet.jpg`); E = night far-band fog / overcast + day aerial / moon; F = blue hour after the sun fix, golden white temp, day exposure; G = blue-hour light diagnosis + fog cutoff.
-- Findings: (1) night S4 far shore was 47-56 Y ABOVE the sky (lit far masses): fog from 800 m (.08, max .98) takes it to the sky level, and only a fog CUTOFF (7 km: the sky is past it, so it stays un-fogged) puts it under the sky (G gN2: -21.5, dBR -2.6, L22 3.09 % / 34.2, L3 pass).
-  `fog.FogCutoffDistance` is NOT blended: C++ steps it at the middle of a key segment (an in-between cutoff would un-fog the near city). (2) The blue hour (19:48, sun -6.7 deg) looked sunlit: neither a lighting-channel switch nor a
-  diffuse/specular ramp of the sun changed it, `sun.Intensity 0` did (G gBsun0) -> it is the twilight sky glow through the sky light; blue key sun 30000 -> 5000 lux. The diffuse/specular ramp (+0.5..-2.5 deg) stays (correct for direct light).
-  (3) Golden white temp 7800 -> 6400 + saturation 1.2/1.15/1.08 (B-R into L6 on most views); golden S4 mean ~116-119 and S7 clipping 3.5-4 % remain (sky-dominated / sun-facing views under bright-region metering).
-  (4) Non-keyed params are sticky in a live session (G's golden group inherited the night fog cutoff): put every param a sweep touches in every group, or key it in the presets.
-- `unreal/WebHomage/Scripts/run_game.sh` carries an UNCOMMITTED orchestrator safety edit (18:12, frame caps for non-perf captures): not P4's file, leave it as is.
+## Round 05 result (2026-10-01 20:25, Opus 5.5) - start here
+Fresh captures, all from the real game (`Scripts/run_game.sh -game`, offscreen, inside `gpu_slot.sh capture`), 1920x1080 output, internal 100 % (`r.ScreenPercentage 100`):
+- `round-05/stills/tod_S<1-8>_1920x1080_h<hour>.jpg`: ONE session of `Look_Midtown_tod` visiting the 8 shot poses at 7.6, 13 (clear), 13w1 (`wh.Weather 1` overcast), 18.4 (golden), 19.8 (blue hour), 22 (night). Numbers: `round-05/TESTS_tod.md` (`tod_tests.py`).
+- `round-05/tod_lapse_S4.mp4` (+ `.json`, `_sheet.jpg`): 24 h from the S4 perch at 2 h/s, fixed 1/60 s step, 724 frames. `round-05/swing_tod_18h4.mp4`, `swing_tod_22.mp4` (+ `.check.json` from `clip_check.py`): P3 hero swing clips on the ToD map.
+- Critic pack: `/Users/midir/sm2-n1/_scratch/critic-P4-r05/pack` (13 pairs, key in `pack.key.json`, made by `make_pairs.py` + `abpack.py`; 11 ref pairs + 2 progress pairs vs round 03).
+
+Measured (final tour, `TESTS_tod.md`):
+- Golden 18.4: means 56..117 (L1 61..100 on 6/8: S3 56, S4 117), clipped <= 1.0 % except **S7 3.5 %** (L5 0.7), B-R -57..-26 (L6 mostly in), **far band S4 19.4 Y under the sky (PLAN 15-32: PASS), dBR +11.1 (+-10: 1.1 over)**, L21 p5 4.1..31.9, p95/p5 5.9..52.1, sat .41..58.
+- Night 22: L3 7/8 (S1 62.3 = first pose after the hour switch, see below), L8 B-R -8..+10 pass; far band -8.4 (was +47 at the start of the session; sweep G reached -21.5 with the same fog), **L22 S4 window points 1.73 % (FAIL, sweep G 3.09 %)**, median 28.7 (pass).
+- Overcast 13w1: L2 4/8 (means 66..98), clipped <= .03 %; far band -6.3 (fail). Clear 13: means 70..100, clipped up to 2.2 % (S3), far band -9.4 / dBR -12.9 (fail). Dawn 7.6: 5/8 golden lines.
+- Lapse (L23b <= 3 Y per frame): **FAIL, max 14.3 Y, p99 7.8**: the mean runs to ~200 at 6.6-8 h and 19.6-21.4 h. Cause: eye adaptation lags the 2 h/s clock (it brightens while exposure is still set for the darker hour; at dusk the city emissive ramps x11 at the same time) and the dense night fog lit by the twilight sky ambient (white wash in the sheet).
+  Follow-up queued in ONE hold (`$SM2_LOOK_SCRATCH/r05/final4.sh`, log `final4.log`): lapse with `pp.AutoExposureSpeedUp/Down 40` pinned (`--cmds`, a time-lapse camera re-meters every frame), 22 h / 19.8 h re-captured with 8 s settle into `$SM2_LOOK_SCRATCH/r05/settle`, and a diagnostic lapse without fog sky-ambient.
+- Clips: golden mean Y 73.5 (31.7..93.6), clipped .77 %, L18 edge/centre p50 .76; night mean 39.4, B-R +2.0, L18 p50 .58. **Night clip: the hero renders white-hot (blown) on the ToD map** (round-02 night map hero was fine, same hero-light preset): not diagnosed yet. `hero_luma` = 0 frames measured (no hero pixel box in the telemetry on this map).
+
+What changed this session (all committed): C++ sun diffuse/specular ramp under the horizon; stepped `fog.FogCutoffDistance`; presets night fog (800 m, .08, max .98, 7 km cutoff), golden white temp 6400 + saturation, day exposure -0.8, blue-hour sun 5000 + lighter fog; `tod_tests.py` abs symlinks; lapse `--cmds`.
+
+## Next (ranked)
+1. Night 22 S4 points 3.09 % -> 1.73 % between sweep G and the final tour with the same fog values: find the difference (the final tour ran under the new 45 fps capture cap in `run_game.sh`, fewer frames per settle; S1 at 62 says the first night pose was not settled) - compare `settle/` stills from final4.
+2. L23b: exposure speed for the lapse (final4), then soften the dusk emissive ramp (`lights` / `mpc.EmissiveScale` keys) and the blue/night fog sky ambient (`fog.SkyAtmosphereAmbientContributionColorScale` key at night) so the 19.5-21 h wash goes.
+3. Blue hour 19.8 still looks sunlit (twilight glow through the sky light): try `sky.Intensity` lower in the blue key, sun 5000 -> 1500.
+4. Night hero white-hot on the ToD map (hero lights / exposure); golden S7 clipping 3.5 %, S4 mean 117, golden dBR +11.
+5. Day / overcast far band (6-10 Y under the sky; needs 15-32).
+
+## Sweeps of round 05
+- Runner `tools/perf_ue/sweeps/run_r05.py --plan sweeps/r05/plan_<x>.json --out <dir>` (one session, `exec wh.ToDClear` before each group; params that are NOT keyed are sticky - e.g. a pinned `fog.FogCutoffDistance` leaked into sweep G's golden group). Results `round-05/sweeps/<X>_TESTS.md`.
+- A..D (earlier today): ToD first pass, golden key/fill, night windows (nB), overcast (oA), clouds per hour (CD); T1 = first full tour after the rebuild; E = night fog / overcast + day aerial / moon; F = blue hour, golden white temp, day exposure; G = blue-hour light diagnosis (`sun.Intensity 0` is the only pin that darkens it) + fog cutoff.
+- `unreal/WebHomage/Scripts/run_game.sh` carries an UNCOMMITTED orchestrator safety edit (18:12, frame caps 45 / 30 fps for non-perf captures): not P4's file, leave it.
+- Queue reality tonight: a capture hold waited 30-60 min (7-8 holders ahead); a waiter times out after 3600 s by default -> use `gpu_slot.sh capture --label look --timeout 7200 -- <one chain script>` and put several steps in one hold (inner gpu_slot calls pass through as nested; max hold 2400 s).
 
 # (older) P4 Look, lighting, post: handoff (round 03; round 04)
 
