@@ -4,7 +4,10 @@ Writes <outdir>/*.json (traversal scripts: spawn + keys; north = -y, 5th Av at x
 usage: t5_cands.py <outdir>"""
 import json, os, sys
 out = sys.argv[1]; os.makedirs(out, exist_ok=True)
-def script(name, note, spawn, keys): json.dump({'name': 't5_avenue_to_park', 'note': note, 'seed': 1234, 'spawn': spawn, 'keys': keys}, open(os.path.join(out, name + '.json'), 'w'), indent=1)
+def script(name, note, spawn, keys, tune=None):
+    d = {'name': 't5_avenue_to_park', 'note': note, 'seed': 1234, 'spawn': spawn, 'keys': keys}
+    if tune: d['tune'] = tune
+    json.dump(d, open(os.path.join(out, name + '.json'), 'w'), indent=1)
 def auto(t, sky, repress, tricks=0, **kw): return dict({'t': t, 'swing': True, 'autoChain': True, 'releasePhase': 0.55, 'gap': 0.8, 'repressVz': repress, 'trickEvery': tricks, 'skyEvery': sky, 'skyTricks': 1, 'skyRepressH': 30, 'skyPhase': 0.8, 'skyMax': 2.8}, **kw)
 FOOT = lambda y0: {'pos': [250, y0, 0.95], 'yaw': -90, 'camPitch': 0.14}
 AIR = lambda y0, z: {'pos': [250, y0, z], 'yaw': -90, 'camPitch': 0.12, 'vel': [0, -22, 0]}
@@ -23,9 +26,13 @@ C = [
  ('a2_y200_h130_sky0', 'airborne start (250, -200, 26), heading -130 from 8.5 s', AIR(-200, 26), air_keys(0, 8.5, -130)),
  ('a3_y240_h120_sky1', 'airborne start (250, -240, 26), heading -120 from 9.5 s, sky launches', AIR(-240, 26), air_keys(1, 9.5, -120)),
  ('a4_y160_h135_sky2', 'airborne start (250, -160, 26), heading -135 from 7.5 s, every 2nd release a sky launch', AIR(-160, 26), air_keys(2, 7.5, -135, -12.0)),
+ ('s1_y200_sky1_peak40', 'airborne start (250, -200, 26), heading -130 from 8.5 s, sky launches capped at a 26-40 m peak', AIR(-200, 26), air_keys(1, 8.5, -130, -12.0), 'SkyPeakMin=26,SkyPeakMax=40,SkyLaunchVzMax=42'),
+ ('s2_y290_sky1_peak40', 'foot start y -290, heading -130 from 9 s, sky launches capped at a 26-40 m peak', FOOT(-290), foot_keys(1, 9.0, -130), 'SkyPeakMin=26,SkyPeakMax=40,SkyLaunchVzMax=42'),
+ ('s3_y240_sky1_hang', 'airborne start (250, -240, 26), heading -120 from 9.5 s, sky launches 30-45 m peak with more hang', AIR(-240, 26), air_keys(1, 9.5, -120), 'SkyPeakMin=30,SkyPeakMax=45,SkyHangK=0.4'),
 ]
-for n, note, sp, ks in C:
+for c in C:
+    n, note, sp, ks = c[:4]
     for kk in ks:
         for key in [x for x, v in kk.items() if v is None]: del kk[key]
-    script(n, note, sp, ks)
+    script(n, note, sp, ks, c[4] if len(c) > 4 else None)
 print('%d candidates in %s' % (len(C), out))

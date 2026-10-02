@@ -18,14 +18,15 @@ case "${STAGE:-A}" in
   A) # hold 1 (calibration + canopy gate): safe warm-up, the four lawn / canopy stills at 4K (p10 p4 p9 p1), the t4 movie, the t5 route probes (nullrhi)
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain ONLY_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04 \
             MOVIES=t4_lawn_sprint PROBE_DIR="$HERE/round-04/t5_candidates"
-     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills moves t5probe);;
+     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=("t5probe" "moves");;
   B) # hold 2: everything the first hold did not take (the other five stills + the t5 movie on the chosen route); BASE_IDS stays empty
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" ONLY_IDS="${ONLY_IDS:-p2_reservoir p3_lake p6_west_shore p7_east_shore p8_pier}" PRIO_IDS="${PRIO_IDS-}" STILL_TAG="${STILL_TAG:-r04}" MOVIES=t5_avenue_to_park
-     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills moves basegpu);;
+     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills moves basegpu); AFTER=();;
   R) # resume: ONLY_IDS / WANT / MOVIES from the environment
-     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" PRIO_IDS="${PRIO_IDS-}" STILL_TAG="${STILL_TAG:-r04}"; ROUND="$HERE/${ROUND_NAME:-round-04}"; read -r -a WANT <<< "${WANT:-stills}";;
+     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" PRIO_IDS="${PRIO_IDS-}" STILL_TAG="${STILL_TAG:-r04}"; ROUND="$HERE/${ROUND_NAME:-round-04}"; read -r -a WANT <<< "${WANT:-stills}"; AFTER=();;
   *) echo "unknown STAGE"; exit 2;;
 esac
 mkdir -p "$ROUND/stills"
 echo "round4: stage ${STAGE:-B} root $TERRAIN_ROOT round $ROUND want ${WANT[*]} start $(date +%H:%M:%S) GPU $(ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1)"
 "$HERE/capture_round.sh" "$ROUND" "${WANT[@]}"
+for G in "${AFTER[@]+"${AFTER[@]}"}"; do read -r -a GW <<< "$G"; "$HERE/capture_round.sh" "$ROUND" "${GW[@]}"; done   # r04 hold A: stills, then the (GPU-free) route probes, then the t4 movie
