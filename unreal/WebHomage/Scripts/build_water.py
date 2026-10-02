@@ -366,7 +366,8 @@ GLITTER = 0.5
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
 # r03 start (CPU emulation of the river_low near crop against the round-02 frame, see docs/night1/water/round-03/NOTES.md): dark body
 # (ScatK 0.06: the body radiance set the r02 trough floor p1 46), steeper resolved chop, F0 x1.6 (SpecK) for the sky / mist reflections
-PARAMS = {'ChopK': 2.4, 'MicroK': 1.6, 'ScatK': 0.06, 'FarVarK': 0.25, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 1.6}
+# round-03 captures: autopick variant V3 (lowest penalty on the 1080p iteration stills, docs/night1/water/round-03/iter/autopick.json)
+PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
