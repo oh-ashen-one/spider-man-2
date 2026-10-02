@@ -62,6 +62,8 @@ KNOBS = {
     'night_hl': None,
     # moonlit cloud pattern: cloudv.Layout_GlobalTexturePlacement on every key (hold-2 Mv4: [0, 30000, 0, 0] = sky high-pass std 3.4 at 22:00 with the disk clear)
     'cloud_offset': None,
+    # sun surface-light ramp in degrees of sun elevation (C++ sun.RampLo / sun.RampHi; default -2.5 / 3.5): [lo, hi] on every key
+    'sun_ramp': None,
 }
 
 
@@ -176,6 +178,7 @@ def apply(doc, K):
             if m is not None:
                 g = list((sset.get('pp.ColorGainHighlights') or b['pp.ColorGainHighlights'])); sset['pp.ColorGainHighlights'] = [round(x * m, 4) for x in g[:3]] + [1.0]
         if K.get('cloud_offset') is not None: sset['cloudv.Layout_GlobalTexturePlacement'] = list(K['cloud_offset'])
+        if K.get('sun_ramp') is not None: sset['sun.RampLo'] = float(K['sun_ramp'][0]); sset['sun.RampHi'] = float(K['sun_ramp'][1])
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
         if K.get('cutoff_all') is not None: sset['fog.FogCutoffDistance'] = K['cutoff_all']
         if h in K['night_stars']: sset['stars'] = K['night_stars'][h]

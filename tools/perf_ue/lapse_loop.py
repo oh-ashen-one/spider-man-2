@@ -21,7 +21,7 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--cvars', default=''); ap.add_argument('--iters', type=int, default=4)
     ap.add_argument('--deadline', type=float, default=0.0); ap.add_argument('--keys-hours', default='5.6,6.25,6.5,6.8,7.0,7.2,7.4,18.8,19.2,19.5,19.8,20.2,20.6,21.0')
     ap.add_argument('--hold', default='4.9,7.6,8.0,9.5,13,16.5,18.4,21.4,0'); ap.add_argument('--slope', type=float, default=1.3); ap.add_argument('--gain', type=float, default=0.8)
-    ap.add_argument('--window', type=float, default=0.25); ap.add_argument('--substeps', type=int, default=1); ap.add_argument('--anchor-w', type=float, default=2e4); ap.add_argument('--from-it', type=int, default=0, help='first iteration number (a continued loop)'); ap.add_argument('--doc', default='', help='table document (default: the committed Scripts/look_presets.json)')
+    ap.add_argument('--window', type=float, default=0.25); ap.add_argument('--substeps', type=int, default=1); ap.add_argument('--anchor-w', type=float, default=2e3); ap.add_argument('--from-it', type=int, default=0, help='first iteration number (a continued loop)'); ap.add_argument('--doc', default='', help='table document (default: the committed Scripts/look_presets.json)')
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     doc = json.load(open(a.doc)) if a.doc else look_tod.load_doc()

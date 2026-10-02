@@ -17,7 +17,7 @@ from concurrent.futures import ProcessPoolExecutor
 HERE = os.path.dirname(os.path.abspath(__file__))
 WT = os.path.abspath(os.path.join(HERE, '..', '..'))
 UE = os.path.join(WT, 'unreal', 'WebHomage')
-RUN_GAME = os.path.join(UE, 'Scripts', 'run_game.sh')
+RUN_GAME = os.environ.get('WH_RUN_GAME', os.path.join(UE, 'Scripts', 'run_game.sh'))   # WH_RUN_GAME: a stand-in for the game in the CPU-only tests of the loop tooling
 GPU_SLOT = os.environ.get('GPU_SLOT', '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh')
 SCR = os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'lapse')
 sys.path.insert(0, HERE)
