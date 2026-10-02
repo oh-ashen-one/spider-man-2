@@ -132,6 +132,14 @@ public:
 	// round 20: hero visibility lift (m, spring) + telemetry: visible probe points (0-4) and the camera enclosed by geometry
 	double VisUp = 0.0, VisUpV = 0.0, VisUpGoal = 0.0, VisHold = 0.0;
 	int32 VisPts = 4;
+	// round 24 (critic r23 camera hard gate, c 7.7-8.5 s: a user camera turn on a roof swung the lens into a tower wall -- cam 1.6 m, hero out
+	// of frame, yaw -88 -> -46 -> -99): on foot / perched (Ground / Perch / Land) the blocked-spot orbit search only takes offsets in the
+	// direction the user is turning (LookYawDir, within GndLookHold s of the last look input), the found orbit offset is absorbed into the
+	// look yaw (GndAbsorb 1: no spring back = no reversal), and a lens pushed under GndMinDist m cranes up over the hero (GndCrane, spring
+	// GndCraneT s) until it is GndMinDist + 0.2 m away. GndMinDist 0 = r23.
+	double GndMinDist = 3.0, GndLookHold = 0.8, GndAbsorb = 1.0, GndCraneT = 0.10, GndCraneMax = 6.0;
+	double GndCrane = 0.0, GndCraneV = 0.0, GndCraneGoal = 0.0, GndClearT = 0.0;
+	int32 LookYawDir = 0;
 	bool bCamEnclosed = false;
 	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipMaxStepYawDeg = 2.4;
 	int32 SlewFlags = 0;

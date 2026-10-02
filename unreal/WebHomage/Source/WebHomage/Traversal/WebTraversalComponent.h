@@ -68,6 +68,27 @@ public:
 	// (stick mostly up) keeps its run line within this many degrees of the wall's up axis (0 = r22 free diagonal)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallVertMaxDeg = 10.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
+	// round 24 (critic r23 biggest gap, SPEC T7 / T3: "every 4 s a release from >= 30 m over the floor down to a 3-13 m low point, drop >= 20 m;
+	// rope on screen 25-45 %"): ALTITUDE CHAIN. AltChain 1 = a plain web release (and a flow flip) is solved for an apex AltApexH..AltApexH +
+	// AltApexJit m over the floor (feet; per-release deterministic jitter), the release velocity turned up toward it (speed kept, at most
+	// AltTurnDeg of turn, horizontal >= AltHMin m/s, vz <= AltVzMax m/s; the climb above it still goes forward); a swing entered >= AltEntryMin m
+	// over the street bottoms out AltLowLo..AltLowHi m over the street (alternating halves of the band, so consecutive arcs differ) instead of
+	// the shallow / deep drop below the entry. 0 = r23 (ReleaseVzMax forward pop, shallow / deep arcs).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltChain = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexH = 33.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexJit = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltVzMax = 34.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltTurnDeg = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltHMin = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltFlowVzMax = 26.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltEntryMin = 20.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowLo = 5.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowHi = 10.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltWeaveK = 0.4f; // round 24: corridor weave scale (low points near the centre)
+	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
+	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
+	/** Round 24: vertical release speed that tops out D m higher (StepAir gravity: G, x0.55 under |vz| 3.5). */
+	static double AltVzFor(double D);
 	// round 21 (-WHTravTune): side-run torso raised this many degrees above the run line toward the wall's up axis (0 = r20 plank);
 	// MantleStep 1 = a setback is crossed ON the surfaces (up the lip, along the ledge top, onto the next face; limbs stay on them), 0 = r20 hop
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideRaiseDeg = 25.f;

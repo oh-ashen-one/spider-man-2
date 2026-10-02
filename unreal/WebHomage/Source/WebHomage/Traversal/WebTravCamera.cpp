@@ -35,6 +35,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 	LagOff = LagOffV = JumpOff = JumpOffV = FVector::ZeroVector;
 	bHasLastGoal = false; AnchorLean = 0.0; AnchorLeanV = 0.0;
 	bChaseInit = false; UserPitch = 0.0; OccYawGoal = OccUpGoal = 0.0;
+	GndCrane = GndCraneV = GndCraneGoal = GndClearT = 0.0; // round 24
 	bOutInit = false; // round 13: a teleport / reset is allowed to move the view at once
 	bHaveComposeHero = false;
 }
@@ -42,6 +43,7 @@ void FWebTravCamera::Reset(const FVector& Pos, double InYaw)
 void FWebTravCamera::ApplyLook(const FVector2D& Look)
 {
 	if (FMath::Abs(Look.X) + FMath::Abs(Look.Y) > 0.001) LastLook = 0.0;
+	if (FMath::Abs(Look.X) > 0.0005) LookYawDir = Look.X > 0.0 ? 1 : -1; // round 24
 	Yaw += Look.X * Sens;
 	Pitch = FMath::Clamp(Pitch + Look.Y * Sens, -0.9, 1.25);
 	UserPitch = FMath::Clamp(UserPitch + Look.Y * Sens, -0.6, 0.6);
@@ -432,6 +434,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		return Hero + B2 * ChaseDist + FVector(0, 0, ChaseHeight + Up);
 	};
 	FVector Tmp;
+	// round 24: on foot / perched (see GndMinDist in the header)
+	const bool bGndCam = GndMinDist > 0.0 && (P.Mode == EWebTravMode::Ground || P.Mode == EWebTravMode::Perch || P.Mode == EWebTravMode::Land) && !bFlipCam;
+	const bool bGndTurn = bGndCam && LastLook < GndLookHold && LookYawDir != 0;
 	const double DefClear = ClearTo(Candidate(0, 0), Tmp);
 	const double DefLen = FVector::Dist(Candidate(0, 0), Hero); // unobstructed distance of the default spot
 	if (DefClear >= DefLen - 0.3) { OccYawGoal = 0; OccUpGoal = 0; }
@@ -442,6 +447,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		{
 			for (double DYw : { 0.0, 0.6, -0.6, 1.1, -1.1, 1.6, -1.6, 2.2, -2.2 })
 			{
+				if (bGndTurn && DYw * double(LookYawDir) < -1e-3) continue; // round 24: never orbit back against the user's turn
 				const double C2 = ClearTo(Candidate(DYw, Up), Tmp);
 				const double Score = FMath::Min(C2, 6.0) - 0.8 * FMath::Abs(DYw) - 0.25 * Up - (FMath::Abs(DYw - OccYawGoal) + FMath::Abs(Up - OccUpGoal) * 0.2) * 0.3;
 				if (C2 >= DefLen - 0.8 && Score > BestC) { BestC = Score; BY = DYw; BU = Up; }
@@ -451,6 +457,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	SD(OccYawOff, OccYawOffV, OccYawGoal, 0.3, Dt);
 	SD(OccUp, OccUpV, OccUpGoal, 0.3, Dt);
+	if (bGndCam && GndAbsorb > 0.0 && FMath::Abs(OccYawOff) > 1e-6)
+	{ // round 24: the orbit offset becomes the look yaw (the spot stays where it is; the default is that spot from now on: no spring back)
+		Yaw += OccYawOff; AutoYaw += OccYawOff; OccYawGoal -= OccYawOff; OccYawOff = 0.0;
+	}
 	FVector Got;
 	ClearTo(Cam, Got);
 	// round 15 (r14 f3 4.6-5.5 s: 43 frames with the lens inside a street-tree canopy while the hero swung through it): with the hero
@@ -513,6 +523,26 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	}
 	const double GY = World.GroundHeight(Cam.X, Cam.Y, Cam.Z + 0.3) + 0.4;
 	if (Cam.Z < GY) Cam.Z = GY;
+	// ---- round 24 (critic r23 c 7.7-8.5 s): on foot / perched the lens never sits under GndMinDist m from the hero -- crane it up over him
+	// (raised at once, lowered once the unraised spot has been clear for 0.5 s)
+	{
+		double Goal = 0.0;
+		if (bGndCam)
+		{
+			const double R = GndMinDist + 0.2, D0 = FVector::Dist(Cam, Hero);
+			const double Hd = FVector2D(Cam.X - Hero.X, Cam.Y - Hero.Y).Size(), Dz = Cam.Z - Hero.Z;
+			if (D0 < R) Goal = FMath::Clamp(FMath::Sqrt(FMath::Max(0.0, R * R - Hd * Hd)) - Dz, 0.0, GndCraneMax);
+		}
+		if (Goal >= GndCraneGoal) { GndCraneGoal = Goal; GndClearT = 0.0; }
+		else { GndClearT += Dt; if (GndClearT > 0.5 || !bGndCam) GndCraneGoal = Goal; }
+		SD(GndCrane, GndCraneV, GndCraneGoal, GndCraneGoal > GndCrane ? GndCraneT : 0.4, Dt);
+		if (GndCrane > 0.01)
+		{
+			FVector C3 = Cam + FVector(0, 0, GndCrane);
+			ClearFrom(From, C3, C3);
+			if (FVector::Dist(C3, Hero) > FVector::Dist(Cam, Hero)) Cam = C3;
+		}
+	}
 	// ---- round 06: wall-run camera, blended in / out with a spring (held through the rising half of the top-out, so the
 	// hero clears the roof edge in frame, then handed back to the chase camera which comes up over the edge)
 	{
@@ -788,7 +818,8 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
-		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW} };
+		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
+		{TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }
