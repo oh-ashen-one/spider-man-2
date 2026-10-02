@@ -8,6 +8,16 @@ the spectrum, chop and noise textures are generated, the distance maps are raste
 code. The branch was NOT re-merged with `Opus-5.5-Loop-Night-1` this round: upstream has 19 newer commits, including traversal C++, which
 would need `build_editor.sh`.
 
+## ROUND 05 IN PROGRESS (Opus 5.5, started 2026-10-02 11:20) - resume from here if this session stopped
+- Merged `origin/Opus-5.5-Loop-Night-1` (de80d8ef) and rebuilt the editor C++ with `build_editor.sh` (OK).
+- Code (committed): `Dbg 9` thermometer diagnosis of the contact texture (GetDimensions / Load / SampleLevel at fixed UVs), contact maps
+  B (half-res, Interchange, NeverStream) and C (half-res, legacy TextureFactory) selectable with `CSel`, TEXINFO lines in the build log,
+  far contact line (`FoamFarK`, `FoamFar`), `ShoreCalm` (far-field gains fade near land: island reflections), `GrazeRough` 0, `SunSpecK`.
+- Scripts in `/Users/midir/sm2-n1/_scratch/water/r05/`: `hold1.sh` (1080p diagnosis + variants `variants1.json`, report `report_r05a.py
+  iter/r05a`), `hold2.sh` (final build from `final_params.json` + stills + dollies), `post_r05.sh` (CPU post + spec.json). Both holds are
+  queued through `gpu_slot.sh` behind `hold1_gate.sh` / `hold2_gate.sh`, which release the slot unless `READY1` / `READY2` exist.
+- Next: read `iter/r05a/report.json` (Dbg 9 values), pick CSel / ShoreCalm / SunSpecK / FoamFarK into `r05/final_params.json`, touch READY2.
+
 ## Round 04 result (`round-04/NOTES.md`, `round-04/spec.json`)
 | check | target | r03 | r04 |
 |---|---|---|---|
