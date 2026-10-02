@@ -1,0 +1,19 @@
+== drop_test.py --min 20 (first swing = the spawn drop, listed; --skip-first below)
+ #     t0   relH entryH   lowH   drop  exitH   rope   dur VPlow>rel VPcycle  result
+ 1   0.40   23.0   21.6    6.7   16.3    8.7   25.7  1.25      6.5%   28.1%  DROP<20
+ 2   3.77   32.8   29.8    9.1   23.7   11.7   26.9  1.37      7.7%   25.9%  ok
+ 3   7.23   35.4   32.3    8.2   27.2    8.2   31.0  1.02      0.0%   35.6%  ok
+ 4  10.80   35.1   32.2    9.2   25.9   14.5   29.2  1.55      5.8%   23.1%  ok
+DROP TEST: FAIL (4 swings)
+DROP TEST: PASS (4 swings)
+== rhythm_check.py a
+/Users/midir/sm2-n1/traversal/docs/night1/traversal/round-24/a_swing_chain_telemetry.csv  window 0.00-15.57 s
+ swings (T1 held 0.5-1.6 s): 0.40-1.65 (1.25s, low 6.7 m, rel 8.7 m)  3.77-5.13 (1.37s, low 9.1 m, rel 11.7 m)  7.23-8.25 (1.02s, low 8.2 m, rel 8.2 m)  10.80-12.35 (1.55s, low 9.2 m, rel 14.5 m)  14.32-15.57 (1.25s, low 6.4 m, rel 6.6 m)
+ web-less phases (T4: > 0.6 s needs a changing silhouette at every 0.1 s; T7: peak at roofline -> 3-13 m low within 4 s):
+   1.67-3.75 2.08s  peak 32.8 m @3.18  next low 9.1 m @4.82 (peak->low 1.63s)  pose changes 1.00  roofs beside low/high None/None  [release > rise > apex > fall > dive]
+   5.15-7.22 2.07s  peak 35.3 m @6.65  next low 8.2 m @8.25 (peak->low 1.60s)  pose changes 1.00  roofs beside low/high None/None  [release > rise > apex > fall > dive]
+   8.27-10.78 2.52s  peak 35.1 m @10.22  next low 9.2 m @11.87 (peak->low 1.65s)  pose changes 1.00  roofs beside low/high None/None  [trick:backDouble > rise > apex > fall > dive]
+   12.37-14.30 1.93s  peak 34.1 m @13.75  next low 6.4 m @15.47 (peak->low 1.72s)  pose changes 1.00  roofs beside low/high None/None  [release > rise > apex > fall > dive]
+ 8 s windows (start: web_on share, attaches) [T2 2-4 attaches, T3 video 25-45 %]:
+   0.0:0.43/3 0.5:0.45/2 1.0:0.39/2 1.5:0.32/2 2.0:0.30/2 2.5:0.30/2 3.0:0.33/3 3.5:0.39/3 4.0:0.42/2 4.5:0.41/2 5.0:0.34/2 5.5:0.33/2 6.0:0.33/2 6.5:0.35/3 7.0:0.41/3 7.5:0.44/2
+ web_on whole window 0.42; max height 35.3 m, min in air 8.4 m
