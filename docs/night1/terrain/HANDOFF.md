@@ -1,4 +1,4 @@
-# Terrain (piece E) — HANDOFF (round 02: pass 2 rendered, measured and packed; pass 3 queued in the GPU lock)
+# Terrain (piece E) — HANDOFF (round 02: pass 2 rendered, measured and packed; pass 3 partly rendered, 3b queued in the GPU lock)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -31,11 +31,13 @@ Result (`round-02/README.md`, `crown_stats.txt`): far / mid crowns 8.2-13.8 (mos
 The pass-2 p7 camera sat inside a far-city mass (the browser export's `farCity*` boxes overhang the water up to 35 m along z -1080..-320 on both shores): p7 moved to z -1270 (no mass within 250 m of the shore). p6 (z -820) rendered fine.
 A pass-1 -> pass-2 health event is documented in the README (monitor stopped the first 4K still launch with `WS-STARVED`, auto-pause, auto-lift after 10 calm min).
 
-## Pass 3 (queued, writes to `docs/night1/terrain/round-02b/`, so the committed pass-2 evidence is not overwritten)
-Ticket: `ROUND_NAME=round-02b gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh` (pid in `_scratch/terrain/round2_hold.pid`, log `_scratch/terrain/logs/round2_hold_d.log`); content already rebuilt (emissive scale, p7). If the ticket is gone, re-enqueue it the same way
-(rebuild first only if sources changed; never inside the hold; a 4K still launch is the moment the health monitor may stop an engine: do not lift a pause yourself, it auto-lifts after 10 calm minutes).
-After the hold: `crops.json` for round-02b (same crown boxes as round-02 unless the framing changed), `tools/terrain/measure_round.sh docs/night1/terrain/round-02b`, `make_pairs.py docs/night1/terrain/round-02b ... docs/night1/terrain/round-01` and `abpack.py`
-(a pass-2 pack is already at `/Users/midir/sm2-n1/_scratch/critic-E-r02/pack`; rebuild it from round-02b if pass 3 is better, and say so in `round-02/README.md`).
+## Pass 3 (partly rendered 2026-10-02 05:19-05:22 into `docs/night1/terrain/round-02b/`; 3b queued)
+Pass 3 = pass 2 + the physical emissive fill (`Emis = c * 1800 * (0.4 + 0.6 expo)`) + p7 camera at z -1270. It rendered `p1_south`, `p10_lawn_eye`, `p2_reservoir`, `p6_west_shore`, `p3_lake` and was then **stopped by the health monitor** (05:22:39 `WS-STARVED`, gpu 100 %, ws_cpu 2 %,
+auto-pause, slots demoted to 1; a `look` perf engine was rendering at the same time = two heavy renders). I killed my own hold scripts by PID so nothing relaunches after the auto-lift. The effect of the fill is large: foreground canopy luma 40 -> 90, crown-crop min SD 2.25 -> 5.41, median 8.34 (same), 10 / 24 crops >= 9,
+foreground crops 5.4-7.5 (round-02b `crown_stats`); p1_south now shows bright, leafy, autumn-tinted foreground trees. A flat patch > 40 px remains in p1_south (108 px max: the fill flattens deep shade).
+**3b (queued)**: the missing stills `p4_greatlawn p7_east_shore p8_pier p9_park_panorama` + both movies into the same `round-02b/`: `ROUND_NAME=round-02b ONLY_IDS="p4_greatlawn p7_east_shore p8_pier p9_park_panorama" PRIO_IDS="" gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh`
+(waiter pid in `_scratch/terrain/round2_hold.pid`, log `_scratch/terrain/logs/round2_hold_e.log`). If a pause is active the lock waits; do not lift it yourself (auto-lift after 10 calm minutes); if it is stopped again, stop and report (2 stops already).
+When round-02b is complete: `crops.json` (copy of round-02's), `tools/terrain/measure_round.sh docs/night1/terrain/round-02b`, then `make_pairs.py docs/night1/terrain/round-02b ... docs/night1/terrain/round-01` + `abpack.py` (the pass-2 pack is the fallback); say in `round-02/README.md` which pass the pack uses.
 
 ## Offline shader verification (new, saves GPU-lock turns)
 - `python3 tools/terrain/check_hlsl.py`: every material body through DXC with UE's parameter types (VectorParameter = float3). 12 / 12.

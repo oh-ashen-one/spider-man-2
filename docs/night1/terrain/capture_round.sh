@@ -26,6 +26,7 @@ want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 mkdir -p "$TMP" "$ROUND/stills"
 gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1; }
 IDS=$(python3 -c "import json;print(' '.join(s['id'] for s in json.load(open('$HERE/shots.json'))['shots']))")
+[ -n "${ONLY_IDS:-}" ] && IDS="$ONLY_IDS"   # r02 pass 3b: re-capture only the stills a stopped hold did not finish
 BASE_IDS="${BASE_IDS-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"   # baseline (city alone) stills only for the pair views
 if want warm; then
   echo "== warm-up (shader compile, not kept)  $(gpu)"
@@ -50,7 +51,7 @@ still() {  # <prefix> <id>
   done
 }
 if want stills; then
-  PRIO="${PRIO_IDS:-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"      # the pair views first (terrain, then baseline), then the rest
+  PRIO="${PRIO_IDS-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"      # the pair views first (terrain, then baseline), then the rest
   for ID in $PRIO; do still V_ "$ID"; done
   for ID in $BASE_IDS; do still VB_ "$ID"; done
   for ID in $IDS; do [[ " $PRIO " =~ " $ID " ]] || still V_ "$ID"; done
