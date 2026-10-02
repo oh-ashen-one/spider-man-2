@@ -1,14 +1,14 @@
 # P2 hero skins, round 13: blind critic (Opus 5.5)
-Homage fan game, not affiliated with Marvel, Sony or Insomniac. Coordinates are native pixels: stills 4K, clips 1080p60.
+Homage fan game, not affiliated with Marvel, Sony or Insomniac. Coordinates in native pixels.
 
 ## Scores
 - **Hero model & suit: 6.**
   - Met: CH1, fronts 0.545–0.547H. CH2, chase heights 0.41–0.47.
-  - Lenses are about 1.6× larger with a raised chrome rim. The Verdant profile's nose sits 110 px (7.4% of head height) proud of the brow–chin line.
+  - Lenses are bigger with a chrome rim. The Verdant profile's nose sits 110 px (7.4% of head height) proud of the brow–chin line.
   - Failed: no brow ridge, no nose-bridge recess (the profile edge rises from y=860 to 1140) and no cheekbones or mouth.
 - **Hero animation: 5.**
   - Met: CH7, about 23° lean. Scripted runs are 3.53 steps/s.
-  - Failed: CH6 on the playable pawn, 4.07 steps/s (swap_pawn_T_key bob minima at frames 72, 86 … 234).
+  - Failed: CH6 on the playable pawn, 4.07 steps/s.
   - The start pops between frames 7 and 8.
 - **Enemies: 5.**
   - Met: lineup has 7 enemies with three weapon types. CH12, fight heights 0.28–0.43.
@@ -18,9 +18,8 @@ Homage fan game, not affiliated with Marvel, Sony or Insomniac. Coordinates are 
 - **Image quality: 5.** Defects:
   - The Ash sash end is raw (1410–1440, 700–1050).
   - The Ash armpit stitches zigzag (1120–1200, 1530–1600).
-  - The Sage trapezius groove is torn (head34, 1030–1080, 1710–1880).
+  - The Sage trapezius groove is torn (head34).
   - Cinder's shoulders are faceted.
-  - Every back repeats the front sash and emblem.
 
 ## IP gate: PASS
 - No spider glyph, web, teardrop lenses, red/blue or red-on-black blocking, or brand text, checked by eye.
@@ -28,7 +27,7 @@ Homage fan game, not affiliated with Marvel, Sony or Insomniac. Coordinates are 
 - Verdant's green+yellow is generic with no emblem. Watch it.
 
 ## A/B decisions
-- **25 ref-vs-ours pairs: the ref wins every one.** The ref has gloss, micro-weave, sculpted brows, dressed streets and hit FX. Ours is matte, has egg craniums and empty planes.
+- **25 ref-vs-ours pairs: the ref wins every one.** The ref has gloss, micro-weave, sculpted brows and hit FX. Ours is matte.
 - **progress-head-tessera and progress-head-sage: A.** A has a nose, bigger rimmed lenses and coloured piping instead of an ink seam.
 - **progress-lineup: A.** A has 7 enemies against 6. B is washed out (mean luma 161 against 91).
 
@@ -46,9 +45,9 @@ Finish the mask sculpt with:
 
 ## Secondary issues
 1. Bring the pawn to 3.2–3.8 steps/s and remove the pop at frames 7–8.
-2. Pipe the Ash sash end and fix the armpit and Sage trapezius. Give each back its own layout.
+2. Pipe the Ash sash end and fix the armpit and Sage trapezius.
 3. Give the twin enemies distinct heads and close fingers on the grips. In fights, space enemies at least 1.5 m apart, have them attack in turns and add hit FX.
-4. Remove the crowd cut at 7.48 s. Add cloth motion to the robe and coat.
+4. Remove the crowd cut at 7.48 s.
 
 ## Verdict: **FAILS TARGET**
 Lowest axis: 5.
