@@ -30,6 +30,8 @@ R07 = {
     'tw_dir': None,        # {'dusk': [(h, mult)], 'dawn': [...]}: multiplier of fog.DirectionalInscatteringLuminance
     'tw_maxop': None,      # {'dusk': [(h, value)], 'dawn': [...]}: fog.FogMaxOpacity
     'tw_dens': None,       # {'dusk': [(h, mult)], 'dawn': [...]}: multiplier of fog.FogDensity
+    'tw_maxev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMaxBrightness (hold A: the sun-facing stills were clamped by it and clipped)
+    'moon_vol': None,      # number: moonc.VolumetricScatteringIntensity on every key
     'golden_sky': None,    # {'hours': [..], 'factor': [r, g, b]} SkyLuminanceFactor on golden keys (golden S4 <= 100 with the fog on the sky)
     'v2': {},              # make_v2 knob overrides (tw_fac_pts, tw_cloud, twilight_overrides, ...)
 }
@@ -103,6 +105,9 @@ def apply(K, R):
         if mo is not None: s['fog.FogMaxOpacity'] = round(mo, 4)
         md = sch('tw_dens')
         if md is not None: s['fog.FogDensity'] = round(b['fog.FogDensity'] * md, 6)
+        mx = sch('tw_maxev')
+        if mx is not None: s['pp.AutoExposureMaxBrightness'] = round(mx, 3)
+        if R.get('moon_vol') is not None: s['moonc.VolumetricScatteringIntensity'] = float(R['moon_vol'])
         gs = R.get('golden_sky')
         if gs and any(abs(h - x) < 1e-6 for x in gs['hours']): s['atm.SkyLuminanceFactor'] = list(gs['factor'][:3]) + [1.0]
         s['fog.FogCutoffDistance'] = R['cutoff_all']

@@ -88,6 +88,7 @@ def preset_params(P):
     o['moonc.LightSourceAngle'] = float(m.get('angle', 0.5357))
     o['moonc.AtmosphereSunDiskColorScale'] = [1.0, 1.0, 1.0, 1.0]
     o['moonc.CloudScatteredLuminanceScale'] = [1.0, 1.0, 1.0, 1.0]
+    o['moonc.VolumetricScatteringIntensity'] = 1.0   # (round 07) the moon's volumetric-fog light (with the fog on the sky pixels it lit a glowing veil around the moon)
     return {k: vec(v) for k, v in o.items()}
 
 
