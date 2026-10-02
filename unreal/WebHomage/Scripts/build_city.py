@@ -996,6 +996,10 @@ SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'tru
 CROWN = ('trees_park_crownfar', 'trees_elm_crownfar', 'trees_conifer_crownfar')  # (r03) opaque canopy mass inside the park LOD1 trees
 protos = [p for p in man['protos'] if p['name'] in CROWN or (not any(s in p['name'] for s in SKIP_POOL) and not p['name'].endswith('_far'))]
 LEAFY = lambda n: 'leaves' in n
+def proto_ab(n):
+    """(island r02) instanced props with cooked triangles but collision OFF in the map: r20's default (instanced props / trees are not solids) is
+    unchanged; with -WHTravIsmSolid=1 the traversal re-enables them (BlockAll responses kept) for the trunk / prop A/B"""
+    return n not in SOLID_PROTOS and not LEAFY(n) and n != 'hinterland' and n not in CROWN and not trav_excluded('ISM_' + n)
 def next_version(base):
     v = 2
     while EAL.does_asset_exist(f'{base}_v{v}'): v += 1
@@ -1034,7 +1038,7 @@ if _todo:
             EAL.save_asset(mi.get_path_name())
         else:
             mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else (load(MAT + '/M_CityCrown') if p['name'] in CROWN else mi_for({**p, 'proto': True}))
-        finish_mesh(sm, mi, p['name'] in SOLID_PROTOS, nanite=True)   # (island r02) sheds / subway entrances are solids
+        finish_mesh(sm, mi, p['name'] in SOLID_PROTOS or proto_ab(p['name']), nanite=True)   # (island r02) sheds / subway entrances are solids; proto_ab
         EAL.save_asset(dst)
     EAL.delete_directory(ROOT + '/Props/_in')
     log('protos', len(_todo))
@@ -1051,7 +1055,7 @@ if 'collide' in STEPS:
             sm = load(sp + suf)
             if not make_solid(sm): nf += 1
             EAL.save_asset(sp + suf); n += 1
-    for pn in SOLID_PROTOS:
+    for pn in list(SOLID_PROTOS) + [p['name'] for p in protos if proto_ab(p['name'])]:
         sp = sm_path(pn)
         if EAL.does_asset_exist(sp): sm = load(sp); make_solid(sm); EAL.save_asset(sp); n += 1
     log('collide: %d meshes now cooked-triangle solids (%d without a body setup)' % (n, nf))
@@ -1313,6 +1317,8 @@ def populate(wp=False):
             c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
             c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
             if label in ['ISM_' + n for n in SOLID_PROTOS]: solid_component(c)   # (island r02) sheds / subway entrances: solids
+            elif label.startswith('ISM_') and proto_ab(label[4:]):   # (island r02) A/B-ready: BlockAll responses, collision off (r20 default)
+                c.set_collision_profile_name('BlockAll'); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
             else: no_collision(c)
             xs = []
             for it in its:
