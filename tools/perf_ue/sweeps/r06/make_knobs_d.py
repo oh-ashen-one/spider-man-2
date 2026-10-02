@@ -10,7 +10,9 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--knobs-c', required=True); ap.add_argument('--overrides', required=True); ap.add_argument('--out', required=True); a = ap.parse_args()
     K = json.load(open(a.knobs_c)); ov = json.load(open(a.overrides))
     t = {k: dict(v) for k, v in (K.get('twilight_overrides') or {}).items()}
-    for h, b in ov.items(): t.setdefault(str(float(h)), {})['pp.AutoExposureBias'] = float(b)
+    for h, b in ov.items():
+        if float(h) < 12.0: t.setdefault(str(float(h)), {})['pp.AutoExposureBias'] = float(b)    # the dawn biases of hold 8; the dusk ones fought the cliff that the SurfaceGain removes, the loop finds them afresh
+    K['surface_gain'] = {'dusk': [(18.8, 1.0), (19.0, 0.9), (19.2, 0.5), (19.35, 0.12), (19.45, 0.02), (19.55, 0.0), (21.4, 0.0)], 'dawn': [(4.9, 0.0), (6.5, 0.0), (6.65, 0.05), (6.8, 0.3), (7.0, 0.8), (7.2, 1.0)]}
     K['twilight_overrides'] = t
     K['extra_keys'] = sorted(set(float(x) for x in (K.get('extra_keys') or [])) | {6.4, 6.6, 6.7, 19.55, 19.6, 19.7, 19.75, 19.85})
     json.dump(K, open(a.out, 'w'), indent=1); print('knobs_d ->', a.out, 'extra keys', K['extra_keys'])

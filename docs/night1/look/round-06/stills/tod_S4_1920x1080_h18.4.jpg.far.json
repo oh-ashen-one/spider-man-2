@@ -1,52 +1,52 @@
 [
  {
   "file": "/Users/midir/sm2-n1/look/docs/night1/look/round-06/stills/tod_S4_1920x1080_h18.4.jpg",
-  "sky_Y": 189.71652221679688,
-  "far_Y": 141.98260498046875,
-  "river_Y": 119.48237609863281,
-  "near_Y": 54.60197448730469,
-  "box_mean_Y": 144.5500030517578,
-  "box_pct204": 0.361025641025641,
+  "sky_Y": 187.76687622070312,
+  "far_Y": 139.01710510253906,
+  "river_Y": 116.42754364013672,
+  "near_Y": 53.0731086730957,
+  "box_mean_Y": 141.71087646484375,
+  "box_pct204": 0.33487179487179486,
   "T1_std": {
    "first_Y_lt_215": 0.0,
-   "first_absdY_gt_4": 25.600406061868323,
-   "first_Y_lt_sky_minus_12": 16.922804525779746
+   "first_absdY_gt_4": 25.69750942275427,
+   "first_Y_lt_sky_minus_12": 16.830148543610658
   },
   "T1_pass": false,
   "T2_pass": true,
   "lines": {
    "C11 lap/sky": {
-    "value": 9.13,
+    "value": 9.46,
     "target": ">= 6.0",
     "passed": true
    },
    "C11 flat8 %": {
-    "value": 10.36,
+    "value": 10.0,
     "target": "<= 40",
     "passed": true
    },
    "C12 dBR": {
-    "value": 25.87,
+    "value": 27.33,
     "target": "+-10",
     "passed": false
    },
    "C13 far-sky Y": {
-    "value": -47.73,
+    "value": -48.75,
     "target": "-35..-25",
     "passed": false
    },
    "C13 far>near": {
-    "value": 87.38,
+    "value": 85.94,
     "target": "> 0",
     "passed": true
    },
    "C14 far-river Y": {
-    "value": 22.5,
+    "value": 22.59,
     "target": "5..35",
     "passed": true
    },
    "C15 rms far/near": {
-    "value": 0.23,
+    "value": 0.24,
     "target": "0.25..0.45",
     "passed": false
    }
@@ -59,15 +59,15 @@
     "p95": 100.0
    },
    "first_absdY_gt_4": {
-    "std": 25.600406061868323,
-    "mean": 165.08307692307693,
+    "std": 25.69750942275427,
+    "mean": 164.4569230769231,
     "p5": 131.0,
-    "p95": 206.0
+    "p95": 204.0999999999999
    },
    "first_Y_lt_sky_minus_12": {
-    "std": 16.922804525779746,
-    "mean": 157.10846153846154,
-    "p5": 131.0,
+    "std": 16.830148543610658,
+    "mean": 156.81,
+    "p5": 130.95,
     "p95": 182.0
    }
   }

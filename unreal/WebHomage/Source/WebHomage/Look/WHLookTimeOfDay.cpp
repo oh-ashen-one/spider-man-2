@@ -299,7 +299,11 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 		// (round 06, hold 6) the ramp limits are table params (sun.RampLo / sun.RampHi, deg; defaults -2.5 / 3.5 = the hold-4 behaviour): the lapse's dusk darkened at 3-4 Y per frame in the half hour the sunlit
 		// city lost its direct light, a wider ramp (the table uses -4 .. 8 deg = 65 game minutes) spreads that over twice as many frames.
 		const float RampLo = G(TEXT("sun.RampLo"), -2.5f), RampHi = FMath::Max(RampLo + 0.5f, G(TEXT("sun.RampHi"), 3.5f));
-		const float WorldK = FMath::SmoothStep(RampLo, RampHi, SunElev);
+		// (round 06, hold 9) the residual of the ramp tail is the lapse's brightness cliff: at 19:40 the sun still has 22500 lux for the sky and the clouds, and a WorldK of 0.001 still puts ~20 lux of UNSHADOWED sun
+		// on every surface (the shadows are off below WorldK 0.02) - ten times the twilight ambient - until the ramp ends (a -8 Y step in the S4 lapse at 19:40; the mirror +5 Y per frame at 06:35). The surface light is therefore
+		// multiplied by a table gain `sun.SurfaceGain` (default 1) that the keys take to 0 before the lux of the sky light falls.
+		const float SurfG = FMath::Clamp(G(TEXT("sun.SurfaceGain"), 1.f), 0.f, 1.f);
+		const float WorldK = FMath::SmoothStep(RampLo, RampHi, SunElev) * SurfG;
 		if (FMath::Abs(WorldK - SunWorldK) > 1e-3f || (WorldK == 0.f) != (SunWorldK == 0.f))
 		{
 			S->SetDiffuseScale(WorldK); S->SetSpecularScale(WorldK); SunWorldK = WorldK;

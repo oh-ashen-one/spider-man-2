@@ -67,6 +67,8 @@ KNOBS = {
     'tw_fog_scale': None, 'tw_sun_lux': None,
     # street-light level (`lights` key, 0..1) at the dawn keys: {hour: value} (default: the preset mixes 1, .65, .3, .12, .15, .03, 0 at 06:15 .. 07:36)
     'lights_dawn': None,
+    # sun surface-light gain schedule (C++ sun.SurfaceGain, 0..1): {'dusk': [(h, g)], 'dawn': [(h, g)]}; keys outside the lists keep 1
+    'surface_gain': None,
     # extra keys (hours): full-parameter snapshots of the finished table at those hours (the curve is unchanged at them); gives the exposure-bias loop a control point every 0.1-0.15 h through the twilights
     'extra_keys': None,
     # sun surface-light ramp in degrees of sun elevation (C++ sun.RampLo / sun.RampHi; default -2.5 / 3.5): [lo, hi] on every key
@@ -191,6 +193,9 @@ def apply(doc, K):
         if K.get('tw_sun_lux'):
             sl = {float(a): v for a, v in K['tw_sun_lux'].items()}
             if h in sl: sset['sun.Intensity'] = float(sl[h])
+        if K.get('surface_gain'):
+            sg = sched(h, K['surface_gain']['dusk' if h >= 12 else 'dawn'])
+            if sg is not None: sset['sun.SurfaceGain'] = round(float(sg), 4)
         if K.get('lights_dawn') and h in {float(a): b for a, b in K['lights_dawn'].items()}: sset['lights'] = float({float(a): b for a, b in K['lights_dawn'].items()}[h])
         if K.get('cloud_offset') is not None: sset['cloudv.Layout_GlobalTexturePlacement'] = list(K['cloud_offset'])
         if K.get('sun_ramp') is not None: sset['sun.RampLo'] = float(K['sun_ramp'][0]); sset['sun.RampHi'] = float(K['sun_ramp'][1])

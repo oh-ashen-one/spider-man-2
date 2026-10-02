@@ -1,52 +1,52 @@
 [
  {
   "file": "/Users/midir/sm2-n1/look/docs/night1/look/round-06/stills/tod_S4_1920x1080_h22.jpg",
-  "sky_Y": 51.312110900878906,
-  "far_Y": 32.4966926574707,
-  "river_Y": 30.27031898498535,
-  "near_Y": 35.53683090209961,
-  "box_mean_Y": 35.28167724609375,
-  "box_pct204": 0.08564102564102563,
+  "sky_Y": 44.49921798706055,
+  "far_Y": 26.967077255249023,
+  "river_Y": 23.393489837646484,
+  "near_Y": 31.77057647705078,
+  "box_mean_Y": 29.677392959594727,
+  "box_pct204": 0.03128205128205128,
   "T1_std": {
    "first_Y_lt_215": 0.0,
-   "first_absdY_gt_4": 70.52881455717399,
-   "first_Y_lt_sky_minus_12": 33.1382924786774
+   "first_absdY_gt_4": 93.3074405475708,
+   "first_Y_lt_sky_minus_12": 33.25662050029425
   },
   "T1_pass": false,
   "T2_pass": true,
   "lines": {
    "C11 lap/sky": {
-    "value": 4.2,
+    "value": 3.96,
     "target": ">= 6.0",
     "passed": false
    },
    "C11 flat8 %": {
-    "value": 40.71,
+    "value": 48.93,
     "target": "<= 40",
     "passed": false
    },
    "C12 dBR": {
-    "value": -6.44,
+    "value": -5.2,
     "target": "+-10",
     "passed": true
    },
    "C13 far-sky Y": {
-    "value": -18.82,
+    "value": -17.53,
     "target": "-35..-25",
     "passed": false
    },
    "C13 far>near": {
-    "value": -3.04,
+    "value": -4.8,
     "target": "> 0",
     "passed": false
    },
    "C14 far-river Y": {
-    "value": 2.23,
+    "value": 3.57,
     "target": "5..35",
     "passed": false
    },
    "C15 rms far/near": {
-    "value": 0.57,
+    "value": 0.53,
     "target": "0.25..0.45",
     "passed": false
    }
@@ -59,16 +59,16 @@
     "p95": 100.0
    },
    "first_absdY_gt_4": {
-    "std": 70.52881455717399,
-    "mean": 181.90307692307692,
-    "p5": 118.0,
-    "p95": 393.0
+    "std": 93.3074405475708,
+    "mean": 211.4,
+    "p5": 129.0,
+    "p95": 420.0
    },
    "first_Y_lt_sky_minus_12": {
-    "std": 33.1382924786774,
-    "mean": 127.34153846153846,
+    "std": 33.25662050029425,
+    "mean": 133.44923076923078,
     "p5": 100.0,
-    "p95": 186.0
+    "p95": 187.04999999999995
    }
   }
  }

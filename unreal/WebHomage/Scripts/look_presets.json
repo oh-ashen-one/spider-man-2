@@ -938,7 +938,7 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": -0.5053,
+     "pp.AutoExposureBias": -0.7965,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -961,6 +961,193 @@
     ]
    },
    {
+    "h": 6.1,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 3677.2341071157616,
+     "sun.Temperature": 5000.0,
+     "sun.LightSourceAngle": 0.552904762023972,
+     "sun.DiskScale": 0.02675701714459109,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.1708102715824612,
+     "fillT.N": 5307.028068578365,
+     "fill.E": 0.3376094295251103,
+     "fillT.E": 6500.0,
+     "fill.S": 0.1708102715824612,
+     "fillT.S": 5307.028068578365,
+     "fill.W": 0.21813859808830305,
+     "fillT.W": 3936.495600060688,
+     "sky.Intensity": 0.402390608405402,
+     "sky.LightColor": [
+      0.9092971931421636,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.2666305212084661,
+      0.4025705466370809,
+      0.7802710514337732,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.9250803519951449,
+      0.852836405704749,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      9.74374146563495,
+      2.994386284327111,
+      1.0785920194204217,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.016816263086026396,
+     "atm.MieScatteringScale": 0.016816263086026396,
+     "atm.MieAbsorptionScale": 0.0016816263086026398,
+     "atm.MieAnisotropy": 0.7732429828554089,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.29267182521620444,
+      0.29267182521620444,
+      0.29267182521620444,
+      1.0
+     ],
+     "fog.FogDensity": 0.029366105295099407,
+     "fog.FogHeightFalloff": 0.09732429828554089,
+     "fog.StartDistance": 47532.69610074346,
+     "fog.FogMaxOpacity": 0.9271570323167957,
+     "fog.FogInscatteringLuminance": [
+      0.07469525337581548,
+      0.061204547489000116,
+      0.06816263086026397,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.08027105143377328,
+      0.04013552571688664,
+      0.016054210286754658,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 9.605421028675465,
+     "fog.DirectionalInscatteringStartDistance": 9464.859657108178,
+     "fog.VolumetricFogScatteringDistribution": 0.5535140342891822,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.7264859657108177,
+      0.855512107419208,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.8662149142770444,
+     "fog.VolumetricFogDistance": 28675.70171445911,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0015745982400242754,
+     "fog2.FogHeightOffset": 7732.429828554089,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.23929600971021087,
+     "cloud.Cloud_GlobalDensity": 0.02892960097102109,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.3662149142770446,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.8607449552419969,
+     "mpc.DnTime": 2065.791837353968,
+     "mpc.InteriorGain": 2.3214899104839937,
+     "mpc.ShopGain": 1.5025254134425732,
+     "mpc.EmissiveScale": 24.45823410711577,
+     "mpc.ShadeFill": 0.1658268851464118,
+     "pp.ColorGainShadows": [
+      0.9812700879987863,
+      0.9919728948566228,
+      1.0214056137156728,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.8213982096798667,
+      0.9250803519951449,
+      0.9250803519951449,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.00468755090274617,
+      0.005859438628432712,
+      0.010546989531178884,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.0168925428614777,
+      1.0035140342891822,
+      1.0214056137156728,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.2777560537096042,
+      1.2777560537096042,
+      1.2777560537096042,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.18310745713852228,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 72.67570171445912,
+     "pp.AutoExposureHighPercent": 98.26757017144591,
+     "pp.FilmWhiteClip": 0.029297193142163565,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 2.564193597329691,
+     "pp.AutoExposureMaxBrightness": 7.2701881353360625,
+     "pp.AutoExposureBias": 0.4384,
+     "pp.BloomIntensity": 0.47324298285540894,
+     "pp.BloomThreshold": 0.7605421028675465,
+     "pp.VignetteIntensity": 0.43662149142770446,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9053514034289183,
+     "pp.FilmToe": 0.521405613715673,
+     "pp.FilmShoulder": 0.2732429828554089,
+     "pp.WhiteTemp": 6107.028068578365,
+     "pp.AmbientOcclusionIntensity": 0.31337850857229554,
+     "pp.IndirectLightingIntensity": 1.6535140342891823,
+     "lights": 1.0,
+     "stars": 0.3614019116977701,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 1.6,
+     "herofill": 0.0,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 6.25,
     "base": "blue",
     "set": {
@@ -968,12 +1155,12 @@
      "fill.E": 0.2,
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
-     "mpc.EmissiveScale": 12.8747,
-     "mpc.NightK": 0.6,
-     "mpc.DnTime": 1440.0,
-     "mpc.InteriorGain": 1.8,
-     "mpc.ShopGain": 1.32,
-     "mpc.ShadeFill": 0.158,
+     "mpc.EmissiveScale": 20.9222,
+     "mpc.NightK": 0.8,
+     "mpc.DnTime": 1920.0,
+     "mpc.InteriorGain": 2.2,
+     "mpc.ShopGain": 1.46,
+     "mpc.ShadeFill": 0.164,
      "moon.Intensity": 0.0,
      "hero": 1.6,
      "herofill": 0.0,
@@ -990,7 +1177,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 1.5,
+     "pp.AutoExposureBias": 1.4134,
      "sky.Intensity": 0.1655,
      "fill.N": 0.0785,
      "fill.S": 0.0785,
@@ -1012,6 +1199,7 @@
       0.902,
       1.0
      ],
+     "lights": 1.0,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1024,17 +1212,391 @@
     }
    },
    {
+    "h": 6.35,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 6662.834472727264,
+     "sun.Temperature": 4770.2181818181825,
+     "sun.LightSourceAngle": 0.5652031781818182,
+     "sun.DiskScale": 0.045883636363636314,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.0785,
+     "fillT.N": 5383.534545454545,
+     "fill.E": 0.14585247272727292,
+     "fillT.E": 6500.0,
+     "fill.S": 0.0785,
+     "fillT.S": 5383.534545454545,
+     "fill.W": 0.26550567272727094,
+     "fillT.W": 4605.927272727271,
+     "sky.Intensity": 0.16960603636363605,
+     "sky.LightColor": [
+      0.9016465454545455,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.24277714058181823,
+      0.4044080409454546,
+      0.8376509090909088,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.8715258181818183,
+      0.7476400000000003,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      12.0,
+      3.5,
+      1.1,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.020259054545454534,
+     "atm.MieScatteringScale": 0.020259054545454534,
+     "atm.MieAbsorptionScale": 0.0020259054545454535,
+     "atm.MieAnisotropy": 0.7541163636363637,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.016065018181818193,
+     "fog.FogHeightFalloff": 0.09541163636363638,
+     "fog.StartDistance": 33394.90909090912,
+     "fog.FogMaxOpacity": 0.9228909090909092,
+     "fog.FogInscatteringLuminance": [
+      0.12308559999999986,
+      0.0974494909090908,
+      0.10259054545454538,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.13765090909090894,
+      0.06882545454545447,
+      0.027530181818181784,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 10.75301818181818,
+     "fog.DirectionalInscatteringStartDistance": 9082.327272727272,
+     "fog.VolumetricFogScatteringDistribution": 0.5917672727272726,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.6882327272727274,
+      0.7522283636363638,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.7705818181818184,
+     "fog.VolumetricFogDistance": 30588.36363636363,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0018423709090909079,
+     "fog2.FogHeightOffset": 7541.163636363636,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.2705818181818187,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.7381889454545457,
+     "mpc.DnTime": 1771.6377890909098,
+     "mpc.InteriorGain": 2.0763778909090918,
+     "mpc.ShopGain": 1.416716581818182,
+     "mpc.EmissiveScale": 18.039479636363648,
+     "mpc.ShadeFill": 0.1621276363636364,
+     "pp.ColorGainShadows": [
+      0.9678814545454546,
+      0.9862349090909092,
+      1.036706909090909,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.7197061090909094,
+      0.8715258181818183,
+      0.8715258181818183,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0034634472727272767,
+      0.004329309090909095,
+      0.007792756363636372,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.0647090909090906,
+      1.0417672727272727,
+      1.036706909090909,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.226114181818182,
+      1.226114181818182,
+      1.226114181818182,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.13529090909090924,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 74.58836363636364,
+     "pp.AutoExposureHighPercent": 98.45883636363635,
+     "pp.FilmWhiteClip": 0.02164654545454548,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 3.513090909090907,
+     "pp.AutoExposureMaxBrightness": 8.713054545454542,
+     "pp.AutoExposureBias": 1.8061,
+     "pp.BloomIntensity": 0.45411636363636376,
+     "pp.BloomThreshold": 0.8753018181818178,
+     "pp.VignetteIntensity": 0.4270581818181819,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9091767272727272,
+     "pp.FilmToe": 0.536706909090909,
+     "pp.FilmShoulder": 0.2541163636363637,
+     "pp.WhiteTemp": 6183.534545454545,
+     "pp.AmbientOcclusionIntensity": 0.32294181818181816,
+     "pp.IndirectLightingIntensity": 1.691767272727273,
+     "lights": 0.963018181818182,
+     "stars": 0.1375272727272729,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 1.449344727272728,
+     "herofill": 0.0402210909090907,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
+    "h": 6.45,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 10105.67974141415,
+     "sun.Temperature": 4372.290909090909,
+     "sun.LightSourceAngle": 0.5748232375757576,
+     "sun.DiskScale": 0.060844848484848515,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.10276008888888893,
+     "fillT.N": 5443.3793939393945,
+     "fill.E": 0.11228818585858581,
+     "fillT.E": 6500.0,
+     "fill.S": 0.10276008888888893,
+     "fillT.S": 5443.3793939393945,
+     "fill.W": 0.8249506747474756,
+     "fillT.W": 5129.569696969697,
+     "sky.Intensity": 0.2869267151515154,
+     "sky.LightColor": [
+      0.8956620606060606,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.22411856410909087,
+      0.40584536459393944,
+      0.8825345454545455,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.8296344242424242,
+      0.6653533333333331,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      11.338343434343432,
+      3.279846464646464,
+      1.1,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.022952072727272732,
+     "atm.MieScatteringScale": 0.022952072727272732,
+     "atm.MieAbsorptionScale": 0.0022952072727272736,
+     "atm.MieAnisotropy": 0.7391551515151515,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.013791579797979795,
+     "fog.FogHeightFalloff": 0.09391551515151515,
+     "fog.StartDistance": 25557.65656565655,
+     "fog.FogMaxOpacity": 0.9314545454545456,
+     "fog.FogInscatteringLuminance": [
+      0.16093746666666675,
+      0.1258009878787879,
+      0.12952072727272734,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.18253454545454556,
+      0.09126727272727278,
+      0.036506909090909104,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 11.65069090909091,
+     "fog.DirectionalInscatteringStartDistance": 8783.103030303031,
+     "fog.VolumetricFogScatteringDistribution": 0.621689696969697,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.658310303030303,
+      0.6714378181818179,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.6957757575757574,
+     "fog.VolumetricFogDistance": 32084.48484848485,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.002051827878787879,
+     "fog2.FogHeightOffset": 7391.551515151516,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.1957757575757575,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.6569861494949493,
+     "mpc.DnTime": 1576.730563232323,
+     "mpc.InteriorGain": 1.9139722989898986,
+     "mpc.ShopGain": 1.359854109090909,
+     "mpc.EmissiveScale": 14.805946181818177,
+     "mpc.ShadeFill": 0.15966795959595959,
+     "pp.ColorGainShadows": [
+      0.9574086060606061,
+      0.9817465454545454,
+      1.048675878787879,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6680397010101009,
+      0.8296344242424242,
+      0.8296344242424242,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0025059296969696956,
+      0.003132412121212119,
+      0.005638341818181815,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.1021121212121212,
+      1.071689696969697,
+      1.048675878787879,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.185718909090909,
+      1.185718909090909,
+      1.185718909090909,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.09788787878787872,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 76.08448484848485,
+     "pp.AutoExposureHighPercent": 98.60844848484848,
+     "pp.FilmWhiteClip": 0.015662060606060596,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 4.195232323232325,
+     "pp.AutoExposureMaxBrightness": 9.600072727272728,
+     "pp.AutoExposureBias": 1.1525,
+     "pp.BloomIntensity": 0.4391551515151515,
+     "pp.BloomThreshold": 0.965069090909091,
+     "pp.VignetteIntensity": 0.41957757575757576,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9121689696969696,
+     "pp.FilmToe": 0.5486758787878788,
+     "pp.FilmShoulder": 0.2391551515151515,
+     "pp.WhiteTemp": 6243.379393939394,
+     "pp.AmbientOcclusionIntensity": 0.33042242424242424,
+     "pp.IndirectLightingIntensity": 1.721689696969697,
+     "lights": 0.8933575757575756,
+     "stars": 0.1140363636363636,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 1.2045751919191916,
+     "herofill": 0.10561034343434357,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 6.5,
     "base": "blue",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
-     "mpc.EmissiveScale": 8.2801,
-     "mpc.NightK": 0.4182,
-     "mpc.DnTime": 1003.64,
-     "mpc.InteriorGain": 1.4364,
-     "mpc.ShopGain": 1.1927,
-     "mpc.ShadeFill": 0.1525,
+     "mpc.EmissiveScale": 13.4557,
+     "mpc.NightK": 0.6182,
+     "mpc.DnTime": 1483.64,
+     "mpc.InteriorGain": 1.8364,
+     "mpc.ShopGain": 1.3327,
+     "mpc.ShadeFill": 0.1585,
      "moon.Intensity": 0.0,
      "hero": 1.091,
      "herofill": 0.136,
@@ -1052,7 +1614,8 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": 1.0079,
+     "sun.Intensity": 12866.6,
+     "pp.AutoExposureBias": 0.8518,
      "sky.Intensity": 0.3327,
      "fill.N": 0.1142,
      "fill.E": 0.0956,
@@ -1076,6 +1639,7 @@
       0.8109999999999999,
       1.0
      ],
+     "lights": 0.85,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1091,17 +1655,391 @@
     ]
    },
    {
+    "h": 6.55,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 16675.891329966315,
+     "sun.Temperature": 4040.077861952863,
+     "sun.LightSourceAngle": 0.5829987931397306,
+     "sun.DiskScale": 0.07355955387205385,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.12086851851851849,
+     "fillT.N": 5494.238215488216,
+     "fill.E": 0.07722003367003374,
+     "fillT.E": 6500.0,
+     "fill.S": 0.12086851851851849,
+     "fillT.S": 5494.238215488216,
+     "fill.W": 1.235721422558922,
+     "fillT.W": 5574.5843855218845,
+     "sky.Intensity": 0.36084821127946115,
+     "sky.LightColor": [
+      0.8905761784511784,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.20826167357954548,
+      0.40706686634048816,
+      0.9206786616161615,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.7940332491582491,
+      0.5954224537037038,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      10.772727272727275,
+      3.160563973063973,
+      1.1,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.025240719696969692,
+     "atm.MieScatteringScale": 0.025240719696969692,
+     "atm.MieAbsorptionScale": 0.0025240719696969696,
+     "atm.MieAnisotropy": 0.7264404461279461,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.011014730639730644,
+     "fog.FogHeightFalloff": 0.0912204335016835,
+     "fog.StartDistance": 18657.828282828294,
+     "fog.FogMaxOpacity": 0.9377967171717172,
+     "fog.FogInscatteringLuminance": [
+      0.19227233796296295,
+      0.14864535458754205,
+      0.1507405303030303,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.221373106060606,
+      0.11051294191919189,
+      0.043996843434343416,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 12.413573232323232,
+     "fog.DirectionalInscatteringStartDistance": 8528.808922558923,
+     "fog.VolumetricFogScatteringDistribution": 0.6471191077441077,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.6328808922558924,
+      0.6027784090909092,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.6322022306397308,
+     "fog.VolumetricFogDistance": 33355.95538720538,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0022298337542087537,
+     "fog2.FogHeightOffset": 7264.404461279461,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.132202230639731,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.5817595117845119,
+     "mpc.DnTime": 1396.1852356902361,
+     "mpc.InteriorGain": 1.763519023569024,
+     "mpc.ShopGain": 1.3071940656565657,
+     "mpc.EmissiveScale": 12.33370075757576,
+     "mpc.ShadeFill": 0.15740955387205388,
+     "pp.ColorGainShadows": [
+      0.9485083122895623,
+      0.977932133838384,
+      1.0588476430976432,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6348430134680135,
+      0.7940332491582491,
+      0.7940332491582491,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0016921885521885536,
+      0.0021152356902356916,
+      0.0038074242424242454,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.1338988846801346,
+      1.0971191077441078,
+      1.0588476430976432,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.1516669823232326,
+      1.1516669823232326,
+      1.1516669823232326,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.06610111531986537,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 77.3559553872054,
+     "pp.AutoExposureHighPercent": 98.73559553872052,
+     "pp.FilmWhiteClip": 0.010576178451178461,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 4.7720328282828275,
+     "pp.AutoExposureMaxBrightness": 10.3694234006734,
+     "pp.AutoExposureBias": 0.6027,
+     "pp.BloomIntensity": 0.4264404461279461,
+     "pp.BloomThreshold": 1.041357323232323,
+     "pp.VignetteIntensity": 0.41322022306397305,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9147119107744107,
+     "pp.FilmToe": 0.5588476430976431,
+     "pp.FilmShoulder": 0.22644044612794614,
+     "pp.WhiteTemp": 6294.238215488215,
+     "pp.AmbientOcclusionIntensity": 0.33677977693602695,
+     "pp.IndirectLightingIntensity": 1.747119107744108,
+     "lights": 0.8001473063973067,
+     "stars": 0.08135521885521893,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.9851864478114482,
+     "herofill": 0.16237920875420866,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
+    "h": 6.65,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 26604.65863636368,
+     "sun.Temperature": 3692.784090909089,
+     "sun.LightSourceAngle": 0.5908335965909091,
+     "sun.DiskScale": 0.08574431818181824,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.13429000000000008,
+     "fillT.N": 5542.977272727272,
+     "fill.E": 0.041333636363636204,
+     "fillT.E": 6500.0,
+     "fill.S": 0.13429000000000008,
+     "fillT.S": 5542.977272727272,
+     "fill.W": 1.5790411363636379,
+     "fillT.W": 6001.051136363639,
+     "sky.Intensity": 0.41020306818181845,
+     "sky.LightColor": [
+      0.8857022727272726,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.193065688465909,
+      0.40823745664772726,
+      0.9572329545454547,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.7599159090909089,
+      0.5284062499999997,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      10.304545454545451,
+      3.1034090909090906,
+      1.1,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.02743397727272728,
+     "atm.MieScatteringScale": 0.02743397727272728,
+     "atm.MieAbsorptionScale": 0.0027433977272727284,
+     "atm.MieAnisotropy": 0.7142556818181817,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.007335909090909075,
+     "fog.FogHeightFalloff": 0.09,
+     "fog.StartDistance": 11970.454545454517,
+     "fog.FogMaxOpacity": 0.9434204545454545,
+     "fog.FogInscatteringLuminance": [
+      0.21943312500000017,
+      0.16623548295454554,
+      0.16533977272727282,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.2609829545454547,
+      0.12955397727272736,
+      0.050696590909090934,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 13.144659090909094,
+     "fog.DirectionalInscatteringStartDistance": 8285.113636363636,
+     "fog.VolumetricFogScatteringDistribution": 0.6714886363636365,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.6085113636363635,
+      0.5369806818181816,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.5712784090909089,
+     "fog.VolumetricFogDistance": 34574.43181818182,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.002400420454545455,
+     "fog2.FogHeightOffset": 7142.556818181818,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.0712784090909087,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.5086922727272724,
+     "mpc.DnTime": 1220.838454545454,
+     "mpc.InteriorGain": 1.6173845454545446,
+     "mpc.ShopGain": 1.2560615909090906,
+     "mpc.EmissiveScale": 10.38895681818181,
+     "mpc.ShadeFill": 0.15523431818181818,
+     "pp.ColorGainShadows": [
+      0.9399789772727273,
+      0.9742767045454545,
+      1.0685954545454548,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6144304545454545,
+      0.7599159090909089,
+      0.7599159090909089,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.000912363636363633,
+      0.001140454545454541,
+      0.002052818181818174,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.1643607954545456,
+      1.1214886363636365,
+      1.0685954545454548,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.119990340909091,
+      1.119990340909091,
+      1.119990340909091,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.03563920454545441,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 78.57443181818182,
+     "pp.AutoExposureHighPercent": 98.85744318181817,
+     "pp.FilmWhiteClip": 0.005702272727272707,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 5.300795454545457,
+     "pp.AutoExposureMaxBrightness": 11.103977272727276,
+     "pp.AutoExposureBias": 0.5179,
+     "pp.BloomIntensity": 0.41425568181818173,
+     "pp.BloomThreshold": 1.1144659090909093,
+     "pp.VignetteIntensity": 0.4071278409090909,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9171488636363636,
+     "pp.FilmToe": 0.5685954545454546,
+     "pp.FilmShoulder": 0.21425568181818178,
+     "pp.WhiteTemp": 6342.977272727272,
+     "pp.AmbientOcclusionIntensity": 0.3428721590909091,
+     "pp.IndirectLightingIntensity": 1.7714886363636364,
+     "lights": 0.6821590909090903,
+     "stars": 0.0438636363636362,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.7639613636363626,
+     "herofill": 0.2130295454545457,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 6.8,
     "base": "dusk_am",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
-     "mpc.EmissiveScale": 4.8752,
-     "mpc.NightK": 0.2,
-     "mpc.DnTime": 480.0,
-     "mpc.InteriorGain": 1.0,
-     "mpc.ShopGain": 1.04,
-     "mpc.ShadeFill": 0.146,
+     "mpc.EmissiveScale": 7.9225,
+     "mpc.NightK": 0.4,
+     "mpc.DnTime": 960.0,
+     "mpc.InteriorGain": 1.4,
+     "mpc.ShopGain": 1.18,
+     "mpc.ShadeFill": 0.152,
      "moon.Intensity": 0.0,
      "hero": 0.48,
      "herofill": 0.3,
@@ -1118,7 +2056,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.9404,
+     "pp.AutoExposureBias": 0.8365,
      "sky.Intensity": 0.5,
      "fill.N": 0.15,
      "fill.E": 0.0,
@@ -1142,6 +2080,7 @@
       0.72,
       1.0
      ],
+     "lights": 0.5,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1154,18 +2093,205 @@
     }
    },
    {
+    "h": 6.9,
+    "base": "dusk_am",
+    "set": {
+     "sun.Intensity": 42400.0,
+     "sun.Temperature": 3689.3750000000023,
+     "sun.LightSourceAngle": 0.6,
+     "sun.DiskScale": 0.1,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.15,
+     "fillT.N": 5600.0,
+     "fill.E": 0.0,
+     "fillT.E": 6500.0,
+     "fill.S": 0.15,
+     "fillT.S": 5600.0,
+     "fill.W": 2.1269275000000007,
+     "fillT.W": 6500.0,
+     "sky.Intensity": 0.6013337500000006,
+     "sky.LightColor": [
+      0.88,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.175287,
+      0.409607,
+      1.0,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.72,
+      0.45,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      8.849999999999996,
+      2.8812499999999996,
+      1.092125,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.03,
+     "atm.MieScatteringScale": 0.03,
+     "atm.MieAbsorptionScale": 0.003,
+     "atm.MieAnisotropy": 0.7,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.007045000000000021,
+     "fog.FogHeightFalloff": 0.13340000000000027,
+     "fog.StartDistance": 3000.0,
+     "fog.FogMaxOpacity": 0.95,
+     "fog.FogInscatteringLuminance": [
+      0.28961125000000015,
+      0.24132937500000023,
+      0.2539250000000003,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.28362499999999985,
+      0.14712499999999995,
+      0.06522500000000003,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 14.0,
+     "fog.DirectionalInscatteringStartDistance": 8000.0,
+     "fog.VolumetricFogScatteringDistribution": 0.7,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.58,
+      0.46,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.5,
+     "fog.VolumetricFogDistance": 36000.0,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0026,
+     "fog2.FogHeightOffset": 7000.0,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.0,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.3295899999999997,
+     "mpc.DnTime": 791.0179999999993,
+     "mpc.InteriorGain": 1.2591799999999993,
+     "mpc.ShopGain": 1.1307149999999997,
+     "mpc.EmissiveScale": 6.634543749999995,
+     "mpc.ShadeFill": 0.14988999999999997,
+     "pp.ColorGainShadows": [
+      0.93,
+      0.97,
+      1.08,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.598685,
+      0.72,
+      0.72,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.2,
+      1.15,
+      1.08,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.0671125,
+      1.0671125,
+      1.0671125,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.0,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 80.0,
+     "pp.AutoExposureHighPercent": 99.0,
+     "pp.FilmWhiteClip": 0.0,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 6.308750000000001,
+     "pp.AutoExposureMaxBrightness": 12.20625,
+     "pp.AutoExposureBias": 0.9195,
+     "pp.BloomIntensity": 0.4,
+     "pp.BloomThreshold": 1.2,
+     "pp.VignetteIntensity": 0.4,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.92,
+     "pp.FilmToe": 0.58,
+     "pp.FilmShoulder": 0.2,
+     "pp.WhiteTemp": 6400.0,
+     "pp.AmbientOcclusionIntensity": 0.35,
+     "pp.IndirectLightingIntensity": 1.8,
+     "lights": 0.3912499999999995,
+     "stars": 0.0,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.3984499999999998,
+     "herofill": 0.38257500000000044,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 7.0,
     "base": "dusk_am",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
      "fog.FogDensity": 0.02,
-     "mpc.EmissiveScale": 4.0636,
-     "mpc.NightK": 0.125,
-     "mpc.DnTime": 300.0,
-     "mpc.InteriorGain": 0.85,
-     "mpc.ShopGain": 0.9875,
-     "mpc.ShadeFill": 0.1438,
+     "mpc.EmissiveScale": 5.6397,
+     "mpc.NightK": 0.26,
+     "mpc.DnTime": 624.0,
+     "mpc.InteriorGain": 1.12,
+     "mpc.ShopGain": 1.082,
+     "mpc.ShadeFill": 0.1478,
      "moon.Intensity": 0.0,
      "hero": 0.36,
      "herofill": 0.475,
@@ -1182,12 +2308,35 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 1.2132,
-     "sky.Intensity": 0.35,
+     "sun.Temperature": 4175.0,
+     "fill.W": 2.1875,
+     "sky.Intensity": 0.71875,
+     "fog.FogHeightFalloff": 0.1925,
+     "fog.StartDistance": 3000.0,
+     "fog.FogInscatteringLuminance": [
+      0.32,
+      0.29,
+      0.32,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.25,
+      0.1375,
+      0.07,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.06,
+      1.06,
+      1.06,
+      1.0
+     ],
+     "pp.AutoExposureMinBrightness": 6.55,
+     "pp.AutoExposureMaxBrightness": 12.25,
+     "pp.AutoExposureBias": 0.8979,
      "fill.N": 0.15,
      "fill.E": 0.0,
      "fill.S": 0.15,
-     "fill.W": 1.1,
      "fog.SkyAtmosphereAmbientContributionColorScale": [
       0.1,
       0.1,
@@ -1206,6 +2355,7 @@
       0.72,
       1.0
      ],
+     "lights": 0.3,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1222,18 +2372,205 @@
     ]
    },
    {
+    "h": 7.1,
+    "base": "dusk_am",
+    "set": {
+     "sun.Intensity": 42250.0,
+     "sun.Temperature": 4562.499999999998,
+     "sun.LightSourceAngle": 0.6,
+     "sun.DiskScale": 0.1,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.22593749999999954,
+     "fillT.N": 5600.0,
+     "fill.E": 0.0,
+     "fillT.E": 6500.0,
+     "fill.S": 0.22593749999999954,
+     "fillT.S": 5600.0,
+     "fill.W": 2.281249999999999,
+     "fillT.W": 6500.0,
+     "sky.Intensity": 0.8281249999999994,
+     "sky.LightColor": [
+      0.88,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.175287,
+      0.409607,
+      1.0,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.72,
+      0.45,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      6.812500000000005,
+      2.4187500000000015,
+      1.0650000000000002,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.03,
+     "atm.MieScatteringScale": 0.03,
+     "atm.MieAbsorptionScale": 0.003,
+     "atm.MieAnisotropy": 0.7,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.15062499999999973,
+      0.15062499999999973,
+      0.15062499999999973,
+      1.0
+     ],
+     "fog.FogDensity": 0.02,
+     "fog.FogHeightFalloff": 0.24374999999999974,
+     "fog.StartDistance": 2500.0000000000023,
+     "fog.FogMaxOpacity": 0.95,
+     "fog.FogInscatteringLuminance": [
+      0.34999999999999987,
+      0.3349999999999998,
+      0.3799999999999997,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.22500000000000012,
+      0.13125000000000003,
+      0.075,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 14.0,
+     "fog.DirectionalInscatteringStartDistance": 8000.0,
+     "fog.VolumetricFogScatteringDistribution": 0.7,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.58,
+      0.46,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.5,
+     "fog.VolumetricFogDistance": 36000.0,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0026,
+     "fog2.FogHeightOffset": 7000.0,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.0,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.18500000000000033,
+     "mpc.DnTime": 444.00000000000085,
+     "mpc.InteriorGain": 0.9700000000000009,
+     "mpc.ShopGain": 1.0295000000000003,
+     "mpc.EmissiveScale": 4.718487500000004,
+     "mpc.ShadeFill": 0.14554999999999998,
+     "pp.ColorGainShadows": [
+      0.93,
+      0.97,
+      1.08,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6365249999999999,
+      0.72,
+      0.72,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.2,
+      1.15,
+      1.08,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.05,
+      1.05,
+      1.05,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.0,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 80.0,
+     "pp.AutoExposureHighPercent": 99.0,
+     "pp.FilmWhiteClip": 0.0,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 6.824999999999998,
+     "pp.AutoExposureMaxBrightness": 12.375,
+     "pp.AutoExposureBias": 0.8627,
+     "pp.BloomIntensity": 0.4,
+     "pp.BloomThreshold": 1.2,
+     "pp.VignetteIntensity": 0.4,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.92,
+     "pp.FilmToe": 0.58,
+     "pp.FilmShoulder": 0.2,
+     "pp.WhiteTemp": 6400.0,
+     "pp.AmbientOcclusionIntensity": 0.35,
+     "pp.IndirectLightingIntensity": 1.8,
+     "lights": 0.2450000000000002,
+     "stars": 0.0,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.30000000000000027,
+     "herofill": 0.5624999999999997,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 7.2,
     "base": "dusk_am",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
      "fog.FogDensity": 0.1,
-     "mpc.EmissiveScale": 3.3872,
-     "mpc.NightK": 0.05,
-     "mpc.DnTime": 120.0,
-     "mpc.InteriorGain": 0.7,
-     "mpc.ShopGain": 0.935,
-     "mpc.ShadeFill": 0.1415,
+     "mpc.EmissiveScale": 4.0146,
+     "mpc.NightK": 0.12,
+     "mpc.DnTime": 288.0,
+     "mpc.InteriorGain": 0.84,
+     "mpc.ShopGain": 0.984,
+     "mpc.ShadeFill": 0.1436,
      "moon.Intensity": 0.0,
      "hero": 0.24,
      "herofill": 0.65,
@@ -1251,12 +2588,35 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": 1.0436,
-     "sky.Intensity": 0.825,
+     "sun.Temperature": 4950.0,
+     "fill.W": 2.375,
+     "sky.Intensity": 0.9375,
+     "fog.FogHeightFalloff": 0.295,
+     "fog.StartDistance": 2000.0,
+     "fog.FogInscatteringLuminance": [
+      0.38,
+      0.38,
+      0.44,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.2,
+      0.125,
+      0.08,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.04,
+      1.04,
+      1.04,
+      1.0
+     ],
+     "pp.AutoExposureMinBrightness": 7.1,
+     "pp.AutoExposureMaxBrightness": 12.5,
+     "pp.AutoExposureBias": 0.8419,
      "fill.N": 0.33,
      "fill.E": 0.0,
      "fill.S": 0.33,
-     "fill.W": 2.75,
      "fog.SkyAtmosphereAmbientContributionColorScale": [
       0.22,
       0.22,
@@ -1275,6 +2635,7 @@
       0.72,
       1.0
      ],
+     "lights": 0.2,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1290,18 +2651,205 @@
     ]
    },
    {
+    "h": 7.3,
+    "base": "dusk_am",
+    "set": {
+     "sun.Intensity": 42749.99999999999,
+     "sun.Temperature": 5337.499999999998,
+     "sun.LightSourceAngle": 0.6,
+     "sun.DiskScale": 0.1,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.43687499999999946,
+     "fillT.N": 5600.0,
+     "fill.E": 0.0,
+     "fillT.E": 6500.0,
+     "fill.S": 0.43687499999999946,
+     "fillT.S": 5600.0,
+     "fill.W": 2.4687499999999996,
+     "fillT.W": 6500.0,
+     "sky.Intensity": 1.0468749999999993,
+     "sky.LightColor": [
+      0.88,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.175287,
+      0.409607,
+      1.0,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.72,
+      0.45,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      4.218750000000006,
+      1.7937500000000017,
+      1.0400000000000003,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.03,
+     "atm.MieScatteringScale": 0.03,
+     "atm.MieAbsorptionScale": 0.003,
+     "atm.MieAnisotropy": 0.7,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.2912499999999996,
+      0.2912499999999996,
+      0.2912499999999996,
+      1.0
+     ],
+     "fog.FogDensity": 0.2237499999999985,
+     "fog.FogHeightFalloff": 0.3462499999999998,
+     "fog.StartDistance": 1500.0000000000025,
+     "fog.FogMaxOpacity": 0.95,
+     "fog.FogInscatteringLuminance": [
+      0.40999999999999986,
+      0.42499999999999977,
+      0.4999999999999997,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.1750000000000001,
+      0.11875000000000002,
+      0.08499999999999996,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 14.0,
+     "fog.DirectionalInscatteringStartDistance": 8000.0,
+     "fog.VolumetricFogScatteringDistribution": 0.7,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.58,
+      0.46,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.5,
+     "fog.VolumetricFogDistance": 36000.0,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0026,
+     "fog2.FogHeightOffset": 7000.0,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.0,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.08500000000000013,
+     "mpc.DnTime": 204.00000000000028,
+     "mpc.InteriorGain": 0.7700000000000002,
+     "mpc.ShopGain": 0.9595,
+     "mpc.EmissiveScale": 3.6703312500000007,
+     "mpc.ShadeFill": 0.1418,
+     "pp.ColorGainShadows": [
+      0.93,
+      0.97,
+      1.08,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.7069999999999999,
+      0.72,
+      0.72,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.2,
+      1.15,
+      1.08,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.0299999999999998,
+      1.0299999999999998,
+      1.0299999999999998,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.0,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 80.0,
+     "pp.AutoExposureHighPercent": 99.0,
+     "pp.FilmWhiteClip": 0.0,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 7.374999999999999,
+     "pp.AutoExposureMaxBrightness": 12.625,
+     "pp.AutoExposureBias": 0.872,
+     "pp.BloomIntensity": 0.4,
+     "pp.BloomThreshold": 1.2,
+     "pp.VignetteIntensity": 0.4,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.92,
+     "pp.FilmToe": 0.58,
+     "pp.FilmShoulder": 0.2,
+     "pp.WhiteTemp": 6400.0,
+     "pp.AmbientOcclusionIntensity": 0.35,
+     "pp.IndirectLightingIntensity": 1.8,
+     "lights": 0.13875000000000032,
+     "stars": 0.0,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.18000000000000027,
+     "herofill": 0.7374999999999995,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 7.4,
     "base": "dusk_am",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
      "fog.FogDensity": 0.8,
-     "mpc.EmissiveScale": 3.1877,
-     "mpc.NightK": 0.025,
-     "mpc.DnTime": 60.0,
-     "mpc.InteriorGain": 0.65,
-     "mpc.ShopGain": 0.9175,
-     "mpc.ShadeFill": 0.1408,
+     "mpc.EmissiveScale": 3.4704,
+     "mpc.NightK": 0.06,
+     "mpc.DnTime": 144.0,
+     "mpc.InteriorGain": 0.72,
+     "mpc.ShopGain": 0.942,
+     "mpc.ShadeFill": 0.1418,
      "moon.Intensity": 0.0,
      "hero": 0.12,
      "herofill": 0.825,
@@ -1318,12 +2866,35 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 1.1592,
-     "sky.Intensity": 1.0175,
+     "sun.Temperature": 5725.0,
+     "fill.W": 2.5625,
+     "sky.Intensity": 1.15625,
+     "fog.FogHeightFalloff": 0.3975,
+     "fog.StartDistance": 1000.0,
+     "fog.FogInscatteringLuminance": [
+      0.44,
+      0.47,
+      0.56,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.15,
+      0.1125,
+      0.09,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.02,
+      1.02,
+      1.02,
+      1.0
+     ],
+     "pp.AutoExposureMinBrightness": 7.65,
+     "pp.AutoExposureMaxBrightness": 12.75,
+     "pp.AutoExposureBias": 0.9043,
      "fill.N": 0.555,
      "fill.E": 0.0,
      "fill.S": 0.555,
-     "fill.W": 2.405,
      "fog.SkyAtmosphereAmbientContributionColorScale": [
       0.37,
       0.37,
@@ -1342,6 +2913,7 @@
       0.72,
       1.0
      ],
+     "lights": 0.08,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1363,7 +2935,7 @@
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.05,
      "cloud.Cloud_GlobalDensity": 0.015,
-     "fog.FogDensity": 4.0,
+     "fog.FogDensity": 4.5,
      "mpc.EmissiveScale": 3.0,
      "mpc.NightK": 0.0,
      "mpc.DnTime": 0.0,
@@ -1386,6 +2958,7 @@
       1,
       1
      ],
+     "pp.AutoExposureBias": 1.1573,
      "sky.Intensity": 1.375,
      "fill.N": 0.825,
      "fill.E": 0.0,
@@ -1403,6 +2976,7 @@
       1.0,
       1.0
      ],
+     "lights": 0.0,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1427,12 +3001,199 @@
     }
    },
    {
+    "h": 7.8,
+    "base": "dawn",
+    "set": {
+     "sun.Intensity": 45658.33333333333,
+     "sun.Temperature": 6500.0,
+     "sun.LightSourceAngle": 0.595625,
+     "sun.DiskScale": 0.15625000000000003,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 1.1193749999999998,
+     "fillT.N": 5656.25,
+     "fill.E": 0.0,
+     "fillT.E": 6500.0,
+     "fill.S": 1.1193749999999998,
+     "fillT.S": 5656.25,
+     "fill.W": 3.671875,
+     "fillT.W": 6500.0,
+     "sky.Intensity": 1.921354166666667,
+     "sky.LightColor": [
+      0.884375,
+      0.9418749999999999,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.175287,
+      0.409607,
+      1.0,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.7374999999999999,
+      0.48437500000000006,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.03019375,
+     "atm.MieScatteringScale": 0.028624999999999994,
+     "atm.MieAbsorptionScale": 0.0030625,
+     "atm.MieAnisotropy": 0.703125,
+     "atm.AerialPespectiveViewDistanceScale": 4.875,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.8212500000000003,
+      0.8212500000000003,
+      0.8212500000000003,
+      1.0
+     ],
+     "fog.FogDensity": 3.360416666666667,
+     "fog.FogHeightFalloff": 0.48416666666666663,
+     "fog.StartDistance": 291.66666666666663,
+     "fog.FogMaxOpacity": 0.948125,
+     "fog.FogInscatteringLuminance": [
+      0.48375000000000007,
+      0.54625,
+      0.6675000000000001,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.11145833333333333,
+      0.11270833333333334,
+      0.11083333333333334,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 14.5,
+     "fog.DirectionalInscatteringStartDistance": 8250.0,
+     "fog.VolumetricFogScatteringDistribution": 0.6906249999999999,
+     "fog.VolumetricFogAlbedo": [
+      0.7125,
+      0.6012500000000001,
+      0.49374999999999997,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.53125,
+     "fog.VolumetricFogDistance": 35625.0,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0025375,
+     "fog2.FogHeightOffset": 7125.0,
+     "fog2.FogHeightFalloff": 0.029375,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.05,
+     "cloud.Cloud_GlobalDensity": 0.015,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 2.96875,
+     "cloudc.LayerHeight": 5.9375,
+     "mpc.NightK": 0.0,
+     "mpc.DnTime": 0.0,
+     "mpc.InteriorGain": 0.6,
+     "mpc.ShopGain": 0.9,
+     "mpc.EmissiveScale": 3.0,
+     "mpc.ShadeFill": 0.17235,
+     "pp.ColorGainShadows": [
+      0.9343750000000001,
+      0.9718749999999999,
+      1.075,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6360416666666666,
+      0.7281249999999999,
+      0.7281249999999999,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0013125,
+      0.0013375000000000001,
+      0.0013875000000000003,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.19,
+      1.143125,
+      1.0775000000000001,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.0,
+     "pp.LumenDiffuseColorBoost": 1.0375000000000003,
+     "pp.AutoExposureLowPercent": 75.625,
+     "pp.AutoExposureHighPercent": 98.4375,
+     "pp.FilmWhiteClip": 0.0,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 8.2,
+     "pp.AutoExposureMaxBrightness": 13.145833333333332,
+     "pp.AutoExposureBias": 0.9707,
+     "pp.BloomIntensity": 0.4093750000000001,
+     "pp.BloomThreshold": 1.1874999999999998,
+     "pp.VignetteIntensity": 0.395,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.91875,
+     "pp.FilmToe": 0.578125,
+     "pp.FilmShoulder": 0.2,
+     "pp.WhiteTemp": 6406.25,
+     "pp.AmbientOcclusionIntensity": 0.35,
+     "pp.IndirectLightingIntensity": 1.7874999999999999,
+     "lights": 0.0,
+     "stars": 0.0,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.0,
+     "herofill": 1.0,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 8.0,
     "base": "dawn",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.05,
      "cloud.Cloud_GlobalDensity": 0.015,
-     "fog.FogDensity": 1.6,
+     "fog.FogDensity": 1.7,
      "mpc.EmissiveScale": 3.0,
      "mpc.NightK": 0.0,
      "mpc.DnTime": 0.0,
@@ -1455,6 +3216,7 @@
       1,
       1
      ],
+     "pp.AutoExposureBias": 0.8638,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -1469,6 +3231,193 @@
      "day",
      0.15
     ]
+   },
+   {
+    "h": 8.4,
+    "base": "dawn",
+    "set": {
+     "sun.Intensity": 53576.666666666664,
+     "sun.Temperature": 6195.166666666667,
+     "sun.LightSourceAngle": 0.5742166666666667,
+     "sun.DiskScale": 0.4315,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 1.0037500000000001,
+     "fillT.N": 5931.5,
+     "fill.E": 0.0,
+     "fillT.E": 6500.0,
+     "fill.S": 1.0037500000000001,
+     "fillT.S": 5931.5,
+     "fill.W": 3.3458333333333337,
+     "fillT.W": 6500.0,
+     "sky.Intensity": 2.114916666666667,
+     "sky.LightColor": [
+      0.9057833333333333,
+      0.95105,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.175287,
+      0.409607,
+      1.0,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.8231333333333333,
+      0.6525833333333334,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.03114183333333333,
+     "atm.MieScatteringScale": 0.02189666666666667,
+     "atm.MieAbsorptionScale": 0.0033683333333333334,
+     "atm.MieAnisotropy": 0.7184166666666666,
+     "atm.AerialPespectiveViewDistanceScale": 4.263333333333334,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      1.1111666666666666,
+      1.1111666666666666,
+      1.1111666666666666,
+      1.0
+     ],
+     "fog.FogDensity": 0.6173266666666668,
+     "fog.FogHeightFalloff": 0.35635000000000006,
+     "fog.StartDistance": 2209.9999999999995,
+     "fog.FogMaxOpacity": 0.9389500000000001,
+     "fog.FogInscatteringLuminance": [
+      0.37476666666666675,
+      0.4347666666666667,
+      0.5474,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.1920833333333333,
+      0.18103333333333332,
+      0.15893333333333334,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 16.946666666666665,
+     "fog.DirectionalInscatteringStartDistance": 9473.333333333334,
+     "fog.VolumetricFogScatteringDistribution": 0.6447499999999999,
+     "fog.VolumetricFogAlbedo": [
+      0.7736666666666666,
+      0.7052333333333334,
+      0.6588999999999999,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.6841666666666667,
+     "fog.VolumetricFogDistance": 33790.0,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0022316666666666665,
+     "fog2.FogHeightOffset": 7736.666666666667,
+     "fog2.FogHeightFalloff": 0.026316666666666665,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.05,
+     "cloud.Cloud_GlobalDensity": 0.015,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 2.8158333333333334,
+     "cloudc.LayerHeight": 5.631666666666667,
+     "mpc.NightK": 0.0,
+     "mpc.DnTime": 0.0,
+     "mpc.InteriorGain": 0.6,
+     "mpc.ShopGain": 0.9,
+     "mpc.EmissiveScale": 3.0,
+     "mpc.ShadeFill": 0.14,
+     "pp.ColorGainShadows": [
+      0.9557833333333333,
+      0.98105,
+      1.0505333333333333,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.78205,
+      0.7678833333333334,
+      0.7678833333333334,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.002821666666666666,
+      0.002968999999999999,
+      0.003263666666666666,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.141066666666667,
+      1.1094833333333334,
+      1.0652666666666668,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.0,
+     "pp.LumenDiffuseColorBoost": 1.221,
+     "pp.AutoExposureLowPercent": 54.21666666666667,
+     "pp.AutoExposureHighPercent": 95.685,
+     "pp.FilmWhiteClip": 0.0,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 8.126333333333333,
+     "pp.AutoExposureMaxBrightness": 13.736666666666666,
+     "pp.AutoExposureBias": 0.9328,
+     "pp.BloomIntensity": 0.45525000000000004,
+     "pp.BloomThreshold": 1.1263333333333334,
+     "pp.VignetteIntensity": 0.3705333333333333,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9126333333333333,
+     "pp.FilmToe": 0.5689500000000001,
+     "pp.FilmShoulder": 0.2,
+     "pp.WhiteTemp": 6436.833333333333,
+     "pp.AmbientOcclusionIntensity": 0.35,
+     "pp.IndirectLightingIntensity": 1.7263333333333335,
+     "lights": 0.0,
+     "stars": 0.0,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.0,
+     "herofill": 1.0,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
    },
    {
     "h": 8.8,
@@ -1661,6 +3610,7 @@
       1,
       1
      ],
+     "pp.AutoExposureBias": 1.35,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -1719,7 +3669,7 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": 1.0282,
+     "pp.AutoExposureBias": 0.958,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -1745,6 +3695,193 @@
      "dusk",
      0.5
     ]
+   },
+   {
+    "h": 19.0,
+    "base": "golden",
+    "set": {
+     "sun.Intensity": 42000.0,
+     "sun.Temperature": 3196.428571428572,
+     "sun.LightSourceAngle": 0.6,
+     "sun.DiskScale": 0.1,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 1.143360714285714,
+     "fillT.N": 5600.0,
+     "fill.E": 3.8137071428571425,
+     "fillT.E": 6500.0,
+     "fill.S": 1.143360714285714,
+     "fillT.S": 5600.0,
+     "fill.W": 0.0,
+     "fillT.W": 6500.0,
+     "sky.Intensity": 3.2565928571428566,
+     "sky.LightColor": [
+      0.88,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.175287,
+      0.409607,
+      1.0,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.72,
+      0.45,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      2.6785714285714293,
+      1.4196428571428572,
+      1.0153571428571428,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.03,
+     "atm.MieScatteringScale": 0.03,
+     "atm.MieAbsorptionScale": 0.003,
+     "atm.MieAnisotropy": 0.7,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.7605357142857143,
+      0.7605357142857143,
+      0.7605357142857143,
+      1.0
+     ],
+     "fog.FogDensity": 0.0052,
+     "fog.FogHeightFalloff": 0.09,
+     "fog.StartDistance": 4000.0,
+     "fog.FogMaxOpacity": 0.95,
+     "fog.FogInscatteringLuminance": [
+      0.26,
+      0.2,
+      0.2,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.3,
+      0.15,
+      0.06,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 14.0,
+     "fog.DirectionalInscatteringStartDistance": 8000.0,
+     "fog.VolumetricFogScatteringDistribution": 0.7,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.58,
+      0.46,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.5,
+     "fog.VolumetricFogDistance": 36000.0,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0026,
+     "fog2.FogHeightOffset": 7000.0,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.0,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.011160714285714291,
+     "mpc.DnTime": 26.7857142857143,
+     "mpc.InteriorGain": 0.6223214285714286,
+     "mpc.ShopGain": 0.9078125,
+     "mpc.EmissiveScale": 3.081583035714286,
+     "mpc.ShadeFill": 0.14,
+     "pp.ColorGainShadows": [
+      0.93,
+      0.97,
+      1.08,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6749607142857142,
+      0.72,
+      0.72,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.2,
+      1.15,
+      1.08,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.08,
+      1.08,
+      1.08,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.0,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 80.0,
+     "pp.AutoExposureHighPercent": 99.0,
+     "pp.FilmWhiteClip": 0.0,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 6.598214285714286,
+     "pp.AutoExposureMaxBrightness": 12.366071428571429,
+     "pp.AutoExposureBias": 0.9752,
+     "pp.BloomIntensity": 0.4,
+     "pp.BloomThreshold": 1.2,
+     "pp.VignetteIntensity": 0.4,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.92,
+     "pp.FilmToe": 0.58,
+     "pp.FilmShoulder": 0.2,
+     "pp.WhiteTemp": 6400.0,
+     "pp.AmbientOcclusionIntensity": 0.35,
+     "pp.IndirectLightingIntensity": 1.8,
+     "lights": 0.37053571428571425,
+     "stars": 0.0,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.22,
+     "herofill": 0.6258928571428571,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
    },
    {
     "h": 19.2,
@@ -1774,7 +3911,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.7745,
+     "pp.AutoExposureBias": 0.8479,
      "sky.Intensity": 2.3,
      "fill.N": 0.69,
      "fill.E": 2.3,
@@ -1810,6 +3947,193 @@
     }
    },
    {
+    "h": 19.35,
+    "base": "dusk",
+    "set": {
+     "sun.Intensity": 32392.85714285702,
+     "sun.Temperature": 3396.428571428579,
+     "sun.LightSourceAngle": 0.5910439285714284,
+     "sun.DiskScale": 0.08607142857142835,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.3660794642857103,
+     "fillT.N": 5544.285714285714,
+     "fill.E": 1.205257142857129,
+     "fillT.E": 6500.0,
+     "fill.S": 0.3660794642857103,
+     "fillT.S": 5544.285714285714,
+     "fill.W": 0.023650892857143238,
+     "fillT.W": 6012.499999999993,
+     "sky.Intensity": 1.2666866071428426,
+     "sky.LightColor": [
+      0.8855714285714287,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.19265773928571456,
+      0.4082688821428571,
+      0.9582142857142849,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.7590000000000006,
+      0.5266071428571442,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      6.116071428571445,
+      2.3883928571428625,
+      1.0653571428571433,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.027492857142857104,
+     "atm.MieScatteringScale": 0.027492857142857104,
+     "atm.MieAbsorptionScale": 0.00274928571428571,
+     "atm.MieAnisotropy": 0.7139285714285716,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.25428571428571173,
+      0.25428571428571173,
+      0.25428571428571173,
+      1.0
+     ],
+     "fog.FogDensity": 0.008371428571428623,
+     "fog.FogHeightFalloff": 0.09139285714285715,
+     "fog.StartDistance": 11714.285714285841,
+     "fog.FogMaxOpacity": 0.9435714285714285,
+     "fog.FogInscatteringLuminance": [
+      0.2259578571428566,
+      0.1745642857142853,
+      0.17596607142857104,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.25952678571428506,
+      0.12976339285714253,
+      0.05190535714285701,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 13.1642857142857,
+     "fog.DirectionalInscatteringStartDistance": 8278.571428571433,
+     "fog.VolumetricFogScatteringDistribution": 0.6721428571428566,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.6078571428571433,
+      0.5352142857142869,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.5696428571428582,
+     "fog.VolumetricFogDistance": 34607.14285714283,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0024049999999999966,
+     "fog2.FogHeightOffset": 7139.2857142857165,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.25,
+     "cloud.Cloud_GlobalDensity": 0.03,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.0696428571428584,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.04991071428571458,
+     "mpc.DnTime": 119.785714285715,
+     "mpc.InteriorGain": 0.6998214285714291,
+     "mpc.ShopGain": 0.9349375000000002,
+     "mpc.EmissiveScale": 3.3807642857142883,
+     "mpc.ShadeFill": 0.1414973214285714,
+     "pp.ColorGainShadows": [
+      0.9397500000000001,
+      0.9741785714285716,
+      1.0688571428571427,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.6169169642857146,
+      0.7590000000000006,
+      0.7590000000000006,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.000891428571428586,
+      0.0011142857142857321,
+      0.0020057142857143185,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.1651785714285707,
+      1.1221428571428567,
+      1.0688571428571427,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.1176071428571435,
+      1.1176071428571435,
+      1.1176071428571435,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.03482142857142914,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 78.60714285714283,
+     "pp.AutoExposureHighPercent": 98.86071428571428,
+     "pp.FilmWhiteClip": 0.005571428571428662,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 5.298214285714275,
+     "pp.AutoExposureMaxBrightness": 11.116071428571416,
+     "pp.AutoExposureBias": 0.6615,
+     "pp.BloomIntensity": 0.4139285714285717,
+     "pp.BloomThreshold": 1.11642857142857,
+     "pp.VignetteIntensity": 0.40696428571428583,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9172142857142856,
+     "pp.FilmToe": 0.5688571428571427,
+     "pp.FilmShoulder": 0.21392857142857166,
+     "pp.WhiteTemp": 6344.285714285713,
+     "pp.AmbientOcclusionIntensity": 0.34303571428571417,
+     "pp.IndirectLightingIntensity": 1.7721428571428568,
+     "lights": 0.620535714285716,
+     "stars": 0.04285714285714355,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.5000000000000027,
+     "herofill": 0.4008928571428559,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 19.5,
     "base": "dusk",
     "set": {
@@ -1838,7 +4162,7 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": 0.6518,
+     "pp.AutoExposureBias": 0.4379,
      "sky.Intensity": 0.3327,
      "fill.N": 0.1142,
      "fill.E": 0.3456,
@@ -1889,6 +4213,193 @@
     ]
    },
    {
+    "h": 19.65,
+    "base": "dusk",
+    "set": {
+     "sun.Intensity": 12500.000000000124,
+     "sun.Temperature": 4584.821428571422,
+     "sun.LightSourceAngle": 0.5677638839285716,
+     "sun.DiskScale": 0.04986607142857164,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.0785,
+     "fillT.N": 5399.464285714287,
+     "fill.E": 0.1912,
+     "fillT.E": 6500.0,
+     "fill.S": 0.0785,
+     "fillT.S": 5399.464285714287,
+     "fill.W": 0.0852026785714282,
+     "fillT.W": 4745.312500000007,
+     "sky.Intensity": 0.1655,
+     "sky.LightColor": [
+      0.9000535714285713,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.23781052633928543,
+      0.4047906334821429,
+      0.8495982142857149,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.8603749999999993,
+      0.7257366071428559,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      17.687499999999876,
+      4.308035714285696,
+      1.1546428571428564,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.020975892857142898,
+     "atm.MieScatteringScale": 0.020975892857142898,
+     "atm.MieAbsorptionScale": 0.0020975892857142894,
+     "atm.MieAnisotropy": 0.7501339285714282,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.015221428571428533,
+     "fog.FogHeightFalloff": 0.09501339285714283,
+     "fog.StartDistance": 31214.2857142856,
+     "fog.FogMaxOpacity": 0.9248214285714287,
+     "fog.FogInscatteringLuminance": [
+      0.12365071428571497,
+      0.09740482142857196,
+      0.10166267857142909,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.13905107142857223,
+      0.06952553571428612,
+      0.02781053571428588,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 10.9919642857143,
+     "fog.DirectionalInscatteringStartDistance": 9002.678571428567,
+     "fog.VolumetricFogScatteringDistribution": 0.5997321428571434,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.6802678571428566,
+      0.7307232142857131,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.7506696428571418,
+     "fog.VolumetricFogDistance": 30986.607142857163,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.001898125000000003,
+     "fog2.FogHeightOffset": 7501.339285714284,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.16830357142857266,
+     "cloud.Cloud_GlobalDensity": 0.024642857142857223,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.2506696428571416,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.12116071428571366,
+     "mpc.DnTime": 290.7857142857128,
+     "mpc.InteriorGain": 0.8423214285714272,
+     "mpc.ShopGain": 0.9848124999999995,
+     "mpc.EmissiveScale": 3.9818160714285655,
+     "mpc.ShadeFill": 0.14363482142857142,
+     "pp.ColorGainShadows": [
+      0.9650937499999999,
+      0.9850401785714286,
+      1.0398928571428574,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.7012294642857135,
+      0.8603749999999993,
+      0.8603749999999993,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.0032085714285714152,
+      0.004010714285714268,
+      0.007219285714285683,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.074665178571429,
+      1.0497321428571433,
+      1.0398928571428574,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.2153616071428566,
+      1.2153616071428566,
+      1.2153616071428566,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.1253348214285709,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 74.98660714285717,
+     "pp.AutoExposureHighPercent": 98.4986607142857,
+     "pp.FilmWhiteClip": 0.020053571428571344,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 3.6964285714285814,
+     "pp.AutoExposureMaxBrightness": 8.956250000000013,
+     "pp.AutoExposureBias": 2.0848,
+     "pp.BloomIntensity": 0.4501339285714283,
+     "pp.BloomThreshold": 0.8991964285714297,
+     "pp.VignetteIntensity": 0.42506696428571417,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9099732142857144,
+     "pp.FilmToe": 0.5398928571428574,
+     "pp.FilmShoulder": 0.25013392857142835,
+     "pp.WhiteTemp": 6199.464285714286,
+     "pp.AmbientOcclusionIntensity": 0.32493303571428583,
+     "pp.IndirectLightingIntensity": 1.6997321428571435,
+     "lights": 0.8928571428571412,
+     "stars": 0.1357142857142852,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 0.9357142857142831,
+     "herofill": 0.18839285714285853,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
+   },
+   {
     "h": 19.8,
     "base": "blue",
     "set": {
@@ -1916,7 +4427,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.2692,
+     "pp.AutoExposureBias": 2.2,
      "sky.Intensity": 0.1655,
      "fill.N": 0.0785,
      "fill.E": 0.1912,
@@ -1941,15 +4452,15 @@
       1.0
      ],
      "fog.FogInscatteringLuminance": [
-      0.04777,
-      0.03841,
-      0.0415,
+      0.07644,
+      0.06146,
+      0.0664,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.0525,
-      0.02625,
-      0.0105,
+      0.084,
+      0.042,
+      0.0168,
       1.0
      ],
      "cloudv.Layout_GlobalTexturePlacement": [
@@ -1961,6 +4472,193 @@
      "sun.RampLo": -4.0,
      "sun.RampHi": 8.0,
      "fog.FogCutoffDistance": 700000.0
+    }
+   },
+   {
+    "h": 19.9,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 5000.0,
+     "sun.Temperature": 5000.0,
+     "sun.LightSourceAngle": 0.5543907756696429,
+     "sun.DiskScale": 0.029068080357142947,
+     "moon.Intensity": 0.0,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.07196707589285724,
+     "fillT.N": 5316.272321428572,
+     "fill.E": 0.16302611607142903,
+     "fillT.E": 6500.0,
+     "fill.S": 0.07196707589285724,
+     "fillT.S": 5316.272321428572,
+     "fill.W": 0.12057645089285697,
+     "fillT.W": 4017.382812500003,
+     "sky.Intensity": 0.14773604910714305,
+     "sky.LightColor": [
+      0.9083727678571427,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.2637483249441963,
+      0.4027925704799108,
+      0.7872042410714287,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.9186093749999996,
+      0.8401255580357138,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      28.21874999999997,
+      5.8074776785714235,
+      1.2,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.01723225446428573,
+     "atm.MieScatteringScale": 0.01723225446428573,
+     "atm.MieAbsorptionScale": 0.0017232254464285732,
+     "atm.MieAnisotropy": 0.770931919642857,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.026286607142857018,
+     "fog.FogHeightFalloff": 0.09709319196428572,
+     "fog.StartDistance": 45241.07142857133,
+     "fog.FogMaxOpacity": 0.924486607142857,
+     "fog.FogInscatteringLuminance": [
+      0.05855119419642886,
+      0.04767136160714308,
+      0.05256223214285737,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.06340464285714319,
+      0.03170232142857159,
+      0.012679508928571493,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 9.744084821428576,
+     "fog.DirectionalInscatteringStartDistance": 9418.638392857141,
+     "fog.VolumetricFogScatteringDistribution": 0.5581361607142858,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.7218638392857141,
+      0.843032366071428,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.8546595982142853,
+     "fog.VolumetricFogDistance": 28906.808035714297,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.0016069531250000012,
+     "fog2.FogHeightOffset": 7709.31919642857,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.10926339285714248,
+     "cloud.Cloud_GlobalDensity": 0.020262276785714267,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.3546595982142855,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.23263392857142756,
+     "mpc.DnTime": 558.3214285714262,
+     "mpc.InteriorGain": 1.065267857142855,
+     "mpc.ShopGain": 1.0628437499999994,
+     "mpc.EmissiveScale": 5.31768136160713,
+     "mpc.ShadeFill": 0.14697901785714285,
+     "pp.ColorGainShadows": [
+      0.97965234375,
+      0.9912795758928572,
+      1.0232544642857144,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.8143128348214278,
+      0.9186093749999996,
+      0.9186093749999996,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.004539642857142852,
+      0.005674553571428564,
+      0.010214196428571415,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      1.0226702008928572,
+      1.0081361607142858,
+      1.0232544642857144,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.2715161830357142,
+      1.2715161830357142,
+      1.2715161830357142,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.1773297991071426,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 72.9068080357143,
+     "pp.AutoExposureHighPercent": 98.29068080357143,
+     "pp.FilmWhiteClip": 0.028372767857142822,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 2.6897321428571477,
+     "pp.AutoExposureMaxBrightness": 7.488281250000009,
+     "pp.AutoExposureBias": 2.0891,
+     "pp.BloomIntensity": 0.4709319196428571,
+     "pp.BloomThreshold": 0.7744084821428577,
+     "pp.VignetteIntensity": 0.43546595982142855,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.9058136160714286,
+     "pp.FilmToe": 0.5232544642857144,
+     "pp.FilmShoulder": 0.27093191964285707,
+     "pp.WhiteTemp": 6116.2723214285725,
+     "pp.AmbientOcclusionIntensity": 0.31453404017857145,
+     "pp.IndirectLightingIntensity": 1.6581361607142862,
+     "lights": 1.0,
+     "stars": 0.27455357142857006,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 1.1976785714285705,
+     "herofill": 0.07444196428571463,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
     }
    },
    {
@@ -1992,7 +4690,7 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": -0.2664,
+     "pp.AutoExposureBias": 1.2715,
      "sky.Intensity": 0.1427,
      "fill.N": 0.0592,
      "fill.E": 0.1081,
@@ -2017,15 +4715,15 @@
       1.0
      ],
      "fog.FogInscatteringLuminance": [
-      0.02564,
-      0.02183,
-      0.02575,
+      0.0282,
+      0.02401,
+      0.02833,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.02625,
-      0.01312,
-      0.00525,
+      0.02888,
+      0.01444,
+      0.00577,
       1.0
      ],
      "sun.Intensity": 5000.0,
@@ -2043,6 +4741,193 @@
      "night",
      0.5
     ]
+   },
+   {
+    "h": 20.4,
+    "base": "blue",
+    "set": {
+     "sun.Intensity": 4393.750000000007,
+     "sun.Temperature": 4609.375000000002,
+     "sun.LightSourceAngle": 0.54062296875,
+     "sun.DiskScale": 0.007656250000000081,
+     "moon.Intensity": 1.0312499999999871,
+     "moon.Temperature": 5600.0,
+     "fill.N": 0.04,
+     "fillT.N": 5230.625,
+     "fill.E": 0.05432500000000043,
+     "fillT.E": 6500.0,
+     "fill.S": 0.04,
+     "fillT.S": 5230.625,
+     "fill.W": 0.1402,
+     "fillT.W": 3267.968750000003,
+     "sky.Intensity": 0.12,
+     "sky.LightColor": [
+      0.9169375000000001,
+      0.94,
+      1.0,
+      1.0
+     ],
+     "atm.RayleighScattering": [
+      0.2904516609374999,
+      0.4007355359375,
+      0.7229687500000003,
+      1.0
+     ],
+     "atm.MieScattering": [
+      1.0,
+      0.9785624999999998,
+      0.9578906249999996,
+      1.0
+     ],
+     "atm.SkyLuminanceFactor": [
+      30.0,
+      6.0,
+      1.2,
+      1.0
+     ],
+     "atm.RayleighScatteringScale": 0.013378125000000015,
+     "atm.MieScatteringScale": 0.013378125000000015,
+     "atm.MieAbsorptionScale": 0.0013378125000000013,
+     "atm.MieAnisotropy": 0.7923437499999999,
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.AerialPerspectiveStartDepth": 0.02,
+     "atm.HeightFogContribution": 1.0,
+     "fog.SkyAtmosphereAmbientContributionColorScale": [
+      0.1,
+      0.1,
+      0.1,
+      1.0
+     ],
+     "fog.FogDensity": 0.06687499999999987,
+     "fog.FogHeightFalloff": 0.099234375,
+     "fog.StartDistance": 71249.9999999999,
+     "fog.FogMaxOpacity": 0.9668749999999998,
+     "fog.FogInscatteringLuminance": [
+      0.013600625000000087,
+      0.013440625000000058,
+      0.018973125000000042,
+      1.0
+     ],
+     "fog.DirectionalInscatteringLuminance": [
+      0.010995000000000114,
+      0.005497500000000057,
+      0.002195625000000023,
+      1.0
+     ],
+     "fog.DirectionalInscatteringExponent": 8.459375000000005,
+     "fog.DirectionalInscatteringStartDistance": 9846.875,
+     "fog.VolumetricFogScatteringDistribution": 0.5153125000000001,
+     "fog.VolumetricFogAlbedo": [
+      0.7,
+      0.7646874999999997,
+      0.9586562499999995,
+      1.0
+     ],
+     "fog.VolumetricFogExtinctionScale": 0.9617187499999995,
+     "fog.VolumetricFogDistance": 26765.625000000007,
+     "fog.VolumetricFogStartDistance": 0.0,
+     "fog2.FogDensity": 0.001307187500000001,
+     "fog2.FogHeightOffset": 7923.4375,
+     "fog2.FogHeightFalloff": 0.03,
+     "fog.FogCutoffDistance": 700000.0,
+     "cloud.Cloud_GlobalCoverage": 0.2,
+     "cloud.Cloud_GlobalDensity": 0.025,
+     "cloudv.Cloud_AlbedoColor": [
+      0.98,
+      0.98,
+      0.98,
+      1.0
+     ],
+     "cloudc.LayerBottomAltitude": 3.4617187499999997,
+     "cloudc.LayerHeight": 6.0,
+     "mpc.NightK": 0.5612499999999987,
+     "mpc.DnTime": 1346.9999999999968,
+     "mpc.InteriorGain": 1.7224999999999973,
+     "mpc.ShopGain": 1.292874999999999,
+     "mpc.EmissiveScale": 11.869974999999961,
+     "mpc.ShadeFill": 0.15683749999999996,
+     "pp.ColorGainShadows": [
+      0.9946406250000001,
+      0.9977031249999999,
+      1.0061250000000002,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.9870187499999998,
+      0.9785624999999998,
+      0.9785624999999998,
+      1.0
+     ],
+     "pp.ColorOffset": [
+      0.005909999999999994,
+      0.007387499999999994,
+      0.013297499999999988,
+      0.0
+     ],
+     "pp.ColorSaturation": [
+      0.9691406250000001,
+      0.9653125000000001,
+      1.0061250000000002,
+      1.0
+     ],
+     "pp.ColorContrast": [
+      1.329328125,
+      1.329328125,
+      1.329328125,
+      1.0
+     ],
+     "pp.LensFlareIntensity": 0.23085937499999978,
+     "pp.LumenDiffuseColorBoost": 1.0,
+     "pp.AutoExposureLowPercent": 70.765625,
+     "pp.AutoExposureHighPercent": 98.0765625,
+     "pp.FilmWhiteClip": 0.03693749999999996,
+     "pp.FilmBlackClip": 0.0,
+     "pp.AutoExposureMinBrightness": 1.4375000000000047,
+     "pp.AutoExposureMaxBrightness": 5.109375000000009,
+     "pp.AutoExposureBias": -0.1012,
+     "pp.BloomIntensity": 0.49234374999999997,
+     "pp.BloomThreshold": 0.6459375000000004,
+     "pp.VignetteIntensity": 0.44617187499999994,
+     "pp.SceneFringeIntensity": 0.15,
+     "pp.FilmSlope": 0.90153125,
+     "pp.FilmToe": 0.506125,
+     "pp.FilmShoulder": 0.2923437499999999,
+     "pp.WhiteTemp": 6030.625,
+     "pp.AmbientOcclusionIntensity": 0.30382812500000006,
+     "pp.IndirectLightingIntensity": 1.6153125000000004,
+     "lights": 1.0,
+     "stars": 0.9874999999999962,
+     "weather": 0.0,
+     "sun.RampLo": -4.0,
+     "sun.RampHi": 8.0,
+     "cloudv.Layout_GlobalTexturePlacement": [
+      0.0,
+      30000.0,
+      0.0,
+      0.0
+     ],
+     "cloudv.CloudWind": [
+      0.0,
+      0.0,
+      0.0,
+      0.0
+     ],
+     "hero": 1.494999999999999,
+     "herofill": 0.021875000000000238,
+     "moonc.LightSourceAngle": 1.0,
+     "moonc.AtmosphereSunDiskColorScale": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "moonc.CloudScatteredLuminanceScale": [
+      3.0,
+      3.0,
+      3.0,
+      1.0
+     ]
+    }
    },
    {
     "h": 20.6,
@@ -2072,7 +4957,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.7975,
+     "pp.AutoExposureBias": -0.8287,
      "sky.Intensity": 0.12,
      "fill.N": 0.04,
      "fill.E": 0.025,
@@ -2091,9 +4976,9 @@
       1.0
      ],
      "fog.FogInscatteringLuminance": [
-      0.0049,
-      0.00735,
-      0.014,
+      0.00525,
+      0.00788,
+      0.015,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
@@ -2144,7 +5029,7 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": -0.7999,
+     "pp.AutoExposureBias": -0.8818,
      "sky.Intensity": 0.66,
      "fill.N": 0.22,
      "fill.E": 0.1375,
