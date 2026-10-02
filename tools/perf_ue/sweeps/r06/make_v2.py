@@ -65,6 +65,10 @@ KNOBS = {
     # late-twilight fog / sun shaping (L24a at 20:00: the haze is brighter than the sky; L24b at 20:30: no warm light left in the sky band): {'fog': [(h, scale)]} multiplies the fog inscattering and directional
     # inscattering luminance RGB at the key hours inside the list; {'sun_lux': {hour: lux}} replaces sun.Intensity (the sun still lights only the sky and the clouds below the horizon: surface light is 0 there)
     'tw_fog_scale': None, 'tw_sun_lux': None,
+    # street-light level (`lights` key, 0..1) at the dawn keys: {hour: value} (default: the preset mixes 1, .65, .3, .12, .15, .03, 0 at 06:15 .. 07:36)
+    'lights_dawn': None,
+    # extra keys (hours): full-parameter snapshots of the finished table at those hours (the curve is unchanged at them); gives the exposure-bias loop a control point every 0.1-0.15 h through the twilights
+    'extra_keys': None,
     # sun surface-light ramp in degrees of sun elevation (C++ sun.RampLo / sun.RampHi; default -2.5 / 3.5): [lo, hi] on every key
     'sun_ramp': None,
 }
@@ -187,6 +191,7 @@ def apply(doc, K):
         if K.get('tw_sun_lux'):
             sl = {float(a): v for a, v in K['tw_sun_lux'].items()}
             if h in sl: sset['sun.Intensity'] = float(sl[h])
+        if K.get('lights_dawn') and h in {float(a): b for a, b in K['lights_dawn'].items()}: sset['lights'] = float({float(a): b for a, b in K['lights_dawn'].items()}[h])
         if K.get('cloud_offset') is not None: sset['cloudv.Layout_GlobalTexturePlacement'] = list(K['cloud_offset'])
         if K.get('sun_ramp') is not None: sset['sun.RampLo'] = float(K['sun_ramp'][0]); sset['sun.RampHi'] = float(K['sun_ramp'][1])
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
@@ -195,6 +200,17 @@ def apply(doc, K):
         if h in K.get('golden_hours', []):
             for pk, pv in K['golden_set'].items(): sset[pk] = pv
         if 'hero' in sset and K.get('hero_scale') is not None: sset['hero'] = round(sset['hero'] * K['hero_scale'], 3)
+    if K.get('extra_keys'):
+        t0 = look_tod.expand(d)
+        have = [k['h'] for k in T['keys']]
+        for h in sorted(float(x) for x in K['extra_keys']):
+            if any(abs(h - x) < 1e-6 for x in have): continue
+            v = look_tod.evaluate(t0, h)
+            near = min(T['keys'], key=lambda k: abs(k['h'] - h))
+            e = {'h': h, 'base': near['base'], 'set': {pk: (list(pv) if isinstance(pv, list) else pv) for pk, pv in v.items()}}
+            for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): e['set'][pk] = pv
+            T['keys'].append(e)
+        T['keys'].sort(key=lambda k: k['h'])
     return d
 
 

@@ -17,9 +17,31 @@ import gen_plans_e as E   # noqa: E402
 import make_v2            # noqa: E402
 
 
+SMOOTH_DAWN = ['sun.Temperature', 'fill.W', 'sky.Intensity', 'fog.FogHeightFalloff', 'fog.StartDistance', 'fog.FogInscatteringLuminance', 'fog.DirectionalInscatteringLuminance', 'pp.ColorContrast',
+               'pp.AutoExposureMinBrightness', 'pp.AutoExposureMaxBrightness', 'pp.AutoExposureBias']
+
+
+def dawn_smoothing(K):
+    """round 06 hold 7 (C): the dawn keys 07:00 / 07:12 / 07:24 are mixes of different bases (dusk_am x dawn 0.6 / x golden_am 0.5 / x dawn 0.9) and zigzag in fog colour, height falloff, start distance, sun temperature,
+    sky light, contrast and the exposure window (the lapse's 06:53-07:00 and 07:15-07:25 bumps of +3.5 Y per frame): each of these parameters is put on the straight line between the 06:48 and 07:36 keys. The sun
+    lux ramp 05:00-06:48 is made geometric (it went x4.5 between 06:15 and 06:30, the sunrise-glow bump of the lapse: +5 Y per frame at 06:25-06:35)."""
+    sys.path.insert(0, os.path.join(make_v2.WT, 'unreal', 'WebHomage', 'Scripts')); import look_tod
+    t = look_tod.expand(make_v2.apply(make_v2.base_doc(), {**make_v2.KNOBS, **K}))
+    kp = {k['h']: k['p'] for k in t['keys']}
+    ov = {}
+    for h in (7.0, 7.2, 7.4):
+        f = (h - 6.8) / 0.8; o = {}
+        for pn in SMOOTH_DAWN:
+            a, b = kp[6.8][pn], kp[7.6][pn]
+            o[pn] = [round(x + (y - x) * f, 5) for x, y in zip(a, b)] if isinstance(a, list) else round(a + (b - a) * f, 5)
+        ov[str(h)] = o
+    ov['6.5'] = {'sun.Intensity': round(kp[6.25]['sun.Intensity'] * (kp[6.8]['sun.Intensity'] / kp[6.25]['sun.Intensity']) ** ((6.5 - 6.25) / 0.55), 1)}
+    return ov
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--golden', type=float, default=0.0); ap.add_argument('--ramp', default='-4,8')
-    ap.add_argument('--late-factor', default='30,6,1.2'); a = ap.parse_args()
+    ap.add_argument('--late-factor', default='30,6,1.2'); ap.add_argument('--dawn-smooth', action='store_true', help='hold 7 (C): smooth the zigzag dawn keys, shift the city lights later, add extra keys for the loop'); a = ap.parse_args()
     lf = [float(x) for x in a.late_factor.split(',')]
     fac = copy.deepcopy(E.FAC_W3)
     fac['dusk'] = [(h, v) for h, v in fac['dusk'] if h <= 19.5] + [(19.8, [26, 5.5, 1.2]), (20.2, lf), (20.6, lf), (21.0, [15.5, 3.5, 1.1]), (21.4, [3.9, 1.5, 1.02])]
@@ -27,6 +49,11 @@ def main():
     K = {'tw_fac_pts': fac, 'tw_hl_r': E.HL_R, 'tw_cloud': cloud, 'cloud_offset': [0.0, 30000.0, 0.0, 0.0],
          'dawn_mist': {7.0: 0.02, 7.2: 0.1, 7.4: 0.8, 7.6: 4.0, 8.0: 1.6, 8.8: 0.05}, 'sun_ramp': [float(x) for x in a.ramp.split(',')],
          'tw_fog_scale': [(19.5, 1.0), (19.8, 0.5), (20.2, 0.5), (20.6, 0.7), (21.0, 1.0)], 'tw_sun_lux': {20.2: 5000.0, 20.6: 3500.0}}
+    if a.dawn_smooth:
+        K['twilight_overrides'] = dawn_smoothing(K)
+        K['u_dawn'] = [(5.6, 1.0), (6.25, 0.8), (6.8, 0.4), (7.2, 0.12), (7.6, 0.0)]
+        K['lights_dawn'] = {6.25: 1.0, 6.5: 0.85, 6.8: 0.5, 7.0: 0.3, 7.2: 0.2, 7.4: 0.08, 7.6: 0.0}
+        K['extra_keys'] = [6.1, 6.35, 6.45, 6.55, 6.65, 6.9, 7.1, 7.3, 7.8, 8.4, 19.0, 19.35, 19.65, 19.9, 20.4]
     if a.golden > 0: K['golden_set'] = dict(make_v2.KNOBS['golden_set'], **{'pp.ColorOffset': [a.golden, a.golden, a.golden, 0.0]})
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     json.dump(K, open(a.out, 'w'), indent=1)

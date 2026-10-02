@@ -46,7 +46,7 @@ def smooth_target(hours, ys, hold, slope, sigma_frames=5, iters=60):
     return t
 
 
-def design_target(hours, ys, clips=None, anchors=(), slope=1.3, clip_free=1.2, clip_k=0.08, step=0.25, ymax=200.0, anchor_w=2e4):
+def design_target(hours, ys, clips=None, anchors=(), slope=1.3, clip_free=1.2, clip_k=0.08, step=0.25, ymax=200.0, anchor_w=2e4, raise_pen=1.0):
     """round 06, hold 6: the target curve of the closed loop = the curve closest to the measured one (weighted least squares in relative luma) whose frame-to-frame change is <= `slope` Y,
     with the measured values pinned at the `anchors` (hours of the golden / night / dawn stills the other spec lines depend on) and a ceiling where the frame clips (any channel >= 250):
     frames with clipped % above `clip_free` may not exceed measured * max(0.5, 1 - clip_k * (clip - clip_free)). Exact dynamic programme over a luma grid (the cost is separable per frame).
@@ -61,6 +61,7 @@ def design_target(hours, ys, clips=None, anchors=(), slope=1.3, clip_free=1.2, c
     INF = 1e18
     def cost(i):
         c = (levels - y[i]) ** 2 / (y[i] + 10.0) ** 2
+        if raise_pen != 1.0: c = np.where(levels > y[i], c * raise_pen, c)      # asymmetric: brightening a dark valley is costlier than darkening a bump (exposure raises amplify the noise / the clipped sky)
         if pin[i]: c = c * anchor_w                                  # soft pin (a hard one can be infeasible: the measured neighbours of an anchor may differ by more than `slope`)
         c = np.where(levels > ceil[i] + 1e-9, c + 50.0 * (levels - ceil[i]) ** 2 / (y[i] + 10.0) ** 2 + 0.05, c)   # soft ceiling
         return c

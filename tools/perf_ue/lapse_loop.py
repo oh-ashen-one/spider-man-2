@@ -17,11 +17,25 @@ import numpy as np   # noqa: E402
 import look_tod, lapse_opt, make_v2   # noqa: E402
 
 
+def spline_basis(tab, adj, hrs):
+    """W[i, j] = d bias(hour_i) / d bias(key adj[j]) of the driver's Catmull-Rom (finite differences on the python twin look_tod.evaluate, bias param only)"""
+    import copy
+    base = {'keys': [{'h': k['h'], 'p': {'pp.AutoExposureBias': float(k['p']['pp.AutoExposureBias'])}} for k in tab['keys']]}
+    v0 = np.array([look_tod.evaluate(base, h % 24.0)['pp.AutoExposureBias'] for h in hrs])
+    W = np.zeros((len(hrs), len(adj)))
+    for j, hk in enumerate(adj):
+        t2 = copy.deepcopy(base)
+        for k in t2['keys']:
+            if abs(k['h'] - hk) < 1e-6: k['p']['pp.AutoExposureBias'] += 0.05
+        W[:, j] = (np.array([look_tod.evaluate(t2, h % 24.0)['pp.AutoExposureBias'] for h in hrs]) - v0) / 0.05
+    return W
+
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--cvars', default=''); ap.add_argument('--iters', type=int, default=4)
-    ap.add_argument('--deadline', type=float, default=0.0); ap.add_argument('--keys-hours', default='5.6,6.25,6.5,6.8,7.0,7.2,7.4,18.8,19.2,19.5,19.8,20.2,20.6,21.0')
-    ap.add_argument('--hold', default='4.9,7.6,8.0,9.5,13,16.5,18.4,21.4,0'); ap.add_argument('--slope', type=float, default=1.3); ap.add_argument('--gain', type=float, default=0.8)
-    ap.add_argument('--window', type=float, default=0.25); ap.add_argument('--substeps', type=int, default=1); ap.add_argument('--max-delta', type=float, default=1.3, help='largest total change (EV) of a key bias from the starting table'); ap.add_argument('--anchor-w', type=float, default=2e3); ap.add_argument('--from-it', type=int, default=0, help='first iteration number (a continued loop)'); ap.add_argument('--doc', default='', help='table document (default: the committed Scripts/look_presets.json)')
+    ap.add_argument('--deadline', type=float, default=0.0); ap.add_argument('--keys-hours', default='5.6,6.1,6.25,6.35,6.45,6.5,6.55,6.65,6.8,6.9,7.0,7.1,7.2,7.3,7.4,7.6,7.8,8.0,8.4,8.8,18.8,19.0,19.2,19.35,19.5,19.65,19.8,19.9,20.2,20.4,20.6,21.0')
+    ap.add_argument('--hold', default='4.9,9.5,13,16.5,18.4,21.4,0'); ap.add_argument('--raise-pen', type=float, default=4.0); ap.add_argument('--slope', type=float, default=1.3); ap.add_argument('--gain', type=float, default=0.8)
+    ap.add_argument('--window', type=float, default=0.25); ap.add_argument('--substeps', type=int, default=1); ap.add_argument('--max-delta', type=float, default=1.3, help='largest total change (EV) of a key bias from the starting table'); ap.add_argument('--no-ls', action='store_true', help='use the round-06 window averages instead of the spline least-squares update'); ap.add_argument('--ridge', type=float, default=0.02); ap.add_argument('--anchor-w', type=float, default=2e3); ap.add_argument('--from-it', type=int, default=0, help='first iteration number (a continued loop)'); ap.add_argument('--doc', default='', help='table document (default: the committed Scripts/look_presets.json)')
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     doc = json.load(open(a.doc)) if a.doc else look_tod.load_doc()
@@ -42,10 +56,22 @@ def main():
         print('iteration %d: max jump %.2f p99 %.2f mean<=%.1f clipped<=%.2f %% -> %s' % (it, c['max_jump'], c['p99_jump'], c['window_05_2130']['max_mean_y'], c['window_05_2130']['max_clipped_pct'], 'PASS' if c['pass'] else 'fail'), flush=True)
         if c['pass']: break
         hrs, ys = d['hours_per_frame'], d['mean_y_per_frame']
-        T, info = lapse_opt.design_target(hrs, ys, d['clipped_pct_per_frame'], hold, a.slope, anchor_w=a.anchor_w); print('target', json.dumps({k: round(v, 2) for k, v in info.items()}), flush=True)
+        T, info = lapse_opt.design_target(hrs, ys, d['clipped_pct_per_frame'], hold, a.slope, anchor_w=a.anchor_w, raise_pen=a.raise_pen); print('target', json.dumps({k: round(v, 2) for k, v in info.items()}), flush=True)
         Y = np.asarray(ys); dev = np.clip(np.where(Y > 8.0, 2.2 * np.log2(np.maximum(T, 1.0) / np.maximum(Y, 1.0)), 0.0), -1.2, 1.2); hr = np.asarray(hrs)
         nk = {k['h']: k['p'] for k in tab['keys']}
-        for h in kh:
+        if not a.no_ls:
+            adj = [h for h in kh if h in nk]
+            W = spline_basis(tab, adj, hrs)
+            m = np.where(Y > 8.0, 1.0, 0.0)
+            A = W * m[:, None]; bvec = dev * m
+            delta = np.linalg.solve(A.T @ A + a.ridge * np.eye(len(adj)) * max(1.0, float(m.sum()) / 100.0), A.T @ bvec)
+            for h, dl in zip(adj, delta):
+                nb = float(nk[h]['pp.AutoExposureBias']) + a.gain * float(dl)
+                nb = min(max(nb, base_bias[h] - a.max_delta), base_bias[h] + a.max_delta)
+                sets.append('h=%g:pp.AutoExposureBias=%.4f' % (h, nb)); overrides[str(h)] = round(nb, 4)
+            print('ls update: residual rms %.3f EV -> %.3f EV, deltas %s' % (float(np.sqrt(np.mean((dev * m) ** 2))), float(np.sqrt(np.mean((dev * m - A @ delta) ** 2))), ' '.join('%g:%+.2f' % (h, dl) for h, dl in zip(adj, delta))), flush=True)
+        else:
+          for h in kh:
             if h not in nk: continue
             dh = ((hr - h + 12) % 24) - 12; w = np.clip(1.0 - np.abs(dh) / a.window, 0.0, None)
             if w.sum() <= 0: continue
