@@ -4,6 +4,7 @@
 namespace WebFlips
 {
 	float FlipLead = 0.04f, FlipLag = 0.07f;
+	bool bVariants = true;
 
 	namespace
 	{
@@ -32,7 +33,7 @@ namespace WebFlips
 		constexpr float EnvIn = 0.12f, EnvOut = 0.22f; // rotation set-in / settle at the program ends (s)
 		constexpr int32 TableHz = 240;
 
-		struct FTable { TArray<float> G; float L = 0.f; }; // cumulative rotation (deg) at 1/TableHz steps
+		struct FTable { TArray<float> G; float L = 0.f; int32 Ver = -1; }; // cumulative rotation (deg) at 1/TableHz steps
 
 		TArray<FWebFlipProgram>& Programs()
 		{
@@ -127,9 +128,10 @@ namespace WebFlips
 		}
 		const FTable& Table(const FWebFlipProgram& P)
 		{
-			static TMap<FName, FTable> Cache;
-			if (const FTable* T = Cache.Find(P.Name)) return *T;
+			static TMap<const FWebFlipProgram*, FTable> Cache;
+			if (const FTable* T = Cache.Find(&P)) { if (T->Ver == P.Ver) return *T; }
 			FTable Tb;
+			Tb.Ver = P.Ver;
 			const float Dur = P.Dur();
 			const int32 N = FMath::CeilToInt(Dur * TableHz) + 1;
 			Tb.G.SetNum(N + 1);
@@ -144,7 +146,7 @@ namespace WebFlips
 			const float GEnd = Tb.G[FMath::Min(N, FMath::CeilToInt(Dur * TableHz))];
 			Tb.L = GEnd > 1e-6f ? P.PitchDeg / GEnd : 0.f;
 			for (float& V : Tb.G) V *= Tb.L;
-			return Cache.Add(P.Name, Tb);
+			return Cache.Add(&P, Tb);
 		}
 	}
 
@@ -186,9 +188,60 @@ namespace WebFlips
 		}
 	}
 
-	const FWebFlipProgram* Find(FName Name)
+	namespace
+	{
+		// one variant slot per base program (stable addresses: the rate-table cache and callers hold pointers)
+		TArray<FWebFlipProgram>& Variants()
+		{
+			static TArray<FWebFlipProgram> V;
+			if (V.Num() != Programs().Num()) { V = Programs(); for (FWebFlipProgram& P : V) P.Ver = -2; }
+			return V;
+		}
+	}
+	const FWebFlipProgram* FindBase(FName Name)
 	{
 		for (const FWebFlipProgram& P : Programs()) { if (P.Name == Name) return &P; }
+		return nullptr;
+	}
+	const FWebFlipProgram* Find(FName Name)
+	{
+		const TArray<FWebFlipProgram>& B = Programs();
+		for (int32 I = 0; I < B.Num(); ++I)
+		{
+			if (B[I].Name != Name) continue;
+			const FWebFlipProgram& V = Variants()[I];
+			return (bVariants && V.Ver >= 0) ? &V : &B[I];
+		}
+		return nullptr;
+	}
+	const FWebFlipProgram* MakeVariant(FName Name, float Scale, uint32 Seed)
+	{
+		const TArray<FWebFlipProgram>& B = Programs();
+		static int32 VerCounter = 0;
+		for (int32 I = 0; I < B.Num(); ++I)
+		{
+			if (B[I].Name != Name) continue;
+			if (!bVariants) return &B[I];
+			FWebFlipProgram& V = Variants()[I];
+			V = B[I];
+			FRandomStream R{ int32(Seed) };
+			const float Sc = FMath::Clamp(Scale, 0.78f, 1.22f);
+			// each segment its own jitter, renormalised so the total is exactly Sc x the base duration
+			float Sum0 = 0.f, Sum1 = 0.f;
+			for (FWebFlipSeg& Sg : V.Segs) { Sum0 += Sg.Dur; Sg.Dur *= 0.92f + 0.16f * R.FRand(); Sum1 += Sg.Dur; }
+			for (FWebFlipSeg& Sg : V.Segs)
+			{
+				Sg.Dur *= Sc * Sum0 / FMath::Max(Sum1, 1e-3f);
+				Sg.EaseIn = FMath::Max(0.f, Sg.EaseIn * (0.8f + 0.4f * R.FRand()));
+				Sg.EaseOut = FMath::Max(0.f, Sg.EaseOut * (0.8f + 0.4f * R.FRand()));
+			}
+			V.CatchOpen = B[I].CatchOpen * Sc;
+			V.Lead = FlipLead * (0.5f + 1.5f * R.FRand());   // 0.02-0.08 s: the arms open / close earlier or later per instance
+			V.Lag = FlipLag * (0.7f + 0.8f * R.FRand());     // 0.05-0.11 s
+			V.Scale = Sc;
+			V.Ver = ++VerCounter;
+			return &V;
+		}
 		return nullptr;
 	}
 	const TArray<FName>& Names()
@@ -225,9 +278,9 @@ namespace WebFlips
 		}
 		O.TwistDeg = Tw;
 		O.Seg = SegAt(P, Tc);
-		ShapeAt(P, T + FlipLead, O.A, O.B, O.W, O.HoldA, O.HoldB);
+		ShapeAt(P, T + (P.Lead >= 0.f ? P.Lead : FlipLead), O.A, O.B, O.W, O.HoldA, O.HoldB);
 		O.AxisOffDeg = FMath::Lerp(ShapeAxisDeg(O.A), ShapeAxisDeg(O.B), O.W);
-		ShapeAt(P, T - FlipLag, O.LA, O.LB, O.LW, O.LHoldA, O.LHoldB);
+		ShapeAt(P, T - (P.Lag >= 0.f ? P.Lag : FlipLag), O.LA, O.LB, O.LW, O.LHoldA, O.LHoldB);
 		return O;
 	}
 }

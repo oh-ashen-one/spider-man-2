@@ -51,6 +51,29 @@ public:
 	float ReleaseBoostMul = 1.f;
 	/** Round 07: a held swing button re-searches for the next anchor this long (s) after a web release, even while rising. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReattachAfter = 0.22f;
+	// round 20 tunables (-WHTravTune=Name=V): wall-gait torso lean off the facade (rad), air body-to-velocity alignment speed band (m/s),
+	// setback look-ahead above a ledge (m), E-from-wall facade-top search range (m)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitLeanR = 0.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.42f; // round 21 (r20 .30): hips ~.5 m off the facade so the forward-bent driven knee clears it
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV0 = 22.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV1 = 28.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipRange = 260.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
+	// round 21 (-WHTravTune): side-run torso raised this many degrees above the run line toward the wall's up axis (0 = r20 plank);
+	// MantleStep 1 = a setback is crossed ON the surfaces (up the lip, along the ledge top, onto the next face; limbs stay on them), 0 = r20 hop
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideRaiseDeg = 25.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MantleStep = 1.f;
+	// round 22 (critic r21 "side-run slither": box wider than tall; director target: upright parkour sprint, torso within 30 deg of the
+	// wall's up axis, facing along the run line): WallSideUpright 1 = the side run is an upright runner side-on to the facade (body up =
+	// wall-up leaned WallSideLeanDeg forward along the run line and WallSideOutDeg out from the wall so the feet reach it; chest along the
+	// run line); 0 = the r21 frame (chest to the wall, body WallSideRaiseDeg above the run line). WallSideFootOff = root offset (m) before the
+	// out-tilt (feet ~.1 m off the facade, hips ~.4 m)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideUpright = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideLeanDeg = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideOutDeg = 16.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideFootOff = 0.36f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideClimbDamp = 10.f; // round 22 (r21 3): climb-speed decay on a sideways run (1/s)
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
@@ -267,9 +290,33 @@ public:
 	void PosePreview() { FinalQ = Orient(1e-4); WriteAnim(FinalQ); }
 	int32 BuildingCount() const { return TravWorld.Boxes.Num(); }
 	int32 ZipKindCode() const;
+	/** Round 19: why the last E press did what it did (highlighted / facadeTop / nearest / wallZip / pointLaunch / webDash / none). */
+	FName LastZipWhy;
+	int32 LastLandSrc = 0;
+	int32 FlipVarCount = 0;
+	FRandomStream FlipRng{ 20261001 }; // round 19: own stream (the swing solver's Rng sequence and the r18 routes stay unchanged)
+	int32 GroundSrcNow() const { (void)FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); return TravWorld.LastGroundSrc; }
+	FString LastZipFrom;
+	/** Round 20 telemetry: setback mantles and top-outs of this run. */
+	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
+	/** Round 20: a fresh RMB press cancels a trick / top-out flip / wall run into a swing at once (-WHTrickCancel=0 = r19). */
+	bool bTrickCancel = true;
+	bool bPerchTopFix = true; // round 20: facadeTop perches on the highest top within 0.15-0.6 m of the edge (parapets); -WHPerchTopFix=0 = r19
+	bool bFacadeWeb = true; // round 20: -WHFacadeWeb=0 = no facade web after a wall cancel (A/B)
+	/** Round 20: rope wrap guard (strand grazing its own facade near the anchor; re-anchor turn limit). -WHRopeGuard=0 = r19. */
+	bool bRopeGuard = true;
+	float RopeGuardNear = 6.f, RopeGuardDeg = 40.f;
+	int32 FlipCancels = 0;
+	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
+	bool TryMantleSetback(const FVector& N0);
+	/** Round 20: wall normal on real facade triangles -- the face of the building box under the contact when one is within 1.5 m (window
+	 *  jambs, mullions and pilasters gave the side run a new normal every frame), else the raw normal. */
+	FVector CleanWallNormal(const FVector& Pt, const FVector& RawN) const;
+	/** Round 20: facade plane in front of the body from a 3 x 2 ray grid along -N (most protruding valid hit, cleaned normal). */
+	bool WallPlane(const FVector& N, FVector& OutN, FVector& OutPoint) const;
 
 private:
-	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop };
+	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop, Mantle };
 
 	struct FSwing
 	{
@@ -299,7 +346,7 @@ private:
 	{
 		FVector Normal = FVector::ForwardVector, Up = FVector::UpVector, Point = FVector::ZeroVector, LockDir = FVector::ZeroVector;
 		FVector2D Move = FVector2D::ZeroVector;
-		double RunV = 0, Phase = 0, Off = 0, Dist = 0.38, RunK = 0, LockMx = 0, ZipT = 0;
+		double RunV = 0, Phase = 0, Off = 0, Dist = 0.38, RunK = 0, LockMx = 0, ZipT = 0, SideUpK = 0; // round 22: SideUpK 0..1 upright side-run blend
 		bool bFast = false, bLockDir = false, bZipWeb = false;
 	};
 	struct FKin
@@ -312,6 +359,9 @@ private:
 		// wallHop
 		double TA = 0, TB = 0, F0 = 0, Apex = 0, LandTop = 0, DTot = 0, ExitSpeed = 0;
 		FVector Inward = FVector::ZeroVector;
+		// round 21 surface-following setback step: centre polyline (m), surface normal per vertex, cumulative length, distance travelled
+		FVector MQ[6], MN[6]; double ML[6] = { 0 }; int32 MNum = 0; double MS = 0;
+		FVector CurN = FVector::ZeroVector, CurPt = FVector::ZeroVector; // current support surface (normal, closest point) while stepping
 	};
 	struct FQuick
 	{
@@ -331,6 +381,7 @@ private:
 		double ChargeT = 0, JumpCharge = 0, Coyote = 0, JumpBuf = 0;
 		double AirT = 0, ApexZ = 0, RelT = 99, NoAnchorT = 0, AirTapT = -9;
 		bool bDive = false, bGliding = false, bGroundSwing = false, bJumpRelHold = false, bAirTrickUsed = false;
+		bool bWallCancel = false; FVector WallCancelN = FVector::ZeroVector, WallCancelDir = FVector::ZeroVector; // round 20
 		FSwing Sw;
 		int32 Chain = 0;
 		double SinceSwing = 99;
@@ -400,6 +451,7 @@ private:
 	double FacadeAvoid(double H);
 	FVector TravelDir(const FWebTravInput& I) const;
 	bool TryStartSwing(const FWebTravInput& I);
+	bool FacadeAnchor(FTravAnchor& A) const; // round 20: RMB on a wall -- web up the facade ahead of the kick when the search finds nothing
 	void StartSwing(const FTravAnchor& A, const FVector& Fwd, const FVector* Turn, double HS);
 	double SwingPhase() const;
 	FVector PivotFor(const FVector& AnchorPoint) const;
@@ -471,5 +523,6 @@ public:
 	static constexpr double JUMP = 11.2, JUMP_MAX = 19.5;
 	// round 06 wall-run body: lean back off the wall (rad) and feet offset from the wall plane (m) while running
 	static constexpr double WallRunLean = 0.16, WallRunFootOff = 0.42;
+	// round 19: procedural IK stride -- hips off the facade, torso leaned back (round 20: UPROPERTYs WallGaitLeanR / WallGaitFootOffR)
 	static constexpr double WEB_MASS = 80;
 };

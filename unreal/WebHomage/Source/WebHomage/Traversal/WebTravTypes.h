@@ -108,6 +108,11 @@ struct WEBHOMAGE_API FWebTravAnimWall
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") float Phase = 0.f;
 	/** 1 = run cycle rotated onto the wall, 0 = crawl frame. */
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") float RunK = 0.f;
+	/** Round 19: wall surface point at body height (world cm) and the travel direction along the wall (unit, world). */
+	UPROPERTY(BlueprintReadOnly, Category="Traversal") FVector Point = FVector::ZeroVector;
+	UPROPERTY(BlueprintReadOnly, Category="Traversal") FVector Up = FVector::UpVector;
+	/** Round 22: 0..1 blend into the upright side run (runner side-on to the facade, chest along the run line). */
+	UPROPERTY(BlueprintReadOnly, Category="Traversal") float SideUp = 0.f;
 };
 
 /** C1 perch block. */
