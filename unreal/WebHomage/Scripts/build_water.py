@@ -369,6 +369,22 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
     float pat = NZG(p / 1.9 + float2(t * 0.004, 0.0), 1.0 / 1.9).r * 0.62 + NZG(p / 0.63 + float2(0.0, t * 0.006), 1.0 / 0.63).g * 0.5;
     wf = saturate(smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov)) * nearW;
 }
+// r05: far contact line (beyond the near field, out to FoamFar m, only within 80 m of land on the shore map): the same contact map, a
+//      narrower band and no sub-metre pattern (it would alias at 1 km); it breathes with the swell (lap) so the line is never static
+[branch] if (nearW < 1.0 && shore < 80.0 && dist < FoamFar && FoamFarK > 0.0) {
+    float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
+    float craw = 1.0;
+    [branch] if (all(cu > 0.0) && all(cu < 1.0)) {
+        if (CSel < 0.5) craw = Texture2DSampleLevel(tC, tCSampler, cu, 0).r;
+        else if (CSel < 1.5) craw = Texture2DSampleLevel(tC2, tC2Sampler, cu, 0).r;
+        else craw = Texture2DSampleLevel(tC3, tC3Sampler, cu, 0).r;
+    }
+    float cdF = craw * %(cmax).1f;
+    float lapF = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest;
+    float fF = NZG(p / 9.0 + float2(t * 0.012, -t * 0.008), 1.0 / 9.0).b;
+    float cfF = 1.0 - smoothstep(0.1 + 0.5 * CBias, 0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, cdF);
+    wf = max(wf, saturate(cfF * FoamFarK * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, dist)));
+}
 // ---- normal / roughness. Near field: GGX alpha from RoughN only (<= 0.08: the resolved facets carry the slope variance);
 //      beyond: + the unresolved variance x FarVarK (Cox-Munk alpha^2 = 2 sigma^2 per axis)
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
@@ -481,7 +497,8 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # 2 = C: half-res legacy TextureFactory). ShoreCalm: the far-field long-wave gains (LongK / MidK) fade out within ShoreCalm m
           # of land (sheltered water mirrors the island: the r03 reflections). SunSpecK: F0 scale on sun-facing water seen from swing
           # height (harbour_sun_high brass: R-B 100+); the glint facets keep the full F0.
-          'CSel': 0.0, 'ShoreCalm': 300.0, 'SunSpecK': 1.0}
+          # FoamFarK / FoamFar: the far contact line (harbour_high: the island seawall ~1 km away had no foam: foam stopped at NEAR_M)
+          'CSel': 0.0, 'ShoreCalm': 300.0, 'SunSpecK': 1.0, 'FoamFarK': 1.0, 'FoamFar': 2500.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
