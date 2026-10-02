@@ -62,6 +62,7 @@ def main():
     ap.add_argument('--hours', type=float, default=24.0); ap.add_argument('--seconds', type=float, default=12.0); ap.add_argument('--res', default='1920x1080')
     ap.add_argument('--name', default=''); ap.add_argument('--sp', default='100'); ap.add_argument('--weather', default='-1'); ap.add_argument('--cmds', default='', help="';'-separated live tour commands before the pose, e.g. 'exec wh.ToDSet pp.AutoExposureSpeedUp 40'"); ap.add_argument('--timeout', type=int, default=5000)
     ap.add_argument('--no-pin', action='store_true', help='do NOT pin the metering speed (round-05 behaviour, eye adaptation lags the clock)'); ap.add_argument('--keys', default='', help='abs path of a key table to load instead of the baked one (-WHToDKeys)')
+    ap.add_argument('--freeze', type=float, default=0.0, help='(round 06 diagnostic) extra game seconds with the clock STOPPED after the lapse (wh.TimeOfDaySpeed 0 through a second pose): shows how long the lighting lags a change; frames after the freeze keep their (frozen) hour')
     ap.add_argument('--no-encode', action='store_true'); ap.add_argument('--pose-file', default='', help='extra pose file (json like city_shots.json); the sky poses of tools/perf_ue/sky_poses.json are always known')
     a = ap.parse_args()
     rnd = os.path.abspath(a.round); os.makedirs(rnd, exist_ok=True)
@@ -76,9 +77,11 @@ def main():
     p, t = U(*s['pos']), U(*s['target']); r = look_rot(p, t); pl = s.get('player') or s['pos']; hh = U(pl[0], pl[1] + 1.0, pl[2])
     tf = os.path.join(d, 'tour.txt')
     pre = ''.join('! %s\n' % c.strip() for c in cmds.split(';') if c.strip())   # e.g. faster eye adaptation: the lapse compresses 1 h into 0.5 s
-    open(tf, 'w').write(pre + '%s %.1f %.1f %.1f %.4f %.4f %.4f %.2f %.1f 0 %.1f %.1f %.1f\n' % (a.shot, p[0], p[1], p[2], r[0], r[1], r[2], s.get('fov', 70), a.seconds + 30.0, hh[0], hh[1], hh[2]))
+    pose = '%s %.1f %.1f %.1f %.4f %.4f %.4f %.2f %%.1f 0 %.1f %.1f %.1f\n' % (a.shot, p[0], p[1], p[2], r[0], r[1], r[2], s.get('fov', 70), hh[0], hh[1], hh[2])
+    if a.freeze > 0: open(tf, 'w').write(pre + pose % a.seconds + '! cvar wh.TimeOfDaySpeed 0\n' + (pose % (a.freeze + 30.0)).replace(a.shot + ' ', a.shot + 'b ', 1))
+    else: open(tf, 'w').write(pre + pose % (a.seconds + 30.0))
     u = util(); t0 = time.time()
-    cmd = [RUN_GAME, d, '-map', '/Game/Tests/Look/Look_Midtown_tod', '-res', a.res, '-quit', '%.2f' % (START + a.seconds + 0.1), '-name', name, '-movie',
+    cmd = [RUN_GAME, d, '-map', '/Game/Tests/Look/Look_Midtown_tod', '-res', a.res, '-quit', '%.2f' % (START + a.seconds + a.freeze + 0.1), '-name', name, '-movie',
            '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp,
            '--', '-WHLookTour=' + tf, '-WHLookTourDir=' + d, '-WHLookTourStart=%.2f' % START, '-WHLookTourMinFrames=1',
            '-WHToD=%.4f' % h_start, '-WHToDSpeed=%.6f' % rate, '-WHWeather=' + a.weather] + (['-WHToDKeys=' + os.path.abspath(a.keys)] if a.keys else [])
@@ -92,7 +95,8 @@ def main():
     import numpy as np
     with ProcessPoolExecutor(max_workers=6) as ex: res_f = list(ex.map(frame_stats, keep, chunksize=8))
     ys = [r[0] for r in res_f]; brs = [r[1] for r in res_f]; cl = [r[2] for r in res_f]
-    hrs = [(a.h0 + rate * (3 + i) / 60.0) % 24.0 for i in range(len(keep))]   # keep[0] is frame START*60+3 of the dump: 3 frames after the pose was entered
+    tmax = a.seconds * 60.0   # frames after the freeze keep the hour they froze at
+    hrs = [(a.h0 + rate * min(3 + i, tmax) / 60.0) % 24.0 for i in range(len(keep))]   # keep[0] is frame START*60+3 of the dump: 3 frames after the pose was entered
     jumps = [abs(ys[i + 1] - ys[i]) for i in range(len(ys) - 1)]
     chk = lapse_checks(hrs, ys, cl)
     out = os.path.join(rnd, name + '.mp4')

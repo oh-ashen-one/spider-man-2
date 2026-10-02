@@ -29,6 +29,12 @@ KNOBS = {
     'moonc': {'moonc.LightSourceAngle': 0.52, 'moonc.CloudScatteredLuminanceScale': [1, 1, 1, 1], 'moonc.AtmosphereSunDiskColorScale': [1, 1, 1, 1]},
     # fog cutoff is a switch (the driver steps it at the middle of the segment): explicit 0 / 700000 on every new key, never a mix. 0 = fog applies to the sky pixels, 7e5 = sky unfogged
     'cutoff': {18.8: 0, 19.5: 0, 20.2: 0, 21.0: 700000, 21.4: 700000, 5.6: 700000, 6.5: 0, 7.2: 0},
+    # twilight sky design (round-06 hold-1 sweep A: dimming the ambient (sky light, fills, fog sky ambient) takes the far band 15-25 Y under the sky at 6.5-7.5 and 19.5-21.5; the warm
+    # SkyLuminanceFactor gives the sun-facing sky band B-R <= -20 until ~19.5 only: the tint is stronger and later, see tw_warm)
+    'tw_w': {'dusk': [(18.8, 0.0), (19.2, 0.6), (19.5, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.5), (6.25, 1.0), (7.0, 1.0), (7.3, 0.5), (7.6, 0.0)]},
+    'tw_warm': {'dusk': [(18.8, 0.0), (19.2, 0.4), (19.5, 0.8), (19.8, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.6), (6.25, 1.0), (6.8, 0.8), (7.3, 0.2), (7.6, 0.0)]},
+    'tw_factor': [4.0, 1.6, 0.6],
+    'tw_sky_scale': 0.5, 'tw_fill_scale': 0.3, 'tw_amb': 0.3,
     'twilight_overrides': {},      # {hour: {param: value}} applied last (sweep results go here)
 }
 
@@ -52,6 +58,8 @@ def lerp(a, b, t): return a + (b - a) * t
 
 
 def apply(doc, K):
+    K = copy.deepcopy(K)
+    for n in ('moon', 'hero', 'herofill', 'cutoff'): K[n] = {float(k): v for k, v in K[n].items()}   # json knob files carry string keys
     d = copy.deepcopy(doc); T = d['tod']
     P = d['presets']
     gold, night = P['golden']['mpc'], P['night']['mpc']
@@ -92,6 +100,21 @@ def apply(doc, K):
         if h in K['cutoff']: s['fog.FogCutoffDistance'] = K['cutoff'][h]
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): s[pk] = pv
     T['keys'] = [keys[h] for h in sorted(keys)]
+    # twilight shaping: multipliers of the already-expanded base values (look_tod.expand gives them), written back as explicit `set` values
+    import sys as _s; _s.path.insert(0, os.path.join(WT, 'unreal', 'WebHomage', 'Scripts')); import look_tod
+    t0 = look_tod.expand(d)
+    base_by_h = {k['h']: k['p'] for k in t0['keys']}
+    def w_of(h, tab): return u_of(h, tab['dusk']) if h >= 12 else u_of(h, tab['dawn'])
+    for k in T['keys']:
+        h = k['h']; b = base_by_h[h]; sset = k.setdefault('set', {})
+        w = w_of(h, K['tw_w']) if (h >= 18.0 or h <= 7.6) else 0.0
+        ww = w_of(h, K['tw_warm']) if (h >= 18.0 or h <= 7.6) else 0.0
+        if w > 0:
+            sset['sky.Intensity'] = round(b['sky.Intensity'] * (1 - (1 - K['tw_sky_scale']) * w), 4)
+            for dn in 'NESW': sset['fill.' + dn] = round(b['fill.' + dn] * (1 - (1 - K['tw_fill_scale']) * w), 4)
+            sset['fog.SkyAtmosphereAmbientContributionColorScale'] = [round(1 - (1 - K['tw_amb']) * w, 4)] * 3 + [1.0]
+        if ww > 0: sset['atm.SkyLuminanceFactor'] = [round(1 + (f - 1) * ww, 4) for f in K['tw_factor']] + [1.0]
+        for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
     return d
 
 
