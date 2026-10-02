@@ -86,6 +86,8 @@ private:
 	bool bSunLitWorld = true;
 	float SunWorldK = -1.f;   // last diffuse/specular scale given to the sun (-1 = never set)
 
+	bool bLapseLumen = false; int32 LapseOrig[3] = { 32, 64, 4 };
+	void UpdateLapseLumen(bool bWant);
 	void Bind();
 	TMap<FName, FVector4f> Evaluate(float H, float W, float SunElev) const;
 	void Apply(const TMap<FName, FVector4f>& V, float SunElev, float SunAz, float MoonElev, float MoonAz);

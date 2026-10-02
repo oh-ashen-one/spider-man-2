@@ -18,12 +18,15 @@ tmo() { local c=$1; local r=$(( $(rem) - 120 )); [ $r -gt $c ] && r=$c; echo $r;
 KB="$S/plans/keys_base.txt"; [ -f "$KB" ] || KB="$S/plans_b/keys_v2a.txt"
 LAP="python3 tools/perf_ue/capture_tod_lapse.py --shot S4 --res 960x540 --no-encode"
 F() { local n=$1 keys=$2 cmds=$3; step "freeze $n" 200 ${=LAP} --round "$S/diag/$n" --name $n --from 19.0 --hours 3 --seconds 1.5 --freeze 2.5 --keys "$keys" --cmds "$cmds" --timeout $(tmo 300); }
-F F0_base "$KB" ""
-F F1_timeslice0 "$KB" "exec r.SkyLight.RealTimeReflectionCapture.TimeSlice 0"
-F F2_novolfog "$KB" "exec r.VolumetricFog 0"
-F F3_nolumen "$KB" "exec r.Lumen.DiffuseIndirect.Allow 0"
-F F4_sky0 "$KB" "exec wh.ToDSet sky.Intensity 0"
+# Lumen refreshes its surface-cache lighting over 32 / 64 frames (r.LumenScene.DirectLighting / Radiosity.UpdateFactor): at 2 h/s 0.5-1 game hour of stale bounce light. The driver now speeds the refresh up while
+# the clock runs > 0.3 h/s (wh.ToDLapseLumen 1, default); F0 / F2 / F3 / F4 switch that off (wh.ToDLapseLumen 0) to measure the engine-default lag.
+F F0_native "$KB" "exec wh.ToDLapseLumen 0"
+F F1_fastlumen "$KB" ""
+F F2_forceupdate "$KB" "exec wh.ToDLapseLumen 0;exec r.LumenScene.Lighting.ForceLightingUpdate 1"
+F F3_novolfog "$KB" "exec wh.ToDLapseLumen 0;exec r.VolumetricFog 0"
+F F4_nolumen "$KB" "exec wh.ToDLapseLumen 0;exec r.Lumen.DiffuseIndirect.Allow 0"
 step "slow lapse" 200 ${=LAP} --round "$S/diag/F5_slow" --name F5_slow --from 19.0 --hours 3 --seconds 6 --keys "$KB" --timeout $(tmo 300)
+step "lapse L0 + fast Lumen refresh" 250 ${=LAP} --round "$S/lapse_L0f" --name lapse_L0f --from 4.0 --hours 24 --seconds 12 --keys "$KB" --timeout $(tmo 600)
 step "lapse V2a" 250 ${=LAP} --round "$S/lapse_V2a" --name lapse_V2a --from 4.0 --hours 24 --seconds 12 --keys "$S/plans_b/keys_v2a.txt" --timeout $(tmo 600)
 step "stills plan_b" 600 python3 tools/perf_ue/sweeps/run_r06.py --plan "$S/plans_b/plan_b.json" --out "$S/sweep_b" --timeout $(tmo 1500)
 for H in 14 18; do

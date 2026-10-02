@@ -26,6 +26,9 @@
 static TAutoConsoleVariable<float> CVarToD(TEXT("wh.TimeOfDay"), -1.f, TEXT("P4 time of day, game-clock hour 0..24 (-1 = the map's default hour)"), ECVF_Default);
 static TAutoConsoleVariable<float> CVarToDSpeed(TEXT("wh.TimeOfDaySpeed"), 0.f, TEXT("P4 time-lapse rate in game hours per game second (0 = frozen)"), ECVF_Default);
 static TAutoConsoleVariable<float> CVarWeather(TEXT("wh.Weather"), -1.f, TEXT("P4 weather: 0 clear .. 1 overcast (-1 = keyed by the time of day)"), ECVF_Default);
+static TAutoConsoleVariable<int32> CVarToDLapseLumen(TEXT("wh.ToDLapseLumen"), 1, TEXT("P4 (round 06): 1 = while the clock runs faster than 0.3 h/s (a time-lapse / time skip) Lumen's surface-cache lighting is told to refresh within a few frames "
+	"(r.LumenScene.DirectLighting.UpdateFactor 32 -> 4, r.LumenScene.Radiosity.UpdateFactor 64 -> 4, Radiosity.Temporal.MaxFramesAccumulated 4 -> 1) and restored afterwards; "
+	"0 = engine defaults (the lighting then lags the clock by 32-64 frames = 0.5-1 game hour at 2 h/s)"), ECVF_Default);
 static TAutoConsoleVariable<int32> CVarToDFreeze(TEXT("wh.ToDFreeze"), 0, TEXT("P4: 1 = the time-of-day driver stops applying (manual look tuning)"), ECVF_Default);
 
 static AWHLookTimeOfDay* FindDriver(UWorld* W)
@@ -379,6 +382,24 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 	}
 }
 
+void AWHLookTimeOfDay::UpdateLapseLumen(bool bWant)
+{
+	// (round 06) Lumen refreshes its surface-cache lighting over SurfaceCacheTexels / UpdateFactor texels per FRAME (direct 32, radiosity 64, radiosity history 4 frames): at 2 h/s that is
+	// 0.5-1 game hour of stale bounce light after the sun is gone (hold 1: lapse mean 211 at 20:30 against 43 for a settled still). While the clock runs fast the refresh is made fast.
+	static const TCHAR* Names[3] = { TEXT("r.LumenScene.DirectLighting.UpdateFactor"), TEXT("r.LumenScene.Radiosity.UpdateFactor"), TEXT("r.LumenScene.Radiosity.Temporal.MaxFramesAccumulated") };
+	static const int32 Fast[3] = { 4, 4, 1 };
+	if (bWant == bLapseLumen) return;
+	for (int32 i = 0; i < 3; ++i)
+	{
+		IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(Names[i]);
+		if (!V) continue;
+		if (bWant) { LapseOrig[i] = V->GetInt(); V->Set(Fast[i], ECVF_SetByCode); }
+		else V->Set(LapseOrig[i], ECVF_SetByCode);
+	}
+	bLapseLumen = bWant;
+	UE_LOG(LogWebHomage, Display, TEXT("WH_TOD lapse lumen %s (clock %.2f h/s)"), bWant ? TEXT("fast refresh ON") : TEXT("defaults restored"), CVarToDSpeed.GetValueOnGameThread());
+}
+
 void AWHLookTimeOfDay::Dump()
 {
 	float Se, Sa, Me, Ma; BodyDir(Sun, Hour, Se, Sa); BodyDir(Moon, Hour, Me, Ma);
@@ -401,6 +422,7 @@ void AWHLookTimeOfDay::Tick(float Dt)
 	if (Cv != LastCvarHour) { LastCvarHour = Cv; Hour = Cv >= 0.f ? FMath::Fmod(Cv, 24.f) : DefaultHour; bDirty = true; }
 	const float Speed = CVarToDSpeed.GetValueOnGameThread();
 	if (Speed != 0.f) { Hour = FMath::Fmod(Hour + Speed * Dt + 48.f, 24.f); bDirty = true; }
+	UpdateLapseLumen(FMath::Abs(Speed) >= 0.3f && CVarToDLapseLumen.GetValueOnGameThread() != 0);
 	const float Wc = CVarWeather.GetValueOnGameThread();
 	if (Wc != LastWeather) { LastWeather = Wc; bDirty = true; }
 	if (CVarToDFreeze.GetValueOnGameThread() != 0 || !bDirty) return;
