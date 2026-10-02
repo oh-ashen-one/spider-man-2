@@ -331,7 +331,7 @@ PHASE_G = 0.55
 GLITTER = 1.0
 # material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
-PARAMS = {'ChopK': 2.6, 'ScatK': 0.2, 'FarVarK': 0.5, 'FoamK': 1.0, 'BendK': 0.3}   # r02 pick: variant E (river_low near mean Y 75, C14 21)
+PARAMS = {'ChopK': 2.6, 'ScatK': 0.2, 'FarVarK': 0.5, 'FoamK': 1.8, 'BendK': 0.3}   # r02 pick: variant E (river_low near mean Y 75, C14 21)
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
