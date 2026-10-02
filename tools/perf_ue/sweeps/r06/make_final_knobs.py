@@ -51,6 +51,7 @@ def main():
          'tw_fog_scale': [(19.5, 1.0), (19.8, 0.5), (20.2, 0.5), (20.6, 0.7), (21.0, 1.0)], 'tw_sun_lux': {20.2: 5000.0, 20.6: 3500.0}}
     if a.dawn_smooth:
         K['twilight_overrides'] = dawn_smoothing(K)
+        K['twilight_overrides']['18.4'] = {'pp.AutoExposureBias': 1.35}   # hold 7 (B): golden S4 mean 100.7 (the merge bar wants <= 100): -0.05 EV
         K['u_dawn'] = [(5.6, 1.0), (6.25, 0.8), (6.8, 0.4), (7.2, 0.12), (7.6, 0.0)]
         K['lights_dawn'] = {6.25: 1.0, 6.5: 0.85, 6.8: 0.5, 7.0: 0.3, 7.2: 0.2, 7.4: 0.08, 7.6: 0.0}
         K['extra_keys'] = [6.1, 6.35, 6.45, 6.55, 6.65, 6.9, 7.1, 7.3, 7.8, 8.4, 19.0, 19.35, 19.65, 19.9, 20.4]
