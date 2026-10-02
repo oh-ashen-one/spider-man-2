@@ -89,7 +89,7 @@ Rough = roughp; Metal = metalp; return c;''',
 float2 p = wpos.xy * 0.01;
 float h = vc.r;
 float dist = length(wpos - cam) * 0.01;
-float fade = 1.0 - smoothstep(fade0, fade1, dist);
+float fade = saturate((dist - near0) / max(near1 - near0, 0.001)) * (1.0 - smoothstep(fade0, fade1, dist));   // grows in between near0 / near1 metres (far layer: no tall tufts at the hero's feet), shrinks out between fade0 / fade1
 float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27)) + vc.g * 5.0;
 float gust = 0.5 + 0.5 * sin(p.x * 0.1 - t * 0.5) * cos(p.y * 0.08);
 float sway = h * h * windamp * (0.4 + 0.9 * gust) * sin(t * 1.6 + wo);
@@ -107,7 +107,7 @@ Sub = g * 0.55;
 Rough = 0.8; NormalW = normalize(lerp(wn, float3(0.0, 0.0, 1.0), 0.4));
 return g * gain;''',
         inputs=[('vc', 'vc', None), ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('t', 'time', None), ('rnd', 'pir', None), ('windamp', 'scalar', 2.0), ('gain', 'scalar', 1.0),
-                ('fade0', 'scalar', 12.0), ('fade1', 'scalar', 17.5), ('rootz', 'scalar', 19.0)],
+                ('fade0', 'scalar', 12.0), ('fade1', 'scalar', 17.5), ('near0', 'scalar', 0.0), ('near1', 'scalar', 0.0), ('rootz', 'scalar', 19.0)],
         outputs=BASE + [('AO', 1, 'MP_AMBIENT_OCCLUSION'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True, foliage=True))
     # r04 picnic blankets: woven gingham (256^2 tile = 0.24 m), fringed ends (masked comb), fold shading (world-space wrinkle normal); replaces the flat M_TerrainVC2 tints (critic r3: pale / maroon slabs)
     M.append(dict(name='M_TerrainBlanket', include=None, code='''

@@ -265,13 +265,14 @@ GRASS_PROTOS = tuple('grass_near_%d' % k for k in range(4)) + tuple('grass_far_%
 def _step_foliage():
     # r04: the blade-turf material instances (near layer < 17.5 m, far layer 16-58 m: the blades shrink to the ground between fade0 and fade1, so the instance cull distance never pops)
     mi('Grass_Near', 'M_TerrainGrass', {'windamp': 2.0, 'fade0': 12.0, 'fade1': 17.5, 'rootz': 19.0, 'gain': 1.0})
-    mi('Grass_Far', 'M_TerrainGrass', {'windamp': 3.5, 'fade0': 42.0, 'fade1': 58.0, 'rootz': 19.0, 'gain': 1.0})
+    mi('Grass_Far', 'M_TerrainGrass', {'windamp': 3.5, 'fade0': 42.0, 'fade1': 58.0, 'near0': 6.0, 'near1': 13.0, 'rootz': 19.0, 'gain': 1.0})
     extra = list(GRASS_PROTOS) + [n for n in ('shore_patch', 'park_rocks') if os.path.exists(os.path.join(PREP, n + '.glb'))]
     files = [os.path.join(PREP, n + '.glb') for n in extra] + [os.path.join(EXPORT, p['file']) for p in MAN['protos'] if p['name'] in PROTOS]
     import_files(files, PROD + '/_in', mesh_pipeline())
     for nm in extra + [p['name'] for p in MAN['protos'] if p['name'] in PROTOS]:
         src = f'{PROD}/_in/{nm}/StaticMeshes/{nm}'; dst = f'{PROD}/SM_{nm}'
         if not EAL.does_asset_exist(src): log('MISSING proto', src); continue
+        if EAL.does_asset_exist(dst): EAL.delete_asset(dst)   # r04: re-running the foliage step alone replaces the prototype (rename onto an existing asset fails)
         EAL.rename_asset(src, dst); sm = load(dst)
         if nm in GRASS_PROTOS: finish_mesh(sm, load(f'{MAT}/Inst/MI_Grass_' + ('Near' if nm.startswith('grass_near') else 'Far')), False)
         elif nm == 'park_rocks': finish_mesh(sm, mi('P_park_rocks', 'M_TerrainVC', {'usevc': 1.0, 'roughp': 0.9}, {'tint': (1.0, 1.0, 1.0, 1.0)}), False)   # schist outcrops (vertex-coloured, museum triangles dropped in prep)

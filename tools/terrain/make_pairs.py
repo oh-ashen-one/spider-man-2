@@ -30,6 +30,11 @@ if PREV:   # previous round vs this round (same camera: p1 / p2 / p10; the r02 s
      ('progress-reservoir',  S('p2_reservoir'), PS('p2_reservoir'), 'two versions of the same view over the park water basin (one is the newer build)'),
      ('progress-lawn-eye',   S('p10_lawn_eye'), PS('p10_lawn_eye'), 'two versions of the same eye-level lawn view (one is the newer build)'),
     ]
+    if os.environ.get('LAWN_PROGRESS'):   # r04: the lawn changed everywhere: the two other lawn cameras too
+        pairs += [
+         ('progress-great-lawn', S('p4_greatlawn'),      PS('p4_greatlawn'),      'two versions of the same high view over open meadows with ball fields (one is the newer build)'),
+         ('progress-panorama',   S('p9_park_panorama'),  PS('p9_park_panorama'),  'two versions of the same high view along the whole park (one is the newer build)'),
+        ]
     if os.environ.get('SHORE_PROGRESS'):   # r03: the shore cameras are unchanged since r02 -> shore progress pairs too
         pairs += [
          ('progress-shore-west', S('p6_west_shore'), PS('p6_west_shore'), 'two versions of the same waterfront view (one is the newer build)'),
