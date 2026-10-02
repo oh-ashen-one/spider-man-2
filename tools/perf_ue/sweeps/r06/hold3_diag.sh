@@ -29,6 +29,7 @@ F T6_novolfog "exec r.VolumetricFog 0"
 F T7_noaa "exec r.AntiAliasingMethod 0"
 F T8_radcache "exec r.Lumen.ScreenProbeGather.RadianceCache 0"
 F T9_noclouds "exec wh.ToDSet cloud.Cloud_GlobalCoverage -1"
+F T11_gi01 "exec wh.ToDSet pp.IndirectLightingIntensity 0.1"
 python3 tools/perf_ue/sweeps/r06/pick_lapse_cvars.py "$S/diag3"
 BEST=$(cat "$S/diag3/best_cvars.txt" 2>/dev/null)
 if [ -n "$BEST" ]; then
