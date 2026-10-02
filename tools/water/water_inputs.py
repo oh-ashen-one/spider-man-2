@@ -42,6 +42,32 @@ def _realization(seed, n=SLOPE_N, k0=SLOPE_K[0], k1=SLOPE_K[1]):
     return sx * sc, sy * sc
 
 
+CHOP_N = 512
+CHOP_K = (3, 10)           # cycles per tile: on a 1.5 m tile = 0.15 .. 0.5 m wind chop (r03)
+
+
+def chop_texture(path):
+    """r03 T_WaterChop: the resolved 0.15-0.5 m wind-chop slope layer (two realizations, broad short-crested spread cos^2(theta/2)),
+    same encoding as T_WaterSlope. Sampled without mip bias in the near field (<= 150 m) and never turned into roughness there."""
+    import cv2
+    def real(seed):
+        rng = np.random.default_rng(seed); n = CHOP_N; k0, k1 = CHOP_K
+        f = np.fft.fftfreq(n) * n
+        kx, ky = np.meshgrid(f, f); k = np.hypot(kx, ky); th = np.arctan2(ky, kx)
+        amp = np.where((k >= k0) & (k <= k1), np.maximum(k, 1e-6) ** -2.0, 0.0) * np.cos(th * 0.5) ** 2
+        amp *= np.clip((k - k0 + 1.0) / 2.0, 0, 1) * np.clip((k1 + 1.0 - k) / 2.0, 0, 1)
+        H = amp * (rng.standard_normal((n, n)) + 1j * rng.standard_normal((n, n)))
+        Hh = np.fft.fft2(np.real(np.fft.ifft2(H)))
+        sx = np.real(np.fft.ifft2(1j * kx * Hh)); sy = np.real(np.fft.ifft2(1j * ky * Hh))
+        sc = 1.0 / max(sx.std(), sy.std())
+        return sx * sc, sy * sc
+    ax, ay = real(9101); bx, by = real(9102)
+    enc = lambda s: np.clip(0.5 + s / SLOPE_ENC, 0.0, 1.0)
+    rgba = np.stack([enc(ax), enc(ay), enc(bx), enc(by)], -1)
+    cv2.imwrite(path, (rgba * 255.0 + 0.5).astype(np.uint8)[..., [2, 1, 0, 3]])
+    return dict(n=CHOP_N, k=list(CHOP_K), rms_x=float(ax.std()), rms_y=float(ay.std()))
+
+
 def slope_texture(path):
     import cv2
     ax, ay = _realization(9001); bx, by = _realization(9002)
@@ -110,7 +136,8 @@ def contact_map(export_dir, png_path, px_min=0.5, max_px=8192):
 if __name__ == '__main__':
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument('--slope'); ap.add_argument('--contact', nargs=2, metavar=('EXPORT_DIR', 'PNG'))
+    ap.add_argument('--slope'); ap.add_argument('--chop'); ap.add_argument('--contact', nargs=2, metavar=('EXPORT_DIR', 'PNG'))
     a = ap.parse_args()
     if a.slope: print(json.dumps(slope_texture(a.slope)))
+    if a.chop: print(json.dumps(chop_texture(a.chop)))
     if a.contact: print(json.dumps({k: v for k, v in contact_map(*a.contact).items() if k != 'files'}))

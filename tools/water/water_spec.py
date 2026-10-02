@@ -13,7 +13,18 @@ usage:
   water_spec.py near <frame.png|jpg> [...]          near-crop numbers per frame (any resolution; resized to 3840x2160 first)
   water_spec.py dolly <clip.mp4>                     autocorrelation at 80 px + per-frame temporal change of the water crop
   water_spec.py s4 <S4 frame>                        CITY-SPEC C14 via tools/export/spec_farfield.py
-  water_spec.py all <round_dir> [--json out.json]    every known capture in a round dir
+  water_spec.py harbour <harbour_high frame>         (r03) harbour crop: high-pass sd, glints, pale blobs
+  water_spec.py sparkle <river_sun frame>            (r03) sparkle width: % of frame width whose water column has >= 2 % of rows at Y >= 200
+  water_spec.py all <round_dir> [--json out.json]    every known capture in a round dir (+ PASS / FAIL against the r03 targets)
+
+r03 additions (so builder and critic measure identically; calibrated on round-02 + refs):
+  harbour crop   = x 0-2400, y 1300-2100 of the NATIVE 3840x2160 frame (not the 84 % pack crop: y 2100 lies outside the pack frame).
+                   Round-02 harbour_high_4k: hp sd 4.33 (critic 4.4), glints 0 %, pale blobs 109 (critic 106).
+  pale blob      = 8-connected component of >= 20 px whose pixels are >= 18 Y above the local mean (Gaussian sigma 24 px) with
+                   chroma (max - min) / max <= 0.35 and whose brightest pixel is < 140 (dull pale patch = foam decal, not a glint).
+  sparkle width  = in the pack frame (84 % centre crop), water rows = rows >= 45 % of the height; a column 'sparkles' when >= 2 % of its
+                   water rows have Y >= 200; result = % of columns. Round-02 river_sun_4k 35.5 %, reference waterfront-perch-trailer 67.1 %
+                   (critic: 35.5 / 66).
 Luma = Rec.709 on the 8-bit sRGB values."""
 import json, os, subprocess, sys
 import cv2, numpy as np
@@ -48,6 +59,40 @@ def near(path):
                 p1=round(float(np.percentile(Y, 1)), 1), p99_5=round(float(np.percentile(Y, 99.5)), 1), highpass_sd=round(float(hp.std()), 2),
                 glint_pct_ge140=round(float((Y >= 140).mean() * 100), 2), glint_pct_ge130=round(float((Y >= 130).mean() * 100), 2),
                 note='1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame' if src_w < 3840 else '')
+
+
+HARBOUR = (0, 2400, 1300, 2100)       # x0, x1, y0, y1 in the native 3840 x 2160 frame
+
+
+def _frame4k(path):
+    im = cv2.imread(path).astype(np.float32)
+    if im.shape[1] != 3840: im = cv2.resize(im, (3840, 2160), interpolation=cv2.INTER_CUBIC if im.shape[1] < 3840 else cv2.INTER_AREA)
+    return im
+
+
+def pale_blobs(c, Y, dY=18.0, chroma=0.35, amin=20, glint=140.0):
+    bg = cv2.GaussianBlur(Y, (0, 0), 24)
+    mx, mn = c.max(2), c.min(2)
+    m = ((Y - bg >= dY) & ((mx - mn) / np.maximum(mx, 1.0) <= chroma)).astype(np.uint8)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(m, 8)
+    peak = np.zeros(n); np.maximum.at(peak, lab.ravel(), Y.ravel())
+    return int(sum(1 for i in range(1, n) if st[i, 4] >= amin and peak[i] < glint))
+
+
+def harbour(path):
+    im = _frame4k(path); x0, x1, y0, y1 = HARBOUR
+    c = im[y0:y1, x0:x1]; Y = luma(c)
+    hp = Y - cv2.GaussianBlur(Y, (0, 0), 8)
+    return dict(file=os.path.basename(path), crop='native 4K x0-2400 y1300-2100', mean_Y=round(float(Y.mean()), 1),
+                highpass_sd=round(float(hp.std()), 2), glint_pct_ge140=round(float((Y >= 140).mean() * 100), 2), pale_blobs_ge20px=pale_blobs(c, Y),
+                p1=round(float(np.percentile(Y, 1)), 1), p99_5=round(float(np.percentile(Y, 99.5)), 1))
+
+
+def sparkle(path, thr=200.0, frac=0.02, horizon=0.45):
+    p = pack_crop(cv2.imread(path).astype(np.float32))
+    Y = luma(p); h0 = int(Y.shape[0] * horizon)
+    col = (Y[h0:] >= thr).mean(0)
+    return dict(file=os.path.basename(path), sparkle_width_pct=round(float((col >= frac).mean() * 100), 1))
 
 
 def _ac(c, dx):
@@ -94,18 +139,51 @@ def main():
         for f in a[1:]: print(json.dumps(dolly(f)))
     elif cmd == 's4':
         for f in a[1:]: print(json.dumps(s4(f)))
+    elif cmd == 'harbour':
+        for f in a[1:]: print(json.dumps(harbour(f)))
+    elif cmd == 'sparkle':
+        for f in a[1:]: print(json.dumps(sparkle(f)))
     elif cmd == 'all':
         R = a[1]; res = {}
         for f in sorted(os.listdir(R)):
             p = os.path.join(R, f)
             if f.endswith(('.jpg', '.png')) and ('river' in f or 'harbour' in f) and not f.startswith('crop'):
                 res[f] = near(p)
+                if 'harbour' in f: res[f]['harbour'] = harbour(p)
+                if 'river_sun' in f: res[f].update(sparkle(p))
             if f.endswith(('.jpg', '.png')) and f.startswith('S4'):
                 res[f] = s4(p)
             if f.endswith('.mp4'):
                 res[f] = dolly(p)
         for k, v in res.items(): print(json.dumps(v))
+        res['_checks_r03'] = checks(res)
+        for c in res['_checks_r03']: print('%-4s %-58s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1]))
         if '--json' in a: json.dump(res, open(a[a.index('--json') + 1], 'w'), indent=1)
+
+
+def checks(res):
+    """round-03 targets (4K frames only; perf is checked from perf.json separately)"""
+    out = []
+    def add(name, v, ok): out.append((name, v, bool(ok)))
+    r = res.get('river_low_4k.jpg')
+    if r:
+        add('river_low near hp sd >= 12', r['highpass_sd'], r['highpass_sd'] >= 12); add('river_low near p99.5 >= 150', r['p99_5'], r['p99_5'] >= 150)
+        add('river_low near glints >= 1 %', r['glint_pct_ge140'], r['glint_pct_ge140'] >= 1); add('river_low near mean Y <= 80', r['mean_Y'], r['mean_Y'] <= 80)
+        add('river_low near p1 <= 25', r['p1'], r['p1'] <= 25)
+    r = res.get('river_sun_4k.jpg')
+    if r:
+        add('river_sun sparkle width >= 50 %', r['sparkle_width_pct'], r['sparkle_width_pct'] >= 50)
+        add('river_sun near mean Y <= 90', r['mean_Y'], r['mean_Y'] <= 90); add('river_sun near glints 3..15 %', r['glint_pct_ge140'], 3 <= r['glint_pct_ge140'] <= 15)
+    r = res.get('harbour_high_4k.jpg')
+    if r:
+        h = r['harbour']
+        add('harbour crop hp sd >= 10', h['highpass_sd'], h['highpass_sd'] >= 10); add('harbour crop glints >= 2 %', h['glint_pct_ge140'], h['glint_pct_ge140'] >= 2)
+        add('harbour crop pale blobs (>= 20 px) == 0', h['pale_blobs_ge20px'], h['pale_blobs_ge20px'] == 0)
+    for k in ('river_low_dolly.mp4', 'river_sun_dolly.mp4'):
+        if k in res: add('%s autocorr at 80 px <= 0.10' % k, res[k]['autocorr_80px'], res[k]['autocorr_80px'] <= 0.10)
+    r = res.get('S4_golden_4k.jpg')
+    if r: add('S4 C14 5..35', r['C14'], 5 <= r['C14'] <= 35)
+    return out
 
 
 if __name__ == '__main__':

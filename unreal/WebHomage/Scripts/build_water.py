@@ -70,7 +70,13 @@ WAVE_MAX = sum(w[1] for w in SPEC)
 VAR_K = 1.2   # filtered slope variance -> GGX alpha^2 (Cox-Munk: alpha^2 ~ 2 sigma^2 per axis; 1.2 keeps the far river glossy)
 # round 02: wind-sea slope spectrum layers (T_WaterSlope, tools/water/water_inputs.py) replace the 12 capillary sinusoids:
 #   [tile size m, angle of realization A / B to the wind (deg), RMS slope per axis]   bands: tile/24 .. tile/3
-LAYERS = [(21.0, 8.0, -47.0, 0.050), (6.7, -19.0, 38.0, 0.055), (2.2, 27.0, -33.0, 0.055), (0.73, -11.0, 52.0, 0.050)]
+# r03: the 0.73 m layer is replaced by the resolved wind-chop layer (CHOP); per-axis RMS slopes before ChopK
+LAYERS = [(21.0, 8.0, -47.0, 0.040), (6.7, -19.0, 38.0, 0.045), (2.2, 27.0, -33.0, 0.050)]
+# r03 wind chop (T_WaterChop, 3..10 cycles per tile): [tile m, angle to the wind deg, scroll speed factor] for the two realizations
+# (two scroll directions); per-axis RMS slope CHOP_RMS * ChopK * MicroK, resolved (no roughness) within NEAR_M of the camera
+CHOP = [(1.5, 28.0, 1.0), (1.17, -36.0, 1.13)]
+CHOP_RMS = 0.065
+NEAR_M = 150.0        # r03: near field (two realizations, chop layer, foam, contact map); beyond: one realization, no foam
 PS_WAVE_MIN_L = 5.5   # analytic Gerstner slopes in the pixel shader: only the waves >= 5.5 m (the vertex geometry); shorter = spectrum layers
 WIND_DEG = -50.0
 SLOPE_ENC = 6.0       # water_inputs.SLOPE_ENC
@@ -132,13 +138,16 @@ def step_inputs():
         pts = np.array([[(max(-1e5, min(1e5, x)) - x0) / SHORE_PX, (max(-1e5, min(1e5, z)) - z0) / SHORE_PX] for x, z in L['pts']])
         cv2.fillPoly(land, [np.round(pts * 16).astype(np.int32)], 255, lineType=cv2.LINE_8, shift=4)
     dist = cv2.distanceTransform((land == 0).astype(np.uint8), cv2.DIST_L2, 5) * SHORE_PX
-    cv2.imwrite(os.path.join(SCR, 'shore_dist.png'), np.clip(dist / 400.0 * 255 + 0.5, 0, 255).astype(np.uint8))
+    # r03: resampled to 2048^2 (power of two -> the texture gets mips; r02 sampled the NPOT map at level 0 = cache thrash at distance)
+    sd = cv2.resize(np.clip(dist / 400.0 * 255 + 0.5, 0, 255).astype(np.float32), (2048, 2048), interpolation=cv2.INTER_AREA)
+    cv2.imwrite(os.path.join(SCR, 'shore_dist.png'), np.clip(sd + 0.5, 0, 255).astype(np.uint8))
     log('shore map %dx%d (%.0f %% water), noise %dx%d' % (nw, nh, (land == 0).mean() * 100, S, S))
     # ---- round 02: wind-sea slope spectrum + contact-distance map (tools/water/water_inputs.py)
     sys.path.insert(0, os.path.join(WT, 'tools', 'water'))
     import water_inputs
     st = water_inputs.slope_texture(os.path.join(SCR, 'water_slope.png'))
     log('slope spectrum texture', st)
+    log('wind-chop texture (r03)', water_inputs.chop_texture(os.path.join(SCR, 'water_chop.png')))
     exp = export_dir()
     cm = water_inputs.contact_map(exp, os.path.join(SCR, 'water_contact.png'))
     json.dump(dict(cm, export=exp), open(os.path.join(SCR, 'water_contact.json'), 'w'), indent=1)
@@ -206,121 +215,145 @@ def hlsl_vs():
 
 
 def hlsl_ps():
-    """round 02: the 5 longest Gerstner waves analytically (they match the vertex geometry) + 4 layers of a baked random-phase wind-sea slope
-    spectrum (T_WaterSlope, two realizations each, rotated / scrolled at the layer's phase speed) instead of round 01's 12 capillary sinusoids
-    (their sum formed a lattice: the ring artifact). Unresolved slope variance -> GGX roughness; contact foam from the baked contact-distance
-    map (T_WaterContact) + the SLW depth test; facets whose reflection would point below the horizon are bent up (Lumen would trace into the
-    void -> dark speckle at grazing angles)."""
+    """round 03: the 5 longest Gerstner waves analytically (they match the vertex geometry) + 3 layers of the baked random-phase wind-sea slope
+    spectrum (T_WaterSlope, 21 / 6.7 / 2.2 m tiles) + the resolved 0.15-0.5 m wind-chop layer (T_WaterChop, two realizations scrolling in two
+    directions). Near field (<= NEAR_M): both realizations, the chop, contact / whitecap foam; textures sampled with their true gradients (no
+    mip bias) and the BRDF roughness stays <= 0.08 (r02 turned mip-biased variance into roughness ~0.4 here: the flat look). Beyond NEAR_M:
+    one realization per layer, no chop sample (its variance -> GGX roughness x FarVarK), no foam, no contact-map lookup (perf)."""
     CONTACT = json.load(open(os.path.join(SCR, 'water_contact.json')))
     W = [w for w in waves() if w['L'] >= PS_WAVE_MIN_L]
     big = '\n'.join('sincos(%.6f * dot(float2(%.6f, %.6f), p) - %.6f * t + %.4f, s, c); f = 1.0 - smoothstep(0.12, 0.35, foot * %.6f); '
                     'sl2 += float2(%.6f, %.6f) * (%.6f * c / max(1.0 - %.6f * s, 0.35)) * f; varU += %.8f * (1.0 - f); h += %.6f * s;'
                     % (w['k'], w['dx'], w['dy'], w['w'], w['ph'], w['k'] / math.pi, w['dx'], w['dy'], w['k'] * w['A'], w['Q'] * w['k'] * w['A'],
                        0.5 * (w['k'] * w['A']) ** 2, w['A']) for w in W)
+    def rot(c, s_): return 'float2(%.6f, %.6f)' % (c, s_), 'float2(%.6f, %.6f)' % (-s_, c)
     lay = []
     for i, (sc, aA, aB, amp) in enumerate(LAYERS):
-        lc = sc / 8.5                                   # band-centre wavelength of the layer (3..24 cycles per tile)
+        lc = sc / 8.5
         kc = 2 * math.pi / lc
-        spd = math.sqrt(GRAV / kc + 7.28e-5 * kc)       # phase speed (capillary-gravity)
+        spd = math.sqrt(GRAV / kc + 7.28e-5 * kc)
         tA, tB = math.radians(WIND_DEG + aA), math.radians(WIND_DEG + aB)
         cA, sA, cB, sB = math.cos(tA), math.sin(tA), math.cos(tB), math.sin(tB)
         sc2 = sc * 0.87
-        lay.append(('{ float2 qa = float2(dot(p, float2(%(cA).6f, %(sA).6f)), dot(p, float2(%(nsA).6f, %(cA).6f))) / %(sc).4f - float2(%(va).6f * t, 0.0);\n'
-                    '  float2 qb = float2(dot(p, float2(%(cB).6f, %(sB).6f)), dot(p, float2(%(nsB).6f, %(cB).6f))) / %(sc2).4f - float2(%(vb).6f * t, 0.0) + float2(0.37, %(off).3f);\n'
-                    '  float2 ga = (Texture2DSampleBias(tW, tWSampler, qa, 1.0).rg - 0.5) * %(enc).2f;\n'
-                    '  float2 gb = (Texture2DSampleBias(tW, tWSampler, qb, 1.0).ba - 0.5) * %(enc).2f;\n'
+        uA, vA = rot(cA, sA); uB, vB = rot(cB, sB)
+        lay.append(('{ float2 qa = float2(dot(p, %(uA)s), dot(p, %(vA)s)) / %(sc).4f - float2(%(va).6f * t, 0.0);\n'
+                    '  float2 ga = (Texture2DSampleGrad(tW, tWSampler, qa, float2(dot(dpx, %(uA)s), dot(dpx, %(vA)s)) / %(sc).4f, float2(dot(dpy, %(uA)s), dot(dpy, %(vA)s)) / %(sc).4f).rg - 0.5) * %(enc).2f;\n'
                     '  ga = float2(ga.x * %(cA).6f - ga.y * %(sA).6f, ga.x * %(sA).6f + ga.y * %(cA).6f);\n'
-                    '  gb = float2(gb.x * %(cB).6f - gb.y * %(sB).6f, gb.x * %(sB).6f + gb.y * %(cB).6f);\n'
-                    '  float rf = saturate(log2(%(sc).4f / (12.0 * foot)) / 3.0);\n'
-                    '  slT += (ga + gb) * %(amp).5f; varT += %(amp2).7f * (1.0 - rf); }')
-                   % dict(cA=cA, sA=sA, nsA=-sA, cB=cB, sB=sB, nsB=-sB, sc=sc, sc2=sc2, va=spd / sc, vb=spd * 1.07 / sc2, off=0.61 * (i + 1), enc=SLOPE_ENC,
-                          amp=amp * 0.7071, amp2=amp * amp))
+                    '  float2 g = ga * waR;\n'
+                    '  [branch] if (nearW > 0.0) {\n'
+                    '    float2 qb = float2(dot(p, %(uB)s), dot(p, %(vB)s)) / %(sc2).4f - float2(%(vb).6f * t, 0.0) + float2(0.37, %(off).3f);\n'
+                    '    float2 gb = (Texture2DSampleGrad(tW, tWSampler, qb, float2(dot(dpx, %(uB)s), dot(dpx, %(vB)s)) / %(sc2).4f, float2(dot(dpy, %(uB)s), dot(dpy, %(vB)s)) / %(sc2).4f).ba - 0.5) * %(enc).2f;\n'
+                    '    g += float2(gb.x * %(cB).6f - gb.y * %(sB).6f, gb.x * %(sB).6f + gb.y * %(cB).6f) * wbR; }\n'
+                    '  slT += g * %(amp).5f; varL += %(amp2).7f * saturate(log2(2.0 * foot / %(lmin).5f) / 3.0); }')
+                   % dict(uA=uA, vA=vA, uB=uB, vB=vB, cA=cA, sA=sA, cB=cB, sB=sB, sc=sc, sc2=sc2, va=spd / sc, vb=spd * 1.07 / sc2, off=0.61 * (i + 1),
+                          enc=SLOPE_ENC, amp=amp, amp2=amp * amp, lmin=sc2 / 24.0))
+    chop = []
+    for j, (sc, ang, vf) in enumerate(CHOP):
+        lc = sc / 5.5; kc = 2 * math.pi / lc
+        spd = math.sqrt(GRAV / kc + 7.28e-5 * kc) * vf
+        th = math.radians(WIND_DEG + ang); c_, s_ = math.cos(th), math.sin(th); u, v = rot(c_, s_)
+        ch = 'rg' if j == 0 else 'ba'
+        chop.append(('{ float2 q = float2(dot(p, %(u)s), dot(p, %(v)s)) / %(sc).4f - float2(%(vv).6f * t, %(off).3f);\n'
+                     '    float2 g = (Texture2DSampleGrad(tK, tKSampler, q, float2(dot(dpx, %(u)s), dot(dpx, %(v)s)) / %(sc).4f, float2(dot(dpy, %(u)s), dot(dpy, %(v)s)) / %(sc).4f).%(ch)s - 0.5) * %(enc).2f;\n'
+                     '    slC += float2(g.x * %(c).6f - g.y * %(s).6f, g.x * %(s).6f + g.y * %(c).6f); lostC += 0.5 * saturate(log2(2.0 * foot / %(lmin).5f) / 1.74); }')
+                    % dict(u=u, v=v, sc=sc, vv=spd / sc, off=0.29 * (j + 1), ch=ch, enc=SLOPE_ENC, c=c_, s=s_, lmin=sc / 10.0))
     return PS_TEMPLATE % dict(wx=WIND[0], wy=WIND[1], sx=SHORE_BOX[0], sz=SHORE_BOX[1], sw=SHORE_BOX[2], sh=SHORE_BOX[3], big=big, lay='\n'.join(lay),
+                              chop='\n    '.join(chop), crms=CHOP_RMS, near=NEAR_M,
                               hmax=WAVE_MAX * 0.5, ss='%(SCAT)s', sa='%(ABS)s', cx=CONTACT['box'][0], cz=CONTACT['box'][1], cw=CONTACT['box'][2],
                               ch=CONTACT['box'][3], cmax=CONTACT_MAX)
 
 
 PS_TEMPLATE = r'''
-#define NZ(uv) Texture2DSample(tN, tNSampler, (uv))
+#define NZG(uv, s) Texture2DSampleGrad(tN, tNSampler, (uv), dpx * (s), dpy * (s))
 float2 p = Lag.xy; float t = T;
 float3 wp = WPos * 0.01, cm = Cam * 0.01;
 float3 Vv = cm - wp; float dist = length(Vv); float3 V = Vv / max(dist, 1e-3);
-float foot = max(length(fwidth(p)), 1e-4);
-// ---- sea detail (tidewater SeaDetail as in water.js): wind-aligned gusts, slicks, streaks; current streaks along the rivers (UE Y)
+float2 dpx = ddx(p), dpy = ddy(p);
+float foot = max(length(abs(dpx) + abs(dpy)), 1e-4);
+// r03: near field (<= %(near).0f m): two realizations per layer, the resolved wind chop, foam, contact map; beyond: one realization
+float nearW = 1.0 - smoothstep(%(near).1f * 0.73, %(near).1f, dist);
+float wbR = 0.70711 * nearW, waR = sqrt(1.0 - wbR * wbR);
+// ---- wind gusts (broad, wind-aligned patches of rougher water). r03: wind-streak and slick terms deleted (pale comet streaks)
 float2 wdir = float2(%(wx).6f, %(wy).6f);
-float4 nA = NZ(p / 620.0), nB = NZ(p / 230.0 + float2(t * 0.0009, 0.37));
+float4 nA = NZG(p / 620.0, 1.0 / 620.0), nB = NZG(p / 230.0 + float2(t * 0.0009, 0.37), 1.0 / 230.0);
 float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
-float along = dot(p, wdir), across = dot(p, float2(-wdir.y, wdir.x)) + (nB.g - 0.5) * 5.0;   // r02: warp 26 -> 5 m (warped streaks closed into loops = the ring artifact)
-float slick = smoothstep(0.62, 0.76, NZ(float2(along / 1100.0, across / 70.0)).b) * (1.0 - gust * 0.8) * 0.9;
-float streak = smoothstep(0.66, 0.82, NZ(float2(along / 380.0, across / 11.0) + float2(0.13, 0.71)).r) * smoothstep(0.4, 0.62, NZ(float2(along / 140.0, across / 40.0) + float2(0.51, 0.29)).g) * 0.35;
-streak = max(streak, smoothstep(0.6, 0.82, NZ(float2(p.x / 34.0, p.y / 520.0) + float2(t * 0.0008, t * 0.003)).g) * 0.25);
 float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
-float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleLevel(tS, tSSampler, su, 0).r * 400.0 : 400.0;
-float nearS = 1.0 - smoothstep(6.0, 70.0, shore);
-slick = saturate(slick + nearS * 0.3);
-float rough = lerp(0.6, 1.35, gust) * (1.0 - slick * 0.6) * (1.0 - streak * 0.3);
+float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampler, su, dpx / float2(%(sw).1f, %(sh).1f), dpy / float2(%(sw).1f, %(sh).1f)).r * 400.0 : 400.0;
+float gk = lerp(0.75, 1.25, gust);
 // ---- the long Gerstner waves (waves.js waveSlope: resolved -> slope, unresolved -> slope variance)
 float2 sl2 = 0; float varU = 0, h = 0, s, c, f;
 %(big)s
 float crest = h / %(hmax).5f;
-float wk = lerp(0.8, 1.15, gust) * (1.0 - 0.3 * slick);
-sl2 *= wk; varU *= wk * wk;
-// ---- wind-sea spectrum layers (baked random-phase slopes; mip bias +1 drops waves under ~4 px, their variance goes to roughness)
-float2 slT = 0; float varT = 0;
+sl2 *= lerp(0.85, 1.1, gust); varU *= 1.2;
+// ---- wind-sea spectrum layers (baked random-phase slopes, true texture gradients: what the mips drop is counted in varL)
+float2 slT = 0; float varL = 0;
 %(lay)s
-float ck = ChopK * rough;
-slT *= ck; varT *= ck * ck;
-float2 slope = sl2 + slT;
-// ---- foam: contact (the water line against anything below it), whitecaps in the gusts, wind streaks
-float fn = NZ(p / 7.0 + float2(t * 0.01, -t * 0.007)).b;
-float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest + 0.15 * (slT.x - slT.y);
-float dnw = max(DNW - PD, 0.0) * 0.01;                                 // view-depth of water in front of what lies below it (m)
-float lr = dnw / max(dot(-V, View.ViewForward), 0.2);                  // -> distance along the view ray under the surface
-float cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
-float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
-float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSampler, cu, 0).r * %(cmax).1f : %(cmax).1f;
-cf = max(cf, 1.0 - smoothstep(0.12, 0.45 + 1.5 * fn + 0.9 * lap, cdm));
-cf *= 1.0 - smoothstep(500.0, 2000.0, dist);
-float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZ(p / 3.1 + float2(-t * 0.02, t * 0.013)).r + 0.25 * lap) * FoamK;
-// r02: no streak foam (thin bright streak lines read as rings / loops); streaks only modulate roughness and body
-foam = max(foam, smoothstep(0.75, 1.0, crest) * smoothstep(0.5, 0.9, gust) * 0.25);   // r02: rarer whitecaps (round-02 harbour still: dotted)
-float cov = saturate(foam);
-float pat = NZ(p / 1.9 + float2(t * 0.004, 0.0)).r * 0.62 + NZ(p / 0.63 + float2(0.0, t * 0.006)).g * 0.5;
-float wf = smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov) * (1.0 - smoothstep(600.0, 2500.0, dist)) + cov * 0.35 * smoothstep(300.0, 2500.0, dist);
-wf = saturate(wf);
-// ---- normal / roughness (GGX alpha^2 = base + filtered wave variance + foam); far water may keep a smoother sheen (FarVarK)
+// ---- r03 resolved wind chop 0.15-0.5 m: two realizations, two scroll directions (near field only; beyond, all of it is sub-pixel variance)
+float2 slC = 0; float lostC = 1.0;
+[branch] if (nearW > 0.0) {
+    lostC = 0.0;
+    %(chop)s
+    slC *= nearW * 0.70711;
+    lostC = lerp(1.0, lostC, nearW);
+}
+float ck = ChopK * gk, mk = ChopK * MicroK * gk * %(crms).4f;
+slT *= ck; varL *= ck * ck;
+float2 slope = sl2 + slT + slC * mk;
+float varF = varL + lostC * mk * mk;      // per-axis slope variance the shading cannot resolve
+// ---- foam (near field only, faded to zero by %(near).0f m): contact (the water line against anything below it), rare whitecaps
+float cf = 0.0, wf = 0.0;
+[branch] if (nearW > 0.0) {
+    float fn = NZG(p / 7.0 + float2(t * 0.01, -t * 0.007), 1.0 / 7.0).b;
+    float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest + 0.15 * (slT.x - slT.y);
+    float dnw = max(DNW - PD, 0.0) * 0.01;
+    float lr = dnw / max(dot(-V, View.ViewForward), 0.2);
+    cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
+    float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
+    float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSampler, cu, 0).r * %(cmax).1f : %(cmax).1f;
+    cf = max(cf, 1.0 - smoothstep(0.12, 0.45 + 1.5 * fn + 0.9 * lap, cdm));
+    float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lap) * FoamK;
+    foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
+    float cov = saturate(foam);
+    float pat = NZG(p / 1.9 + float2(t * 0.004, 0.0), 1.0 / 1.9).r * 0.62 + NZG(p / 0.63 + float2(0.0, t * 0.006), 1.0 / 0.63).g * 0.5;
+    wf = saturate(smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov)) * nearW;
+}
+// ---- normal / roughness. Near field: GGX alpha from RoughN only (<= 0.08: the resolved facets carry the slope variance);
+//      beyond: + the unresolved variance x FarVarK (Cox-Munk alpha^2 = 2 sigma^2 per axis)
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
 { float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
   Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
-float vk = VARK * lerp(1.0, FarVarK, smoothstep(250.0, 1500.0, dist));
-float a2 = 0.028 * 0.028 + vk * (varU + 2.0 * varT) + wf * 0.2;
-Rough = clamp(pow(a2, 0.25), 0.04, 0.7);
+float farW = smoothstep(%(near).1f * 0.4, %(near).1f, dist);
+float r4 = RoughN * RoughN; r4 *= r4;
+float a2 = r4 + VARK * FarVarK * farW * (varU + 2.0 * varF);
+float rcap = lerp(0.08, 0.7, smoothstep(%(near).1f, %(near).1f * 2.7, dist));
+Rough = lerp(clamp(pow(a2, 0.25), 0.03, rcap), 0.6, wf);
 NormalW = normalize(lerp(N, float3(0, 0, 1), wf * 0.6));
-Spec = 0.25 * lerp(0.9, 1.12, slick) * (1.0 + 0.1 * streak);     // F0 = 0.02 (IOR 1.333); slicks mirror a little more, gust patches less
+Spec = 0.25 * SpecK;     // F0 = 0.02 (IOR 1.333) x SpecK
 Opac = wf * 0.92;
-// ---- turbid river optics (per cm): olive-grey Hudson body, siltier / browner along the bulkheads, turbidity patches, current streaks
-float fn2 = NZ(p / 23.0 + float2(t * 0.002, -t * 0.003)).g;
-float silt = (1.0 - smoothstep(10.0, 120.0, shore)) * (0.55 + 0.45 * fn2);
-float turb = 0.85 + 0.3 * NZ(p / 900.0 + float2(0.0, t * 0.0015)).r;
-float3 sS = float3(%(ss)s) * ScatK * turb * (1.0 + 0.25 * streak) * (1.0 + float3(0.9, 0.6, 0.3) * silt);
+// ---- turbid river optics (per cm): olive-grey Hudson body (ScatK), siltier / browner along the bulkheads
+float silt = (1.0 - smoothstep(10.0, 120.0, shore)) * 0.75;
+float turb = 0.85 + 0.3 * NZG(p / 900.0 + float2(0.0, t * 0.0015), 1.0 / 900.0).r;
+float3 sS = float3(%(ss)s) * ScatK * turb * (1.0 + float3(0.9, 0.6, 0.3) * silt);
 float3 sA = float3(%(sa)s) * (1.0 + float3(0.1, 0.2, 0.5) * silt);
 Scat = sS * 0.01; Abs = sA * 0.01;
-// ---- sun glitter: sparse facets that face the sun get their normal tilted onto the sun half-vector and a smoother micro-roughness,
-//      so the engine's own (shadowed) GGX sun specular lights them as glints (emissive does not reach the SLW output)
+// ---- sun glitter: sparse facets that face the sun get their normal tilted onto the sun half-vector (beyond 25 m; the near field glints
+//      off its own resolved facets with the sharp GGX lobe)
 float3 Ls = normalize(SunDir);
 float3 Hh = normalize(Ls + V);
-float2 gn = (NZ(p / 2.3 + float2(t * 0.05, t * 0.034)).ga - 0.5) * 2.0 + 0.8 * (NZ(float2(-p.y, p.x) / 3.7 + float2(-t * 0.041, t * 0.02)).ga - 0.5) * 2.0;
-float3 nG = normalize(N + float3(gn * 0.22 * (1.0 - 0.6 * slick), 0.0));
-float gl = pow(saturate(dot(nG, Hh)), 700.0);
-float spark = smoothstep(0.62, 0.9, NZ(p / 5.0 + float2(t * 0.02, 0.0)).r);
-float gfade = 1.0 - smoothstep(900.0, 4000.0, dist);
-float gw = saturate(gl * spark * gfade * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
+float gw = 0.0;
+[branch] if (dist < 900.0 && dist > 20.0 && Ls.z > 0.0) {
+    float2 gn = (NZG(p / 2.3 + float2(t * 0.05, t * 0.034), 1.0 / 2.3).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-p.y, p.x) / 3.7 + float2(-t * 0.041, t * 0.02), 1.0 / 3.7).ga - 0.5) * 2.0;
+    float3 nG = normalize(N + float3(gn * 0.22, 0.0));
+    float gl = pow(saturate(dot(nG, Hh)), 700.0);
+    float spark = smoothstep(0.62, 0.9, NZG(p / 5.0 + float2(t * 0.02, 0.0), 1.0 / 5.0).r);
+    gw = saturate(gl * spark * (1.0 - smoothstep(600.0, 900.0, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
+}
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
 Emis = 0;
 if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : Lag.zzz))); Emis = 0; Opac = 1.0; return dv; }
-return float3(0.74, 0.76, 0.75);   // foam albedo (SLW: base colour covers the water by Opacity)
-#undef NZ
+return float3(0.62, 0.6, 0.55);   // r03: cream foam albedo (r02 0.74 clipped at the seawall in the golden key)
+#undef NZG
 '''
 
 
@@ -328,10 +361,10 @@ return float3(0.74, 0.76, 0.75);   // foam albedo (SLW: base colour covers the w
 SCAT = (0.07, 0.09, 0.078)
 ABS = (0.50, 0.34, 0.56)
 PHASE_G = 0.55
-GLITTER = 1.0
+GLITTER = 0.5
 # material scalar parameters (round 02 look; variants for tuning: SM2_WATER_VARIANTS, see build_in_unreal)
 WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s), if built in this project
-PARAMS = {'ChopK': 2.6, 'ScatK': 0.2, 'FarVarK': 0.5, 'FoamK': 1.8, 'BendK': 0.3}   # r02 pick: variant E (river_low near mean Y 75, C14 21)
+PARAMS = {'ChopK': 2.0, 'MicroK': 1.0, 'ScatK': 0.2, 'FarVarK': 0.25, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 1.0}   # r03 start (see HANDOFF)
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
@@ -383,14 +416,15 @@ def build_in_unreal():
     # imported in place under their final names (re-import replaces the asset; no rename / delete of referenced assets)
     import shutil
     stage = os.path.join(SCR, 'ue_import'); os.makedirs(stage, exist_ok=True)
-    TEXS = (('water_noise.png', 'T_WaterNoise'), ('shore_dist.png', 'T_ShoreDist'), ('water_slope.png', 'T_WaterSlope'), ('water_contact.png', 'T_WaterContact'))
+    TEXS = (('water_noise.png', 'T_WaterNoise'), ('shore_dist.png', 'T_ShoreDist'), ('water_slope.png', 'T_WaterSlope'), ('water_contact.png', 'T_WaterContact'),
+            ('water_chop.png', 'T_WaterChop'))
     for src, name in TEXS + (('water_grid.glb', 'SM_WaterGrid'),):
         shutil.copyfile(os.path.join(SCR, src), os.path.join(stage, name + os.path.splitext(src)[1]))
     import_files([os.path.join(stage, n + '.png') for _, n in TEXS], ROOT + '/Textures')
     for _, name in TEXS:
         tx = load(f'{ROOT}/Textures/{name}')
         tx.set_editor_property('srgb', False)
-        vec = name in ('T_WaterNoise', 'T_WaterSlope')
+        vec = name in ('T_WaterNoise', 'T_WaterSlope', 'T_WaterChop')
         tx.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP if vec else unreal.TextureCompressionSettings.TC_GRAYSCALE)
         if not vec:
             tx.set_editor_property('address_x', unreal.TextureAddress.TA_CLAMP); tx.set_editor_property('address_y', unreal.TextureAddress.TA_CLAMP)
@@ -480,12 +514,13 @@ def build_in_unreal():
     gk = expr(unreal.MaterialExpressionScalarParameter, -1400, 1000, parameter_name='GlitterK', default_value=GLITTER)
     tW = expr(unreal.MaterialExpressionTextureObject, -1600, 400, texture=load(ROOT + '/Textures/T_WaterSlope'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     tC = expr(unreal.MaterialExpressionTextureObject, -1600, 500, texture=load(ROOT + '/Textures/T_WaterContact'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_GRAYSCALE)
+    tK = expr(unreal.MaterialExpressionTextureObject, -1600, 300, texture=load(ROOT + '/Textures/T_WaterChop'), sampler_type=unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)
     prm = {k: expr(unreal.MaterialExpressionScalarParameter, -1600, 600 + 100 * i, parameter_name=k, default_value=float(v)) for i, (k, v) in enumerate(PARAMS.items())}
     dbg = expr(unreal.MaterialExpressionScalarParameter, -1400, 1100, parameter_name='Dbg', default_value=float(os.environ.get('SM2_WATER_DBG', '0')))
     dbgk = expr(unreal.MaterialExpressionScalarParameter, -1400, 1200, parameter_name='DbgK', default_value=float(os.environ.get('SM2_WATER_DBGK', '3000')))
     code = hlsl_ps().replace('VARK', '%.3f' % VAR_K) % dict(SCAT='%.4f, %.4f, %.4f' % SCAT, ABS='%.4f, %.4f, %.4f' % ABS)
     ps = custom('WaterPS', code, [('Lag', vi), ('WPos', wpos_ps), ('Cam', cam2), ('T', tim2), ('tN', tN), ('tS', tS), ('SunDir', sund), ('SunE', sune),
-                                  ('DNW', dnw), ('PD', pd), ('GlitterK', gk), ('Dbg', dbg), ('DbgK', dbgk), ('tW', tW), ('tC', tC)] + list(prm.items()),
+                                  ('DNW', dnw), ('PD', pd), ('GlitterK', gk), ('Dbg', dbg), ('DbgK', dbgk), ('tW', tW), ('tC', tC), ('tK', tK)] + list(prm.items()),
                 [('NormalW', 3), ('Rough', 1), ('Opac', 1), ('Emis', 3), ('Spec', 1), ('Scat', 3), ('Abs', 3)], -900, 200)
     for out, prop in (('', MP.MP_BASE_COLOR), ('NormalW', MP.MP_NORMAL), ('Rough', MP.MP_ROUGHNESS), ('Opac', MP.MP_OPACITY), ('Emis', MP.MP_EMISSIVE_COLOR),
                       ('Spec', MP.MP_SPECULAR)):
