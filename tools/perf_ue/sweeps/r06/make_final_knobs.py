@@ -6,6 +6,7 @@
   N2   night: cloud pattern offset (hold-2 Mv4); NO highlight roll-off (measured: it does not remove clipped pixels, it only lowers the means and the sky high-pass)
   D1   dawn mist density 4 at 07:36 (L26)
   G    golden black lift (see --golden)
+  F    late-twilight fog x0.5 at 19:48-20:12 (L24a at 20:00: haze 18 Y over a 10.7 Y sky) and sun lux 5000 / 3500 at 20:12 / 20:36 (warm cloud light for L24b at 20:30)
   R    sun surface-light ramp -4 .. 8 deg (C++ sun.RampLo / sun.RampHi): the sunlit city loses / gains its direct light over 65 game minutes instead of 32
 usage: make_final_knobs.py --out <json> [--golden 0.0012] [--ramp -4,8]"""
 import argparse, copy, json, os, sys
@@ -24,7 +25,8 @@ def main():
     fac['dusk'] = [(h, v) for h, v in fac['dusk'] if h <= 19.5] + [(19.8, [26, 5.5, 1.2]), (20.2, lf), (20.6, lf), (21.0, [15.5, 3.5, 1.1]), (21.4, [3.9, 1.5, 1.02])]
     cloud = {'dusk': [(18.8, 0.25, 0.03), (19.5, 0.25, 0.03), (19.8, 0.1, 0.02)], 'dawn': [(6.25, 0.25, 0.03), (7.4, 0.25, 0.03)]}
     K = {'tw_fac_pts': fac, 'tw_hl_r': E.HL_R, 'tw_cloud': cloud, 'cloud_offset': [0.0, 30000.0, 0.0, 0.0],
-         'dawn_mist': {7.0: 0.02, 7.2: 0.1, 7.4: 0.8, 7.6: 4.0, 8.0: 1.6, 8.8: 0.05}, 'sun_ramp': [float(x) for x in a.ramp.split(',')]}
+         'dawn_mist': {7.0: 0.02, 7.2: 0.1, 7.4: 0.8, 7.6: 4.0, 8.0: 1.6, 8.8: 0.05}, 'sun_ramp': [float(x) for x in a.ramp.split(',')],
+         'tw_fog_scale': [(19.5, 1.0), (19.8, 0.5), (20.2, 0.5), (20.6, 0.7), (21.0, 1.0)], 'tw_sun_lux': {20.2: 5000.0, 20.6: 3500.0}}
     if a.golden > 0: K['golden_set'] = dict(make_v2.KNOBS['golden_set'], **{'pp.ColorOffset': [a.golden, a.golden, a.golden, 0.0]})
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     json.dump(K, open(a.out, 'w'), indent=1)

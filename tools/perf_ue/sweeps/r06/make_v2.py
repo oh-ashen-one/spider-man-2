@@ -62,6 +62,9 @@ KNOBS = {
     'night_hl': None,
     # moonlit cloud pattern: cloudv.Layout_GlobalTexturePlacement on every key (hold-2 Mv4: [0, 30000, 0, 0] = sky high-pass std 3.4 at 22:00 with the disk clear)
     'cloud_offset': None,
+    # late-twilight fog / sun shaping (L24a at 20:00: the haze is brighter than the sky; L24b at 20:30: no warm light left in the sky band): {'fog': [(h, scale)]} multiplies the fog inscattering and directional
+    # inscattering luminance RGB at the key hours inside the list; {'sun_lux': {hour: lux}} replaces sun.Intensity (the sun still lights only the sky and the clouds below the horizon: surface light is 0 there)
+    'tw_fog_scale': None, 'tw_sun_lux': None,
     # sun surface-light ramp in degrees of sun elevation (C++ sun.RampLo / sun.RampHi; default -2.5 / 3.5): [lo, hi] on every key
     'sun_ramp': None,
 }
@@ -177,6 +180,13 @@ def apply(doc, K):
             elif h <= 7.6: m = sched(h, nh['dawn'], nh['night'] if h < nh['dawn'][0][0] else None)
             if m is not None:
                 g = list((sset.get('pp.ColorGainHighlights') or b['pp.ColorGainHighlights'])); sset['pp.ColorGainHighlights'] = [round(x * m, 4) for x in g[:3]] + [1.0]
+        if K.get('tw_fog_scale'):
+            m = sched(h, K['tw_fog_scale'])
+            if m is not None:
+                for fp in ('fog.FogInscatteringLuminance', 'fog.DirectionalInscatteringLuminance'): v = list(b[fp]); sset[fp] = [round(x * m, 5) for x in v[:3]] + [1.0]
+        if K.get('tw_sun_lux'):
+            sl = {float(a): v for a, v in K['tw_sun_lux'].items()}
+            if h in sl: sset['sun.Intensity'] = float(sl[h])
         if K.get('cloud_offset') is not None: sset['cloudv.Layout_GlobalTexturePlacement'] = list(K['cloud_offset'])
         if K.get('sun_ramp') is not None: sset['sun.RampLo'] = float(K['sun_ramp'][0]); sset['sun.RampHi'] = float(K['sun_ramp'][1])
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
