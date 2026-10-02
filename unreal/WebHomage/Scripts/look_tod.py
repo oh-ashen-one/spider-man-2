@@ -77,6 +77,7 @@ def preset_params(P):
     o['stars'] = 1.0 if P['mpc'].get('NightK', 0.0) > 0.5 else 0.0
     o['weather'] = 0.0
     # (round 06) hero rim / fill light scale (1 = the AWHLookHeroLight intensities) and the moon's own light properties (disk size, disk colour scale, cloud luminance scale): driver targets moonc.*
+    o['cloudv.CloudWind'] = [0.0, 0.0, 0.0, 0.0]   # (round 06) the engine cloud material drifts with Time x CloudWind: the cloud field was a function of the session time (the moon was behind a cloud in some captures); frozen
     o['hero'] = 1.0
     o['herofill'] = 1.0   # scale of the traversal character's own hero fill light (P3 'HeroFill', 5000 cd) applied by AWHLookHeroLight
     o['moonc.LightSourceAngle'] = float(m.get('angle', 0.5357))

@@ -20,21 +20,26 @@ PRESETS = os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'look_presets.json'
 # ----------------------------------------------------------------------------------------------- knobs (defaults = the pre-measurement design)
 KNOBS = {
     # city lights schedule u(h): (hour, u) anchors, piecewise linear, cyclic
-    'u_dusk': [(18.8, 0.0), (19.2, 0.07), (19.5, 0.20), (19.8, 0.42), (20.2, 0.72), (20.6, 0.90), (21.0, 1.0)],
+    'u_dusk': [(18.8, 0.0), (19.2, 0.03), (19.5, 0.08), (19.8, 0.18), (20.2, 0.42), (20.6, 0.70), (21.0, 0.92), (21.4, 1.0)],   # round 06 hold 3: windows later, the far band at 20:00-20:30 stays under the sky
     'u_dawn': [(5.6, 1.0), (6.25, 0.60), (6.8, 0.20), (7.2, 0.05), (7.6, 0.0)],
     'moon': {19.8: 0.0, 20.2: 0.0, 20.6: 2.5, 21.0: 6.0, 21.4: 9.0},
     'hero': {18.4: 0.0, 19.2: 0.2, 19.8: 0.7, 20.6: 1.0, 6.25: 1.0, 6.8: 0.3, 7.6: 0.0},
     'herofill': {18.4: 1.0, 19.2: 0.5, 19.8: 0.1, 20.6: 0.0, 6.25: 0.0, 6.8: 0.3, 7.6: 1.0},
-    'night_cloud': {'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015},
-    'moonc': {'moonc.LightSourceAngle': 0.52, 'moonc.CloudScatteredLuminanceScale': [1, 1, 1, 1], 'moonc.AtmosphereSunDiskColorScale': [1, 1, 1, 1]},
+    'night_cloud': {'cloud.Cloud_GlobalCoverage': 0.2, 'cloud.Cloud_GlobalDensity': 0.025},   # moonlit clouds (hold 2 Mb1: sky high-pass std 3.5)
+    'moonc': {'moonc.LightSourceAngle': 1.0, 'moonc.CloudScatteredLuminanceScale': [3, 3, 3, 1], 'moonc.AtmosphereSunDiskColorScale': [1, 1, 1, 1]},
+    'night_stars': {4.9: 2.0, 5.6: 1.0, 20.2: 0.6, 20.6: 1.4, 21.0: 2.0, 21.4: 2.0},
+    # dawn mist at 07:36 (own palette; hold 3 M1: S1 correlation against golden 0.977 -> 0.486 at density 4; cooler inscatter than M1's orange)
+    'dawn_mist': {7.0: 0.02, 7.2: 0.1, 7.4: 0.6, 7.6: 3.0, 8.0: 1.2, 8.8: 0.05},
+    'dawn_set': {'fog.FogDensity': 3.0, 'fog.FogHeightFalloff': 0.5, 'fog.StartDistance': 0.0, 'fog.FogMaxOpacity': 0.95, 'fog.FogInscatteringLuminance': [0.5, 0.56, 0.68, 1.0],
+                 'fog.DirectionalInscatteringLuminance': [0.1, 0.1, 0.1, 1.0], 'sun.Temperature': 6500.0, 'pp.ColorContrast': [1.0, 1.0, 1.0, 1.0]},
     # fog cutoff is a switch (the driver steps it at the middle of the segment): explicit 0 / 700000 on every new key, never a mix. 0 = fog applies to the sky pixels, 7e5 = sky unfogged
     'cutoff': {18.8: 0, 19.5: 0, 20.2: 0, 21.0: 700000, 21.4: 700000, 5.6: 700000, 6.5: 0, 7.2: 0},
     # twilight sky design (round-06 hold-1 sweep A: dimming the ambient (sky light, fills, fog sky ambient) takes the far band 15-25 Y under the sky at 6.5-7.5 and 19.5-21.5; the warm
     # SkyLuminanceFactor gives the sun-facing sky band B-R <= -20 until ~19.5 only: the tint is stronger and later, see tw_warm)
     'tw_w': {'dusk': [(18.8, 0.0), (19.2, 0.6), (19.5, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.5), (6.25, 1.0), (7.0, 1.0), (7.3, 0.8), (7.6, 0.5)]},
     'tw_warm': {'dusk': [(18.8, 0.0), (19.2, 0.4), (19.5, 0.8), (19.8, 1.0), (20.6, 1.0), (21.0, 0.5), (21.5, 0.0)], 'dawn': [(5.6, 0.0), (6.0, 0.6), (6.25, 1.0), (6.8, 0.8), (7.3, 0.2), (7.6, 0.0)]},
-    'tw_factor': [4.0, 1.6, 0.6],
-    'tw_sky_scale': 0.5, 'tw_fill_scale': 0.3, 'tw_amb': 0.3,
+    'tw_factor': [30.0, 6.0, 1.2],   # hold 3 C2: sky band B-R <= -20 facing the sun until 20:30 with the ambient cut to 10 %
+    'tw_sky_scale': 0.1, 'tw_fill_scale': 0.1, 'tw_amb': 0.1,
     # round-06 hold-2 findings: the sky unfogged at EVERY hour (cutoff 7e5 on every key) = no cutoff switch at all (golden S4 117.6 -> 99.9, far band 168 -> 141); hero lights 1.6 x nominal;
     # golden: red highlights down (S7 clipped 3.6 -> 1.6 %), shade fill .2 (Y<10 on S1 / S3 / S6 / S8 under 8 %)
     'cutoff_all': 700000.0,
@@ -65,7 +70,7 @@ def lerp(a, b, t): return a + (b - a) * t
 
 def apply(doc, K):
     K = copy.deepcopy(K)
-    for n in ('moon', 'hero', 'herofill', 'cutoff'): K[n] = {float(k): v for k, v in K[n].items()}   # json knob files carry string keys
+    for n in ('moon', 'hero', 'herofill', 'cutoff', 'night_stars', 'dawn_mist'): K[n] = {float(k): v for k, v in K[n].items()}   # json knob files carry string keys
     d = copy.deepcopy(doc); T = d['tod']
     P = d['presets']
     gold, night = P['golden']['mpc'], P['night']['mpc']
@@ -88,6 +93,12 @@ def apply(doc, K):
     key(6.5, 'blue', ['dusk_am', 0.5], **{'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015})
     key(7.2, 'dusk_am', ['golden_am', 0.5], **{'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015})
     keys[7.6]['base'] = 'dawn'
+    cl = {'cloud.Cloud_GlobalCoverage': 0.05, 'cloud.Cloud_GlobalDensity': 0.015}
+    # dawn mist builds up and burns off in log steps (fog density is exponential in its effect)
+    key(7.0, 'dusk_am', ['dawn', 0.6], **cl); key(7.4, 'dusk_am', ['dawn', 0.9], **cl)
+    key(8.0, 'dawn', ['day', 0.15], **cl); key(8.8, 'dawn', ['day', 0.6], **cl)
+    for hh, dens in K['dawn_mist'].items(): keys[float(hh)].setdefault('set', {})['fog.FogDensity'] = dens
+    for hh in (4.9, 20.6): keys[hh].setdefault('set', {}).update(nc)
     for h, k in keys.items():
         u = city_u(h, K)
         s = k.setdefault('set', {})
@@ -122,6 +133,7 @@ def apply(doc, K):
         if ww > 0: sset['atm.SkyLuminanceFactor'] = [round(1 + (f - 1) * ww, 4) for f in K['tw_factor']] + [1.0]
         for pk, pv in K['twilight_overrides'].get(str(h), {}).items(): sset[pk] = pv
         if K.get('cutoff_all') is not None: sset['fog.FogCutoffDistance'] = K['cutoff_all']
+        if h in K['night_stars']: sset['stars'] = K['night_stars'][h]
         if h in K.get('golden_hours', []):
             for pk, pv in K['golden_set'].items(): sset[pk] = pv
         if 'hero' in sset and K.get('hero_scale') is not None: sset['hero'] = round(sset['hero'] * K['hero_scale'], 3)

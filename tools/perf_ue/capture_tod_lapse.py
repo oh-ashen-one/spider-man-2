@@ -63,6 +63,7 @@ def main():
     ap.add_argument('--name', default=''); ap.add_argument('--sp', default='100'); ap.add_argument('--weather', default='-1'); ap.add_argument('--cmds', default='', help="';'-separated live tour commands before the pose, e.g. 'exec wh.ToDSet pp.AutoExposureSpeedUp 40'"); ap.add_argument('--timeout', type=int, default=5000)
     ap.add_argument('--no-pin', action='store_true', help='do NOT pin the metering speed (round-05 behaviour, eye adaptation lags the clock)'); ap.add_argument('--keys', default='', help='abs path of a key table to load instead of the baked one (-WHToDKeys)')
     ap.add_argument('--freeze', type=float, default=0.0, help='(round 06 diagnostic) extra game seconds with the clock STOPPED after the lapse (wh.TimeOfDaySpeed 0 through a second pose): shows how long the lighting lags a change; frames after the freeze keep their (frozen) hour')
+    ap.add_argument('--save-frames', default='', help="e.g. '440:452,66:78': keep these frames (index in the lapse) as jpgs in <round>/<name>_frames_kept/ (diagnosing a step)")
     ap.add_argument('--no-encode', action='store_true'); ap.add_argument('--pose-file', default='', help='extra pose file (json like city_shots.json); the sky poses of tools/perf_ue/sky_poses.json are always known')
     a = ap.parse_args()
     rnd = os.path.abspath(a.round); os.makedirs(rnd, exist_ok=True)
@@ -116,6 +117,12 @@ def main():
            'frame_to_frame_mean_y_jump': {'max': round(j[-1], 3) if j else None, 'p99': round(j[int(0.99 * (len(j) - 1))], 3) if j else None, 'median': round(j[len(j) // 2], 3) if j else None},
            'checks_L23b': chk, 'hours_per_frame': [round(h, 4) for h in hrs], 'mean_y_per_frame': [round(v, 2) for v in ys], 'b_minus_r_per_frame': [round(v, 2) for v in brs], 'clipped_pct_per_frame': [round(v, 3) for v in cl]}
     json.dump(res, open(os.path.join(rnd, name + '.json'), 'w'), indent=1)
+    if a.save_frames:
+        kd = os.path.join(rnd, name + '_frames_kept'); os.makedirs(kd, exist_ok=True)
+        for rg in a.save_frames.split(','):
+            lo, hi = (int(x) for x in rg.split(':'))
+            for i in range(max(0, lo), min(len(keep), hi + 1)):
+                Image.open(keep[i]).convert('RGB').save(os.path.join(kd, 'f%04d_h%.3f.jpg' % (i, hrs[i])), quality=90)
     # contact sheet: 8 frames across the lapse (for the critic and the handoff)
     picks = [keep[int(k * (len(keep) - 1) / 7)] for k in range(8)]
     ims = [Image.open(f).convert('RGB').resize((480, 270)) for f in picks]
