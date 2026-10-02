@@ -1,0 +1,21 @@
+== r24 checks on round-24
+== T7 / T3 / T1 / T2 / T4 on a_swing_chain (935 rows, 15.57 s)
+  a_swing_chain: releases 4
+    t_rel h_rel  apex  want    vz    hs   low  t_low  drop   off span  occl  kind / verdict
+     1.67   9.0  32.8  33.0  33.8  23.4   9.1   4.82  23.7  -0.5   27 0.000  release      OK
+     5.15  12.0  35.4  35.5  33.4  25.4   8.2   8.25  27.2  -2.5   21 0.000  release      OK
+     8.27   8.4  35.1  38.0  24.0  37.6   9.2  11.87  25.9   0.0   26 0.000  backDouble   OK
+    12.37  14.8  34.1  34.2  30.4  28.1   6.4  15.47  27.7   0.5   17 0.000  release      OK
+  T7 4 s windows from the first release 1.67 s to 15.57 s: 100/100 hold a qualifying release -> PASS
+  low points of the qualifying drops: lateral offset from the street centre 0.0-2.5 m (span 17-27 m)
+  T3 web_on 41.8 % of the clip, 42.9 % from the first attach (0.40 s) (25-45) -> PASS
+  T1 rope held per swing (s): [1.27, 1.38, 1.03, 1.57] (0.5-1.6) -> PASS
+  T2 attaches per 8 s window: [3, 2, 2, 2, 2, 2, 3, 3, 2, 2, 2, 2, 2, 3, 3, 2] (2-4) -> PASS
+  T4 web-less 1.67-3.75 2.08 s: pose changes 20/20 at 0.1 s  subs ['apex', 'dive', 'fall', 'release', 'rise'] -> ok
+  T4 web-less 5.15-7.22 2.07 s: pose changes 20/20 at 0.1 s  subs ['apex', 'dive', 'fall', 'release', 'rise'] -> ok
+  T4 web-less 8.27-10.78 2.52 s: pose changes 25/25 at 0.1 s  subs ['apex', 'dive', 'fall', 'rise', 'trick'] -> ok
+  T4 web-less 12.37-14.30 1.93 s: pose changes 19/19 at 0.1 s  subs ['apex', 'dive', 'fall', 'release', 'rise'] -> ok
+  T4 -> PASS
+== CAM hard gate (critic r23 secondary 1)
+  c_wallrun_perch 7.7-8.5 s (49 rows): hero_in_frame 26/49, hero_occl max 1.000, cam-hero min 2.23 m, yaw -88.9 -> 3.6 (turn -), max backtrack 95.0 deg, crane max 2.58 m -> FAIL [geometry part (frame, distance, reversal): GEOM_FAIL]
+  c zip 8.5000 -> perch 8.7833 (last perch/perchIdle)

@@ -2,52 +2,33 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 24 IN PROGRESS, 2026-10-02 ~07:15, Opus 5.5): code built (b24079a+), hold A queued (`_scratch/traversal/r24/holdA.sh` ->
-`holdA_body.sh`: a-chain variant probes -> pick -> captures; leftovers `holdB.sh`). Round target: critic r23 T7 / T3 (altitude chain) + the c
-roof-camera hard gate. Tooling: `r24_checks.py <dir> [--clip a_swing_chain] [--rendered]`, `drop_test.py --min 20`, pack script
-`round-24/tools/critic_make_pairs.sh`. If this session stopped: read `_scratch/traversal/r24/holdA.log`, then run the missing captures with
-`capture_round.sh` (GPU_OUTER inside one gpu_slot hold), `r24_checks.py docs/night1/traversal/round-24 --rendered`, the pack script.**
+**Status (round 24, 2026-10-02 ~08:00, Opus 5.5): code built (build 3 = HEAD), hold A (07:11-07:45) captured all 11 shot-list clips
+into `round-24/` (a / f1 / f4 / x1 / w1 / w2 final; f1 / f4 / x1 / w1 / w2 bit-identical to r23). Hold B (queued, `_scratch/traversal/r24/holdB.sh`)
+re-captures c (build-2/3 roof-camera orbit stop), x2 / r1 (build 3 open-street rule restores their r23 path), m1 (re-press -12 m/s) and any
+clip whose -nullrhi build-3 path differs from its hold-A capture. Then: `round-24/tools/analyze.sh`, `round-24/tools/critic_make_pairs.sh`
+(pack `_scratch/critic-P3-r24/pack`, provisional pack already built from the hold-A a / w2 / f1). The critic has NOT run.**
+If this session stopped: `grep -v "wait phase" _scratch/traversal/r24/holdB.log`; if hold B never ran, queue it again (it needs
+`_scratch/traversal/r24/READY2`, present) with `GPU_SLOT_CAPTURE_WAIT_TIMEOUT=14400 nohup .../gpu_slot.sh capture --label traversal -- _scratch/traversal/r24/holdB.sh`.
+Older handoffs: r23 `git show 7a96916:docs/night1/traversal/HANDOFF.md`, r22 `9ad5222`, r01-18 `047a342`.
+NOTE: a hold queued from INSIDE another hold dies when that hold ends (hold A's hold-B child was killed at 07:45): queue follow-up holds from your own shell.
 
-**Status (round 23 DONE, 2026-10-02 ~06:40, Opus 5.5): code built, all 11 shot-list clips captured on compiled defaults from ONE build (hold 2,
-05:51-06:23, no -WHGaitTune / -WHTravTune), measured (`round-23/R23_CHECK.txt`, `R22_GATES.txt`, `W1_LUMA.txt`, `SIZES.txt`, `SHOTLIST.md`),
-blind critic pack ready at `/Users/midir/sm2-n1/_scratch/critic-P3-r23/pack` (key `pack.key.json` outside it; `pairs.json`; rebuild with
-`round-23/tools/critic_make_pairs.sh`). The critic has NOT run yet.** Round 23 was interrupted at 04:40 (API 502); the resume kept the WIP
-(ba60f84) and added two fixes (below). Older handoffs: r22 `git show 9ad5222:docs/night1/traversal/HANDOFF.md`, r21 `5f1970b`, r20 `aa5b205`,
-r19 `9f28ab2`, r01-18 `047a342`.
-
-Owned paths: `unreal/WebHomage/Source/WebHomage/Traversal/**`, `/Game/Traversal`, `/Game/Tests/Traversal`, `unreal/WebHomage/Scripts/build_traversal.py`,
-`docs/night1/traversal/**`. Branch `night1/traversal`, worktree `~/sm2-n1/traversal`. GPU: every engine run through
-`/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh`; `PAUSED` = no launches; stop with `stop_ue.sh "<worktree>"`, never kill -9.
-Note: ba60f84 (orchestrator) also committed a run_game.sh frame-cap line (4K captures at 8 fps) -- integrator-owned file, left as is.
-
-## 0. Round 23 -- what changed (A/B at run time)
-Target (director, critic r22 "the vertical run slides frozen, legs together"): fix the EXCURSION of the vertical wall-run sprint, not the cadence.
-| # | Item | Fix (file) | A/B flag (r22 values) |
+## 0. Round 24 -- what changed (critic r23 biggest gap: T7 altitude + T3 rope time; hard gate: c roof camera)
+| # | Item | Fix (file) | A/B |
 |---|---|---|---|
-| 1 | Vertical run legs together | recovery foot trails OUT from the face after toe-off (ankle `VSw` 34 cm off at mid-swing, trail peak `VTr` .80 leg lengths below the hip, `VKt` .45 of the swing), knee by the hip plane (`VKneeLat` .70), stance foot flat on the face with a wider track (`VTrack` 4 cm), hips <= `VHip` 40 cm off the face, torso side roll `VRoll` 4 deg, contralateral sprint arm pump with an out-flare (`VArmOut` 22 cm, `VArmUp` .35, `VArmK` .5) (`Anim/WebTravAnimInstance.cpp`) | `-WHGaitTune=VKick=0` restores r22 exactly |
-| 2 | SSw 28 compiled (r22 captures ran it as a flag) | `SideSwOff` default 28 | `-WHGaitTune=SSw=14` |
-| 3 | Z23: w2 E-zip flew 4 s up the 300 m tower, no perch | facade top > `WallZipFarUp` 110 m above = fallback only; then a SECOND search `WallZipFarRange` 90 m: any visible roof edge / corner off the wall (not through the facade), run direction preferred, > 25 m up penalised (`NearestZip`, why = `nearFar2`). w2 / w1 now perch on the neighbouring 96 m roof | `-WHTravTune=WallZipFarUp=0` (r22) / `WallZipFarRange=0` |
-| 4 | c torso 28-35 deg off wall-up (c climbs a 33 deg diagonal: the scripted stick has a sideways share) | a vertical-dominant fast run keeps its run line within `WallVertMaxDeg` 10 deg of wall-up (`StepWall`; side runs untouched). Changes c's path after the wall entry (perch now 8.9 s on the roof edge z 49) | `-WHTravTune=WallVertMaxDeg=0` |
-| 5 | Telemetry | `hip_wall_m`, `ankle_sep_3d_m` | -- |
-| 6 | w1 on the sunlit tower | script `scripts/city/w1_wallrun_tall_zip.json` = probe t1_d (spawn x -240 y -55 z 52, jump onto the 300 m tower west face, vertical run z 53-89, E 3.6 s -> perch 5.05 s) | r22 route: `git show 9ad5222:docs/night1/traversal/scripts/city/w1_wallrun_tall_zip.json` |
+| 1 | ALTITUDE CHAIN (T7) | a plain web release toward an OPEN street (no facade within `AltOpenAhead` 35 m at body height / +`AltOpenUp` 8 m) is solved for an apex `AltApexH` 33 + 0..`AltApexJit` 5 m over the floor: velocity turned up (speed kept, <= `AltTurnDeg` 40, horizontal >= `AltHMin` 14, vz <= `AltVzMax` 34; climb beyond the need goes forward as the r07 pop). A flow flip's apex target gets the same floor (vz cap `AltFlowVzMax` 26). `ReleaseSwing` | `-WHTravTune=AltChain=0` = r23 |
+| 2 | arcs from the roofline | a swing entered >= `AltEntryMin` 20 m over the street bottoms out `AltLowLo` 5.5..`AltLowHi` 10.5 m (alternating halves); corridor weave x `AltWeaveK` .4 (low points within 0-2.5 m of the street centre) `StartSwing`, `Corridor` | same flag |
+| 3 | a / m1 scripts | the scripted player re-presses the web once falling at 12 m/s (`repressVz -12`, was 99 = 0.8 s after the release, on the climb) | probe: -6 / -12 / -18 x AltApexH 33 / 36, -12 / 33 best |
+| 4 | f1-f5, x1 | script tune `AltChain=0` (flip showcases keep their r17-r23 flow flips; bit-identical captures) | -- |
+| 5 | c roof camera (hard gate) | on foot / perched a user camera turn STOPS where the chase spot would enter geometry (`GndStop`, a 0.5 m sphere swept to 1.2 m past the spot; the soft side push is off while stopped); plus a turn-direction-only orbit search, orbit offset absorbed into the look yaw, and a crane to keep >= `GndMinDist` 3 m (`WebTravCamera.cpp`) | `-WHCamTune=GndMinDist=0` = r23; hold A (build 1, no stop) still FAILED (backtrack 95 deg) |
+| 6 | telemetry | `alt_apex_want_m`, `cam_look_dir`, `cam_gnd_crane_m`, `cam_gnd_stop` | -- |
 
-**Measured on the real captures (`round-23/`, 1920x1080 movie, r.ScreenPercentage 100 = native internal res, offscreen -game, 30 fps capture cap, fixed 1/60 s step):**
-| Test | r22 | r23 |
-|---|---|---|
-| V23a foot_sep_run crossings < .15 / > .35 per s (>= 4) | w2 12.2 / c 12.0 | w2 12.2 / c 12.0 PASS |
-| V23b bbox_w change >= 25 % in every 0.4 s window | w2 1/85, c 58/67 FAIL | **w2 85/85, c 67/67 PASS** (worst 26 % both) |
-| V23c legs apart at 12 fps (proxy 3D ankle >= .30 m; sheets in `round-23/sheets/`) | 0/10 (critic) | w2 10/10, c 10/10 proxy; by eye: w2 10/10, c 6/10 (3.35-3.60 s = the setback crossing, body folded over the ledge) |
-| X23 recovery toe >= .25 & knee .35-.50 at peak | w2 1/13, c 0/10 | w2 10/11, c 9/13 (misses at the setback) |
-| touchdowns alternate / longest gap | w2 .167, c .383 | w2 10/10 .167 s; c 9/12 alt, .167 s |
-| torso 5-20 deg off wall-up | w2 93 %, c 37 % (med 31.5) | w2 94 % (med 7.0), **c 65 % (med 12.3)** -- the c misses are the ledge-top rows of the setback step (77-83 deg) + entry blend |
-| hips <= .45 m off the face | -- | w2 .34-.42, c .33-.43 (100 %) |
-| T22 c camera pitch (wall rows) | 7.0-29.3, 55 % in 20-65 | 6.9-29.3, 55 % in 20-65 (camera frozen; identical behaviour) |
-| Z23 w2 zip fire -> perch | none by 6.97 s | **4.00 -> 5.70 s (1.70 s) PASS** |
-| w2 side run (U22/B22/L22/F22) | box tall 69/69, legs 9/10, gap .167, torso med 19.9, luma 94-142 | box tall 69/69 (h/w 1.98), legs 9/10, gap .167, torso 100 % <= 30 (med 19.9), luma 95-130 PASS |
-| f1 / f4 / a vs r22 | -- | **bit-identical** (149 common columns, 0 cells) |
-| w1 facade luma (12 fps wall frames) | 15-29 (shadowed) | **71-148, 32/32 >= 45** (`W1_LUMA.txt`); w1 has no side run now (vertical only) |
-| sizes | -- | 10-13 MB each (<= 15) |
-
+**Measured, hold-A capture of a_swing_chain (1920x1080 movie, r.ScreenPercentage 100 = native internal res, offscreen -game, fixed 1/60 s step):**
+`r24_checks.py round-24 --rendered`: releases 1.67 / 5.15 / 8.27 (backDouble) / 12.37 s, apex 32.8 / 35.4 / 35.1 / 34.1 m over the floor, lows
+9.1 / 8.2 / 9.2 / 6.4 m, drops 23.7 / 27.2 / 25.9 / 27.7 m, hero_occl 0 through every drop, low points 0-2.5 m off the street centre ->
+**T7 100/100 4 s windows PASS**; **T3 web_on 41.8 % PASS** (r23 55 %); T1 holds 1.27 / 1.38 / 1.03 / 1.57 s PASS; T2 2-3 attaches / 8 s PASS;
+T4 web-less 1.93-2.52 s phases (rise > apex > dive / trick), pose changes at every 0.1 s sample PASS. `drop_test.py --min 20`: FAIL only on
+swing 1 (the spawn drop, 23 m -> 6.7 m = 16.3 m, no release before it); `--skip-first` PASS. Release-instant heights are 8-15 m (the climb
+happens after the release); the 30 m+ is the release's apex -- say so if a critic reads "release at >= 30 m" literally.
 
 ## 1. Architecture map (Source/WebHomage/Traversal)
 
