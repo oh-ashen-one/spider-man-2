@@ -215,6 +215,7 @@
     },
     "feet_point_inside_frames": 18,
     "web_air_drawn": 0,
+    "wall_air_drawn_frames": 0,
     "swing": {
      "releases_rewebbed": 5,
      "unanswered_release_at_s": null,
@@ -718,7 +719,8 @@
        ]
       ]
      ],
-     "web_air_drawn": []
+     "web_air_drawn": [],
+     "wall_air_drawn": []
     }
    },
    "start": [

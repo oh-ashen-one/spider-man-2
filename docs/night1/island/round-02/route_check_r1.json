@@ -50,6 +50,7 @@
     "feet_overlap_by_kind": {},
     "feet_point_inside_frames": 0,
     "web_air_drawn": 0,
+    "wall_air_drawn_frames": 0,
     "swing": {
      "releases_rewebbed": 14,
      "unanswered_release_at_s": null,
@@ -120,7 +121,8 @@
     "events": {
      "mid_air_drawn": [],
      "feet_overlap": [],
-     "web_air_drawn": []
+     "web_air_drawn": [],
+     "wall_air_drawn": []
     }
    },
    "start": [

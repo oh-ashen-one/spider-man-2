@@ -17,6 +17,7 @@ city export the map was built from.  Answers the M1 acceptance questions for one
   feet_overlap    frames where the hero capsule (R 0.36 m, feet + 0.05 .. feet + 1.8 m) penetrates >= 0.08 m into a parapet / coping /
                   fire-escape / trunk solid of collision.json (+ UE-only kit fire-escape decks and street-tree trunks); feet_point_inside = the
                   feet column itself inside the solid
+  wall_air_drawn  wall mode with no collision.json solid / drawn raster mass within 1.2 m of the feet or hips
   web_air_drawn   a web / zip anchor (z > 0.5 m) with no WHBox, no collision.json solid and no drawn raster mass within 1.0 m
   swing           critic test 1: per web release (web_on 1 -> 0) the time to the next web (web_on 0 -> 1); ground + land share of frames;
                   distinct swing anchors
@@ -172,7 +173,7 @@ def check(E, csv_path, B, L, audit_hv=None, reg=None, D=None):
     seen_anchor = set(); n_anchor = 0
     inside_t = 0.0; stuck_t = 0.0; prev_t = None; lod_min = math.inf
     n_sup = 0
-    ex = {'mid_air_drawn': [], 'feet_overlap': [], 'web_air_drawn': [], 'land_events': []}
+    ex = {'mid_air_drawn': [], 'feet_overlap': [], 'web_air_drawn': [], 'wall_air_drawn': [], 'land_events': []}
     ovl_kinds = {}; n_point_inside = 0
     seen_anchor_d = set(); swing_anchors = set()
     web_prev = None; release_t = None; gaps = []; n_gl = 0; prev_mode = None
@@ -231,6 +232,8 @@ def check(E, csv_path, B, L, audit_hv=None, reg=None, D=None):
             if mode == 'land' and prev_mode != 'land':
                 what, dz = D.support(x, y, z, tol=0.45)
                 ex['land_events'].append([round(t, 3), round(x, 2), round(y, 2), round(z, 2), what, round(dz, 2)])
+            if mode == 'wall' and not (D.mass_near(x, y, z + 0.9, rad=1.2) or D.mass_near(x, y, z + 0.1, rad=1.2)):
+                ex['wall_air_drawn'].append([round(t, 3), round(x, 2), round(y, 2), round(z, 2)])
             ov = D.overlap(x, y, z)
             if ov:
                 ex['feet_overlap'].append([round(t, 3), mode, round(x, 3), round(y, 3), round(z, 2), ov[:3]])
@@ -265,7 +268,7 @@ def check(E, csv_path, B, L, audit_hv=None, reg=None, D=None):
             'wall_air_frames': len(ev['wall_air']), 'anchors': n_anchor, 'web_air': len(ev['web_air']), 'facadeLod_min_dist_m': None if lod_min == math.inf else round(lod_min, 1), 'events': ev,
             'drawn': None if D is None else {
                 'mid_air_drawn_frames': len(ex['mid_air_drawn']), 'feet_overlap_frames': len(ex['feet_overlap']), 'feet_overlap_by_kind': ovl_kinds,
-                'feet_point_inside_frames': n_point_inside, 'web_air_drawn': len(ex['web_air_drawn']),
+                'feet_point_inside_frames': n_point_inside, 'web_air_drawn': len(ex['web_air_drawn']), 'wall_air_drawn_frames': len(ex['wall_air_drawn']),
                 'swing': {'releases_rewebbed': len(gaps), 'unanswered_release_at_s': None if release_t is None else round(release_t, 3),
                           'max_reweb_gap_s': max((g[1] for g in gaps), default=None), 'reweb_gaps_over_0_5s': sum(1 for g in gaps if g[1] > 0.5),
                           'ground_land_frac': round(n_gl / max(1, len(rows)), 4), 'distinct_swing_anchors': len(swing_anchors), 'gaps': gaps},
@@ -297,7 +300,8 @@ def main():
               r['mid_air_frames'], r['wall_air_frames'], r['web_air'], r['anchors'], r['facadeLod_min_dist_m'], r['modes']))
         if r.get('drawn'):
             d = r['drawn']; sw = d['swing']
-            print('    drawn: mid-air %d  feet-overlap %d %s (point inside %d)  web-air %d  | swing: re-web gaps %d, max %s s, >0.5 s %d, ground+land %.1f %%, anchors %d  | landings %s' % (
+            print('    drawn: wall-air %d' % d['wall_air_drawn_frames'], end='')
+            print('  mid-air %d  feet-overlap %d %s (point inside %d)  web-air %d  | swing: re-web gaps %d, max %s s, >0.5 s %d, ground+land %.1f %%, anchors %d  | landings %s' % (
                 d['mid_air_drawn_frames'], d['feet_overlap_frames'], d['feet_overlap_by_kind'], d['feet_point_inside_frames'], d['web_air_drawn'],
                 sw['releases_rewebbed'], sw['max_reweb_gap_s'], sw['reweb_gaps_over_0_5s'], 100 * sw['ground_land_frac'], sw['distinct_swing_anchors'],
                 [(e[0], e[4], e[5]) for e in d['land_events']]))

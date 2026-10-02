@@ -49,6 +49,7 @@
     "feet_overlap_by_kind": {},
     "feet_point_inside_frames": 0,
     "web_air_drawn": 0,
+    "wall_air_drawn_frames": 0,
     "swing": {
      "releases_rewebbed": 13,
      "unanswered_release_at_s": 30.25,
@@ -115,7 +116,8 @@
     "events": {
      "mid_air_drawn": [],
      "feet_overlap": [],
-     "web_air_drawn": []
+     "web_air_drawn": [],
+     "wall_air_drawn": []
     }
    },
    "start": [
@@ -164,6 +166,7 @@
     },
     "feet_point_inside_frames": 14,
     "web_air_drawn": 0,
+    "wall_air_drawn_frames": 0,
     "swing": {
      "releases_rewebbed": 11,
      "unanswered_release_at_s": null,
@@ -1067,7 +1070,8 @@
        ]
       ]
      ],
-     "web_air_drawn": []
+     "web_air_drawn": [],
+     "wall_air_drawn": []
     }
    },
    "start": [
@@ -1120,6 +1124,7 @@
     },
     "feet_point_inside_frames": 28,
     "web_air_drawn": 0,
+    "wall_air_drawn_frames": 0,
     "swing": {
      "releases_rewebbed": 7,
      "unanswered_release_at_s": null,
@@ -4945,7 +4950,8 @@
        ]
       ]
      ],
-     "web_air_drawn": []
+     "web_air_drawn": [],
+     "wall_air_drawn": []
     }
    },
    "start": [
@@ -4993,6 +4999,7 @@
     },
     "feet_point_inside_frames": 34,
     "web_air_drawn": 0,
+    "wall_air_drawn_frames": 0,
     "swing": {
      "releases_rewebbed": 0,
      "unanswered_release_at_s": 1.667,
@@ -6976,7 +6983,8 @@
        ]
       ]
      ],
-     "web_air_drawn": []
+     "web_air_drawn": [],
+     "wall_air_drawn": []
     }
    },
    "start": [
