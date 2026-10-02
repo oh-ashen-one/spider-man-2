@@ -1,91 +1,66 @@
-# River water: handoff after round 03 (Opus 5.5)
+# River water: handoff after round 04 (Opus 5.5)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe. See `DISCLAIMER.md`.
 
-Branch `night1/water`, worktree `~/sm2-n1/water`, scratch `/Users/midir/sm2-n1/_scratch/water/`. Owned: `/Game/Water`,
-`unreal/WebHomage/Scripts/build_water.py`, `docs/night1/water/`, `tools/water/`. No `.uasset` / `.umap` committed. No copied IP: the
-spectrum, chop and noise textures are generated, the distance maps are rasterised from the layout and the city export, and the rest is code.
-Blind critic pack r03: `/Users/midir/sm2-n1/_scratch/critic-W-r03/pack` (key `pack.key.json` beside it, `pairs.json`; 8 pairs: 4 against
-references, 4 previous-vs-this: river_low still, harbour still, river_low dolly, river_sun dolly).
+Branch `night1/water`, worktree `~/sm2-n1/water`, scratch `/Users/midir/sm2-n1/_scratch/water/`. W owns `/Game/Water`,
+`unreal/WebHomage/Scripts/build_water.py`, `docs/night1/water/`, `tools/water/`. No `.uasset` / `.umap` is committed. No IP is copied:
+the spectrum, chop and noise textures are generated, the distance maps are rasterised from the layout and the city export, and the rest is
+code. The branch was NOT re-merged with `Opus-5.5-Loop-Night-1` this round: upstream has 19 newer commits, including traversal C++, which
+would need `build_editor.sh`.
 
-## Round 03 result (`round-03/NOTES.md`, `round-03/spec.json`)
-Shader: resolved 0.15 to 0.5 m wind chop (`T_WaterChop`, two scroll directions), near-field (<= 150 m) GGX roughness <= 0.08 with true
-texture gradients, streak / slick terms deleted, foam only within 150 m, one realization and no chop / foam / contact lookup beyond 150 m.
-Committed `PARAMS` = captured pick V3 (`ChopK 2.6, MicroK 2.0, ScatK 0.04, FarVarK 0.1, SpecK 2.0, RoughN 0.06`).
-| check | target | r02 | r03 |
+## Round 04 result (`round-04/NOTES.md`, `round-04/spec.json`)
+| check | target | r03 | r04 |
 |---|---|---|---|
-| river_low near hp sd / p99.5 / glints / mean / p1 | >=12 / >=150 / >=1 % / <=80 / <=25 | 8.5 / 122 / 0.11 / 79.3 / 46 | 9.93 / 112 / 0 / **78.5** / 41 |
-| river_sun sparkle width / near mean / glints | >=50 % / <=90 / 3-15 % | 35.5 / 137 / 44.9 | 37.8 / 148 / 52.9 |
-| harbour crop hp sd / glints / pale blobs | >=10 / >=2 % / 0 | 4.33 / 0 / 109 | 4.3 / 0 / **2** |
-| autocorr 80 px (low / sun dolly) | <= 0.10 | 0.006 / 0.041 | **0.053 / 0.015** |
-| S4 C14 | 5-35 | 22.0 | **17.9** |
-| seawall contact foam | present | present | **ABSENT (regression)** |
-| perf (frame delta, SLW pass at river_low) | <= 2.5 / <= 2.5 ms | +1.23 / 0.80 (TSR 67) | **-0.25 / 1.00** PASS (native 100 %) |
+| harbour_high crop hp sd / pale blobs | >= 10 / 0 | 4.27 / 2 | **8.19** / 188 (crest highlights) FAIL |
+| harbour_sun_high glints / path columns / sparkle px | >= 0.5 % / >= 50 % / <= 6 | new | **0.61 % / 100 % / 3** PASS |
+| seawall foam band (gate) | >= 12 px, >= 30 % rows, changing | 0 | **0 FAIL** |
+| river_low hp sd / mean Y (hold) | >= 9.9 / <= 80 | 9.93 / 78.5 | **11.74 / 62.0** PASS |
+| dolly autocorr low / sun (hold) | <= 0.10 | 0.053 / 0.015 | **0.076 / 0.024** PASS |
+| S4 C14 (hold) | 5..35 | 17.9 | **22.0** PASS |
+| river_sun sparkle width | >= 50 % | 37.8 | **50.5** PASS |
+| perf at river_low (frame delta / SLW + depth prepass + Lumen refl delta) | <= 2.5 / <= 2.5 ms | -0.25 / 2.69 | `round-04/perf.json` (PERF_STATUS below) |
 
-## What blocks the remaining targets (measured, see NOTES "Why")
-- river_low: the sky this view mirrors is about 114 to 121 Y, so a mirror reflection cannot reach p99.5 150 or Y 140 glints. The trough
-  floor (p1 about 41) is fog / Fresnel times sky, not the body (ScatK 0.04 to 0.09 moves it by less than 5 Y). These are look-rig items
-  (sky / fog over water), not W's, so they need an orchestrator decision: change the rig at these views, or change the target.
-- river_sun: a broad golden sheen from the bright sky around the sun (mean 148). Discrete sparkles need the off-lobe reflection darker.
-- harbour_high (260 m up) is all far field, and the sun is behind the view. Glints there need either a far-field glitter term or a
-  sun-facing framing. The resolved chop never reaches it.
+Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-W-r04/pack`, with `pack.key.json` beside it and `pairs.json`. 7 pairs: 4 against
+references and 3 previous-vs-this (seawall foam crop, harbour_high, river_low dolly).
 
-## Next round (suggested order)
-1. **Seawall foam regression.** One 1080p still of `Water_View_RiverLow` with material param `Dbg` = 4 (`wf, cf, gust` as colour) to
-   separate "foam pixels lit dark by the steep chop normal under the 9° sun" from "coverage lost in the new near-field branch". If it is
-   the normal, set the foam normal to the long-wave normal `normalize(float3(-sl2, 1))` at full `wf`. The dark specks in the near field
-   are probably the same foam pixels.
-2. Get an orchestrator decision on the river_low sky / fog (above) before more water-side tuning. Parameter variants V1 to V3 barely moved
-   the numbers.
-3. river_sun: a darker off-lobe body plus less sky sheen at moderate angles (lower `SpecK` away from the sun lobe), keeping the sharp near
-   lobe. Re-measure the sparkle width.
-4. harbour: a far-field (> 150 m) sun-glitter term (the existing `gw` facets out to 900 m only light when the sun is in front).
-5. Island export for contact foam (`SM2_WATER_EXPORT`), and the `/Game/Maps/Manhattan_WP` check, as in round 02.
+## What blocks the remaining targets (measured; details in NOTES)
+1. **Foam (gate).** `Dbg 7` (`round-04/iter/h2_DBG7_river_low.jpg`) shows the in-engine contact-map distance at >= 4 m along the whole
+   bulkhead, and the under-water ray at >= 4 m too. The CPU reads the same map as 0.6 to 1.9 m at those pixels: a ray-cast whose
+   1 m x-crossings match `Dbg 8` exactly (`_scratch/water/r04/emu_contact.py`). Rewriting the map power-of-two and moving CBias did not
+   change the in-engine value, so `T_WaterContact` is not sampled as the file says. The depth term cannot help here: the piles are
+   vertical, but the bulkhead leans landward under the water.
+   **Next:** one 1080p hold with a `Dbg 9` that outputs `tC` (and `tS`) at fixed UVs as emissive. Print the imported texture's size and
+   format and its `compression_settings` / `mip_gen_settings` / `lod_group` / `never_stream` / `virtual_texture_streaming` in the build log.
+   Suspect the import (Interchange) or the texture group first. Once cf > 0, CBias 0.8 should give a ~1-2 m band (CPU estimate).
+2. **harbour_high hp sd plateau ~8.2.** LongK 2 to 3, MidK, FarRough 0.2 and ChopFar 800 / 1500 all land at 7.6 to 8.3. The sky it
+   mirrors (19 to 60 deg up, sun behind) is nearly uniform. Haze lifts the far rows. The pale-blob rule now counts crest highlights (188, median 27 px),
+   and every variant with more hp had more of them. This needs an orchestrator decision on the blob rule or the target (NOTES section
+   "Far field").
+3. **Dark specks** in the near field are dark reflections off steep chop facets. They are not foam, not N.L (the sun clamp did not remove
+   them), and not fixed by BendK (0.7 / 1.0 give flat grey mirror patches). A look pass on the near-chop reflection is needed.
+4. river_low p99.5 / glints and the S4 haze band are sky-ceiling items, routed to the look piece (round-04 reconciliation).
 
 ## How to rebuild (all headless; every Unreal process inside a gpu_slot hold)
 ```
 S=/Users/midir/sm2-n1/_scratch/water
-# 0. inputs (CPU): water grid, noise, shore map, wind-sea slope spectrum, contact-distance map from the city export
-SM2_WATER_SCR=$S SM2_WATER_EXPORT=<city export dir with manifest.json> python3 unreal/WebHomage/Scripts/build_water.py --steps inputs
-# 1+2. one GPU hold: Manhattan content (if Content/ is empty) + water + optional iteration stills
-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label water --timeout 14400 -- bash $S/hold1.sh
-# 3. captures + perf (stills = 1080 + 4K of S4 / river_low / river_sun / harbour_high; movie = both dollies; perf = exclusive)
-SM2_WATER_SCR=$S tools/water/capture_round.sh docs/night1/water/round-NN stills,movie water
-GPU_SLOT_PERF_WAIT_TIMEOUT=14400 SM2_WATER_SCR=$S tools/water/capture_round.sh docs/night1/water/round-NN perf water
-# 4. numbers
+# 0. inputs (CPU): grid, noise, shore map, slope spectrum, chop, contact map (r04: crossings up to +2.3 m, written power-of-two)
+SM2_WATER_SCR=$S SM2_WATER_EXPORT=$S/manhattan/export/midtown3x3 python3 unreal/WebHomage/Scripts/build_water.py --steps inputs
+# 1. one capture hold = build + iteration stills + decision gate + final build + stills + dollies (round 04 scripts, copy and edit):
+/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label water --timeout 14400 -- bash $S/r04/hold_r04b.sh
+#    variants: $S/r04/variants2.json (SM2_WATER_VARIANTS); gate: write $S/r04/decide.json (final params) within 420 s of "GATE:" in the log
+# 2. CPU post (foam crop, iteration jpgs, dolly size, spec.json):  bash $S/r04/post_r04.sh
+# 3. perf (exclusive, native 100 %, 6 maps) after the capture hold:  bash $S/r04/perf_chain2.sh   (or capture_round.sh <round> perf)
 python3 tools/water/water_spec.py all docs/night1/water/round-NN --json docs/night1/water/round-NN/spec.json
+python3 tools/water/perf_summary.py $S/cap/perf_r04 native100 docs/night1/water/round-NN/perf.json
 ```
-Scratch helpers (not committed, recreate from this text if the scratch dir is gone):
-- `run_manhattan.py`: imports the integrator's `build_manhattan.py` unchanged and overrides `SCR`/`EXPORT`/`TEX`/`CHAR_STAGE` to
-  `$S/manhattan/...`, `UE` to `$S/bin/ue_locked.sh` (= `gpu_slot.sh capture --label water -- <UnrealEditor> "$@"`), `stage_characters` to a
-  no-op (P2 inputs cloned once from `_scratch/showcase/manhattan/chars`), and `wait_slot` to count `pgrep -x UnrealEditor` only.
-  The export (`$S/manhattan/export/midtown3x3`) and `tex/` were cloned (`cp -Rc`) from `_scratch/showcase/manhattan/` (prepped city r10 export).
-  Run: `python3 $S/run_manhattan.py --steps city,traversal,characters,look,map` (~9 min of commandlets).
-- `hold1.sh`: run_manhattan (unless `$S/hold1.skip_city` exists) + `build_water.py --steps ue` with `SM2_WATER_VARIANTS=$(cat variants.json)`
-  + `iter_stills.sh` (aborts if the game log says `M_RiverWater ... Failed to compile Material`) + optional autopick / `hold3.sh`.
-- Round 03 used a single script instead: `_scratch/water/r03/hold_r03.sh` (build base + variants, 1080p iteration stills, `autopick_r03.py`,
-  final build, `capture_round.sh stills` + `movie`), then `r03/perf_chain.sh` (one exclusive perf hold, native 100 %, 6 maps). Copy them for round 04.
-- `hold3.sh`: final `build_water.py --steps ue` with `SM2_WATER_PARAMS=$(cat final_params.json)` + capture_round stills + movie.
+The Manhattan content in this worktree's `unreal/WebHomage/Content` (git-ignored) was built in round 03 by `$S/run_manhattan.py`. It
+imports the integrator's `build_manhattan.py` and redirects SCR / EXPORT / TEX to `$S/manhattan/...` (export cloned from
+`_scratch/showcase/manhattan/`). `build_water.py --steps ue` rebuilds only `/Game/Water` (~2.5 min commandlet).
 
 ## State at hand-off
-- Nothing of ours is running: capture hold done 05:19, perf hold done 06:29 (exit 0), `perf_chain.sh` exited, no engine, no waiter.
-  `stop_ue.sh` was run on this worktree as a final check.
-- Content (Manhattan + `/Game/Water`, V3 params) is built in this worktree's `unreal/WebHomage/Content` (git-ignored). Intermediate and
-  DerivedDataCache were kept, because the next round rebuilds here (about 10 min plus queue).
-- Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones), `iter/r03`, `cap/` (6.4 GB: dolly PNG frames for both dollies plus still captures and perf runs,
-  delete them once round 04 has its own), `r03/` scripts and logs.
-
-## ROUND 04 IN PROGRESS (rolling note; the full hand-off replaces this at the end of the round)
-- Code (pushed): `build_water.py` r04 shader (64 m long-wave layer + `LongK` / `MidK` far gains, view-dependent far roughness `FarRough` /
-  `TopVarK` / `GrazeRough`, `ChopFar` resolved chop from above, foam on the long-wave normal `FoamNK`, contact reach `CBias`, sun-side
-  slope soft clamp `SunClampK`, sun-facing glitter early-out + `GlitDist` / `GlitFar`, `Dbg 5/7/8`), `water_inputs.py` contact map from
-  crossings up to +2.3 m, new view `harbour_sun_high`, `water_spec.py sunhigh|foam` + r04 checks, perf_summary `slw_depth_lumen_sum`.
-- Capture hold 1 done 08:10 (round-04/ files + spec.json): harbour_sun_high PASSES (glints 0.61 %, path columns 100 %, sparkles 3 px);
-  holds pass (river_low hp 11.7 / mean 62, autocorr 0.076 / 0.024, C14 22.0); harbour_high hp 8.19 + 187 crest-highlight "blobs" FAIL;
-  seawall foam 0 FAIL (Dbg 4: no contact coverage). CPU emulation says the contact map reads ~1 m at the wall pixels, so the GPU should
-  have shown foam: hold 2 has `Dbg 7` (cdm / under-water ray / cf) and `Dbg 8` (world-position stripes) stills to find out why.
-- Capture hold 2 queued 08:08 (09:24: second in the FIFO behind traversal; a health-monitor PAUSE 08:40 was lifted) (`_scratch/water/r04/hold_r04b.sh`, log `r04/hold2.log`, pid `r04/hold2.pid`; variants
-  `r04/variants2.json`: CBias 0.8 / 1.6 / 2.4, BendK 0.7 / 1.0, ChopFar 800 / 1500); gate file `r04/decide.json` (else
-  `auto_params.json`). Perf chain 2 (`r04/perf_chain2.sh`, pid `r04/perf_chain2.pid`) runs the exclusive native-100 % perf right after.
-  If this session is gone: when `hold2.log` says `HOLD r04b DONE`, run `bash _scratch/water/r04/post_r04.sh`, wait for
-  `perf_chain2.log` `PERF CHAIN DONE`, then write NOTES / critic pack (`_scratch/critic-W-r04/pairs.json` is ready).
+- PERF_STATUS: the exclusive perf hold (`$S/r04/perf_chain2.sh`, pid in `r04/perf_chain2.pid`, log `r04/perf_chain2.log`) was queued
+  at 10:12, 4th in the FIFO. When the log says `PERF CHAIN DONE`, `round-04/perf.json` and `perf_gpu.json` hold the numbers (gate field:
+  `slw_depth_lumen_sum`). If it is still waiting and nobody owns it, it is safe to leave it: it only runs the 6 water perf maps.
+- No engine of ours is running. Content: `/Game/Water` is built with the r04 defaults.
+- Scratch: `r04/` (scripts, hold logs, `hold1_round/` = hold 1's full capture set, contact map of r03 in `r04/contact_r03/`),
+  `iter/r04`, `iter/r04b` (full-res iteration PNGs), `cap/` (dolly PNG frames, ~6 GB; delete once the next round has its own).
