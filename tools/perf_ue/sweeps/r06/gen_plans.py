@@ -89,14 +89,17 @@ def main():
     for nm, c in (('G1_mie.6', [pin('atm.MieScatteringScale', g['atm.MieScatteringScale'] * 0.6)]),
                   ('G2_aerial3.5', [pin('atm.AerialPespectiveViewDistanceScale', 3.5)]),
                   ('G3_bias1.05', [pin('pp.AutoExposureBias', 1.05)]),
-                  ('G4_mie.6_aer3.5', [pin('atm.MieScatteringScale', g['atm.MieScatteringScale'] * 0.6), pin('atm.AerialPespectiveViewDistanceScale', 3.5)])):
+                  ('G4_mie.6_aer3.5', [pin('atm.MieScatteringScale', g['atm.MieScatteringScale'] * 0.6), pin('atm.AerialPespectiveViewDistanceScale', 3.5)]),
+                  # S7's 3.5 % clipped pixels are the R channel only (x 868..1114, the warm sun column): lower the red of the highlights (S2 B-R -57 gets closer to L6 too)
+                  ('G5_hiR.62', [pin('pp.ColorGainHighlights', [0.62, 0.72, 0.72, 1.0])]),
+                  ('G6_hiR.55_b.8', [pin('pp.ColorGainHighlights', [0.55, 0.72, 0.72, 1.0]), pin('pp.AutoExposureBias', g['pp.AutoExposureBias'] - 0.1)])):
         D.append(G('%s_h18.4' % nm, 18.4, ['S4', 'S3', 'S1', 'S7'], c))
     json.dump({'groups': D}, open(os.path.join(out, 'plan_d.json'), 'w'), indent=1)
 
     # ---------------- M: night moon / clouds
     M = []
     m1 = [pin('moonc.LightSourceAngle', 1.2), pin('moonc.CloudScatteredLuminanceScale', [8, 8, 8, 1]), pin('cloud.Cloud_GlobalCoverage', 0.3), pin('cloud.Cloud_GlobalDensity', 0.03)]
-    for nm, c in (('M0_base', []), ('M1_big+cloud', m1), ('M2_lux20', m1 + [pin('moon.Intensity', 20)]), ('M3_disk3', m1 + [pin('moonc.AtmosphereSunDiskColorScale', [3, 3, 3, 1])])):
+    for nm, c in (('M0_base', []), ('M1_big+cloud', m1), ('M2_lux20', m1 + [pin('moon.Intensity', 20)]), ('M3_disk3', m1 + [pin('moonc.AtmosphereSunDiskColorScale', [3, 3, 3, 1])]), ('M4_stars3', m1 + [pin('stars', 3)])):
         M.append(G('%s_h22' % nm, 22.0, ['S4m', 'S4'], c))
     # hero calibration at night: the traversal character's own fill off, the exposure-relative rim / fill / top at 0.5 .. 4 x nominal (pose H1, hero in the middle of the frame)
     for sc in (0.5, 1.0, 2.0, 4.0):

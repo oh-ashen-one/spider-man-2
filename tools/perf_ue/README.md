@@ -14,6 +14,10 @@
 | `round_tests.py` | writes `round-NN/TESTS.md` (spec tables for 1080p and 4K, night_tests numbers, clip_check numbers incl. L18 edge / centre sharpness, hero luma) |
 | `clip_check.py` | per-frame mean Y, B-R, near-black, clipped and L18 edge / centre sharpness of a swing clip (ffmpeg decode at 960x540) |
 | `night_tests.py` | night numbers: mean luma / share of pixels < 10 (`still`), light pools in the bottom third (`pools`), hero pixel-box mean luma per frame from the P3 hero-only depth mask (`hero`) |
+| `capture_tod_lapse.py` | (rounds 05 / 06) 24 h time-lapse of the continuous time of day from one shot pose (default S4, 2 h/s, fixed 1/60 s step); round 06: pins the metering speed (`pp.AutoExposureSpeedUp/Down 40`, written into the json as `instrument_condition`), records every frame (hour, mean Y, B-R, clipped %), the L23b checks, `--keys`, `--no-encode`; `lapse_report.py <json>` lists the steps and draws a chart |
+| `sky_poses.json` | (round 06) extra poses next to `city_shots.json`: S4w / S4e = the S4 perch turned to the dusk / dawn sun, S4m = turned to the 22:00 moon, H1 = hero close-up (hero light calibration) |
+| `sweeps/run_r06.py`, `sweeps/r06/` | (round 06) groups of (key table, hour, live pins, poses) in ONE game session (8 s settle after each hour change); `gen_plans.py` writes the diagnostic plans, `hold1.sh` is the first diagnostic hold |
+| `twilight_check.py` | (round 06) LOOK-SPEC L24 / L25 / L26 on the sky stills: S4 sky band vs far band, B-R of the sun-facing still, moon disk size / peak Y, sky high-pass std, S1 dawn-vs-golden luma correlation |
 | `scripts/city_swing_avenue.json` | traversal driver for perf (14 s warm-up, then a swing chain up the avenue) |
 | `scripts/city_swing_clip.json` | traversal driver for clips (airborne start, swing chain) |
 | `rebuild_city.sh` | P1's city pipeline on P4's own dev port / scratch / editor (never touches P1's) |
