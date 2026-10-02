@@ -37,9 +37,24 @@ Checker: `tools/perf_ue/night_city_check.py`. L3 (night means 37..60 on every vi
 | id | target | instrument |
 |---|---|---|
 | L23a | ONE map, `wh.TimeOfDay` 0–24 continuous: sun and moon move on their arcs, sky / atmosphere / fog / clouds / exposure / city lights follow the hour; the three preset maps stay buildable but are not needed for play | `/Game/Tests/Look/Look_Midtown_tod` (rig `Look_Rig_tod`, C++ `AWHLookTimeOfDay`) |
-| L23b | no steps: in a 24 h time-lapse at 2 h per second (fixed 1/60 s step) the frame-to-frame change of the frame mean Y stays **≤ 3 Y** (p99 ≤ 1.5 Y) | `tools/perf_ue/capture_tod_lapse.py` (`<name>.json`, `frame_to_frame_mean_y_jump`) |
+| L23b | no steps: in a 24 h time-lapse at 2 h per second (fixed 1/60 s step, 724 frames from 04:00 on the S4 perch) the frame-to-frame change of the frame mean Y stays **≤ 3 Y** (p99 ≤ 1.5 Y); from 05:00 to 21:30 the frame mean is **≤ 130** and clipped (any channel ≥ 250) **≤ 1.8 %** per frame. **Instrument condition (round 06):** the lapse compresses an hour into half a second, so the eye adaptation is metered per frame: `pp.AutoExposureSpeedUp` and `pp.AutoExposureSpeedDown` are pinned to 40 for the capture only (live `wh.ToDSet` pins written into `<name>.json` as `instrument_condition`; the game keeps 6 / 3). No other capture-only setting is allowed. What remains are rig steps: fog cutoff, dusk emissive ramp, moon shadow switch, sun surface ramp each spread over ≥ 20 game minutes | `tools/perf_ue/capture_tod_lapse.py` (`<name>.json`: `frame_to_frame_mean_y_jump`, `checks_L23b`, per-frame hour / mean / B-R / clipped) |
 | L23c | clouds visible at every hour (day, golden, night: a volumetric cloud layer lit by the sun or the moon), stars and a moon disk at night | stills of the round's hour tour + lapse contact sheet (critic) |
 | L23d | the golden hour of the time of day passes L1 / L5 / L6 / L10 / L21; its night passes L3 / L8 / L13 / L14 / L22; `wh.Weather 1` at 13:00 passes L2 (overcast: 0 crisp shadows, 0.00 % clipped) | `look_spec_check.py`, `key_fill_check.py`, `night_city_check.py`, `tools/export/s4_far_check.py` (C12 / C13 far band) on the tour stills |
+
+### L24 twilight sky stills (added round 06, from the round-05 critic verdict `critic/round-05-CRITIC.md`, "Biggest gap")
+Stills settled **≥ 8 s after each hour change** (run_r06.py: first pose of an hour 8 s, then 5 s; ≥ 90 frames). Instrument: `tools/perf_ue/twilight_check.py`.
+| id | target | note |
+|---|---|---|
+| L24a | S4 at 06:30, 07:00, 07:30, 19:00, 19:30, 20:00, 20:30, 21:00, 21:30: sky band (rows 0-89 of the 1080-high frame) **brighter** than the far-city band (far-shore box 450,192,1350,236) | sign of L10 (L10 itself wants 15..32 under the sky at the golden hour) |
+| L24b | at 06:30-07:30 and 19:00-20:30 the sky band of the still that **faces the sun** has **B-R ≤ -20** | after 20:30 the sky may be neutral / blue (L8 ±13 at 22:00 stands: no warm-glow demand past 20:30). Facing stills: S4e (perch turned to compass azimuth 60, dawn) and S4w (azimuth 250, dusk), `tools/perf_ue/sky_poses.json`; S7 faces west and is also reported |
+| L24c | sun surface light is 0 below -2.5 deg and the moon's surface light is keyed in only after 20:00 (both logged 0 at 19:48): no sunlit tower tops under a black sky | `wh.ToDDump` / WH_TOD log |
+| L26 | dawn has its own look: S1 luma Pearson correlation (480x270) of 07:36 against 18:24 **≤ 0.6** (round 05: 0.85; dawn vs noon 0.37) | `twilight_check.py` (S1 stills at hours 6-8.5 against the 18.4 still) |
+### L25 night sky (added round 06)
+| id | target | note |
+|---|---|---|
+| L25a | 22:00: moon disk **≥ 12 px** (equivalent diameter of the connected Y ≥ 200 blob at the moon's predicted pixel) with **peak Y ≥ 200** | the standard S4 pose faces north-west and the 22:00 moon (elevation 38, grid azimuth 118) is behind the camera, so the moon is measured on **S4m** (same perch turned to the moon, pitch +12, fov 90). Moon source angle enlarged (`moonc.LightSourceAngle`) when the real 0.52 deg disk is under 12 px |
+| L25b | moonlit cloud, sky **high-pass std ≥ 3** (Y - gaussian(Y, 6) over rows 0-250 of S4m, moon disk ±70 px excluded; also reported with it) | round 05: 1.27 on S4 22:00, reference `perch-moon` 3.98 |
+| L15b | swing_tod_22: hero pixel box (P3 `-WHTravMask` telemetry box) has **0 pixels with any channel ≥ 250 in every frame** and mean Y ≥ 40 (L15) | `night_tests.hero_stats` (`L15b_*` fields), hero lights keyed by hour (`hero`) |
 
 ## 2. Colour by time of day (L-A)
 | id | target (frame mean B−R, 8-bit) | measured from (median [p10, p90]) |

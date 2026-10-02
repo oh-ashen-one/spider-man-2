@@ -38,6 +38,11 @@ public:
 	/** (round 06) multiplier on all three lights, keyed by the time-of-day driver (`hero` param, 1 = the intensities above). A dark wall at night pushes auto exposure to its maximum
 	 *  and a full-strength hero then clips (round 05 critic: 21,218 clipped px); the driver lowers this where the exposure range is widest. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float HourScale = 1.f;
+	/** (round 06) the three lights use InverseExposureBlend 1: their brightness on screen is independent of the eye adaptation (dark wall = maximum exposure, street lamps = minimum),
+	 *  which is what a hero that must never clip and never go dark needs. With the blend the candela values above are relative to a fixed exposure, so the effective intensity is
+	 *  value * HourScale * ExposureRelativeScale (0.02: a hero lit by ~2 lux of "exposure 1" light, linear ~0.35 on a 0.6 albedo suit). false = the round-05 physical lights. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") bool bInverseExposure = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float ExposureRelativeScale = 0.02f;
 
 private:
 	bool bLightsInit = false;

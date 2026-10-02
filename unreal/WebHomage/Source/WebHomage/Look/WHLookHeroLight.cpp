@@ -9,7 +9,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Kismet/GameplayStatics.h"
 
-static void InitHeroLight(ULocalLightComponent* L, const FLinearColor& C, float Candela, float Radius)
+static void InitHeroLight(ULocalLightComponent* L, const FLinearColor& C, float Candela, float Radius, bool bInverseExposure)
 {
 	L->SetMobility(EComponentMobility::Movable);
 	L->SetLightColor(C);
@@ -20,7 +20,7 @@ static void InitHeroLight(ULocalLightComponent* L, const FLinearColor& C, float 
 	L->SetIndirectLightingIntensity(0.f); // no GI from the hero lights: they must not light the street
 	L->SetLightingChannels(false, true, false); // channel 1 only: the pawn's meshes are on 0 + 1, the world on 0
 	L->SetAttenuationRadius(Radius);
-	if (UPointLightComponent* PL = Cast<UPointLightComponent>(L)) PL->SourceRadius = 15.f;
+	if (UPointLightComponent* PL = Cast<UPointLightComponent>(L)) { PL->SourceRadius = 15.f; PL->SetInverseExposureBlend(bInverseExposure ? 1.f : 0.f); }
 }
 
 AWHLookHeroLight::AWHLookHeroLight()
@@ -55,13 +55,16 @@ void AWHLookHeroLight::Tick(float Dt)
 	if (!bLightsInit)
 	{
 		bLightsInit = true;
-		InitHeroLight(Rim, RimColor, RimIntensity * HourScale, 1500.f); InitHeroLight(Fill, FillColor, FillIntensity * HourScale, 1200.f); InitHeroLight(Top, FLinearColor(0.7f, 0.8f, 1.f), TopIntensity * HourScale, 1000.f);
+		const float Rel = bInverseExposure ? ExposureRelativeScale : 1.f;
+		InitHeroLight(Rim, RimColor, RimIntensity * HourScale * Rel, 1500.f, bInverseExposure); InitHeroLight(Fill, FillColor, FillIntensity * HourScale * Rel, 1200.f, bInverseExposure);
+		InitHeroLight(Top, FLinearColor(0.7f, 0.8f, 1.f), TopIntensity * HourScale * Rel, 1000.f, bInverseExposure);
 		AppliedScale = HourScale;
 	}
 	if (!FMath::IsNearlyEqual(AppliedScale, HourScale, 1e-4f))
 	{
 		AppliedScale = HourScale;
-		Rim->SetIntensity(RimIntensity * HourScale); Fill->SetIntensity(FillIntensity * HourScale); Top->SetIntensity(TopIntensity * HourScale);
+		const float Rel = bInverseExposure ? ExposureRelativeScale : 1.f;
+		Rim->SetIntensity(RimIntensity * HourScale * Rel); Fill->SetIntensity(FillIntensity * HourScale * Rel); Top->SetIntensity(TopIntensity * HourScale * Rel);
 	}
 	const FVector Hero = P->GetActorLocation() + FVector(0, 0, 40.f);
 	FVector Cam = PC->PlayerCameraManager ? PC->PlayerCameraManager->GetCameraLocation() : Hero + FVector(-500, 0, 100);

@@ -42,25 +42,31 @@ def main():
         A.append(G('A0_h%g' % h, h, ['S4', face], []))
     def sky_pins(h, k):
         b = E(h); c = []
-        if k >= 1: c.append(pin('atm.SkyLuminanceFactor', [2.2, 1.4, 0.9, 1.0]))
-        if k >= 2:
+        if k == 1: c.append(pin('atm.SkyLuminanceFactor', [2.2, 1.4, 0.9, 1.0]))
+        if k >= 2: c.append(pin('atm.SkyLuminanceFactor', [4.0, 1.6, 0.6, 1.0]))
+        if k >= 3:
             c.append(pin('sky.Intensity', b['sky.Intensity'] * 0.5))
             for d in 'NESW': c.append(pin('fill.' + d, b['fill.' + d] * 0.3))
             c.append(pin('fog.SkyAtmosphereAmbientContributionColorScale', [0.3, 0.3, 0.3, 1.0]))
-        if k >= 3: c.append(pin('sun.Intensity', min(60000.0, b['sun.Intensity'] * 3.0)))
+        if k >= 4: c.append(pin('sun.Intensity', min(60000.0, b['sun.Intensity'] * 3.0)))
         return c
     for h in (7.0, 19.5, 20.5, 21.5):
         face = 'S4e' if h < 12 else 'S4w'
-        for k, nm in ((1, 'A1_sky'), (2, 'A2_dim'), (3, 'A3_sun')):
+        for k, nm in ((1, 'A1_sky'), (2, 'A2_warm'), (3, 'A3_dim'), (4, 'A4_sun')):
             A.append(G('%s_h%g' % (nm, h), h, ['S4', face], sky_pins(h, k)))
     json.dump({'groups': A}, open(os.path.join(out, 'plan_a.json'), 'w'), indent=1)
 
     # ---------------- H: fog cutoff continuity (does atm.HeightFogContribution take the fog off the sky continuously?)
     H = []
+    # HeightFogContribution scales the sky-ambient and atmosphere-light terms of the fog colour (HeightFogCommon.ush), it does not take the fog off the sky pixels:
+    # the cutoff (0 = fog applies to the sky, > 0 = sky unfogged) is the switch. Is the sky better unfogged at dusk? how big is the step at golden / blue?
+    for h in (18.4, 19.2):
+        H.append(G('H0_base_h%g' % h, h, ['S4', 'S4w'], []))
+        H.append(G('H3_cut_h%g' % h, h, ['S4', 'S4w'], [pin('fog.FogCutoffDistance', 700000)]))
     for h in (19.8, 20.5):
         for nm, c in (('H0_base', []), ('H1_hfc0', [pin('fog.FogCutoffDistance', 0), pin('atm.HeightFogContribution', 0)]),
-                      ('H2_hfc.5', [pin('fog.FogCutoffDistance', 0), pin('atm.HeightFogContribution', 0.5)]),
                       ('H3_cut', [pin('fog.FogCutoffDistance', 700000), pin('atm.HeightFogContribution', 1)]),
+                      ('H5_cut_hfc0', [pin('fog.FogCutoffDistance', 700000), pin('atm.HeightFogContribution', 0)]),
                       ('H4_amb0', [pin('fog.FogCutoffDistance', 0), pin('fog.SkyAtmosphereAmbientContributionColorScale', [0, 0, 0, 1])])):
             H.append(G('%s_h%g' % (nm, h), h, ['S4', 'S4w'], c))
     json.dump({'groups': H}, open(os.path.join(out, 'plan_h.json'), 'w'), indent=1)
@@ -70,10 +76,11 @@ def main():
     b = E(7.6)
     cool = [pin('sun.Temperature', 6500), pin('sun.Intensity', b['sun.Intensity'] * 0.6), pin('sky.LightColor', [0.8, 0.9, 1.0, 1.0]), pin('sky.Intensity', b['sky.Intensity'] * 1.3),
             pin('fill.W', 0), pin('fill.E', 3.0), pin('fillT.E', 6500)]
-    mist = cool + [pin('fog.FogDensity', b['fog.FogDensity'] * 4), pin('fog.FogHeightFalloff', 0.2), pin('fog.StartDistance', 1000), pin('fog.FogInscatteringLuminance', [0.35, 0.4, 0.5, 1.0]),
-                   pin('fog.FogMaxOpacity', 0.75)]
-    flat = mist + [pin('pp.ColorContrast', [1.0, 1.0, 1.0, 1.0]), pin('pp.AutoExposureBias', b['pp.AutoExposureBias'] + 0.3)]
-    for nm, c in (('D0_base', []), ('D1_cool', cool), ('D2_mist', mist), ('D3_flat', flat)):
+    mist = cool + [pin('fog.FogDensity', b['fog.FogDensity'] * 5), pin('fog.FogHeightFalloff', 0.2), pin('fog.StartDistance', 1000), pin('fog.FogInscatteringLuminance', [0.35, 0.4, 0.5, 1.0]),
+                   pin('fog.FogMaxOpacity', 0.8)]
+    dense = cool + [pin('fog.FogDensity', b['fog.FogDensity'] * 12), pin('fog.FogHeightFalloff', 0.2), pin('fog.StartDistance', 500), pin('fog.FogInscatteringLuminance', [0.5, 0.56, 0.68, 1.0]),
+                    pin('fog.FogMaxOpacity', 0.92), pin('pp.ColorContrast', [1.0, 1.0, 1.0, 1.0]), pin('pp.AutoExposureBias', b['pp.AutoExposureBias'] + 0.3)]
+    for nm, c in (('D0_base', []), ('D1_cool', cool), ('D2_mist', mist), ('D3_dense', dense)):
         D.append(G('%s_h7.6' % nm, 7.6, ['S1', 'S4e'], c))
     D.append(G('G0_base_h18.4', 18.4, ['S4', 'S3', 'S1'], []))
     g = E(18.4)

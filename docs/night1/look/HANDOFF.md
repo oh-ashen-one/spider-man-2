@@ -1,3 +1,17 @@
+# P4 Look / Sky: handoff (round 06, Sonnet 5.5; started 2026-10-01 20:50)
+
+> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+
+## Round 06 IN PROGRESS (updated 21:25) - resume here
+Target (round-05 critic "biggest gap", see `critic/round-05-CRITIC.md`, new spec lines L23b condition / L24 / L25 / L26 / L15b in `SPEC.md`): sky lit and legible at every hour, no exposure excursions.
+State at 21:25: the GPU lock was PAUSED (health monitor 20:43 "WindowServer starved") and 7 other holds were queued ahead; nothing of round 06 has rendered yet. Everything below is CPU-side and committed:
+- C++ (`Source/WebHomage/Look`, built with `build_editor.sh`, compiles): sun surface ramp +3.5..-2.5 deg (32 game minutes, was 16), sun twilight intensity fades -16..-26 deg (was cut at -20), moon shadows only once the sun surface light is 0 and the moon lux > 0.4 (keys bring the moon in after 20:00), `hero` key scales `AWHLookHeroLight` (now `InverseExposureBlend 1`: hero brightness independent of the eye adaptation; nominal `ExposureRelativeScale` 0.02, calibrate with `hero`), generic `moonc.*` / `sunc.*` light properties (moon disk `LightSourceAngle`, `AtmosphereSunDiskColorScale`, `CloudScatteredLuminanceScale`).
+- `look_tod.py`: new params `hero`, `moonc.*`; `evaluate()` = Python twin of the C++ interpolation (sweep generators).
+- `capture_tod_lapse.py`: pins `pp.AutoExposureSpeedUp/Down 40` (instrument condition recorded), every frame in the json (hour / mean / B-R / clipped), `checks_L23b`, `--keys`, `--no-encode`; `lapse_report.py` prints the steps + chart.
+- `sky_poses.json` (S4w sun-facing dusk, S4e sun-facing dawn, S4m moon-facing), `sweeps/run_r06.py` (groups of hour x key table x pins x poses, 8 s settle), `sweeps/r06/gen_plans.py` + `hold1.sh` (diagnostic hold: pinned baseline lapse, twilight / fog / dawn / golden / moon sweeps, hero clip, diagnostic lapse), `twilight_check.py` (L24 / L25 / L26), `night_tests.hero_stats` (L15b clipped px in the hero box; clip captures now pass `-WHTravMask`).
+- Queued (pid in `$SM2_LOOK_SCRATCH/r06/hold1.pid`): `gpu_slot.sh capture --label look --timeout 14400 -- tools/perf_ue/sweeps/r06/hold1.sh` (log `$SM2_LOOK_SCRATCH/r06/hold1.log`, outputs `$SM2_LOOK_SCRATCH/r06/{lapse_L0,sweep,clips,lapse_L1}`). If you are a successor and it is still queued, let it run; analyse with `twilight_check.py --dir .../sweep`, `lapse_report.py .../lapse_L0/lapse_L0.json`.
+Facts learned (before any render): (1) the standard S4 pose faces north-west; the 22:00 moon (elev 38, grid az 118) and the dawn sun are BEHIND it, the S4 sky band (rows 0-89) is only the horizon strip (elevation +1.4..+5 deg): the moon disk / sun-facing B-R need other stills (S4m / S4e / S4w). (2) `atm.HeightFogContribution` only scales the sky-ambient and atmosphere-light terms of the FOG COLOUR (HeightFogCommon.ush); the sky pixels are fogged or not by `fog.FogCutoffDistance` (0 = fogged). (3) S1 dawn-vs-golden luma correlation 0.85 is the street geometry (road 0.95): only a strong horizon veil (~+100 Y) brings it to 0.6 in a synthetic test, so dawn needs real mist, not a colour change.
+
 # P4 Look / Sky: handoff (round 05, Opus 5.5; resumed 2026-10-01 17:06 after the 15:41 owner pause)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
