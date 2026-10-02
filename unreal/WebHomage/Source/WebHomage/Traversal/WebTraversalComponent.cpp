@@ -2312,6 +2312,9 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 {
 	const double ZipRange = 58.0;
 	const FVector Eye = S.Pos + FVector(0, 0, 0.5);
+	// round 23 (critic r22: "w2 zipFire 4.00 s, it never lands -- z 232 m at 6.97 s"; T4): a facade top more than WallZipFarUp above the hero
+	// (a ~4 s flight up a 284 m tower) is only the fallback; the nearest roof edge / corner within reach is taken first
+	FTravZipPoint FarTop; bool bFarTop = false;
 	if (S.Mode == EWebTravMode::Wall)
 	{
 		// round 20 (critic r19: "E from a side-run ends clinging mid-facade at 61 m" -- the facade top was > 58 m up): on a wall the facade
@@ -2343,6 +2346,7 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 				const FVector Edge = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + (bPerchTopFix ? FMath::Max(0.2, BestIn) : 0.25));
 				Out.Pos = FVector(Edge.X, Edge.Y, Top.Point.Z); Out.Normal = Flat(N).GetSafeNormal(); Out.Kind = FName(TEXT("roofEdge")); Out.Box = Top.Box;
 				Why = TEXT("facadeTop");
+				if (WallZipFarUp > 0.f && Top.Point.Z - S.Pos.Z > double(WallZipFarUp)) { FarTop = Out; bFarTop = true; break; }
 				return true;
 			}
 			break;
@@ -2371,9 +2375,13 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 		if (TravWorld.Raycast(Eye, D / L, L, Hv) && Hv.Distance < L - 0.7) continue;
 		BS = Sc; Best = &P;
 	}
-	if (!Best) return false;
+	if (!Best)
+	{
+		if (bFarTop) { Out = FarTop; Why = TEXT("facadeTop"); return true; }
+		return false;
+	}
 	Out = *Best;
-	Why = TEXT("nearest");
+	Why = bFarTop ? TEXT("nearFar") : TEXT("nearest");
 	return true;
 }
 
