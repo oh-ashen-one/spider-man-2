@@ -6,7 +6,7 @@ Target (round-02 critic's biggest gap, Fable round target): the 165-520 m band b
 plus a silhouette test, and shore stills with the merged water. PASS needs: all 24 `p1_south` crown crops (round-02 boxes, `crops.json` copied unchanged) sigma-3 SD >= 9;
 no foliage patch > 40 px with local luma SD <= 1.4 in `p1_south` (dark pockets included); no straight crown-silhouette edge > 40 px in `p10_lawn_eye`; capture GPU ms vs r2 disclosed.
 
-**Status: PASS 1 captured and measured (this file); pass 2 queued (see "Pass 2" below).**
+**Status: pass 1 is the round's capture set (this directory). Pass 2 (built, not captured) was stopped: see Incidents. Numeric target NOT met (E9a, E9c fail; E9b passes).**
 
 ## Build (all in committed scripts; Content is generated, never committed)
 1. `tools/export/collect_terrain.js`: exports `trees-{park,elm,conifer}-lod1` — the browser's own LOD1 generator (trees.js `canopyGeometry`, evaluated from the served trees.js source
@@ -47,10 +47,17 @@ Reading: the 165-520 m band is now leaf cards (no boulders; p1 / p10 / p9 look l
 the LOD1 core spheres read as smooth round puffs, and with every leaf pool out of ray tracing nothing occludes the sky under the canopy, so the foreground boxes that held black pockets in r02
 now hold smooth sky-lit lawn (boxes [2250,1800], [1500,1950], [2100,1950] = 4.3-5.9).
 
-## Pass 2 (queued, scripts committed)
+## Pass 2 (content built from the committed scripts, NOT captured)
 Lumen-only shade proxy (each crown hull at 0.6 scale about its centre, hidden in game, visible to ray tracing + `affect_indirect_lighting_while_hidden`: occludes sky under / inside the crown,
-not the cards' outward rays); LOD1 core broken up by world-space clump noise + holes; deeper spray-interior occlusion and wider per-leaf value spread on the cards; ragged card / leaf quad borders;
-fill 700 -> 450.
+not the cards' outward rays; 2643 / 1281 / 847 instances); LOD1 core broken up by world-space clump noise + holes; deeper spray-interior occlusion and wider per-leaf value spread on the cards;
+ragged card / leaf quad borders (aimed at the 47 px p10 edge); fill 700 -> 450. Offline: DXC 12 / 12, ShaderCompileWorker 27 / 27. No frame of it exists: its numbers are unknown.
+
+## Incidents (said plainly)
+- Pass 1 hold, 08:40: the health monitor auto-paused (`WS-STARVED`) during my 960x540 warm-up and stopped it (SIGTERM); the GPU had been at 100 % with WindowServer at 0 % since 08:38, before my launch.
+  The pause auto-lifted at 08:50 (I did not lift it); the 9 stills and 2 movies then ran clean (a few `probe=FAIL` / `WS-STARVE-WARN` samples during the 4K p1 still: a 160 ms GPU frame under an 8 fps cap keeps the GPU pinned).
+- Pass 2 hold, 10:38: the monitor stopped my warm-up again. This time the GPU was idle before the launch, so **my own warm-up** pinned it (100 %, WindowServer 0-2 %, probe FAIL). Second stop of my engine
+  today: I killed my hold scripts by PID (`round3.sh` / `capture_round.sh` / their nested lock wrapper) before the auto-lift could relaunch anything, and did not re-queue. Nothing of this piece is running.
+  For the successor: `round3.sh` now defaults to a 4 fps cap for 4K stills (GPU duty ~65 % at 160 ms / frame instead of pinned); the warm-up spike itself is not understood yet (startup: shader / Lumen surface-cache / proxy card capture?).
 
 ## Known defects
 p6 shows a lighter rectangular seam on the water near the seawall (not yet traced); far crowns >= 520 m are the clump hull (bump 3.0 / 0.5); the lawn tufts are still star sprites (r4, Sonnet);

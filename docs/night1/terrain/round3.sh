@@ -11,5 +11,5 @@ if [ -e $S/BUILDING ] || [ -e $S/BUILDING_CHAIN ]; then echo "terrain content st
 export HOLD_START=$(date +%s)
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROUND="$HERE/${ROUND_NAME:-round-03}"
 mkdir -p "$ROUND/stills"
-export BASE_IDS="" HIDE_HERO=1 WARM_QUIT="${WARM_QUIT:-20}" WH_CAPTURE_MAXFPS=8 PRIO_IDS="${PRIO_IDS-p1_south p10_lawn_eye p6_west_shore p7_east_shore p8_pier}"
+export BASE_IDS="" HIDE_HERO=1 WARM_QUIT="${WARM_QUIT:-20}" WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-4}" PRIO_IDS="${PRIO_IDS-p1_south p10_lawn_eye p6_west_shore p7_east_shore p8_pier}"
 "$HERE/capture_round.sh" "$ROUND" warm stills moves r2gpu

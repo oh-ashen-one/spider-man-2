@@ -19,7 +19,7 @@ HOLD_START="${HOLD_START:-$(date +%s)}"; HOLD_BUDGET="${HOLD_BUDGET:-2100}"   # 
 time_ok() { [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
 RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 # GPU etiquette (2026-10-01 20:43: the first terrain warm-up pinned the GPU and WindowServer starved): throttle every run so the GPU idles between frames
-export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"
+export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"; STILL_FPS="$WH_CAPTURE_MAXFPS"   # r03: kept for the r2gpu stills after the movies
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 [ -f "$UE_DIR/Content/Terrain/Maps/V_p1_south.umap" ] || { echo "terrain content missing (Content/Terrain/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
@@ -87,7 +87,7 @@ if want moves; then
 fi
 # r03: round-02 content built side by side into /Game/TerrainR2 (scratch copy of the r02 scripts) -> the same stills' GPU ms under the same hold, for "capture GPU ms vs r2"
 if want r2gpu && [ -f "$UE_DIR/Content/TerrainR2/Maps/V_p1_south.umap" ]; then
-  export WH_CAPTURE_MAXFPS=8
+  export WH_CAPTURE_MAXFPS="$STILL_FPS"
   if time_ok; then echo "== r2 warm-up  $(gpu)"; rm -rf "$TMP/warm_r2"
     RUN "$TMP/warm_r2" -map /Game/TerrainR2/Maps/V_p1_south -res 960x540 -quit 20 -name warm_r2 -timeout 2300 -- -benchmark -fps=30 | tail -2; fi
   for ID in ${R2GPU_IDS:-p1_south p10_lawn_eye}; do STILL_ROOT=/Game/TerrainR2 STILL_TAG=r02 STILL_NOKEEP=1 still V_ "$ID"; done
