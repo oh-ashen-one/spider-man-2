@@ -2,82 +2,67 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-All numbers from the real game (`Scripts/run_game.sh -game`, offscreen, inside `gpu_slot.sh capture`); stills 1920x1080 internal 100 % of output; the lapse 1920x1080 at a fixed 1/60 s step. Instruments: `tools/perf_ue/{capture_tod_lapse,twilight_check,tod_tests,night_tests,clip_check}.py`.
+All numbers from the real game (`Scripts/run_game.sh -game`, offscreen, inside `gpu_slot.sh capture`); stills and clips 1920x1080 internal 100 % of output; the lapse at the resolution and sub-stepping written in its json (fixed 1/60 s step). Instruments: `tools/perf_ue/{capture_tod_lapse,twilight_check,tod_tests,night_tests,clip_check}.py`.
 
-## L23b time-lapse (S4 perch, 04:00 start, 2 h/s, 724 frames)
+## L23b time-lapse (S4 perch, 04:00 start, nominal 2 h/s, 726 frames, 960x540 output, internal 100% of output, sub-steps 4)
 
-Instrument condition: metering pinned per frame: pp.AutoExposureSpeedUp / Down = 40 (capture-only live pins; the game keeps 6 / 3) + render settings while the clock runs > 0.3 h/s (wh.ToDLapseCvars, the sky light capture and the volumetric fog history have a ~35 frame latency = 0.6 game hour at 2 h/s): r.SkyLight.RealTimeReflectionCapture.TimeSlice=0,r.VolumetricFog=0.
+Instrument condition: metering pinned per frame: pp.AutoExposureSpeedUp / Down = 40 (capture-only live pins; the game keeps 6 / 3) + sub-stepped render: 4 frames per output frame (clock 0.5 h/s, fixed 1/60 s step, every 4-th frame kept) so the temporal lighting caches (Lumen GI, sky light capture, volumetric fog history, ~35 frames) settle between output frames; no render setting is changed.
 
-Render settings while the clock runs fast (wh.ToDLapseCvars): see `live_cmds` / HANDOFF.
+Live commands: `exec wh.ToDSet pp.AutoExposureSpeedUp 40;exec wh.ToDSet pp.AutoExposureSpeedDown 40`.
 
 | max jump | p99 | median | frames > 3 | frames > 1.5 | 05:00-21:30 max mean | at h | max clipped % | at h | verdict |
 |---|---|---|---|---|---|---|---|---|---|
-| 12.81 | 4.13 | 0.06 | 17 | 50 | 107.9 | 8.00 | 5.36 | 6.87 | FAIL |
+| 5.75 | 3.48 | 0.06 | 11 | 43 | 105.4 | 18.32 | 1.94 | 6.66 | FAIL |
 
-Biggest jumps: 18.97 h +12.8 (78 -> 65), 6.47 h +7.9 (33 -> 41), 6.43 h +6.2 (27 -> 33), 6.97 h +5.4 (46 -> 51), 6.40 h +5.2 (22 -> 27), 6.50 h +4.5 (41 -> 45)
+Biggest jumps: 6.53 h +5.8 (51 -> 57), 6.42 h +5.6 (35 -> 40), 6.39 h +5.5 (29 -> 35), 6.46 h +5.5 (40 -> 46), 6.49 h +5.0 (46 -> 51), 6.56 h +4.5 (57 -> 61)
 
 ## L24 / L25 / L26 sky stills
 
 ```
 | still | pose | hour | sky band Y | sky B-R | far Y | sky-far | L24a | L24b | mean Y | moon px | moon peak Y | hp std (excl / incl moon) |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| h18.4 | S1 | 18.4 | 68.4 | -31.1 |  |  |  |  |  |  |  |  |
-| h22 | S1 | 22.0 | 37.7 | +2.5 |  |  |  |  |  |  |  |  |
-| mist_h7.4 | S1 | 7.4 | 96.0 | -75.6 |  |  |  |  |  |  |  |  |
-| mist_h7.6 | S1 | 7.6 | 144.3 | -67.7 |  |  |  |  |  |  |  |  |
-| mist_h7 | S1 | 7.0 | 53.2 | -62.2 |  |  |  |  |  |  |  |  |
-| mist_h8 | S1 | 8.0 | 140.6 | -34.5 |  |  |  |  |  |  |  |  |
-| h18.4 | S2 | 18.4 | 128.5 | -78.6 |  |  |  |  |  |  |  |  |
-| h22 | S2 | 22.0 | 49.8 | -12.0 |  |  |  |  |  |  |  |  |
-| h18.4 | S3 | 18.4 | 80.3 | -27.7 |  |  |  |  |  |  |  |  |
-| h22 | S3 | 22.0 | 45.8 | -9.7 |  |  |  |  |  |  |  |  |
-| h13 | S4 | 13.0 | 153.8 | +18.7 | 117.7 | +36.1 | ok |  | 84.6 |  |  | 2.85 |
-| h18.4 | S4 | 18.4 | 185.4 | -86.5 | 141.3 | +44.1 | ok |  | 99.7 |  |  | 4.58 |
-| h19.5 | S4 | 19.5 | 113.6 | -130.7 | 38.7 | +74.9 | ok |  | 35.7 |  |  | 16.29 |
-| h19.8 | S4 | 19.8 | 29.7 | -47.9 | 17.2 | +12.5 | ok |  | 19.8 |  |  | 11.97 |
-| h19 | S4 | 19.0 | 111.1 | -209.9 | 85.1 | +26.0 | ok |  | 53.1 |  |  | 7.30 |
-| h20.5 | S4 | 20.5 | 22.5 | +3.9 | 19.4 | +3.1 | ok |  | 21.8 |  |  | 2.20 |
-| h20 | S4 | 20.0 | 10.7 | +6.2 | 18.0 | -7.3 | FAIL |  | 17.1 |  |  | 1.37 |
-| h21.5 | S4 | 21.5 | 51.9 | +11.3 | 32.6 | +19.3 | ok |  | 43.8 |  |  | 3.42 |
-| h21 | S4 | 21.0 | 50.6 | +0.0 | 37.8 | +12.8 | ok |  | 41.8 |  |  | 5.64 |
-| h22 | S4 | 22.0 | 41.5 | +10.3 | 30.1 | +11.4 | ok |  | 39.6 |  |  | 2.48 |
-| h6.5 | S4 | 6.5 | 120.1 | -129.1 | 49.9 | +70.2 | ok |  | 35.1 |  |  | 14.26 |
-| h7.5 | S4 | 7.5 | 177.6 | -28.1 | 114.0 | +63.6 | ok |  | 90.1 |  |  | 3.69 |
-| h7 | S4 | 7.0 | 153.6 | -176.2 | 74.8 | +78.8 | ok |  | 51.4 |  |  | 8.39 |
-| mist_h7.4 | S4 | 7.4 | 173.9 | -61.0 | 116.9 | +57.0 | ok |  | 85.4 |  |  | 4.54 |
-| mist_h7.6 | S4 | 7.6 | 179.3 | -7.2 | 107.7 | +71.6 | ok |  | 90.9 |  |  | 2.76 |
-| mist_h7 | S4 | 7.0 | 155.3 | -158.1 | 88.1 | +67.2 | ok |  | 57.5 |  |  | 7.04 |
-| mist_h8 | S4 | 8.0 | 174.8 | +5.8 | 134.1 | +40.7 | ok |  | 106.2 |  |  | 2.57 |
-| h6.5 | S4e | 6.5 | 93.7 | -124.3 |  |  |  | ok | 31.1 |  |  |  |
-| h7.5 | S4e | 7.5 | 198.5 | -68.7 |  |  |  | ok | 67.7 |  |  |  |
-| h7 | S4e | 7.0 | 157.8 | -212.5 |  |  |  | ok | 40.7 |  |  |  |
-| mist_h7.4 | S4e | 7.4 | 196.8 | -94.4 |  |  |  | ok | 65.3 |  |  |  |
-| mist_h7.6 | S4e | 7.6 | 199.0 | -49.4 |  |  |  |  | 69.1 |  |  |  |
-| mist_h7 | S4e | 7.0 | 153.1 | -206.8 |  |  |  | ok | 39.7 |  |  |  |
-| mist_h8 | S4e | 8.0 | 196.4 | -39.3 |  |  |  |  | 73.8 |  |  |  |
-| Mv1_h22 | S4m | 22.0 | 62.4 | -10.8 |  |  |  |  | 42.7 | 54.4 | 255 | 2.80 / 2.85 |
-| Mv2_h22 | S4m | 22.0 | 76.4 | -1.4 |  |  |  |  | 42.6 | 126.8 | 255 | 3.26 / 3.24 |
-| Mv3_h22 | S4m | 22.0 | 73.0 | -0.2 |  |  |  |  | 42.1 | 153.8 | 255 | 3.33 / 3.29 |
-| Mv4_h22 | S4m | 22.0 | 75.1 | -0.6 |  |  |  |  | 41.8 | 60.0 | 255 | 3.42 / 3.46 |
-| h22 | S4m | 22.0 | 74.6 | -0.6 |  |  |  |  | 43.0 | 21.7 | 255 | 2.06 / 2.20 |
-| h19.5 | S4w | 19.5 | 78.9 | -121.9 |  |  |  | ok | 34.1 |  |  |  |
-| h19.8 | S4w | 19.8 | 55.9 | -93.4 |  |  |  | ok | 38.4 |  |  |  |
-| h19 | S4w | 19.0 | 162.4 | -246.5 |  |  |  | ok | 56.6 |  |  |  |
-| h20.5 | S4w | 20.5 | 23.1 | +4.4 |  |  |  | FAIL | 30.2 |  |  |  |
-| h20 | S4w | 20.0 | 16.7 | -20.0 |  |  |  | ok | 38.1 |  |  |  |
-| h21.5 | S4w | 21.5 | 44.3 | +11.6 |  |  |  |  | 43.3 |  |  |  |
-| h21 | S4w | 21.0 | 43.2 | +4.5 |  |  |  |  | 42.8 |  |  |  |
-| h18.4 | S5 | 18.4 | 131.2 | -62.1 |  |  |  |  |  |  |  |  |
-| h22 | S5 | 22.0 | 32.0 | +3.3 |  |  |  |  |  |  |  |  |
-| h18.4 | S6 | 18.4 | 96.3 | -50.1 |  |  |  |  |  |  |  |  |
-| h22 | S6 | 22.0 | 30.2 | +9.7 |  |  |  |  |  |  |  |  |
-| h18.4 | S7 | 18.4 | 82.4 | -52.2 |  |  |  |  | 67.6 |  |  |  |
-| h22 | S7 | 22.0 | 33.0 | +6.9 |  |  |  |  | 43.7 |  |  |  |
-| h13 | S8 | 13.0 | 132.3 | +22.7 |  |  |  |  |  |  |  |  |
-| h18.4 | S8 | 18.4 | 154.1 | -65.4 |  |  |  |  |  |  |  |  |
-| h22 | S8 | 22.0 | 55.8 | +11.9 |  |  |  |  |  |  |  |  |
+| h18.4 | S1 | 18.4 | 71.5 | -32.5 |  |  |  |  |  |  |  |  |
+| h22 | S1 | 22.0 | 37.5 | +2.9 |  |  |  |  |  |  |  |  |
+| mist_h7.6 | S1 | 7.6 | 157.9 | -79.1 |  |  |  |  |  |  |  |  |
+| h18.4 | S2 | 18.4 | 131.4 | -79.7 |  |  |  |  |  |  |  |  |
+| h22 | S2 | 22.0 | 48.4 | -11.3 |  |  |  |  |  |  |  |  |
+| h18.4 | S3 | 18.4 | 82.3 | -28.5 |  |  |  |  |  |  |  |  |
+| h22 | S3 | 22.0 | 46.9 | -8.8 |  |  |  |  |  |  |  |  |
+| h13 | S4 | 13.0 | 152.0 | +18.1 | 115.7 | +36.3 | ok |  | 84.3 |  |  | 2.86 |
+| h18.4 | S4 | 18.4 | 185.6 | -85.8 | 142.0 | +43.7 | ok |  | 100.7 |  |  | 4.54 |
+| h19.5 | S4 | 19.5 | 119.4 | -73.9 | 77.6 | +41.9 | ok |  | 55.2 |  |  | 7.69 |
+| h19.8 | S4 | 19.8 | 18.5 | -19.1 | 13.5 | +5.0 | ok |  | 15.0 |  |  | 9.49 |
+| h19 | S4 | 19.0 | 130.2 | -217.0 | 107.5 | +22.7 | ok |  | 70.4 |  |  | 5.49 |
+| h20.5 | S4 | 20.5 | 22.2 | +4.9 | 19.1 | +3.1 | ok |  | 22.0 |  |  | 2.21 |
+| h20 | S4 | 20.0 | 10.5 | +7.1 | 14.4 | -3.9 | FAIL |  | 14.9 |  |  | 1.30 |
+| h21.5 | S4 | 21.5 | 51.5 | +10.8 | 32.2 | +19.3 | ok |  | 43.3 |  |  | 3.46 |
+| h21 | S4 | 21.0 | 51.1 | -0.7 | 37.8 | +13.3 | ok |  | 41.7 |  |  | 5.62 |
+| h22 | S4 | 22.0 | 48.8 | +11.2 | 32.5 | +16.3 | ok |  | 43.6 |  |  | 3.11 |
+| h6.5 | S4 | 6.5 | 140.8 | -68.8 | 106.9 | +33.9 | ok |  | 62.1 |  |  | 4.70 |
+| h7.5 | S4 | 7.5 | 174.5 | -19.9 | 109.6 | +64.9 | ok |  | 89.2 |  |  | 2.98 |
+| h7 | S4 | 7.0 | 174.6 | -111.2 | 113.2 | +61.4 | ok |  | 72.0 |  |  | 3.47 |
+| mist_h7.6 | S4 | 7.6 | 179.1 | -8.8 | 106.3 | +72.9 | ok |  | 92.1 |  |  | 2.78 |
+| h6.5 | S4e | 6.5 | 74.0 | -57.6 |  |  |  | ok | 43.8 |  |  |  |
+| h7.5 | S4e | 7.5 | 195.8 | -67.5 |  |  |  | ok | 66.0 |  |  |  |
+| h7 | S4e | 7.0 | 143.9 | -206.1 |  |  |  | ok | 37.9 |  |  |  |
+| mist_h7.6 | S4e | 7.6 | 200.1 | -50.4 |  |  |  |  | 70.4 |  |  |  |
+| h22 | S4m | 22.0 | 74.7 | -0.7 |  |  |  |  | 43.3 | 21.2 | 255 | 2.11 / 2.27 |
+| h19.5 | S4w | 19.5 | 36.7 | -34.5 |  |  |  | ok | 44.9 |  |  |  |
+| h19.8 | S4w | 19.8 | 48.0 | -58.5 |  |  |  | ok | 41.2 |  |  |  |
+| h19 | S4w | 19.0 | 155.4 | -245.7 |  |  |  | ok | 55.2 |  |  |  |
+| h20.5 | S4w | 20.5 | 23.2 | +4.1 |  |  |  | FAIL | 31.7 |  |  |  |
+| h20 | S4w | 20.0 | 22.5 | -30.7 |  |  |  | ok | 39.6 |  |  |  |
+| h18.4 | S5 | 18.4 | 132.2 | -61.5 |  |  |  |  |  |  |  |  |
+| h22 | S5 | 22.0 | 31.7 | +4.1 |  |  |  |  |  |  |  |  |
+| h18.4 | S6 | 18.4 | 96.3 | -49.8 |  |  |  |  |  |  |  |  |
+| h22 | S6 | 22.0 | 34.0 | +7.8 |  |  |  |  |  |  |  |  |
+| h18.4 | S7 | 18.4 | 83.3 | -51.7 |  |  |  |  | 68.6 |  |  |  |
+| h22 | S7 | 22.0 | 32.7 | +7.1 |  |  |  |  | 43.7 |  |  |  |
+| h13 | S8 | 13.0 | 135.9 | +18.5 |  |  |  |  |  |  |  |  |
+| h18.4 | S8 | 18.4 | 154.7 | -66.0 |  |  |  |  |  |  |  |  |
+| h22 | S8 | 22.0 | 56.3 | +11.9 |  |  |  |  |  |  |  |  |
 
-L26 S1 correlation vs golden (tod_S1_1920x1080_h18.4.jpg): mist_h7.4 0.701, mist_h7.6 0.620, mist_h7 0.755, mist_h8 0.806
+L26 S1 correlation vs golden (tod_S1_1920x1080_h18.4.jpg): mist_h7.6 0.602
 ```
 
 ## Golden 18.4 and night 22 spec numbers (tod_tests.py)
@@ -85,9 +70,9 @@ L26 S1 correlation vs golden (tod_S1_1920x1080_h18.4.jpg): mist_h7.4 0.701, mist
 ```
 | variant | as | n | mean | spec_pass | clip_max | BR | p5 | p95/p5 | sat | C13 far-sky | C12 dBR | C14 far-river | S4 points % | S4 median | S4 mean | L13 blobs |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| h18.4 | golden | 8 | 57..100 | 1/8 | 2.12 | -63..-28 | 4.1..23.0 | 8.4..51.7 | 0.47..0.61 | -48.2 | +26.4 | +22.7 |  |  |  |  |
-| h22 | night | 8 | 39..52 | 8/8 | 0.84 | -7..+10 |  |  |  | -13.6 | -5.9 | +3.8 | 1.72 | 31.4 | 39.6 | 9/13/4 |
-| h13 | midday | 2 | 85..85 | 2/2 | 0.00 | -5..+4 |  |  |  | -40.2 | -1.7 | +46.5 |  |  |  |  |
+| h18.4 | golden | 8 | 60..101 | 3/8 | 2.14 | -62..-29 | 5.8..24.5 | 7.9..36.3 | 0.45..0.57 | -47.7 | +25.9 | +22.5 |  |  |  |  |
+| h22 | night | 8 | 39..52 | 8/8 | 0.85 | -6..+10 |  |  |  | -18.8 | -6.4 | +2.2 | 2.47 | 36.4 | 43.6 | 9/13/3 |
+| h13 | midday | 2 | 84..86 | 2/2 | 0.00 | -5..+3 |  |  |  | -40.3 | -2.1 | +44.8 |  |  |  |  |
 ```
 
 Per-still tables: `TESTS_tod.md`.
@@ -96,19 +81,19 @@ Per-still tables: `TESTS_tod.md`.
 
 | frames_measured | bbox_mean_luma_min | bbox_mean_luma_p5 | bbox_mean_luma_mean | bbox_mean_luma_max | frames_below_threshold | L15b_frames_with_clipped_px | L15b_max_clipped_px_in_box |
 |---|---|---|---|---|---|---|---|
-| 718 | 20.9 | 53.0 | 106.7 | 166.4 | 16 | 694 | 15820 |
+| 718 | 22.7 | 54.3 | 108.4 | 166.8 | 16 | 695 | 15871 |
 
 ## Hero box (swing_tod_22_hero_luma.json)
 
 | frames_measured | bbox_mean_luma_min | bbox_mean_luma_p5 | bbox_mean_luma_mean | bbox_mean_luma_max | frames_below_threshold | L15b_frames_with_clipped_px | L15b_max_clipped_px_in_box |
 |---|---|---|---|---|---|---|---|
-| 718 | 20.6 | 36.4 | 58.0 | 124.7 | 92 | 675 | 2103 |
+| 718 | 20.7 | 36.5 | 58.2 | 124.8 | 91 | 676 | 2104 |
 
 ## swing_tod_18h4.mp4
 
-mean Y 71.5 (min 27.4 max 93.0), B-R mean -43.9, clipped mean 0.47 %, L18 edge/centre p50 0.76
+mean Y 73.0 (min 28.6 max 94.2), B-R mean -44.3, clipped mean 0.46 %, L18 edge/centre p50 0.76
 
 ## swing_tod_22.mp4
 
-mean Y 35.8 (min 21.9 max 52.1), B-R mean +3.5, clipped mean 0.52 %, L18 edge/centre p50 0.57
+mean Y 35.9 (min 22.0 max 55.4), B-R mean +3.5, clipped mean 0.52 %, L18 edge/centre p50 0.57
 

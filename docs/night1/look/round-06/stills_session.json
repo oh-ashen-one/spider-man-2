@@ -111,8 +111,7 @@
     "hour": 21.0,
     "cmds": [],
     "shots": [
-     "S4",
-     "S4w"
+     "S4"
     ]
    },
    {
@@ -120,28 +119,7 @@
     "hour": 21.5,
     "cmds": [],
     "shots": [
-     "S4",
-     "S4w"
-    ]
-   },
-   {
-    "name": "mist_h7",
-    "hour": 7.0,
-    "cmds": [],
-    "shots": [
-     "S1",
-     "S4",
-     "S4e"
-    ]
-   },
-   {
-    "name": "mist_h7.4",
-    "hour": 7.4,
-    "cmds": [],
-    "shots": [
-     "S1",
-     "S4",
-     "S4e"
+     "S4"
     ]
    },
    {
@@ -152,163 +130,6 @@
      "S1",
      "S4",
      "S4e"
-    ]
-   },
-   {
-    "name": "mist_h8",
-    "hour": 8.0,
-    "cmds": [],
-    "shots": [
-     "S1",
-     "S4",
-     "S4e"
-    ]
-   },
-   {
-    "name": "step_h18.9",
-    "hour": 18.9,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "step_h18.94",
-    "hour": 18.94,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "step_h18.96",
-    "hour": 18.96,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "step_h18.98",
-    "hour": 18.98,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "step_h19",
-    "hour": 19.0,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "step_h19.04",
-    "hour": 19.04,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "dawnstep_h6.3",
-    "hour": 6.3,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "dawnstep_h6.4",
-    "hour": 6.4,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "dawnstep_h6.5",
-    "hour": 6.5,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "dawnstep_h6.6",
-    "hour": 6.6,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "dawnstep_h6.7",
-    "hour": 6.7,
-    "cmds": [],
-    "shots": [
-     "S4"
-    ],
-    "settle_first": 8
-   },
-   {
-    "name": "Mv1_h22",
-    "hour": 22.0,
-    "cmds": [
-     "exec wh.ToDSet cloud.Cloud_GlobalCoverage 0.12",
-     "exec wh.ToDSet cloud.Cloud_GlobalDensity 0.02",
-     "exec wh.ToDSet cloudv.Layout_GlobalTexturePlacement 0 0 0 0"
-    ],
-    "shots": [
-     "S4m"
-    ]
-   },
-   {
-    "name": "Mv2_h22",
-    "hour": 22.0,
-    "cmds": [
-     "exec wh.ToDSet cloud.Cloud_GlobalCoverage 0.3",
-     "exec wh.ToDSet cloud.Cloud_GlobalDensity 0.03",
-     "exec wh.ToDSet cloudv.Layout_GlobalTexturePlacement 0 0 0 0"
-    ],
-    "shots": [
-     "S4m"
-    ]
-   },
-   {
-    "name": "Mv3_h22",
-    "hour": 22.0,
-    "cmds": [
-     "exec wh.ToDSet cloud.Cloud_GlobalCoverage 0.2",
-     "exec wh.ToDSet cloud.Cloud_GlobalDensity 0.025",
-     "exec wh.ToDSet cloudv.Layout_GlobalTexturePlacement 30000 0 0 0"
-    ],
-    "shots": [
-     "S4m"
-    ]
-   },
-   {
-    "name": "Mv4_h22",
-    "hour": 22.0,
-    "cmds": [
-     "exec wh.ToDSet cloud.Cloud_GlobalCoverage 0.2",
-     "exec wh.ToDSet cloud.Cloud_GlobalDensity 0.025",
-     "exec wh.ToDSet cloudv.Layout_GlobalTexturePlacement 0 30000 0 0"
-    ],
-    "shots": [
-     "S4m"
     ]
    },
    {
@@ -325,8 +146,8 @@
  "res": "1920x1080",
  "internal": "100% of output",
  "gpu_util_before_pct": 0,
- "wall_s": 874,
- "stills": 66,
- "poses": 66,
+ "wall_s": 536,
+ "stills": 40,
+ "poses": 40,
  "settle_rule": "first pose of a group: settle_first s (default 8) after the hour / key change; next poses of the group: settle s (default 5); min 90 frames"
 }

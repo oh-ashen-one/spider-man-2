@@ -21,12 +21,12 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--round', required=True)
     a = ap.parse_args(); R = os.path.abspath(a.round)
     L = ['# Round 06: sky / time-of-day numbers', '', '> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.', '',
-         'All numbers from the real game (`Scripts/run_game.sh -game`, offscreen, inside `gpu_slot.sh capture`); stills 1920x1080 internal 100 % of output; the lapse 1920x1080 at a fixed 1/60 s step. Instruments: `tools/perf_ue/{capture_tod_lapse,twilight_check,tod_tests,night_tests,clip_check}.py`.', '']
+         'All numbers from the real game (`Scripts/run_game.sh -game`, offscreen, inside `gpu_slot.sh capture`); stills and clips 1920x1080 internal 100 % of output; the lapse at the resolution and sub-stepping written in its json (fixed 1/60 s step). Instruments: `tools/perf_ue/{capture_tod_lapse,twilight_check,tod_tests,night_tests,clip_check}.py`.', '']
     lp = os.path.join(R, 'tod_lapse_S4.json')
     if os.path.exists(lp):
         d = json.load(open(lp)); c = d['checks_L23b']
-        L += ['## L23b time-lapse (S4 perch, 04:00 start, 2 h/s, %d frames)' % d['frames'], '', 'Instrument condition: %s.' % d.get('instrument_condition'), '',
-              'Render settings while the clock runs fast (wh.ToDLapseCvars): see `live_cmds` / HANDOFF.' , '',
+        L += ['## L23b time-lapse (S4 perch, 04:00 start, nominal 2 h/s, %d frames, %s output, internal %s, sub-steps %s)' % (d['frames'], d.get('output'), d.get('internal'), d.get('substeps', 1)), '', 'Instrument condition: %s.' % d.get('instrument_condition'), '',
+              'Live commands: `%s`.' % d.get('live_cmds'), '',
               '| max jump | p99 | median | frames > 3 | frames > 1.5 | 05:00-21:30 max mean | at h | max clipped % | at h | verdict |', '|---|---|---|---|---|---|---|---|---|---|',
               '| %.2f | %.2f | %.2f | %d | %d | %.1f | %.2f | %.2f | %.2f | %s |' % (c['max_jump'], c['p99_jump'], c['median_jump'], c['frames_over_3'], c['frames_over_1.5'], c['window_05_2130']['max_mean_y'],
                                                                                          c['window_05_2130']['hour_of_max_mean'], c['window_05_2130']['max_clipped_pct'], c['window_05_2130']['hour_of_max_clipped'], 'PASS' if c['pass'] else 'FAIL'),
