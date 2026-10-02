@@ -331,6 +331,13 @@ def open_level(path):
         les.new_level(path)
     return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
+def lite(c, indirect=False):
+    """keep a component out of the distance-field scene (and out of Lumen's dynamic indirect lighting): every HISM instance would otherwise become a distance-field object
+    (181 k tufts + 19 k tree instances pinned the GPU at 100 % and starved WindowServer on the first run, 2026-10-01 20:43); world-space ground meshes also trip the DF origin precision ensure"""
+    for k, v in (('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', bool(indirect))):
+        try: c.set_editor_property(k, v)
+        except Exception as ex: log('WARN', k, str(ex)[:100])
+
 def hism(actor, mesh_path, transforms, cull=None, shadows=False, material=None, label=None):
     c = add_component(actor, unreal.HierarchicalInstancedStaticMeshComponent)
     c.set_static_mesh(load(mesh_path))
@@ -339,6 +346,7 @@ def hism(actor, mesh_path, transforms, cull=None, shadows=False, material=None, 
         try: c.set_editor_property('instance_end_cull_distance', int(cull))
         except Exception as ex: log('WARN instance_end_cull_distance', str(ex)[:100])
     c.set_cast_shadow(shadows)
+    lite(c)
     for i in range(0, len(transforms), 20000): c.add_instances(transforms[i:i + 20000], False, True)
     c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
     return c
@@ -360,15 +368,16 @@ def build_land(path):
             a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
             if r['name'] == 'park' or r['name'].startswith(('mapLawns', 'coastLawn', 'parkWater')): a.tags = [unreal.Name('WHGround')]
             if r['kind'] in ('ground', 'water'): a.static_mesh_component.set_cast_shadow(False)   # flat surfaces: nothing to cast
+            lite(a.static_mesh_component, indirect=True)   # world-space meshes: out of the distance-field scene, still lit by Lumen
             n += 1
         log('land: %d mesh actors' % n)
         if EAL.does_asset_exist(f'{PROD}/SM_park_rocks'):
             a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='park_rocks', folder='Terrain/Props')
-            a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_park_rocks')); a.set_mobility(unreal.ComponentMobility.STATIC)
+            a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_park_rocks')); a.set_mobility(unreal.ComponentMobility.STATIC); lite(a.static_mesh_component, indirect=True)
         if EAL.does_asset_exist(f'{PROD}/SM_shore_patch'):
             a = spawn(unreal.StaticMeshActor, unreal.Vector(0, 0, 0), label='shore_patch', folder='Terrain/shore')
             a.static_mesh_component.set_static_mesh(load(f'{PROD}/SM_shore_patch')); a.set_mobility(unreal.ComponentMobility.STATIC)
-            a.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            a.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(a.static_mesh_component, indirect=True)
 
     def _sec_tufts():
             # grass tufts: browser grass.js density / height mask, scattered by prep_terrain.py (x, z, yaw, width scale, height m), three wind classes, culled at 45 m
@@ -422,7 +431,7 @@ def build_land(path):
                 c.set_editor_property('instance_end_cull_distance', 52000 if l1 else 2200)
                 if l1: c.set_editor_property('instance_start_cull_distance', 2000)
             except Exception as ex: log('WARN cull distance', str(ex)[:100])
-            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c, indirect=l1)
             xs = []
             for it in d['items']:
                 s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
