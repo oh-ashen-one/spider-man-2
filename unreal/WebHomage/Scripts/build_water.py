@@ -330,18 +330,18 @@ float3 LsN = normalize(SunDir);
 }
 float varF = varL + lostC * mk * mk;      // per-axis slope variance the shading cannot resolve
 // ---- foam (near field only, faded to zero by %(near).0f m): contact (the water line against anything below it), rare whitecaps
-float cf = 0.0, wf = 0.0;
+float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-map distance and under-water ray length (Dbg 7)
 [branch] if (nearW > 0.0) {
     float fn = NZG(p / 7.0 + float2(t * 0.01, -t * 0.007), 1.0 / 7.0).b;
     float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest + 0.15 * (slT.x - slT.y);
     float dnw = max(DNW - PD, 0.0) * 0.01;
-    float lr = dnw / max(dot(-V, View.ViewForward), 0.2);
+    float lr = dnw / max(dot(-V, View.ViewForward), 0.2); dbgL = lr;
     cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
     float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
     float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSampler, cu, 0).r * %(cmax).1f : %(cmax).1f;
     // r04: Dbg 4 showed no contact coverage at the river_low bulkhead (the depth test finds no geometry under the water there, and the
     //      0.9 m/px map reads 1.7 to 2.6 m at the built wall face: its contact line wanders +-3 m): the map term reaches CBias m further
-    float ce0 = 0.12 + CBias;
+    float ce0 = 0.12 + CBias; dbgC = cdm;
     cf = max(cf, 1.0 - smoothstep(ce0, max(0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap, ce0 + 0.3), cdm));
     float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lap) * FoamK;
     foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
@@ -396,7 +396,7 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
 Emis = 0;
-if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : (Dbg < 5.5 ? float3(saturate(dot(NormalW, Ls) * 4.0), wf, saturate(dot(N, Ls) * 4.0)) : Lag.zzz)))); Emis = 0; Opac = 1.0; return dv; }
+if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : (Dbg < 5.5 ? float3(saturate(dot(NormalW, Ls) * 4.0), wf, saturate(dot(N, Ls) * 4.0)) : (Dbg < 6.5 ? Lag.zzz : (Dbg < 7.5 ? float3(saturate(dbgC / 4.0), saturate(dbgL / 4.0), cf) : float3(frac(p.x), frac(p.y * 0.25), 0.0))))))); Emis = 0; Opac = 1.0; return dv; }
 return float3(0.62, 0.6, 0.55);   // r03: cream foam albedo (r02 0.74 clipped at the seawall in the golden key)
 #undef NZG
 '''
