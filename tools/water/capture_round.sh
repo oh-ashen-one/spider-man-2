@@ -3,10 +3,11 @@
 # River-water A/B captures (docs/night1/water/views.json), every Unreal run wrapped in the GPU lock (docs/night1/gpu/PROTOCOL.md).
 # usage: tools/water/capture_round.sh <round-dir> [warm|stills|movie|perf|all] [label]
 #   warm    1080p run of the river view (shader / DDC warm-up, not kept)
-#   stills  S4_golden_4k/1080 (/Game/Maps/Manhattan_View_S4), river_low_4k/1080, river_sun_4k/1080, harbour_high_4k/1080 (/Game/Water/Maps/...);
+#   stills  S4_golden_4k/1080 (/Game/Maps/Manhattan_View_S4), river_low_4k/1080, river_sun_4k/1080, harbour_high_4k/1080, (r04) harbour_sun_high_4k/1080;
 #           native internal resolution (r.ScreenPercentage 100), shot at t = 16 s (exposure / Lumen settled). stills1080 = only the 1080p ones
 #   movie   river_low_dolly.mp4 + river_sun_dolly.mp4: 1080p60 -benchmark -fps=60 -dumpmovie, t = 6..16 s kept (10 s)
-#   perf    EXCLUSIVE gpu_slot perf: tools/perf_ue/run_perf.py, 3840x2160 TSR 67 %, water vs P1 flat-water baseline, river_low + S4 + river_sun
+#   perf    EXCLUSIVE gpu_slot perf: tools/perf_ue/run_perf.py, 3840x2160 native 100 % (r03+), water vs P1 flat-water baseline, river_low + S4 + river_sun
+#           (then: tools/water/perf_summary.py <SCR>/perf native100 <round>/perf.json)
 # Several modes in one call: tools/water/capture_round.sh <round-dir> stills,movie [label]  (one GPU hold per mode)
 set -uo pipefail
 R="$1"; WHAT="${2:-all}"; LABEL="${3:-water}"
@@ -28,7 +29,8 @@ if has warm; then
 fi
 if [ "$WHAT" = _stills_inner ]; then   # runs under ONE held capture slot (the shot() calls nest and pass through)
   for v in "/Game/Maps/Manhattan_View_S4|S4_golden" "/Game/Water/Maps/Water_View_RiverLow|river_low" \
-           "/Game/Water/Maps/Water_View_RiverSun|river_sun" "/Game/Water/Maps/Water_View_HarbourHigh|harbour_high"; do
+           "/Game/Water/Maps/Water_View_RiverSun|river_sun" "/Game/Water/Maps/Water_View_HarbourHigh|harbour_high" \
+           "/Game/Water/Maps/Water_View_HarbourSunHigh|harbour_sun_high"; do
     map="${v%%|*}"; name="${v#*|}"
     shot "$map" 1920x1080 "${name}_1080"
     [ "${STILLS_4K:-1}" = 1 ] && shot "$map" 3840x2160 "${name}_4k"
@@ -53,7 +55,7 @@ fi
 if has perf; then
   "$G/gpu_slot.sh" perf --label "$LABEL" --json "$R/perf_gpu.json" -- bash -c "
     for m in Water_View_RiverLow Water_Perf_RiverLow_Base Water_Perf_S4 Water_Perf_S4_Base Water_View_RiverSun Water_Perf_RiverSun_Base; do
-      python3 '$WT/tools/perf_ue/run_perf.py' --out '$SCR/perf/'\$m --map /Game/Water/Maps/\$m --script none --configs tsr67 --res 3840x2160 --window 16:36 --timeout 400 --name \$m || echo \"perf \$m failed\"
+      python3 '$WT/tools/perf_ue/run_perf.py' --out '$SCR/perf/'\$m --map /Game/Water/Maps/\$m --script none --configs native100 --res 3840x2160 --window 16:31 --timeout 300 --name \$m || echo \"perf \$m failed\"
     done"
   "$G/gpu_slot.sh" summary "$R/perf_gpu.json"
 fi

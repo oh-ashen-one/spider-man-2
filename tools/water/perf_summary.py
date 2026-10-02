@@ -38,10 +38,11 @@ def main():
                  SingleLayerWater=round(a['SLW'], 3), SLW_depth_prepass=round(a['SLWd'], 3), LumenReflections_delta=round(a['LR'] - z['LR'], 3),
                  Basepass_delta=round(a['BP'] - z['BP'], 3), Prepass_delta=round(a['PP'] - z['PP'], 3), contaminated=bool(a['contaminated'] or z['contaminated']))
         r['water_passes_sum'] = round(r['SingleLayerWater'] + r['SLW_depth_prepass'] + r['LumenReflections_delta'] + r['Basepass_delta'] + r['Prepass_delta'], 2)
+        r['slw_depth_lumen_sum'] = round(r['SingleLayerWater'] + r['SLW_depth_prepass'] + r['LumenReflections_delta'], 2)   # r04 gate: <= 2.5 ms
         res[w] = r
-        print('%-22s frame %6.2f / %6.2f  delta %+5.2f  SLW %.2f  SLWd %.2f  LR %+5.2f  sum %.2f  internal %s  contaminated %s'
+        print('%-22s frame %6.2f / %6.2f  delta %+5.2f  SLW %.2f  SLWd %.2f  LR %+5.2f  sum %.2f (SLW+depth+LR %.2f)  internal %s  contaminated %s'
               % (w, r['gpu_avg_ms_water'], r['gpu_avg_ms_base'], r['frame_delta'], r['SingleLayerWater'], r['SLW_depth_prepass'], r['LumenReflections_delta'],
-                 r['water_passes_sum'], r['internal'], r['contaminated']))
+                 r['water_passes_sum'], r['slw_depth_lumen_sum'], r['internal'], r['contaminated']))
     json.dump(res, open(out, 'w'), indent=1)
 
 

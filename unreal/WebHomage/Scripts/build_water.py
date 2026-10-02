@@ -32,7 +32,7 @@
 #       /Game/Water/Maps/Water_View_RiverLow[_Midday]   golden / midday + the low river camera (docs/night1/water/views.json)
 #       /Game/Water/Maps/Water_View_RiverLow_Dolly      same camera on an InterpToMovement dolly (16 s, 2 m/s, at the view point at t = 6 s)
 #       /Game/Water/Maps/Water_Perf_<RiverLow|S4|RiverSun>_Base  perf baseline: same view, P1's old flat water instead of this water
-#       (r02) /Game/Water/Maps/Water_View_RiverSun[_Dolly], Water_View_HarbourHigh; /Game/Maps/Manhattan_WP (island piece) gets the water
+#       (r02) /Game/Water/Maps/Water_View_RiverSun[_Dolly], Water_View_HarbourHigh, (r04) Water_View_HarbourSunHigh; /Game/Maps/Manhattan_WP (island piece) gets the water
 #       actor directly (not spatially loaded); tuning variants: SM2_WATER_VARIANTS='{"A": {"ChopK": 1.4, "_views": ["river_sun"]}}' ->
 #       /Game/Water/Variants/MI_Water_A + Water_Var_A_<view>. Material scalar parameters: PARAMS below (+ GlitterK, Dbg).
 import os, sys, json, math, subprocess, time
@@ -72,6 +72,10 @@ VAR_K = 1.2   # filtered slope variance -> GGX alpha^2 (Cox-Munk: alpha^2 ~ 2 si
 #   [tile size m, angle of realization A / B to the wind (deg), RMS slope per axis]   bands: tile/24 .. tile/3
 # r03: the 0.73 m layer is replaced by the resolved wind-chop layer (CHOP); per-axis RMS slopes before ChopK
 LAYERS = [(21.0, 8.0, -47.0, 0.040), (6.7, -19.0, 38.0, 0.045), (2.2, 27.0, -33.0, 0.050)]
+# r04 far-field long-wave layer: 64 m tile (bands 2.7 to 21 m), one realization, sampled with true gradients at every distance (resolved
+# from swing height out past 3 km: not folded into roughness). [tile m, angle to the wind deg, per-axis RMS slope before ChopK]
+LONG = (64.0, -12.0, 0.035)
+LONG_FAR = (100.0, 300.0)   # LongK (far long-wave gain on the 64 m and 21 m layers) ramps in over this distance range (m)
 # r03 wind chop (T_WaterChop, 3..10 cycles per tile): [tile m, angle to the wind deg, scroll speed factor] for the two realizations
 # (two scroll directions); per-axis RMS slope CHOP_RMS * ChopK * MicroK, resolved (no roughness) within NEAR_M of the camera
 CHOP = [(1.5, 28.0, 1.0), (1.17, -36.0, 1.13)]
@@ -244,9 +248,16 @@ def hlsl_ps():
                     '    float2 qb = float2(dot(p, %(uB)s), dot(p, %(vB)s)) / %(sc2).4f - float2(%(vb).6f * t, 0.0) + float2(0.37, %(off).3f);\n'
                     '    float2 gb = (Texture2DSampleGrad(tW, tWSampler, qb, float2(dot(dpx, %(uB)s), dot(dpx, %(vB)s)) / %(sc2).4f, float2(dot(dpy, %(uB)s), dot(dpy, %(vB)s)) / %(sc2).4f).ba - 0.5) * %(enc).2f;\n'
                     '    g += float2(gb.x * %(cB).6f - gb.y * %(sB).6f, gb.x * %(sB).6f + gb.y * %(cB).6f) * wbR; }\n'
-                    '  slT += g * %(amp).5f; varL += %(amp2).7f * saturate(log2(2.0 * foot / %(lmin).5f) / 3.0); }')
+                    '  slT += g * %(amp).5f%(lk)s; varL += %(amp2).7f * saturate(log2(2.0 * foot / %(lmin).5f) / 3.0); }')
                    % dict(uA=uA, vA=vA, uB=uB, vB=vB, cA=cA, sA=sA, cB=cB, sB=sB, sc=sc, sc2=sc2, va=spd / sc, vb=spd * 1.07 / sc2, off=0.61 * (i + 1),
-                          enc=SLOPE_ENC, amp=amp, amp2=amp * amp, lmin=sc2 / 24.0))
+                          enc=SLOPE_ENC, amp=amp, amp2=amp * amp, lmin=sc2 / 24.0, lk=' * lk' if sc >= 20.0 else ''))
+    sc, ang, amp = LONG
+    lc = sc / 8.5; kc = 2 * math.pi / lc; spd = math.sqrt(GRAV / kc + 7.28e-5 * kc)
+    th = math.radians(WIND_DEG + ang); cL, sL = math.cos(th), math.sin(th); uL, vL = rot(cL, sL)
+    longc = ('{ float2 q = float2(dot(p, %(u)s), dot(p, %(v)s)) / %(sc).4f - float2(%(vv).6f * t, 0.53);\n'
+             '  float2 g = (Texture2DSampleGrad(tW, tWSampler, q, float2(dot(dpx, %(u)s), dot(dpx, %(v)s)) / %(sc).4f, float2(dot(dpy, %(u)s), dot(dpy, %(v)s)) / %(sc).4f).ba - 0.5) * %(enc).2f;\n'
+             '  slL = float2(g.x * %(c).6f - g.y * %(s).6f, g.x * %(s).6f + g.y * %(c).6f) * %(amp).5f; }'
+             % dict(u=uL, v=vL, sc=sc, vv=spd / sc, enc=SLOPE_ENC, c=cL, s=sL, amp=amp))
     chop = []
     for j, (sc, ang, vf) in enumerate(CHOP):
         lc = sc / 5.5; kc = 2 * math.pi / lc
@@ -258,7 +269,7 @@ def hlsl_ps():
                      '    slC += float2(g.x * %(c).6f - g.y * %(s).6f, g.x * %(s).6f + g.y * %(c).6f); lostC += 0.5 * saturate(log2(2.0 * foot / %(lmin).5f) / 1.74); }')
                     % dict(u=u, v=v, sc=sc, vv=spd / sc, off=0.29 * (j + 1), ch=ch, enc=SLOPE_ENC, c=c_, s=s_, lmin=sc / 10.0))
     return PS_TEMPLATE % dict(wx=WIND[0], wy=WIND[1], sx=SHORE_BOX[0], sz=SHORE_BOX[1], sw=SHORE_BOX[2], sh=SHORE_BOX[3], big=big, lay='\n'.join(lay),
-                              chop='\n    '.join(chop), crms=CHOP_RMS, near=NEAR_M,
+                              chop='\n    '.join(chop), crms=CHOP_RMS, near=NEAR_M, longc=longc, lf0=LONG_FAR[0], lf1=LONG_FAR[1],
                               hmax=WAVE_MAX * 0.5, ss='%(SCAT)s', sa='%(ABS)s', cx=CONTACT['box'][0], cz=CONTACT['box'][1], cw=CONTACT['box'][2],
                               ch=CONTACT['box'][3], cmax=CONTACT_MAX)
 
@@ -277,6 +288,10 @@ float wbR = 0.70711 * nearW, waR = sqrt(1.0 - wbR * wbR);
 float2 wdir = float2(%(wx).6f, %(wy).6f);
 float4 nA = NZG(p / 620.0, 1.0 / 620.0), nB = NZG(p / 230.0 + float2(t * 0.0009, 0.37), 1.0 / 230.0);
 float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
+// r04: far-field long-wave gain (LongK on the 64 m and 21 m layers beyond ~%(lf0).0f m) and 'looking down' weight (camera above the water:
+//      the far field is seen at steep angles, so its resolved long waves and a sharper lobe carry the structure instead of roughness)
+float lk = lerp(1.0, LongK, smoothstep(%(lf0).1f, %(lf1).1f, dist));
+float down = smoothstep(0.08, 0.25, V.z);
 float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampler, su, dpx / float2(%(sw).1f, %(sh).1f), dpy / float2(%(sw).1f, %(sh).1f)).r * 400.0 : 400.0;
 float gk = lerp(0.75, 1.25, gust);
@@ -286,7 +301,9 @@ float2 sl2 = 0; float varU = 0, h = 0, s, c, f;
 float crest = h / %(hmax).5f;
 sl2 *= lerp(0.85, 1.1, gust); varU *= 1.2;
 // ---- wind-sea spectrum layers (baked random-phase slopes, true texture gradients: what the mips drop is counted in varL)
-float2 slT = 0; float varL = 0;
+float2 slT = 0; float varL = 0; float2 slL = 0;
+%(longc)s
+slT += slL * lk;
 %(lay)s
 // ---- r03 resolved wind chop 0.15-0.5 m: two realizations, two scroll directions (near field only; beyond, all of it is sub-pixel variance)
 float2 slC = 0; float lostC = 1.0;
@@ -324,15 +341,22 @@ float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
   Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
 float farW = smoothstep(%(near).1f * 0.4, %(near).1f, dist);
 float r4 = RoughN * RoughN; r4 *= r4;
-float a2 = r4 + VARK * FarVarK * farW * (varU + 2.0 * varF);
-float rcap = lerp(0.08, 0.7, smoothstep(%(near).1f, %(near).1f * 2.7, dist));
-Rough = lerp(clamp(pow(a2, 0.25), 0.03, rcap), 0.6, wf);
-NormalW = normalize(lerp(N, float3(0, 0, 1), wf * 0.6));
+float a2 = r4 + VARK * FarVarK * lerp(1.0, TopVarK, down) * farW * (varU + 2.0 * varF);
+float rcap = lerp(0.08, lerp(0.7, FarRough, down), smoothstep(%(near).1f, %(near).1f * 2.7, dist));
+float rr = clamp(pow(a2, 0.25), 0.03, rcap);
+// r04 perf: at grazing views (river level) the far field gets a rough lobe beyond ~1.7 x near (Lumen does not trace it; its slope
+//      variance is unresolved there anyway); from above (down -> 1) this floor is off
+rr = max(rr, GrazeRough * smoothstep(%(near).1f, %(near).1f * 1.7, dist) * (1.0 - down));
+Rough = lerp(rr, 0.6, wf);
+// r04 foam fix: foam pixels take the long-wave (Gerstner) normal, not the steep resolved chop normal (r03's chop-lit foam rendered as dark
+//      specks under the 9 deg sun); FoamNK 0.6 ~ r03 behaviour
+float3 Nlong = normalize(float3(-sl2.x, -sl2.y, 1.0));
+NormalW = normalize(lerp(N, Nlong, saturate(wf * FoamNK)));
 Spec = 0.25 * SpecK;     // F0 = 0.02 (IOR 1.333) x SpecK
 Opac = wf * 0.92;
 // ---- turbid river optics (per cm): olive-grey Hudson body (ScatK), siltier / browner along the bulkheads
 float silt = (1.0 - smoothstep(10.0, 120.0, shore)) * 0.75;
-float turb = 0.85 + 0.3 * NZG(p / 900.0 + float2(0.0, t * 0.0015), 1.0 / 900.0).r;
+float turb = 0.85 + 0.3 * nA.r;   // r04: turbidity patches from the broad gust noise (r03: its own 900 m sample; one texture fetch less per pixel)
 float3 sS = float3(%(ss)s) * ScatK * turb * (1.0 + float3(0.9, 0.6, 0.3) * silt);
 float3 sA = float3(%(sa)s) * (1.0 + float3(0.1, 0.2, 0.5) * silt);
 Scat = sS * 0.01; Abs = sA * 0.01;
@@ -341,17 +365,23 @@ Scat = sS * 0.01; Abs = sA * 0.01;
 float3 Ls = normalize(SunDir);
 float3 Hh = normalize(Ls + V);
 float gw = 0.0;
-[branch] if (dist < 900.0 && dist > 20.0 && Ls.z > 0.0) {
-    float2 gn = (NZG(p / 2.3 + float2(t * 0.05, t * 0.034), 1.0 / 2.3).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-p.y, p.x) / 3.7 + float2(-t * 0.041, t * 0.02), 1.0 / 3.7).ga - 0.5) * 2.0;
+// r04: only where the sun can be mirrored at all (the flat-water mirror direction within ~40 deg of the sun: none at the north-facing
+//      river_low / harbour_high views), and out to GlitDist (r03: 900 m) with a coarser facet scale beyond 300 m (GlitFar x) so the far
+//      facets stay a few pixels wide instead of mip-averaging away
+float3 Rm = reflect(-V, float3(0, 0, 1));
+[branch] if (dist < GlitDist && dist > 20.0 && Ls.z > 0.0 && dot(Rm, Ls) > 0.76) {
+    float gs = lerp(1.0, GlitFar, smoothstep(250.0, 600.0, dist));
+    float2 pg = p / gs;
+    float2 gn = (NZG(pg / 2.3 + float2(t * 0.05, t * 0.034) / gs, 1.0 / (2.3 * gs)).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-pg.y, pg.x) / 3.7 + float2(-t * 0.041, t * 0.02) / gs, 1.0 / (3.7 * gs)).ga - 0.5) * 2.0;
     float3 nG = normalize(N + float3(gn * 0.22, 0.0));
     float gl = pow(saturate(dot(nG, Hh)), 700.0);
-    float spark = smoothstep(0.62, 0.9, NZG(p / 5.0 + float2(t * 0.02, 0.0), 1.0 / 5.0).r);
-    gw = saturate(gl * spark * (1.0 - smoothstep(600.0, 900.0, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
+    float spark = smoothstep(0.62, 0.9, NZG(pg / 5.0 + float2(t * 0.02 / gs, 0.0), 1.0 / (5.0 * gs)).r);
+    gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
 }
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
 Emis = 0;
-if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : Lag.zzz))); Emis = 0; Opac = 1.0; return dv; }
+if (Dbg > 0.5) { float3 dv = Dbg < 1.5 ? float3(frac(p / 10.0), 0.0) : (Dbg < 2.5 ? N * 0.5 + 0.5 : (Dbg < 3.5 ? Rough.xxx : (Dbg < 4.5 ? float3(wf, cf, gust) : (Dbg < 5.5 ? float3(saturate(dot(NormalW, Ls) * 4.0), wf, saturate(dot(N, Ls) * 4.0)) : Lag.zzz)))); Emis = 0; Opac = 1.0; return dv; }
 return float3(0.62, 0.6, 0.55);   // r03: cream foam albedo (r02 0.74 clipped at the seawall in the golden key)
 #undef NZG
 '''
@@ -367,7 +397,9 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 # r03 start (CPU emulation of the river_low near crop against the round-02 frame, see docs/night1/water/round-03/NOTES.md): dark body
 # (ScatK 0.06: the body radiance set the r02 trough floor p1 46), steeper resolved chop, F0 x1.6 (SpecK) for the sky / mist reflections
 # round-03 captures: autopick variant V3 (lowest penalty on the 1080p iteration stills, docs/night1/water/round-03/iter/autopick.json)
-PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0}
+PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
+          # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
+          'LongK': 2.0, 'FarRough': 0.3, 'TopVarK': 0.25, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
@@ -645,6 +677,7 @@ def build_in_unreal():
     view_map(ROOT + '/Maps/Water_View_RiverSun', 'golden', rs)
     view_map(ROOT + '/Maps/Water_View_RiverSun_Dolly', 'golden', rs, dolly=views['river_sun_dolly'])
     view_map(ROOT + '/Maps/Water_View_HarbourHigh', 'golden', views['harbour_high'])
+    view_map(ROOT + '/Maps/Water_View_HarbourSunHigh', 'golden', views['harbour_sun_high'])   # r04: same position, yaw toward the sun
     view_map(ROOT + '/Maps/Water_Perf_RiverSun_Base', 'golden', rs, water=False)
     # ---------------------------------------------------------------- tuning variants (SM2_WATER_VARIANTS = {"name": {param: value}, ...})
     var = json.loads(os.environ.get('SM2_WATER_VARIANTS') or '{}')

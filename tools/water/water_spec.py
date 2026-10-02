@@ -15,6 +15,8 @@ usage:
   water_spec.py s4 <S4 frame>                        CITY-SPEC C14 via tools/export/spec_farfield.py
   water_spec.py harbour <harbour_high frame>         (r03) harbour crop: high-pass sd, glints, pale blobs
   water_spec.py sparkle <river_sun frame>            (r03) sparkle width: % of frame width whose water column has >= 2 % of rows at Y >= 200
+  water_spec.py sunhigh <harbour_sun_high frame>     (r04) glints from swing height: glint %, glitter-path column coverage, sparkle size
+  water_spec.py foam <crop_river_low_4k_seawall_foam> [river_low_dolly.mp4]   (r04) contact-foam band along the seawall (+ its change at 4 fps)
   water_spec.py all <round_dir> [--json out.json]    every known capture in a round dir (+ PASS / FAIL against the r03 targets)
 
 r03 additions (so builder and critic measure identically; calibrated on round-02 + refs):
@@ -25,6 +27,18 @@ r03 additions (so builder and critic measure identically; calibrated on round-02
   sparkle width  = in the pack frame (84 % centre crop), water rows = rows >= 45 % of the height; a column 'sparkles' when >= 2 % of its
                    water rows have Y >= 200; result = % of columns. Round-02 river_sun_4k 35.5 %, reference waterfront-perch-trailer 67.1 %
                    (critic: 35.5 / 66).
+r04 additions:
+  harbour crop   = x 0-2400, y 1300-2160 (the r03 critic's crop; r03 used y 1300-2100). Round-03 frame: hp sd 4.27 (critic 4.3).
+  sunhigh        = harbour_sun_high_4k (harbour_high position, yaw 148 = toward the golden sun). Water crop x 0-3840, y 700-2160 of the native
+                   frame (>= 6 deg below the horizon at pitch -14 / hFOV 75; the horizon is at y ~456, the sun's mirror point at y ~861).
+                   glint = Y >= 200 AND high-pass (sigma 8) >= 30. Glitter-path columns = x 1480-2360 (sun azimuth +-10 deg; the sun is at the
+                   frame centre column). Column coverage = % of path columns with >= 2 % of the crop rows at Y >= 200 (the r03 sparkle-width rule);
+                   also reported with >= 1 glint pixel. Sparkle size = max(bbox w, h) of 8-connected glint components: median / p90 / count.
+  foam band      = in crop_river_low_4k_seawall_foam.jpg (river_low_4k[1250:2160, 1500:2700]) the bulkhead edge is found per row (first run of
+                   12 px with chroma >= 0.42, the orange timber) and fitted with a robust line; band width per row = pixels with Y >= 180 within
+                   60 px water-side of the edge. Round 02 (foam present): mean 13.3 px, 37.4 % of rows >= 12 px, band Y 207; round 03: 0 / 0 %.
+                   Dolly: the same line scaled to the 1080p dolly frames, sampled at 4 fps: band pixels per sample and the change between samples
+                   (XOR / OR of the band masks).
 Luma = Rec.709 on the 8-bit sRGB values."""
 import json, os, subprocess, sys
 import cv2, numpy as np
@@ -61,7 +75,10 @@ def near(path):
                 note='1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame' if src_w < 3840 else '')
 
 
-HARBOUR = (0, 2400, 1300, 2100)       # x0, x1, y0, y1 in the native 3840 x 2160 frame
+HARBOUR = (0, 2400, 1300, 2160)       # x0, x1, y0, y1 in the native 3840 x 2160 frame (r04: the critic's crop, r03 checker used y1 2100)
+SUNHIGH = (0, 3840, 700, 2160)        # r04 harbour_sun_high water crop (native 4K)
+SUNPATH = (1480, 2360)                # glitter-path columns (sun azimuth +-10 deg at hFOV 75)
+FOAMCROP = (1500, 1250)               # x0, y0 of crop_river_low_4k_seawall_foam in the native 4K river_low frame
 
 
 def _frame4k(path):
@@ -83,9 +100,73 @@ def harbour(path):
     im = _frame4k(path); x0, x1, y0, y1 = HARBOUR
     c = im[y0:y1, x0:x1]; Y = luma(c)
     hp = Y - cv2.GaussianBlur(Y, (0, 0), 8)
-    return dict(file=os.path.basename(path), crop='native 4K x0-2400 y1300-2100', mean_Y=round(float(Y.mean()), 1),
+    return dict(file=os.path.basename(path), crop='native 4K x0-2400 y1300-2160', mean_Y=round(float(Y.mean()), 1),
                 highpass_sd=round(float(hp.std()), 2), glint_pct_ge140=round(float((Y >= 140).mean() * 100), 2), pale_blobs_ge20px=pale_blobs(c, Y),
                 p1=round(float(np.percentile(Y, 1)), 1), p99_5=round(float(np.percentile(Y, 99.5)), 1))
+
+
+def sunhigh(path):
+    im = _frame4k(path); x0, x1, y0, y1 = SUNHIGH
+    c = im[y0:y1, x0:x1]; Y = luma(c); hp = Y - cv2.GaussianBlur(Y, (0, 0), 8)
+    g = ((Y >= 200) & (hp >= 30)).astype(np.uint8)
+    a, b = SUNPATH
+    colf = (Y[:, a:b] >= 200).mean(0)
+    n, lab, st, _ = cv2.connectedComponentsWithStats(g, 8)
+    sz = np.array([max(st[i, 2], st[i, 3]) for i in range(1, n)]) if n > 1 else np.zeros(0)
+    return dict(file=os.path.basename(path), crop='native 4K x0-3840 y700-2160, path columns x1480-2360', mean_Y=round(float(Y.mean()), 1),
+                highpass_sd=round(float(hp.std()), 2), glint_pct=round(float(g.mean() * 100), 3),
+                path_cols_pct_ge2pct_rows=round(float((colf >= 0.02).mean() * 100), 1), path_cols_pct_any=round(float((colf > 0).mean() * 100), 1),
+                sparkles=int(len(sz)), sparkle_px_median=float(np.median(sz)) if len(sz) else None, sparkle_px_p90=float(np.percentile(sz, 90)) if len(sz) else None,
+                p99_5=round(float(np.percentile(Y, 99.5)), 1))
+
+
+def _wall_edge(im):
+    mx, mn = im.max(2), im.min(2); ch = (mx - mn) / np.maximum(mx, 1.0); Y = luma(im)
+    H = im.shape[0]; e = np.full(H, -1.0)
+    for y in range(H):
+        m = ((ch[y] > 0.42) & (Y[y] > 40)).astype(int); cv = np.convolve(m, np.ones(12, int), 'valid'); xs = np.where(cv >= 12)[0]
+        if len(xs): e[y] = xs[0]
+    ys = np.arange(H); ok = e >= 0
+    A = np.polyfit(ys[ok], e[ok], 1); keep = ok & (np.abs(e - np.polyval(A, ys)) < 8); A = np.polyfit(ys[keep], e[keep], 1)
+    return A, Y
+
+
+def _band(Y, edge_x, win=60, thr=180.0):
+    W = np.zeros(len(edge_x), int); M = np.zeros(Y.shape, bool)
+    for y, ex in enumerate(edge_x):
+        x = int(round(ex)); a = max(0, x - win)
+        if x - 1 > a:
+            m = Y[y, a:x - 1] >= thr; W[y] = int(m.sum()); M[y, a:x - 1] = m
+    return W, M
+
+
+def foam(path, dolly_path=None):
+    im = cv2.imread(path).astype(np.float32)
+    A, Y = _wall_edge(im); ys = np.arange(Y.shape[0])
+    W, M = _band(Y, np.polyval(A, ys))
+    out = dict(file=os.path.basename(path), edge_line=[round(float(A[0]), 4), round(float(A[1]), 1)], band_px_mean=round(float(W.mean()), 1),
+               band_px_median=float(np.median(W)), rows_ge12px_pct=round(float((W >= 12).mean() * 100), 1),
+               band_Y_mean=round(float(Y[M].mean()), 1) if M.any() else None)
+    if dolly_path:
+        cap = cv2.VideoCapture(dolly_path); fps = cap.get(cv2.CAP_PROP_FPS) or 60; step = max(1, int(round(fps / 4))); n = 0; px = []; ch = []; prev = None
+        while True:
+            ok, fr = cap.read()
+            if not ok: break
+            n += 1
+            if (n - 1) % step: continue
+            s = fr.shape[1] / 3840.0                       # dolly frames are 1080p: the 4K crop line scaled
+            y0, y1 = int(FOAMCROP[1] * s), fr.shape[0]
+            Yd = luma(fr.astype(np.float32))[y0:y1]
+            ex = (np.polyval(A, (np.arange(y0, y1) / s) - FOAMCROP[1]) + FOAMCROP[0]) * s
+            Wd, Md = _band(Yd, ex, win=int(60 * s))
+            px.append(int(Md.sum()))
+            if prev is not None:
+                u = (Md | prev).sum(); ch.append(float((Md ^ prev).sum() / u) if u else 0.0)
+            prev = Md
+        out.update(dolly=os.path.basename(dolly_path), dolly_samples_4fps=len(px), dolly_band_px_mean=round(float(np.mean(px)), 1) if px else None,
+                   dolly_samples_with_band_pct=round(float(np.mean([p >= 50 for p in px]) * 100), 1) if px else None,
+                   dolly_band_change_xor_over_or=round(float(np.mean(ch)), 3) if ch else None)
+    return out
 
 
 def sparkle(path, thr=200.0, frac=0.02, horizon=0.45):
@@ -143,21 +224,31 @@ def main():
         for f in a[1:]: print(json.dumps(harbour(f)))
     elif cmd == 'sparkle':
         for f in a[1:]: print(json.dumps(sparkle(f)))
+    elif cmd == 'sunhigh':
+        for f in a[1:]: print(json.dumps(sunhigh(f)))
+    elif cmd == 'foam':
+        print(json.dumps(foam(a[1], a[2] if len(a) > 2 else None)))
     elif cmd == 'all':
         R = a[1]; res = {}
         for f in sorted(os.listdir(R)):
             p = os.path.join(R, f)
             if f.endswith(('.jpg', '.png')) and ('river' in f or 'harbour' in f) and not f.startswith('crop'):
                 res[f] = near(p)
-                if 'harbour' in f: res[f]['harbour'] = harbour(p)
+                if 'harbour_high' in f: res[f]['harbour'] = harbour(p)
+                if 'harbour_sun_high' in f: res[f]['sunhigh'] = sunhigh(p)
                 if 'river_sun' in f: res[f].update(sparkle(p))
             if f.endswith(('.jpg', '.png')) and f.startswith('S4'):
                 res[f] = s4(p)
             if f.endswith('.mp4'):
                 res[f] = dolly(p)
+            if f == 'crop_river_low_4k_seawall_foam.jpg':
+                d = os.path.join(R, 'river_low_dolly.mp4')
+                res[f] = foam(p, d if os.path.exists(d) else None)
         for k, v in res.items(): print(json.dumps(v))
         res['_checks_r03'] = checks(res)
-        for c in res['_checks_r03']: print('%-4s %-58s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1]))
+        res['_checks_r04'] = checks_r04(res)
+        print('-- r03 targets'); [print('%-4s %-58s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1])) for c in res['_checks_r03']]
+        print('-- r04 round targets'); [print('%-4s %-58s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1])) for c in res['_checks_r04']]
         if '--json' in a: json.dump(res, open(a[a.index('--json') + 1], 'w'), indent=1)
 
 
@@ -183,6 +274,38 @@ def checks(res):
         if k in res: add('%s autocorr at 80 px <= 0.10' % k, res[k]['autocorr_80px'], res[k]['autocorr_80px'] <= 0.10)
     r = res.get('S4_golden_4k.jpg')
     if r: add('S4 C14 5..35', r['C14'], 5 <= r['C14'] <= 35)
+    return out
+
+
+def checks_r04(res):
+    """round-04 targets (docs/night1/water/SHOTLIST.md; perf from perf.json separately). river_low p99.5 / glints and the S4 haze band are
+    sky-ceiling items (look piece), not scored here."""
+    out = []
+    def add(name, v, ok): out.append((name, v, bool(ok)))
+    r = res.get('harbour_high_4k.jpg')
+    if r:
+        h = r['harbour']
+        add('harbour_high crop hp sd >= 10', h['highpass_sd'], h['highpass_sd'] >= 10)
+        add('harbour_high crop pale blobs (>= 20 px) == 0', h['pale_blobs_ge20px'], h['pale_blobs_ge20px'] == 0)
+    r = res.get('harbour_sun_high_4k.jpg')
+    if r:
+        h = r['sunhigh']
+        add('harbour_sun_high glints (Y>=200, hp>=30) >= 0.5 %', h['glint_pct'], h['glint_pct'] >= 0.5)
+        add('harbour_sun_high path columns with Y>=200 >= 50 %', h['path_cols_pct_ge2pct_rows'], h['path_cols_pct_ge2pct_rows'] >= 50)
+        add('harbour_sun_high sparkle size median <= 6 px', h['sparkle_px_median'], h['sparkle_px_median'] is not None and h['sparkle_px_median'] <= 6)
+    r = res.get('crop_river_low_4k_seawall_foam.jpg')
+    if r:
+        add('seawall foam band mean >= 12 px (Y >= 180)', r['band_px_mean'], r['band_px_mean'] >= 12)
+        add('seawall foam rows with >= 12 px band >= 30 %', r['rows_ge12px_pct'], r['rows_ge12px_pct'] >= 30)
+        if r.get('dolly_band_change_xor_over_or') is not None:
+            add('seawall foam changes between 4 fps dolly samples (xor/or >= 0.3)', r['dolly_band_change_xor_over_or'], r['dolly_band_change_xor_over_or'] >= 0.3)
+    r = res.get('river_low_4k.jpg')
+    if r:
+        add('river_low near hp sd >= 9.9 (hold)', r['highpass_sd'], r['highpass_sd'] >= 9.9); add('river_low near mean Y <= 80 (hold)', r['mean_Y'], r['mean_Y'] <= 80)
+    for k in ('river_low_dolly.mp4', 'river_sun_dolly.mp4'):
+        if k in res: add('%s autocorr at 80 px <= 0.10 (hold)' % k, res[k]['autocorr_80px'], res[k]['autocorr_80px'] <= 0.10)
+    r = res.get('S4_golden_4k.jpg')
+    if r: add('S4 C14 5..35 (hold)', r['C14'], 5 <= r['C14'] <= 35)
     return out
 
 

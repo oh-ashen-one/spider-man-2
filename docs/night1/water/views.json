@@ -97,5 +97,24 @@
   "pitch": -14.0,
   "hfov": 75.0,
   "rig": "golden"
+ },
+ "harbour_sun_high": {
+  "id": "harbour_sun_high",
+  "desc": "round 04: harbour_high position and height (260 m above the harbour, 1.2 km south of the southern tip), turned toward the golden-hour sun: the sun-facing view from swing height (glitter path over the far field)",
+  "derivation": "same ue_cm / pitch / hFOV as harbour_high; yaw = the golden sun azimuth: look_presets golden compass az 238 deg -> UE (X east, Y south) direction (sin 238, -cos 238) = (-0.848, 0.530) -> yaw atan2(0.530, -0.848) = 148 deg (same conversion as river_sun). The sun (elev 9 deg) sits at the top edge of the frame (pitch -14, vFOV 46.7), its mirror point at 9 deg depression (~1.6 km out)",
+  "browser_pos": [
+   0.0,
+   260.0,
+   4700.0
+  ],
+  "ue_cm": [
+   0.0,
+   470000.0,
+   26000.0
+  ],
+  "yaw": 148.0,
+  "pitch": -14.0,
+  "hfov": 75.0,
+  "rig": "golden"
  }
 }

@@ -74,3 +74,13 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
   DerivedDataCache were kept, because the next round rebuilds here (about 10 min plus queue).
 - Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones), `iter/r03`, `cap/` (6.4 GB: dolly PNG frames for both dollies plus still captures and perf runs,
   delete them once round 04 has its own), `r03/` scripts and logs.
+
+## ROUND 04 IN PROGRESS (WIP note, 2026-10-02 06:55; replaced by the full hand-off at the end of the round)
+- Shader changes committed in `build_water.py` (64 m long-wave layer + `LongK` far gain, view-dependent far roughness `FarRough` / `TopVarK` /
+  `GrazeRough`, foam on the long-wave normal `FoamNK`, sun-facing glitter early-out + extension to `GlitDist` with coarser far facets
+  `GlitFar`, `Dbg 5` = N.L of the foam normal; turbidity from the gust sample). Offline dxc compile: OK.
+- New view `harbour_sun_high` (views.json, SHOTLIST, capture_round). Checker: `water_spec.py sunhigh|foam`, r04 checks.
+- Capture hold queued 06:50 (`_scratch/water/r04/hold_r04.sh`, log `r04/hold.log`, pid in `r04/hold.pid`): build + iteration stills,
+  decision gate (`r04/decide.json`, else `r04/auto_params.json`), final build, stills, dollies into `docs/night1/water/round-04/`.
+  If this session is gone: check `hold.log`; when it says `HOLD r04 DONE`, run the perf hold (see r03 `perf_chain.sh`, maps incl. native100)
+  and `water_spec.py all docs/night1/water/round-04 --json .../spec.json`.
