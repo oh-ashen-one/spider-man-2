@@ -1,4 +1,4 @@
-# Terrain (piece E) — HANDOFF (round 02: pass 1 rendered and measured, pass 2 queued in the GPU lock)
+# Terrain (piece E) — HANDOFF (round 02: pass 2 rendered, measured and packed; pass 3 queued in the GPU lock)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -24,13 +24,18 @@ far / mid crowns 6.6-10.5, near-right 6.9-10.0, foreground crowns (dark: luma 21
 (dark crushed foreground patches, not lit hull faces). Lawn: vivid green now (p10 crop G/R 1.20, sat 0.51; aerial crops G/R 0.78-0.96), E1 guard boxes 6.47 / 3.66 / 4.79 / 11.76 vs round 1 4.92 / 4.65 / 6.93 / 15.09 (the p9 / p4 boxes of round 1 contain tree parts).
 Visuals: p2 Reservoir, p4 Great Lawn, p9 panorama, p8 pier read well; foreground canopy too dark; far crowns read as yellow lumpy "potatoes"; p6 / p7 cameras were against buildings (fixed for pass 2).
 
-## Pass 2 (queued; the same hold script, stills + both movies, no baselines)
-Changes since pass 1: crown contrast up (`Foliage.ush`: extra ~1 m octave, bump weights 3 / 0.5 -> 7.5 / 0.2, deeper gaps, clump contrast 0.42-1.35, tilt 0.0026 x distance), ambient fill (`Emis`) on `M_TerrainLeaves` / `M_TerrainCards`,
-lawn grade (0.54, 1.20, 0.46), cameras. Content for pass 2 is built (nullrhi, before the slot). Ticket: `gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh` (pid in `_scratch/terrain/round2_hold.pid`, log `_scratch/terrain/logs/round2_hold_c.log`).
-If the ticket is gone, re-enqueue it from the worktree (rebuild first only if sources changed; never inside the hold). Outputs land in `docs/night1/terrain/round-02/` (stills 3840x2160 internal 1920x1080, `t4_lawn_sprint.mp4`, `t5_avenue_to_park.mp4` 1920x1080).
-After the hold: pick crown crops on the new p1_south (`python3 tools/terrain/grid_overlay.py <still> <out.jpg>`), write `round-02/crops.json` (`crops` = lawn boxes for `crop_manual.py`, `crowns` = 150 px boxes), then
-`tools/terrain/measure_round.sh docs/night1/terrain/round-02`, `python3 tools/terrain/make_pairs.py docs/night1/terrain/round-02 /Users/midir/sm2-n1/_scratch/critic-E-r02/pairs.json docs/night1/terrain/round-01` and
-`python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-E-r02/pack /Users/midir/sm2-n1/_scratch/critic-E-r02/pairs.json`. A pass-1 pack is already there (fallback).
+## Pass 2 (rendered 2026-10-02 03:44-04:08, committed in `round-02/`; critic pack built from it)
+Changes since pass 1: crown contrast up (`Foliage.ush`: extra ~1 m octave, bump weights 3 / 0.5 -> 7.5 / 0.2, deeper gaps, clump contrast 0.42-1.35, tilt 0.0026 x distance), lawn grade (0.54, 1.20, 0.46), cameras p3 / p6 / p7, ambient-fill `Emis` on the leaf materials.
+Result (`round-02/README.md`, `crown_stats.txt`): far / mid crowns 8.2-13.8 (most >= 9), dark foreground crowns still 2.2-5.7 (luma 21-66), 9 / 24 crops >= 9 -> **E8 not met**; p10 has no flat hull face > 40 px, p1 has 3 dark crushed patches (max 82 px).
+**Diagnosis of the unchanged foreground**: `Emis` was wired (probed with a nullrhi commandlet) but 0.65 x albedo is ~1000x too small: the golden rig is physical (sun 44000 lux, EV 8.2-13, sunlit albedo A radiates ~10000 A cd/m2) -> pass 3 uses `Emis = c * 1800 * (0.4 + 0.6 expo)` (about a 15 % fill).
+The pass-2 p7 camera sat inside a far-city mass (the browser export's `farCity*` boxes overhang the water up to 35 m along z -1080..-320 on both shores): p7 moved to z -1270 (no mass within 250 m of the shore). p6 (z -820) rendered fine.
+A pass-1 -> pass-2 health event is documented in the README (monitor stopped the first 4K still launch with `WS-STARVED`, auto-pause, auto-lift after 10 calm min).
+
+## Pass 3 (queued, writes to `docs/night1/terrain/round-02b/`, so the committed pass-2 evidence is not overwritten)
+Ticket: `ROUND_NAME=round-02b gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round2.sh` (pid in `_scratch/terrain/round2_hold.pid`, log `_scratch/terrain/logs/round2_hold_d.log`); content already rebuilt (emissive scale, p7). If the ticket is gone, re-enqueue it the same way
+(rebuild first only if sources changed; never inside the hold; a 4K still launch is the moment the health monitor may stop an engine: do not lift a pause yourself, it auto-lifts after 10 calm minutes).
+After the hold: `crops.json` for round-02b (same crown boxes as round-02 unless the framing changed), `tools/terrain/measure_round.sh docs/night1/terrain/round-02b`, `make_pairs.py docs/night1/terrain/round-02b ... docs/night1/terrain/round-01` and `abpack.py`
+(a pass-2 pack is already at `/Users/midir/sm2-n1/_scratch/critic-E-r02/pack`; rebuild it from round-02b if pass 3 is better, and say so in `round-02/README.md`).
 
 ## Offline shader verification (new, saves GPU-lock turns)
 - `python3 tools/terrain/check_hlsl.py`: every material body through DXC with UE's parameter types (VectorParameter = float3). 12 / 12.
