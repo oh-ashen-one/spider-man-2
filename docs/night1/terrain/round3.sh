@@ -5,8 +5,9 @@
 # Content is rebuilt BEFORE the slot (nullrhi commandlets, no GPU). Enqueue with:
 #   /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round3.sh
 set -uo pipefail
-for _ in $(seq 1 120); do [ -e /Users/midir/sm2-n1/_scratch/terrain/BUILDING ] || break; sleep 5; done
-[ -e /Users/midir/sm2-n1/_scratch/terrain/BUILDING ] && { echo "terrain content still building after 10 min: giving the slot back"; exit 5; }
+S=/Users/midir/sm2-n1/_scratch/terrain   # BUILDING = one commandlet running, BUILDING_CHAIN = a chain of builds (terrain, then the r02 copy) not finished yet
+for _ in $(seq 1 120); do [ -e $S/BUILDING ] || [ -e $S/BUILDING_CHAIN ] || break; sleep 5; done
+if [ -e $S/BUILDING ] || [ -e $S/BUILDING_CHAIN ]; then echo "terrain content still building after 10 min: giving the slot back"; exit 5; fi
 export HOLD_START=$(date +%s)
 HERE="$(cd "$(dirname "$0")" && pwd)"; ROUND="$HERE/${ROUND_NAME:-round-03}"
 mkdir -p "$ROUND/stills"

@@ -7,6 +7,14 @@ Owns `/Game/Terrain`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_t
 `unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E8 added), `SHOTLIST.md`, `shots.json` (p3 / p6 / p7 cameras changed in round 02).
 Nothing of this piece is running (no engine, no Vite, no queued ticket). Content (`/Game/Terrain`) in this worktree is built from the committed scripts (pass-3 state); it is never committed.
 
+## Round 03 IN PROGRESS (2026-10-02 07:20, Opus 5.5) — target: canopy reads as leaves at every distance (critic r02 biggest gap)
+State: integration branch merged (fast-forward to 994d0ec), editor rebuilt, water built in this worktree (`build_water.py`, scratch `_scratch/terrain/water`), terrain content rebuilt with the r03 scripts,
+r02 scripts building side by side into `/Game/TerrainR2` (scratch copy `_scratch/terrain/r03/build_terrain_r02.py`, for the GPU-ms comparison only). Hold queued: `_scratch/terrain/r03/hold_r03.sh` (pid in `hold.pid`, log `hold.log`)
+-> `docs/night1/terrain/round3.sh` -> `round-03/`. If this session died: check `gpu_status.sh` for a terrain holder, let a running hold finish (or stop it by its PID, engine with `stop_ue.sh`), then `tools/terrain/measure_round.sh docs/night1/terrain/round-03`.
+r03 changes (committed): `trees-*-lod1` leaf-card pools 165-520 m (collect_terrain.js runs trees.js canopyGeometry with the LOD1 recipe; LOD0 reproduced vertex for vertex), clump hull only >= 520 m with bump 3.0 / 0.5,
+crownfar dropped; foliage pools out of the ray-tracing scene (root cause of the black cards, see build_terrain.py `_sec_trees`); `Emis` constant replaced by AO from exposure + `tfFillW` residual fill (0 in sun, 0 < 10 m);
+crown_stats.py: dark pockets in the flat test + silhouette straight-edge test; capture_round.sh: GPU ms per still (`gpu_ms.txt`).
+
 ## Round 02 outcome (2026-10-02, details and numbers: `round-02/README.md`)
 Target: trees / canopy at swing height (round-01 critic's biggest gap). Done: the browser's whole park-tree chain is ported with dithered per-pool distance bands (`Shaders/Terrain/Foliage.ush` + `M_TerrainLeaves / Bark / Cards / Clump / Crown`, 46 HISM pools, 47,710 instances), Nanite flag on the ez materials,
 physically scaled ambient fill, lawn grade, brighter blankets, cameras p3 / p6 / p7 fixed, round-01 movies with the dev-suit emblem `git rm`ed, round-02 movies with the hero hidden.
