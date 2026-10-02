@@ -1,11 +1,11 @@
 {
- "name": "w1_wallrun_tall_zip",
+ "name": "t1_c",
  "seed": 1234,
  "spawn": {
   "pos": [
    -240,
-   -50,
-   56
+   -55,
+   52
   ],
   "yaw": 0,
   "camPitch": 0.12,
@@ -53,6 +53,5 @@
    "t": 6.300000000000001,
    "zip": false
   }
- ],
- "note": "Round 23: w1 on the sunlit 300 m tower west face (x ~-229.4, lit above ~48 m): jump onto the face from the podium height, vertical wall run, E at 3.6 s -> zip (facade top > 110 m up: nearest visible roof edge) -> perch, E on the perch at 6.2 s. Variant t1_d."
+ ]
 }

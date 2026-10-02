@@ -1847,13 +1847,21 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	W.Move = FVector2D(MX, MY);
 	const double Len = FMath::Sqrt(MX * MX + MY * MY);
 	if (Len > 1) { MX /= Len; MY /= Len; }
-	const double VX = (bFast ? WALLRUN : 4.2) * MX, VYIn = (bFast ? WALLRUN : 4.2) * MY; // user r9r
+	double VX = (bFast ? WALLRUN : 4.2) * MX;
+	const double VYIn = (bFast ? WALLRUN : 4.2) * MY; // user r9r
 	// round 22: an upright side run (stick sideways) sheds the climb speed fast (rate WallSideClimbDamp, r21 3/s) so the run line levels out
 	// along the facade in ~0.15 s instead of a 45 deg diagonal for half a second (the torso is upright: "above the run line" needs a level run)
 	const bool bSideLevel = WallSideUpright > 0.5f && UWebTravAnimInstance::bWallGait && FMath::Abs(MY) <= 0.2 && FMath::Abs(MX) > 0.2;
 	W.RunV = Damp(W.RunV, 0, bFast && MY > 0.2 ? 0.4 : FMath::Sqrt(MX * MX + MY * MY) < 0.2 ? 9 : bSideLevel ? double(WallSideClimbDamp) : 3, Hs);
 	if (S.Sub == N_wallZip) { W.RunV = ZV; bFast = true; }
 	const double VY = ZV != 0 ? ZV : FMath::Max(VYIn, MY >= -0.1 ? W.RunV : -1e9);
+	// round 23 (director r23: vertical sprint torso 5-20 deg off wall-up; c climbed a 33 deg diagonal -- torso 28-35 deg): a vertical-dominant
+	// fast run keeps its run line within WallVertMaxDeg of the wall's up axis (the sideways share of the stick is shed; side runs untouched)
+	if (WallVertMaxDeg > 0.f && UWebTravAnimInstance::bWallGait && bFast && S.Sub != N_wallZip && MY > 0.2 && FMath::Abs(MY) >= FMath::Abs(MX) && VY > 1.0)
+	{
+		const double MaxX = VY * FMath::Tan(FMath::DegreesToRadians(double(WallVertMaxDeg)));
+		VX = FMath::Clamp(VX, -MaxX, MaxX);
+	}
 	S.Vel = Right * VX + ZUP * VY;
 	W.bFast = bFast && (FMath::Abs(VX) + FMath::Abs(VY) > 5);
 	W.Phase += S.Vel.Size() * Hs / (W.bFast ? 2.6 : 1.2);
@@ -2312,6 +2320,9 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 {
 	const double ZipRange = 58.0;
 	const FVector Eye = S.Pos + FVector(0, 0, 0.5);
+	// round 23 (critic r22: "w2 zipFire 4.00 s, it never lands -- z 232 m at 6.97 s"; T4): a facade top more than WallZipFarUp above the hero
+	// (a ~4 s flight up a 284 m tower) is only the fallback; the nearest roof edge / corner within reach is taken first
+	FTravZipPoint FarTop; bool bFarTop = false;
 	if (S.Mode == EWebTravMode::Wall)
 	{
 		// round 20 (critic r19: "E from a side-run ends clinging mid-facade at 61 m" -- the facade top was > 58 m up): on a wall the facade
@@ -2343,6 +2354,7 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 				const FVector Edge = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + (bPerchTopFix ? FMath::Max(0.2, BestIn) : 0.25));
 				Out.Pos = FVector(Edge.X, Edge.Y, Top.Point.Z); Out.Normal = Flat(N).GetSafeNormal(); Out.Kind = FName(TEXT("roofEdge")); Out.Box = Top.Box;
 				Why = TEXT("facadeTop");
+				if (WallZipFarUp > 0.f && Top.Point.Z - S.Pos.Z > double(WallZipFarUp)) { FarTop = Out; bFarTop = true; break; }
 				return true;
 			}
 			break;
@@ -2371,9 +2383,43 @@ bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
 		if (TravWorld.Raycast(Eye, D / L, L, Hv) && Hv.Distance < L - 0.7) continue;
 		BS = Sc; Best = &P;
 	}
-	if (!Best) return false;
+	if (!Best && bFarTop && WallZipFarRange > 0.f)
+	{ // round 23 (Z23, probe r23: w2 found nothing in front of the wall camera -- it faces the facade -- and flew 4 s up the 300 m tower):
+	  // any visible roof edge / corner off the wall within WallZipFarRange, nearest first, along the run preferred, never through the wall
+		const double FR = double(WallZipFarRange);
+		TArray<FTravZipPoint> P2;
+		Anchors->QueryZipPoints(Eye, FR, P2);
+		const FVector Nf = Flat(S.W.Normal).GetSafeNormal();
+		const FVector RunD = Flat(S.Vel).GetSafeNormal();
+		FTravZipPoint Far2;
+		double BS2 = TNumericLimits<double>::Max();
+		bool bF2 = false;
+		for (const FTravZipPoint& P : P2)
+		{
+			const FVector Rel = P.Pos - Eye;
+			const double Dist = Rel.Size();
+			if (Dist < 3.0 || Dist > FR) continue;
+			const FVector RF = Flat(Rel).GetSafeNormal();
+			if (!RF.IsNearlyZero() && FVector::DotProduct(RF, -Nf) > 0.5) continue; // behind the facade
+			const double Run = RunD.IsNearlyZero() || RF.IsNearlyZero() ? 0.0 : FVector::DotProduct(RF, RunD);
+			const double Sc = Dist / FR + (1.0 - Run) * 0.3 + (P.Pos.Z > Eye.Z + 25.0 ? 0.4 : 0.0) - (P.Kind == FName(TEXT("roofCorner")) ? 0.05 : 0.0);
+			if (Sc >= BS2) continue;
+			FVector Tgt = P.Pos + P.Normal * 0.35; Tgt.Z += 0.35;
+			const FVector D = Tgt - Eye;
+			const double L = D.Size();
+			FTravHit Hv;
+			if (TravWorld.Raycast(Eye, D / L, L, Hv) && Hv.Distance < L - 0.7) continue;
+			BS2 = Sc; Far2 = P; bF2 = true;
+		}
+		if (bF2) { Out = Far2; Why = TEXT("nearFar2"); return true; }
+	}
+	if (!Best)
+	{
+		if (bFarTop) { Out = FarTop; Why = TEXT("facadeTop"); return true; }
+		return false;
+	}
 	Out = *Best;
-	Why = TEXT("nearest");
+	Why = bFarTop ? TEXT("nearFar") : TEXT("nearest");
 	return true;
 }
 
