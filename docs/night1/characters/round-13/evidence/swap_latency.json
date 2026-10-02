@@ -3,7 +3,7 @@
   602
  ],
  "matched": 7,
- "method": "colour histogram of the hero pixels (centre 40 pct minus side strips), step > 0.212 (median step 0.042)",
+ "method": "colour histogram of the hero pixels (centre 40 pct minus side strips), step > 0.214 (median step 0.043)",
  "frames": 691,
  "swap_frames": [
   91,
@@ -34,13 +34,13 @@
   521
  ],
  "hist_steps": [
-  0.255,
-  0.247,
-  0.296,
-  0.266,
+  0.254,
+  0.246,
+  0.297,
+  0.265,
   0.226,
-  0.26,
-  0.274,
+  0.268,
+  0.275,
   0.782
  ],
  "latency_frames": [
@@ -68,7 +68,7 @@
    "why": "console",
    "t": 0.017,
    "frame": 0,
-   "apply_ms": 0.4
+   "apply_ms": 0.45
   },
   {
    "i": 3,
@@ -76,7 +76,7 @@
    "why": "key T",
    "t": 1.517,
    "frame": 90,
-   "apply_ms": 0.29
+   "apply_ms": 0.32
   },
   {
    "i": 4,
@@ -92,7 +92,7 @@
    "why": "key T",
    "t": 3.917,
    "frame": 234,
-   "apply_ms": 0.32
+   "apply_ms": 0.29
   },
   {
    "i": 6,
@@ -100,7 +100,7 @@
    "why": "key T",
    "t": 5.117,
    "frame": 306,
-   "apply_ms": 0.86
+   "apply_ms": 0.27
   },
   {
    "i": 7,
@@ -108,7 +108,7 @@
    "why": "key T",
    "t": 6.317,
    "frame": 378,
-   "apply_ms": 0.27
+   "apply_ms": 0.26
   },
   {
    "i": 0,
@@ -116,7 +116,7 @@
    "why": "key T",
    "t": 7.517,
    "frame": 450,
-   "apply_ms": 0.28
+   "apply_ms": 0.22
   },
   {
    "i": 1,
@@ -124,63 +124,63 @@
    "why": "key T",
    "t": 8.717,
    "frame": 522,
-   "apply_ms": 0.28
+   "apply_ms": 0.29
   }
  ],
  "engine_swap_done": [
   {
    "i": 2,
    "id": "plum",
-   "wall_ms": 740.6,
+   "wall_ms": 733.1,
    "frames": 4,
    "res": "3/4"
   },
   {
    "i": 3,
    "id": "cinder",
-   "wall_ms": 458.4,
+   "wall_ms": 451.4,
    "frames": 2,
    "res": "4/4"
   },
   {
    "i": 4,
    "id": "glacier",
-   "wall_ms": 467.8,
+   "wall_ms": 452.3,
    "frames": 2,
    "res": "4/4"
   },
   {
    "i": 5,
    "id": "ash",
-   "wall_ms": 507.6,
+   "wall_ms": 450.0,
    "frames": 2,
    "res": "4/4"
   },
   {
    "i": 6,
    "id": "saffron",
-   "wall_ms": 704.7,
+   "wall_ms": 455.1,
    "frames": 2,
    "res": "4/4"
   },
   {
    "i": 7,
    "id": "sage",
-   "wall_ms": 743.7,
+   "wall_ms": 457.8,
    "frames": 2,
    "res": "4/4"
   },
   {
    "i": 0,
    "id": "tessera",
-   "wall_ms": 454.8,
+   "wall_ms": 459.8,
    "frames": 2,
    "res": "4/4"
   },
   {
    "i": 1,
    "id": "verdant",
-   "wall_ms": 460.5,
+   "wall_ms": 451.0,
    "frames": 2,
    "res": "4/4"
   }
