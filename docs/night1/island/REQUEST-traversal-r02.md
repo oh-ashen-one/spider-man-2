@@ -28,3 +28,13 @@ bus shelters, dumpsters, parked cars, tree barks ...) now carries cooked triangl
 responses (`build_city.py proto_ab()`). r20's default (`-WHTravIsmSolid=0`) is unchanged; with `=1` the traversal re-enables them
 (QueryOnly). Sheds, shed tops and subway entrances are solids in both modes. The measured A/B (stuck frames, trunk-overlap frames, same
 r1 route, fixed 1/60 s step) is in `docs/night1/island/round-02/README.md` ("IsmSolid A/B"); the default decision is traversal's.
+
+## 3. topOut loop under a fire-escape deck (r02 r3 take 2, measured)
+
+`round-02/r3_crosstown_east_telemetry.csv` t 2.50 - 8.50 s: after a swing into the west face of the block at x -234 m (wall top 37.8 m,
+parapet to 38.95 m), the hero stays in `air / topOut` at x -235.5, y 616.4 for 6 s, bouncing between feet z ~32.5 and ~35.5 (vz +9.9 m/s
+kicks every ~1.3 s). The face carries a fire escape (kit decks at 28.3 / 32.0 / 35.7 m, outer edge x -235.15). The top-out keeps
+re-launching from the 32.0 m deck into the underside of the 35.7 m deck (headroom 3.6 m) instead of giving up / letting the swing
+button fire a web: no web for 6.43 s while swing is held. This one event fails critic test 1 (each release -> next web <= 0.5 s).
+Ask: abort top-out when the climb path is capped by an overhang (or after one failed attempt) and allow webs from `topOut`.
+The geometry is what is drawn (decks are real platforms, traced complex); the island will not remove fire escapes to avoid it.
