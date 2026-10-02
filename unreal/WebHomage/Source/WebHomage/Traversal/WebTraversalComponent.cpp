@@ -1732,7 +1732,8 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 				const double Target = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir, &RoofOver);
 				const double WantRaw = FMath::Max(double(FlowApexMin), Target - S.Pos.Z);
 				// round 24 (T7): the altitude chain's apex (hips at AltApexNow m over the floor) is a floor under the roofline rule
-				const double WantAlt = bAltRel ? FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1) + AltApexNow + H - S.Pos.Z : -1e9;
+				// (hold C probe a: the flip cycle solved for the jittered 38 m apex ran 4.1 s release -> release; a flip takes the base apex)
+				const double WantAlt = bAltRel ? FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1) + double(AltApexH) + H - S.Pos.Z : -1e9;
 				const bool bRoofOut = Target > 0.0 && WantRaw > FlowApexGain(double(FlowApexVzMax), FP) + 0.5;
 				// TC8 "else it fires anyway": a roofline the capped climb cannot clear (Midtown canyons, 45-300 m walls) keeps the r13/r15 rule
 				// (the r17 probe of a / b solved for 72-100 m rooflines and rocketed 20 m up for 2 s)
@@ -1744,7 +1745,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 				{
 					if (Target > 0.0 && !bRoofOut) FlowRoofUsed = RoofOver;
 					const double Want = bAltRel ? FMath::Max(bRoofOut || Target <= 0.0 ? double(FlowApexMin) : WantRaw, WantAlt) : WantRaw;
-					if (bAltRel) { AltApexWant = AltApexNow; ++AltRelIdx; bAltArcNext = true; }
+					if (bAltRel) { AltApexWant = double(AltApexH); ++AltRelIdx; bAltArcNext = true; }
 					double Lo = 0.0, Hi = bAltRel ? double(FMath::Max(FlowApexVzMax, AltFlowVzMax)) : double(FlowApexVzMax);
 					if (FlowApexGain(Hi, FP) <= Want) Lo = Hi;
 					else for (int32 It = 0; It < 30; ++It) { const double Md = 0.5 * (Lo + Hi); (FlowApexGain(Md, FP) < Want ? Lo : Hi) = Md; }

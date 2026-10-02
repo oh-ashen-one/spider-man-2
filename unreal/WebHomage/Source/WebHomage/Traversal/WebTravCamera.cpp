@@ -256,7 +256,14 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			double Hd = 0.0;
 			const bool bBlocked = World.SphereOverlaps(Chest, 0.22) ? false : World.SphereSweep(Chest, Spot, GndStopR, Hd);
 			if (!bBlocked) { GndYawOk = Yaw; bGndYawOk = true; GndStopped = 0; }
-			else if (bGndYawOk && LastLook < GndLookHold) { AutoYaw += WrapA(GndYawOk - Yaw); Yaw = GndYawOk; GndStopped = 1; }
+			else if (bGndYawOk && LastLook < GndLookHold)
+			{
+				AutoYaw += WrapA(GndYawOk - Yaw); Yaw = GndYawOk;
+				// (hold C probe, c on its r23 path: with the yaw held the chase spring / sweep still pulled the lens 1 m in and swung the view
+				//  28 deg back) -- the lens itself is held where the stop began (it saw the whole hero there), looking at the hero
+				if (!GndStopped && bOutInit) { GndStopPos = LastOutPos; }
+				GndStopped = 1;
+			}
 		}
 		else { bGndYawOk = false; GndStopped = 0; }
 	}
@@ -618,6 +625,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (VisUp > 0.01) { FVector C3 = Base + FVector(0, 0, VisUp); ClearFrom(From, C3, Cam); }
 		VisPts = Vis(Cam);
 	}
+	if (GndStopped && GndHoldLens > 0.0 && !GndStopPos.IsZero() && !World.LineBlocked(GndStopPos, Hero + FVector(0, 0, 0.3))) Cam = GndStopPos; // round 24
 	CamPos = Cam;
 	LastComposeHero = Hero; bHaveComposeHero = true;
 	HeroDist = FVector::Dist(CamPos, Hero);
@@ -838,7 +846,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
-		{TEXT("GndStop"), &GndStop}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
+		{TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }
