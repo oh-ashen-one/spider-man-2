@@ -1848,7 +1848,10 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	const double Len = FMath::Sqrt(MX * MX + MY * MY);
 	if (Len > 1) { MX /= Len; MY /= Len; }
 	const double VX = (bFast ? WALLRUN : 4.2) * MX, VYIn = (bFast ? WALLRUN : 4.2) * MY; // user r9r
-	W.RunV = Damp(W.RunV, 0, bFast && MY > 0.2 ? 0.4 : FMath::Sqrt(MX * MX + MY * MY) < 0.2 ? 9 : 3, Hs);
+	// round 22: an upright side run (stick sideways) sheds the climb speed fast (rate WallSideClimbDamp, r21 3/s) so the run line levels out
+	// along the facade in ~0.15 s instead of a 45 deg diagonal for half a second (the torso is upright: "above the run line" needs a level run)
+	const bool bSideLevel = WallSideUpright > 0.5f && UWebTravAnimInstance::bWallGait && FMath::Abs(MY) <= 0.2 && FMath::Abs(MX) > 0.2;
+	W.RunV = Damp(W.RunV, 0, bFast && MY > 0.2 ? 0.4 : FMath::Sqrt(MX * MX + MY * MY) < 0.2 ? 9 : bSideLevel ? double(WallSideClimbDamp) : 3, Hs);
 	if (S.Sub == N_wallZip) { W.RunV = ZV; bFast = true; }
 	const double VY = ZV != 0 ? ZV : FMath::Max(VYIn, MY >= -0.1 ? W.RunV : -1e9);
 	S.Vel = Right * VX + ZUP * VY;

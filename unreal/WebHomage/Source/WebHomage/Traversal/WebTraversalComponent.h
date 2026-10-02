@@ -73,6 +73,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideLeanDeg = 14.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideOutDeg = 16.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideFootOff = 0.36f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideClimbDamp = 10.f; // round 22 (r21 3): climb-speed decay on a sideways run (1/s)
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
