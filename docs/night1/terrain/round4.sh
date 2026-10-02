@@ -22,6 +22,9 @@ case "${STAGE:-A}" in
   C) # hold 3 (r04 final stills): safe warm-up, the nine 4K stills (p10 p4 p9 p1 first), the t5 route probes (picks chosen.json for the movies hold), GPU ms of p1 / p10 HEAD vs r04 (basegpu, if time is left)
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04 PROBE_DIR="${PROBE_DIR:-$HERE/round-04/t5_candidates3}"
      ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=("t5probe" "basegpu");;
+  D) # hold 4 (r04 final stills): safe warm-up + the nine 4K stills only (p10 p4 p9 p1 first); no probes (the route is chosen), no movies (hold M), no baseline (hold 3 has it)
+     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04
+     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=();;
   M) # movies hold: t5 (on the probe's chosen route) then t4; each only starts in the first 25 min of the hold; the shaders are cached by the stills hold (no warm-up)
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" MOVIES="${MOVIES:-t5_avenue_to_park t4_lawn_sprint}"
      ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(moves); AFTER=();;

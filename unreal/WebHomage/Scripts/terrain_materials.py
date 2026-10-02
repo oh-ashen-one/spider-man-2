@@ -7,7 +7,7 @@
 # Frames: wpos is the UE world position in cm; the browser frame is (x, y up, z) metres = (X, Z, Y) / 100.
 
 PARK_INC = '/Project/Terrain/Park.ush'
-LAWN_GRADE = (0.60, 1.32, 0.10, 1.0)   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
+LAWN_GRADE = (0.86, 1.62, 0.12, 1.0)   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
 LAWN_K = (1.0, 0.16, 1.0, 1.0)        # r04 Lawn.ush: (detail amplitude, mowing-stripe amplitude, grass saturation)
 LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand-written; Park.ush is generated)
 FILL = 450.0   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
@@ -94,11 +94,11 @@ float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27)) + vc.g * 5.0;
 float gust = 0.5 + 0.5 * sin(p.x * 0.1 - t * 0.5) * cos(p.y * 0.08);
 float sway = h * h * windamp * (0.4 + 0.9 * gust) * sin(t * 1.6 + wo);
 Wpo = float3(sway, sway * 0.7, -(wpos.z - rootz) * (1.0 - fade) - 1.5 * (1.0 - fade));
-float3 tip = float3(0.125, 0.29, 0.006);
-float3 mid = float3(0.077, 0.185, 0.004);
-float3 root = float3(0.02, 0.049, 0.002);
+float3 tip = float3(0.17, 0.35, 0.007);
+float3 mid = float3(0.105, 0.225, 0.0045);
+float3 root = float3(0.027, 0.06, 0.0025);
 float3 g = lerp(lerp(root, mid, smoothstep(0.0, 0.45, h)), tip, smoothstep(0.35, 1.0, h));
-float3 yel = float3(0.18, 0.27, 0.012);
+float3 yel = float3(0.22, 0.32, 0.014);
 g = lerp(g, yel * lerp(0.35, 1.0, h), saturate((vc.b - 0.62) * 3.0) * 0.8);
 g *= lerp(0.72, 1.28, vc.g) * lerp(0.9, 1.1, rnd);
 g = lerp(g, float3(0.3, 0.23, 0.05) * lerp(0.4, 1.0, h), step(0.988, vc.g) * 0.85);

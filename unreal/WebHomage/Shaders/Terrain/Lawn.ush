@@ -22,8 +22,8 @@ float3 TerrainLawnR4(Texture2D tDet, SamplerState tDetSampler, Texture2D tNoise,
   float4 d3 = Texture2DSample(tDet, tDetSampler, q3);
   // clump / blade mottling: the three scales add (std 0.07 + 0.11 + 0.10 of the luminance + grain 0.05)
   // r04 hold 1 measured ~half of what the numpy simulation predicted (guard p4 hp6 SD 4.7, p9 5.4; target 8): the fine scales (d1 / d2, 0.3-1 m) got ~2x, the coarse 16 m patches stay (no more blotches, more grain)
-  // hold 2 (x2 on the fine scales, Specular 0.04): critic crops 8.3 / 9.6, guards p10 8.2, p4 8.2 PASS, guard p9 5.8 (the specular fix also darkened the lawn ~20 %, which cuts the luma SD by the same factor): fine scales x1.5 again
-  float mott = (d1.r - 0.5f) * 0.54f + (d2.r - 0.5f) * 0.95f + (d3.r - 0.5f) * 0.26f + (d1.a - 0.5f) * 0.30f;
+  // hold 2 (x2 on the fine scales, Specular 0.04): critic crops 8.3 / 9.6, guards p10 8.2, p4 8.2 PASS, guard p9 5.8 (the specular fix also darkened the lawn ~20 %, which cuts the luma SD by the same factor): fine scales x1.5 again; hold 3: guard p9 6.8 (its sigma-6 SD sits at ~4.8 independent of the detail): mid scales + the 16 m patches up, albedo +25 %
+  float mott = (d1.r - 0.5f) * 0.54f + (d2.r - 0.5f) * 1.20f + (d3.r - 0.5f) * 0.45f + (d1.a - 0.5f) * 0.30f;
   c *= clamp(1.0f + k.x * mott, 0.55f, 1.55f);
   // wear / dirt patches 0.3-3 m with ragged edges, mostly where the grass is thin (G field high)
   float wr = smoothstep(0.70f, 0.84f, d3.g * 0.55f + d2.g * 0.45f + 0.12f * (d1.g - 0.5f));
