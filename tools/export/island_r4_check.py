@@ -6,6 +6,7 @@ drawn surface (fire escape, roof, street) within 0.45 m.
 
     python3 tools/export/island_r4_check.py <export_dir> <r4_telemetry.csv> [--run-t 11.0] [--out report.json]"""
 import csv, json, math, os, sys
+import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 from island_route_check import Drawn, BODY_H
 
@@ -20,35 +21,32 @@ def main():
     rows = [r for r in csv.DictReader(open(path))]
     f = lambda r, k: float(r[k]) if r.get(k) not in (None, '') else 0.0
     seg = [r for r in rows if f(r, 't') >= run_t]
-    # the roof run: consecutive ground frames above 10 m from run_t on
-    run = []
-    for r in seg:
-        if r['mode'] in ('ground',) and f(r, 'z_m') - BODY_H > 10.0: run.append(r)
-        elif run: break
-    rep = {'csv': os.path.basename(path), 'run_t': run_t, 'run_frames': len(run)}
-    if run:
-        last = run[-1]; nxt = seg[len(run)] if len(run) < len(seg) else None
+    # the roof run: from the first ground frame above 10 m (t >= run_t) to the run's end = a vault / climb sub-state, a stop (speed < 1 m/s with
+    # the stick held), or the last roof frame before the hero drops more than 2 m below the run level
+    i0 = next((i for i, r in enumerate(seg) if r['mode'] == 'ground' and f(r, 'z_m') - BODY_H > 10.0), None)
+    rep = {'csv': os.path.basename(path), 'run_t': run_t}
+    if i0 is not None:
+        zr = f(seg[i0], 'z_m') - BODY_H; end = None; reason = None
+        for i in range(i0, len(seg)):
+            r = seg[i]; z = f(r, 'z_m') - BODY_H; sub = r['sub'].lower()
+            if any(k in sub for k in ('vault', 'mantle', 'climb', 'topout')): end, reason = i, 'vault (%s)' % r['sub']; break
+            if r['mode'] == 'ground' and i > i0 + 5 and f(r, 'hspeed_mps') < 1.0 and abs(f(r, 'in_move_y')) + abs(f(r, 'in_move_x')) > 0.2: end, reason = i, 'stop'; break
+            if r['mode'] in ('ground', 'land', 'perch') and z > 10.0: zr = min(zr, z)
+            if z < zr - 5.0 and r['mode'] == 'air': end, reason = i, 'left the roof (fall / jump, no vault)'; break   # a step down to a lower roof (< 5 m) is part of the run
+        run = seg[i0:end if end is not None else len(seg)]
         ovl = [(round(f(r, 't'), 3), D.overlap(f(r, 'x_m'), f(r, 'y_m'), f(r, 'z_m') - BODY_H)) for r in run]
         ovl = [o for o in ovl if o[1]]
-        # how the run ended: the hero stopped (speed < 1 m/s while the stick is held), vaulted / climbed (sub-state), or left the roof (jump)
-        stopped = any(f(r, 'hspeed_mps') < 1.0 and abs(f(r, 'in_move_y')) + abs(f(r, 'in_move_x')) > 0.2 for r in run[5:])
-        subs = sorted(set(r['sub'] for r in run))
-        rep.update({'run_t0': f(run[0], 't'), 'run_t1': f(last, 't'), 'run_start': [f(run[0], 'x_m'), f(run[0], 'y_m'), round(f(run[0], 'z_m') - BODY_H, 2)],
-                    'run_end': [f(last, 'x_m'), f(last, 'y_m'), round(f(last, 'z_m') - BODY_H, 2)], 'run_subs': subs,
-                    'next_mode': None if nxt is None else [nxt['mode'], nxt['sub']], 'stopped_at_obstacle': stopped,
-                    'vault_or_climb': any(k in ' '.join(subs + ([nxt['sub']] if nxt else [])).lower() for k in ('vault', 'mantle', 'climb', 'hop', 'topout')),
-                    'overlap_frames_during_run': len(ovl), 'overlap_examples': ovl[:5]})
-        # first touchdown after the run
-        after = seg[len(run):]
-        air = False; td = None
+        last = seg[end] if end is not None else run[-1]
+        rep.update({'run_t0': f(seg[i0], 't'), 'run_end_t': f(last, 't'), 'run_start': [f(seg[i0], 'x_m'), f(seg[i0], 'y_m'), round(f(seg[i0], 'z_m') - BODY_H, 2)],
+                    'run_end': [f(last, 'x_m'), f(last, 'y_m'), round(f(last, 'z_m') - BODY_H, 2)], 'run_end_reason': reason,
+                    'run_subs': sorted(set(r['sub'] for r in run)), 'overlap_frames_during_run': len(ovl), 'overlap_examples': ovl[:5]})
+        rep['run_pass'] = bool(reason and (reason.startswith('vault') or reason == 'stop') and not ovl)
+        # the drop after the run: first touchdown (land / ground / perch / wall) >= 2 m below the run end
+        after = seg[(end or len(seg) - 1):]
+        zend = f(last, 'z_m') - BODY_H; td = None
         for r in after:
-            if r['mode'] in ('air',): air = True
-            if air and r['mode'] in ('land', 'ground', 'perch'):
-                td = r; break
-        # did the fall pass THROUGH a drawn platform (fire-escape deck / roof / any collision.json top) between two frames?
-        import numpy as np
-        thru = []
-        prev = None
+            if r['mode'] in ('land', 'ground', 'perch', 'wall') and f(r, 'z_m') - BODY_H < zend - 2.0: td = r; break
+        thru = []; prev = None
         for r in after:
             x, y, z = f(r, 'x_m'), f(r, 'y_m'), f(r, 'z_m') - BODY_H
             if prev is not None and z < prev[2]:
@@ -64,8 +62,8 @@ def main():
         if td is not None:
             x, y, z = f(td, 'x_m'), f(td, 'y_m'), f(td, 'z_m') - BODY_H
             what, dz = D.support(x, y, z, tol=0.45)
-            rep['touchdown'] = {'t': f(td, 't'), 'mode': td['mode'], 'sub': td['sub'], 'feet': [x, y, round(z, 2)], 'surface': what, 'dz_m': round(dz, 3),
-                                'pass': what is not None and not thru}
+            rep['drop_touchdown'] = {'t': f(td, 't'), 'mode': td['mode'], 'sub': td['sub'], 'feet': [x, y, round(z, 2)], 'surface': what, 'dz_m': round(dz, 3),
+                                     'on_drawn_surface': what is not None, 'on_fireescape_or_roof': what not in (None, 'street'), 'no_pass_through': not thru}
     if out: json.dump(rep, open(out, 'w'), indent=1)
     print(json.dumps(rep, indent=1))
 

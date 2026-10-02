@@ -38,3 +38,12 @@ re-launching from the 32.0 m deck into the underside of the 35.7 m deck (headroo
 button fire a web: no web for 6.43 s while swing is held. This one event fails critic test 1 (each release -> next web <= 0.5 s).
 Ask: abort top-out when the climb path is capped by an overhang (or after one failed attempt) and allow webs from `topOut`.
 The geometry is what is drawn (decks are real platforms, traced complex); the island will not remove fire escapes to avoid it.
+
+## 4. Wall-run passes through overhanging decks (r02 r4, measured)
+
+`round-02/r4_wallrun_roofs_telemetry.csv` t 17.37 - 18.83 s: wall-running up the south face at y 151.38 (x 285 -> 281.6), the feet
+pass through three fire-escape kit decks (z ~9.5, ~13.2, ~16.9 m; up to 0.72 m capsule penetration, 18 frames with the feet column inside
+the deck; `round-02/route_check_r4.json` drawn.events.feet_overlap). `PushOutCapsule` keeps only horizontal MTD directions (|N.xy| >= 0.3),
+so a deck met from below while wall-running never stops the climb. Ask: in wall mode, a vertical sweep (feet -> head) against Allowed
+solids; on an overhang either stop the climb (hang / drop) or top-out onto the deck. Also seen: 2-4 frames of parapet / coping overlap
+during each top-out (r4 t 3.35, 19.33 s).
