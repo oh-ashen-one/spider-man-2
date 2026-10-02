@@ -250,7 +250,7 @@ def hlsl_ps():
                     '    g += float2(gb.x * %(cB).6f - gb.y * %(sB).6f, gb.x * %(sB).6f + gb.y * %(cB).6f) * wbR; }\n'
                     '  slT += g * %(amp).5f%(lk)s; varL += %(amp2).7f * saturate(log2(2.0 * foot / %(lmin).5f) / 3.0); }')
                    % dict(uA=uA, vA=vA, uB=uB, vB=vB, cA=cA, sA=sA, cB=cB, sB=sB, sc=sc, sc2=sc2, va=spd / sc, vb=spd * 1.07 / sc2, off=0.61 * (i + 1),
-                          enc=SLOPE_ENC, amp=amp, amp2=amp * amp, lmin=sc2 / 24.0, lk=' * lk' if sc >= 20.0 else ''))
+                          enc=SLOPE_ENC, amp=amp, amp2=amp * amp, lmin=sc2 / 24.0, lk=' * lk' if sc >= 20.0 else (' * lm' if sc >= 5.0 else '')))
     sc, ang, amp = LONG
     lc = sc / 8.5; kc = 2 * math.pi / lc; spd = math.sqrt(GRAV / kc + 7.28e-5 * kc)
     th = math.radians(WIND_DEG + ang); cL, sL = math.cos(th), math.sin(th); uL, vL = rot(cL, sL)
@@ -291,6 +291,7 @@ float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
 // r04: far-field long-wave gain (LongK on the 64 m and 21 m layers beyond ~%(lf0).0f m) and 'looking down' weight (camera above the water:
 //      the far field is seen at steep angles, so its resolved long waves and a sharper lobe carry the structure instead of roughness)
 float lk = lerp(1.0, LongK, smoothstep(%(lf0).1f, %(lf1).1f, dist));
+float lm = lerp(1.0, MidK, smoothstep(%(lf0).1f, %(lf1).1f, dist));   // r04: the 6.7 m layer (0.3-2.2 m waves: 1-10 px from swing height)
 float down = smoothstep(0.08, 0.25, V.z);
 float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampler, su, dpx / float2(%(sw).1f, %(sh).1f), dpy / float2(%(sw).1f, %(sh).1f)).r * 400.0 : 400.0;
@@ -316,6 +317,15 @@ float2 slC = 0; float lostC = 1.0;
 float ck = ChopK * gk, mk = ChopK * MicroK * gk * %(crms).4f;
 slT *= ck; varL *= ck * ck;
 float2 slope = sl2 + slT + slC * mk;
+// r04: under a low sun (9 deg) facets tilted away from it by more than the sun elevation get N.L <= 0 and SLW lights them as black,
+//      crisp-edged specks (Dbg 5). Soft-limit only the slope component pointing away from the sun (SunClampK 0 = r03)
+float3 LsN = normalize(SunDir);
+[branch] if (LsN.z > 0.02 && SunClampK > 0.0) {
+    float2 Lh = LsN.xy / max(length(LsN.xy), 1e-3);
+    float ss = dot(slope, Lh), sm = 0.85 * LsN.z / max(length(LsN.xy), 1e-3), k0 = 0.5 * sm;
+    float sc = ss > k0 ? k0 + (sm - k0) * tanh((ss - k0) / max(sm - k0, 1e-3)) : ss;
+    slope += Lh * (sc - ss) * SunClampK;
+}
 float varF = varL + lostC * mk * mk;      // per-axis slope variance the shading cannot resolve
 // ---- foam (near field only, faded to zero by %(near).0f m): contact (the water line against anything below it), rare whitecaps
 float cf = 0.0, wf = 0.0;
@@ -327,7 +337,10 @@ float cf = 0.0, wf = 0.0;
     cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
     float2 cu = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
     float cdm = (all(cu > 0.0) && all(cu < 1.0)) ? Texture2DSampleLevel(tC, tCSampler, cu, 0).r * %(cmax).1f : %(cmax).1f;
-    cf = max(cf, 1.0 - smoothstep(0.12, 0.45 + 1.5 * fn + 0.9 * lap, cdm));
+    // r04: Dbg 4 showed no contact coverage at the river_low bulkhead (the depth test finds no geometry under the water there, and the
+    //      0.9 m/px map reads 1.7 to 2.6 m at the built wall face: its contact line wanders +-3 m): the map term reaches CBias m further
+    float ce0 = 0.12 + CBias;
+    cf = max(cf, 1.0 - smoothstep(ce0, max(0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap, ce0 + 0.3), cdm));
     float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lap) * FoamK;
     foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
     float cov = saturate(foam);
@@ -399,7 +412,8 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 # round-03 captures: autopick variant V3 (lowest penalty on the 1080p iteration stills, docs/night1/water/round-03/iter/autopick.json)
 PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
-          'LongK': 2.0, 'FarRough': 0.3, 'TopVarK': 0.25, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0}
+          'LongK': 2.0, 'FarRough': 0.3, 'TopVarK': 0.25, 'GrazeRough': 0.42, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
+          'CBias': 1.2, 'SunClampK': 1.0, 'MidK': 2.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
