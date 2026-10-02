@@ -67,7 +67,8 @@ if want ab; then
   echo "== r1_ism_solid (A/B, telemetry)  $(gpu)"
   rm -rf "$TMP/r1_ism_solid"
   RUN "$TMP/r1_ism_solid" -map "$MAP" -res 960x540 -quit ${QUIT:-30.4} -name r1_ism_solid -timeout 2300 -- -benchmark -fps=60 -WHTravIsmSolid=1 \
-    -WHTravScript="$SCR/r1_north_avenue.json" -WHTravCsv="$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" | tail -3
+    -WHTravScript="$SCR/r1_north_avenue.json" -WHTravCsv="$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" -WHTravDumpPrims="$TMP/r1_ism_solid/prims.csv" | tail -3
+  [ -f "$TMP/r1_ism_solid/prims.csv" ] && gzip -9 -c "$TMP/r1_ism_solid/prims.csv" > "$ROUND/prims_dump_ism_solid.csv.gz"
   cp "$TMP/r1_ism_solid/r1_ism_solid_telemetry.csv" "$ROUND/" 2>/dev/null
   grep -h "WebTravWorld:" "$TMP/r1_ism_solid/r1_ism_solid.log" | sed 's/^.*Display: //' > "$ROUND/r1_ism_solid_log_excerpt.txt"
 fi
