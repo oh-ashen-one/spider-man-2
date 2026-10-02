@@ -45,9 +45,9 @@
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
    "state": "active",
-   "round": 10,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar."
+   "round": 14,
+   "verdict": "fails \u2014 lowest 5 (sonnet)",
+   "gap": "IQ >= 6: back emblem bleed, groove jogs, face seam, limb net ends"
   },
   {
    "id": "P3",
@@ -928,6 +928,14 @@
    "verdict": "fails",
    "gap": "Animated contact foam at the seawall/piles/island edges (engine reads the contact map at >=4 m vs 0.6-1.9 m CPU); far-field structure at swing height",
    "notes": "Merged (no axis below merged r01 Opus build). Rings gone, resolved chop, sun sparkle, SLW pass 1.0 ms."
+  },
+  {
+   "t": "2026-10-02T11:35",
+   "piece": "P2 Characters",
+   "round": 14,
+   "verdict": "fails",
+   "gap": "IQ >= 6: back emblem bleed, groove jogs, face seam, limb net ends",
+   "notes": "Merged on the owner suit approval (11:31): 8 original suits with sculpted heads + in-game swap; IP gate PASS."
   }
  ],
  "perf": [
