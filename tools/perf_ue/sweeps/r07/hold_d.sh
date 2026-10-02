@@ -8,6 +8,7 @@
 #   4 STILLS gen_plans_r07.py --set full (44 poses) -> round-07/stills
 #   5 LAPSE  lapse_stitch.py with the wide x16 twilight segments -> round-07/tod_lapse_S4.*
 #   6 CLIPS  swing_tod_22 + swing_tod_18h4
+setopt +o nomatch 2>/dev/null
 WT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 R=$WT/docs/night1/look/round-07
 F=${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/r07/holdD
@@ -32,7 +33,7 @@ if os.path.exists(F + '/loop/bias_overrides.json'): o.update(json.load(open(F + 
 json.dump(o, open(F + '/bias_final.json', 'w'), indent=1)
 PY
 cp "$F/bias_final.json" "$R/lapse_bias_overrides.json"
-python3 tools/perf_ue/sweeps/r07/make_v3.py --knobs "$KN" --bias-overrides "$F/bias_final.json" --in-place || exit 2
+if [[ $STEPS == *loop* ]] || [ ! -f "$F/bias_final.json" ]; then python3 tools/perf_ue/sweeps/r07/make_v3.py --knobs "$KN" --bias-overrides "$F/bias_final.json" --in-place || exit 2; fi
 cp "$WT/unreal/WebHomage/Scripts/look_presets.json" "$F/look_presets_final.json"
 if [[ $STEPS == *build* ]]; then
   tools/perf_ue/rebuild_look.sh rigs,maps midday,golden,night,tod; chk $? build
@@ -40,7 +41,7 @@ if [[ $STEPS == *build* ]]; then
 fi
 if [[ $STEPS == *stills* ]]; then
   python3 tools/perf_ue/sweeps/r07/gen_plans_r07.py --out "$F" --set full
-  python3 tools/perf_ue/sweeps/run_r06.py --plan "$F/plan_full.json" --out "$F/stills" --timeout $(tmo 800); chk $? stills
+  python3 tools/perf_ue/sweeps/run_r06.py --plan "$F/plan_full.json" --out "$F/stills" --timeout $(tmo ${STILLS_TMO:-800}); chk $? stills
   if ls "$F"/stills/tod_*.jpg >/dev/null 2>&1; then rm -f "$R"/stills/tod_*.jpg; cp "$F"/stills/tod_*.jpg "$R/stills/"; cp "$F/stills/session.json" "$R/stills_session.json"; fi
 fi
 if [[ $STEPS == *lapse* ]]; then
