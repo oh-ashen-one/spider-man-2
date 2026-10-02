@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 """P4 round 06: writes the key table(s) and the sweep plans of the first diagnostic hold (run_r06.py format) into <out>/ :
-  keys_base.txt            the current table of Scripts/look_presets.json (Scripts/look_tod.py expand + to_text)
+  keys_base.txt            the current table of Scripts/look_presets.json (Scripts/look_tod.py expand + to_text); keys_herofill0.txt the same with herofill 0 at every key
   plan_a.json              twilight sky sweep: baseline at 6.5 7 7.5 19 19.5 20 20.5 21 21.5 (S4 + the sun-facing perch S4e / S4w) + sky variants A1..A3 at four hours
   plan_h.json              fog cutoff / atm.HeightFogContribution continuity test at 19.8 and 20.5 (is the sky wash a continuous knob?)
   plan_d.json              dawn 7.6 decorrelation variants (S1 + S4e) and golden 18.4 S4 reduction variants (S4, S3, S1)
@@ -29,6 +29,8 @@ def main():
     doc = json.load(open(a.doc)) if a.doc else look_tod.load_doc()
     tab = look_tod.expand(doc)
     base = os.path.join(out, 'keys_base.txt'); open(base, 'w').write(look_tod.to_text(tab))
+    # hero test table: the traversal character's own 5000 cd hero fill (P3 'HeroFill', ~1500 lux on the hero at every hour) switched off at every key, the exposure-relative hero lights at nominal
+    open(os.path.join(out, 'keys_herofill0.txt'), 'w').write(look_tod.to_text(look_tod.expand(doc, ['h=*:herofill=0'])))
     E = lambda h: look_tod.evaluate(tab, h)
 
     def G(name, h, hour_shots, cmds, keys=base, **kw):

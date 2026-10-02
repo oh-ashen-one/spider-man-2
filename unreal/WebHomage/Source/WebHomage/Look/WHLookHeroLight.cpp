@@ -66,6 +66,21 @@ void AWHLookHeroLight::Tick(float Dt)
 		const float Rel = bInverseExposure ? ExposureRelativeScale : 1.f;
 		Rim->SetIntensity(RimIntensity * HourScale * Rel); Fill->SetIntensity(FillIntensity * HourScale * Rel); Top->SetIntensity(TopIntensity * HourScale * Rel);
 	}
+	// (round 06) scale the traversal character's own hero fill after its per-frame update (see ExternalFillScale)
+	if (!ExtFill.IsValid() || ExtFill->GetOwner() != P)
+	{
+		ExtFill = nullptr; ExtRaw = ExtWritten = -1.f;
+		TInlineComponentArray<UPointLightComponent*> Pls; P->GetComponents(Pls);
+		for (UPointLightComponent* L : Pls) if (L->GetName() == TEXT("HeroFill")) { ExtFill = L; break; }
+	}
+	if (ULightComponent* F = ExtFill.Get())
+	{
+		const float Cur = F->Intensity;
+		if (ExtWritten < 0.f || !FMath::IsNearlyEqual(Cur, ExtWritten, FMath::Max(1e-3f, 1e-4f * FMath::Abs(ExtWritten)))) ExtRaw = Cur;   // P3 wrote a fresh value this frame
+		const float Want = ExtRaw * ExternalFillScale;
+		if (!FMath::IsNearlyEqual(Cur, Want, 1e-3f)) F->SetIntensity(Want);
+		ExtWritten = Want;
+	}
 	const FVector Hero = P->GetActorLocation() + FVector(0, 0, 40.f);
 	FVector Cam = PC->PlayerCameraManager ? PC->PlayerCameraManager->GetCameraLocation() : Hero + FVector(-500, 0, 100);
 	FVector ToCam = (Cam - Hero); ToCam.Z = 0; ToCam = ToCam.GetSafeNormal();

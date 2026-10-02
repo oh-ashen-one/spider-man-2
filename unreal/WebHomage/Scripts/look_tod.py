@@ -78,6 +78,7 @@ def preset_params(P):
     o['weather'] = 0.0
     # (round 06) hero rim / fill light scale (1 = the AWHLookHeroLight intensities) and the moon's own light properties (disk size, disk colour scale, cloud luminance scale): driver targets moonc.*
     o['hero'] = 1.0
+    o['herofill'] = 1.0   # scale of the traversal character's own hero fill light (P3 'HeroFill', 5000 cd) applied by AWHLookHeroLight
     o['moonc.LightSourceAngle'] = float(m.get('angle', 0.5357))
     o['moonc.AtmosphereSunDiskColorScale'] = [1.0, 1.0, 1.0, 1.0]
     o['moonc.CloudScatteredLuminanceScale'] = [1.0, 1.0, 1.0, 1.0]
@@ -122,7 +123,7 @@ def expand(doc, extra_sets=None):
         if set(k['p']) != names: raise ValueError('key %s params differ: %s' % (k['h'], sorted(set(k['p']) ^ names)))
     oc = copy.deepcopy(PRE[T['overcast']['base']])
     for pk, pv in T['overcast'].get('set', {}).items(): oc[pk] = vec(pv)
-    oc = {k: v for k, v in oc.items() if not k.startswith(('mpc.', 'moon.', 'fill', 'lights', 'stars', 'weather', 'sun.Temperature'))}
+    oc = {k: v for k, v in oc.items() if not k.startswith(('mpc.', 'moon.', 'moonc.', 'fill', 'lights', 'stars', 'weather', 'sun.Temperature', 'hero'))}
     return {'sun': T['sun'], 'moon': T['moon'], 'default_hour': T['default_hour'], 'keys': keys, 'overcast': oc}
 
 

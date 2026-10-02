@@ -357,8 +357,8 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 	if (bCloud) Cloud->MarkRenderStateDirty();
 	// --- hero lights follow the `hero` key (round 06)
 	{
-		const float Hs = G(TEXT("hero"), 1.f);
-		for (const auto& H : HeroLights) if (AWHLookHeroLight* Hl = H.Get()) Hl->HourScale = Hs;
+		const float Hs = G(TEXT("hero"), 1.f), Fs = G(TEXT("herofill"), 1.f);
+		for (const auto& H : HeroLights) if (AWHLookHeroLight* Hl = H.Get()) { Hl->HourScale = Hs; Hl->ExternalFillScale = Fs; }
 	}
 	// --- stars + night street lights
 	const float StarK = G(TEXT("stars"), 0.f);

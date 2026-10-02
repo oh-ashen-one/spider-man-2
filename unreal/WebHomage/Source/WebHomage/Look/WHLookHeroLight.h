@@ -9,6 +9,7 @@
 
 class USpotLightComponent;
 class UPointLightComponent;
+class ULightComponent;
 
 UCLASS()
 class WEBHOMAGE_API AWHLookHeroLight : public AActor
@@ -43,10 +44,15 @@ public:
 	 *  value * HourScale * ExposureRelativeScale (0.02: a hero lit by ~2 lux of "exposure 1" light, linear ~0.35 on a 0.6 albedo suit). false = the round-05 physical lights. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") bool bInverseExposure = true;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float ExposureRelativeScale = 0.02f;
+	/** (round 06) multiplier on the traversal character's own camera-side hero fill (component "HeroFill", P3, 5000 cd = ~1500 lux on the hero at every hour, set every frame by
+	 *  AWebTravCharacter::UpdateHeroFill): at night it clips the suit at the maximum exposure. Applied after P3's update each frame (this actor ticks in TG_PostUpdateWork); keyed by `herofill`. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float ExternalFillScale = 1.f;
 
 private:
 	bool bLightsInit = false;
 	float AppliedScale = -1.f;
+	TWeakObjectPtr<ULightComponent> ExtFill;      // the traversal character's "HeroFill" point light
+	float ExtRaw = -1.f, ExtWritten = -1.f;
 	TWeakObjectPtr<APawn> LitPawn;
 	void SetPawnChannels(APawn* P);
 };
