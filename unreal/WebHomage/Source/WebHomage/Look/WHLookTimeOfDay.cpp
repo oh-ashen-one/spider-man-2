@@ -121,7 +121,7 @@ void AWHLookTimeOfDay::Bind()
 	if (!W) return;
 	ULevel* Mine = GetLevel();
 	auto InMine = [Mine](const AActor* A) { return A && A->GetLevel() == Mine; };
-	Fills.Reset(); NightLights.Reset(); NightActors.Reset();
+	Fills.Reset(); NightLights.Reset(); NightActors.Reset(); HeroLights.Reset();
 	int32 NNight = 0;
 	for (TActorIterator<AActor> It(W); It; ++It)
 	{
@@ -130,7 +130,7 @@ void AWHLookTimeOfDay::Bind()
 		if (Pkg.Contains(TEXT("Look_NightLights")))
 		{
 			NightActors.Add(A); ++NNight;
-			if (Cast<AWHLookHeroLight>(A)) continue;   // initialises its own intensities on its first tick; hidden by day with its level
+			if (AWHLookHeroLight* Hl = Cast<AWHLookHeroLight>(A)) { HeroLights.Add(Hl); continue; }   // initialises its own intensities on its first tick; hidden by day with its level; scaled by the `hero` key
 			TInlineComponentArray<ULightComponent*> Ls; A->GetComponents(Ls);
 			for (ULightComponent* L : Ls) NightLights.Add({ L, L->Intensity });
 			continue;
@@ -283,20 +283,22 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 	if (UDirectionalLightComponent* S = SunL.Get())
 	{
 		S->GetOwner()->SetActorRotation(LightRot(SunElev, SunAz));
-		S->SetIntensity(SunElev > -20.f ? G(TEXT("sun.Intensity"), 40000.f) : 0.f);
+		// (round 06) the sun's twilight light fades out between -16 and -26 deg (it was cut to 0 at -20 deg, a step in the sky at 21:00 / 05:00)
+		S->SetIntensity(G(TEXT("sun.Intensity"), 40000.f) * FMath::SmoothStep(-26.f, -16.f, SunElev));
 		S->SetTemperature(G(TEXT("sun.Temperature"), 5500.f));
 		S->SetLightSourceAngle(G(TEXT("sun.LightSourceAngle"), 0.53f));
 		const float Dk = G(TEXT("sun.DiskScale"), 1.f); S->SetAtmosphereSunDiskColorScale(FLinearColor(Dk, Dk, Dk, 1.f));
 		// UE's per-pixel transmittance still lights meshes from a sun a few degrees under the horizon (round 05 tours: a sunlit city with cast shadows at 19:48,
 		// sun -6.7 deg; switching the light off lighting channel 0 did NOT stop it). Under the horizon the sun keeps its intensity for the sky, the aerial
-		// perspective and the clouds (twilight glow), but its diffuse / specular contribution to surfaces ramps to 0 between +0.5 and -2.5 deg (no pop).
-		const float WorldK = FMath::SmoothStep(-2.5f, 0.5f, SunElev);
+		// perspective and the clouds (twilight glow), but its diffuse / specular contribution to surfaces ramps to 0 between +3.5 and -2.5 deg.
+		// (round 06) the ramp was +0.5..-2.5 deg = 16 game minutes (the lapse's 19:12 dip); the sun moves ~11.3 deg / h there, 6 deg = 32 min at 2 h/s = 64 frames.
+		const float WorldK = FMath::SmoothStep(-2.5f, 3.5f, SunElev);
 		if (FMath::Abs(WorldK - SunWorldK) > 1e-3f || (WorldK == 0.f) != (SunWorldK == 0.f))
 		{
 			S->SetDiffuseScale(WorldK); S->SetSpecularScale(WorldK); SunWorldK = WorldK;
 			if (!bSunLitWorld) { S->SetLightingChannels(true, false, false); bSunLitWorld = true; }   // undo the round-05 channel switch if a map still carries it
 		}
-		S->SetCastShadows(WorldK > 0.01f);
+		S->SetCastShadows(WorldK > 0.02f);
 	}
 	if (UDirectionalLightComponent* M = MoonL.Get())
 	{
@@ -304,7 +306,9 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 		const float K = FMath::SmoothStep(-1.f, 6.f, MoonElev) * G(TEXT("moon.Intensity"), 0.f);
 		M->SetIntensity(K);
 		M->SetTemperature(G(TEXT("moon.Temperature"), 5600.f));
-		M->SetCastShadows(K > 0.05f && SunElev < -4.f);   // one shadowing directional light at a time
+		// (round 06) one shadowing directional light at a time, and the switch must not show: the moon takes over once the sun's surface light is gone (SunWorldK 0) and its own
+		// lux is still tiny (the keys bring moon.Intensity in from 0 over >= 40 game minutes after 20:00), so turning its shadows on changes under 5 % of a moonlit surface.
+		M->SetCastShadows(K > 0.4f && SunWorldK < 0.01f);
 		M->SetVisibility(K > 0.001f);
 	}
 	for (const auto& F : Fills)
@@ -334,6 +338,8 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 			if (FStructProperty* SP = CastField<FStructProperty>(Fog->GetClass()->FindPropertyByName(TEXT("SecondFogData"))))
 				bFog |= SetProp(Fog.Get(), SP->Struct, SP->ContainerPtrToValuePtr<void>(Fog.Get()), Pn, It.Value, N);
 		}
+		else if (T == TEXT("moonc") && MoonL.IsValid()) { if (SetProp(MoonL.Get(), MoonL->GetClass(), MoonL.Get(), Pn, It.Value, N)) MoonL->MarkRenderStateDirty(); }   // (round 06) e.g. moonc.LightSourceAngle (disk size), moonc.AtmosphereSunDiskColorScale, moonc.CloudScatteredLuminanceScale
+		else if (T == TEXT("sunc") && SunL.IsValid()) { if (SetProp(SunL.Get(), SunL->GetClass(), SunL.Get(), Pn, It.Value, N)) SunL->MarkRenderStateDirty(); }
 		else if (T == TEXT("cloudc") && Cloud.IsValid()) bCloud |= SetProp(Cloud.Get(), Cloud->GetClass(), Cloud.Get(), Pn, It.Value, N);
 		else if (T == TEXT("cloud") && CloudMid) CloudMid->SetScalarParameterValue(Pn, It.Value.X);
 		else if (T == TEXT("cloudv") && CloudMid) CloudMid->SetVectorParameterValue(Pn, FLinearColor(It.Value.X, It.Value.Y, It.Value.Z, It.Value.W));
@@ -349,6 +355,11 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 	if (bAtm) Atm->MarkRenderStateDirty();
 	if (bFog) Fog->MarkRenderStateDirty();
 	if (bCloud) Cloud->MarkRenderStateDirty();
+	// --- hero lights follow the `hero` key (round 06)
+	{
+		const float Hs = G(TEXT("hero"), 1.f);
+		for (const auto& H : HeroLights) if (AWHLookHeroLight* Hl = H.Get()) Hl->HourScale = Hs;
+	}
 	// --- stars + night street lights
 	const float StarK = G(TEXT("stars"), 0.f);
 	if (Stars.IsValid())

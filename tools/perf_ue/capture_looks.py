@@ -29,6 +29,7 @@ def main():
     ap.add_argument('--clip-seconds', type=float, default=12.0); ap.add_argument('--sp', default='100', help='r.ScreenPercentage for the captures')
     ap.add_argument('--jpeg-q', type=int, default=90); ap.add_argument('--redo', action='store_true', help='recapture stills that already exist')
     ap.add_argument('--timeout', type=int, default=7000, help='game timeout (s): run_game.sh stops the game with SIGTERM after it'); ap.add_argument('--no-warmup', action='store_true', help='skip the unrecorded 960x540 shader warm-up render before each clip (the shaders are already in the DDC)')
+    ap.add_argument('--keys', default='', help='(round 06) abs path of a time-of-day key table for tod@ clips (-WHToDKeys)'); ap.add_argument('--clip-res', default='1920x1080'); ap.add_argument('--name-suffix', default='', help='appended to the clip name (variants)')
     a = ap.parse_args()
     sys.path.insert(0, HERE)
     import ensure_boxes
@@ -79,7 +80,8 @@ def main():
             tod = preset.split('@')[1] if preset.startswith('tod@') else None
             name = 'swing_%s' % (preset if not tod else 'tod_' + tod.replace('.', 'h'))
             mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + (preset if not tod else 'tod'))
-            todargs = [] if not tod else ['-WHToD=' + tod.split('w')[0]] + (['-WHWeather=' + tod.split('w')[1]] if 'w' in tod else [])
+            todargs = [] if not tod else ['-WHToD=' + tod.split('w')[0]] + (['-WHWeather=' + tod.split('w')[1]] if 'w' in tod else []) + (['-WHToDKeys=' + os.path.abspath(a.keys)] if a.keys else [])
+            name += a.name_suffix
             if not a.no_warmup:
                 wd = os.path.join(SCR, name + '_warmup'); shutil.rmtree(wd, ignore_errors=True)   # shader / texture warm-up render, not kept
                 subprocess.run(slot([RUN_GAME, wd, '-map', mp, '-res', '960x540', '-quit', '14', '-name', 'warmup', '-timeout', str(min(2400, a.timeout)), '--', '-benchmark', '-fps=60',
@@ -87,9 +89,9 @@ def main():
                 shutil.rmtree(wd, ignore_errors=True)
             d = os.path.join(SCR, name); shutil.rmtree(d, ignore_errors=True)
             u = util(); t0 = time.time()
-            cmd = [RUN_GAME, d, '-map', mp, '-res', '1920x1080', '-quit', str(a.clip_seconds + PRE),
+            cmd = [RUN_GAME, d, '-map', mp, '-res', a.clip_res, '-quit', str(a.clip_seconds + PRE),
                    '-name', name, '-movie', '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp,
-                   '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE] + todargs
+                   '--', '-WHTravScript=' + os.path.join(HERE, 'scripts', 'city_swing_clip.json'), '-WHTravCsv=' + os.path.join(d, name + '_telemetry.csv'), '-WHTravPreroll=%s' % PRE, '-WHTravMask'] + todargs   # (round 06) -WHTravMask: the hero pixel box (px_top / px_bottom / px_left / px_right in the telemetry) is off without it
             r = subprocess.run(slot(cmd), capture_output=True, text=True)
             mp4 = os.path.join(d, name + '.mp4')
             fr = os.path.join(d, name + '_frames'); csvp = os.path.join(d, name + '_telemetry.csv')
@@ -114,8 +116,8 @@ def main():
                 tests = night_tests.hero_stats(fr, csvp, skip=skip)
                 json.dump(tests, open(os.path.join(rnd, name + '_hero_luma.json'), 'w'), indent=1)
                 print('hero luma', name, tests, flush=True)
-            notes.append({'kind': 'clip', 'file': os.path.basename(out), 'preset': preset, 'map': mp, 'output': '1920x1080 60 fps H.264',
-                          'internal': '%s%% of output (1920x1080)' % a.sp, 'frames': nrows, 'seconds': round(dur, 2), 'bytes': os.path.getsize(out),
+            notes.append({'kind': 'clip', 'file': os.path.basename(out), 'preset': preset, 'map': mp, 'output': '%s 60 fps H.264' % a.clip_res,
+                          'internal': '%s%% of output (%s)' % (a.sp, a.clip_res), 'frames': nrows, 'seconds': round(dur, 2), 'bytes': os.path.getsize(out),
                           'script': 'tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript, 0.8 s pre-roll trimmed)', 'time_step': 'fixed 1/60 s (-benchmark -fps=60 -dumpmovie)',
                           'gpu_util_before_pct': u, 'wall_s': round(time.time() - t0), 'hero_bbox_mean_luma': tests})
             shutil.rmtree(fr, ignore_errors=True)  # heavy PNG frames are disposable once encoded

@@ -1,0 +1,62 @@
+[
+ {
+  "id": "S4w_perch_sunset",
+  "desc": "S4 perch turned toward the dusk sun (compass azimuth 250 deg in the city frame, pitch -4): the still that faces the sun at 19:00-20:30 (sun grid azimuth 244-258)",
+  "pos": [
+   182,
+   306,
+   -92
+  ],
+  "target": [
+   -286.7,
+   271.1,
+   78.6
+  ],
+  "fov": 75,
+  "player": [
+   249,
+   0.15,
+   178
+  ]
+ },
+ {
+  "id": "S4e_perch_sunrise",
+  "desc": "S4 perch turned toward the dawn sun (compass azimuth 60 deg, pitch -4): the still that faces the sun at 06:30-07:30 (sun grid azimuth 53-63)",
+  "pos": [
+   182,
+   306,
+   -92
+  ],
+  "target": [
+   614.0,
+   271.1,
+   -341.4
+  ],
+  "fov": 75,
+  "player": [
+   249,
+   0.15,
+   178
+  ]
+ },
+ {
+  "id": "S4m_perch_moon",
+  "desc": "S4 perch turned toward the 22:00 moon (grid azimuth 118, elevation 38; camera pitch +12, 90 deg fov): the standard S4 pose faces north-west, the moon is behind it",
+  "pos": [
+   182,
+   306,
+   -92
+  ],
+  "target": [
+   613.8,
+   410.0,
+   137.6
+  ],
+  "fov": 90,
+  "player": [
+   249,
+   0.15,
+   178
+  ]
+ }
+]

@@ -55,7 +55,7 @@ def hero_stats(frames_dir, csv_path, skip=0, thr=40.0):
     rows = list(csv.DictReader(open(csv_path)))
     files = sorted(glob.glob(os.path.join(frames_dir, '*.png')))[skip:]
     n = min(len(files), len(rows) - 1)
-    means, missing, low = [], [], []
+    means, missing, low, clipped = [], [], [], []
     for k in range(n):
         r = rows[k + 1]                       # px_* is sampled at the start of the next frame (row i+1 describes frame i)
         try: t, b, l, rt = (float(r[c]) for c in ('px_top', 'px_bottom', 'px_left', 'px_right'))
@@ -68,11 +68,15 @@ def hero_stats(frames_dir, csv_path, skip=0, thr=40.0):
         box = y[y0:y1, x0:x1]
         m = float(box.mean()); means.append((k, m, float(np.percentile(box, 10)), float(np.percentile(box, 90))))
         if m < thr: low.append(k)
+        nclip = int((np.asarray(img.convert('RGB'))[y0:y1, x0:x1].max(axis=2) >= 250).sum())   # (round 06) L15b: clipped px (any channel >= 250) inside the hero box
+        clipped.append((k, nclip))
     a = np.array([m for _, m, _, _ in means]) if means else np.zeros(1)
     return {'frames_measured': len(means), 'frames_without_hero_pixels': len(missing), 'bbox_mean_luma_min': round(float(a.min()), 1), 'bbox_mean_luma_p5': round(float(np.percentile(a, 5)), 1),
             'bbox_mean_luma_mean': round(float(a.mean()), 1), 'bbox_mean_luma_max': round(float(a.max()), 1), 'threshold': thr, 'frames_below_threshold': len(low),
             'first_frames_below': low[:12], 'p10_of_bbox_mean': round(float(np.mean([p for _, _, p, _ in means])), 1) if means else None,
-            'p90_of_bbox_mean': round(float(np.mean([p for _, _, _, p in means])), 1) if means else None}
+            'p90_of_bbox_mean': round(float(np.mean([p for _, _, _, p in means])), 1) if means else None,
+            'L15b_frames_with_clipped_px': sum(1 for _, c in clipped if c > 0), 'L15b_max_clipped_px_in_box': max([c for _, c in clipped] or [0]),
+            'L15b_first_frames_with_clipped': [k for k, c in clipped if c > 0][:12], 'box': 'hero pixel box of the P3 hero-only depth capture (-WHTravMask), 1920x1080 px'}
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('cmd'); ap.add_argument('a', nargs='?'); ap.add_argument('b', nargs='?'); ap.add_argument('--skip', type=int, default=0)

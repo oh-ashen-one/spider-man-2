@@ -55,7 +55,13 @@ void AWHLookHeroLight::Tick(float Dt)
 	if (!bLightsInit)
 	{
 		bLightsInit = true;
-		InitHeroLight(Rim, RimColor, RimIntensity, 1500.f); InitHeroLight(Fill, FillColor, FillIntensity, 1200.f); InitHeroLight(Top, FLinearColor(0.7f, 0.8f, 1.f), TopIntensity, 1000.f);
+		InitHeroLight(Rim, RimColor, RimIntensity * HourScale, 1500.f); InitHeroLight(Fill, FillColor, FillIntensity * HourScale, 1200.f); InitHeroLight(Top, FLinearColor(0.7f, 0.8f, 1.f), TopIntensity * HourScale, 1000.f);
+		AppliedScale = HourScale;
+	}
+	if (!FMath::IsNearlyEqual(AppliedScale, HourScale, 1e-4f))
+	{
+		AppliedScale = HourScale;
+		Rim->SetIntensity(RimIntensity * HourScale); Fill->SetIntensity(FillIntensity * HourScale); Top->SetIntensity(TopIntensity * HourScale);
 	}
 	const FVector Hero = P->GetActorLocation() + FVector(0, 0, 40.f);
 	FVector Cam = PC->PlayerCameraManager ? PC->PlayerCameraManager->GetCameraLocation() : Hero + FVector(-500, 0, 100);

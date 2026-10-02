@@ -76,6 +76,11 @@ def preset_params(P):
     o['lights'] = 1.0 if P['mpc'].get('NightK', 0.0) > 0.5 else 0.0
     o['stars'] = 1.0 if P['mpc'].get('NightK', 0.0) > 0.5 else 0.0
     o['weather'] = 0.0
+    # (round 06) hero rim / fill light scale (1 = the AWHLookHeroLight intensities) and the moon's own light properties (disk size, disk colour scale, cloud luminance scale): driver targets moonc.*
+    o['hero'] = 1.0
+    o['moonc.LightSourceAngle'] = float(m.get('angle', 0.5357))
+    o['moonc.AtmosphereSunDiskColorScale'] = [1.0, 1.0, 1.0, 1.0]
+    o['moonc.CloudScatteredLuminanceScale'] = [1.0, 1.0, 1.0, 1.0]
     return {k: vec(v) for k, v in o.items()}
 
 
@@ -119,6 +124,40 @@ def expand(doc, extra_sets=None):
     for pk, pv in T['overcast'].get('set', {}).items(): oc[pk] = vec(pv)
     oc = {k: v for k, v in oc.items() if not k.startswith(('mpc.', 'moon.', 'fill', 'lights', 'stars', 'weather', 'sun.Temperature'))}
     return {'sun': T['sun'], 'moon': T['moon'], 'default_hour': T['default_hour'], 'keys': keys, 'overcast': oc}
+
+
+def evaluate(t, hour, weather=0.0):
+    """Python twin of AWHLookTimeOfDay::Evaluate (cyclic Catmull-Rom clamped to the neighbouring keys; FogCutoffDistance steps at the middle of its segment) for a table
+    returned by expand(): {param: number | [r, g, b, a]} at `hour` (used by the sweep generators to compute baseline values and by tests; weather blend not applied)."""
+    keys = t['keys']; n = len(keys)
+    i = n - 1
+    for k in range(n):
+        if keys[k]['h'] <= hour: i = k
+    def kh(k):
+        m = k % n; return keys[m]['h'] + 24.0 * ((k - m) // n)
+    def kp(k): return keys[k % n]['p']
+    h0, h1, h2, h3 = kh(i - 1), kh(i), kh(i + 1), kh(i + 2)
+    hx = hour + 24.0 if hour < h1 else hour
+    if h2 <= h1: h2 += 24.0; h3 += 24.0
+    seg = max(1e-3, h2 - h1); tt = min(1.0, max(0.0, (hx - h1) / seg)); t2, t3 = tt * tt, tt * tt * tt
+    b0, b1, b2, b3 = 2 * t3 - 3 * t2 + 1, t3 - 2 * t2 + tt, -2 * t3 + 3 * t2, t3 - t2
+    P0, P1, P2, P3 = kp(i - 1), kp(i), kp(i + 1), kp(i + 2)
+    out = {}
+    for name, v1 in P1.items():
+        is_vec = isinstance(v1, list)
+        a1 = v1 if is_vec else [v1]
+        a2 = P2.get(name, v1) if is_vec else [P2.get(name, v1)]
+        a0 = P0.get(name, v1) if is_vec else [P0.get(name, v1)]
+        a3 = P3.get(name, P2.get(name, v1)) if is_vec else [P3.get(name, P2.get(name, v1))]
+        if not is_vec: a2 = [a2[0]]; a0 = [a0[0]]; a3 = [a3[0]]
+        r = []
+        for c in range(len(a1)):
+            m1 = (a2[c] - a0[c]) / max(1e-3, h2 - h0) * seg; m2 = (a3[c] - a1[c]) / max(1e-3, h3 - h1) * seg
+            v = b0 * a1[c] + b1 * m1 + b2 * a2[c] + b3 * m2
+            r.append(min(max(v, min(a1[c], a2[c])), max(a1[c], a2[c])))
+        if name == 'fog.FogCutoffDistance': r = [a1[0] if tt < 0.5 else a2[0]]
+        out[name] = r if is_vec else r[0]
+    return out
 
 
 def body_dir(model, hour, lat):

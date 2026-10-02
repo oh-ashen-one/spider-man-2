@@ -35,9 +35,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float RimDistance = 380.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float RimHeight = 260.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float FillHeight = 90.f;
+	/** (round 06) multiplier on all three lights, keyed by the time-of-day driver (`hero` param, 1 = the intensities above). A dark wall at night pushes auto exposure to its maximum
+	 *  and a full-strength hero then clips (round 05 critic: 21,218 clipped px); the driver lowers this where the exposure range is widest. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float HourScale = 1.f;
 
 private:
 	bool bLightsInit = false;
+	float AppliedScale = -1.f;
 	TWeakObjectPtr<APawn> LitPawn;
 	void SetPawnChannels(APawn* P);
 };

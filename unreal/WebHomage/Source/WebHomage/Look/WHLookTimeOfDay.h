@@ -26,6 +26,7 @@ class UMaterialParameterCollection;
 class APostProcessVolume;
 class ULightComponent;
 class UPrimitiveComponent;
+class AWHLookHeroLight;
 
 UCLASS()
 class WEBHOMAGE_API AWHLookTimeOfDay : public AActor
@@ -79,6 +80,7 @@ private:
 	struct FNightLight { TWeakObjectPtr<ULightComponent> L; float Base = 0.f; };
 	TArray<FNightLight> NightLights;
 	TArray<TWeakObjectPtr<AActor>> NightActors;
+	TArray<TWeakObjectPtr<AWHLookHeroLight>> HeroLights;   // (round 06) the hero rim / fill lights of the night lights level: scaled by the `hero` key
 	float LastLightsK = -1.f;
 	bool bNightHidden = false;
 	bool bSunLitWorld = true;
