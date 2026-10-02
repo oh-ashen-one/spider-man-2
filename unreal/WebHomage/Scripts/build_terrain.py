@@ -474,7 +474,7 @@ def build_land(path):
             except Exception as ex: log('WARN material', pool, str(ex)[:160])
             # per-instance cull distance: only a cost optimisation for pools that need no shadow / Lumen presence beyond their band (the band itself is the material clip)
             cull = None
-            if pool.startswith('ez-'): cull = (4800 if l1 else 2500)
+            if pool.startswith('ez-') and not l1: cull = 2500       # ez L0 (heavy, non-Nanite); L1 is Nanite and keeps casting shadows at every distance (the band clip is skipped in shadow passes, Foliage.ush)
             elif pool in ('trunks-park', 'trunks-elm', 'trunks-conifer'): cull = 7200
             elif pool.endswith('-mid'): cull = 20000
             if cull:
