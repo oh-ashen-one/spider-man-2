@@ -8,7 +8,8 @@ browser facade shader: nb = max(1, round(W / 6.5)) bays of width W / nb) this sc
   * fascia sign boards and awnings (fabric with a lettered valance, or metal marquees) with ORIGINAL signage from gen_street_signs.py
   * fire escapes (grated platforms, railings, stair flights, drop ladder) on pre-war faces and on some side-street faces
 Bays that already carry a browser signage mesh (awnings, canopies, marquees) keep it: no second awning / board is added there.
-Output: <export>/mesh/streetkit/streetkit__t<ix>_<iz>.glb (positions relative to the tile centre like every exported mesh) + streetkit.json.
+Output: <export>/mesh/streetkit/streetkit__t<ix>_<iz>.glb (positions relative to the tile centre like every exported mesh) + streetkit.json;
+(island r02) the fire escapes in their own tiles <export>/mesh/fireescape/fireescape__t<ix>_<iz>.glb (streetkit.json 'fireescape_files').
 Vertex data: POSITION, NORMAL, TEXCOORD_0 (atlas uv, image space v = 0 at the top), TEXCOORD_1 (kind, param), TEXCOORD_2 (metres along the
 element, used by the procedural masonry / grating), COLOR_0 (linear base colour). Kinds: 0 masonry (param 0 ashlar, 1 brick, 2 smooth), 1 metal,
 2 fabric (param = stripes per metre), 3 sign atlas (param 0 fascia, 1 valance light letters, 2 valance dark letters), 4 grating, 5 railing, 6 ladder,
@@ -242,11 +243,12 @@ def main():
         sig_pts.append(P[m])
     sig_pts = np.concatenate(sig_pts) if sig_pts else np.zeros((0, 3))
     elements = []  # element centres for the census (tools/export/crop_census.py)
-    builders, stats = {}, {'faces': 0, 'bays': 0, 'awnings': 0, 'marquees': 0, 'boards': 0, 'doors': 0, 'fire_escapes': 0, 'skipped_bays_existing_signage': 0, 'fire_escape_faces': []}
+    builders, fe_builders, stats = {}, {}, {'faces': 0, 'bays': 0, 'awnings': 0, 'marquees': 0, 'boards': 0, 'doors': 0, 'fire_escapes': 0, 'skipped_bays_existing_signage': 0, 'fire_escape_faces': []}
     for fi, f in enumerate(faces):
         F = Frame(f); gH = f['gH']; W = f['W']; seed = f['seed']; style = int(round(f['style'])); kind = f['kind']
         tile = tuple(f['tile']); cx, cz = centers[tile][0], centers[tile][2]
         mb = builders.setdefault(tile, MB(cx, cz))
+        fmb = fe_builders.setdefault(tile, MB(cx, cz))   # (island r02) fire escapes: their own kit tile (a traversal solid, see main())
         modern = style == 2
         r = hrand(seed, 1); si = int(r * len(STONE)) if kind in ('loft', 'walkup') else (int(r * 4) if not modern else 2)
         if kind in ('loft', 'walkup') and hrand(seed, 2) < 0.6: si = 4  # mostly brick on the pre-war blocks
@@ -307,18 +309,31 @@ def main():
                     kp = min(nb - 1, max(1, int(round((uc + 1.3) / bw)))); uc = kp * bw - 1.3
                 ytop = min(f['h'] - 1.0, 48.0 if prewar else 30.0)
                 fe_col = FE_COLS[int(hrand(seed, 40) * len(FE_COLS)) % len(FE_COLS)] if hrand(seed, 41) < 0.6 else FE_COLS[0]
-                n = fire_escape(mb, F, uc, 3.3, gH + 0.7, ytop, fh, seed, fe_col)
+                n = fire_escape(fmb, F, uc, 3.3, gH + 0.7, ytop, fh, seed, fe_col)
                 if n: elements.append(['fire_escape', *[round(float(v), 2) for v in F.p(uc, gH + 0.7 + fh * n / 2.0, 0.6)]]); stats['fire_escapes'] += 1; stats['fire_escape_faces'].append([round(F.O[0] + F.T[0] * uc, 1), round(F.O[1] + F.T[1] * uc, 1), kind, n])
     out = EXP + 'mesh/streetkit/'; os.makedirs(out, exist_ok=True)
-    for f in os.listdir(out):
-        if f.endswith('.glb'): os.remove(out + f)
+    for f in os.listdir(out):   # (island r02) skip exFAT AppleDouble '._*' files (they vanish with their sibling)
+        if f.endswith('.glb') and not f.startswith('._') and os.path.exists(out + f): os.remove(out + f)
     files = []
     for tile, mb in builders.items():
         if mb.n == 0: continue
         a, idx = mb.arrays(); name = f'streetkit__t{tile[0]}_{tile[1]}'
         write_glb(out + name + '.glb', a, idx, name)
         files.append({'file': f'mesh/streetkit/{name}.glb', 'name': name, 'tile': list(tile), 'center': [centers[tile][0], 0, centers[tile][2]], 'verts': int(mb.n), 'tris': int(len(idx) // 3)})
-    json.dump({'files': files, 'stats': stats, 'elements': elements}, open(EXP + 'streetkit.json', 'w'), indent=1)
+    # (island r02) fire escapes go to <export>/mesh/fireescape/fireescape__t<ix>_<iz>.glb (same vertex layout / material M_CityKit). The traversal
+    # (WebTravWorld.cpp, round 20) makes every visible mesh a solid with its own triangles EXCEPT names on its exclusion list, which holds
+    # 'streetkit': kit tiles stay visual-only (awnings / signs / boards are not floors), fire escapes become platforms the hero lands on.
+    fout = EXP + 'mesh/fireescape/'; os.makedirs(fout, exist_ok=True)
+    for f in os.listdir(fout):
+        if f.endswith('.glb') and not f.startswith('._') and os.path.exists(fout + f): os.remove(fout + f)
+    fe_files = []
+    for tile, mb in fe_builders.items():
+        if mb.n == 0: continue
+        a, idx = mb.arrays(); name = f'fireescape__t{tile[0]}_{tile[1]}'
+        write_glb(fout + name + '.glb', a, idx, name)
+        fe_files.append({'file': f'mesh/fireescape/{name}.glb', 'name': name, 'tile': list(tile), 'center': [centers[tile][0], 0, centers[tile][2]], 'verts': int(mb.n), 'tris': int(len(idx) // 3)})
+    json.dump({'files': files, 'fireescape_files': fe_files, 'stats': stats, 'elements': elements}, open(EXP + 'streetkit.json', 'w'), indent=1)
+    print('fire-escape kit tiles', len(fe_files), 'tris', sum(f['tris'] for f in fe_files))
     print({k: v for k, v in stats.items() if k != 'fire_escape_faces'}, 'tris', sum(f['tris'] for f in files))
 
 if __name__ == '__main__':

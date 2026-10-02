@@ -845,16 +845,57 @@ def keep_mesh(rec):
     return not m.get('transparent')  # additive / multiply overlays (spill, halos, AO, grime) are left out for now
 
 sms = ueditor = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
-# (island r01) collision policy, built in (no runtime patching needed): only GROUND meshes collide (complex-as-simple, actors tagged WHGround: the
-# traversal's floor that never holds a web); every other city mesh (facade / roofs / detail / signage / kit / far / props) is visual-only; buildings
-# collide through one invisible WHBox cube per browser collision box (collision.json), the traversal's only building boxes (WebTravWorld.cpp).
+# (island r02) collision policy = traversal round 20 (WebTravWorld.cpp SolidMode 2, "collision = visual triangles"): every visible city mesh that
+# the traversal treats as a solid carries its OWN cooked triangles (CTF_UseComplexAsSimple, no simple shapes) and a QueryOnly BlockAll component:
+# facade (incl. parapets + copings, drawn in the facade mesh) / roofs / detail (incl. the browser fire escapes) / landmarks / plazas / podiums /
+# bridges / seawalls / facadeLod masses, the fire-escape kit tiles (tools/export/street_kit.py) and the sidewalk sheds / subway entrances.
+# Visual-only (no collision): names on r20's exclusion list (signs, screens, neon, glow, streetkit = awnings / boards / storefronts, props, trees,
+# traffic, decals, wear, dust, markings ...), the far skyline (SM_far*: r20 de-collides them anyway) and every other instanced prop.
+# The ground (asphalt / sidewalks / land) collides as before (BlockAll, tagged WHGround). The WHBox cubes stay index-only (r20 de-collides them).
+# (island r01 had stripped collision from every non-ground mesh: merged with r20 the hero had no solids.)
 GROUND_KINDS = ('asphalt', 'sidewalk', 'land')
+TRAV_EXCLUDED = ('sign', 'screen', 'tsframes', 'tsticker', 'tsneon', 'tslights', 'tsvinyl', 'tshalo', 'tsbands', 'tstkts', 'billboard', 'neon', 'glow',
+                 'streetkit', 'streetprop', '_prop', 'prop_', 'trees', 'tree_', '_tree', 'crown', 'clump', 'leaf', 'leaves', 'foliage', 'canopy', 'bush',
+                 'traffic', 'crowd', 'vehicle', 'hydrant', 'lamp', 'decal', 'halo', 'spill', 'grime', 'wear', 'dust', 'markings')   # = FWebTravWorld::IsExcludedName
+SOLID_PROTOS = ('shed', 'shedtop', 'subway')   # r20 keeps exactly SM_shed / SM_shedtop / SM_subway instanced meshes solid
+def trav_excluded(name): n = name.lower(); return any(k in n for k in TRAV_EXCLUDED)
+def solid_rec(r):
+    """(island r02) does this exported mesh get cooked triangle collision (a traversal solid)?"""
+    if r['kind'] in GROUND_KINDS: return True
+    if r['kind'] in ('signage', 'markings') or r['name'].startswith('far'): return False
+    return not trav_excluded('SM_' + os.path.basename(r['file'])[:-4])
+def solid_component(c):
+    """(island r02) a traversal solid component: blocks every trace / sweep, no physics simulation"""
+    c.set_collision_profile_name('BlockAll'); c.set_collision_enabled(unreal.CollisionEnabled.QUERY_ONLY)
 WP_TILE = 256.0
 def tile_key(x, z): return '%d_%d' % (math.floor(x / WP_TILE), math.floor(z / WP_TILE))
 def set_spatial(a, on, wp):
     if wp: a.set_editor_property('is_spatially_loaded', bool(on))
 def no_collision(c):
     c.set_collision_profile_name('NoCollision'); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+def full_fallback(sm):
+    """(island r02) a Nanite mesh's complex collision is cooked from its fallback (LOD0 render data): keep every triangle in it (fire-escape bars,
+    railings and copings would be simplified away by the default fallback error)"""
+    ns = sm.get_editor_property('nanite_settings')
+    if not ns.enabled: return
+    for k, v in (('fallback_target', getattr(getattr(unreal, 'NaniteFallbackTarget', None), 'PERCENT_TRIANGLES', None)), ('fallback_percent_triangles', 1.0), ('fallback_relative_error', 0.0)):
+        if v is None: continue
+        try: ns.set_editor_property(k, v)
+        except Exception as ex: log('WARN nanite', k, ex)
+    sm.set_editor_property('nanite_settings', ns)
+def make_solid(sm):
+    """(island r02) cooked triangle collision: no simple shapes, complex (render triangles) used for every query"""
+    try: sms.remove_collisions(sm)   # no simple hull / boxes (a merged tile's hull is a giant invisible block)
+    except Exception: pass
+    bsetup = sm.get_editor_property('body_setup')
+    if not bsetup:
+        try: sm.create_body_setup() if hasattr(sm, 'create_body_setup') else None
+        except Exception as ex: log('WARN body setup', sm.get_name(), ex)
+        bsetup = sm.get_editor_property('body_setup')
+    if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
+    else: log('WARN no body setup', sm.get_name())
+    full_fallback(sm)
+    return bool(bsetup)
 def finish_mesh(sm, mat, collide, nanite=False):
     sm.set_material(0, mat)
     ns = sm.get_editor_property('nanite_settings')  # Nanite quantises UVs: the facade / roof data channels need full precision
@@ -865,7 +906,7 @@ def finish_mesh(sm, mat, collide, nanite=False):
     sms.set_lod_build_settings(sm, 0, bs)
     bsetup = sm.get_editor_property('body_setup')
     if collide:
-        if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
+        make_solid(sm)   # (island r02) remove_collisions + complex-as-simple + full Nanite fallback
     else:
         # (island r01) visual-only mesh: no simple shapes and no cooked render-mesh (complex) collision. The traversal's solids are the per-building
         # WHBox cubes (step 'coll' / 'wp'); a merged 256 m tile with collision was one giant invisible block (owner: landing / running in mid-air).
@@ -888,7 +929,7 @@ if 'mesh' in STEPS:
         EAL.rename_asset(src, dst)
         sm = load(dst)
         mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
-        finish_mesh(sm, mat, r['kind'] in GROUND_KINDS, nanite=r['kind'] == 'detail')   # (island r01) only the ground collides (was facade / roofs / detail too)
+        finish_mesh(sm, mat, solid_rec(r), nanite=r['kind'] == 'detail')   # (island r02) traversal solids collide with their own triangles (solid_rec)
         EAL.save_asset(dst); n += 1
     EAL.delete_directory(ROOT + '/Meshes/_in')
     log('meshes', n)
@@ -993,10 +1034,27 @@ if _todo:
             EAL.save_asset(mi.get_path_name())
         else:
             mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else (load(MAT + '/M_CityCrown') if p['name'] in CROWN else mi_for({**p, 'proto': True}))
-        finish_mesh(sm, mi, False, nanite=True)
+        finish_mesh(sm, mi, p['name'] in SOLID_PROTOS, nanite=True)   # (island r02) sheds / subway entrances are solids
         EAL.save_asset(dst)
     EAL.delete_directory(ROOT + '/Props/_in')
     log('protos', len(_todo))
+
+# (island r02) 'collide' step: the r02 collision policy applied IN PLACE to an already imported /Game/City (no 40 min mesh re-import): every
+# solid_rec() mesh + the SOLID_PROTOS props get cooked triangle collision (make_solid). A clean build gets the same from the mesh / proto steps.
+if 'collide' in STEPS:
+    n = nf = 0
+    for r in man['meshes']:
+        if not keep_mesh(r) or not solid_rec(r) or r['kind'] in GROUND_KINDS: continue
+        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        for suf in ('', '_r04', '_r06'):
+            if not EAL.does_asset_exist(sp + suf): continue
+            sm = load(sp + suf)
+            if not make_solid(sm): nf += 1
+            EAL.save_asset(sp + suf); n += 1
+    for pn in SOLID_PROTOS:
+        sp = sm_path(pn)
+        if EAL.does_asset_exist(sp): sm = load(sp); make_solid(sm); EAL.save_asset(sp); n += 1
+    log('collide: %d meshes now cooked-triangle solids (%d without a body setup)' % (n, nf))
 
 # ------------------------------------------------------------------------------------------------ maps
 def U(x, y, z): return unreal.Vector(x * 100.0, z * 100.0, y * 100.0)
@@ -1035,33 +1093,46 @@ def open_level(path):
     return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
 KIT_DIR = ROOT + '/Meshes/streetkit'
+FE_DIR = ROOT + '/Meshes/fireescape'   # (island r02) fire-escape kit tiles: traversal solids
 def kit_spawn(wp=False):
-    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level (island r01: visual-only)"""
+    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level (island r01: visual-only)
+    (island r02) + one per fire-escape tile (label fireescape__t<ix>_<iz>, folder City/fireescape): a QueryOnly solid with its own triangles"""
     kp = os.path.join(EXPORT, 'streetkit.json')
     if not os.path.exists(kp): return 0
     n = 0
-    for r in json.load(open(kp))['files']:
+    K = json.load(open(kp))
+    for r in K['files']:
         sp = f'{KIT_DIR}/SM_{r["name"]}'
         if not EAL.does_asset_exist(sp): continue
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/streetkit')
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC); n += 1
         no_collision(a.static_mesh_component); set_spatial(a, True, wp)
-    return n
+    nf = 0
+    for r in K.get('fireescape_files', []):
+        sp = f'{FE_DIR}/SM_{r["name"]}'
+        if not EAL.does_asset_exist(sp): log('MISSING fire-escape mesh', sp); continue
+        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/fireescape')
+        a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC); nf += 1
+        solid_component(a.static_mesh_component); set_spatial(a, True, wp)
+    log('kit actors: %d streetkit (visual-only), %d fire-escape (solid)' % (n, nf))
+    return n + nf
 
 def kit_import():
     """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them"""
     kp = os.path.join(EXPORT, 'streetkit.json')
-    recs = json.load(open(kp))['files']
-    if EAL.does_directory_exist(KIT_DIR): EAL.delete_directory(KIT_DIR)
-    import_files([os.path.join(EXPORT, r['file']) for r in recs], KIT_DIR + '/_in', mesh_pipeline(True))
+    K = json.load(open(kp))
     mat = load(MAT + '/M_CityKit')
-    for r in recs:
-        base = r['name']; src = f'{KIT_DIR}/_in/{base}/StaticMeshes/{base}'; dst = f'{KIT_DIR}/SM_{base}'
-        if not EAL.does_asset_exist(src): log('MISSING kit mesh', src); continue
-        EAL.rename_asset(src, dst); sm = load(dst)
-        finish_mesh(sm, mat, False, nanite=True); EAL.save_asset(dst)
-    EAL.delete_directory(KIT_DIR + '/_in')
-    log('kit meshes', len(recs))
+    for recs, kdir, solid in ((K['files'], KIT_DIR, False), (K.get('fireescape_files', []), FE_DIR, True)):   # (island r02) fire escapes: solids
+        if EAL.does_directory_exist(kdir): EAL.delete_directory(kdir)
+        if not recs: continue
+        import_files([os.path.join(EXPORT, r['file']) for r in recs], kdir + '/_in', mesh_pipeline(True))
+        for r in recs:
+            base = r['name']; src = f'{kdir}/_in/{base}/StaticMeshes/{base}'; dst = f'{kdir}/SM_{base}'
+            if not EAL.does_asset_exist(src): log('MISSING kit mesh', src); continue
+            EAL.rename_asset(src, dst); sm = load(dst)
+            finish_mesh(sm, mat, solid, nanite=True); EAL.save_asset(dst)
+        EAL.delete_directory(kdir + '/_in')
+        log('kit meshes', kdir, len(recs), 'solid' if solid else 'visual-only')
 
 if 'kit' in STEPS:
     # (r07) clean build: no geometry level yet -> only import the kit meshes (the map step spawns them). Existing project: remove the kit actors from the geometry level
@@ -1070,7 +1141,7 @@ if 'kit' in STEPS:
         unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
         eas_ = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
         for a in eas_.get_all_level_actors():
-            if a.get_actor_label().startswith('streetkit__'): eas_.destroy_actor(a)
+            if a.get_actor_label().startswith(('streetkit__', 'fireescape__')): eas_.destroy_actor(a)
         unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
         kit_import()
         log('kit actors', kit_spawn())
@@ -1203,7 +1274,7 @@ def populate(wp=False):
     """spawn the whole city into the CURRENT level (classic geometry sublevel, or the WP world)"""
     recs = [r for r in man['meshes'] if keep_mesh(r)]
     _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
-    n_gnd = n_vis = 0
+    n_gnd = n_vis = n_sol = 0
     for r in recs:
         if _fb and r['name'] == 'palisadesCliff': continue
         base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
@@ -1217,7 +1288,8 @@ def populate(wp=False):
             smc.set_collision_profile_name('BlockAll'); a.tags = [unreal.Name('WHGround')]; n_gnd += 1
             set_spatial(a, False, wp)
         else:
-            no_collision(smc); n_vis += 1
+            if solid_rec(r): solid_component(smc); n_sol += 1   # (island r02) a traversal solid (own triangles, QueryOnly)
+            else: no_collision(smc); n_vis += 1
             set_spatial(a, not mesh_is_far(r), wp)
     n_kit = kit_spawn(wp)
     log('farsky instances', fsky_spawn(wp))   # (r10)
@@ -1240,7 +1312,8 @@ def populate(wp=False):
             a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label + '__t' + tk, folder=folder)
             c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
             c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
-            no_collision(c)
+            if label in ['ISM_' + n for n in SOLID_PROTOS]: solid_component(c)   # (island r02) sheds / subway entrances: solids
+            else: no_collision(c)
             xs = []
             for it in its:
                 s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
@@ -1291,7 +1364,7 @@ def populate(wp=False):
             for j in range(6): c.set_custom_data_value(k, j, float(h[7 + j]), False)
         set_spatial(a, False, wp)
         log('hinterland', len(H))
-    log('populate%s: %d meshes (%d ground, %d visual-only), %d kit, %d instances' % (' (WP)' if wp else '', len(recs), n_gnd, n_vis, n_kit, ni))
+    log('populate%s: %d meshes (%d ground, %d solid, %d visual-only), %d kit, %d instances' % (' (WP)' if wp else '', len(recs), n_gnd, n_sol, n_vis, n_kit, ni))
     return len(recs), ni
 
 def build_geo_level(path):

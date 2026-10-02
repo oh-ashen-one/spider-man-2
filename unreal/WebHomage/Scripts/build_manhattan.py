@@ -175,12 +175,15 @@ def step_city():
     # (island r01) + 'coll' (WHBox level, replaces Look_Boxes) + 'wp' (the World Partition map); the WP map's files are deleted first (clean,
     # idempotent: a commandlet cannot delete external-actor packages of a loaded WP world without a modal / source-control step)
     content = os.path.join(PROJ, 'Content')
-    name = WP_MAP.split('/')[-1]
-    for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name):
-        f = os.path.join(content, rel)
-        if os.path.exists(f): os.remove(f)
-    for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
-        safe_rmtree(os.path.join(content, rel))
+    # (island r02) SM2_ISLAND_DROP_MAPS (comma list of /Game/Maps names, e.g. the r01 test map Manhattan_WP_ism): deleted too, so the kit step can
+    # delete + re-import /Game/City/Meshes/streetkit without a map still referencing it
+    names = [WP_MAP.split('/')[-1]] + [n for n in os.environ.get('SM2_ISLAND_DROP_MAPS', '').split(',') if n]
+    for name in names:
+        for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name, 'Maps/%s_HLODLayer_Merged.uasset' % name):
+            f = os.path.join(content, rel)
+            if os.path.exists(f): os.remove(f)
+        for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
+            safe_rmtree(os.path.join(content, rel))
     # (island r01 resume) SM2_ISLAND_CITY_STEPS re-runs only some build_city.py steps on the existing /Game/City content, e.g. "wp" after the
     # 2026-10-01 14:24 reboot killed the pass in the WP step (the 64 min import before it had saved everything else)
     steps = os.environ.get('SM2_ISLAND_CITY_STEPS', 'clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp')
