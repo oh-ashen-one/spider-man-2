@@ -1,0 +1,177 @@
+{
+ "rows": {
+  "DBG4_river_low": {},
+  "DBG5_river_low": {},
+  "G2_harbour_sun_high": {
+   "file": "G2_harbour_sun_high.png",
+   "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
+   "mean_Y": 127.4,
+   "highpass_sd": 17.43,
+   "glint_pct": 1.456,
+   "path_cols_pct_ge2pct_rows": 100.0,
+   "path_cols_pct_any": 100.0,
+   "sparkles": 5037,
+   "sparkle_px_median": 4.0,
+   "sparkle_px_p90": 12.0,
+   "p99_5": 243.3
+  },
+  "G2_river_sun": {
+   "file": "G2_river_sun.png",
+   "src_width": 1920,
+   "mean_Y": 123.1,
+   "rgb": [
+    152.9,
+    119.4,
+    72.5
+   ],
+   "p1": 29.8,
+   "p99_5": 247.0,
+   "highpass_sd": 23.8,
+   "glint_pct_ge140": 38.32,
+   "glint_pct_ge130": 41.15,
+   "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+   "sparkle_width_pct": 42.2
+  },
+  "L1_harbour_high": {
+   "file": "L1_harbour_high.png",
+   "crop": "native 4K x0-2400 y1300-2160",
+   "mean_Y": 82.1,
+   "highpass_sd": 6.03,
+   "glint_pct_ge140": 0.0,
+   "pale_blobs_ge20px": 55,
+   "p1": 53.8,
+   "p99_5": 116.8
+  },
+  "L1_harbour_sun_high": {
+   "file": "L1_harbour_sun_high.png",
+   "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
+   "mean_Y": 132.5,
+   "highpass_sd": 13.66,
+   "glint_pct": 0.855,
+   "path_cols_pct_ge2pct_rows": 100.0,
+   "path_cols_pct_any": 100.0,
+   "sparkles": 2939,
+   "sparkle_px_median": 3.0,
+   "sparkle_px_p90": 13.0,
+   "p99_5": 245.3
+  },
+  "L3_harbour_high": {
+   "file": "L3_harbour_high.png",
+   "crop": "native 4K x0-2400 y1300-2160",
+   "mean_Y": 81.0,
+   "highpass_sd": 8.26,
+   "glint_pct_ge140": 0.01,
+   "pale_blobs_ge20px": 276,
+   "p1": 52.4,
+   "p99_5": 112.2
+  },
+  "L3_harbour_sun_high": {
+   "file": "L3_harbour_sun_high.png",
+   "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
+   "mean_Y": 122.5,
+   "highpass_sd": 18.63,
+   "glint_pct": 1.284,
+   "path_cols_pct_ge2pct_rows": 100.0,
+   "path_cols_pct_any": 100.0,
+   "sparkles": 6186,
+   "sparkle_px_median": 3.0,
+   "sparkle_px_p90": 9.0,
+   "p99_5": 239.7
+  },
+  "L3_river_low": {
+   "file": "L3_river_low.png",
+   "src_width": 1920,
+   "mean_Y": 66.7,
+   "rgb": [
+    73.1,
+    66.0,
+    55.2
+   ],
+   "p1": 33.5,
+   "p99_5": 101.6,
+   "highpass_sd": 8.36,
+   "glint_pct_ge140": 0.0,
+   "glint_pct_ge130": 0.0,
+   "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame"
+  },
+  "base_harbour_high": {
+   "file": "base_harbour_high.png",
+   "crop": "native 4K x0-2400 y1300-2160",
+   "mean_Y": 81.5,
+   "highpass_sd": 8.12,
+   "glint_pct_ge140": 0.0,
+   "pale_blobs_ge20px": 327,
+   "p1": 52.3,
+   "p99_5": 114.7
+  },
+  "base_harbour_sun_high": {
+   "file": "base_harbour_sun_high.png",
+   "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
+   "mean_Y": 127.5,
+   "highpass_sd": 17.39,
+   "glint_pct": 1.454,
+   "path_cols_pct_ge2pct_rows": 100.0,
+   "path_cols_pct_any": 100.0,
+   "sparkles": 5007,
+   "sparkle_px_median": 3.0,
+   "sparkle_px_p90": 12.0,
+   "p99_5": 243.2
+  },
+  "base_river_low": {
+   "file": "base_river_low.png",
+   "src_width": 3840,
+   "mean_Y": 69.4,
+   "rgb": [
+    75.7,
+    68.7,
+    57.4
+   ],
+   "p1": 34.6,
+   "p99_5": 104.3,
+   "highpass_sd": 10.63,
+   "glint_pct_ge140": 0.0,
+   "glint_pct_ge130": 0.0,
+   "note": "",
+   "foam": {
+    "file": "base_river_low_seawall_foam.jpg",
+    "edge_line": [
+     -0.0402,
+     460.9
+    ],
+    "band_px_mean": 0.0,
+    "band_px_median": 0.0,
+    "rows_ge12px_pct": 0.0,
+    "band_Y_mean": 187.5
+   }
+  },
+  "base_river_sun": {
+   "file": "base_river_sun.png",
+   "src_width": 1920,
+   "mean_Y": 123.7,
+   "rgb": [
+    153.4,
+    120.0,
+    73.0
+   ],
+   "p1": 29.5,
+   "p99_5": 247.1,
+   "highpass_sd": 24.03,
+   "glint_pct_ge140": 38.7,
+   "glint_pct_ge130": 41.52,
+   "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+   "sparkle_width_pct": 42.4
+  }
+ },
+ "far": {
+  "base": 109.94,
+  "L1": 20.31833333333333,
+  "L3": 92.87
+ },
+ "glitter": {
+  "base": 0.0,
+  "G2": 0.0
+ },
+ "pick": {
+  "LongK": 1.0
+ }
+}
