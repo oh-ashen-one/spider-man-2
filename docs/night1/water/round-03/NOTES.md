@@ -33,7 +33,7 @@ Stills: 3840x2160 and 1920x1080 output at **native internal resolution** (`r.Scr
 | river_sun dolly autocorr at 80 px | <= 0.10 | 0.041 | **0.015** PASS |
 | S4 C14 | 5 to 35 | 22.0 | **17.9** PASS |
 | seawall contact foam | present | present | **ABSENT: REGRESSION** (see below) |
-| perf | see PERF | | see PERF |
+| perf: frame delta / SLW at river_low | <= 2.5 / <= 2.5 ms | +1.23 / 0.80 (TSR 67 %) | **-0.25 / 1.00** PASS (native 100 %) |
 
 Iteration stills (1080p, before the final build; 1080p reads lower on hp sd than 4K): every variant sat within a few Y of the base
 (river_low p99.5 99 to 116, p1 43 to 48; harbour hp sd 2.8 to 2.9). Parameter tuning does not move these targets.
@@ -61,7 +61,17 @@ material wiring is also unchanged apart from the new `tK` input. Two hypotheses,
 First step next round: one 1080p still of `Water_View_RiverLow` with `Dbg 4` (`wf, cf, gust` as colour) to separate (a) from (b). If (a),
 set the foam normal to the long-wave normal (`normalize(float3(-sl2, 1))`) at full `wf`.
 
-## PERF
-See `perf.json` / `perf_gpu.json` (exclusive `gpu_slot perf`, native 3840x2160 at 100 %, `tools/water/perf_summary.py`). Filled in when the
-perf hold finishes. Round 02's "SingleLayerWater 3.68 ms" came from the CSV profiler's footer row (value 2160) being included in the mean.
-The true round-02 SLW pass was 0.80 ms at TSR 67 %.
+## PERF (`perf.json`, `perf_gpu.json`)
+Exclusive `gpu_slot perf`, native 3840x2160 at 100 % (no TSR upscale), static camera, frames 16 to 31 s, water map vs the same map with P1's
+flat plane. `GPU-LOCK: class=perf exclusive=yes util_before=0% util_after=0% util_during_avg=57.4% wait_s=3858 instances_before=1
+instances_max=2 contaminated=false`. ioreg Device Utilization before the hold: 0 %. Disclosure: another session's `island` editor process
+was open during the hold (instances 1 to 2, not a capture); the lock judged the run uncontaminated (GPU 0 % before and after).
+| view | GPU frame water / flat (ms) | frame delta | SingleLayerWater pass | SLW depth prepass | Lumen reflections delta | water passes sum |
+|---|---|---|---|---|---|---|
+| river_low | 38.51 / 38.76 | **-0.25** | **1.00** | 0.47 | +1.22 | 2.66 |
+| S4 | 47.99 / 47.07 | **+0.91** | 0.85 | 0.56 | +0.21 | 1.38 |
+| river_sun | 31.67 / 33.80 | -2.13 | 1.62 | 0.47 | +0.52 | 2.19 |
+Gates: frame delta <= 2.5 ms PASS (all three); SingleLayerWater pass at river_low <= 2.5 ms PASS (1.00). Negative deltas are run-to-run
+noise / content differences (the flat base still renders its own plane); the delta is not a cost saving. Round 02's "SingleLayerWater
+3.68 ms" came from the CSV profiler's footer row (value 2160) being included in the mean. The true round-02 SLW pass was 0.80 ms at TSR 67 %
+(round 03 measures native 100 %: 1.00 ms).

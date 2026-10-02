@@ -20,7 +20,7 @@ Committed `PARAMS` = captured pick V3 (`ChopK 2.6, MicroK 2.0, ScatK 0.04, FarVa
 | autocorr 80 px (low / sun dolly) | <= 0.10 | 0.006 / 0.041 | **0.053 / 0.015** |
 | S4 C14 | 5-35 | 22.0 | **17.9** |
 | seawall contact foam | present | present | **ABSENT (regression)** |
-| perf (frame delta, SLW pass at river_low) | <= 2.5 / <= 2.5 ms | +1.23 / 0.80 (TSR 67) | pending (perf hold queued; GPU PAUSED 05:22 by the health monitor) |
+| perf (frame delta, SLW pass at river_low) | <= 2.5 / <= 2.5 ms | +1.23 / 0.80 (TSR 67) | **-0.25 / 1.00** PASS (native 100 %) |
 
 ## What blocks the remaining targets (measured, see NOTES "Why")
 - river_low: the sky this view mirrors is about 114 to 121 Y, so a mirror reflection cannot reach p99.5 150 or Y 140 glints. The trough
@@ -68,7 +68,9 @@ Scratch helpers (not committed, recreate from this text if the scratch dir is go
 - `hold3.sh`: final `build_water.py --steps ue` with `SM2_WATER_PARAMS=$(cat final_params.json)` + capture_round stills + movie.
 
 ## State at hand-off
-- 05:35: capture hold done (no engine of ours running). `_scratch/water/r03/perf_chain.sh` (pid 84310, own driver) is waiting in the
-  `gpu_slot perf` queue (the GPU was auto-PAUSED at 05:22 with DEMOTED (cap 1), not by our run). If this session died and neither process
-  is alive, re-run `bash /Users/midir/sm2-n1/_scratch/water/r03/perf_chain.sh` after editing its first `while` loop out (the hold pid
-  is gone), then `python3 tools/water/perf_summary.py $S/cap/perf_r03 native100 docs/night1/water/round-03/perf.json`.
+- Nothing of ours is running: capture hold done 05:19, perf hold done 06:29 (exit 0), `perf_chain.sh` exited, no engine, no waiter.
+  `stop_ue.sh` was run on this worktree as a final check.
+- Content (Manhattan + `/Game/Water`, V3 params) is built in this worktree's `unreal/WebHomage/Content` (git-ignored). Intermediate and
+  DerivedDataCache were kept, because the next round rebuilds here (about 10 min plus queue).
+- Scratch kept: `_scratch/water/manhattan` (export / tex / chars clones), `iter/r03`, `cap/` (dolly PNG frames for both dollies, about
+  2 GB: delete them once round 04 has its own), `r03/` scripts and logs.
