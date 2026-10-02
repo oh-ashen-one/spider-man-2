@@ -8,7 +8,7 @@
 
 PARK_INC = '/Project/Terrain/Park.ush'
 LAWN_GRADE = (0.54, 1.20, 0.46, 1.0)   # r02 lawn albedo grade (R, G, B): greener, more saturated (critic r1 secondary: G/R >= 1.05, saturation >= 0.55)
-FILL = 700.0   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
+FILL = 450.0   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
 
@@ -100,7 +100,8 @@ float expo = saturate(uv1.x);
 float occ = lerp(0.36, 1.05, pow(expo, 1.3));
 float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
 float bnd = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);   // r02: the ez-tree LOD band (L0 < 20 m, L1 20-44 m): UE drew L1 out to 520 m
-Op = tx.a * bnd; Sub = c * 0.85; Rough = 0.78;
+float eb = min(min(uv0.x, 1.0 - uv0.x), min(uv0.y, 1.0 - uv0.y));   // r03 pass 2: ragged quad borders (straight leaf-card edges against the sky in p10)
+Op = tx.a * bnd * smoothstep(0.0, 0.07, eb + 0.04 * (lum - 0.5)); Sub = c * 0.85; Rough = 0.78;
 float dcam = length(wpos - cam) * 0.01;
 AO = lerp(0.7, 1.0, expo);   // r03: sky light through the leaf exposure (Lumen indirect / sky only; the sun is untouched)
 Emis = c * fill * tfFillW(expo, wn, sun, dcam);   // r03: the r02 constant fill (c * 1800 * (0.4 + 0.6 expo)) is gone; residual fill only in shade, 0 within 10 m (Foliage.ush tfFillW). Units: sunlit albedo A radiates ~10000 A cd/m2 under the golden rig

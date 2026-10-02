@@ -115,16 +115,31 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
         tx.r = tx.g > 0.96f ? 0.55f : (tx.a > 0.5f ? tx.r * 0.85f : 0.45f);
         tx.b = 0.0f; tx.g = min(tx.g, 0.94f);
         float facing = abs(dot(normalize(wn), V));
-        tx.a = facing > 0.45f ? 1.0f : cov;       // grazing core surface (its silhouette) takes the leaf coverage: the solid mass never shows a faceted edge
+        // r03 pass 2: the LOD1 core (0.85 of the lobes, 165-520 m) read as smooth round puffs: ~0.6 m holes (world-space value noise) let the cards / the dark interior show through
+        float3 cpw = wpos * 0.01f;
+        float holes = tfVn(cpw * 1.7f + 5.3f) * 0.65f + tfVn(cpw * 4.1f + 1.7f) * 0.35f;
+        tx.a = (facing > 0.45f && holes > 0.36f) ? 1.0f : cov * step(0.30f, holes);   // grazing core surface (its silhouette) takes the leaf coverage: the solid mass never shows a faceted edge
+    }
+    else
+    {
+        // r03 pass 2: ragged card borders (a leaf spray cut by its quad edge reads as a straight line against the sky): the coverage is thinned toward the atlas tile border
+        float2 tl = frac(luv * 2.0f);
+        float eb = min(min(tl.x, 1.0f - tl.x), min(tl.y, 1.0f - tl.y));
+        tx.a *= smoothstep(0.0f, 0.09f, eb + 0.05f * (tx.r - 0.5f));
     }
     float twig = tx.g >= 0.97f ? 1.0f : 0.0f;
     float hsel = tx.g * 0.8f + aLeaf.y * 0.55f - 0.18f;
     float3 leaf = lerp(tA, tB, smoothstep(0.15f, 0.85f, hsel));
     float odd = frac(tx.g * 13.7f + aLeaf.y * 5.3f);                                   // a scatter of dry brown / still-green leaves
     leaf = odd > 0.93f ? float3(0.13f, 0.06f, 0.025f) : (odd < 0.035f ? float3(0.16f, 0.14f, 0.035f) : leaf);
-    leaf *= 0.42f + 0.72f * tx.r;
-    float occ = lerp(0.4f, 1.0f, pow(saturate(expo), 1.4f)) * lerp(0.62f, 1.0f, tx.b);
-    if (core > 0.5f) occ = lerp(0.24f, 0.42f, saturate(expo));
+    leaf *= 0.32f + 0.9f * tx.r;                                                         // r03 pass 2: per-leaf value spread (browser 0.42 + 0.72 r)
+    float occ = lerp(0.4f, 1.0f, pow(saturate(expo), 1.4f)) * lerp(0.45f, 1.0f, tx.b);   // r03 pass 2: deeper spray interiors (browser 0.62): leaf-scale contrast
+    if (core > 0.5f)
+    {
+        float3 cpw2 = wpos * 0.01f;
+        float cl = tfVn(cpw2 * 0.9f + 2.1f) * 0.6f + tfVn(cpw2 * 2.6f + 9.4f) * 0.4f;   // clumps of ~1 m / ~0.4 m across the core: leaf-mass breakup, not hull bump
+        occ = lerp(0.24f, 0.42f, saturate(expo)) * lerp(0.55f, 1.6f, smoothstep(0.3f, 0.7f, cl));
+    }
     float3 c = (twig > 0.5f ? float3(0.085f, 0.06f, 0.042f) : leaf) * occ;
     float nn = frac(tfIGN(pix + 17.0f) + frac(t * 37.0f) * 2.618034f);
     op = (tx.a < lerp(0.2f, 0.7f, nn)) ? 0.0f : tfBand(dist, band, pix, t);

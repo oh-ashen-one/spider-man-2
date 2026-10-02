@@ -7,7 +7,9 @@
   3. (r03) crown silhouette: the longest straight segment on the foliage-mask boundary where it meets the sky (a hull facet edge reads as a straight line against the sky).
      The foliage / sky masks are cleaned (3 px opening / closing), the boundary is traced as contours, only contour points with sky within 3 px are kept, every run of them is
      simplified by Douglas-Peucker with a 1.5 px tolerance and the longest resulting segment is reported (image borders excluded). Segments within 4 deg of horizontal / vertical
-     are building / lamp-post edges (the cameras have no roll) and are listed apart, not scored. PASS: <= 40 px in p10_lawn_eye.
+     are building / lamp-post edges (the cameras have no roll); a segment whose foliage-side strip (5 px in) is dark (median luma < 55: lamp heads, trunks, bare limbs),
+     thin (median mask thickness < 3.5 px: twigs) or outside the canopy hue range 32-170 deg (brick / facades) is not a crown edge either. All set-aside segments are listed with
+     the reason, never scored. PASS: <= 40 px in p10_lawn_eye.
   r03: the flat-patch test also counts dark pockets (luma < 40, any hue) that touch foliage (within 15 px), so a crushed black shadow pocket cannot hide from it.
 usage: crown_stats.py <stills dir> <crops.json> <out.json> [--flat image.jpg ...] [--silhouette image.jpg ...] [--preview preview.png]"""
 import sys, json, os
@@ -84,6 +86,26 @@ def silhouette(path, tol=1.5, near_sky=3, min_report=40, axis_tol=4.0):
     skyd = binary_dilation(sky, iterations=near_sky)
     cs, _ = cv2.findContours(foliage.astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
     best = []; axial = []; npts = 0
+    Y = luma(im); thick = distance_transform_edt(foliage)
+    mx = im.max(axis=2); mn = im.min(axis=2); d_ = np.maximum(mx - mn, 1e-3); r_, g_, b_ = im[..., 0], im[..., 1], im[..., 2]
+    hue = np.where(mx == r_, (60 * (g_ - b_) / d_) % 360, np.where(mx == g_, 60 * (b_ - r_) / d_ + 120, 60 * (r_ - g_) / d_ + 240))
+    def strip_class(a, b):
+        """what lies on the foliage side of a boundary segment: 'crown' (leaf-coloured, lit, thicker than a twig) or why not (dark = lamp head / trunk / bare limb,
+        thin = a twig or limb under 7 px, hue = brick / facade colours outside the canopy's yellow-olive-green range)"""
+        n = max(2, int(np.hypot(*(b - a).astype(float)) // 2)); t = np.linspace(0.0, 1.0, n)
+        P = a[None, :] + (b - a)[None, :] * t[:, None]
+        nx, ny = -(b - a)[1], (b - a)[0]; nl = max(1e-6, float(np.hypot(nx, ny))); nx, ny = nx / nl, ny / nl
+        best_side = None
+        for sgn in (1.0, -1.0):   # pick the side of the segment that is foliage
+            xs = np.clip((P[:, 0] + sgn * nx * 5).round().astype(int), 0, W - 1); ys = np.clip((P[:, 1] + sgn * ny * 5).round().astype(int), 0, H - 1)
+            f = foliage[ys, xs].mean()
+            if best_side is None or f > best_side[0]: best_side = (f, xs, ys)
+        f, xs, ys = best_side
+        if np.median(Y[ys, xs]) < 55: return 'dark'
+        if np.median(thick[ys, xs]) < 3.5: return 'thin'
+        hh = np.median(hue[ys, xs])
+        if hh < 32 or hh > 170: return 'hue'
+        return 'crown'
     for c in cs:
         c = c[:, 0, :]
         if len(c) < 20: continue
@@ -106,12 +128,14 @@ def silhouette(path, tol=1.5, near_sky=3, min_report=40, axis_tol=4.0):
                 if L <= 0: continue
                 ang = abs(np.degrees(np.arctan2(dy, dx))) % 90.0
                 axis = min(ang, 90.0 - ang) <= axis_tol           # building verticals / roof lines / lamp posts (the cameras have no roll): reported apart
-                (axial if axis else best).append((L, [int(a[0]), int(a[1])], [int(b[0]), int(b[1])]))
+                why = 'axis-aligned' if axis else strip_class(a, b)
+                rec = (L, [int(a[0]), int(a[1])], [int(b[0]), int(b[1])], why)
+                (best if why == 'crown' else axial).append(rec)
     best.sort(key=lambda t: -t[0]); axial.sort(key=lambda t: -t[0])
     return {'image': os.path.basename(path), 'sky_pct': round(100 * float(sky.mean()), 1), 'foliage_pct': round(100 * float(foliage.mean()), 1), 'sky_boundary_points': npts,
             'longest_straight_px': round(best[0][0], 1) if best else 0.0, 'segments_longer_than_%d_px' % min_report: sum(1 for t in best if t[0] > min_report),
             'longest': [{'len_px': round(t[0], 1), 'from': t[1], 'to': t[2]} for t in best[:8]],
-            'axis_aligned_set_aside': [{'len_px': round(t[0], 1), 'from': t[1], 'to': t[2]} for t in axial[:5]]}
+            'set_aside': [{'len_px': round(t[0], 1), 'from': t[1], 'to': t[2], 'why': t[3]} for t in axial[:8]]}
 
 def main():
     args = sys.argv[1:]

@@ -515,6 +515,38 @@ def build_land(path):
                     for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
             nt += len(xs); counts[pool] = len(xs)
         log('park woodland instances', nt, 'in', len(counts), 'pools')
+        # r03 pass 2: Lumen-only shade proxy. With every leaf pool out of the ray-tracing scene nothing occluded the sky under the canopy (pass 1: the lawn under the trees was
+        # fully sky-lit, the p1 foreground lost its shade). A lighter proxy: the crown hull of each tree at PROXY_K of its size about the crown centre, hidden in game but kept for
+        # Lumen (visible in ray tracing + affect_indirect_lighting_while_hidden -> bVisibleInLumenScene, PrimitiveSceneProxy.cpp): it sits inside the card shell (the cards' clumps
+        # are at 0.58-0.96 of the lobe radius), so outward sky rays from a leaf escape while rays into the crown and up from the ground are occluded. No shadows, no camera visibility.
+        PROXY_K = 0.6
+        for kind in ('park', 'elm', 'conifer'):
+            pool = 'trees-%s-crown' % kind; d = INS.get(pool); sp = f'{TREED}/SM_trees_{kind}_crown'
+            if not d or not d.get('items') or not EAL.does_asset_exist(sp): log('no shade proxy for', kind); continue
+            sm_ = load(sp); bb = sm_.get_bounds(); cz = bb.origin.z   # crown centre height (cm, local)
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_shadeproxy_' + kind, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(sm_); c.set_editor_property('num_custom_data_floats', 6)
+            c.set_material(0, mi('Proxy_' + kind, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, {'band': (0.0, 100000.0, 0.0, 0.0)}))
+            c.set_cast_shadow(False); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            for k_, v_ in (('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', True), ('visible_in_ray_tracing', True),
+                           ('affect_indirect_lighting_while_hidden', True), ('visible_in_reflection_captures', False), ('visible_in_real_time_sky_captures', False)):
+                try: c.set_editor_property(k_, v_)
+                except Exception as ex: log('WARN proxy', k_, str(ex)[:100])
+            xs = []
+            for it in d['items']:
+                s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                loc = U(it['x'], it['y'], it['z']); loc.z += (1.0 - PROXY_K) * cz * s_ * s3[1]
+                xs.append(unreal.Transform(loc, rot, unreal.Vector(PROXY_K * s_ * s3[0], PROXY_K * s_ * s3[2], PROXY_K * s_ * s3[1])))
+            c.add_instances(xs, False, True)
+            for k, it in enumerate(d['items']):
+                e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
+                for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
+            a.set_actor_hidden_in_game(True)
+            try: c.set_visibility(True)   # hidden through the actor flag (in game), the component stays 'visible' for the Lumen-while-hidden path
+            except Exception: pass
+            log('shade proxy', kind, len(xs), 'instances, k', PROXY_K, 'crown centre z %.0f cm' % cz)
 
     for nm_, fn_ in (('meshes', _sec_meshes), ('tufts', _sec_tufts), ('props', _sec_props), ('trees', _sec_trees)): soft(nm_, fn_)
     return world
