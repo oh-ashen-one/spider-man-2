@@ -11,7 +11,7 @@
 setopt +o nomatch 2>/dev/null
 WT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 R=$WT/docs/night1/look/round-07
-F=${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/r07/holdD
+F=${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/r07/${HOLD_DIR:-holdD}
 STEPS=${1:-loop,build,stills,lapse,clips}
 T0=$(date +%s); HOLD=${HOLD_BUDGET:-2250}
 rem() { echo $(( HOLD - ($(date +%s) - T0) )); }
@@ -33,16 +33,16 @@ if os.path.exists(F + '/loop/bias_overrides.json'): o.update(json.load(open(F + 
 json.dump(o, open(F + '/bias_final.json', 'w'), indent=1)
 PY
 cp "$F/bias_final.json" "$R/lapse_bias_overrides.json"
-if [[ $STEPS == *loop* ]] || [ ! -f "$F/bias_final.json" ]; then python3 tools/perf_ue/sweeps/r07/make_v3.py --knobs "$KN" --bias-overrides "$F/bias_final.json" --in-place || exit 2; fi
+if [[ $STEPS == *loop* ]] || [[ $STEPS == *build* ]]; then python3 tools/perf_ue/sweeps/r07/make_v3.py --knobs "$KN" --bias-overrides "$F/bias_final.json" --in-place || exit 2; fi
 cp "$WT/unreal/WebHomage/Scripts/look_presets.json" "$F/look_presets_final.json"
 if [[ $STEPS == *build* ]]; then
   tools/perf_ue/rebuild_look.sh rigs,maps midday,golden,night,tod; chk $? build
   grep -q "build_look.*DONE" "${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/build_look_headless.log" || { echo "look rebuild not confirmed"; exit 1; }
 fi
 if [[ $STEPS == *stills* ]]; then
-  python3 tools/perf_ue/sweeps/r07/gen_plans_r07.py --out "$F" --set full
-  python3 tools/perf_ue/sweeps/run_r06.py --plan "$F/plan_full.json" --out "$F/stills" --timeout $(tmo ${STILLS_TMO:-800}); chk $? stills
-  if ls "$F"/stills/tod_*.jpg >/dev/null 2>&1; then rm -f "$R"/stills/tod_*.jpg; cp "$F"/stills/tod_*.jpg "$R/stills/"; cp "$F/stills/session.json" "$R/stills_session.json"; fi
+  python3 tools/perf_ue/sweeps/r07/gen_plans_r07.py --out "$F" --set ${STILLS_SET:-full}
+  python3 tools/perf_ue/sweeps/run_r06.py --plan "$F/plan_${STILLS_SET:-full}.json" --out "$F/stills" --timeout $(tmo ${STILLS_TMO:-800}); chk $? stills
+  if ls "$F"/stills/tod_*.jpg >/dev/null 2>&1; then [ "${STILLS_SET:-full}" = full ] && rm -f "$R"/stills/tod_*.jpg; cp "$F"/stills/tod_*.jpg "$R/stills/"; cp "$F/stills/session.json" "$R/stills_session_${STILLS_SET:-full}.json"; fi
 fi
 if [[ $STEPS == *lapse* ]]; then
   [ $(rem) -gt 760 ] && { python3 tools/perf_ue/lapse_stitch.py --round "$R" --name tod_lapse_S4 --res 960x540 --segments "3.7:1.8:4:0.3,5.2:4.0:16:0.3,8.9:8.7:4:0.3,17.3:4.1:16:0.3,21.1:6.9:4:0.3" --deadline $(( T0 + HOLD - 60 )); chk $? lapse; } || echo "skipping lapse (budget)"
