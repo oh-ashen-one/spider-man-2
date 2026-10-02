@@ -44,7 +44,7 @@ if [[ $STEPS == *build* ]]; then
 fi
 if [[ $STEPS == *stills* ]]; then
   python3 tools/perf_ue/sweeps/r06/gen_plans_d.py --out "$S/final" --final
-  [ $(rem) -gt 700 ] && { python3 tools/perf_ue/sweeps/run_r06.py --plan "$S/final/plan_final.json" --out "$S/final/stills" --timeout $(tmo 1500); chk $? stills; cp "$S"/final/stills/tod_*.jpg "$R/stills/" 2>/dev/null; cp "$S/final/stills/session.json" "$R/stills_session.json"; } || echo "skipping stills (budget)"
+  [ $(rem) -gt 700 ] && { python3 tools/perf_ue/sweeps/run_r06.py --plan "$S/final/plan_final.json" --out "$S/final/stills" --timeout $(tmo 1500); chk $? stills; for F in "$S"/final/stills/tod_*.jpg; do case "$F" in *_step_h*|*_dawnstep_h*) ;; *) cp "$F" "$R/stills/";; esac; done; cp "$S/final/stills/session.json" "$R/stills_session.json"; } || echo "skipping stills (budget)"
 fi
 if [[ $STEPS == *lapse* ]]; then
   [ $(rem) -gt 420 ] && { python3 tools/perf_ue/capture_tod_lapse.py --round "$R" --shot S4 --from 4.0 --hours 24 --seconds 12 --cmds "exec wh.ToDLapseCvars $LC" --save-frames 440:452,66:78 --timeout $(tmo 1400); chk $? lapse; rm -rf "$S/final/tod_lapse_S4_frames_kept"; mv "$R/tod_lapse_S4_frames_kept" "$S/final/" 2>/dev/null; } || echo "skipping lapse (budget)"
