@@ -6,18 +6,20 @@ Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratc
 Owns `/Game/Terrain*`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_terrain_shaders.mjs}`, `tools/terrain/`, `unreal/WebHomage/Scripts/{build_terrain.py,terrain_materials.py}`,
 `unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E10 = r04), `SHOTLIST.md`, `shots.json`.
 
-## Round 04 (2026-10-02, Sonnet 5.5): THE LAWN — state at the last push
+## Round 04 (2026-10-02, Sonnet 5.5): THE LAWN — state at the last push (hold 1 measured, hold 2 queued)
 Target (three critics, r3 verdict): replace the yellow star tufts by dense blade grass + 0.3-3 m lawn albedo detail, sat >= 0.70, E1 sigma-6 SD >= 8 on the critic crops + guard boxes, no flat quad > 100 px in t4,
 t5 last 5 s over park ground at 25-40 m with sigma-3 SD >= 5, canopy guard for the never-rendered pass-2 hunks, GPU ms p1 / p10 within +5 % of r3 (161 / 92 ms), no axis below [4,4,4,4,3].
-Done in committed scripts (CPU, verified offline: `tools/terrain/check_hlsl.py` 13 / 13): `tools/terrain/prep_lawn.py` (4 near blade-patch meshes of ~1150 blades / 2.3 m discs on a 1.5 m grid = 177 k instances, culled 18 m; 2 far patches of ~400 wider blades on a 2.6 m grid = 59 k, culled 60 m;
-`lawn_detail.png` tileable RGBA noise; `blanket_weave.png`), `Shaders/Terrain/Lawn.ush` (lawn grade with blue 0.10 instead of 0.46, 0.3-16 m mottling / wear / clover / mowing stripes, clay vs grass mask), `terrain_materials.py`
-(M_TerrainGrass = blade turf: two-sided foliage, root -> tip colour, wind, distance shrink; M_TerrainBlanket = gingham weave + fringed ends + fold normal; M_TerrainVC grain; path gravel grain), `build_terrain.py` (env `SM2_TERRAIN_ROOT`,
-grass pools out of ray tracing, 2 cm lifted tilted blankets, grass scatter clears the blankets). A numpy simulation of the lawn detail predicted hp6 SD 10-12 at 0.07-0.15 m/px with amplitude 0.55 (`_scratch/terrain/r04/sim_detail.py`).
-Content: `/Game/TerrainR4` (built by `SM2_TERRAIN_ROOT=/Game/TerrainR4 tools/terrain/run_build.sh`, 2-4 min nullrhi) — the HEAD content `/Game/Terrain` (pass-2 canopy, old tufts) is untouched for the GPU-ms baseline.
-Capture: hold A (`round4.sh STAGE=A`, launcher `_scratch/terrain/r04/hold_A.sh`, log `_scratch/terrain/r04/holdA.log`) = safe warm-up + nine 4K stills + t5 route probes (12 candidates in `round-04/t5_candidates`, nullrhi, the best becomes the t5 movie) + t4 / t5 movies.
-Then `tools/terrain/measure_r04.sh docs/night1/terrain/round-04`, then `make_pairs.py` + `abpack.py` (pack dir `/Users/midir/sm2-n1/_scratch/critic-E-r04/pack`).
-If the pass-2 canopy gate fails (trees axis < 4, E9b FAIL, E9a < 5/24 or E9c > 47 px): reverse the pass-2 hunks: `git diff cdaa64a0 dfaf7f94 -- unreal/WebHomage/Scripts/build_terrain.py unreal/WebHomage/Scripts/terrain_materials.py unreal/WebHomage/Shaders/Terrain/Foliage.ush | git apply -R` (tested context may need hand merging),
-rebuild, recapture the p1 / p10 / p9 / p4 stills.
+Built in committed scripts (CPU, `tools/terrain/check_hlsl.py` 13 / 13): `tools/terrain/prep_lawn.py` (4 near blade-patch meshes of ~1150 blades / 2.3 m discs on a 1.5 m grid = 177 k instances culled 18 m; 2 far patches ~400 wider blades on a 2.6 m grid = 59 k culled 60 m;
+`lawn_detail.png`, `blanket_weave.png`), `Shaders/Terrain/Lawn.ush` (lawn grade (0.54, 1.22, 0.10), three-scale albedo mottling, wear / clover / mowing stripes, clay mask), `terrain_materials.py` (M_TerrainGrass blade turf, M_TerrainBlanket gingham weave + fringe + fold normal,
+furniture + path grain, Specular 0.04 on turf), `build_terrain.py` (env `SM2_TERRAIN_ROOT`, never_stream on the ground textures, re-runnable foliage step). Content is built side by side: `SM2_TERRAIN_ROOT=/Game/TerrainR4 tools/terrain/run_build.sh` (full, 2.3 min nullrhi;
+do NOT re-run only `foliage,map` on an existing root: the persistent-map step crashed the editor once), `/Game/Terrain` keeps the HEAD content (pass-2 canopy, old tufts) as the GPU-ms baseline.
+**Hold 1 (2026-10-02 12:20, one GPU hold, 20.5 min, `round4.sh STAGE=A`, no health-monitor stop; numbers in `round-04/hold1/`, media in `_scratch/terrain/r04/hold1_media`)**: the lawn is dense and saturated; measured
+critic p4 hp6 SD 7.34 / sat 0.646, critic p10 9.77 / 0.582, guards p10 8.75 / 0.623, p4 4.72 / 0.747, p9 5.38 / 0.721 (r3: 4.40 / 0.58, 7.95 / 0.54, 6.34, 1.41, 2.63); flat quads in t4 only at t 0-0.25 s (path / blanket at low texture mips: streaming);
+t5 route chosen by probe s5 (59 % of the last 5 s over the park at 25-40 m, dives to the ground at 15.0 s); canopy gate: E9a 8 / 24 (min 4.69, median 8.04), E9b PASS (0 patches, dark pockets 0.71 %), E9c 42.0 px -> pass-2 hunks KEPT;
+GPU ms same hold, 4K out / 1080p internal, contaminated (3-4 other renders running): p1 r04 184.0 (first run) / 167.9 (again) vs HEAD pass-2 168.9 vs r3 161; p10 94.5 / 94.4 vs HEAD 95.3 vs r3 92 -> the lawn costs ~0.
+Hold-1 fixes applied afterwards (built, committed, hold 2 queued with `_scratch/terrain/r04/hold_B.sh`, log `holdB.log`, probe set `round-04/t5_candidates2`): detail weights x2 on the fine scales, Specular 0.04 (the grazing Fresnel mirrored the sky: display blue 49 on albedo blue 0.004),
+never_stream on grass_col / noise / asphalt_col / water_nrm / lawn_detail / blanket_weave. After hold 2: `tools/terrain/measure_r04.sh docs/night1/terrain/round-04`, README numbers, `make_pairs.py` (LAWN_PROGRESS=1 SHORE_PROGRESS=1 ... docs/night1/terrain/round-03) + `abpack.py` (pack `/Users/midir/sm2-n1/_scratch/critic-E-r04/pack`).
+Known: ballfield clay is still pale (browser dirt is a patchy fan), t5 hero dives into the ground at 15.0 s (probe set 2 tries a longer apex hang), the bare taupe plain east of the park in t5 is the island piece's.
 
 ## Round 03 outcome (2026-10-02, Opus 5.5; details: `round-03/README.md`)
 Target (Fable): canopy reads as leaves at every distance. Done in pass 1 (captured): 165-520 m band = leaf-card LOD1 from the browser's own trees.js `canopyGeometry` (LOD0 reproduced vertex for vertex as a check),
