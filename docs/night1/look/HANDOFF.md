@@ -4,10 +4,13 @@
 
 ## Round 07 (in progress) - resume here
 Target: twilight dome continuity (SPEC L27, from `critic/round-06-CRITIC.md`). Not merged with `Opus-5.5-Loop-Night-1` this round (122 commits behind; keeps the comparison with r06 clean).
-Done (committed, pushed): `tools/perf_ue/dome_check.py` (L27a-e checker; reproduces the critic's r06 numbers), `sweeps/r07/gen_sweep_a.py` + `hold_a.sh` (hold A: baked table + live pins, cutoff 0, 9 combos x 6 twilight hours),
-`sweeps/r07/make_v3.py` (r07 table: cutoff 0 on every key, geometric sun surface decay 18:33-19:30 x3.3 / 6 min, sun volumetric scattering by elevation, twilight schedules), `hold_b.sh` (loop + build + dome stills + stitched lapse),
-`gen_plans_r07.py`, C++ (relative 1 % surface-scale threshold, sun shadows while > 0.5 lux; built), `look_tod.py` (sunc.* defaults).
-Queue mechanics: placeholder `sweeps/r07/hold_ph.sh` runs the chain named in `$SM2_LOOK_SCRATCH/r07/NEXT_HOLD` (renders nothing when absent). Next: hold A results -> `analyze_a.py` -> `$SM2_LOOK_SCRATCH/r07/holdB/knobs_r07.json` -> hold B -> hold C (full stills + clips: not yet written).
+Tools (committed): `tools/perf_ue/dome_check.py` (L27a-e; reproduces the critic's r06 numbers), `sweeps/r07/make_v3.py` (the r07 table builder on top of make_v2 + round-06 knobs D: cutoff 0 on every key,
+geometric sun surface decay, sun / moon volumetric scattering, twilight schedules for sky factor / clouds / directional fog / min and max EV, dense bias curve), `gen_sweep_a.py` / `gen_sweep_b.py` (live-pin sweeps),
+`hold_b.sh` (loop + build + dome stills + stitched lapse; `hold_c2.sh` = it with the v1 knobs), `hold_c.sh` (final 44 stills + 2 clips), `gen_plans_r07.py`, `make_pairs.py` (critic pairs), `analyze_a.py`.
+C++ (built): relative 1 % surface-scale threshold, sun shadows while > 0.5 lux. `look_tod.py`: sunc.* / moonc.VolumetricScatteringIntensity defaults.
+Evidence so far: `round-07/diag/holdA_findings.md`, `holdB_findings.md` (+ DOME / pivot tables, knobs_v0 / v1).
+Holds: A (sweep, done 10:37), B (sweep + v0 lapse windows, done 11:38), C (`hold_c2.sh`: v1 loop + build + dome stills + lapse; queued), D (`hold_c.sh` final stills + clips; placeholder queued, NEXT_HOLD written after C is checked).
+Queue mechanics: placeholder `sweeps/r07/hold_ph.sh` runs the chain named in `$SM2_LOOK_SCRATCH/r07/NEXT_HOLD` (renders nothing when absent; two placeholders back to back consume one NEXT_HOLD each).
 
 # P4 Look / Sky: handoff (round 06, Sonnet 5.5; started 2026-10-01 20:50, resumed 2026-10-02 05:02)
 
