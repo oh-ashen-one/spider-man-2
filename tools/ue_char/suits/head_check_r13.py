@@ -260,7 +260,7 @@ def front(path, suit, dump=None, r12=None):
         for m in masks:
             edge = m ^ ndi.binary_erosion(m, iterations=2); ov[edge] = (255, 0, 255)
         nx = out['nose']['midline_x']; ov[:, nx - 1:nx + 2] = (0, 255, 255) * np.ones(3)
-        Image.fromarray(np.clip(ov, 0, 255).astype(np.uint8)).resize((1920, 1080)).save(dump)
+        Image.fromarray(np.clip(ov, 0, 255).astype(np.uint8)).resize((1920, 1080)).save(dump, quality=78)
     return out
 
 
@@ -306,7 +306,7 @@ def side(path, suit, dump=None, cam_dist=1.25, aim_y=1.665, fov=26.0):
         xs0 = int(front_x[yb]); xs1 = int(front_x[yc])
         for t in np.linspace(0, 1, 400):
             yy = int(ys[yb] + t * (ys[yc] - ys[yb])); xx = int(xs0 + t * (xs1 - xs0)); ov[yy, xx - 2:xx + 3] = (0, 255, 255)
-        Image.fromarray(np.clip(ov, 0, 255).astype(np.uint8)).resize((1920, 1080)).save(dump)
+        Image.fromarray(np.clip(ov, 0, 255).astype(np.uint8)).resize((1920, 1080)).save(dump, quality=78)
     return out
 
 
@@ -340,7 +340,7 @@ if __name__ == '__main__':
         for s in SUITS:
             sid = s['id']
             if only and sid not in only: continue
-            ov = lambda t: os.path.join(ovd, '%s_%s.png' % (t, sid)) if ovd else None
+            ov = lambda t: os.path.join(ovd, '%s_%s.jpg' % (t, sid)) if ovd else None
             fr = front(os.path.join(sd_, 'skin_%s_head_4k.png' % sid), sid, ov('head'), os.path.join(r12d, 'skin_%s_head_4k.png' % sid))      # 12 deg off the face axis (baseline: the r12 25 deg still)
             f34 = front(os.path.join(sd_, 'skin_%s_head34_4k.png' % sid), sid, ov('head34'), os.path.join(r12d, 'skin_%s_head_4k.png' % sid))   # the round-12 framing
             sp = os.path.join(sd_, 'skin_%s_headside_4k.png' % sid)

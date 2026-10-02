@@ -1,0 +1,16 @@
+[build_characters    15s] M_Char_Suit weave from pre-skinned position: connections [True, True, True, True, True, True, True, True, True, True, True]
+[r13 00:45:53 +0s] build: clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,skins,skinsmap
+[r13 00:45:53 +0s] steps: build stills lineup pawn orbit hero chase fight crowd, EV 10.0
+[r13 00:47:01 +68s] stills: 4K, internal 3840x2160, EV 10.0
+[r13 00:49:54 +241s] Char_Lineup shot 5 (7 enemies) 4K still
+[r13 00:50:15 +262s] Char_Lineup shot 6 (3/4) 4K still
+[r13 00:50:33 +280s] pawn swap movie
+[r13 00:53:43 +470s] orbit movie
+[r13 00:57:00 +667s] Char_Hero shots 1-3 movie
+[r13 01:01:35 +942s] Char_Hero shots 6-7 movie
+[r13 01:04:42 +1129s] Char_Fight wide movie
+[r13 01:07:07 +1274s] Char_Crowd tracking movie
+[r13 01:09:20 +1407s] chain done (hold used 1407 s), crashes 0
+[r13 01:09:20 +1407s] re-shoot of the last 7 stills (saffron headside, sage x 6): quit time counted from process start
+[r13 01:11:23 +1530s] re-shoot done (hold used 1530 s), crashes 0
+build_fight exit=0

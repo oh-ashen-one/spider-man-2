@@ -1,0 +1,10 @@
+"Device Utilization %"=36
+"Device Utilization %"=56
+"Device Utilization %"=32
+"Device Utilization %"=64
+"Device Utilization %"=61
+"Device Utilization %"=0
+"Device Utilization %"=8
+"Device Utilization %"=11
+"Device Utilization %"=11
+"Device Utilization %"=0
