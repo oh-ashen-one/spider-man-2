@@ -30,6 +30,10 @@ def main():
     tab = look_tod.expand(doc)
     base = os.path.join(out, 'keys_base.txt'); open(base, 'w').write(look_tod.to_text(tab))
     # hero test table: the traversal character's own 5000 cd hero fill (P3 'HeroFill', ~1500 lux on the hero at every hour) switched off at every key, the exposure-relative hero lights at nominal
+    try:   # the structural round-06 table (make_v2.py defaults: eased city-lights schedule, moon after 20:00, hero keys, extra twilight keys) for a validation lapse
+        sys.path.insert(0, HERE); import make_v2
+        open(os.path.join(out, 'keys_v2struct.txt'), 'w').write(look_tod.to_text(look_tod.expand(make_v2.apply(doc, make_v2.KNOBS))))
+    except Exception as e: print('v2 struct keys not written:', e)
     open(os.path.join(out, 'keys_herofill0.txt'), 'w').write(look_tod.to_text(look_tod.expand(doc, ['h=*:herofill=0'])))
     E = lambda h: look_tod.evaluate(tab, h)
 

@@ -6,6 +6,7 @@
 # 2 ONE game session: twilight sky sweep A, fog cutoff continuity H, dawn / golden D, moon / cloud M   -> $S/sweep (tod_<pose>_<res>_<variant>.jpg)
 # 3 hero clip at 22:00 (960x540, hero lights exposure-independent at nominal scale, P3's own 5000 cd hero fill scaled to 0: keys_herofill0.txt)             -> $S/clips (swing_tod_22h_h1.mp4 + _hero_luma.json with the L15b fields)
 # 4 diagnostic lapse with the sky fog taken off (HeightFogContribution 0, ambient 0)                    -> $S/lapse_L1
+# 5 lapse with the structural round-06 table (make_v2.py defaults)                                        -> $S/lapse_L2
 # Stops after two consecutive failed game runs (RULES: never relaunch a crashing engine), and skips steps 3 / 4 when the hold is past 25 / 30 min.
 WT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 S=${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/r06
@@ -36,4 +37,8 @@ if [ $(( $(date +%s) - T0 )) -lt 1800 ]; then
     --cmds 'exec wh.ToDSet atm.HeightFogContribution 0;exec wh.ToDSet fog.SkyAtmosphereAmbientContributionColorScale 0 0 0 1'
   echo "lapse L1 rc=$? t=$(( $(date +%s) - T0 ))s"
 else echo "skipping lapse L1 (hold past 30 min)"; fi
+if [ $(( $(date +%s) - T0 )) -lt 2000 ] && [ -f "$S/plans/keys_v2struct.txt" ]; then
+  python3 tools/perf_ue/capture_tod_lapse.py --round "$S/lapse_L2" --shot S4 --from 4.0 --hours 24 --seconds 12 --res 960x540 --name lapse_L2 --keys "$S/plans/keys_v2struct.txt" --no-encode --timeout 1000
+  echo "lapse L2 (v2 structure) rc=$? t=$(( $(date +%s) - T0 ))s"
+else echo "skipping lapse L2 (hold past 33 min)"; fi
 echo "hold1 done t=$(( $(date +%s) - T0 ))s"
