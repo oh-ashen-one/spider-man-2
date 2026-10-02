@@ -154,13 +154,18 @@ def step_city_prep():
     s = open(man).read()
     open(man, 'w').write(s.replace('127.0.0.1:%d/' % DEV_PORT, '127.0.0.1:5202/'))  # P1 tools key texture paths on '5202/'
     e = EXPORT + '/'
-    sh(['python3', 'tools/export/patch_export.py', EXPORT], log_name='city_patch_export.log')
-    sh(['python3', 'tools/export/split_giants.py', EXPORT], log_name='city_split_giants.log')   # (island r02) no r20 'giant' (de-collided) bridge / seawall
-    sh(['python3', 'tools/export/prep_textures.py', TEX, man], log_name='city_prep_textures.log')
-    sh(['python3', 'tools/export/gen_street_signs.py', os.path.join(TEX, 'street_signs.png')], log_name='city_street_signs.log')
-    sh(['python3', 'tools/export/street_kit.py', e], log_name='city_street_kit.log')
-    sh(['python3', 'tools/export/street_props.py', e], log_name='city_street_props.log')
-    sh(['node', 'tools/export/gen_shaders.mjs'], log_name='city_gen_shaders.log')  # regenerates the committed Shaders/City/*.ush
+    cmds = [('patch_export', ['python3', 'tools/export/patch_export.py', EXPORT], 'city_patch_export.log'),
+            ('split_giants', ['python3', 'tools/export/split_giants.py', EXPORT], 'city_split_giants.log'),   # (island r02) no r20 'giant' (de-collided) bridge / seawall
+            ('prep_textures', ['python3', 'tools/export/prep_textures.py', TEX, man], 'city_prep_textures.log'),
+            ('street_signs', ['python3', 'tools/export/gen_street_signs.py', os.path.join(TEX, 'street_signs.png')], 'city_street_signs.log'),
+            ('street_kit', ['python3', 'tools/export/street_kit.py', e], 'city_street_kit.log'),
+            ('street_props', ['python3', 'tools/export/street_props.py', e], 'city_street_props.log'),
+            ('gen_shaders', ['node', 'tools/export/gen_shaders.mjs'], 'city_gen_shaders.log')]  # regenerates the committed Shaders/City/*.ush
+    # (island r03 resume) SM2_ISLAND_PREP_FROM=<name>: start at that sub-command (the r03 builder died after patch_export + split_giants)
+    names = [c[0] for c in cmds]; frm = os.environ.get('SM2_ISLAND_PREP_FROM', names[0])
+    if frm not in names: raise SystemExit('SM2_ISLAND_PREP_FROM must be one of %s' % names)
+    for name, cmd, lg in cmds[names.index(frm):]:
+        sh(cmd, log_name=lg)
 
 
 def step_city_extra():

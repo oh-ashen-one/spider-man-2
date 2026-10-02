@@ -919,6 +919,11 @@ if 'mesh' in STEPS:
     if ARGS.get('mesh_only') == 'split' or os.environ.get('SM2_ISLAND_MESH_ONLY') == 'split':   # (island r02) import only the split_giants.py pieces
         recs = [r for r in recs if r.get('split_from') and not EAL.does_asset_exist(f'{ROOT}/Meshes/{r["kind"]}/SM_' + os.path.basename(r['file'])[:-4])]
         log('mesh step: %d split pieces to import' % len(recs))
+    elif os.environ.get('SM2_ISLAND_MESH_ONLY') == 'missing':
+        # (island r03) M1 -> M2 without re-importing M1: every GLB the M1 export shares with the island export is byte-identical (1,032 / 1,032,
+        # md5, 2026-10-02), so only the meshes without an asset yet are imported (a clean build imports everything)
+        recs = [r for r in recs if not EAL.does_asset_exist(f'{ROOT}/Meshes/{r["kind"]}/SM_' + os.path.basename(r['file'])[:-4])]
+        log('mesh step: %d missing meshes to import' % len(recs))
     for nan in (False, True):
         group = [r for r in recs if (r['kind'] == 'detail') == nan]
         dest = ROOT + '/Meshes'
