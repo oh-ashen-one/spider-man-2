@@ -62,3 +62,10 @@ Internal disk 177 GB free after the build (gate 150 GB); the export / GLBs live 
   (vs 1,077 s for 53,405 boxes at 14:41) + map 54 s. Spawn rate fell from ~51 actors/s to ~19 actors/s past 45 k actors: one actor per box
   scales super-linearly in a WP commandlet. The whole island (~140 k boxes) cannot use one actor per box; per-tile collision bodies
   (one ISM / merged collision-only mesh per 256 m cell) are required for the 90 min target.
+
+## Per-tile collision ISMs (`SM2_WHBOX_MODE=ism`, test map `/Game/Maps/Manhattan_WP_ism`, 18:22)
+- WP step **45 s** (vs 2,203 s with one actor per box), map step 48 s; 58 tile actors, 56,816 instances; external-actor packages 6,227 / 88 MB
+  (actor build: 62,985 / 303 MB). Content total 1.5 GB.
+- Headless inspection (`-nullrhi` commandlet, `_scratch/island/jobs/ism_inspect.py`, 21:13): 58 always-loaded tile actors, 56,816 instances,
+  0 components that are not invisible + BlockAll + `/Engine/BasicShapes/Cube`; 40 sampled instance transforms match `whboxes.json` exactly
+  (0.000 cm centre / size error). **Not yet verified in the running game** (traversal ISM indexing + capsule collision): queued as hold B.
