@@ -42,7 +42,8 @@ if [[ $STEPS == *lapse* ]]; then
   [ $(rem) -gt 400 ] && { python3 tools/perf_ue/capture_tod_lapse.py --round "$R" --shot S4 --res 960x540 --from 4.0 --hours 24 --seconds 12 --substeps $SUB --save-frames 440:452,66:78 --timeout $(tmo 700); chk $? lapse; rm -rf "$F/tod_lapse_S4_frames_kept"; mv "$R/tod_lapse_S4_frames_kept" "$F/" 2>/dev/null; } || echo "skipping lapse (budget)"
 fi
 if [[ $STEPS == *stills* ]]; then
-  python3 tools/perf_ue/sweeps/r06/gen_plans_f.py --out "$F"
+  python3 -c "import sys; sys.path.insert(0, 'unreal/WebHomage/Scripts'); import look_tod; open(sys.argv[1], 'w').write(look_tod.to_text(look_tod.expand(look_tod.load_doc())))" "$F/keys_final.txt"
+  python3 tools/perf_ue/sweeps/r06/gen_plans_f.py --out "$F" --rt-keys "$F/keys_final.txt"
   [ $(rem) -gt 650 ] && { python3 tools/perf_ue/sweeps/run_r06.py --plan "$F/plan_f.json" --out "$F/stills" --timeout $(tmo 1200); chk $? stills; if [ -f "$F/stills/session.json" ] && ls "$F"/stills/tod_*.jpg >/dev/null 2>&1; then rm -f "$R"/stills/tod_*.jpg "$R"/stills/*.far.json; for X in "$F"/stills/tod_*.jpg; do cp "$X" "$R/stills/"; done; cp "$F/stills/session.json" "$R/stills_session.json"; fi; } || echo "skipping stills (budget)"
 fi
 if [[ $STEPS == *clips* ]]; then

@@ -54,6 +54,9 @@ def main():
         K['u_dawn'] = [(5.6, 1.0), (6.25, 0.8), (6.8, 0.4), (7.2, 0.12), (7.6, 0.0)]
         K['lights_dawn'] = {6.25: 1.0, 6.5: 0.85, 6.8: 0.5, 7.0: 0.3, 7.2: 0.2, 7.4: 0.08, 7.6: 0.0}
         K['extra_keys'] = [6.1, 6.35, 6.45, 6.55, 6.65, 6.9, 7.1, 7.3, 7.8, 8.4, 19.0, 19.35, 19.65, 19.9, 20.4]
+        # hold 7 (B) measured: L26 0.602 (mist 4.0), a -4 Y / frame dip at 19:51-19:57 (fog inscatter x0.5 on top of the factor ramp): mist 4.5, the fog dimming spread over 19:30-20:12
+        K['dawn_mist'] = {7.0: 0.02, 7.2: 0.1, 7.4: 0.8, 7.6: 4.5, 8.0: 1.7, 8.8: 0.05}
+        K['tw_fog_scale'] = [(19.5, 1.0), (19.8, 0.8), (20.2, 0.55), (20.6, 0.75), (21.0, 1.0)]
     if a.golden > 0: K['golden_set'] = dict(make_v2.KNOBS['golden_set'], **{'pp.ColorOffset': [a.golden, a.golden, a.golden, 0.0]})
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     json.dump(K, open(a.out, 'w'), indent=1)

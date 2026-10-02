@@ -7,7 +7,7 @@ import argparse, json, os
 
 
 def main():
-    ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); a = ap.parse_args()
+    ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--rt-keys', default='', help='(hold 8) a key file loaded at run time (wh.ToDLoad) for two extra night stills: baked-vs-runtime comparison of the moonlit cloud pattern'); a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     allp = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']
     P = [{'name': 'h18.4', 'hour': 18.4, 'cmds': [], 'shots': allp, 'settle_first': 10}, {'name': 'h22', 'hour': 22.0, 'cmds': [], 'shots': allp + ['S4m'], 'settle_first': 14}]
@@ -16,6 +16,7 @@ def main():
     for h in (21.0, 21.5): P.append({'name': 'h%g' % h, 'hour': h, 'cmds': [], 'shots': ['S4']})
     P.append({'name': 'mist_h7.6', 'hour': 7.6, 'cmds': [], 'shots': ['S1', 'S4', 'S4e']})
     P.append({'name': 'h13', 'hour': 13.0, 'cmds': [], 'shots': ['S4', 'S8']})
+    if a.rt_keys: P.append({'name': 'rt_h22', 'hour': 22.0, 'keys': os.path.abspath(a.rt_keys), 'cmds': [], 'shots': ['S4m', 'S4'], 'settle_first': 12})
     json.dump({'groups': P}, open(os.path.join(a.out, 'plan_f.json'), 'w'), indent=1)
     print('plan_f', sum(len(g['shots']) for g in P), 'poses', len(P), 'groups ->', a.out)
 
