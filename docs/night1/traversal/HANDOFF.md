@@ -2,6 +2,12 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
+**Status (round 24 IN PROGRESS, 2026-10-02 ~07:15, Opus 5.5): code built (b24079a+), hold A queued (`_scratch/traversal/r24/holdA.sh` ->
+`holdA_body.sh`: a-chain variant probes -> pick -> captures; leftovers `holdB.sh`). Round target: critic r23 T7 / T3 (altitude chain) + the c
+roof-camera hard gate. Tooling: `r24_checks.py <dir> [--clip a_swing_chain] [--rendered]`, `drop_test.py --min 20`, pack script
+`round-24/tools/critic_make_pairs.sh`. If this session stopped: read `_scratch/traversal/r24/holdA.log`, then run the missing captures with
+`capture_round.sh` (GPU_OUTER inside one gpu_slot hold), `r24_checks.py docs/night1/traversal/round-24 --rendered`, the pack script.**
+
 **Status (round 23 DONE, 2026-10-02 ~06:40, Opus 5.5): code built, all 11 shot-list clips captured on compiled defaults from ONE build (hold 2,
 05:51-06:23, no -WHGaitTune / -WHTravTune), measured (`round-23/R23_CHECK.txt`, `R22_GATES.txt`, `W1_LUMA.txt`, `SIZES.txt`, `SHOTLIST.md`),
 blind critic pack ready at `/Users/midir/sm2-n1/_scratch/critic-P3-r23/pack` (key `pack.key.json` outside it; `pairs.json`; rebuild with
