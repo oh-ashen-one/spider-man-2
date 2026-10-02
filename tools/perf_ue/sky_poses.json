@@ -1,16 +1,16 @@
 [
  {
   "id": "S4w_perch_sunset",
-  "desc": "S4 perch turned toward the dusk sun (compass azimuth 250 deg in the city frame, pitch -4): the still that faces the sun at 19:00-20:30 (sun grid azimuth 244-258)",
+  "desc": "S4 perch turned toward the dusk sun (compass azimuth 250 deg in the city frame), SAME pitch (-17.9) and fov as S4: its top rows are the horizon strip like S4 (the still that faces the sun at 19:00-20:30)",
   "pos": [
    182,
    306,
    -92
   ],
   "target": [
-   -286.7,
-   271.1,
-   78.6
+   -265.2,
+   152.6,
+   70.8
   ],
   "fov": 75,
   "player": [
@@ -21,16 +21,16 @@
  },
  {
   "id": "S4e_perch_sunrise",
-  "desc": "S4 perch turned toward the dawn sun (compass azimuth 60 deg, pitch -4): the still that faces the sun at 06:30-07:30 (sun grid azimuth 53-63)",
+  "desc": "S4 perch turned toward the dawn sun (compass azimuth 60 deg), SAME pitch (-17.9) and fov as S4 (the still that faces the sun at 06:30-07:30)",
   "pos": [
    182,
    306,
    -92
   ],
   "target": [
-   614.0,
-   271.1,
-   -341.4
+   594.1,
+   152.6,
+   -329.9
   ],
   "fov": 75,
   "player": [
