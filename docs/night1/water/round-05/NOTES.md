@@ -26,7 +26,41 @@ Studio was shared by 3-5 other Unreal processes, which made 1080p runs take 35 s
      visible edge, the shore gate value is 41-82 m (it cut part of the band), and even where my CPU evaluation of the formula gives wf ~0.7
      nothing rendered. Rebuilt branch-free and without the shore gate.
    - harbour_high reflections: under-island 21.2 Y darker than open water, streak spread 36.2 (r03 44.0, r04 22.3), hp sd 8.22.
-4. **Final hold B** (`final.sh`, re-runnable, per-run deadline, built once per build_water.py hash): the round-05 set from the fixed build.
+4. **Final hold B** (14:18:41-14:52:53, 2052 s; build_water.py blob 703aa5250bd2 = commit 8f9d4279's script): build 6 min, the five 4K
+   stills (native 3840x2160, `r.ScreenPercentage 100`, t = 16 s, 8 fps cap) and `river_low_dolly.mp4` (1920x1080 at 100 %, fixed 60 fps
+   step, t 6-16 s, 600 frames, CRF 20, 13.1 MB). The files in this folder come from this hold. Dbg 10 (debug-only branch) was committed after it.
+5. **Hold C** (queued at 14:53): `river_sun_dolly`, the 1080p stills from the same content (no rebuild), then a Dbg 10 build + still if time is left.
+
+## Numbers (`spec.json`; `python3 tools/water/water_spec.py all docs/night1/water/round-05`, section `-- r05 round targets`)
+| check | target | r03 | r04 | r05 |
+|---|---|---|---|---|
+| GATE seawall band >= 12 px, Y >= 180, share of wall rows | >= 60 % | 0 | 0 | **96.5 %** PASS (mean 41.3 px, band Y 202.5) |
+| GATE band in every 4 fps dolly sample (>= 50 band px) | 100 % | | 0 | **100 %** (40 / 40) PASS |
+| GATE band XOR / OR between consecutive 4 fps samples | >= 0.2 | 0.03 | 0.0 | **mean 0.375, min 0.197** (one pair 0.003 under) |
+| GATE harbour_high contact line >= 3 px on the island seawall | >= 50 % of columns | 0.6 % | 0.7 % | **0.6 % FAIL** (see below) |
+| BLOCKER harbour_high under-island vs open water | >= 15 Y darker | 32.0 | 18.8 | **21.4** PASS; streak spread 36.4 (r03 44.0, r04 22.3) |
+| BLOCKER river_low far-shore reflection | visible | yes | no | **yes** (GrazeRough 0; compare `river_low_4k.jpg` rows 900-1500 with r03 / r04) |
+| BLOCKER harbour_sun_high p1 / R-B (crop) | <= 55 / <= 70 | | 52.7 / 100.0 | **51.7** PASS / **98.8 FAIL** (atmosphere, see below) |
+| HOLD harbour_high hp sd | >= 7.5 | 4.27 | 8.19 | **8.11** PASS |
+| HOLD harbour_sun_high glints / path columns / median sparkle | 0.5 % / 50 % / 6 px | | 0.61 / 100 / 3 | **0.53 / 100 / 3** PASS |
+| HOLD river_low near hp sd / mean Y | >= 12 / <= 80 | 9.93 / 78.5 | 11.74 / 62.0 | **10.64 FAIL** / 78.8 PASS |
+| HOLD river_low_dolly autocorr 80 px | <= 0.10 | 0.053 | 0.076 | **0.064** PASS |
+| HOLD S4 C14 | 5..35 | 17.9 | 22.0 | **15.0** PASS |
+| HOLD river_sun sparkle width | >= 50 % | 37.8 | 50.5 | **38.4 FAIL** |
+
+The two failed holds are the price of the reflection blocker, measured: river_low near hp is 10.68 with ShoreCalm at river level and 10.64
+without it, so it is GrazeRough 0 (the far rows of the crop lost r04's rough-lobe contrast: hp 14.9 -> 10.8); river_sun's sparkle width is
+back at r03's value (37.8 -> 38.4) with GrazeRough 0 and the far-field calm. Not separated this round: whether LongK 3 at river level (calm
+off beyond 500 m) keeps the far-shore reflection and brings the sparkle width back.
+
+## harbour_high contact line: still none
+The far line renders at river level (the far pier across the basin in `river_low_4k.jpg` has a foam line, rows ~1030-1060), but not at the
+island tip seen from 260 m. Both forms (branched and shore-gated in final hold A, branch-free and ungated in B) gave 0.6 %. A CPU ray-cast of
+the edge pixels (camera from views.json) reads the map at 3-11 m two pixels below the edge and a footprint of ~2.7 m (band >= 16 m with
+FarPx 6), which should give coverage ~0.7; so either the ray-cast does not match the engine camera there or the map does not hold the
+tip's rendered seawall. `Dbg 10` (committed: contact distance, footprint and coverage as emissive columns, the Dbg 9 style that proved
+reliable) answers which; hold C runs it if its time allows (`iter/h3_DBG10_harbour_high.jpg`).
+
 
 ## Foam gate: diagnosis and fix
 - **`Dbg 9` (hold 1) clears the import path.** Thermometer bands (`iter/h1_DBG9_river_low_00_t016.0.jpg`, identical at t 45 s) read in-engine:
