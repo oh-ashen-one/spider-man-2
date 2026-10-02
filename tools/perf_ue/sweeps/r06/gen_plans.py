@@ -84,13 +84,13 @@ def main():
                     pin('fog.FogMaxOpacity', 0.92), pin('pp.ColorContrast', [1.0, 1.0, 1.0, 1.0]), pin('pp.AutoExposureBias', b['pp.AutoExposureBias'] + 0.3)]
     for nm, c in (('D0_base', []), ('D1_cool', cool), ('D2_mist', mist), ('D3_dense', dense)):
         D.append(G('%s_h7.6' % nm, 7.6, ['S1', 'S4e'], c))
-    D.append(G('G0_base_h18.4', 18.4, ['S4', 'S3', 'S1'], []))
+    D.append(G('G0_base_h18.4', 18.4, ['S4', 'S3', 'S1', 'S7'], []))
     g = E(18.4)
     for nm, c in (('G1_mie.6', [pin('atm.MieScatteringScale', g['atm.MieScatteringScale'] * 0.6)]),
                   ('G2_aerial3.5', [pin('atm.AerialPespectiveViewDistanceScale', 3.5)]),
                   ('G3_bias1.05', [pin('pp.AutoExposureBias', 1.05)]),
                   ('G4_mie.6_aer3.5', [pin('atm.MieScatteringScale', g['atm.MieScatteringScale'] * 0.6), pin('atm.AerialPespectiveViewDistanceScale', 3.5)])):
-        D.append(G('%s_h18.4' % nm, 18.4, ['S4', 'S3', 'S1'], c))
+        D.append(G('%s_h18.4' % nm, 18.4, ['S4', 'S3', 'S1', 'S7'], c))
     json.dump({'groups': D}, open(os.path.join(out, 'plan_d.json'), 'w'), indent=1)
 
     # ---------------- M: night moon / clouds
@@ -98,6 +98,9 @@ def main():
     m1 = [pin('moonc.LightSourceAngle', 1.2), pin('moonc.CloudScatteredLuminanceScale', [8, 8, 8, 1]), pin('cloud.Cloud_GlobalCoverage', 0.3), pin('cloud.Cloud_GlobalDensity', 0.03)]
     for nm, c in (('M0_base', []), ('M1_big+cloud', m1), ('M2_lux20', m1 + [pin('moon.Intensity', 20)]), ('M3_disk3', m1 + [pin('moonc.AtmosphereSunDiskColorScale', [3, 3, 3, 1])])):
         M.append(G('%s_h22' % nm, 22.0, ['S4m', 'S4'], c))
+    # hero calibration at night: the traversal character's own fill off, the exposure-relative rim / fill / top at 0.5 .. 4 x nominal (pose H1, hero in the middle of the frame)
+    for sc in (0.5, 1.0, 2.0, 4.0):
+        M.append(G('Hero%g_h22' % sc, 22.0, ['H1'], [pin('herofill', 0), pin('hero', sc)]))
     json.dump({'groups': M}, open(os.path.join(out, 'plan_m.json'), 'w'), indent=1)
     print('wrote', sorted(os.listdir(out)), 'A %d groups, H %d, D %d, M %d' % (len(A), len(H), len(D), len(M)))
 

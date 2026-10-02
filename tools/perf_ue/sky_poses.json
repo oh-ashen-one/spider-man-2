@@ -58,5 +58,25 @@
    0.15,
    178
   ]
+ },
+ {
+  "id": "H1_hero_close",
+  "desc": "hero (pawn at the avenue spawn 249, 0.15, 178) seen from 4 m north, fov 45: calibration still for the hero lights (box = centre of the frame)",
+  "pos": [
+   249,
+   1.9,
+   174
+  ],
+  "target": [
+   249,
+   1.3,
+   178
+  ],
+  "fov": 45,
+  "player": [
+   249,
+   0.15,
+   178
+  ]
  }
 ]
