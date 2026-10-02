@@ -23,10 +23,10 @@ Studio was shared by 3-5 other Unreal processes, which made 1080p runs take 35 s
 - **The r05 build renders the band.** Hold 1 `base_river_low` (CSel 0, CBias 0.8): band on 84 % of wall rows (1080p frame upscaled to
   the 4K crop geometry), band luma 200; C1 / C2 (B / C maps): 90 %; C1F (CBias 1.4, FoamK 2.8): 100 %, 57 px. The band widens with
   CBias, so the contact map drives it. r04's frames show none.
-- **What changed between r04 and r05 in this path:** the map lookup. r04 sampled inside a ternary
-  (`cond ? Texture2DSampleLevel(...) * cmax : cmax`); r05 samples in an `if / else` chain inside `[branch] if (all(cu > 0) && all(cu < 1))`.
-  Nothing else in the near-foam code changed (CBias, FoamK, FoamNK, lap and pattern are identical). That is the most likely cause, but it
-  is an inference: I did not rebuild the r04 form to prove it.
+- **What changed between r04 and r05 in this path** (`git diff 01f89b51 HEAD -- unreal/WebHomage/Scripts/build_water.py`): (1) the map
+  lookup: r04 sampled inside a ternary (`cond ? Texture2DSampleLevel(...) * cmax : cmax`), r05 in an `if / else` chain inside
+  `[branch] if (all(cu > 0) && all(cu < 1))`; (2) the texture import now calls `post_edit_change()` on every texture before saving. CBias,
+  FoamK, FoamNK, lap and the pattern are unchanged. Which of the two fixed it is NOT isolated (no rebuild of the r04 form was spent on it).
 - **The debug views lie for this term.** `Dbg 7` (hold 1, `iter/h1_DBG7C1_river_low.jpg`) still shows the defaults (contact 32 m,
   ray 99 m, cf 0) at the same wall pixels where the non-debug build renders the band; `Dbg 4` on harbour_high shows no wf either. The r04
   conclusion "the in-engine map reads >= 4 m" came from this view. Do not use Dbg 4 / 7 for the contact term; Dbg 9 (fixed-UV
