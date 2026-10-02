@@ -51,7 +51,7 @@ DEFAULT_STYLE = dict(
     # round 12: relief.kind 'piping' = every panel / net line is a RAISED rounded cord (height profile, glossier roughness) and the net / piping / panel
     # lines are layered UNDER the sash and chevron panels (colour, height and roughness); 'r8' = the round-08 flat print (grooves, net over the sash),
     # kept so tools/ue_char/suits/test_regression.py can still prove the round-08 maps texel for texel.
-    relief=dict(kind='piping', net=1.30, pipe=1.80, ring=1.80, glyph=1.40, sash=0.60, border=1.60, rough_pipe=0.34, rough_net=0.40, cavity=0.35, net_tone=0.38),
+    relief=dict(kind='piping', net=1.30, pipe=1.80, ring=1.80, glyph=1.40, sash=0.60, border=1.60, rough_pipe=0.34, rough_net=0.40, cavity=0.35, net_tone=0.38, seam=2.2, rough_hood=0.50, rough_crown=0.60),
 )
 
 
@@ -551,19 +551,21 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         return ring, vanes, core
     f_ = front * tors_w * body_w
     b_ = back * tors_w * body_w
+    # round 13 (critic r12: Cinder's emblem is cyan on a cyan sash): where the front mark lies on the accent sash panel it is laid in the DEEP colour
+    gcol = (AMBER[None, None, :] * (1 - sash_cov[..., None]) + DEEP[None, None, :] * sash_cov[..., None]) if PIPE else AMBER
     if gl['kind'] == 'hexvane':
         ring, vanes, core = badge(gl['x'], gl['y'], 0.046 * gl['size'])
         gh = (RL['glyph'], RL['glyph'] * 0.9) if PIPE else (0.45, 0.40)
-        C.lay(f_ * ring, AMBER, h=gh[0], rough=0.40)
-        C.lay(f_ * np.maximum(vanes, core), AMBER, h=gh[1], rough=0.40)
+        C.lay(f_ * ring, gcol, h=gh[0], rough=0.40)
+        C.lay(f_ * np.maximum(vanes, core), gcol, h=gh[1], rough=0.40)
         ring_b, _, core_b = badge(0.0, gl['y'] + 0.023, 0.042 * gl['size'])
         C.lay(b_ * ring_b, AMBER, h=0.45, rough=0.40)
         C.lay(b_ * core_b, AMBER, h=0.40, rough=0.40)
     else:
         ln, so = glyph(gl['kind'], x, y, gl['x'], gl['y'], gl['size'], aa)
         gh = (RL['glyph'], RL['glyph'] * 0.9) if PIPE else (0.45, 0.40)
-        C.lay(f_ * ln, AMBER, h=gh[0], rough=0.40)
-        C.lay(f_ * so, AMBER, h=gh[1], rough=0.40)
+        C.lay(f_ * ln, gcol, h=gh[0], rough=0.40)
+        C.lay(f_ * so, gcol, h=gh[1], rough=0.40)
         ln_b, so_b = glyph(gl['kind'], x, y, 0.0, gl['y'] + 0.023, gl['size'] * 0.8, aa)
         C.lay(b_ * ln_b, AMBER, h=0.45, rough=0.40)
         C.lay(b_ * so_b, AMBER, h=0.40, rough=0.40)
@@ -601,10 +603,10 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     L(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * STa, STITCH, h=0.12, rough=0.7)
 
     # ------------------------------------------------------------------ mask / hood
-    yb = 1.662 + 0.46 * z
+    yb = (1.668 if PIPE else 1.662) + 0.46 * z          # round 13: the crown piping arc moves up with the bigger lenses (it sits on the sculpted brow ridge)
     crown = is_head * cover(yb - y, aa)                         # above the boundary
-    C.lay(is_head, ROLE[S['hood']], rough=0.80)
-    C.lay(crown, TEAL_D, rough=0.74)
+    C.lay(is_head, ROLE[S['hood']], rough=RL.get('rough_hood', 0.80) if PIPE else 0.80)       # round 13: a satin hood (0.50) catches the key light on the sculpted brow / nose / cheeks
+    C.lay(crown, TEAL_D, rough=RL.get('rough_crown', 0.74) if PIPE else 0.74)
     if S['crown']['edge']:
         L(is_head * band(y - yb, 0.0018, aa), AMBER, h=0.5, rough=0.45, H=RL['pipe'], dist=y - yb, hw=0.0018)
     ck = S['crown']['kind']
@@ -619,10 +621,14 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         for k_ in range(4):
             dch = np.abs(z * 1.0 + 0.9 * np.abs(x) - (0.045 - 0.020 * k_)) / np.sqrt(1.81)
             C.lay(crown * ss(y, 1.70, 1.74) * band(dch, 0.0024, aa), AMBER_D, h=0.30, rough=0.5)
-    C.lay(is_head * cover(np.abs(x) - 0.0011, aa) * cover(-z, aa), INK, h=-0.3, rough=0.9)       # dorsal seam
+    if PIPE:     # round 13: the face seam (critic r12: a 12 px black kinked ink seam on every suit) is a RAISED cord in the body colour, a lit / shadow pair, not ink
+        seam_a, seam_h = cord(x, 0.0017, aa, RL['seam'])
+        C.lay(is_head * cover(-z, aa) * seam_a, TEAL, h=seam_h, rough=RL['rough_pipe'] + 0.05)
+    else:
+        C.lay(is_head * cover(np.abs(x) - 0.0011, aa) * cover(-z, aa), INK, h=-0.3, rough=0.9)       # dorsal seam (round 08 legacy)
     if S['brow'] != 'none':
         for s_ in (-1.0, 1.0):                                                                          # brow flashes (front projection)
-            cx, cy = s_ * 0.036, 1.716
+            cx, cy = s_ * 0.036, (1.737 if PIPE else 1.716)
             ang = np.radians(22.0)
             u = (x - cx) * s_; v = (y - cy)
             ca, sa_ = np.cos(ang), np.sin(ang)

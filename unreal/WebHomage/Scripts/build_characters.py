@@ -71,7 +71,10 @@ if 'prep' in STEPS:
     # round 08: the ORIGINAL hero suit (Tessera: procedural base colour / normal / orm on the hero UV atlas, tools/ue_char/suit8) and the rebuilt eyes (one closed
     # bezel ring sealed to a lens conformed to the mask) in the UE-only hero GLB; replaces the round-05 browser-suit quality pass (hero_hand_fix / hero_suit_r5 / hero_lens_r5)
     subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r8.py'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r8.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    # round 13: ONE script sculpts the shared hero mask head (brow, eye sockets, nose, cheeks, mouth, chin: tools/ue_char/suit8/hero_head_r13.py) so all 8 suits inherit it, then
+    # the eyes are rebuilt on the sculpted surface (>= 1.6x wider lenses, one closed raised rim each: tools/ue_char/hero_lens_r13.py; r8's hero_lens_r8.py is its library)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_head_r13.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r13.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 12: smooth the torso-side / armpit skin weights (the idle / run poses folded the side of the chest: the sash jog, weave flip and faceted patches)
     subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_weights_r12.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
@@ -409,7 +412,9 @@ if 'mat' in STEPS:
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.5, 'Specular': 0.25}, vec={'Color': (0.006, 0.011, 0.013, 1)})
+    # round 13: the rim of the sculpted eyes is polished dark gunmetal (r12: matte near-black 0.006 / 0.011 / 0.013, invisible on a dark mask = 'rimless'): the sky and the key light
+    # run along its raised profile, so it reads on every suit's mask while staying a dark ring against the glossy lens
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.26, 'Specular': 0.6, 'Metallic': 0.85}, vec={'Color': (0.075, 0.078, 0.085, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
@@ -726,6 +731,11 @@ if 'map' in STEPS:
         skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
         spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
         ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
+        try:    # round 13 (critic r12: 'lighting is washed out'): the pale sunlit wall pushed auto exposure up (wall luma 208 of 255 in r04 AND r12, the same in both: the EV of the skins stage did NOT leak into this map, measured); -0.6 EV bias + a weaker enemy fill give the lineup contrast
+            ps_ = ppv.get_editor_property('settings')
+            ps_.set_editor_property('override_auto_exposure_bias', True); ps_.set_editor_property('auto_exposure_bias', float(ARGS.get('lineup_ev', -0.6)))
+            ppv.set_editor_property('settings', ps_)
+        except Exception as ex: log('lineup exposure bias not set', str(ex)[:120])
         spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
         # street backdrop: asphalt road along X, sidewalk + curb, a row of facades behind (+Y), crosswalk stripes
         box((0, 0, -10), (80, 30, 0.2), 'M_Env_Asphalt', 'Road')
@@ -778,10 +788,11 @@ if 'map' in STEPS:
                 ('Crew_BrutePipe', 'SK_Street_Brute_Pipe', TL, 'Brute', BRUTE_SCALE, BRUTE_GIRTH),
                 ('Crew_TeeBat', 'SK_Street_Tee_Bat', TH, 'Tee', 1.0, 1.0),
                 ('Crew_BeardPipe', 'SK_Street_Beard_Pipe', TH, 'Beard', 1.0, 1.0),
-                ('Crew_ThugPistol', 'SK_Street_Thug_Pistol', GA, 'ThugOxblood', 1.0, 1.0)]   # round 05: the grey-hoodie twin of the hood is gone
+                ('Crew_ThugPistol', 'SK_Street_Thug_Pistol', GA, 'ThugOxblood', 1.0, 1.0),
+                ('Crew_HoodGrey', 'SK_Street_Hood', TL, 'HoodGrey', 1.0, 1.0)]   # round 05 dropped the grey-hoodie twin (6 enemies); round 13 puts it back at the end of the row: 7 enemies in the lineup frame (critic r12: 'lineup has 6 enemies (7 needed)', CH11 / CH13)
         enemies = []
         for i, (lbl, mesh, abp, mat, sc_, g_) in enumerate(crew):
-            x = LX + (i - 2.5) * 105.0
+            x = LX + (i - 3.0) * 100.0
             y = LY + (60.0 if i % 2 else -60.0)
             e = walker(lbl, PP + mesh, abp, (x, y, 0), W.STAND, 0.0, scale=sc_, girth=g_, mat=PP + 'Materials/MI_Street_' + mat, yaw=-90.0 + (i - 3) * 6.0)
             enemies.append(e)
@@ -794,7 +805,7 @@ if 'map' in STEPS:
         for fi, fyaw in enumerate((0, 90, 180, 270)):
             fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'EnemyFill_%d' % fi)   # rot = (yaw, pitch, roll)
             fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
-            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 1.4))); fc.set_editor_property('cast_shadows', False)
+            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 1.0))); fc.set_editor_property('cast_shadows', False)
             fc.set_editor_property('lighting_channels', only1)
         # civilians: 12 distinct crowd people on the south sidewalk, each its own walk style at that style's foot-locked speed, both
         # directions, gait phases spread by start position; a mesh-less tracker walks with them for the tracking camera
@@ -896,6 +907,11 @@ if 'maps5' in STEPS:
         skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
         spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
         ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
+        try:    # round 13 (critic r12: 'lighting is washed out'): the pale sunlit wall pushed auto exposure up (wall luma 208 of 255 in r04 AND r12, the same in both: the EV of the skins stage did NOT leak into this map, measured); -0.6 EV bias + a weaker enemy fill give the lineup contrast
+            ps_ = ppv.get_editor_property('settings')
+            ps_.set_editor_property('override_auto_exposure_bias', True); ps_.set_editor_property('auto_exposure_bias', float(ARGS.get('lineup_ev', -0.6)))
+            ppv.set_editor_property('settings', ps_)
+        except Exception as ex: log('lineup exposure bias not set', str(ex)[:120])
         spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
         box((0, 0, -10), (80, 30, 0.2), 'M_Env_Asphalt', 'Road')
         box((0, 1900, 0), (80, 8, 0.3), 'M_Env_Sidewalk', 'Sidewalk_N')
@@ -1311,8 +1327,12 @@ if 'skinsmap' in STEPS:
     # ---- Char_Skins
     hero_s = skins_stage('Skins', False)
     # round 12: front / back framed for CH1 (hero 0.48 - 0.62 of the frame height): 7.85 m at FOV 40 (round 11's 5.6 m gave 0.77H)
+    # round 13: the head views of the sculpted mask: 'head' = 12 deg off the face axis (CLOSEUP adds 25 deg: azimuth -13), 1.0 m, the brow flashes and the crown piping in frame;
+    # 'head34' = the round-12 head framing exactly (25 deg, 1.0 m, aim 160: the lens-width comparison against r12 is made on this one); 'headside' = the profile (azimuth 65 = 90 deg
+    # off the face), 1.25 m, aim 166.5 so the whole head is in frame (the nose bump is measured against the head height there)
     VIEWS = [('front', KS.FRONT, 0.0, 785.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 785.0, 92.0, 8.0, 40.0),
-             ('chest', KS.CLOSEUP, 0.0, 150.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0)]
+             ('chest', KS.CLOSEUP, 0.0, 150.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, -13.0, 100.0, 164.0, 0.0, 26.0),
+             ('head34', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0), ('headside', KS.CLOSEUP, 65.0, 125.0, 166.5, 0.0, 26.0)]
     shots = []
     SHOT_S = 3.0
     for i, nm in enumerate(names):
