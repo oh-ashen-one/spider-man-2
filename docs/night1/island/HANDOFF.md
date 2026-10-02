@@ -11,7 +11,7 @@
   `docs/night1/island/build_r03.sh` (`SM2_ISLAND_MESH_ONLY=missing`, steps tex,mesh,kit,fsky,map,coll,wp + build_manhattan map;
   log `_scratch/island/logs/build_r03.log`, commandlet log `city_pass1.log`; started 05:24). WHBox cubes = per-tile components
   (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
-- 06:37: mesh import done building (761 meshes, ~72 min; roofs ~20 s each), finishing (cooked collision + save); then kit, fsky, map, wp.
+- 07:08: mesh import built (761 meshes, ~72 min); finish pass (cooked collision rebuild + save) ~13 s per heavy mesh, in progress; then kit, fsky, map, wp.
 - Next: when the build ends -> captures (`capture_round.sh docs/night1/island/round-03 warmup r1 r2 r3 r4 a1`, GPU lock), route checks,
   `tools/export/island_r2_check.py`, `tools/export/island_road_band.py` on r2 t26/t28 stills, critic pack `_scratch/critic-A-r03`.
 - Build timings: `_scratch/island/logs/build_timings_island.json` (every invocation appended).
