@@ -7,7 +7,9 @@
 # Frames: wpos is the UE world position in cm; the browser frame is (x, y up, z) metres = (X, Z, Y) / 100.
 
 PARK_INC = '/Project/Terrain/Park.ush'
-LAWN_GRADE = (0.54, 1.20, 0.46, 1.0)   # r02 lawn albedo grade (R, G, B): greener, more saturated (critic r1 secondary: G/R >= 1.05, saturation >= 0.55)
+LAWN_GRADE = (0.50, 1.22, 0.10, 1.0)   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
+LAWN_K = (1.0, 0.15, 1.25, 1.0)        # r04 Lawn.ush: (detail amplitude, mowing-stripe amplitude, grass saturation)
+LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand-written; Park.ush is generated)
 FILL = 450.0   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
@@ -19,10 +21,11 @@ def materials(pm):
     M = []
     # park ground: the browser's park lawn shader (meadows / groves / ball fields / pond banks / Reservoir track / schist) + the path overlay and the dark park drives
     # (the browser draws the paths as alpha-blended ribbons; here they are a baked mask so there is no z-fight and the edges stay soft)
-    M.append(dict(name='M_TerrainPark', include=PARK_INC, code='''
+    M.append(dict(name='M_TerrainPark', include=LAWN_INC, code='''
 float r; float3 n;
-float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 0.0, r, n) * grade.rgb;   // r02: lawn grade (critic r1: the lawn reads khaki, G/R 0.81-0.97 vs 1.14-1.17 on the reference)
 float2 p = wpos.xy * 0.01;
+float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 0.0, r, n);
+c = TerrainLawnR4(tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk);   // r04: lawn grade (blue ~0), 0.3-16 m albedo detail (mottling, wear, clover, mowing stripes), saturation
 ''' + consts + '''
 float4 pm = Texture2DSample(tPath, tPathSampler, (p - mo) / ms);
 float3 n1 = Texture2DSample(tNoise, tNoiseSampler, fl2(p / 9.0)).rgb;
@@ -39,13 +42,15 @@ r = lerp(r, 0.9, max(edge, dr));
 float Lk = dot(c, float3(0.2126, 0.7152, 0.0722));   // soft luma knee: sunlit light gravel must not clip under the golden rig (same idea as the city sidewalk's SunK)
 c *= lerp(1.0, min(1.0, (0.30 + (Lk - 0.30) * 0.3) / max(Lk, 0.0001)), step(0.30, Lk));
 Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE)], outputs=BASE))
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE))
     # coast / plaza lawns: the same lawn shader, lawn variant (meadow everywhere, no ball fields / ponds / woodland floor)
-    M.append(dict(name='M_TerrainLawn', include=PARK_INC, code='''
+    M.append(dict(name='M_TerrainLawn', include=LAWN_INC, code='''
 float r; float3 n;
-float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n) * grade.rgb;
+float2 p = wpos.xy * 0.01;
+float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n);
+c = TerrainLawnR4(tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk);
 Rough = r; NormalW = n; return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE)], outputs=BASE))
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE))
     # City Hall Park / Bowling Green / Battery lawns (ground.js 'mapLawns': grass_col at 7 m x tint 0xb4b89a)
     M.append(dict(name='M_TerrainMapLawn', include=None, code='''
 float2 p = wpos.xy * 0.01;
@@ -67,24 +72,63 @@ return float3(0.045, 0.06, 0.05) * gain;''',
     for nm, two in (('M_TerrainVC', False), ('M_TerrainVC2', True)):
         M.append(dict(name=nm, include=None, code='''
 float3 c = lerp(tint.rgb, vc.rgb * tint.rgb, usevc);
+float3 pw = wpos * 0.01;
+float g1 = Texture2DSample(tNoise, tNoiseSampler, float2(pw.x * 0.9 + pw.z * 2.3, pw.y * 7.0 + pw.z * 0.4)).r;   // r04: wood grain / paint wear (the flat tint read as a flat quad on the t4 lawn)
+float g2 = Texture2DSample(tNoise, tNoiseSampler, float2(pw.x * 0.31 + pw.y * 0.27, pw.y * 0.29 - pw.z * 0.8)).g;
+c *= 0.8 + 0.28 * g1 + 0.2 * (g2 - 0.5);
 Rough = roughp; Metal = metalp; return c;''',
-            inputs=[('vc', 'vc', None), ('tint', 'vector', (1, 1, 1, 1)), ('usevc', 'scalar', 0.0), ('roughp', 'scalar', 0.8), ('metalp', 'scalar', 0.0)],
+            inputs=[('vc', 'vc', None), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None), ('tint', 'vector', (1, 1, 1, 1)), ('usevc', 'scalar', 0.0), ('roughp', 'scalar', 0.8), ('metalp', 'scalar', 0.0)],
             outputs=[('', 3, 'MP_BASE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Metal', 1, 'MP_METALLIC')], two_sided=two))
-    # grass tuft (grass.js: darker root, sunlit tips, olive / yellow-green mix with the odd straw blade, lit like the lawn, wind sways the tips)
+    # r04 blade turf (replaces the 9-blade star-sprite tuft): patches of ~600 blades (tools/terrain/prep_lawn.py), per-blade colour from the vertex colour (R height along the blade,
+    # G blade random, B clump random), dark root -> saturated yellow-green tip, two-sided foliage (light through the blades), the blades shrink to the ground between fade0 and fade1 metres
+    # (no pop at the instance cull distance), wind sways the tips. Lumen / ray tracing never see these pools (HWRT would treat every blade as a shell, see build_terrain.py).
     M.append(dict(name='M_TerrainGrass', include=None, code='''
 float2 p = wpos.xy * 0.01;
-float ph = 0.5 + 0.5 * sin(p.x * 0.43 + 1.7 * sin(p.y * 0.31)) * cos(p.y * 0.37 + 0.9 * sin(p.x * 0.29));
-float3 g = lerp(float3(0.17, 0.2, 0.045), float3(0.23, 0.26, 0.06), ph) * lerp(0.85, 1.12, frac(rnd * 3.7));
-g = lerp(g, float3(0.34, 0.27, 0.1), step(0.92, frac(rnd * 11.3)) * 0.8);
 float h = vc.r;
-float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27));
+float dist = length(wpos - cam) * 0.01;
+float fade = 1.0 - smoothstep(fade0, fade1, dist);
+float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27)) + vc.g * 5.0;
 float gust = 0.5 + 0.5 * sin(p.x * 0.1 - t * 0.5) * cos(p.y * 0.08);
 float sway = h * h * windamp * (0.4 + 0.9 * gust) * sin(t * 1.6 + wo);
-Wpo = float3(sway, sway * 0.7, 0.0);
-Rough = 0.85; NormalW = float3(0.0, 0.0, 1.0);
-return g * lerp(0.8, 1.04, h) * gain;''',
-        inputs=[('vc', 'vc', None), ('wpos', 'wpos', None), ('t', 'time', None), ('rnd', 'pir', None), ('windamp', 'scalar', 10.0), ('gain', 'scalar', 1.0)],
-        outputs=BASE + [('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True))
+Wpo = float3(sway, sway * 0.7, -(wpos.z - rootz) * (1.0 - fade) - 1.5 * (1.0 - fade));
+float3 tip = float3(0.115, 0.27, 0.006);
+float3 mid = float3(0.07, 0.17, 0.004);
+float3 root = float3(0.018, 0.045, 0.002);
+float3 g = lerp(lerp(root, mid, smoothstep(0.0, 0.45, h)), tip, smoothstep(0.35, 1.0, h));
+float3 yel = float3(0.17, 0.25, 0.012);
+g = lerp(g, yel * lerp(0.35, 1.0, h), saturate((vc.b - 0.62) * 3.0) * 0.8);
+g *= lerp(0.72, 1.28, vc.g) * lerp(0.9, 1.1, rnd);
+g = lerp(g, float3(0.3, 0.23, 0.05) * lerp(0.4, 1.0, h), step(0.988, vc.g) * 0.85);
+AO = lerp(0.3, 1.0, smoothstep(0.0, 0.6, h));
+Sub = g * 0.55;
+Rough = 0.8; NormalW = normalize(lerp(wn, float3(0.0, 0.0, 1.0), 0.4));
+return g * gain;''',
+        inputs=[('vc', 'vc', None), ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('t', 'time', None), ('rnd', 'pir', None), ('windamp', 'scalar', 2.0), ('gain', 'scalar', 1.0),
+                ('fade0', 'scalar', 12.0), ('fade1', 'scalar', 17.5), ('rootz', 'scalar', 19.0)],
+        outputs=BASE + [('AO', 1, 'MP_AMBIENT_OCCLUSION'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Wpo', 3, 'MP_WORLD_POSITION_OFFSET')], two_sided=True, foliage=True))
+    # r04 picnic blankets: woven gingham (256^2 tile = 0.24 m), fringed ends (masked comb), fold shading (world-space wrinkle normal); replaces the flat M_TerrainVC2 tints (critic r3: pale / maroon slabs)
+    M.append(dict(name='M_TerrainBlanket', include=None, code='''
+float2 t2 = float2(uv0.x * 7.5, uv0.y * 6.25);
+float4 wv = Texture2DSample(tWeave, tWeaveSampler, t2);
+float3 pw = wpos * 0.01;
+float a1 = pw.x * 5.3 + 1.7 * sin(pw.y * 3.1); float b1 = pw.y * 7.9 - pw.x * 2.3;
+float fx = 0.5 * 5.3 * cos(a1) - 0.3 * 2.3 * cos(b1);
+float fy = 0.5 * cos(a1) * 1.7 * 3.1 * cos(pw.y * 3.1) + 0.3 * 7.9 * cos(b1);
+float top = step(0.5, wn.z);
+float3 nf = normalize(float3(-fx * 0.05, -fy * 0.05, 1.0));
+NormalW = lerp(wn, nf, top);
+float3 col = lerp(tintA, tintB, wv.g) * (0.74 + 0.4 * wv.r) * (0.9 + 0.2 * wv.b);
+col *= 0.9 + 0.1 * cos(a1);
+float eu = min(uv0.x, 1.0 - uv0.x) * 1.8;
+float cell = floor(uv0.y * 1.5 / 0.007);
+float hl = 0.014 + 0.026 * frac(sin(cell * 12.9898) * 43758.5453);
+float strand = step(0.4, frac(uv0.y * 1.5 / 0.007));
+float inFr = step(eu, 0.04);
+Op = lerp(1.0, strand * step(0.04 - eu, hl), inFr * top);
+Rough = 0.92;
+return lerp(col * 0.6, col, top) * gain;''',
+        inputs=[('tWeave', 'tex', 'blanket_weave'), ('uv0', 'uv', 0), ('wn', 'wn', None), ('wpos', 'wpos', None), ('tintA', 'vector', (0.5, 0.45, 0.35, 1)), ('tintB', 'vector', (0.3, 0.05, 0.04, 1)), ('gain', 'scalar', 1.0)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS'), ('NormalW', 3, 'MP_NORMAL')], two_sided=True, blend='masked'))
     # ez-tree leaf cards (eztrees.js ezLeafMaterial): the photo spray becomes a value map + twig mask, recoloured per instance with the autumn palette (aTintA -> aTintB,
     # custom data 0..2 / 3..5), crown self-occlusion from the per-leaf exposure (uv1.x), the odd dry brown spray; two-sided foliage (light passes through the leaves)
     M.append(dict(name='M_TerrainLeaves', include=FOLI_INC, code='''

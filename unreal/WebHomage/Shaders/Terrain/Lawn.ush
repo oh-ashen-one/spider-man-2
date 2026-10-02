@@ -1,0 +1,42 @@
+// Homage fan project; not an official Marvel / Sony / Insomniac product, no affiliation.
+// Terrain r04: lawn albedo detail at 0.3-16 m (clump mottling, wear / dirt patches, clover, mowing stripes) and the saturated blade-turf grade.
+// Hand-written and committed (Park.ush is generated from the browser's ground.js and stays untouched). The detail texture (tools/terrain/prep_lawn.py -> lawn_detail.png,
+// RGBA 1024^2 tileable: R clump luminance, G wear field, B clover field, A fine grain) is sampled at three scales with mips, so the detail fades out with distance by itself.
+#pragma once
+#include "/Project/Terrain/Park.ush"
+
+float2 lwRot(float2 p, float a) { float cs = cos(a), sn = sin(a); return float2(p.x * cs - p.y * sn, p.x * sn + p.y * cs); }
+
+// c = lawn albedo from TerrainParkEntry (linear, ungraded), p = metres (browser x, z), grade = lawn grade (r, g, b), k = (detail amplitude, stripe amplitude, saturation)
+float3 TerrainLawnR4(Texture2D tDet, SamplerState tDetSampler, Texture2D tNoise, SamplerState tNoiseSampler, float2 p, float3 c, float3 grade, float3 k)
+{
+  float gm = smoothstep(0.0f, 0.03f, c.g - 0.9f * c.r);                 // 1 on grass, 0 on clay / dirt / gravel / rock
+  float3 cg = c * grade;                                                // r02 grade with the r04 blue: the reference lawn's blue is 16 / 255 against our 55
+  c = lerp(c * float3(0.78f, 0.66f, 0.55f), cg, gm);                    // non-grass: slightly darker, redder (clay infields read pale before)
+  float2 q1 = p / 1.15f;
+  float2 q2 = lwRot(p, 0.61f) / 4.7f + float2(0.37f, 0.61f);
+  float2 q3 = lwRot(p, -0.93f) / 16.3f + float2(0.71f, 0.13f);
+  float4 d1 = Texture2DSample(tDet, tDetSampler, q1);
+  float4 d2 = Texture2DSample(tDet, tDetSampler, q2);
+  float4 d3 = Texture2DSample(tDet, tDetSampler, q3);
+  // clump / blade mottling: the three scales add (std 0.07 + 0.11 + 0.10 of the luminance + grain 0.05)
+  float mott = (d1.r - 0.5f) * 0.34f + (d2.r - 0.5f) * 0.52f + (d3.r - 0.5f) * 0.46f + (d1.a - 0.5f) * 0.22f;
+  c *= clamp(1.0f + k.x * mott, 0.55f, 1.55f);
+  // wear / dirt patches 0.3-3 m with ragged edges, mostly where the grass is thin (G field high)
+  float wr = smoothstep(0.70f, 0.84f, d3.g * 0.55f + d2.g * 0.45f + 0.12f * (d1.g - 0.5f));
+  wr *= smoothstep(0.22f, 0.5f, d1.a + 0.5f * (d1.g - 0.5f));
+  float3 dirt = float3(0.2f, 0.135f, 0.055f) * (0.65f + 0.7f * d1.r);
+  c = lerp(c, dirt, wr * 0.8f * gm);
+  // clover / fresh-growth patches: lighter, yellower green
+  float cl = smoothstep(0.62f, 0.8f, d3.b * 0.5f + d2.b * 0.5f) * (1.0f - wr);
+  c = lerp(c, c * float3(1.3f, 1.18f, 0.9f), cl * 0.75f * gm);
+  // mowing stripes: crisp ~4.4 m bands (direction alternates per ~60 m patch like the browser's), lighter bands a touch yellower, darker a touch bluer
+  float dirSel = step(0.5f, Texture2DSample(tNoise, tNoiseSampler, float2(p.x / 900.0f, 1.0f - p.y / 900.0f)).g);
+  float nzr = Texture2DSample(tNoise, tNoiseSampler, float2(p.x / 140.0f, 1.0f - p.y / 140.0f)).r;
+  float sf = frac(lerp(p.x, p.y, dirSel) / 4.4f + 0.08f * nzr);
+  float band = smoothstep(0.44f, 0.5f, sf) * (1.0f - smoothstep(0.94f, 1.0f, sf));
+  c *= lerp(float3(1.0f, 1.0f, 1.0f), lerp(float3(0.92f, 0.94f, 0.9f), float3(1.08f, 1.06f, 1.0f), band), k.y * gm);
+  float L = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+  c = max(lerp(float3(L, L, L), c, lerp(1.0f, k.z, gm)), float3(0.0f, 0.0f, 0.0f));   // grass saturation (the dirt patches keep theirs)
+  return c;
+}

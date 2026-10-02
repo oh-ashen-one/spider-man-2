@@ -1,0 +1,31 @@
+#!/usr/bin/env python3
+"""r04: candidate routes for docs/night1/terrain/scripts/t5_avenue_to_park.json (headless telemetry probes pick the one whose last 5 s cross the park at 25-40 m).
+Writes <outdir>/*.json (traversal scripts: spawn + keys; north = -y, 5th Av at x = 250, the park rectangle x -234..234, y -2151..-569).
+usage: t5_cands.py <outdir>"""
+import json, os, sys
+out = sys.argv[1]; os.makedirs(out, exist_ok=True)
+def script(name, note, spawn, keys): json.dump({'name': 't5_avenue_to_park', 'note': note, 'seed': 1234, 'spawn': spawn, 'keys': keys}, open(os.path.join(out, name + '.json'), 'w'), indent=1)
+def auto(t, sky, repress, tricks=0, **kw): return dict({'t': t, 'swing': True, 'autoChain': True, 'releasePhase': 0.55, 'gap': 0.8, 'repressVz': repress, 'trickEvery': tricks, 'skyEvery': sky, 'skyTricks': 1, 'skyRepressH': 30, 'skyPhase': 0.8, 'skyMax': 2.8}, **kw)
+FOOT = lambda y0: {'pos': [250, y0, 0.95], 'yaw': -90, 'camPitch': 0.14}
+AIR = lambda y0, z: {'pos': [250, y0, z], 'yaw': -90, 'camPitch': 0.12, 'vel': [0, -22, 0]}
+def foot_keys(sky, th, hd, repress=99.0): return [{'t': 0.0, 'move': [0, 1], 'heading': -90, 'sprint': True}, {'t': 1.8, 'jump': True}, {'t': 2.2, 'jump': False}, auto(2.6, sky, repress)] + ([{'t': th, 'heading': hd}] if th else [])
+def air_keys(sky, th, hd, repress=99.0): return [{'t': 0.0, 'move': [0, 1], 'heading': -90, 'swing': False}, dict(auto(0.4, sky, repress), swing=None)] + ([{'t': th, 'heading': hd}] if th else [])
+for k in [air_keys(0, 0, 0)]:
+    for kk in k:
+        for key in [x for x, v in kk.items() if v is None]: del kk[key]
+C = [
+ ('b0_r03_control', 'round-03 route (control)', FOOT(-120), foot_keys(0, 0, 0)),
+ ('f1_y290_h130_sky0', 'foot start y -290, heading -130 from 9 s', FOOT(-290), foot_keys(0, 9.0, -130)),
+ ('f2_y290_h130_sky1', 'foot start y -290, heading -130 from 9 s, sky launches', FOOT(-290), foot_keys(1, 9.0, -130)),
+ ('f3_y250_h125_sky1', 'foot start y -250, heading -125 from 8 s, sky launches', FOOT(-250), foot_keys(1, 8.0, -125)),
+ ('f4_y330_h125_sky0', 'foot start y -330, heading -125 from 9.5 s', FOOT(-330), foot_keys(0, 9.5, -125)),
+ ('a1_y200_h130_sky1', 'airborne start (250, -200, 26), heading -130 from 8.5 s, sky launches, re-press at -12 m/s', AIR(-200, 26), air_keys(1, 8.5, -130, -12.0)),
+ ('a2_y200_h130_sky0', 'airborne start (250, -200, 26), heading -130 from 8.5 s', AIR(-200, 26), air_keys(0, 8.5, -130)),
+ ('a3_y240_h120_sky1', 'airborne start (250, -240, 26), heading -120 from 9.5 s, sky launches', AIR(-240, 26), air_keys(1, 9.5, -120)),
+ ('a4_y160_h135_sky2', 'airborne start (250, -160, 26), heading -135 from 7.5 s, every 2nd release a sky launch', AIR(-160, 26), air_keys(2, 7.5, -135, -12.0)),
+]
+for n, note, sp, ks in C:
+    for kk in ks:
+        for key in [x for x, v in kk.items() if v is None]: del kk[key]
+    script(n, note, sp, ks)
+print('%d candidates in %s' % (len(C), out))

@@ -22,7 +22,9 @@ RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
 export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"; STILL_FPS="$WH_CAPTURE_MAXFPS"   # r03: kept for the r2gpu stills after the movies
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
-[ -f "$UE_DIR/Content/Terrain/Maps/V_p1_south.umap" ] || { echo "terrain content missing (Content/Terrain/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
+TROOT="${TERRAIN_ROOT:-/Game/Terrain}"   # r04: the content root of this round's build (a side-by-side /Game/TerrainR4 keeps /Game/Terrain readable while a new build is made)
+TDIR="$UE_DIR/Content/${TROOT#/Game/}"
+[ -f "$TDIR/Maps/V_p1_south.umap" ] || { echo "terrain content missing ($TDIR/Maps/V_p1_south.umap): build_terrain.py has not produced the maps"; exit 3; }
 mkdir -p "$TMP" "$ROUND/stills"
 gpu() { ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' | head -1; }
 IDS=$(python3 -c "import json;print(' '.join(s['id'] for s in json.load(open('$HERE/shots.json'))['shots']))")
@@ -31,9 +33,10 @@ BASE_IDS="${BASE_IDS-p1_south p2_reservoir p10_lawn_eye p6_west_shore}"   # base
 if want warm; then
   echo "== warm-up (shader compile, not kept)  $(gpu)"
   rm -rf "$TMP/warm"
-  RUN "$TMP/warm" -map /Game/Terrain/Maps/V_p1_south -res 960x540 -quit "${WARM_QUIT:-12}" -name warm -timeout 2300 -- -benchmark -fps=30 | tail -3
+  # r04 capture safety (two health-monitor stops on 2026-10-02): 960x540, r.ScreenPercentage 50 (480x270 internal), a 4 fps fixed step AND a 4 fps frame cap; watch _scratch/gpu/health.log
+  WH_CAPTURE_MAXFPS=4 RUN "$TMP/warm" -map $TROOT/Maps/V_p1_south -res 960x540 -quit "${WARM_QUIT:-12}" -name warm -timeout 2300 -exec "r.ScreenPercentage 50" -- -benchmark -fps=4 | tail -3
   # r02: a terrain material that did not compile (or lacks the Nanite usage flag) renders as the grey default material: stop now, fix, re-queue (the stills would be wasted slot time)
-  grep -aE "(M_Terrain|MI_Pool_|/Game/Terrain/).*(missing usage flag|[Ff]ailed to compile)|LogShaderCompilers: Error|Failed to compile Material" "$TMP/warm/warm.log" > "$ROUND/warm_shader_check.txt" 2>/dev/null
+  grep -aE "(M_Terrain|MI_Pool_|MI_Grass|MI_Blanket|/Game/Terrain[A-Za-z0-9]*/).*(missing usage flag|[Ff]ailed to compile)|LogShaderCompilers: Error|Failed to compile Material" "$TMP/warm/warm.log" > "$ROUND/warm_shader_check.txt" 2>/dev/null
   # a compile failure draws the grey default material everywhere: stop (the stills would be wasted slot time). A missing-usage-flag warning is only recorded (the stills are still useful).
   if grep -aqE "[Ff]ailed to compile|LogShaderCompilers: Error" "$ROUND/warm_shader_check.txt" 2>/dev/null && [ -z "${KEEP_GOING:-}" ]; then echo "== WARM-UP SHADER CHECK FAILED (see $ROUND/warm_shader_check.txt); stopping the hold"; head -5 "$ROUND/warm_shader_check.txt"; exit 4; fi
   [ -s "$ROUND/warm_shader_check.txt" ] && echo "== warm-up log notes (kept going): $(wc -l < "$ROUND/warm_shader_check.txt") lines in warm_shader_check.txt"
@@ -43,7 +46,7 @@ still() {  # <prefix> <id>
   time_ok || { echo "== SKIP still $NAME (hold budget used up)"; return; }
   echo "== still $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
-  local ROOTP="${STILL_ROOT:-/Game/Terrain}"
+  local ROOTP="${STILL_ROOT:-$TROOT}"
   RUN "$TMP/$NAME" -map "$ROOTP/Maps/$NAME" -res 3840x2160 -shots "${STILL_AT:-2}" -quit "${STILL_QUIT:-3}" -perf "${STILL_PERF:-0.8:1.9}" -name "$NAME" -timeout 1500 -- -benchmark -fps=30 | tail -2
   # r03: the capture's own GPU frame time (RHIGetGPUFrameCycles over game 0.8-1.9 s, frame-capped run: GPU ms is per frame, not throughput)
   grep -ah "WH_PERF " "$TMP/$NAME/$NAME.log" | sed 's/^.*WH_PERF /'"${STILL_TAG:-r03}"' '"$NAME"' /' >> "$ROUND/gpu_ms.txt"
@@ -65,7 +68,7 @@ movie() {  # <name> <script.json> <quit seconds>
   time_ok || { echo "== SKIP movie $NAME (hold budget used up)"; return; }
   echo "== movie $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
-  RUN "$TMP/$NAME" -map /Game/Terrain/Maps/Manhattan_Terrain -res 1920x1080 -quit "$Q" -name "$NAME" -movie -timeout 2300 -exec "r.ScreenPercentage 100${HIDE_HERO:+,ShowFlag.SkeletalMeshes 0}" \
+  RUN "$TMP/$NAME" -map $TROOT/Maps/Manhattan_Terrain -res 1920x1080 -quit "$Q" -name "$NAME" -movie -timeout 2300 -exec "r.ScreenPercentage 100${HIDE_HERO:+,ShowFlag.SkeletalMeshes 0}" \
     -- -WHTravScript="$SCR/$JSON" -WHTravCsv="$TMP/$NAME/${NAME}_telemetry.csv" | tail -4
   cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/" 2>/dev/null
   grep -h "WebTravWorld:\|WH_QUIT" "$TMP/$NAME/$NAME.log" | sed 's/^.*Display: //' | head -5 > "$ROUND/${NAME}_log_excerpt.txt"
@@ -92,5 +95,18 @@ if want r2gpu && [ -f "$UE_DIR/Content/TerrainR2/Maps/V_p1_south.umap" ]; then
     RUN "$TMP/warm_r2" -map /Game/TerrainR2/Maps/V_p1_south -res 960x540 -quit 20 -name warm_r2 -timeout 2300 -- -benchmark -fps=30 | tail -2; fi
   for ID in ${R2GPU_IDS:-p1_south p10_lawn_eye}; do STILL_ROOT=/Game/TerrainR2 STILL_TAG=r02 STILL_NOKEEP=1 still V_ "$ID"; done
   for ID in ${R2GPU_IDS:-p1_south p10_lawn_eye}; do STILL_TAG=r03-again STILL_NOKEEP=1 still V_ "$ID"; done   # r03 again right after (same GPU state)
+fi
+
+# r04: t5 route probes = headless telemetry-only runs (-nullrhi: no pixels, no GPU) of every candidate script in $PROBE_DIR (default <round>/t5_candidates), scored by tools/terrain/t5_score.py
+if want t5probe; then
+  PD="${PROBE_DIR:-$ROUND/t5_candidates}"; mkdir -p "$ROUND/t5_probe"
+  for J in "$PD"/*.json; do
+    [ -f "$J" ] || continue
+    N=$(basename "$J" .json); time_ok || { echo "== SKIP probe $N (hold budget used up)"; continue; }
+    echo "== t5 probe $N"
+    rm -rf "$TMP/probe_$N"
+    WH_CAPTURE_MAXFPS=60 RUN "$TMP/probe_$N" -map $TROOT/Maps/Manhattan_Terrain -res 960x540 -quit "${PROBE_QUIT:-15.6}" -name "probe_$N" -timeout 600 -- -nullrhi -benchmark -fps=60 -WHTravScript="$J" -WHTravCsv="$ROUND/t5_probe/$N.csv" | tail -2
+  done
+  python3 "$HERE/../../../tools/terrain/t5_score.py" "$ROUND/t5_probe" "$ROUND/t5_probe/scores.json" | tee "$ROUND/t5_probe/scores.txt"
 fi
 echo "done: $ROUND"

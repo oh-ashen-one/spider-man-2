@@ -1,7 +1,7 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Piece E (terrain): idempotent rebuild of /Game/Terrain from committed sources. Content is generated, never committed (unreal/WebHomage/CONTENT.md).
 #   sources: browser export  tools/export/export_terrain.mjs   -> <EXPORT>/manifest.json, terrain.json, mesh/<group>/*.glb, proto/*.glb, parkmask.rgba
-#            prep            tools/terrain/prep_terrain.py     -> <PREP>/pathmask.png, tuft.glb, tufts.bin, stats.json, Shaders/Terrain/ParkData.ush
+#            prep            tools/terrain/prep_terrain.py     -> <PREP>/pathmask.png, stats.json, Shaders/Terrain/ParkData.ush; tools/terrain/prep_lawn.py (r04) -> grass_near_*.glb, grass_far_*.glb, grass_near.bin, grass_far.bin, lawn_detail.png, blanket_weave.png
 #            shaders         tools/export/gen_terrain_shaders.mjs -> Shaders/Terrain/Park.ush (GLSL of ground.js createGrassMaterial, translated)
 #            textures        public/assets/city/tex (grass_col, noise, asphalt_col, water_nrm)
 #   steps (default all, in this order):  clean, tex, mat, mesh, foliage, trees, map, views
@@ -25,7 +25,7 @@ PUB = os.path.join(WT, 'public', 'assets', 'city', 'tex')
 try: ARGS = JOB_ARGS  # noqa: F821 (set by a job wrapper)
 except NameError: ARGS = {}
 STEPS = set((ARGS.get('steps') or os.environ.get('SM2_TERRAIN_STEPS') or 'clean,tex,mat,mesh,foliage,trees,map,views').split(','))
-ROOT = '/Game/Terrain'
+ROOT = os.environ.get('SM2_TERRAIN_ROOT') or '/Game/Terrain'   # r04: a side-by-side build (e.g. /Game/TerrainR4) leaves the content a capture hold may be reading untouched
 at = unreal.AssetToolsHelpers.get_asset_tools()
 EAL = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
@@ -100,13 +100,14 @@ TEXD = ROOT + '/Textures'
 @step('tex')
 def _step_tex():
     srcs = [(os.path.join(PUB, 'grass_col.png'), 'grass_col', True), (os.path.join(PUB, 'noise.png'), 'noise', False), (os.path.join(PUB, 'asphalt_col.png'), 'asphalt_col', True),
-            (os.path.join(PUB, 'water_nrm.png'), 'water_nrm', False), (os.path.join(PREP, 'pathmask.png'), 'pathmask', False)] + \
+            (os.path.join(PUB, 'water_nrm.png'), 'water_nrm', False), (os.path.join(PREP, 'pathmask.png'), 'pathmask', False),
+             (os.path.join(PREP, 'lawn_detail.png'), 'lawn_detail', False), (os.path.join(PREP, 'blanket_weave.png'), 'blanket_weave', False)] + \
             [(os.path.join(PREP, 'leaf_' + n + '.png'), 'leaf_' + n, True) for n in ('oak', 'ash', 'aspen', 'pine')] + [(os.path.join(PREP, 'leaf_atlas.png'), 'leaf_atlas', False)]
     import_files([s[0] for s in srcs], TEXD)
     for f, n, srgb in srcs:
         t = load(f'{TEXD}/{n}')
         if t is None: log('MISSING texture', n); continue
-        if n == 'noise': tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
+        if n in ('noise', 'lawn_detail', 'blanket_weave'): tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)   # r04: lawn detail / blanket weave = uncompressed linear RGBA data, tiled, mipped
         elif n == 'pathmask':
             tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP, wrap=False); t.set_editor_property('never_stream', True)
         elif n == 'leaf_atlas': tex_settings(t, False, unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)   # data atlas (G >= 0.97 = twig): linear, uncompressed, tiled
@@ -259,16 +260,20 @@ def _step_mesh():
 # ------------------------------------------------------------------------------------------------ foliage prototypes
 PROD = ROOT + '/Props'
 PROTOS = ('parkReeds', 'park_blankets', 'parklamp')
+GRASS_PROTOS = tuple('grass_near_%d' % k for k in range(4)) + tuple('grass_far_%d' % k for k in range(2))   # r04 blade-patch meshes (tools/terrain/prep_lawn.py)
 @step('foliage')
 def _step_foliage():
-    extra = ['tuft'] + [n for n in ('shore_patch', 'park_rocks') if os.path.exists(os.path.join(PREP, n + '.glb'))]
+    # r04: the blade-turf material instances (near layer < 17.5 m, far layer 16-58 m: the blades shrink to the ground between fade0 and fade1, so the instance cull distance never pops)
+    mi('Grass_Near', 'M_TerrainGrass', {'windamp': 2.0, 'fade0': 12.0, 'fade1': 17.5, 'rootz': 19.0, 'gain': 1.0})
+    mi('Grass_Far', 'M_TerrainGrass', {'windamp': 3.5, 'fade0': 42.0, 'fade1': 58.0, 'rootz': 19.0, 'gain': 1.0})
+    extra = list(GRASS_PROTOS) + [n for n in ('shore_patch', 'park_rocks') if os.path.exists(os.path.join(PREP, n + '.glb'))]
     files = [os.path.join(PREP, n + '.glb') for n in extra] + [os.path.join(EXPORT, p['file']) for p in MAN['protos'] if p['name'] in PROTOS]
     import_files(files, PROD + '/_in', mesh_pipeline())
     for nm in extra + [p['name'] for p in MAN['protos'] if p['name'] in PROTOS]:
         src = f'{PROD}/_in/{nm}/StaticMeshes/{nm}'; dst = f'{PROD}/SM_{nm}'
         if not EAL.does_asset_exist(src): log('MISSING proto', src); continue
         EAL.rename_asset(src, dst); sm = load(dst)
-        if nm == 'tuft': finish_mesh(sm, load(f'{MAT}/M_TerrainGrass'), False)
+        if nm in GRASS_PROTOS: finish_mesh(sm, load(f'{MAT}/Inst/MI_Grass_' + ('Near' if nm.startswith('grass_near') else 'Far')), False)
         elif nm == 'park_rocks': finish_mesh(sm, mi('P_park_rocks', 'M_TerrainVC', {'usevc': 1.0, 'roughp': 0.9}, {'tint': (1.0, 1.0, 1.0, 1.0)}), False)   # schist outcrops (vertex-coloured, museum triangles dropped in prep)
         elif nm == 'shore_patch': finish_mesh(sm, mi('P_shore_patch', 'M_TerrainVC', {'usevc': 0.0, 'roughp': 0.85}, {'tint': (0.2, 0.19, 0.17, 1.0)}), False)   # granite bulkhead blocks closing the shoreline gaps (tools/terrain/shore_audit.py)
         else:
@@ -279,8 +284,6 @@ def _step_foliage():
             finish_mesh(sm, mi('P_' + nm, 'M_TerrainVC2' if two else 'M_TerrainVC', {'usevc': 0.0, 'roughp': m.get('roughness') or 0.8, 'metalp': 0.4 if nm == 'parklamp' else 0.0}, {'tint': (col[0], col[1], col[2], 1.0)}), False)
         EAL.save_asset(dst)
     if EAL.does_directory_exist(PROD + '/_in'): EAL.delete_directory(PROD + '/_in')
-    # three wind classes of the tuft material (tall tufts sway more)
-    for nm, amp in (('TuftLow', 3.0), ('TuftMid', 7.0), ('TuftHigh', 12.0)): mi(nm, 'M_TerrainGrass', {'windamp': amp, 'gain': 1.7})   # v2 stills: tufts read darker than the lawn (browser blades are lit yellow-green)
     log('foliage prototypes done')
 
 # ------------------------------------------------------------------------------------------------ park woodland (ez-trees + the browser's tree distance chain, per-instance autumn tints)
@@ -406,19 +409,27 @@ def build_land(path):
             a.static_mesh_component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(a.static_mesh_component, indirect=True)
 
     def _sec_tufts():
-            # grass tufts: browser grass.js density / height mask, scattered by prep_terrain.py (x, z, yaw, width scale, height m), three wind classes, culled at 45 m
-        tp = os.path.join(PREP, 'tufts.bin')
-        if os.path.exists(tp) and EAL.does_asset_exist(f'{PROD}/SM_tuft'):
-            import array
+        # r04 dense blade turf: patches of ~600 blades (near layer, 1.5 m grid, culled 18 m) + ~350 wider blades (far layer, 2.6 m grid, culled 60 m) scattered by tools/terrain/prep_lawn.py
+        # over the browser's grass mask: records [x, z, yaw, xy scale, height m]. The pools stay out of Lumen's ray-tracing scene (HWRT treats every drawn primitive as visible to indirect rays:
+        # r03 finding for the leaf pools, and a few hundred thousand blades would only cost) and cast no shadows (the roots darken through the material AO).
+        import array
+        gy = TJ['GY']['GRASS'] + 0.03 - 0.01    # + the 3 cm the park ground is raised, - 1 cm so the roots sit in the soil
+        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_grass', folder='Terrain/Grass')
+        for layer, nvar, cull in (('near', 4, 1800), ('far', 2, 6000)):
+            tp = os.path.join(PREP, 'grass_%s.bin' % layer)
+            if not os.path.exists(tp): log('no grass scatter for', layer); continue
             buf = array.array('f'); buf.frombytes(open(tp, 'rb').read())
-            recs = [buf[i:i + 5] for i in range(0, len(buf), 5)]          # x, z, yaw, width scale, height m
-            classes = [('TuftLow', [r for r in recs if r[4] < 0.11]), ('TuftMid', [r for r in recs if 0.11 <= r[4] < 0.2]), ('TuftHigh', [r for r in recs if r[4] >= 0.2])]
-            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_grass_tufts', folder='Terrain/Grass')
-            gy = TJ['GY']['GRASS'] + 0.03   # + the 3 cm the park ground is raised
-            for nm, S in classes:
-                xs = [unreal.Transform(U(x, gy - 0.01, z), unreal.Rotator(0.0, 0.0, -math.degrees(yw)), unreal.Vector(w, w, h / 0.85)) for x, z, yw, w, h in S]
-                hism(a, f'{PROD}/SM_tuft', xs, cull=4500, material=load(f'{MAT}/Inst/MI_{nm}'))
-                log('tufts', nm, len(xs))
+            recs = [buf[i:i + 5] for i in range(0, len(buf), 5)]          # x, z, yaw, xy scale, height m
+            for k in range(nvar):
+                sp = f'{PROD}/SM_grass_{layer}_{k}'
+                if not EAL.does_asset_exist(sp): log('MISSING grass proto', sp); continue
+                S = recs[k::nvar]
+                xs = [unreal.Transform(U(x, gy, z), unreal.Rotator(0.0, 0.0, -math.degrees(yw)), unreal.Vector(w, w, h)) for x, z, yw, w, h in S]
+                c = hism(a, sp, xs, cull=cull, material=load(f'{MAT}/Inst/MI_Grass_' + layer.capitalize()))
+                for k_, v_ in (('visible_in_ray_tracing', False), ('affect_indirect_lighting_while_hidden', False), ('cast_contact_shadow', False)):
+                    try: c.set_editor_property(k_, v_)
+                    except Exception as ex: log('WARN grass', k_, str(ex)[:100])
+                log('grass', layer, k, len(xs))
 
     def _sec_props():
         # instanced props: reeds + picnic blankets (matrix records [x,y,z,ry,sx,sy,sz,(r,g,b)]), park lamps inside the park (pool items {x,y,z,ry,s})
@@ -426,16 +437,20 @@ def build_land(path):
             a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkReeds', folder='Terrain/Props')
             hism(a, f'{PROD}/SM_parkReeds', [T_matrix(r) for r in INS['parkReeds']['items']], cull=40000, shadows=False)
         if 'park-blankets' in INS and EAL.does_asset_exist(f'{PROD}/SM_park_blankets'):
+            # r04: woven gingham blankets (M_TerrainBlanket: weave texture, fringed ends, fold normal) in six palettes, lying 2 cm over the lawn with a hair of tilt; the grass scatter leaves their footprint clear
             items = INS['park-blankets']['items']
-            hue = lambda r: math.atan2(math.sqrt(3) * (r[8] - r[9]), 2 * r[7] - r[8] - r[9]) if len(r) >= 10 else 0.0
-            items = sorted(items, key=hue); k = 6; a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkBlankets', folder='Terrain/Props')
-            for b in range(k):
-                chunk = items[b * len(items) // k:(b + 1) * len(items) // k]
+            pal = [((0.46, 0.41, 0.33), (0.40, 0.045, 0.035)), ((0.44, 0.42, 0.37), (0.04, 0.10, 0.32)), ((0.43, 0.38, 0.26), (0.05, 0.22, 0.07)),
+                   ((0.50, 0.40, 0.14), (0.05, 0.08, 0.24)), ((0.52, 0.27, 0.08), (0.24, 0.08, 0.04)), ((0.42, 0.28, 0.34), (0.16, 0.05, 0.17))]
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parkBlankets', folder='Terrain/Props')
+            for b in range(len(pal)):
+                chunk = items[b::len(pal)]
                 if not chunk: continue
-                col = [sum(r[7 + q] for r in chunk) / len(chunk) if len(chunk[0]) >= 10 else 0.4 for q in range(3)]
-                col = [min(1.0, 1.3 * math.sqrt(v)) for v in col]   # r02: the exported instance colours are linearised twice (0x3a4a6a -> 0.003): near-black slabs on the lawn (critic r1); sqrt undoes it
-                m = mi('Blanket%d' % b, 'M_TerrainVC2', {'usevc': 0.0, 'roughp': 0.9}, {'tint': (col[0], col[1], col[2], 1.0)})
-                hism(a, f'{PROD}/SM_park_blankets', [T_matrix(r) for r in chunk], cull=15000, shadows=False, material=m)
+                m = mi('Blanket%d' % b, 'M_TerrainBlanket', {'gain': 1.0}, {'tintA': pal[b][0] + (1.0,), 'tintB': pal[b][1] + (1.0,)})
+                xf = []
+                for i, r in enumerate(chunk):
+                    rot = unreal.Rotator(((i * 37) % 13 - 6) * 0.25, ((i * 53) % 11 - 5) * 0.25, -math.degrees(r[3]))   # (roll, pitch, yaw): a hair of tilt so no blanket is a perfect plane
+                    xf.append(unreal.Transform(U(r[0], r[1] + 0.02, r[2]), rot, unreal.Vector(r[4], r[6], r[5])))
+                hism(a, f'{PROD}/SM_park_blankets', xf, cull=15000, shadows=False, material=m)
         if 'parklamp' in INS and EAL.does_asset_exist(f'{PROD}/SM_parklamp'):
             sel = [it for it in INS['parklamp']['items'] if P['x0'] < it['x'] < P['x1'] and P['z0'] < it['z'] < P['z1']]
             a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_parklamps', folder='Terrain/Props')
