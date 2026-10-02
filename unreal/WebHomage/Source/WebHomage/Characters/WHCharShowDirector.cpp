@@ -168,8 +168,15 @@ void AWHCharShowDirector::Tick(float Dt)
 					const FTransform RefW = FAnimationRuntime::GetComponentSpaceTransformRefPose(RS, HB) * SK->GetComponentTransform();
 					const FTransform NowW = SK->GetBoneTransform(HB);
 					const FQuat Dq = NowW.GetRotation() * RefW.GetRotation().Inverse();
-					Loc = NowW.GetLocation() + Dq.RotateVector(Loc - RefW.GetLocation());
-					CamRot = (Dq * CamRot.Quaternion()).Rotator();
+					// the camera is moved INTO the head's midsagittal plane (the plane of the face's centre seam: normal = the actor's right axis turned with the head) and its
+					// up axis is kept in that plane: the head's yaw and roll are followed, its pitch (a nod, which leaves that plane where it is) is not, so the framing stays the
+					// stage framing.  The seam then projects to a straight vertical line.
+					const FVector Nrm = Dq.RotateVector(Tgt->GetActorRightVector()).GetSafeNormal();
+					const FVector P0 = NowW.GetLocation();
+					const FVector LookP = Look - Nrm * FVector::DotProduct(Look - P0, Nrm);
+					Loc = Loc - Nrm * FVector::DotProduct(Loc - P0, Nrm);
+					FVector Up = FVector::UpVector - Nrm * FVector::DotProduct(FVector::UpVector, Nrm);
+					CamRot = FRotationMatrix::MakeFromXZ((LookP - Loc).GetSafeNormal(), Up.GetSafeNormal()).Rotator();
 					if (bCut) UE_LOG(LogTemp, Display, TEXT("WH_HEADLOCK shot %d head turn %.2f deg (yaw %.2f pitch %.2f roll %.2f)"), Idx, FMath::RadiansToDegrees(Dq.GetAngle()), Dq.Rotator().Yaw, Dq.Rotator().Pitch, Dq.Rotator().Roll);
 				}
 			}
