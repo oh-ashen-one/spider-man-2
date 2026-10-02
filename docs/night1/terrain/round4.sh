@@ -12,6 +12,7 @@ S=/Users/midir/sm2-n1/_scratch/terrain
 for _ in $(seq 1 120); do [ -e $S/BUILDING ] || break; sleep 5; done
 if [ -e $S/BUILDING ]; then echo "terrain content still building after 10 min: giving the slot back"; exit 5; fi
 export HOLD_START=$(date +%s)
+rm -f "$S/capture/STOPPED" "$S/capture/FAILS"   # (capture_round.sh: a stopped / failed run ends the hold)
 HERE="$(cd "$(dirname "$0")" && pwd)"
 export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-4}" MOVIE_MAXFPS="${MOVIE_MAXFPS:-12}" WARM_QUIT="${WARM_QUIT:-75}" HIDE_HERO=1 BASE_IDS=""   # movies: 1080p, fixed 1/60 s step, frame cap 12 fps (r03: 20) so the GPU idles between frames
 case "${STAGE:-A}" in

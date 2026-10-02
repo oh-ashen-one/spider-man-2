@@ -16,8 +16,17 @@ SCR="$HERE/scripts"
 TMP=/Users/midir/sm2-n1/_scratch/terrain/capture
 GPU="${GPU_CMD:-/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh}"
 HOLD_START="${HOLD_START:-$(date +%s)}"; HOLD_BUDGET="${HOLD_BUDGET:-2100}"   # the lock kills a hold after 40 min: stop launching new runs after 35 min
-time_ok() { [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
-RUN() { "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; }
+# r04: a run stopped by the health monitor (SIGTERM -> 143 / 137) or killed at the max hold (124) -- or a second failed run -- ends the hold: nothing is relaunched automatically
+# (owner rules: one stop = resume the missing shots by hand, two = stop and report; never auto-relaunch after two crashes). The marker lives in $TMP/STOPPED (round4.sh clears it at the start of a hold).
+time_ok() { [ ! -e "$TMP/STOPPED" ] && [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
+RUN() {
+  "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; local rc=$?
+  if [ $rc -ne 0 ]; then
+    echo "rc=$rc $(date +%H:%M:%S) $*" >> "$TMP/FAILS"
+    if [ $rc -eq 143 ] || [ $rc -eq 137 ] || [ $rc -eq 124 ] || [ "$(wc -l < "$TMP/FAILS")" -ge 2 ]; then echo "STOP rc=$rc $(date +%H:%M:%S) $*" >> "$TMP/STOPPED"; echo "== STOPPED (rc=$rc): not launching anything else; see $TMP/STOPPED"; fi
+  fi
+  return $rc
+}
 # GPU etiquette (2026-10-01 20:43: the first terrain warm-up pinned the GPU and WindowServer starved): throttle every run so the GPU idles between frames
 export WH_CAPTURE_MAXFPS="${WH_CAPTURE_MAXFPS:-12}"; STILL_FPS="$WH_CAPTURE_MAXFPS"   # r03: kept for the r2gpu stills after the movies
 WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warm stills moves)
