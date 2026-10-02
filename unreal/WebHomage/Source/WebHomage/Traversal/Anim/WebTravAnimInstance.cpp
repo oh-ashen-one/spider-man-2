@@ -34,7 +34,7 @@ static double GaitPoleN = -0.35;
 // round 22 upright side run (-WHGaitTune=STd=,STo=,STuck=,SSw=,SReach=,SArm=): touchdown ahead / toe-off behind (leg lengths, along the run
 // line), recovery heel tuck (share of the drop), recovery toe off the facade (cm), stance leg reach (leg lengths), arm pump reach (arm lengths)
 static float GroundBlendS = 0.18f; // round 22: ground locomotion weight blend (s), -WHGaitTune=GBlend=
-static double SideTd = 0.36, SideTo = 0.46, SideTuck = 0.55, SideSwOff = 14.0, SideReach = 0.95, SideArmFwd = 0.40;
+static double SideTd = 0.45, SideTo = 0.50, SideTuck = 0.55, SideSwOff = 14.0, SideReach = 0.95, SideArmFwd = 0.40;
 static double GaitHi = 0.28, GaitKp = 0.75, GaitSwOff = 15.0, GaitSig = 0.40, GaitCadMin = 5.6, GaitCadMax = 6.6, GaitCadBase = 3.2, GaitCadK = 0.22;
 
 namespace
@@ -854,7 +854,8 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 				else
 				{
 					const float K = (Phi - Sig) / (1.f - Sig);
-					OU = FMath::Lerp(OToU, OTdU, double(Ease(K)));
+					const double K5 = double(K) * K * K * (K * (6.0 * K - 15.0) + 10.0); // smootherstep: the recovery foot passes the stance foot fast (legs apart longer)
+					OU = FMath::Lerp(OToU, OTdU, K5);
 					DropK = 1.0 - SideTuck * FMath::Sin(PI * K);
 					OffU = 3.0 + SideSwOff * FMath::Sin(PI * K);
 				}
