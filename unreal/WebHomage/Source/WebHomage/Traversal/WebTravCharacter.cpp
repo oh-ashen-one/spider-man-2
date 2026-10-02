@@ -300,9 +300,17 @@ void AWebTravCharacter::BuildFigure()
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(false);
 		C->SetVisibility(false);
+		C->SetTranslucentSortPriority(10); // round 25: the two-tone strand is translucent (it reads the scene colour behind it)
 		C->RegisterComponent();
 		WebSegs.Add(C);
 	}
+	// round 25: unlit two-tone strand (see RopeLook in WebTraversalComponent.h); built by Scripts/build_traversal.py (traversal_web_material.py)
+	if (UMaterialInterface* WebBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Traversal/Materials/M_TravWeb.M_TravWeb")))
+	{
+		WebMatTwoTone = UMaterialInstanceDynamic::Create(WebBase, this);
+	}
+	else UE_LOG(LogTemp, Warning, TEXT("WebTrav: /Game/Traversal/Materials/M_TravWeb missing -- web strands keep the r24 dark line"));
+	WebLookNow = 0;
 }
 
 bool AWebTravCharacter::SetupHeroMesh()
@@ -1105,8 +1113,32 @@ void AWebTravCharacter::PoseFigure(float Dt)
 
 void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 {
+	// round 25: the rope look (RopeLook 1 = unlit two-tone M_TravWeb with a screen-space width clamp; 0 = r24 lit dark line)
+	const bool bTwoTone = Traversal->RopeLook > 0.5f && WebMatTwoTone != nullptr;
+	if (WebLookNow != (bTwoTone ? 1 : 0))
+	{
+		WebLookNow = bTwoTone ? 1 : 0;
+		for (UStaticMeshComponent* C : WebSegs) { if (C) C->SetMaterial(0, bTwoTone ? static_cast<UMaterialInterface*>(WebMatTwoTone) : static_cast<UMaterialInterface*>(WebMat)); }
+	}
+	if (bTwoTone)
+	{
+		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreBright"), Traversal->RopeCoreBright);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreDark"), Traversal->RopeCoreDark);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("Pivot"), Traversal->RopePivot);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreLvl"), Traversal->RopeCoreLvl);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("RimLvl"), Traversal->RopeRimLvl);
+	}
+	// pixels per cm at 1 cm distance: viewport height / (2 tan(vfov / 2)) -- the strand width is clamped in screen space
+	double ViewH = 1080.0;
+	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+	{
+		const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
+		if (Sz.Y > 0) ViewH = double(Sz.Y);
+	}
+	const double PxK = ViewH / (2.0 * FMath::Tan(FMath::DegreesToRadians(FMath::Clamp(double(Cam.OutVFov), 20.0, 150.0) * 0.5)));
 	for (int32 SI = 0; SI < 2; ++SI)
 	{
+		bRopeDrawn[SI] = false;
 		const FWebTravStrand& St = Traversal->Strands[SI];
 		const bool bReleased = St.bActive && St.ReleaseT >= 0.f;
 		const FVector Hand = HandWorldCm(St.bRightHand);
@@ -1146,10 +1178,18 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			// round 08 (critic r07: thick blooming beam): world width 1.2 cm, never thinner than ~1.2 px at 1080p
 			const double CamD = FVector::Dist(Mid, CamPosCm);
 			if (CamD < 300.0) { C->SetVisibility(false); continue; } // never draw a strand segment on the lens
-			const double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
+			double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
+			if (bTwoTone)
+			{ // round 25: 1.6 cm world width, clamped to RopePxMin..RopePxMax px on screen (at the segment's distance); a released strand
+				// thins out by the fade as before
+				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax)));
+				W = Px * CamD / PxK * Fade;
+			}
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());
 			C->SetWorldScale3D(FVector(W / 100.0, W / 100.0, Len / 100.0));
 			C->SetVisibility(true);
+			if (!bRopeDrawn[SI]) { RopeDrawA[SI] = P0; RopeDrawWA[SI] = W; bRopeDrawn[SI] = true; }
+			RopeDrawB[SI] = P1; RopeDrawWB[SI] = W;
 		}
 	}
 }
@@ -1227,7 +1267,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("body_vel_deg,body_wallup_deg,cam_enclosed,vis_pts,vis_up_m,setbacks,topouts,tunnel_stops,cam_slew8,zip_reach_w,solid_mode,")
 		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px,")
 		TEXT("foot_sep_run_m,knee_gap_lat_m,knee_wall_l,knee_wall_r,limb_wall_max_m,body_run_elev_deg,")
-		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m,alt_apex_want_m,cam_look_dir,cam_gnd_crane_m,cam_gnd_stop"));
+		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m,alt_apex_want_m,cam_look_dir,cam_gnd_crane_m,cam_gnd_stop,")
+		TEXT("rope_drawn,rope_ax,rope_ay,rope_bx,rope_by,rope_wpx_a,rope_wpx_b,rope_look,cam_perch_hold"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1485,7 +1526,40 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	}
 	// round 24: altitude-chain apex want (m over the floor), camera turn direction of the user look, ground / perch crane lift (m)
 	const FString Cols24 = FString::Printf(TEXT(",%.1f,%d,%.2f,%d"), Traversal->AltApexWant, Cam.LookYawDir, Cam.GndCrane, Cam.GndStopped + (Cam.bGndLensHold ? 2 : 0));
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24);
+	// round 25: the drawn strand (the longer one when two are drawn) projected through the final camera: hand end A / far end B in normalized
+	// screen coordinates (0..1, may lie outside the frame; B clipped to the near plane), and the strand width in px at each end (viewport
+	// height), plus the rope look (1 = two-tone) and the perch yaw hold flag of the camera
+	FString Cols25 = TEXT(",0,-1,-1,-1,-1,-1,-1");
+	{
+		int32 Best = -1; double BestL = 0.0;
+		for (int32 SI = 0; SI < 2; ++SI) { if (bRopeDrawn[SI]) { const double L = FVector::Dist(RopeDrawA[SI], RopeDrawB[SI]); if (L > BestL) { BestL = L; Best = SI; } } }
+		if (Best >= 0)
+		{
+			const FRotationMatrix RM(Cam.CamRot);
+			const FVector CF = RM.GetUnitAxis(EAxis::X), CR = RM.GetUnitAxis(EAxis::Y), CU = RM.GetUnitAxis(EAxis::Z);
+			const double TV = FMath::Tan(FMath::DegreesToRadians(Cam.OutVFov * 0.5));
+			double Aspect = 16.0 / 9.0, ViewH = 1080.0;
+			if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+			{
+				const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
+				if (Sz.X > 0 && Sz.Y > 0) { Aspect = double(Sz.X) / double(Sz.Y); ViewH = double(Sz.Y); }
+			}
+			FVector RA = RopeDrawA[Best] / 100.0 - Cam.CamPos, RB = RopeDrawB[Best] / 100.0 - Cam.CamPos;
+			double ZA = FVector::DotProduct(RA, CF), ZB = FVector::DotProduct(RB, CF);
+			if (ZA < 0.05 && ZB >= 0.05) { RA = RA + (RB - RA) * ((0.05 - ZA) / (ZB - ZA)); ZA = 0.05; }
+			if (ZB < 0.05 && ZA >= 0.05) { RB = RA + (RB - RA) * ((ZA - 0.05) / (ZA - ZB)); ZB = 0.05; }
+			if (ZA >= 0.05 && ZB >= 0.05)
+			{
+				auto SX = [&](const FVector& R, double Z) { return 0.5 + 0.5 * FVector::DotProduct(R, CR) / (Z * TV * Aspect); };
+				auto SY = [&](const FVector& R, double Z) { return 0.5 - 0.5 * FVector::DotProduct(R, CU) / (Z * TV); };
+				const double PxK = ViewH / (2.0 * TV);
+				Cols25 = FString::Printf(TEXT(",%d,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f"), int32(bRopeDrawn[0]) + int32(bRopeDrawn[1]), SX(RA, ZA), SY(RA, ZA), SX(RB, ZB), SY(RB, ZB),
+					RopeDrawWA[Best] / 100.0 / FMath::Max(0.05, ZA) * PxK, RopeDrawWB[Best] / 100.0 / FMath::Max(0.05, ZB) * PxK);
+			}
+		}
+	}
+	Cols25 += FString::Printf(TEXT(",%d,%d"), WebLookNow, Cam.PerchYawHeld);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24 + Cols25);
 }
 
 // ------------------------------------------------------------------ live input (round 19)

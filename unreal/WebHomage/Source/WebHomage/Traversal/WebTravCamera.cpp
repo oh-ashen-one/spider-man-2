@@ -94,10 +94,17 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 		else if (AutoPRate < 0.05) { AutoPitch = Pitch; AutoPitchV = 0; }
 		SD(AutoRate, AutoRateV, bWY ? Rate : 0.0, 0.35, Dt);
 		SD(AutoPRate, AutoPRateV, bWP ? (bDive ? 2.4 : (bSwinging || bAir) ? 7.0 : 1.1) : 0.0, 0.35, Dt);
+		const double YawPre = Yaw;
 		if (Blend > 0)
 		{
 			Yaw = AngDamp(Yaw, AutoYaw, FMath::Max(0.0, AutoRate) * Blend, Dt);
 			Pitch = Damp(Pitch, AutoPitch, FMath::Max(0.0, AutoPRate) * Blend, Dt);
+		}
+		// round 25 (c 9.85 s, see PerchHold in the header): perched, the recenter never turns the view onto a lifted / blocked chase spot
+		PerchYawHeld = 0;
+		if (PerchHold > 0.0 && M == EWebTravMode::Perch && FMath::Abs(WrapA(Yaw - YawPre)) > 1e-7 && PerchSpotBad(Yaw, P, World) && !PerchSpotBad(YawPre, P, World))
+		{
+			Yaw = YawPre; AutoYaw = Yaw; AutoYawV = 0.0; PerchYawHeld = 1;
 		}
 	}
 	// ---- follow pivot: soft-clamped velocity lag + unexplained-displacement absorber
@@ -214,6 +221,24 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	// round 08: blur only at genuinely high speed (0 below 28 m/s, full at 50), none on foot / walls
 	const double MbTarget = (bGroundish ? 0.0 : bDive ? 1.3 : 1.0) * Smooth(Speed, 28, 50);
 	MotionBlur = FMath::Max(0.0, SD(MbK, MbKV, MbTarget, MbTarget > MbK ? 0.35 : 0.2, Dt));
+}
+
+bool FWebTravCamera::PerchSpotBad(double InYaw, const FTravCamInput& P, const FWebTravWorld& World) const
+{
+	const FVector Hero = P.Pos, Chest = Hero + FVector(0, 0, 0.4);
+	const FVector B(-FMath::Cos(InYaw), -FMath::Sin(InYaw), 0.0), Rt(-FMath::Sin(InYaw), FMath::Cos(InYaw), 0.0);
+	const double LensZ = Hero.Z + ChaseHeight;
+	for (double R : { 3.3, 3.9, 4.5, 5.1 })
+	{
+		for (double Lat : { -0.2, 0.3, 0.8 })
+		{
+			const FVector S = Hero + B * R + Rt * Lat;
+			// (the floor is traced from 4 m over the hero: a trace starting under a box top misses the box -- r24 build 8)
+			if (World.GroundHeight(S.X, S.Y, Hero.Z + 4.0) + 0.4 > LensZ + 0.3) return true;
+		}
+	}
+	double Hd = 0.0;
+	return !World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + B * 4.5 + Rt * 0.3 + FVector(0, 0, ChaseHeight), 0.3, Hd);
 }
 
 void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebTravWorld& World, const FVector& /*Fwd*/)
@@ -643,7 +668,13 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (VisUp > 0.01) { FVector C3 = Base + FVector(0, 0, VisUp); ClearFrom(From, C3, Cam); }
 		VisPts = Vis(Cam);
 	}
-	if (bGndLensHold && !GndStopPos.IsZero() && !World.LineBlocked(GndStopPos, Hero + FVector(0, 0, 0.3))) Cam = GndStopPos; // round 24
+	if (bGndLensHold && !GndStopPos.IsZero() && !World.LineBlocked(GndStopPos, Hero + FVector(0, 0, 0.3)))
+	{
+		Cam = GndStopPos; // round 24
+		// round 25 (c 8.65-8.85 s: 10.3 m, bbox .06): the held lens follows the hero along its line of sight beyond GndZipHoldMax m
+		const double DH = FVector::Dist(Cam, Hero);
+		if (GndZipHoldMax > 0.0 && DH > GndZipHoldMax) Cam = Hero + (Cam - Hero) / DH * GndZipHoldMax;
+	}
 	CamPos = Cam;
 	LastComposeHero = Hero; bHaveComposeHero = true;
 	HeroDist = FVector::Dist(CamPos, Hero);
@@ -864,7 +895,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
-		{TEXT("GndFloorPull"), &GndFloorPull}, {TEXT("GndFloorPullMin"), &GndFloorPullMin}, {TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndLensRelease"), &GndLensRelease}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax} };
+		{TEXT("GndFloorPull"), &GndFloorPull}, {TEXT("GndFloorPullMin"), &GndFloorPullMin}, {TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndLensRelease"), &GndLensRelease}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax}, {TEXT("PerchHold"), &PerchHold}, {TEXT("GndZipHoldMax"), &GndZipHoldMax} };
 	for (const FT& T : Tab) if (Name == T.N) { *T.P = V; return true; }
 	return false;
 }

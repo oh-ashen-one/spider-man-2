@@ -190,6 +190,12 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FigureParts;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> WebSegs;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMatTwoTone; // round 25: M_TravWeb (null when the asset is missing)
+	int32 WebLookNow = -1;
+	// round 25: the strand as drawn this frame (cm; telemetry projects it through the final camera), and its width (cm) at each end
+	FVector RopeDrawA[2], RopeDrawB[2];
+	double RopeDrawWA[2] = { 0.0, 0.0 }, RopeDrawWB[2] = { 0.0, 0.0 };
+	bool bRopeDrawn[2] = { false, false };
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
 	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
 	void UpdateHeroFill();

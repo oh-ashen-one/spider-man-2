@@ -88,6 +88,22 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenUp = 8.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltWeaveK = 0.4f; // round 24: corridor weave scale (low points near the centre)
 	bool bAltArcNext = false, bAltSwing = false; // round 24: the next / current swing follows an altitude release (alt arc + centred weave)
+	// round 25 (critic r24 biggest gap, SPEC T5 / T6: "the rope readable on every web_on frame, 2-4 px, mean luminance >= 25/255 off a 6 px
+	// band either side, over dark glass AND pale facades"; r07 emissive beam bloomed, r08 pale line vanished on pale facades, r09-r24 dark
+	// lit line vanished on dark glass): read by the character's web strands (the rope look; no gameplay effect).
+	// RopeLook 1 = an UNLIT two-tone strand (/Game/Traversal/Materials/M_TravWeb: bright core, dark rim, exposure-compensated so the core
+	// never blooms, no fog) whose core share follows the luminance of the scene right behind it (a ring of 4 scene-colour taps ~5 px out):
+	// over a dark background the bright core fills RopeCoreDark of the width, over a bright one only RopeCoreBright (the dark rim carries
+	// the line), the switch at RopePivot (exposed linear luminance; ~sRGB 120); screen-space width clamp RopePxMin..RopePxMax px.
+	// 0 = r24 (lit dark M_TravColor line, world width 1.6 cm / 0.25 % of the distance).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeLook = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 3.2f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 4.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.86f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 0.20f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 1.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.004f;
 	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
 	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
 	/** Round 24: vertical release speed that tops out D m higher (StepAir gravity: G, x0.55 under |vz| 3.5). */
