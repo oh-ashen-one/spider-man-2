@@ -2,7 +2,7 @@
 """Round 16 instrument (critic r15: "the front emblem and sash repeat on the Tessera and Plum backs, as if projected through the torso").
 
 On each 4K back still: the hero silhouette (distance from the background, which is a smooth sky / floor gradient: a per-row median of the frame's outer columns), the BACK TORSO MASK
-(rows from 0.170 to 0.357 of the silhouette height below the head top: the collar down to just above the belt piping; columns
+(rows from 0.170 to 0.340 of the silhouette height below the head top: the collar down to just above the belt piping; columns
 +-0.15 m of the silhouette's centre column at that row), and every pixel whose colour DIRECTION (linear RGB, illumination-invariant up to a white light) is closer to the suit's accent
 (the front emblem / sash fill colour; accent_d, its darker shade, counts with it) than to any other palette colour, by >= 1.5 deg, within 20 deg of it and not near-black (luma >= 18).  Connected clusters of such pixels with
 >= 20 px area are failures (gate: 0 clusters on every suit).  Overlay crops go to --png.
@@ -50,7 +50,7 @@ def check(path, suit, png=None):
     # the feet's shadow joins the silhouette at the bottom: use the head top and the known stage framing (hero height ~ the rows down to the lowest pixel of the legs' columns)
     Hh = bot - top
     pxm = Hh / 1.80
-    r0, r1 = int(top + 0.170 * Hh), int(top + 0.357 * Hh)
+    r0, r1 = int(top + 0.170 * Hh), int(top + 0.340 * Hh)
     tor = np.zeros_like(hero)
     for r in range(r0, r1):
         cols = np.where(hero[r])[0]

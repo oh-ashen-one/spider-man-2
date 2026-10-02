@@ -65,6 +65,8 @@ private:
 	// round 09: -WHStageShot=t1,t2 (stage clock = this director's shot clock): screenshots at STAGE times, not at the automation's own clock, which leads the stage clock by a
 	// varying 0.4 - 2.4 s in a real-time run (measured on the round-09 fight stills); files <WHShotDir>/<WHShotName>_<nn>_t<ttt.t>.png like -WHShotAt
 	TArray<double> StageShots; int32 NextStageShot = 0; FString StageShotDir, StageShotName;
+	// round 16: -WHStageShotQuit = quit the game 3 s (stage clock) after the LAST stage shot (a contended GPU slows the stage clock: a process-time -quit lost 33 of 56 stills)
+	bool bStageShotQuit = false; double StageQuitAt = -1.0; bool bStageQuitDone = false;
 	UPROPERTY() TObjectPtr<ACameraActor> Cam;
 	float T = 0.f;
 	int32 LastShot = -1;

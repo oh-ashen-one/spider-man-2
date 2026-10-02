@@ -51,6 +51,7 @@ void AWHCharShowDirector::BeginPlay()
 			TArray<FString> Parts; List.ParseIntoArray(Parts, TEXT(","));
 			for (const FString& Part : Parts) StageShots.Add(FCString::Atod(*Part));
 			StageShots.Sort();
+			bStageShotQuit = FParse::Param(FCommandLine::Get(), TEXT("WHStageShotQuit"));
 			StageShotDir = FPaths::ProjectSavedDir() / TEXT("WHCaptures"); FParse::Value(FCommandLine::Get(), TEXT("WHShotDir="), StageShotDir);
 			StageShotName = TEXT("shot"); FParse::Value(FCommandLine::Get(), TEXT("WHShotName="), StageShotName);
 		}
@@ -110,6 +111,13 @@ void AWHCharShowDirector::Tick(float Dt)
 		FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
 		UE_LOG(LogTemp, Display, TEXT("WH_STAGE_SHOT %s stage T=%.3f world=%.3f"), *File, T, GetWorld()->GetTimeSeconds());
 		++NextStageShot;
+		if (bStageShotQuit && NextStageShot >= StageShots.Num()) StageQuitAt = double(T) + 3.0;
+	}
+	if (StageQuitAt > 0.0 && !bStageQuitDone && double(T) >= StageQuitAt)
+	{
+		bStageQuitDone = true;
+		UE_LOG(LogTemp, Display, TEXT("WH_QUIT stage T=%.2f (director: 3 s after the last of %d stage shots, -WHStageShotQuit)"), T, StageShots.Num());
+		if (!GIsEditor && GEngine) GEngine->Exec(GetWorld(), TEXT("quit"));
 	}
 	float Total = 0.f; for (const FWHShot& S : Shots) Total += S.Duration;
 	float Tl = bLoop ? FMath::Fmod(T, FMath::Max(0.1f, Total)) : FMath::Min(T, Total - 1e-3f);

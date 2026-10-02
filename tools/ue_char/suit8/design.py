@@ -392,6 +392,7 @@ def paint(P, N, G, mpt, gi, jp, style=None, dbg=None):
     # 3. sash: a plane slice of the torso (slash), a folded plane (vee), two parallel slices (double), a curved yoke, or a vertical placket (front and back differ)
     sa = S['sash']
     zone_s = None
+    sash_fg = 1.0         # round 16: the gate of the sash END finishing (stitches, accent pipe) to the front panel
     if sa['kind'] != 'none':
         n_s = unit(sa['n'])
         Pf = np.stack([ax, y, z], -1) if sa['fold'] else P
@@ -414,6 +415,7 @@ def paint(P, N, G, mpt, gi, jp, style=None, dbg=None):
                 # shoulder top / under the arm) it is finished like every other end (border cord, stitches, accent pipe)
                 e_z = z - np.float32(sa.get('z_cut', -0.012))
                 e_min = np.minimum(e_min, e_z); sash_ends.append((e_z, y))
+                sash_fg = cover(-(e_z + 0.008), aa)      # the end finishing of the OTHER ends must not come out on the back either (r16 hold 1: short accent pipes floated on the Plum back)
             zone_s = ss(tors_w, 0.30, 0.40) * body_w * cover(-e_min, aa)
         if sa['kind'] == 'placket':
             zone_s = tors_w * body_w * front * cover(1.083 - y, aa) * cover(y - 1.43, aa)      # hard ends: belt to collar
@@ -731,7 +733,7 @@ def paint(P, N, G, mpt, gi, jp, style=None, dbg=None):
             if PIPE:     # round 14: the sash ENDS are finished like the long edges: two stitch rows (inside the border cord and 3 mm outside) and an accent pipe 5.8 mm outside the end
                 tw_ = ss(tors_w, 0.30, 0.40) * body_w
                 for e_, al_ in sash_ends:
-                    pan = band(d_s - o, hw_, aa) * tw_
+                    pan = band(d_s - o, hw_, aa) * tw_ * sash_fg
                     ext = pan * cover(-(e_ + 0.0045), aa)
                     C.lay(ext * stitch(e_, al_, aa, off=0.0030) * STa, STITCH, h=0.12, rough=0.7)
                     if sa.get('pipe_join', True):      # round 15 (critic r14: "a lime cord floats 40 px off the Ash sash end"): the accent pipe lies ON the end line, its inner edge touching the DEEP border cord (no gap, 1 mm wide)

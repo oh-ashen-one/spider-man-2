@@ -3,7 +3,7 @@
 
 The seam is a light raised cord on the hood midline.  Per row (top of the hood -> chin) the tracker takes the brightest ridge (luma minus a 25 px median background) inside +-W px of
 the previous row's column (seeded at the top of the head by the strongest ridge near the head's centre column), skipping the lens / brow-pipe rows where no ridge is found.
-Outputs per still: the column per row, `dev100` = max |x(y + 100) - x(y)| over the tracked rows (gate <= 10 px), `resid` = max |x - straight line fit|, an overlay crop.
+Robust step: a 15-row running median, rows > 6 px off it dropped.  Outputs per still: the column per row, `dev100` = max |x(y + 100) - x(y)| over the tracked rows (gate <= 10 px), `resid` = max |x - straight line fit|, an overlay crop.
 usage: python3 seam_track_r16.py <stills dir> <out.json> [--png DIR] [--suits a,b]"""
 import json, sys, os
 import numpy as np
@@ -33,7 +33,7 @@ def track(path, png=None, tag=''):
     B = uniform_filter1d(L, 15, axis=1)
     cx = W // 2
     xs = {}
-    x = None; miss = 0
+    x = None; miss = 0; ref = None; chs = []
     for y in range(60, H - 40):
         if x is None:
             seg = B[y, cx - 400:cx + 400]; j = int(np.argmax(seg)) + cx - 400
@@ -46,17 +46,27 @@ def track(path, png=None, tag=''):
         bg = np.percentile(wide, 30)
         # a ridge: the peak beats the 30th percentile of +-115 px by 45 luma and both sides 40 px away by 30 (a horizontal pipe / lens rim lifts the whole row)
         ok = B[y, j] - B[y, j - 34] > 12 and B[y, j] - B[y, j + 34] > 12
-        if ok and abs(j - x) <= 6 + miss // 4:
+        if ok and ref is not None:      # the seam cord's own colour (chromaticity of the first 150 tracked rows): a vent slot / honeycomb cell edge or a lens rim is another colour
+            px = rgb[y, j]; ch = px / max(px.sum(), 1e-6)
+            ok = float(np.abs(ch - ref).sum()) < 0.06
+        if ok and abs(j - x) <= min(24, 6 + miss // 4):
             # sub-pixel: centroid of L above the half-max inside +-16 px
             seg2 = L[y, j - 16:j + 17]; t = seg2 - (seg2.max() + bg) / 2; t = np.clip(t, 0, None)
             xc = j - 16 + float((t * np.arange(33)).sum() / max(t.sum(), 1e-6))
             xs[y] = xc; x = xc; miss = 0
+            if ref is None:
+                px = rgb[y, int(round(xc))]; chs.append(px / max(px.sum(), 1e-6))
+                if len(chs) >= 150: ref = np.median(np.array(chs), axis=0)
         else:
             miss += 1
             if miss > 250: break
     ys = np.array(sorted(xs)); xv = np.array([xs[k] for k in ys])
     if len(ys) < 300: return dict(ok=False, why='short track %d' % len(ys))
-    # smooth 9 rows (stitch noise), then the 100 px lateral step
+    # robust: a 15-row running median, rows more than 6 px off it are dropped (a vent slot / honeycomb edge, a lens-rim glint), then 9 rows of smoothing (stitch noise)
+    from scipy.ndimage import median_filter as _mf
+    med = _mf(xv, size=15, mode='nearest')
+    keep = np.abs(xv - med) <= 6
+    ys, xv = ys[keep], xv[keep]
     xsm = uniform_filter1d(xv, 9)
     dev = []
     lookup = dict(zip(ys.tolist(), xsm.tolist()))

@@ -44,7 +44,11 @@ def track(path, png=None, tag=''):
             seg = R[lo:hi, c]
             k = int(np.argmax(seg))
             if seg[k] >= (10 if miss == 0 else 14):
-                rows[c] = lo + k; r = lo + k; miss = 0
+                # the cord's CENTRE: the middle of the run of rows around the peak whose ridge is >= half the peak (the lit flank and the shadow flank swap with the light)
+                a_, b_ = k, k
+                while a_ > 0 and seg[a_ - 1] >= 0.5 * seg[k]: a_ -= 1
+                while b_ < len(seg) - 1 and seg[b_ + 1] >= 0.5 * seg[k]: b_ += 1
+                rows[c] = lo + 0.5 * (a_ + b_); r = rows[c]; miss = 0
             else:
                 miss += 1
                 if miss > 12: break
@@ -62,7 +66,7 @@ def track(path, png=None, tag=''):
     gap = np.diff(cs)
     jump_gap = np.where(~adj, np.abs(np.diff(rs) - slope[:-1] * gap), 0.0)
     jj = np.maximum(jump, jump_gap)
-    jj[:4] = 0; jj[-4:] = 0
+    jj[:25] = 0; jj[-25:] = 0             # the first / last 25 columns: where the cord runs into the arm edge or a sash border (the tracker may step onto that border)
     k = int(np.argmax(jj))
     out = dict(ok=True, columns=int(len(cs)), x_range=[int(cs[0] + x0), int(cs[-1] + x0)], max_jump_px=round(float(jj.max()), 1), jump_at=[int(cs[k] + x0), int(rs[k] + y0)],
                jumps_over_4=[[int(cs[i] + x0), int(rs[i] + y0), round(float(jj[i]), 1)] for i in np.nonzero(jj > 4)[0][:10]])
