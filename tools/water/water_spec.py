@@ -243,6 +243,35 @@ def sparkle(path, thr=200.0, frac=0.02, horizon=0.45):
     return dict(file=os.path.basename(path), sparkle_width_pct=round(float((col >= frac).mean() * 100), 1))
 
 
+R06_NEAR = (0, 1800, 1200, 2160)      # r06 (critic r05 'Pass when'): river_low near crop, NATIVE 3840x2160 frame
+R06_FLANKS = ((200, 700), (2600, 3100))   # river_sun flank columns, rows R06_SUN_Y
+R06_SUN_Y = (1000, 2160)
+
+
+def r06_low(path):
+    """river_low near crop on the native 4K frame (1080p upscaled first): mean Y, high-pass sd (sigma 8)"""
+    Y = luma(_frame4k(path)); x0, x1, y0, y1 = R06_NEAR; c = Y[y0:y1, x0:x1]
+    hp = c - cv2.GaussianBlur(c, (0, 0), 8)
+    return dict(crop='native x0-1800 y1200-2160', mean_Y=round(float(c.mean()), 1), highpass_sd=round(float(hp.std()), 2),
+                p1=round(float(np.percentile(c, 1)), 1))
+
+
+def r06_sun(path):
+    """river_sun flanks and sun path on the native 4K frame: flank mean = mean Y of both flank boxes; path = the brightest 200 px (and 400 px)
+    wide column band (column means over rows 1000-2160, window step 50 px); ratio = path / flanks. Sparkle width on the native frame
+    (rows >= 1000: a column sparkles when >= 2 % of them have Y >= 200) beside the pack-frame rule of sparkle()."""
+    Y = luma(_frame4k(path)); y0, y1 = R06_SUN_Y; W = Y[y0:y1]
+    fl = [float(W[:, a:b].mean()) for a, b in R06_FLANKS]; flank = float(np.mean(fl))
+    cm = W.mean(0)
+    def band(w):
+        best = max(range(0, 3840 - w + 1, 50), key=lambda i: cm[i:i + w].mean()); return best, float(cm[best:best + w].mean())
+    x2, p2 = band(200); x4, p4 = band(400)
+    col = (W >= 200).mean(0)
+    return dict(flank_L=round(fl[0], 1), flank_R=round(fl[1], 1), flank_mean=round(flank, 1), path200_x=x2, path200_Y=round(p2, 1),
+                path_ratio=round(p2 / flank, 2), path400_x=x4, path400_Y=round(p4, 1), path400_ratio=round(p4 / flank, 2),
+                sparkle_width_native_pct=round(float((col >= 0.02).mean() * 100), 1))
+
+
 def _ac(c, dx):
     a = c[:, :-dx]; b = c[:, dx:]; a = a - a.mean(); b = b - b.mean()
     return float((a * b).mean() / np.sqrt((a * a).mean() * (b * b).mean()))
@@ -314,7 +343,8 @@ def main():
                     res[f]['harbour'] = harbour(p); res[f]['under_island'] = under_island(p)
                     if f == 'harbour_high_4k.jpg' and os.path.exists(HARBOUR_REF): res[f]['contact_line'] = harbour_line(p, HARBOUR_REF)
                 if 'harbour_sun_high' in f: res[f]['sunhigh'] = sunhigh(p); res[f]['sun_colour'] = sun_colour(p)
-                if 'river_sun' in f: res[f].update(sparkle(p))
+                if 'river_sun' in f: res[f].update(sparkle(p)); res[f]['r06'] = r06_sun(p)
+                if 'river_low' in f: res[f]['r06'] = r06_low(p)
             if f.endswith(('.jpg', '.png')) and f.startswith('S4'):
                 res[f] = s4(p)
             if f.endswith('.mp4'):
@@ -329,6 +359,8 @@ def main():
         print('-- r04 round targets'); [print('%-4s %-58s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1])) for c in res['_checks_r04']]
         res['_checks_r05'] = checks_r05(res)
         print('-- r05 round targets'); [print('%-4s %-66s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1])) for c in res['_checks_r05']]
+        res['_checks_r06'] = checks_r06(res)
+        print('-- r06 round targets'); [print('%-4s %-66s %s' % ('PASS' if c[2] else 'FAIL', c[0], c[1])) for c in res['_checks_r06']]
         if '--json' in a: json.dump(res, open(a[a.index('--json') + 1], 'w'), indent=1)
 
 
@@ -428,6 +460,25 @@ def checks_r05(res):
     if r: add('HOLD S4 C14 5..35', r['C14'], 5 <= r['C14'] <= 35)
     r = res.get('river_sun_4k.jpg')
     if r: add('HOLD river_sun sparkle width >= 50 %', r['sparkle_width_pct'], r['sparkle_width_pct'] >= 50)
+    return out
+
+
+def checks_r06(res):
+    """round-06 targets (critic r05 'Pass when', native 4K crops) + the gates / blockers / holds that must still pass"""
+    out = []
+    def add(name, v, ok): out.append((name, v, bool(ok)))
+    r = res.get('river_low_4k.jpg')
+    if r:
+        q = r['r06']; add('PASS river_low near crop (x0-1800 y1200-2160) mean Y <= 80', q['mean_Y'], q['mean_Y'] <= 80)
+        add('GATE e river_low near hp sd >= 12 (native crop; pack crop reported)', [q['highpass_sd'], r['highpass_sd']], q['highpass_sd'] >= 12 and r['highpass_sd'] >= 12)
+    r = res.get('river_sun_4k.jpg')
+    if r:
+        q = r['r06']; add('PASS river_sun flanks mean Y <= 85 [L, R, mean]', [q['flank_L'], q['flank_R'], q['flank_mean']], q['flank_mean'] <= 85)
+        # r06: the critic's r05 numbers are reproduced by the 400 px band (1.49) and the native-frame sparkle rule (53.5 %): those are gated
+        add('PASS river_sun sun path >= 2.2 x flanks (400 px band = critic r05 1.49; 200 px reported)', [q['path400_ratio'], q['path_ratio']], q['path400_ratio'] >= 2.2)
+        add('GATE e river_sun sparkle width >= 50 % (native rule = critic r05 53.5; pack rule reported)', [q['sparkle_width_native_pct'], r['sparkle_width_pct']], q['sparkle_width_native_pct'] >= 50)
+    for c in res.get('_checks_r05', []):
+        if c[0].startswith(('GATE', 'BLOCKER')) and 'R-B' not in c[0]: out.append(('(r05) ' + c[0], c[1], c[2]))
     return out
 
 

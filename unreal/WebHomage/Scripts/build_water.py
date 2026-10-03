@@ -425,8 +425,11 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
 // ---- normal / roughness. Near field: GGX alpha from RoughN only (<= 0.08: the resolved facets carry the slope variance);
 //      beyond: + the unresolved variance x FarVarK (Cox-Munk alpha^2 = 2 sigma^2 per axis)
 float3 N = normalize(float3(-slope.x, -slope.y, 1.0));
-{ float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK));
-  Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * BendK)); }
+// r06: OpenBend = BendK's share on open water (a facet whose mirror ray points below the horizon reflects the next wave, i.e. dark water,
+//      instead of being bent up onto the bright horizon haze; 1 = r05b)
+{ float bk = BendK * lerp(1.0, OpenBend, openW);
+  float3 Rr = reflect(-V, N); float wl = saturate((0.05 - Rr.z) * 8.0); N = normalize(lerp(N, float3(0, 0, 1), wl * bk));
+  Rr = reflect(-V, N); wl = saturate((0.03 - Rr.z) * 12.0); N = normalize(lerp(N, float3(0, 0, 1), wl * bk)); }
 // r05: tried and removed (round-05 NOTES): an F0 scale (x0.25) and a 0.2 normal lean toward the camera on sun-facing swing-height water
 //      left harbour_sun_high's mean colour unchanged (R-B 100.0 / 99.7): its brass is the atmosphere's forward in-scatter, not the water.
 float farW = smoothstep(%(near).1f * 0.4, %(near).1f, dist);
@@ -567,10 +570,10 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0, 'BandPx': 0.0, 'LapDens': 0.0,
           # r06 contact mask (docs/night1/water/round-06/NOTES.md): the near-field sparkle (resolved chop OpenChop, second realization OpenB,
           # spectrum-layer gain OpenSl), the whitecap flecks (OpenWC), an optional roughness floor (OpenRgh) and the sun glitter (OpenGlit) take
-          # their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
+          # OpenBend (BendK share) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
           # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
           'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
-          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.0, 'OpenGlit': 1.0}
+          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.0, 'OpenGlit': 1.0, 'OpenBend': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

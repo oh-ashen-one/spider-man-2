@@ -1,0 +1,9 @@
+{
+ "DF0": {"DistFix": 0.0, "ShoreMask": 0.0, "_views": ["river_low", "river_sun"]},
+ "R3": {"OpenRgh": 0.3, "_views": ["river_low", "river_sun"]},
+ "R3B0": {"OpenRgh": 0.3, "OpenBend": 0.0, "_views": ["river_low", "river_sun"]},
+ "B0": {"OpenBend": 0.0, "_views": ["river_low", "river_sun"]},
+ "R4": {"OpenRgh": 0.4, "_views": ["river_low", "river_sun"]},
+ "R3B0C": {"OpenRgh": 0.3, "OpenBend": 0.0, "OpenChop": 1.0, "OpenB": 1.0, "_views": ["river_low", "river_sun"]},
+ "R3B0G": {"OpenRgh": 0.3, "OpenBend": 0.0, "OpenGlit": 3.0, "_views": ["river_low", "river_sun"]}
+}
