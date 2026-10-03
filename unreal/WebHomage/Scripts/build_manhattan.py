@@ -46,7 +46,7 @@ WP_MAP = os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')   # (isl
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
-STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'ism', 'traversal', 'characters', 'look', 'map']
+STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'ism', 'fepatch', 'traversal', 'characters', 'look', 'map']
 # P1's tools default to THEIR scratch/export; every one honours these, so point them at this build's dirs.
 os.environ.setdefault('SM2_CITY_SCRATCH', SCR); os.environ.setdefault('SM2_CITY_EXPORT', EXPORT); os.environ.setdefault('SM2_CITY_TEX', TEX)
 PRESETS = ['golden', 'midday', 'night']
@@ -231,6 +231,35 @@ def step_ism():
     steps = os.environ.get('SM2_ISLAND_CITY_STEPS_ISM', 'ism')
     ue_python('wp_ism', exec_wrapper(os.path.join(HERE, 'build_city.py'), LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)),
               {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}, timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+
+
+def remove_wp_actor_packages(pat):
+    """(island r03/r04) delete the WP map's external-actor packages whose ActorLabel matches pat (a commandlet cannot delete not-loaded WP actors)"""
+    import re, struct
+    root = os.path.join(PROJ, 'Content', '__ExternalActors__', 'Maps', WP_MAP.split('/')[-1])
+    if not root.startswith(WT + '/'): raise SystemExit('refusing outside the worktree: ' + root)
+    rx = re.compile(pat); n = 0
+    for dp, _, fns in os.walk(root):
+        for fn in fns:
+            if not fn.endswith('.uasset') or fn.startswith('._'): continue
+            f = os.path.join(dp, fn)
+            b = open(f, 'rb').read()
+            i = b.rfind(b'ActorLabel\x00')
+            if i < 0: continue
+            L = struct.unpack('<I', b[i + 11:i + 15])[0]
+            if 0 < L < 200 and rx.match(b[i + 15:i + 15 + L - 1].decode('latin1')):
+                os.remove(f); n += 1
+    log('removed %d WP actor packages matching %s' % (n, pat))
+    return n
+
+
+def step_fepatch():
+    """(island r04) re-import the street-kit / fire-escape tiles SM2_ISLAND_FE_TILES ('<ix>_<iz>,...' or 'all', default all) and respawn their WP actors"""
+    want = os.environ.get('SM2_ISLAND_FE_TILES', 'all')
+    tiles = r'-?\d+_-?\d+' if want == 'all' else '(%s)' % '|'.join(t.replace('-', '\\-') for t in want.split(','))
+    remove_wp_actor_packages(r'^(streetkit|fireescape)__t%s$' % tiles)
+    ue_python('wp_fepatch', exec_wrapper(os.path.join(HERE, 'build_city.py'), LOAD_SME + 'JOB_ARGS = {"steps": "fepatch", "wp_map": %r}' % WP_MAP),
+              {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX, 'SM2_ISLAND_FE_TILES': want}, timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
 
 
 def step_traversal():

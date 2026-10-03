@@ -1148,7 +1148,7 @@ def open_level(path):
 
 KIT_DIR = ROOT + '/Meshes/streetkit'
 FE_DIR = ROOT + '/Meshes/fireescape'   # (island r02) fire-escape kit tiles: traversal solids
-def kit_spawn(wp=False):
+def kit_spawn(wp=False, only=None):
     """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level (island r01: visual-only)
     (island r02) + one per fire-escape tile (label fireescape__t<ix>_<iz>, folder City/fireescape): a QueryOnly solid with its own triangles"""
     kp = os.path.join(EXPORT, 'streetkit.json')
@@ -1156,6 +1156,7 @@ def kit_spawn(wp=False):
     n = 0
     K = json.load(open(kp))
     for r in K['files']:
+        if only is not None and r['name'] not in only: continue   # (island r04) step 'fepatch'
         sp = f'{KIT_DIR}/SM_{r["name"]}'
         if not EAL.does_asset_exist(sp): continue
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/streetkit')
@@ -1163,6 +1164,7 @@ def kit_spawn(wp=False):
         no_collision(a.static_mesh_component); set_spatial(a, True, wp)
     nf = 0
     for r in K.get('fireescape_files', []):
+        if only is not None and r['name'] not in only: continue
         sp = f'{FE_DIR}/SM_{r["name"]}'
         if not EAL.does_asset_exist(sp): log('MISSING fire-escape mesh', sp); continue
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/fireescape')
@@ -1171,13 +1173,19 @@ def kit_spawn(wp=False):
     log('kit actors: %d streetkit (visual-only), %d fire-escape (solid)' % (n, nf))
     return n + nf
 
-def kit_import():
-    """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them"""
+def kit_import(only=None):
+    """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them.
+    (island r04) only = set of tile names ('streetkit__t-1_2', 'fireescape__t-1_2', ...): delete + re-import just those assets (step 'fepatch')"""
     kp = os.path.join(EXPORT, 'streetkit.json')
     K = json.load(open(kp))
     mat = load(MAT + '/M_CityKit')
     for recs, kdir, solid in ((K['files'], KIT_DIR, False), (K.get('fireescape_files', []), FE_DIR, True)):   # (island r02) fire escapes: solids
-        if EAL.does_directory_exist(kdir): EAL.delete_directory(kdir)
+        if only is not None:
+            recs = [r for r in recs if r['name'] in only]
+            for r in recs:
+                if EAL.does_asset_exist(f'{kdir}/SM_{r["name"]}'): EAL.delete_asset(f'{kdir}/SM_{r["name"]}')
+            if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
+        elif EAL.does_directory_exist(kdir): EAL.delete_directory(kdir)
         if not recs: continue
         import_files([os.path.join(EXPORT, r['file']) for r in recs], kdir + '/_in', mesh_pipeline(True))
         for r in recs:
@@ -1568,4 +1576,23 @@ if 'ism' in STEPS:
     ni = spawn_instances(True)
     ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
     log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', ni, 'instances (per-tile HISM actors at their tile centre)')
+# (island r04) step 'fepatch': re-import the street-kit + fire-escape tiles named in SM2_ISLAND_FE_TILES (comma list of '<ix>_<iz>', or 'all') and
+# respawn their actors in the existing World Partition map. build_manhattan.py step 'fepatch' deletes the old kit actor packages of those tiles
+# first (like 'ism'). Used to iterate the fire-escape collision without the full kit + wp steps; a clean build does not need it.
+if 'fepatch' in STEPS:
+    WPM = ARGS.get('wp_map') or os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+    K = json.load(open(os.path.join(EXPORT, 'streetkit.json')))
+    want = os.environ.get('SM2_ISLAND_FE_TILES', 'all')
+    names = [r['name'] for r in K['files'] + K.get('fireescape_files', [])]
+    if want != 'all':
+        tl = set('t' + t for t in want.split(','))
+        names = [n for n in names if n.split('__')[-1] in tl]
+    only = set(names)
+    log('fepatch: %d kit tiles to re-import' % len(only))
+    kit_import(only)
+    unreal.EditorLoadingAndSavingUtils.load_map(WPM)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    nk = kit_spawn(True, only)
+    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
+    log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', nk, 'kit actors respawned')
 log('DONE')

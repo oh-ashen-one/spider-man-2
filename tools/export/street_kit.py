@@ -187,45 +187,78 @@ def marquee(mb, F, ua, ub, yt, vidx, col, flip, dark_text):
 # ------------------------------------------------------------------ fire escape
 FE_COLS = [(0.05, 0.046, 0.042), (0.025, 0.07, 0.04), (0.14, 0.065, 0.035), (0.2, 0.2, 0.2), (0.06, 0.06, 0.07)]  # black, dark green, rust, silver, blue-grey
 GRATE_COL = FE_COLS[0]
-def fire_escape(mb, F, uc, w, y_first, y_top, fh, seed, GRATE_COL=FE_COLS[0]):
+def rect_minus(r, h):
+    """(island r04) axis rectangle r = (u0, u1, n0, n1) minus the hole h (same frame) -> up to 4 rectangles (left / right strips, back / front)"""
+    u0, u1, n0, n1 = r; a0, a1, b0, b1 = max(h[0], u0), min(h[1], u1), max(h[2], n0), min(h[3], n1)
+    if a1 <= a0 or b1 <= b0: return [r]
+    out = [(u0, a0, n0, n1), (a1, u1, n0, n1), (a0, a1, n0, b0), (a0, a1, b1, n1)]
+    return [q for q in out if q[1] - q[0] > 0.02 and q[3] - q[2] > 0.02]
+
+FE_WELL_LEN, FE_WELL_N = 1.5, (0.25, 0.95)   # (island r04) stair well: the arriving flight's last 1.5 m (head room ~2 m under the deck), over the flight's width
+FE_LADDER_HOLE = 0.30                          # (island r04) drop-ladder hatch: +-0.30 m along the wall around the ladder, n 0.10 .. 0.60
+
+def fire_escape(mb, F, uc, w, y_first, y_top, fh, seed, GRATE_COL=FE_COLS[0], vis=None, stats=None):
+    """fire escape on face frame F, centred at uc. (island r04, critic r03 'make fire-escape collision match the drawn platforms, with a top-out'):
+    mb = the fire-escape tile (a traversal SOLID with its own triangles): ONLY the landings: grating top / underside + frame beams, with an
+    open stair well (where the flight from the level below comes up) and an open drop-ladder hatch in the lowest landing;
+    vis = the street-kit tile (visual-only, `streetkit` is on the traversal's exclusion list): railings, brackets, stair flights, ladders.
+    Up to r03 everything was in the solid tile: the 1.05 m railing planes were walls and the hero topped out from the railing into the
+    landing above (r3 crosstown east: 6 top-outs at x -235.5 m from t = 2.4 s). The space above every landing is now clear of solids up to
+    the next landing, the front frame beam is the lip."""
+    vis = vis if vis is not None else mb
     P = F.p; n3, t3 = F.n3, F.t3; up = np.array([0, 1.0, 0])
     depth = 1.15; u0, u1 = uc - w / 2, uc + w / 2
     levels = []
     y = y_first
     while y <= y_top - 0.5: levels.append(y); y += fh
     if not levels: return 0
+    ul = u1 - 0.35   # drop / roof ladder line
     for i, y in enumerate(levels):
-        # platform grating + frame beams
-        mb.quad([P(u0, y, 0.02), P(u1, y, 0.02), P(u1, y, depth), P(u0, y, depth)], up, 4, 0, GRATE_COL, [(0, 0), (w, 0), (w, depth), (0, depth)], [(0, 0), (w, 0), (w, depth), (0, depth)])
-        mb.quad([P(u0, y - 0.03, 0.02), P(u0, y - 0.03, depth), P(u1, y - 0.03, depth), P(u1, y - 0.03, 0.02)], -up, 4, 0, GRATE_COL, [(0, 0), (w, 0), (w, depth), (0, depth)])
+        # landing grating (top + underside) with its wells, frame beams (front lip + two sides): the SOLID part
+        holes = []
+        if i > 0:   # well of the flight arriving from level i - 1 (it ends at its sb, see below)
+            sb = (u1 - 0.2) if ((i - 1) % 2 == 0) else (u0 + 0.2)
+            holes.append((sb - FE_WELL_LEN, sb, FE_WELL_N[0], FE_WELL_N[1]) if (i - 1) % 2 == 0 else (sb, sb + FE_WELL_LEN, FE_WELL_N[0], FE_WELL_N[1]))
+        else:       # drop-ladder hatch
+            holes.append((ul - FE_LADDER_HOLE, ul + FE_LADDER_HOLE, 0.10, 0.60))
+        rects = [(u0 + 0.05, u1 - 0.05, 0.02, depth - 0.06)]
+        for h in holes: rects = [q for r in rects for q in rect_minus(r, h)]
+        for (a0, a1, b0, b1) in rects:
+            mb.quad([P(a0, y, b0), P(a1, y, b0), P(a1, y, b1), P(a0, y, b1)], up, 4, 0, GRATE_COL, [(a0 - u0, b0), (a1 - u0, b0), (a1 - u0, b1), (a0 - u0, b1)], [(a0 - u0, b0), (a1 - u0, b0), (a1 - u0, b1), (a0 - u0, b1)])
+            mb.quad([P(a0, y - 0.03, b0), P(a0, y - 0.03, b1), P(a1, y - 0.03, b1), P(a1, y - 0.03, b0)], -up, 4, 0, GRATE_COL, [(a0 - u0, b0), (a0 - u0, b1), (a1 - u0, b1), (a1 - u0, b0)])
+        for h in holes:   # well rim (inner edge faces of the grating, 3 cm)
+            a0, a1, b0, b1 = h
+            for (pa, pb, nn) in (((a0, b0), (a1, b0), -n3), ((a1, b1), (a0, b1), n3), ((a0, b1), (a0, b0), -t3), ((a1, b0), (a1, b1), t3)):
+                mb.quad([P(pa[0], y - 0.03, pa[1]), P(pb[0], y - 0.03, pb[1]), P(pb[0], y, pb[1]), P(pa[0], y, pa[1])], -nn, 1, 4, GRATE_COL)
         box(mb, F, u0, u1, y - 0.08, y, depth - 0.06, depth, 1, 4, GRATE_COL, 'FTLUD')
-        box(mb, F, u0, u0 + 0.05, y - 0.08, y, 0.0, depth, 1, 4, GRATE_COL, 'FTUD')
-        box(mb, F, u1 - 0.05, u1, y - 0.08, y, 0.0, depth, 1, 4, GRATE_COL, 'FLUD')
-        # railing planes (front + two sides), masked bars
+        box(mb, F, u0, u0 + 0.05, y - 0.08, y, 0.0, depth - 0.06, 1, 4, GRATE_COL, 'FTUD')
+        box(mb, F, u1 - 0.05, u1, y - 0.08, y, 0.0, depth - 0.06, 1, 4, GRATE_COL, 'FLUD')
+        if stats is not None: stats['fe_landings'] = stats.get('fe_landings', 0) + 1; stats['fe_wells'] = stats.get('fe_wells', 0) + len(holes)
+        # railing planes (front + two sides), masked bars: visual only (the hero vaults / lands over them)
         rh = 1.05
-        mb.quad([P(u0, y, depth), P(u1, y, depth), P(u1, y + rh, depth), P(u0, y + rh, depth)], n3, 5, 0, GRATE_COL, [(0, 0), (w, 0), (w, 1), (0, 1)], [(0, 0), (w, 0), (w, rh), (0, rh)])
-        mb.quad([P(u0, y, depth), P(u0, y, 0.02), P(u0, y + rh, 0.02), P(u0, y + rh, depth)], -t3, 5, 0, GRATE_COL, [(0, 0), (depth, 0), (depth, 1), (0, 1)])
-        mb.quad([P(u1, y, 0.02), P(u1, y, depth), P(u1, y + rh, depth), P(u1, y + rh, 0.02)], t3, 5, 0, GRATE_COL, [(0, 0), (depth, 0), (depth, 1), (0, 1)])
+        vis.quad([P(u0, y, depth), P(u1, y, depth), P(u1, y + rh, depth), P(u0, y + rh, depth)], n3, 5, 0, GRATE_COL, [(0, 0), (w, 0), (w, 1), (0, 1)], [(0, 0), (w, 0), (w, rh), (0, rh)])
+        vis.quad([P(u0, y, depth), P(u0, y, 0.02), P(u0, y + rh, 0.02), P(u0, y + rh, depth)], -t3, 5, 0, GRATE_COL, [(0, 0), (depth, 0), (depth, 1), (0, 1)])
+        vis.quad([P(u1, y, 0.02), P(u1, y, depth), P(u1, y + rh, depth), P(u1, y + rh, 0.02)], t3, 5, 0, GRATE_COL, [(0, 0), (depth, 0), (depth, 1), (0, 1)])
         # brackets under the platform
         for u in (u0 + 0.15, u1 - 0.15):
-            mb.quad([P(u - 0.02, y - 0.08, 0.02), P(u - 0.02, y - 0.08, depth * 0.9), P(u - 0.02, y - 0.7, 0.02), P(u - 0.02, y - 0.7, 0.05)], -t3, 1, 0, GRATE_COL)
-            mb.quad([P(u + 0.02, y - 0.08, depth * 0.9), P(u + 0.02, y - 0.08, 0.02), P(u + 0.02, y - 0.7, 0.05), P(u + 0.02, y - 0.7, 0.02)], t3, 1, 0, GRATE_COL)
-        # stair flight to the level above (alternating side), running along the wall
+            vis.quad([P(u - 0.02, y - 0.08, 0.02), P(u - 0.02, y - 0.08, depth * 0.9), P(u - 0.02, y - 0.7, 0.02), P(u - 0.02, y - 0.7, 0.05)], -t3, 1, 0, GRATE_COL)
+            vis.quad([P(u + 0.02, y - 0.08, depth * 0.9), P(u + 0.02, y - 0.08, 0.02), P(u + 0.02, y - 0.7, 0.05), P(u + 0.02, y - 0.7, 0.02)], t3, 1, 0, GRATE_COL)
+        # stair flight to the level above (alternating side), running along the wall: visual only
         if i + 1 < len(levels):
             yn = levels[i + 1]; left = (i % 2 == 0)
             sa, sb = (u0 + 0.2, u1 - 0.2) if left else (u1 - 0.2, u0 + 0.2)   # start (low) -> end (high)
-            n0, n1 = 0.25, 0.95
-            mb.quad([P(sa, y, n0), P(sa, y, n1), P(sb, yn, n1), P(sb, yn, n0)], up, 4, 0, GRATE_COL, [(0, 0), (0.7, 0), (0.7, 3.2), (0, 3.2)], [(0, 0), (0.7, 0), (0.7, 3.2), (0, 3.2)])
+            n0, n1 = FE_WELL_N
+            vis.quad([P(sa, y, n0), P(sa, y, n1), P(sb, yn, n1), P(sb, yn, n0)], up, 4, 0, GRATE_COL, [(0, 0), (0.7, 0), (0.7, 3.2), (0, 3.2)], [(0, 0), (0.7, 0), (0.7, 3.2), (0, 3.2)])
             for nn in (n0, n1):  # stringers
-                mb.quad([P(sa, y - 0.12, nn), P(sb, yn - 0.12, nn), P(sb, yn + 0.02, nn), P(sa, y + 0.02, nn)], t3 if nn == n1 else -t3, 1, 0, GRATE_COL)
+                vis.quad([P(sa, y - 0.12, nn), P(sb, yn - 0.12, nn), P(sb, yn + 0.02, nn), P(sa, y + 0.02, nn)], t3 if nn == n1 else -t3, 1, 0, GRATE_COL)
             # sloped rail on the open (street) side
-            mb.quad([P(sa, y, n1), P(sb, yn, n1), P(sb, yn + 1.0, n1), P(sa, y + 1.0, n1)], n3, 5, 0, GRATE_COL, [(0, 0), (abs(sb - sa), 0), (abs(sb - sa), 1), (0, 1)])
-    # drop ladder from the lowest platform to ~2.4 m above the pavement
-    y0 = levels[0]; ul = u1 - 0.35; yl = 2.6  # (r05) drop ladder to 2.6 m; build_kit aligns it with a pier (0.9 m gap between neighbouring awnings / boards)
-    mb.quad([P(ul - 0.22, yl, 0.35), P(ul + 0.22, yl, 0.35), P(ul + 0.22, y0, 0.35), P(ul - 0.22, y0, 0.35)], n3, 6, 0, GRATE_COL, [(0, 0), (0.44, 0), (0.44, y0 - yl), (0, y0 - yl)])
-    mb.quad([P(ul + 0.22, yl, 0.35), P(ul - 0.22, yl, 0.35), P(ul - 0.22, y0, 0.35), P(ul + 0.22, y0, 0.35)], -n3, 6, 0, GRATE_COL, [(0, 0), (0.44, 0), (0.44, y0 - yl), (0, y0 - yl)])
+            vis.quad([P(sa, y, n1), P(sb, yn, n1), P(sb, yn + 1.0, n1), P(sa, y + 1.0, n1)], n3, 5, 0, GRATE_COL, [(0, 0), (abs(sb - sa), 0), (abs(sb - sa), 1), (0, 1)])
+    # drop ladder from the lowest platform to ~2.4 m above the pavement (through the hatch)
+    y0 = levels[0]; yl = 2.6  # (r05) drop ladder to 2.6 m; build_kit aligns it with a pier (0.9 m gap between neighbouring awnings / boards)
+    vis.quad([P(ul - 0.22, yl, 0.35), P(ul + 0.22, yl, 0.35), P(ul + 0.22, y0 + 1.0, 0.35), P(ul - 0.22, y0 + 1.0, 0.35)], n3, 6, 0, GRATE_COL, [(0, 0), (0.44, 0), (0.44, y0 + 1.0 - yl), (0, y0 + 1.0 - yl)])
+    vis.quad([P(ul + 0.22, yl, 0.35), P(ul - 0.22, yl, 0.35), P(ul - 0.22, y0 + 1.0, 0.35), P(ul + 0.22, y0 + 1.0, 0.35)], -n3, 6, 0, GRATE_COL, [(0, 0), (0.44, 0), (0.44, y0 + 1.0 - yl), (0, y0 + 1.0 - yl)])
     # roof ladder above the highest platform
-    yt = levels[-1]; mb.quad([P(ul - 0.22, yt, 0.35), P(ul + 0.22, yt, 0.35), P(ul + 0.22, yt + 1.6, 0.35), P(ul - 0.22, yt + 1.6, 0.35)], n3, 6, 0, GRATE_COL, [(0, 0), (0.44, 0), (0.44, 1.6), (0, 1.6)])
+    yt = levels[-1]; vis.quad([P(ul - 0.22, yt, 0.35), P(ul + 0.22, yt, 0.35), P(ul + 0.22, yt + 1.6, 0.35), P(ul - 0.22, yt + 1.6, 0.35)], n3, 6, 0, GRATE_COL, [(0, 0), (0.44, 0), (0.44, 1.6), (0, 1.6)])
     return len(levels)
 
 # ------------------------------------------------------------------ main
@@ -309,7 +342,7 @@ def main():
                     kp = min(nb - 1, max(1, int(round((uc + 1.3) / bw)))); uc = kp * bw - 1.3
                 ytop = min(f['h'] - 1.0, 48.0 if prewar else 30.0)
                 fe_col = FE_COLS[int(hrand(seed, 40) * len(FE_COLS)) % len(FE_COLS)] if hrand(seed, 41) < 0.6 else FE_COLS[0]
-                n = fire_escape(fmb, F, uc, 3.3, gH + 0.7, ytop, fh, seed, fe_col)
+                n = fire_escape(fmb, F, uc, 3.3, gH + 0.7, ytop, fh, seed, fe_col, vis=mb, stats=stats)   # (island r04) platforms solid, the rest visual-only
                 if n: elements.append(['fire_escape', *[round(float(v), 2) for v in F.p(uc, gH + 0.7 + fh * n / 2.0, 0.6)]]); stats['fire_escapes'] += 1; stats['fire_escape_faces'].append([round(F.O[0] + F.T[0] * uc, 1), round(F.O[1] + F.T[1] * uc, 1), kind, n])
     out = EXP + 'mesh/streetkit/'; os.makedirs(out, exist_ok=True)
     for f in os.listdir(out):   # (island r02) skip exFAT AppleDouble '._*' files (they vanish with their sibling)
