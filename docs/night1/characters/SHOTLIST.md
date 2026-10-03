@@ -3,6 +3,12 @@
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 > Scope since 2026-10-01 (director PLAN-firstpass.md, piece G): the HERO only; thugs / fight / crowd are paused. The older fight / crowd / lineup shots are in `HANDOFF.md` (rounds 05 - 10).
 
+Round 17: the same shots, files in `round-17/`; every STILL and LINEUP is taken by the settle protocol (`-WHSettleFrames=32`: the director freezes the stage clock, every animation, the lane walkers and the camera, waits for 0 compiling assets / shaders and every visible texture resident, counts 32+ static rendered frames, then takes the shot); movies run `-WHPreload`. The pawn map's side shot lasts 16 s and the crowd tracking shot 12 s (the r16 'yaw snap' at 9.933 s and the 7.483 s crowd cut were director shot ends). New files: `VERDANT_BEFORE_AFTER.jpg` (the Verdant re-block, r16 | r17), `evidence/lineup_cause.json` (the corruption-cause measurement), `evidence/measures/lineup/` (diff maps, weapon crops).
+
+Round 16: the same shots, files in `round-16/`; EVERY still is committed at 4K now (the backs too); the `headfront` portrait follows the head bone (`WHShot.bHeadLock`: camera in the head's midsagittal plane); the stills run quits 3 s after its last stage shot (`-WHStageShotQuit`); the stage-hero / fight / crowd clips were not re-shot (round-15 files, content unchanged).
+
+Round 15: the same shots, files in `round-15/`; the base colours are 8192 px, so the first still waits 12 s of stage time (`P2_FIRST_EXTRA=9`, `first_extra` in `skins_shots.json`), and the pawn (`pawn_run.json`) spawns on the ground (z 0.95); the pawn movie is trimmed by 0.1 s (camera-binding frames).
+
 Every shot below is the REAL game (UE 5.8.3, `-game`, offscreen) through `gpu_slot.sh`, driven by `tools/ue_char/suits/chain_r11.sh`. Map `Char_Skins` = plain floor, key sun + four fills on the hero only;
 `Char_SkinsPlay` = the same stage with the PLAYABLE pawn (`WebTravGameMode`, `AWebTravCharacter` wearing `/Game/Characters/Hero/SK_Hero` and the P2 hero clips). The suit is switched with the game's own code
 (`UWHHeroSuitSubsystem`: director shots call `SetSuit` = `wh.Suit n`; the pawn movie injects real T key presses into the player controller).

@@ -53,6 +53,7 @@ DEFAULT_STYLE = dict(
     # kept so tools/ue_char/suits/test_regression.py can still prove the round-08 maps texel for texel.
     # round 14: the sculpted mask reads on a dark hood only if the hood is not near-black and the relief carries a baked tone (the "cavity / highlight" tone of the
     # sculpt field of tools/ue_char/suit8/hero_head_r14.py: raised features up to +up of the albedo, hollows down to -dn).  lift = how far a 'deep' hood is mixed toward the body colour.
+    cap=dict(r_out=0.108, r_in=0.075),                  # round 15: the DEEP shoulder cap's radius around the arm axis (r_out away from the torso, r_in on the torso side: no cord over the armpit crease)
     face=dict(tone_up=0.34, tone_dn=0.42, lift=1.0, amp_mm=8.0),
     relief=dict(kind='piping', net=1.30, pipe=1.80, ring=1.80, glyph=1.40, sash=0.60, border=1.60, rough_pipe=0.34, rough_net=0.40, cavity=0.35, net_tone=0.38, seam=2.2, rough_hood=0.50, rough_crown=0.60),
 )
@@ -324,10 +325,12 @@ class Canvas:
         if ao is not None: self.ao = self.ao + (ao - self.ao) * a
 
 
-def paint(P, N, G, mpt, gi, jp, style=None):
+def paint(P, N, G, mpt, gi, jp, style=None, dbg=None):
     """P, N (r, n, 3) float32 rest-pose positions / normals; G (r, n, 9) group weights; mpt (r, n) metres per texel (AA footprint);
     gi = {group name: index}; jp = {joint name: (x, y, z)}; style = override dict of DEFAULT_STYLE (None = Tessera).
-    Returns dict(col (r, n, 3) sRGB 0..1, h mm, rough, ao)."""
+    Returns dict(col (r, n, 3) sRGB 0..1, h mm, rough, ao).
+    dbg (round 15, an instrument hook): a dict that receives 'cord' (union of every raised cord / border laid) and 'net' (a list of (line coverage, zone mask) pairs of every net layer),
+    so tools/ue_char/suits/net_end_check_r15.py can find the net lines that end where no cord is."""
     S = resolve(style)
     RL = S['relief']; PIPE = RL['kind'] == 'piping'
     pal = {k: srgb(v) for k, v in S['palette'].items()}
@@ -344,6 +347,8 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     thigh = sharp(g('thigh')); shin = sharp(g('shin')); foot = sharp(g('foot'))
     nx, ny, nz = N[..., 0], N[..., 1], N[..., 2]
     C = Canvas(x.shape, TEAL)
+    def mark_cord(a):
+        if dbg is not None: dbg['cord'] = np.maximum(dbg['cord'], a) if 'cord' in dbg else np.asarray(a, np.float32).copy()
     r_neck = np.hypot(x, z + 0.022)
     neck_ok = np.where(y < 1.54, cover(r_neck - 0.080, aa), 1.0).astype(np.float32)     # below the ear line only the neck cylinder (not the trapezius) belongs to the hood
     is_head = cover(1.480 - y, aa) * neck_ok * ss(head, 0.05, 0.15)            # hood: straight plane cut at the neck (the skin-weight ramp is soft and uneven)
@@ -387,6 +392,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     # 3. sash: a plane slice of the torso (slash), a folded plane (vee), two parallel slices (double), a curved yoke, or a vertical placket (front and back differ)
     sa = S['sash']
     zone_s = None
+    sash_fg = 1.0         # round 16: the gate of the sash END finishing (stitches, accent pipe) to the front panel
     if sa['kind'] != 'none':
         n_s = unit(sa['n'])
         Pf = np.stack([ax, y, z], -1) if sa['fold'] else P
@@ -401,8 +407,16 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             # round 14 (critic r13: "the Ash sash end is raw"): the ends are STRAIGHT planes (the skin-weight cut of r12 left a ragged, unfinished end line) and every end is
             # finished like the long edges: DEEP border cord, two rows of stitching, an accent pipe just outside (below)
             e_lo = y - (y_lo + 0.0225); e_hi = (y_hi + 0.015) - y; e_x = end_x - ax
-            zone_s = ss(tors_w, 0.30, 0.40) * body_w * cover(-np.minimum(np.minimum(e_lo, e_hi), e_x), aa)
+            e_min = np.minimum(np.minimum(e_lo, e_hi), e_x)
             sash_ends = [(e_x, y), (e_lo, x), (e_hi, x)]
+            if sa.get('front_only', True):
+                # round 16 (critic r15: "the front emblem and sash repeat on the Tessera and Plum backs, as if projected through the torso"): the sash is a FRONT panel.  Its plane
+                # slice used to come out on the back as a second accent bar; the panel now also ends on the coronal plane z = SASH_ZC (the torso axis); where that end shows (over the
+                # shoulder top / under the arm) it is finished like every other end (border cord, stitches, accent pipe)
+                e_z = z - np.float32(sa.get('z_cut', -0.012))
+                e_min = np.minimum(e_min, e_z); sash_ends.append((e_z, y))
+                sash_fg = cover(-(e_z + 0.008), aa)      # the end finishing of the OTHER ends must not come out on the back either (r16 hold 1: short accent pipes floated on the Plum back)
+            zone_s = ss(tors_w, 0.30, 0.40) * body_w * cover(-e_min, aa)
         if sa['kind'] == 'placket':
             zone_s = tors_w * body_w * front * cover(1.083 - y, aa) * cover(y - 1.43, aa)      # hard ends: belt to collar
             if PIPE: sash_ends = [(y - 1.083, x), (1.43 - y, x)]
@@ -413,6 +427,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             if PIPE:     # round 12: the DEEP border strips are raised cords, the accent panel a padded plateau
                 a_b, h_b = cord(np.abs(d_s - o) - (hw - 0.002), 0.0021, aa, RL['border'])
                 C.lay(zone_s * band(d_s - o, hw, aa), DEEP, h=np.where(np.abs(d_s - o) > hw - 0.0042, h_b, RL['sash']), rough=RL['rough_pipe'] + 0.06)
+                mark_cord(zone_s * band(d_s - o, hw, aa) * (np.abs(d_s - o) > hw - 0.0042))
                 C.lay(zone_s * band(d_s - o, hw - 0.004, aa), AMBER, h=RL['sash'], rough=0.50)
             else:
                 C.lay(zone_s * band(d_s - o, hw, aa), DEEP, rough=0.8)
@@ -423,12 +438,20 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             for e_, al_ in sash_ends:
                 _, h_e = cord(e_ - 0.0021, 0.0021, aa, RL['border'])
                 C.lay(zone_s * pan * cover(e_ - 0.0042, aa), DEEP, h=h_e, rough=RL['rough_pipe'] + 0.06)          # round 14: the DEEP border cord along every sash END (same 4.2 mm as the long edges)
+                mark_cord(zone_s * pan * cover(e_ - 0.0042, aa))
     # round 12: everything laid after this point that is not part of the sash goes UNDER it (colour, height, roughness): sash_cov masks it
     sash_cov = np.zeros(x.shape, np.float32)
     if PIPE and zone_s is not None:
         for o in offs:
             sash_cov = np.maximum(sash_cov, zone_s * band(d_s - o, sa['half'] + 0.0006, aa))
     under = (1.0 - sash_cov) if PIPE else 1.0
+    net_layer = [False]          # set while a net line is laid (the instrument keeps net lines out of its cord mask)
+    def LN(line, zone, c, name='net', **kw):
+        """a NET line: coverage `line` (the line's own distance field) inside `zone`; both go to the instrument"""
+        if dbg is not None: dbg.setdefault('net', []).append((np.asarray(line, np.float32), np.asarray(zone * under, np.float32), name))
+        net_layer[0] = True
+        try: L(line * zone, c, **kw)
+        finally: net_layer[0] = False
     def L(alpha, c, h=None, rough=None, ao=None, H=None, dist=None, hw=None, r_pipe=None):
         """lay a line: round 08 = flat print with the given h / rough; round 12 = a raised cord of height H (dist / hw = its distance field) with the piping
         roughness, masked UNDER the sash"""
@@ -436,6 +459,7 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             C.lay(alpha * under if PIPE else alpha, c, h=h, rough=rough, ao=ao); return
         _, hp = cord(dist, hw, aa, H)
         C.lay(alpha * under, c, h=hp, rough=r_pipe if r_pipe is not None else RL['rough_pipe'], ao=ao)
+        if dbg is not None and not net_layer[0]: mark_cord(alpha * under)
     # 5. arms.  Right arm = the amber "light" side, left arm = teal / dark side
     ar = S['arm']
     Rb = (x < 0)
@@ -467,6 +491,9 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     C.lay(m_greaveR, AMBER, rough=0.52)
     if S['thigh_deep']:
         C.lay(thigh * L_ * ss(y, 0.52, 0.56), DEEP, rough=0.80)
+        if PIPE and S['net'].get('terminate', True) and S['net'].get('geo', True) and S['net']['kind'] != 'none' and tk['on']:      # round 16: the DEEP thigh panel = the net's geometric zone (hip-wrap cut -> knee), not the soft weight
+            _A = J('thigh.L'); _B = J('shin.L'); _d = (_B - _A) / np.linalg.norm(_B - _A); _rel = P - _A; _sa = _rel @ _d; _rr = np.linalg.norm(_rel - _sa[..., None] * _d, axis=-1)
+            C.lay(L_ * body_w * cover(_sa - 0.4015, aa) * cover(_rr - 0.16, aa) * cover(cut_d + 0.0018, aa), DEEP, rough=0.80)
     lat = np.abs(z - 0.0) - 0.011                                                   # outer seam stripe
     m_stripe = leg_w * np.clip(thigh + shin * ss(y, 0.42, 0.50), 0, 1) * cover(lat, aa) * ss(-sgn * nx, 0.4, 0.8)
     L(m_stripe * R_ * (1 - m_greaveR), AMBER, h=0.35, rough=0.5, H=RL['pipe'], dist=lat + 0.011, hw=0.011)
@@ -497,9 +524,16 @@ def paint(P, N, G, mpt, gi, jp, style=None):
         d_ = (B_ - A_) / np.linalg.norm(B_ - A_)
         rel_ = P - A_; s_a = rel_ @ d_; rr = np.linalg.norm(rel_ - s_a[..., None] * d_, axis=-1)
         if S['sleeves']:
-            z_sh = sidew * body_w * (1 - is_head) * cover(rr - 0.108, aa) * 1.0
+            # round 15 (critic r14: "the Verdant armpit piping is pinched"): the shoulder cap used to reach 10.8 cm from the arm axis on every side, so its plane ring cords and its INK edge cord ran over
+            # the armpit crease (the surface folds there; the cord pinched to a point).  On the side that faces the torso the cap now ends at cap.r_in (7.5 cm), on the arm itself; the radius
+            # blends back to 10.8 cm over the upper half, so the raglan edge across the chest and the shoulder is unchanged.
+            cp = S['cap']
+            e_in = np.array([-side_, 0.0, 0.0], np.float32); e_in = e_in - d_ * float(np.dot(e_in, d_)); e_in = e_in / np.linalg.norm(e_in)
+            cph = ((rel_ - s_a[..., None] * d_) @ e_in) / np.maximum(rr, 1e-6)           # +1 = toward the torso, -1 = away from it
+            r_lim = cp['r_out'] - (cp['r_out'] - cp['r_in']) * ss(cph, 0.05, 0.60) if PIPE else cp['r_out']      # (the round-08 legacy print keeps its 10.8 cm cap on every side)
+            z_sh = sidew * body_w * (1 - is_head) * cover(rr - r_lim, aa) * 1.0
             sleeve('deltoid.' + nm, 'forearm.' + nm, -0.050, 0.075, z_sh)
-            L(band(rr - 0.108, 0.0010, aa) * sidew * body_w * (1 - is_head) * cover(np.abs(s_a - 0.0125) - 0.0625, aa), INK, h=-0.3, rough=0.9, H=RL['net'], dist=rr - 0.108, hw=0.0010, r_pipe=RL['rough_net'])
+            L(band(rr - r_lim, 0.0010, aa) * sidew * body_w * (1 - is_head) * cover(np.abs(s_a - 0.0125) - 0.0625, aa), INK, h=-0.3, rough=0.9, H=RL['net'], dist=rr - r_lim, hw=0.0010, r_pipe=RL['rough_net'])
             z_el = sidew * body_w * np.clip(armU + armF, 0, 1)
             sleeve('deltoid.' + nm, 'forearm.' + nm, 0.262, 0.322, z_el)
             z_kn = sidew * body_w * np.clip(thigh + shin, 0, 1)
@@ -507,6 +541,18 @@ def paint(P, N, G, mpt, gi, jp, style=None):
 
     # ------------------------------------------------------------------ surface net (diamond / hex / rib / square / chevron / brick, wound around each body segment)
     nk, nsc = S['net']['kind'], S['net']['scale']
+    def s_arm(nm):      # metres along the deltoid -> forearm axis from the deltoid joint (negative = toward the neck)
+        A_ = J('deltoid.' + nm); B_ = J('forearm.' + nm); return (P - A_) @ ((B_ - A_) / np.linalg.norm(B_ - A_))
+    s_armL, s_armR = s_arm('L'), s_arm('R')
+    def axial(A_n, B_n):     # (metres along A -> B from A, distance from the A -> B axis)
+        A_ = J(A_n); B_ = J(B_n); d_ = (B_ - A_) / np.linalg.norm(B_ - A_); rel_ = P - A_; s_ = rel_ @ d_
+        return s_, np.linalg.norm(rel_ - s_[..., None] * d_, axis=-1)
+    # round 16 (critic r15 / net_end_check: 83 net lines still died in the open fabric, all on the limbs): with GEO the limb net zones are bounded by geometry only - planes that
+    # carry a cord (the cap's lower ring, the elbow / knee slab rings, the wrist / ankle bands, the hip-wrap cut piping) and a radius around the limb axis - not by the soft skin weights
+    GEO = bool(PIPE and S['net'].get('terminate', True) and S['net'].get('geo', True) and nk != 'none')
+    rrUL = axial('deltoid.L', 'forearm.L')[1]
+    s_thL, rr_thL = axial('thigh.L', 'shin.L'); s_thR, rr_thR = axial('thigh.R', 'shin.R')
+
     def segnet(name_a, name_b, R, cell, phase=0.0):
         return netd(P, J(name_a), J(name_b), R, cell, kind=nk, phase=phase, scale=nsc)
     netw_a = 0.0015 * S['net']['width']      # half width of an amber net line
@@ -519,10 +565,19 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     nd_shR = segnet('shin.R', 'foot.R', 0.052, 0.050); nd_shL = segnet('shin.L', 'foot.L', 0.052, 0.050)
     z_up = tors_w * body_w * ss(y, 1.30, 1.38) * (1 - m_side)
     if PIPE: z_up = z_up * (1.0 - ss(y, 1.425, 1.455))       # round 14 (critic r13: the Sage trapezius groove is torn): the torso net stops at the neck base - on the oblique trapezius slope the cords stretch over a few texels and read as torn creases
+    # round 15 (critic r14 "the grooves stop dead"): EVERY net line ends on a seam cord.  Round 14 faded the torso net out at the neck base (y 1.425 - 1.455) and over y 1.30 - 1.38 at the
+    # bottom, and a net line also stopped wherever the skin weights ended: the lines died in the open fabric.  The torso net is now a YOKE PANEL with hard edges: above y 1.31, below y 1.43,
+    # outside the DEEP shoulder caps (the cap's own cord closes it), inside the DEEP side wedge; a raised seam cord (the face-seam tone) lies on the top and the bottom edge.  The limb nets
+    # (below) end hard on a cord that is already there: the wrist bands, the ankle bands, the knee / elbow slab rings, the hip-wrap cut piping.
+    TERM = bool(PIPE and S['net'].get('terminate', True) and nk != 'none')
+    YOKE_T, YOKE_B = 1.43, 1.31
+    if TERM:
+        z_up = body_w * cover(ax - 0.215, aa) * (1 - plate_m) * (1 - m_side) * cover(y - YOKE_T, aa) * cover(YOKE_B - y, aa)
     knots = nk in ('diamond', 'square', 'brick', 'hex')
     # amber net on the DEEP right upper arm; DEEP hairline net on the amber right forearm
     zR = arm_w * R_ * (armU + shoulder_arm) * ss(ax, 0.17, 0.22) * (1 - plate_m) * (1.0 if upper_deep else 0.0)
-    L(cover(nd_armU_R - netw_a, aa) * zR, AMBER, h=0.30, rough=0.5, H=RL['net'] * 1.1, dist=nd_armU_R, hw=netw_a)
+    if PIPE and S['net'].get('terminate', True): zR = zR * cover(-0.0518 - s_armR, aa)      # round 15: no net on the shoulder top, on the neck side of the cap's inner ring cord (the lines used to end there in the open)
+    LN(cover(nd_armU_R - netw_a, aa), zR, AMBER, name='armU_R', h=0.30, rough=0.5, H=RL['net'] * 1.1, dist=nd_armU_R, hw=netw_a)
     if knots: L(cover(nn_armU_R - 0.0032, aa) * zR, AMBER, h=0.55, rough=0.42, H=RL['net'] * 1.5, dist=nn_armU_R, hw=0.0032)
     sF_R, thF_R = seg_coords(P, J('forearm.R'), J('hand.R'))
     if ar['fore'] == 'sleeve':
@@ -534,18 +589,67 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     # dark hairline net on the TEAL panels: upper chest / shoulders / back yoke, the whole left arm, left shin, right thigh
     NK = dict(h=-0.25, rough=0.82, H=RL['net'], hw=netw_d, r_pipe=RL['rough_net'])
     NETC = DEEP * (1 - RL.get('net_tone', 0.0)) + TEAL * RL.get('net_tone', 0.0) if PIPE else DEEP      # round 12: a mid-dark cord shows its lit and its shadowed flank (a near-black one reads flat)
-    L(cover(nd_tor - netw_d, aa) * z_up * 0.85, NETC, dist=nd_tor, **NK)
-    L(cover(nd_armU_L - netw_d, aa) * arm_w * L_ * (armU + shoulder_arm) * (1 - plate_m) * 0.85, NETC, dist=nd_armU_L, **NK)
-    L(cover(nd_armF_L - netw_d, aa) * arm_w * L_ * armF * (1 - plate_m) * 0.85 * (1 - ss(t_fore, 0.55, 0.6)), NETC, dist=nd_armF_L, **NK)
-    L(cover(nd_shL - netw_d, aa) * shin * L_ * (1 - plate_m) * ss(y, 0.22, 0.26) * 0.85, NETC, dist=nd_shL, **NK)
-    L(cover(nd_thR - netw_d, aa) * thigh * R_ * (1 - plate_m) * ss(y, 0.60, 0.66) * 0.85, NETC, dist=nd_thR, **NK)
+    if TERM:
+        len_fL = float(np.linalg.norm(W_L - E_L))
+        f_forearm = cover((t_fore - 0.658) * len_fL, aa)                 # ends on the first wrist band (t 0.66, half width 3.4 mm)
+        f_shin = cover(0.2095 - y, aa)                                   # starts on the upper ankle band (y 0.205, half width 4 mm)
+        f_thR = cover(cut_d + 0.0018, aa) if tk['on'] else ss(y, 0.60, 0.66)          # from the knee slab ring up to the hip-wrap cut piping
+    else:
+        f_forearm = 1 - ss(t_fore, 0.55, 0.6); f_shin = ss(y, 0.22, 0.26); f_thR = ss(y, 0.60, 0.66)
+    LN(cover(nd_tor - netw_d, aa) * 0.85, z_up, NETC, name='torso', dist=nd_tor, **NK)
+    zUL = arm_w * L_ * (armU + shoulder_arm) * (1 - plate_m)
+    if TERM: zUL = zUL * cover(-0.0518 - s_armL, aa)
+    if GEO: zUL = L_ * body_w * cover(0.0785 - s_armL, aa) * cover(s_armL - 0.2585, aa) * cover(rrUL - 0.090, aa) * (1 - plate_m)     # cap's lower ring cord (s 0.0785) -> elbow slab's upper ring (0.2585); 9 cm takes in the deltoid bulge
+    LN(cover(nd_armU_L - netw_d, aa) * 0.85, zUL, NETC, name='armU_L', dist=nd_armU_L, **NK)
+    zF_L = arm_w * L_ * armF * (1 - plate_m) * f_forearm
+    zS_L = shin * L_ * (1 - plate_m) * f_shin
+    zT_R = thigh * R_ * (1 - plate_m) * f_thR
+    if GEO:
+        if ar['other_fore'] == 'bands': t_end = 0.658
+        else:       # no wrist bands on this forearm: the net ends on a ring cord of its own (at the sleeve start, or where the bands would be)
+            t_end = 0.30 if ar['other_fore'] == 'sleeve' else 0.658
+            L(arm_w * L_ * band((t_fore - t_end - 0.0034 / len_fL) * len_fL, 0.0034, aa), NETC * 0.6 + TEAL * 0.4, h=0.35, rough=0.5, H=RL['ring'], dist=(t_fore - t_end - 0.0034 / len_fL) * len_fL, hw=0.0034)
+        rrF = axial('forearm.L', 'hand.L')[1]
+        zF_L = L_ * body_w * cover(0.3255 - s_armL, aa) * cover((t_fore - t_end) * len_fL, aa) * cover(rrF - 0.065, aa) * (1 - plate_m)                          # elbow slab's lower ring (s 0.3255) -> the wrist band / ring
+        zS_L = L_ * body_w * cover(0.4735 - s_thL, aa) * cover(rr_thL - 0.16, aa) * f_shin * (1 - plate_m)                            # knee slab's lower ring -> the upper ankle band
+        zT_R = R_ * body_w * cover(s_thR - 0.4015, aa) * cover(rr_thR - 0.16, aa) * f_thR * (1 - plate_m)                            # the hip-wrap cut piping -> the knee slab's upper ring
+    if GEO:
+        RC = dict(h=0.35, rough=0.5, H=RL['ring'], r_pipe=RL['rough_pipe'])
+        rcol = NETC * 0.6 + TEAL * 0.4
+        if not S['sleeves']:      # no cap / elbow / knee slabs on this suit: the planes that bound the limb nets get ring cords of their own
+            for sd_, nm_, sg_ in ((L_, 'L', 1.0), (R_, 'R', -1.0)):
+                A_r = J('deltoid.' + nm_); d_r = (J('forearm.' + nm_) - A_r) / np.linalg.norm(J('forearm.' + nm_) - A_r)
+                rel_r = P - A_r; s_a = rel_r @ d_r; perp_r = rel_r - s_a[..., None] * d_r; r_a = np.linalg.norm(perp_r, axis=-1)
+                e_r = np.array([-sg_, 0.0, 0.0], np.float32); e_r = e_r - d_r * float(np.dot(e_r, d_r)); e_r = e_r / np.linalg.norm(e_r)
+                ph_r = (perp_r @ e_r) / np.maximum(r_a, 1e-6)                      # +1 = toward the torso
+                r_ring = 0.090 - 0.032 * ss(ph_r, 0.05, 0.60)                        # the ring stays ON the arm: 9 cm outside (the deltoid bulge), 5.8 cm on the torso side (r16 hold 2: a cord stub crossed onto the Saffron torso at the armpit)
+                for c_ in (0.0785, 0.2585, 0.3255):
+                    L(sd_ * body_w * band(s_a - c_, 0.0017, aa) * cover(r_a - r_ring, aa), rcol, dist=s_a - c_, hw=0.0017, **RC)
+                s_t, r_t = axial('thigh.' + nm_, 'shin.' + nm_)
+                for c_ in (0.4015, 0.4735):
+                    L(sd_ * body_w * band(s_t - c_, 0.0017, aa) * cover(r_t - 0.16, aa), rcol, dist=s_t - c_, hw=0.0017, **RC)
+        if tk['on']:              # the inseam: where the hip-wrap cut lies above the crotch the two thigh nets meet on the midline - a seam cord there
+            L(body_w * band(x, 0.0024, aa) * cover(cut_d + 0.0018, aa) * ss(y, 0.60, 0.64), rcol, dist=x, hw=0.0024, **RC)
+    LN(cover(nd_armF_L - netw_d, aa) * 0.85, zF_L, NETC, name='armF_L', dist=nd_armF_L, **NK)
+    LN(cover(nd_shL - netw_d, aa) * 0.85, zS_L, NETC, name='shin_L', dist=nd_shL, **NK)
+    LN(cover(nd_thR - netw_d, aa) * 0.85, zT_R, NETC, name='thigh_R', dist=nd_thR, **NK)
     # amber net on the DEEP left thigh and dark net on the amber greave
     zL = thigh * L_ * ss(y, 0.56, 0.60) * (1 - plate_m) * ss(0.78 - y, -0.03, 0.03) * (1.0 if S['thigh_deep'] else 0.0)
-    L(cover(nd_thL - netw_a * 0.9, aa) * zL, AMBER_D, h=0.25, rough=0.55, H=RL['net'] * 1.1, dist=nd_thL, hw=netw_a * 0.9)
+    if TERM and tk['on']: zL = thigh * L_ * (1 - plate_m) * cover(cut_d + 0.0018, aa) * (1.0 if S['thigh_deep'] else 0.0)           # round 15: from the knee slab ring to the hip-wrap cut piping
+    if GEO and tk['on']: zL = L_ * body_w * cover(s_thL - 0.4015, aa) * cover(rr_thL - 0.16, aa) * (1 - plate_m) * cover(cut_d + 0.0018, aa) * (1.0 if S['thigh_deep'] else 0.0)
+    LN(cover(nd_thL - netw_a * 0.9, aa), zL, AMBER_D, name='thigh_L', h=0.25, rough=0.55, H=RL['net'] * 1.1, dist=nd_thL, hw=netw_a * 0.9)
     if knots: L(cover(nn_thL - 0.0034, aa) * zL, AMBER, h=0.55, rough=0.42, H=RL['net'] * 1.5, dist=nn_thL, hw=0.0034)
     sS_R, thS_R = seg_coords(P, J('shin.R'), J('foot.R'))
     _dS = np.abs((thS_R - 0.0 + np.pi) % (2 * np.pi) - np.pi) * 0.045
     L(cover(_dS - 0.0035, aa) * m_greaveR * (1 - plate_m), DEEP, h=-0.30, rough=0.8, H=RL['net'], dist=_dS, hw=0.0035, r_pipe=RL['rough_net'])   # shin-front DEEP stripe
+
+    if TERM:      # round 15: the yoke seam cords (the face-seam tone, like the cheek panel seams): the top and the bottom edge of the torso net panel, front and back, under the sash
+        ycol = 0.55 * TEAL + 0.45 * STITCH
+        yoke_m = body_w * cover(ax - 0.215, aa) * (1 - plate_m) * (1 - m_side)
+        for yc_ in (YOKE_T, YOKE_B):
+            L(yoke_m * band(y - yc_, 0.0015, aa), ycol, h=0.4, rough=RL['rough_pipe'] + 0.05, H=RL['seam'] * 0.8, dist=y - yc_, hw=0.0015)
+        if not S['sleeves'] and S['net'].get('geo', True):      # round 16: no shoulder caps close the yoke panel's sides on this suit: a side seam cord at |x| 0.215
+            L(body_w * (1 - m_side) * band(ax - 0.215, 0.0015, aa) * cover(y - YOKE_T - 0.0015, aa) * cover(YOKE_B - 0.0015 - y, aa), ycol, h=0.4, rough=RL['rough_pipe'] + 0.05, H=RL['seam'] * 0.8, dist=ax - 0.215, hw=0.0015)
 
     # ------------------------------------------------------------------ chest badge (front) and back mark
     gl = S['glyph']
@@ -570,22 +674,27 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     b_ = back * tors_w * body_w
     # round 13 (critic r12: Cinder's emblem is cyan on a cyan sash): where the front mark lies on the accent sash panel it is laid in the DEEP colour
     gcol = (AMBER[None, None, :] * (1 - sash_cov[..., None]) + DEEP[None, None, :] * sash_cov[..., None]) if PIPE else AMBER
+    # round 16 (critic r15: the back mark read as the front emblem "projected through the torso"): the back mark is a TONE-ON-TONE emboss (a raised mark in a darker shade of
+    # the body colour), never the accent; the round-08 legacy print keeps its accent back mark
+    TONE_B = PIPE and gl.get('back', 'tone') == 'tone'
+    BCOL = (0.55 * TEAL + 0.45 * DEEP) if TONE_B else AMBER
+    BH = (RL['glyph'] * 0.8, RL['glyph'] * 0.7, 0.50) if TONE_B else (0.45, 0.40, 0.40)
     if gl['kind'] == 'hexvane':
         ring, vanes, core = badge(gl['x'], gl['y'], 0.046 * gl['size'])
         gh = (RL['glyph'], RL['glyph'] * 0.9) if PIPE else (0.45, 0.40)
         C.lay(f_ * ring, gcol, h=gh[0], rough=0.40)
         C.lay(f_ * np.maximum(vanes, core), gcol, h=gh[1], rough=0.40)
         ring_b, _, core_b = badge(0.0, gl['y'] + 0.023, 0.042 * gl['size'])
-        C.lay(b_ * ring_b, AMBER, h=0.45, rough=0.40)
-        C.lay(b_ * core_b, AMBER, h=0.40, rough=0.40)
+        C.lay(b_ * ring_b, BCOL, h=BH[0], rough=BH[2])
+        C.lay(b_ * core_b, BCOL, h=BH[1], rough=BH[2])
     else:
         ln, so = glyph(gl['kind'], x, y, gl['x'], gl['y'], gl['size'], aa)
         gh = (RL['glyph'], RL['glyph'] * 0.9) if PIPE else (0.45, 0.40)
         C.lay(f_ * ln, gcol, h=gh[0], rough=0.40)
         C.lay(f_ * so, gcol, h=gh[1], rough=0.40)
         ln_b, so_b = glyph(gl['kind'], x, y, 0.0, gl['y'] + 0.023, gl['size'] * 0.8, aa)
-        C.lay(b_ * ln_b, AMBER, h=0.45, rough=0.40)
-        C.lay(b_ * so_b, AMBER, h=0.40, rough=0.40)
+        C.lay(b_ * ln_b, BCOL, h=BH[0], rough=BH[2])
+        C.lay(b_ * so_b, BCOL, h=BH[1], rough=BH[2])
     # belt buckle
     bkind = S['belt']['buckle']
     if bkind == 'hex':
@@ -608,7 +717,14 @@ def paint(P, N, G, mpt, gi, jp, style=None):
     if tk['on']:
         L(body_w * np.clip(tors_w + thigh, 0, 1) * band(cut_d, pip * 1.3, aa) * ss(1.03 - y, -0.002, 0.004), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=cut_d, hw=pip * 1.3)
     wtop = (1.0 - ss(y, 1.195, 1.235)) if PIPE else 1.0       # round 14 (critic r13: the Ash armpit stitches zigzag): the wedge pipe + stitch rows end 3.5 cm below the armpit crease (the surface folds there and the dashes pile up)
-    L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12) * wtop, AMBER_D, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
+    if TERM: wtop = np.maximum(wtop, ss(y, 1.285, 1.305) * cover(y - 1.435, aa))      # round 15: the wedge edge is the SIDE SEAM of the torso net panel from the yoke's bottom seam up to its top seam (the armpit crease, y 1.2 - 1.29, stays bare)
+    if PIPE and S['wedge'].get('back_tone', True):
+        # round 16: the wedge edge pipe is accent on the FRONT only; on the back (z < the torso axis) it is the seam tone (no accent line on the back torso)
+        fr_w = cover(-0.012 - z, aa)
+        L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12) * wtop * fr_w, AMBER_D, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
+        L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12) * wtop * (1 - fr_w), 0.55 * TEAL + 0.45 * STITCH, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
+    else:
+        L(m_side * band(xb - ax, pip, aa) * ss(y, 1.06, 1.12) * wtop, AMBER_D, h=0.35, rough=0.5, H=RL['pipe'], dist=xb - ax, hw=pip)
     # top-stitching beside the piping (dashed, light teal): belt, hip-wrap cut, sash edges, side wedge
     STa = 0.85
     L(body_w * tors_w * np.maximum(stitch(y - 1.0795, x, aa), stitch(y - 1.0305, x, aa)) * STa, STITCH, h=0.12, rough=0.7)
@@ -621,10 +737,13 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             if PIPE:     # round 14: the sash ENDS are finished like the long edges: two stitch rows (inside the border cord and 3 mm outside) and an accent pipe 5.8 mm outside the end
                 tw_ = ss(tors_w, 0.30, 0.40) * body_w
                 for e_, al_ in sash_ends:
-                    pan = band(d_s - o, hw_, aa) * tw_
+                    pan = band(d_s - o, hw_, aa) * tw_ * sash_fg
                     ext = pan * cover(-(e_ + 0.0045), aa)
                     C.lay(ext * stitch(e_, al_, aa, off=0.0030) * STa, STITCH, h=0.12, rough=0.7)
-                    L(pan * cover(-(e_ + 0.0070), aa) * band(e_ + 0.0058, 0.0014, aa), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=e_ + 0.0058, hw=0.0014)
+                    if sa.get('pipe_join', True):      # round 15 (critic r14: "a lime cord floats 40 px off the Ash sash end"): the accent pipe lies ON the end line, its inner edge touching the DEEP border cord (no gap, 1 mm wide)
+                        L(pan * band(e_ + 0.0005, 0.0005, aa), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=e_ + 0.0005, hw=0.0005)
+                    else:
+                        L(pan * cover(-(e_ + 0.0070), aa) * band(e_ + 0.0058, 0.0014, aa), AMBER, h=0.45, rough=0.45, H=RL['pipe'], dist=e_ + 0.0058, hw=0.0014)
     L(m_side * stitch(xb - ax, y, aa, off=0.0030) * ss(y, 1.06, 1.12) * wtop * STa, STITCH, h=0.12, rough=0.7)
 
     # ------------------------------------------------------------------ mask / hood
@@ -671,15 +790,28 @@ def paint(P, N, G, mpt, gi, jp, style=None):
             # round 14: two raised PANEL SEAMS per cheek (the critic's G3 line - a horizontal luma line through the cheek bones - crosses them): the outer one runs from the eye frame down
             # the cheek bone plane to the jaw (bowing outward below the cheek bone), the inner one from the nose-bridge flank toward the mouth piece.  Light raised cords (like the face seam):
             # their luma contrast does not depend on the sun, which on a dark hood gives the sculpt only a 10 - 20 luma swing.
-            def panel_seam(xc, g, ya, yb, hwc, Hc):
+            def panel_seam(xc, g, ya, yb, hwc, Hc, tip=0.0):
                 dd = (ax - xc) / np.sqrt(1.0 + g * g)
+                if tip > 0.0:
+                    # round 17 (critic r16: "the cheek-cord ends are raw"): the free (jaw) end of the cord is finished with a ROUNDED TIP: over the last `tip` metres the half width and the height
+                    # follow a circular cap (sqrt(c (2 - c))), so the cord closes like a piped end instead of being cut off square.  The upper end sits under the eye frame.
+                    c = np.clip((y - yb) / tip, 0.0, 1.0); cap = np.sqrt(c * (2.0 - c))
+                    hw_ = hwc * np.maximum(cap, 0.05)
+                    a_c = band(dd, hw_, aa)
+                    u_ = np.clip(np.abs(dd) / np.maximum(hw_, 1e-6), 0, 1)
+                    h_c = (Hc * cap * np.sqrt(np.clip(1.0 - u_ * u_, 0.0, 1.0)) * 0.85 + 0.15 * Hc * cap).astype(np.float32)
+                    msk = is_head * cover(-z, aa) * cover(y - ya, aa) * cover((yb - 0.0008) - y, aa)
+                    C.lay(msk * a_c, fcol, h=h_c, rough=RL['rough_pipe'] + 0.05)
+                    return
                 a_c, h_c = cord(dd, hwc, aa, Hc)
                 msk = is_head * cover(-z, aa) * cover(y - ya, aa) * cover(yb - y, aa)
                 C.lay(msk * a_c, fcol, h=h_c, rough=RL['rough_pipe'] + 0.05)
             s1 = np.maximum((1.640 - y) / 0.05, 0.0)
-            panel_seam(0.056 + 0.012 * s1 * s1, -0.48 * s1, 1.662, 1.570, 0.0016, RL['seam'] * 0.85)
+            ptip = 0.006 if S['face'].get('cord_tip', True) else 0.0
+            # tip mode: the cord is drawn for y >= yb - 0.0008 and the cap closes it between yb and yb + tip (y - yb = 0 is the end)
+            panel_seam(0.056 + 0.012 * s1 * s1, -0.48 * s1, 1.662, 1.570, 0.0016, RL['seam'] * 0.85, ptip)
             u2 = np.clip((1.659 - y) / 0.039, 0.0, 1.0)
-            panel_seam(0.0185 + 0.021 * u2 ** 1.5, -0.8077 * np.sqrt(u2), 1.659, 1.620, 0.0015, RL['seam'] * 0.85)
+            panel_seam(0.0185 + 0.021 * u2 ** 1.5, -0.8077 * np.sqrt(u2), 1.659, 1.620, 0.0015, RL['seam'] * 0.85, ptip * 0.8)
     else:
         C.lay(is_head * cover(np.abs(x) - 0.0011, aa) * cover(-z, aa), INK, h=-0.3, rough=0.9)       # dorsal seam (round 08 legacy)
     if S['brow'] != 'none':
