@@ -14,3 +14,8 @@ Question: why no tree shadow reads on the lawn (r04 critic). Runs (`diag*.sh`, f
 - Measures taken: the turf normal bends toward the sun (`Lawn.ush lwTurfNormal`, the sun-facing blades of a low-sun lawn), material AO / albedo gain tried and set back to 1 (no visible effect
   beyond the auto exposure), the leaf cards use a fixed coverage threshold in the shadow pass.
 - Every engine launch auto-starts UnrealTraceServer (listening on 1981 / 1989) unless `-notraceserver` is passed; r05 launches pass it from 04:05 on (the firewall already permits the binary; no dialog was raised).
+- diag5 (R5b content, 1080p V_p4): `r.MegaLights.EnableForProject 0, r.MegaLights.Allowed 0` vs default: mean abs difference 0.23 luma (no change, `cmp_mega.jpg`);
+  `r.Shadow.Virtual.NonNanite.IncludeInCoarsePages 1, ...UseRadiusThreshold 0, r.Shadow.RadiusThreshold 0`: 0.27 (no change). Neither MegaLights nor the non-Nanite VSM culling thresholds explain it.
+- In the 4K p4 stills the sunlit strip across the east side of the Great Lawn carries crisp thin shadow lines (trunks / lamp posts) and no crown shadow; the R5b build's hidden
+  shadow-only crown proxies (built for the conifers only in that build, `diff_5b.jpg`) changed nothing on the lawn either. Still open: whether the leaf-card materials write anything
+  in the shadow-depth pass at all (next test: a debug map with one cards pool on an opaque two-sided material, and one big cube on the lawn).
