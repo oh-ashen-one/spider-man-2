@@ -43,6 +43,7 @@ REGION = os.environ.get('SM2_ISLAND_REGION', 'island')
 MIN_FREE_GB = float(os.environ.get('SM2_ISLAND_MIN_FREE_GB', '150'))
 EXPORT = os.path.join(SCR, 'export', REGION)
 WP_MAP = os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')   # (island r01) a test map name builds beside the real one
+WP_PORTALS = {'M2': (250.0, 1560.0)}   # (island r03) `?Portal=M2`: PlayerStart tag -> UE metres (x east, y south) on the avenue; see the map step
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
@@ -431,6 +432,17 @@ def build_maps():
         ps = SHOTS['S1']['player']
         st = spawn(unreal.PlayerStart, U(ps[0], ps[2], ps[1] + 1.0), -90.0, 'PlayerStart', 'Manhattan')
         st.set_editor_property('is_spatially_loaded', False)
+        # (island r03) route portals. The traversal (WebTravWorld::InitWorld, P3) indexes the collision components of the cells loaded around the
+        # PlayerStart ONCE, at BeginPlay, and is only teleported to the script's spawn afterwards: a World Partition cell that streams in later is
+        # not a traversal solid (no web anchor, no wall, no roof), so on the whole-island map the swingable area is the 1.2 km loading range
+        # around the start (facade tiles y -1024..1536 around the S1 start at y 178), measured in round-03/README.md. A test route that starts
+        # elsewhere opens the map with `?Portal=<tag>`: the always-loaded PlayerStart carrying that tag is chosen (AGameModeBase::FindPlayerStart),
+        # so the cells around it are loaded and indexed. Tags: M2 = the middle of the new south tiles (avenue, y 1560 m).
+        for tag, (px, py) in WP_PORTALS.items():
+            pt = spawn(unreal.PlayerStart, U(px, py, 1.0), -90.0, 'PlayerStart_' + tag, 'Manhattan')
+            pt.set_editor_property('player_start_tag', tag)
+            pt.set_editor_property('is_spatially_loaded', False)
+            mlog('WP portal', tag, 'at x %.0f y %.0f m' % (px, py))
         rig = presets[0] if 'golden' not in presets else 'golden'
         li = spawn(unreal.LevelInstance, U(0, 0, 0), 0.0, 'WP_Rig_' + rig, 'Manhattan')
         li.set_world_asset(unreal.load_asset(RIG % rig))

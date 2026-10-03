@@ -10,7 +10,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"; WT="$(cd "$HERE/../../.." && pwd)"; UE_DI
 GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
 N=$(basename "${J%.json}")
 LOCK=("$GPU" capture --label island --); [ -n "${ISLAND_IN_LOCK:-}" ] && LOCK=()
-WH_CAPTURE_MAXFPS=${WH_CAPTURE_MAXFPS:-240} ${LOCK[@]+"${LOCK[@]}"} "$UE_DIR/Scripts/run_game.sh" "$OUT/$N" -map /Game/Maps/Manhattan_WP -res 640x360 -quit "$Q" -name "$N" -timeout 1500 \
+WH_CAPTURE_MAXFPS=${WH_CAPTURE_MAXFPS:-240} ${LOCK[@]+"${LOCK[@]}"} "$UE_DIR/Scripts/run_game.sh" "$OUT/$N" -map "/Game/Maps/Manhattan_WP${PORTAL:+?Portal=$PORTAL}" -res 640x360 -quit "$Q" -name "$N" -timeout 1500 \
    -- -benchmark -fps=60 -nullrhi -WHTravScript="$J" -WHTravCsv="$OUT/$N/${N}_telemetry.csv" | tail -3
 grep -h "WebTravWorld:" "$OUT/$N/$N.log" | sed 's/^.*Display: //' | head -3
 echo "done: $OUT/$N"
