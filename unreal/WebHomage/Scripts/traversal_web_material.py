@@ -35,14 +35,26 @@ if (lv > 1e-3)
 float inv = max(Inv.x, 1e-8);
 float lb = dot((S0.rgb + S1.rgb + S2.rgb + S3.rgb) * 0.25, float3(0.2126, 0.7152, 0.0722)) / inv;
 float dark = 1.0 - smoothstep(Pivot * 0.95, Pivot * 1.05, lb);
-float c = lerp(CoreBright, CoreDark, dark);
-float core = 1.0 - smoothstep(c - 0.05, c + 0.05, u);
-float lvl = lerp(RimLvl, CoreLvl, core);
+float lvl;
+if (Solid > 0.5)
+{
+	// build 2: ONE tone across the whole strand -- bright over a dark background, near-black over a bright one (a two-tone core/rim
+	// averaged back to the background's level once the 3-4 px strand was resolved)
+	lvl = lerp(RimLvl, CoreLvl, dark);
+}
+else
+{
+	float c = lerp(CoreBright, CoreDark, dark);
+	float core = 1.0 - smoothstep(c - 0.05, c + 0.05, u);
+	lvl = lerp(RimLvl, CoreLvl, core);
+}
 float alpha = 1.0 - smoothstep(0.92, 1.0, u);
+// build 2: the strand draws after motion blur (no engine depth test there) -- test against the opaque scene depth by hand
+alpha *= (SD < PD - Occ) ? 0.0 : 1.0;
 return float4(lvl, lvl, lvl, alpha);
 """
 
-PARAMS = [("CoreBright", 0.30), ("CoreDark", 0.86), ("Pivot", 0.20), ("CoreLvl", 1.6), ("RimLvl", 0.004)]
+PARAMS = [("CoreBright", 0.30), ("CoreDark", 0.86), ("Pivot", 0.20), ("CoreLvl", 1.6), ("RimLvl", 0.004), ("Solid", 1.0), ("Occ", 25.0)]
 
 
 def _set(obj, prop, value):
@@ -66,7 +78,9 @@ def build(eal=None, mel=None, tools=None):
     m = tools.create_asset(NAME, MAT_DIR, unreal.Material, unreal.MaterialFactoryNew())
     _set(m, "blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
     _set(m, "shading_model", unreal.MaterialShadingModel.MSM_UNLIT)
-    _set(m, "translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
+    # build 2: after motion blur -- before DOF the camera-speed blur of the background smeared the 3 px strand into it
+    if not _set(m, "translucency_pass", unreal.MaterialTranslucencyPass.MTP_AFTER_MOTION_BLUR):
+        _set(m, "translucency_pass", unreal.MaterialTranslucencyPass.MTP_BEFORE_DOF)
     _set(m, "use_translucency_vertex_fog", False)   # "Apply Fogging"
     _set(m, "enable_responsive_aa", True)
     _set(m, "two_sided", False)
@@ -90,6 +104,8 @@ def build(eal=None, mel=None, tools=None):
         _set(sc, "const_input", unreal.Vector2D(ox, oy))
         taps.append(sc)
     inv = expr(unreal.MaterialExpressionEyeAdaptationInverse, -1200, 600)
+    sd = expr(unreal.MaterialExpressionSceneDepth, -1200, 1500)
+    pd = expr(unreal.MaterialExpressionPixelDepth, -1200, 1600)
     pars = {}
     for i, (n, d) in enumerate(PARAMS):
         p = expr(unreal.MaterialExpressionScalarParameter, -1200, 720 + i * 90)
@@ -99,7 +115,7 @@ def build(eal=None, mel=None, tools=None):
     cu = expr(unreal.MaterialExpressionCustom, -700, 0)
     _set(cu, "code", WEB_CODE)
     _set(cu, "output_type", unreal.CustomMaterialOutputType.CMOT_FLOAT4)
-    names = ["N", "V", "A", "S0", "S1", "S2", "S3", "Inv"] + [n for n, _ in PARAMS]
+    names = ["N", "V", "A", "S0", "S1", "S2", "S3", "Inv", "SD", "PD"] + [n for n, _ in PARAMS]
     ins = []
     for n in names:
         ci = unreal.CustomInput()
@@ -113,6 +129,8 @@ def build(eal=None, mel=None, tools=None):
     for i, sc in enumerate(taps):
         ok &= mel.connect_material_expressions(sc, "", cu, f"S{i}")
     ok &= mel.connect_material_expressions(inv, "", cu, "Inv")
+    ok &= mel.connect_material_expressions(sd, "", cu, "SD")
+    ok &= mel.connect_material_expressions(pd, "", cu, "PD")
     for n, p in pars.items():
         ok &= mel.connect_material_expressions(p, "", cu, n)
     rgb = expr(unreal.MaterialExpressionComponentMask, -450, 0)
@@ -130,7 +148,7 @@ def build(eal=None, mel=None, tools=None):
     ok &= mel.connect_material_property(al, "", unreal.MaterialProperty.MP_OPACITY)
     mel.recompile_material(m)
     eal.save_loaded_asset(m)
-    unreal.log(f"TRAVWEB: built {path} connections_ok={bool(ok)} expressions={mel.get_num_material_expressions(m)}")
+    unreal.log(f"TRAVWEB: built {path} connections_ok={bool(ok)} expressions={mel.get_num_material_expressions(m)} pass={m.get_editor_property('translucency_pass')}")
     return m
 
 

@@ -1127,6 +1127,7 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 		WebMatTwoTone->SetScalarParameterValue(TEXT("Pivot"), Traversal->RopePivot);
 		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreLvl"), Traversal->RopeCoreLvl);
 		WebMatTwoTone->SetScalarParameterValue(TEXT("RimLvl"), Traversal->RopeRimLvl);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("Solid"), Traversal->RopeSolid);
 	}
 	// pixels per cm at 1 cm distance: viewport height / (2 tan(vfov / 2)) -- the strand width is clamped in screen space
 	double ViewH = 1080.0;
