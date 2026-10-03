@@ -5,7 +5,7 @@
 # marker while >= 22 min of the hold remain (RENDER=1). The 61 s reel: windows 0:15,15:30,30:45,45:61 (the last trick's catch + 0.4 s
 # stays inside the clip). TAG names the probe dir; PROBE_ARGS passes extra game args to the probe (A/B).
 cd /Users/midir/sm2-n1/tricks
-T0=$(date +%s); LEFT() { echo $(( 2400 - ( $(date +%s) - T0 ) )); }
+T0=${HOLD_T0:-$(date +%s)}; LEFT() { echo $(( 2400 - ( $(date +%s) - T0 ) )); }
 UP=/Users/midir/sm2-n1/tri; UP="${UP}cks/unreal/WebHomage/WebHomage.uproject"
 while pgrep -f "$UP" >/dev/null; do sleep 5; done
 if [ "${BUILD:-0}" = 1 ]; then

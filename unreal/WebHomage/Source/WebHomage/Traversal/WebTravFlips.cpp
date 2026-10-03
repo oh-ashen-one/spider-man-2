@@ -395,7 +395,10 @@ namespace WebFlips
 	bool bCatchLean = true;
 	namespace
 	{
-		constexpr float CatchWinMin = 0.3f, CatchWinMax = 0.6f, CatchShapeWin = 0.3f, CatchRate = 250.f, CatchLook = 0.75f, CatchClipLen = 1.2f;
+		// r02 probe c: G4 (open-out <= 300 deg/s) needs the lean + the moving target well under 300 deg/s; G3 (head spot in the open-out)
+		// needs the program's own reach / kick-out to play before the catch pose takes over -> 0.22 s shape window; L -> the catch clip plays
+		// (backward into its frame 0) at 2.4x so the limbs keep moving while the pose is held
+		constexpr float CatchWinMin = 0.3f, CatchWinMax = 0.7f, CatchShapeWin = 0.22f, CatchRate = 200.f, CatchTargetRate = 110.f, CatchLook = 0.85f, CatchClipLen = 0.5f;
 		// r02 probe b: the predicted facing about the rope is ill-conditioned (the rope runs almost along the velocity at a catch: the swing
 		// frame's forward is the small velocity component off the rope) -- the measured post-catch twist was ~0.3 x the predicted one
 		// (residual vs the body 0.1 s after the catch, 18 catches: mean 35 deg at 0.3 x, 46 deg at 1 x, 37 deg at 0 x)
@@ -558,7 +561,7 @@ namespace WebFlips
 			{
 				// the target follows the prediction smoothly and at <= CatchRate deg/s (a prediction that changes from the air frame to a swing
 				// frame late in the window must not whip the body round)
-				const float K = 1.f - FMath::Exp(-float(DtF) * 14.f), MaxStep = CatchRate * float(DtF);
+				const float K = 1.f - FMath::Exp(-float(DtF) * 14.f), MaxStep = CatchTargetRate * float(DtF);
 				GC.Beta += FMath::Clamp(K * FMath::UnwindDegrees(Beta - GC.Beta), -MaxStep, MaxStep);
 				GC.Gamma = FMath::UnwindDegrees(GC.Gamma + FMath::Clamp(K * FMath::UnwindDegrees(GammaK - GC.Gamma), -MaxStep, MaxStep));
 				GC.Rho += K * FMath::UnwindDegrees(Rho - GC.Rho);
@@ -566,9 +569,11 @@ namespace WebFlips
 			GC.bSwing = bSwing; GC.bRight = bRight; GC.Anchor = AP; GC.TargetQ = Wq;
 			GC.BankW = bSwing ? 0.85f * Smooth(FMath::Abs(A.Swing.Bank)) : 0.f;
 			if (GC.bOn)
-			{ // the catch pose follows the prediction (a web found / lost late in the window); the hand is chosen while the pose is out
+			{ // the catch pose follows the prediction (a web found / lost late in the window); the hand is chosen while the pose is out.
+			  // A catch overdue by > 0.08 s (the traversal's search found nothing yet) hands the pose back to the program's moving reach.
 				if (GC.ShapeK <= 0.f) GC.bShapeRight = bRight;
-				GC.ShapeK = FMath::Clamp(GC.ShapeK + (bSwing ? 1.f : -1.f) * float(DtF) / 0.15f, 0.f, 1.f);
+				const bool bWant = bSwing && T <= GC.Te + 0.08f;
+				GC.ShapeK = FMath::Clamp(GC.ShapeK + (bWant ? 1.f : -1.f) * float(DtF) / 0.15f, 0.f, 1.f);
 			}
 			if (!GC.bOn)
 			{
@@ -605,9 +610,18 @@ namespace WebFlips
 			O.PitchDeg = FMath::Lerp(O.PitchDeg, PitchTgt, W);
 			O.TwistDeg = FMath::Lerp(O.TwistDeg, TwTgt, W);
 			O.AxisOffDeg *= 1.f - W;
-			if (GC.ShapeK <= 0.f) return;
+			// a program that ends in the kick-out already opens into the catch reach (web arm up, head lifting): its pose plays out
+			if (GC.ShapeK <= 0.f || (P.Segs.Num() && P.Segs.Last().Shape == EWebFlipShape::Kickout)) return;
 			// shapes: the program's shape at the start of the last 0.3 s -> the swing node's starting pose (major clip, then its minor share)
-			const float Ts2 = FMath::Max(GC.Ts, GC.Te - CatchShapeWin), Span2 = FMath::Max(0.05f, GC.Te - Ts2);
+			// the program's last shape change that can finish before the catch plays out first (its head spot and limb change, G3), then
+			// the catch pose blends in over what is left (>= 0.1 s)
+			float SLast = 0.f;
+			for (int32 K = P.Segs.Num() - 1; K > 0; --K)
+			{
+				const float S0 = SegStart(P, K);
+				if (S0 + BPost + 0.1f <= GC.Te) { SLast = S0 + BPost; break; }
+			}
+			const float Ts2 = FMath::Max3(GC.Ts, GC.Te - CatchShapeWin, FMath::Min(SLast, GC.Te - CatchShapeWin)), Span2 = FMath::Max(0.05f, GC.Te - Ts2);
 			const EWebFlipShape Low = GC.bShapeRight ? EWebFlipShape::CatchLow : EWebFlipShape::CatchLowL;
 			const EWebFlipShape Bank = GC.bShapeRight ? EWebFlipShape::CatchBank : EWebFlipShape::CatchBankL;
 			const bool bBankMajor = GC.BankW > 0.5f;
@@ -622,6 +636,7 @@ namespace WebFlips
 				if (U <= 0.f) return;
 				EWebFlipShape FA, FB; float FW, FHA, FHB;
 				ShapeAt(P, Tf, FA, FB, FW, FHA, FHB);
+				if (T > GC.Te) { FA = A; FB = B; FW = Wt; FHA = HA; FHB = HB; } // an overdue catch hands back to the program's pose now
 				const EWebFlipShape From = FW < 0.5f ? FA : FB;
 				float FromH = FW < 0.5f ? FHA : FHB;
 				if (Wt < 0.5f && A == From) FromH = HA; else if (Wt >= 0.5f && B == From) FromH = HB; // the shape keeps breathing / marching
