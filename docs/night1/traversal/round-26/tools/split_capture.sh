@@ -22,7 +22,7 @@ run() {   # out quit extra...
   local O=$1 QQ=$2; shift 2
   rm -rf "$O"
   "$UE/Scripts/run_game.sh" "$O" -map "$MAP" -res 1920x1080 -quit "$QQ" -name "$NAME" -movie -timeout 2300 -exec "r.ScreenPercentage 100" \
-    -- -WHTravScript="$SCR/$NAME.json" -WHTravPreroll=$PRE -WHTravMask $SPECIAL ${EXTRA_ARGS:-} "$@" < /dev/null | tail -3
+    -- -WHTravScript="$SCR/$NAME.json" -WHTravPreroll=$PRE -WHTravMask $SPECIAL ${EXTRA_ARGS:-} -WHMovieAsync "$@" < /dev/null | tail -3
   rm -f "$O/$NAME.mp4"   # run_game's untrimmed preview movie
 }
 case $MODE in

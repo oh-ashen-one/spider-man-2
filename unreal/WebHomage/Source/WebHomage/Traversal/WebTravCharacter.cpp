@@ -14,6 +14,12 @@
 #include "Core/WebHomagePlayerController.h"
 #include "Characters/WHHeroSuit.h"
 #include "CoreGlobals.h"
+#include "ImageUtils.h"
+#include "Async/Async.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/FileManager.h"
+#include "Misc/CoreDelegates.h"
+#include <atomic>
 #include "WebHomage.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -410,6 +416,46 @@ bool AWebTravCharacter::SetupHeroMesh()
 	return true;
 }
 
+// round 26 (shared machine: 1080p movie frames at 0.25-0.9 /s; `sample` of the game thread: 77 % of it inside the synchronous PNG deflate of
+// -dumpmovie, 20 % in the read-back flush): -WHMovieAsync takes the movie frames through UGameViewportClient::OnScreenshotCaptured (the engine
+// then skips its own PNG write) and writes the SAME lossless PNG (zlib level 3, the engine default) on pool threads, in frame order by name
+// (Saved/Screenshots/<platform>/MovieFrameNNNNN.png, numbered from 0 like -dumpmovie). At most 24 frames in flight (the game thread waits);
+// EndPlay waits until every frame is on disk.
+namespace WHMovieAsync
+{
+	std::atomic<int32> InFlight{0};
+	int32 Next = 0;
+	FDelegateHandle Handle;
+	void OnShot(int32 W, int32 H, const TArray<FColor>& Bitmap)
+	{
+		if (!GIsDumpingMovie) return;
+		while (InFlight.load() >= 24) FPlatformProcess::Sleep(0.002f);
+		const FString Path = FPaths::ScreenShotDir() / FString::Printf(TEXT("MovieFrame%05d.png"), Next++);
+		TArray<FColor> Copy = Bitmap;
+		++InFlight;
+		Async(EAsyncExecution::ThreadPool, [Path, W, H, Copy = MoveTemp(Copy)]()
+		{
+			FImageView Img(Copy.GetData(), W, H);
+			if (!FImageUtils::SaveImageByExtension(*Path, Img, 0)) UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV movie async: write failed %s"), *Path);
+			--InFlight;
+		});
+	}
+	void Drain()
+	{
+		const double T0 = FPlatformTime::Seconds();
+		while (InFlight.load() > 0 && FPlatformTime::Seconds() - T0 < 300.0) FPlatformProcess::Sleep(0.01f);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie async: %d frames written, %d still in flight after %.1f s"), Next, InFlight.load(), FPlatformTime::Seconds() - T0);
+	}
+	void Arm()
+	{
+		if (Handle.IsValid()) return;
+		IFileManager::Get().MakeDirectory(*FPaths::ScreenShotDir(), true);
+		Handle = UGameViewportClient::OnScreenshotCaptured().AddStatic(&OnShot);
+		FCoreDelegates::OnEnginePreExit.AddStatic(&Drain);   // the quit path may skip EndPlay: every frame on disk before the process ends
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie async PNG writer armed (%s)"), *FPaths::ScreenShotDir());
+	}
+}
+
 void AWebTravCharacter::BeginPlay()
 {
 	Super::BeginPlay();
@@ -460,6 +506,7 @@ void AWebTravCharacter::BeginPlay()
 	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHMovieAsync")) && GIsDumpingMovie != 0) WHMovieAsync::Arm(); // round 26
 	{ // round 26: split movie capture
 		double MF = 0.0;
 		if (FParse::Value(FCommandLine::Get(), TEXT("-WHMovieFrom="), MF) && MF > 0.0 && GIsDumpingMovie != 0)
@@ -1785,6 +1832,7 @@ void AWebTravCharacter::RunDepthAudit(const FString& Path)
 void AWebTravCharacter::EndPlay(const EEndPlayReason::Type Reason)
 {
 	if (InputTestTicker.IsValid()) { FTSTicker::GetCoreTicker().RemoveTicker(InputTestTicker); InputTestTicker.Reset(); }
+	if (WHMovieAsync::Handle.IsValid()) { WHMovieAsync::Drain(); UGameViewportClient::OnScreenshotCaptured().Remove(WHMovieAsync::Handle); WHMovieAsync::Handle.Reset(); }
 	Super::EndPlay(Reason);
 }
 

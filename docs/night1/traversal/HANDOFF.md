@@ -2,41 +2,18 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 25 DONE, 2026-10-02 23:25, builder Claude Opus 5.5 high via Devin): build 4 = HEAD code.** Clips in `round-25/`
-(1920x1080 movies, internal 1920x1080 = `r.ScreenPercentage 100`, offscreen -game, fixed 1/60 s step, <= 15 MB): see
-`round-25/CLIPS.md` for the build each clip was captured on and its path/camera check (builds 2-4 change only the web strand drawing).
-11 clips captured this round (a, c, p1, w1, w2, r1, s1, m1, x1, x2, f1); f4 not re-captured (r24 file, build-4 probe
-bit-identical); no 4K stills. Measurements: `round-25/ROPE_CHECK.txt`, `R25_GATES.txt`, `GAPS.txt`, `R24_CHECK.txt`, `WALL.txt`,
-`OWNER_BUGS.txt`, `SIZES.txt`, `SHOTLIST.md`. Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r25/pack` (key `pack.key.json` outside; pairs
-`/Users/midir/sm2-n1/_scratch/critic-P3-r25/pairs.json`; rebuild with `round-25/tools/critic_make_pairs.sh`). The critic has NOT run.
-GPU worker of this round: `round-25/tools/hold4.sh <tag>` inside `gpu_slot.sh capture --label traversal --` (queue
-`_scratch/traversal/r25/queue_<tag>.txt`, -nullrhi probes `probes_<tag>.txt`, extra args `tune.env`, time guard `est_scale`); queue
-follow-up holds from your own shell (never inside a hold). At ~1-1.8 rendered frames/s (3 renders sharing the GPU) a 15.6 s clip takes ~19 min.
-Older handoffs: r24 `git show c3415073:docs/night1/traversal/HANDOFF.md`, r23 `7a96916`, r22 `9ad5222`, r01-18 `047a342`.
+**Status (round 26 IN PROGRESS, 2026-10-03 02:00, builder Claude Opus 5.5 high via Devin).** Round 25 handoff: `git show 4c3ebd92:docs/night1/traversal/HANDOFF.md`.
+Work dir `round-26/` (tools in `round-26/tools/`: `hold.sh` GPU worker, `split_capture.sh` A/B/merge, `split_est.py`, `build_suits_p3.py`, `analyze.sh`,
+`sheets.py`, `critic_make_pairs.sh`). Scratch `_scratch/traversal/r26/` (queues `queue_<tag>.txt`, probes, `after.sh <prev> <next>` chains holds).
 
-## 0. Round 25 -- what changed (critic r24 biggest gap: rope readable on every web_on frame; merge gate: c perch 8.6-10.5 s; hard line: pawn run cadence)
+## 0. Round 26 -- what changed (director target after the r25 critic: w1 vertical run a sprint, w1 camera 4-7 m / box p90 .30-.38, original suit everywhere, no regression)
 | # | Item | Fix (file) |
 |---|---|---|
-| 1 | rope look, build 1 (`1034b587`) | unlit translucent two-tone strand `/Game/Traversal/Materials/M_TravWeb` (`Scripts/traversal_web_material.py`, built by `build_traversal.py` or `build_traversal_web.py`): bright core / dark rim whose share follows 4 scene-colour taps ~5 px out, divided by the eye adaptation (no bloom), screen-space width clamp. Measured 18/65 web frames (the resolved 3-4 px line averaged back to the background level). |
-| 2 | build 2 (`ae40de7b`) | `RopeSolid` 1 = ONE tone over the whole strand (bright over a dark background, near-black over a bright one; switch `RopePivot` 0.20 exposed linear), translucency pass AFTER MOTION BLUR (before DOF the camera-speed blur smeared it into the background) with a manual scene-depth test in the material (`Occ` 25 cm; that pass has no engine depth test), width clamp `RopePxMin/Max` 2.8-3.4 px. 0-5 s probe 25/26; `RopePivot` 0.12 probe 25/27 with a worse whole-rope reading -> 0.20 kept. |
-| 3 | build 3 (`e0ae46c9`) | `RopeKeepProxy` 1: unused segments stay registered as visible at a 1e-4 scale (a segment switched visible on the attach frame rendered one frame late). |
-| 4 | build 4 (`54ddbbf5`) | `RopeWavePx` 1.5: the shot strand's travelling wave (30 cm world) bounded on screen (it put the attach-frame strand 5-15 px off its line). |
-| 5 | c perch gate (build 1) | perch recenter yaw hold + zip lens dolly cap (`WebTravCamera.cpp`); body paths of c / w1 / w2 unchanged, their cameras differ from r24 only from the zip / perch on. |
-| 6 | pawn run (build 1) | run anchor 9.3 m/s + weighted loco phase rate (`Anim/WebTravAnimInstance.cpp`), GroundBlendS 0.18 s kept; script `scripts/city/p1_pawn_run.json` (12 s full-stick run up the avenue). |
-| 7 | a script | `repressVz` -12 -> -8 (T2 attach gaps; -nullrhi probes: -12 3.48/3.50/3.35, -10 3.43/3.43/3.33, -9 3.40/3.38/3.32, -8 3.37/3.38/3.30 with T7 100/100; -6 / -5 bring every gap <= 3.32 / <= 3.27 but T7 drops to 99 / 98 of 100: the clip-end window loses its qualifying release). |
-| 8 | checkers | `rope_r25_check.py` (T5/T6 on the movie at 10 fps: hand -> frame edge along the telemetry projection, rope +-3 px re-centred, 6 px bands each side, 2-4 px measured width), `r25_checks.py` (perch gate G1, G1b), `cadence_r25.py` (head-top FFT), `round-25/tools/analyze.sh`. |
-
-**Measured on the final captures (`round-25/`):**
-| Test | r24 | r25 |
-|---|---|---|
-| T5/T6 rope on a_swing_chain web_on frames at 10 fps (contrast >= 25 to both 6 px bands at >= 80 % of points, median >= 25, width 2-4 px) | build 1 of r25: 18/65 | **65/65 PASS** (point-contrast median 125, p10 74; width median 3.5 px; whole-rope literal mean contrast >= 25 on 58/65); pale facades 0.9-1.1 s 3/3, dark glass 10.5-11.2 s 8/8 |
-| same on m1_mouse_swing / s1_high_swing | -- | 26/26 / 39/43 (s1 fails: 0.2 s first attach, 2.7 s a 0.15 s swing (measured width 0.5 px), 5.3-5.4 s measured width 4.5 px close to the lens) |
-| G1 c perch 8.6-10.5 s: in frame, cam 3.4-7 m, pitch change <= 15 deg / 0.3 s | FAIL (9 frames out of frame) | **PASS**: 113/113, 4.14-6.00 m, max 14.3 deg at 8.68 s, occl 0 |
-| G1b c 7.7-8.5 s (r24 gate) | PASS | PASS (unchanged) |
-| P1 pawn run head-top FFT 1.5-11 s (3.2-3.8 Hz) | -- | **3.549 Hz PASS** (mask top 3.549 Hz, 3.66 lows/s, speed 9.8 m/s, run clip on 571/571 rows) |
-| T7 / T3 / T1 / T2-window / T4 (a) | 100/100, 41.5 %, pass | 100/100, 41.8 %, 1.03-1.52 s, 2-3 per 8 s, 17/17-23/23 -> all PASS |
-| T2 attach-to-attach gaps (critic: <= 3.3 s) | 3.12/3.48/3.50/3.35 | 3.00/3.37/3.38/3.30 -> FAIL on 2 gaps |
-| vertical run lateral knee gap median (<= .25 m) | .49 | .49 (not addressed) |
+| 1 | vertical wall-run cadence | `VCad` 5.0 steps/s for the VERTICAL run (`Anim/WebTravAnimInstance.cpp`; side run keeps r21 5.6-6.6): r25 6.46 steps/s = a 0.31 s stride cycle, every 0.3 s sample hit the same phase (probe: 0/23 pairs differ -> 23/23) |
+| 2 | knees | `VKneeLat` .70 -> 0 (recovery knee drives up the run line, not sideways), `VKneeIn` -0.2 (stance knee pole leans in, vertical only): knee_gap_lat median .487 -> .199 m (probe) |
+| 3 | wall camera | `WallCamBelow/Out/Dist` 1.3/3.1/3.4 -> 1.6/4.2/4.5 m, `WallDistBlend` (the chase->wall blend keeps the blended distance), `WallMinDist` 4.1 m on the wall (entry dip 3.95 m) (`WebTravCamera.*`) |
+| 4 | suit hard line | `build_suits_p3.py` builds P2's 8 original suits (characters r14) in this worktree from P2's committed generators; `WebTravCharacter.cpp` puts DA_HeroSuits entry 0 (Tessera) on the SpiderSuit slot first, then MI_Hero_Suit, else the engine default material -- never the proxy texture |
+| 5 | capture | `-WHMovieFrom=<t>` (WebTravCharacter: -dumpmovie writes frames only from sequence time t) + `split_capture.sh`: the shared machine rendered 1080p movies at ~0.25-0.3 frames/s this round, a clip no longer fits one 2400 s hold |
 
 ## 1. Architecture map (Source/WebHomage/Traversal)
 
