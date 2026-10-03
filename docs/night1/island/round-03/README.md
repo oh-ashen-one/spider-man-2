@@ -2,12 +2,24 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Resumed from the interrupted r03 WIP (d9d6823; the builder died on an API 502 after the export). Branch `night1/island` = r02 + merged
-`Opus-5.5-Loop-Night-1` (aad3ac3). All captures: REAL game (`-game`, offscreen, `Scripts/run_game.sh`), map `/Game/Maps/Manhattan_WP`,
-every run inside `gpu_slot.sh capture --label island` (holds are `contaminated=true`: not perf runs, no frame times here). Internal
-resolution: no `r.ScreenPercentage` passed (CAPTURE.md auto: **1920x1080 output = 1399x787 internal, TSR**; 3840x2160 stills = 1920x1080
-internal). Movies: fixed 1/60 s step (`-benchmark -fps=60 -dumpmovie`), frame-capped 30 fps wall clock (run_game), 2-3 other pieces'
-engines on the GPU during every hold.
+Two sessions: the Opus session of 2026-10-02 (export, import, WP build, r1-r4 captures; died on a usage limit) and the Sonnet 5.5 xhigh (via Devin)
+session of 2026-10-03 (M2 route r5, two defects found and fixed, checks, critic pack). Branch `night1/island` = r02 + merged
+`Opus-5.5-Loop-Night-1` (aad3ac3; the later r26 traversal was not merged, see HANDOFF). All captures: REAL game (`-game`, offscreen,
+`Scripts/run_game.sh`), map `/Game/Maps/Manhattan_WP`, every run inside `gpu_slot.sh capture --label island` (holds are `contaminated=true`: not
+perf runs, no frame times here). Internal resolution: no `r.ScreenPercentage` passed (CAPTURE.md auto: **1920x1080 output = 1399x787 internal,
+TSR**; 3840x2160 stills = 1920x1080 internal). Movies: fixed 1/60 s step (`-benchmark -fps=60 -dumpmovie`), frame-capped wall clock (run_game),
+2-3 other pieces' engines on the GPU during every hold.
+
+## 2026-10-03: what the M2 route found (read this first)
+The director's target: one 30 s swing-held avenue route from y ~1010 over the new M2 tiles. All four earlier routes stayed inside the old M1 area
+(y -784..817). Starting that route exposed two island defects that no M1 route could show:
+
+| # | defect | evidence | fix |
+|---|---|---|---|
+| A | **the traversal only knows the cells loaded at BeginPlay**: `WebTravWorld::InitWorld` indexes `TActorIterator` once (with the pawn at the PlayerStart, y 178 m), the hero is teleported to the script spawn afterwards, streamed-in cells are never solids | `prims_dump.csv.gz`: 775 solids, facade tiles y -896..1404; 17 telemetry-only sims of 30 s swing chains from y 1010 on that map: last web anchor y <= 1,506 m in every one, then the hero falls to the street; a spawn at y 1700 never webs and lands in 1.67 s | content workaround: always-loaded World Partition streaming source actor `WH_StreamSrc_M2` at (250, 1560) (`Scripts/island_wp_sources.py`): 918 solids, facade / roofs / detail / fire-escape tiles 86 / 86 / 87 / 86 solid (`dump_check_r5.json`). The real fix is traversal's: `../REQUEST-traversal-r03.md` section 0 |
+| B | **street dressing (trees, parked cars, stopped traffic, furniture) existed only within ~1.2 km of the map origin**: all 9,763 per-tile HISM actors were spawned at (0,0,0); their saved World Partition bounds were empty (the instance tree builds asynchronously in the commandlet), so every one sat in the origin cell | M1 control (`street_m1`, y 330) full of cars / trees; M2 probes at y 1250 / 1690 / 1730 / 2000 on both avenues bare; ISM actor descriptors all at the origin | `build_city.py` `spawn_instances`: actors at their tile centre; applied to the built map by `build_manhattan.py --steps ism` (9,763 packages removed, 198,063 instances respawned, 201 s). After: `stills/street_m2_after_ism_fix_1920x1080.jpg` (y 1690: trees, parked cars, taxis, cones) |
+
+Both defects are also why the round-02 critic found "bare slab, no cars" past y 1010. Everything below is on the fixed map.
 
 ## What changed (all script-generated; no Content committed)
 | change | where |

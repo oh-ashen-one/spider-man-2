@@ -1,118 +1,68 @@
-# Island (piece A) — HANDOFF (round 03 IN PROGRESS, 2026-10-02 14:10)
+# Island (piece A) — HANDOFF (round 03 finished 2026-10-03; nothing of the island is running)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-## Round 03 (M2 whole island) — state when this was written
-- Merged `origin/Opus-5.5-Loop-Night-1` (aad3ac3). Export of the whole island done (ix -4..3, iz -14..13: 1,793 tile meshes, 23.58 M tris,
-  3.08 GB, 172 s) at `_scratch/island/export/island`; city_prep + city_extra done (885 s + 191 s; 173,097 WHBox boxes).
-- I5 island-wide (`round-03/coll_audit.json`): phantom 0.25 %, hollow 0.37 %, facadeLod inside region 0.
-- signs.png rows sanitised (CHASE BANK -> HARBOR SAVINGS etc., `IP_EXCLUSIONS.md`), verified on `_scratch/island/tex/signs.png`.
-- Every M1 GLB is byte-identical in the island export (1,032 / 1,032 md5), so the Unreal rebuild is incremental:
-  `docs/night1/island/build_r03.sh` (`SM2_ISLAND_MESH_ONLY=missing`, steps tex,mesh,kit,fsky,map,coll,wp + build_manhattan map;
-  log `_scratch/island/logs/build_r03.log`, commandlet log `city_pass1.log`; started 05:24). WHBox cubes = per-tile components
-  (`SM2_WHBOX_MODE=comp`, probe d: 40 k components in 14 s).
-- Build DONE 10:43 (rc 0): mesh 4,325 s (resumed part) + kit 5,360 s + map/fsky ~9 min + WP 1,600 s (1,642 meshes, 272 kit, 198,063 instances, 173,097 WHBox components in 973 s); build_manhattan map 34 s. Timings: round-03/build_timings_island.json. Content 1.5 GB.
-- 10:45: captures queued (holds_r03.sh); 11:25 driver swapped for docs/night1/island/holds_r03b.sh (3 h queue wait per hold; it adopted the hold-1 waiter pid 80362). Pid in _scratch/island/holds_r03.pid, log _scratch/island/logs/holds_r03.log.
-- 11:54 hold 1 done (warmup + r2, 959 s hold). Game log: `172553 building boxes indexed ... 173097 WHBox cubes de-collided`, 775 visible
-  solids (ctf3, QueryOnly), dump `round-03/dump_check.json` (55/55 facade/roofs/detail/fire-escape tiles solid; far-off rows overlapping
-  the region = far shore + Roosevelt Island land by name, as r02).
-- r2 (`round-03/r2_check.json`, `route_check_r2.json`, `road_band_r2.json`): no unanswered release, 68.8 % of 16 gaps <= 0.5 s, 0 webs
-  on nothing, BUT max gap 2.65 s (t 20.1) and 52 ground/land frames after t=1 s: at y ~700 (Madison Sq.) the chain swings west into the
-  block at x 192-216 (topOut / wall-run / fire-escape landing at 41 m), then climbs roofs to z 95 m: t26/t28 stills show roofs / a wall,
-  no road (road band t26 paint 7.4 % std 25.7, t28 0.7 % std 37.8: FAIL). Feet-overlap 20 frames (fire-escape decks during the wall-run,
-  traversal REQUEST §2). Traversal steering, not content; nothing in the route was changed to game the test.
-- Hold 2 (12:21-13:00): with 3-4 engines on the GPU r1 rendered at ~45 frames/min; to keep gpu_slot's max hold (SIGTERM, SIGKILL after
-  10 s) off a rendering engine, `_scratch/island/r1_guard.sh` stopped r1 with stop_ue.sh at t=29.1 s (1,751 frames kept, encoded by hand)
-  and r3 never started. r1 (`route_check_r1.json`): 0 fall / stuck / mid-air / wall-air, 0 feet overlap, 0 webs on nothing, 1,142 m.
-  `capture_round.sh` now skips a route without 1,500 s of hold left and passes run_game `-timeout` = hold left - 150 s.
-- Hold 3 (13:24-14:04): r3 complete (engine quit normally at 13:58:30); gpu_slot's max hold then stopped the frame MOVE to the exFAT scratch
-  (> 5 min for 1,824 PNGs); frames moved + encoded by hand. r3 = r02 (same topOut loop under the fire-escape deck, 6.43 s; 7 kit-overlap
-  frames; 0 fall / stuck / mid-air). `capture_round.sh` run timeout margin now 450 s.
-- 14:36 hold "r4 a1" running (driver `holds_r03c.sh`); a1 will likely be skipped by the budget guard -> queue
-  `ISLAND_IN_LOCK=1 gpu_slot.sh capture --label island -- docs/night1/island/capture_round.sh docs/night1/island/round-03 a1` afterwards.
-- Then: route checks r1/r3/r4 (`python3 tools/export/island_route_check.py _scratch/island/export/island <csv> --out ...`),
-  `python3 docs/night1/island/critic_prep_r03.py` + abpack, round-03/README.md.
+Branch `night1/island` (pushed), worktree `/Users/midir/sm2-n1/island`, scratch `/Users/midir/sm2-n1/_scratch/island` (symlink to the exFAT SD card:
+exports / GLBs / logs / frames only, never Content or DDC; exFAT writes `._*` files next to every file, skip them in globs).
+Owns `tools/export/*`, `Scripts/build_city.py`, `Scripts/build_manhattan.py`, `Scripts/island_wp_sources.py`, `Shaders/City/`, `/Game/City`,
+`/Game/Tests/City`, `/Game/Maps/Manhattan*`, `docs/night1/island/`. Traversal C++ is P3's: `REQUEST-traversal-r03.md` (§0 is the important one).
+Last merge of `Opus-5.5-Loop-Night-1`: aad3ac3 (r26 traversal NOT merged: the C++ stayed the r03 build's; merging would need a C++ rebuild and
+every r1-r5 capture repeated; the sims below show the island content is unaffected by the traversal changes only if re-run on the merged build).
 
-# (round 02 handoff, kept for reference)
+## Read first: `round-03/README.md` (pass lines, numbers, honest failures), `REQUEST-traversal-r03.md`, `IP_EXCLUSIONS.md`
 
-## Round 02 result — read `round-02/README.md`
-Target: collision that matches what is drawn under traversal r20 (merged at 70e914a). Done + measured:
-- Cooked triangle collision + QueryOnly on facade / roofs (parapets, copings) / detail (browser fire escapes) / landmarks / plazas /
-  bridges / seawalls / facadeLod; fire-escape kit tiles `fireescape__t*` as solids; sheds / subway solid; other ISM props A/B-ready.
-- `split_giants.py`: bridges / seawalls no longer de-collided as r20 "giants" (93 -> 72 far-off components, 490 -> 642 solids).
-- Dump: every streamed facade / roofs / detail / fire-escape tile solid, ctf 3, QueryOnly; WHBox cubes index only.
-- r3 take 2: 0 % ground, 21 anchors, 0 webs on nothing; FAILS "re-web <= 0.5 s" (6.4 s traversal topOut loop under a fire-escape deck).
-- r4: roof run ends in a vault over the parapet (r01: ran inside it), drop lands on the street without passing through anything;
-  wall-run still passes up through kit decks (traversal: horizontal-only push-out).
-- r1: 0 overlaps, 0 fall / stuck / mid-air / wall-air. I5 unchanged 0.26 / 0.22 %.
+## What is true now (verified 2026-10-03)
+- **Whole island at full detail (M2)**: 1,793 tile meshes, 23.58 M tris; `/Game/Maps/Manhattan_WP` (World Partition, 256 m cells, 1.2 km range),
+  173,097 WHBox cubes (per-tile components), 198,063 instances. I5 audit re-run today: phantom 0.25 %, hollow 0.37 %, facadeLod 0 (unchanged).
+- **Two defects found and fixed this round (both invisible while every route stayed inside the old M1 area):**
+  1. *Street dressing (trees, parked cars, traffic, furniture) was missing beyond ~1.2 km of the map origin.* All 9,763 per-tile HISM actors were
+     spawned at (0, 0, 0); their saved World Partition bounds were empty, so every one sat in the cell at the origin and streamed with it. Fixed in
+     `build_city.py` (`spawn_instances`, actor at its tile centre) and applied to the existing map by `build_manhattan.py --steps ism`
+     (deletes the old per-tile ISM packages, respawns 198,063 instances in 9,763 actors: 201 s commandlet). Before / after: round-03 stills `r5_*` vs the
+     `street_m2` probes in the README.
+  2. *The traversal only knows the cells loaded at BeginPlay* (`WebTravWorld::InitWorld`, one `TActorIterator` pass; `AllowedComps`). Streamed-in
+     cells are not solids: no anchors, walls or roofs. The default PlayerStart (y 178 m) loads facade tiles y -1024..1536; 17 telemetry-only runs from y 1010
+     never web beyond y 1,506 m. Workaround in content: `Scripts/island_wp_sources.py` adds always-loaded streaming source actors (`WH_StreamSrc_M2` at
+     (250, 1560)); the build_manhattan map step re-creates them. The real fix is traversal's (`REQUEST-traversal-r03.md` §0). A second PlayerStart is NOT
+     an option (AGameModeBase picks one at random: I tried it for 10 minutes on 2026-10-03; the map has one PlayerStart again).
+- Route sims and renders agree to the frame: `sim_route.sh` (no renderer, `-nullrhi`, fixed 1/60 s step) reproduces the rendered telemetry with
+  0.0000 m deviation (r2 calibration, r5 probe, r1-r4 on the final map). Tune routes with sims (2.5 min), judge frames with `probe_route.sh` (4 min).
 
-## Captures: all done (3 holds, 04:25)
-r1, r2, r3, r4 movies + telemetry, a1 4K stills, r1 `-WHTravIsmSolid=1` A/B + its prims dump; critic pack built (9 pairs):
-`/Users/midir/sm2-n1/_scratch/critic-A-r02/pack` (key `pack.key.json`, inputs `pairs.json`, `docs/night1/island/critic_prep_r02.py`).
-Also measured after the handoff draft: r2 0 overlaps / 0 fall-stuck-mid-air-wall-air, but it now swings OUT of M1 after ~19 s (webs on
-facadeLod walls, verified on the triangles); A/B: stuck 0 / 0, trunk overlap 0 / 0, `=1` puts one web on a street-tree branch; final
-dump: 2 far-off rows with centre in M1 (`SM_farLand_roos`, `SM_hinterland`: scenery by name / horizon ISM), no M1 building, bridge or
-seawall de-collided. Nothing of the island is running (driver, rebuild and engines all exited).
+## Files you need
+| what | where |
+|---|---|
+| route scripts (r1-r4 as round 02, r5 = the M2 avenue route) | `scripts/` |
+| capture driver (one lock per run, or `ISLAND_IN_LOCK=1` inside a hold) | `capture_round.sh <round> r5 a1 ...` |
+| telemetry-only route sim (no renderer) | `sim_route.sh <out> <route.json>` |
+| rendered still probe at the road-band seconds + road band | `probe_route.sh <out> <route.json> [12,20,26,28]` |
+| M2 route pass lines (swing, ground, drawn, road band, overlap) | `tools/export/island_m2_check.py` |
+| IP text gate over the round's stills | `ip_gate_r03.py` |
+| critic pack inputs | `critic_prep_r03.py` then `/Users/midir/spider-man-2-astra6/tools/night1/abpack.py <pack> <pairs.json> .` |
+| search history of the r5 route (every sim, with the map state it ran on) | `round-03/r5_search.json` |
 
-## Next (round 3)
-0. r2 route: start further north (or wait for M2) so the 30 s chain stays inside the detailed region; a sidewalk route for the
-   trunk A/B. Roosevelt Island land (`farLand_roos`) is far-by-name: it is not a floor (hero would sink to the water plane).
-1. Traversal asks (REQUEST-traversal-r02.md): ISM cube per-instance index (then make `SM2_WHBOX_MODE=ism` default: WP build 20 s vs
-   ~35 min), topOut loop under decks, wall-run through decks, IsmSolid default from the A/B.
-2. M2 whole island (export ~22 M tris; mesh import is the long pole). Run `split_giants.py` in city_prep (wired) — it is idempotent.
-3. Remaining far-off rows overlapping M1 are `SM_far*` scenery by name (far shore from x 882 m, flat far land incl. Roosevelt Island).
+## Rebuild
+Everything is script-built (no Content committed). From scratch: `python3 unreal/WebHomage/Scripts/build_manhattan.py` (hours; see `round-03/README.md` timings).
+Partial: `--steps ism` (per-tile props, 201 s + 5 s), `--steps map` (maps + WP player start + stream sources, 7 min incl. distance fields),
+`python3 ... island_wp_sources.py` as a commandlet (1 min; `SM2_ISLAND_WP_SOURCES="M2:250:1560,N2:250:-2800"`). Wrap each in
+`gpu_slot.sh capture --label island --`; a hold is 2,400 s max; `build_manhattan` itself waits while 3+ UnrealEditor processes run.
 
-## Gotchas learned this round
-- Never edit a shell script in place while a hold is executing it (bash reads by offset): write a new file and `mv` it over (new inode).
-- `capture_round.sh` waits while `_scratch/island/BUILDING` exists (`rebuild_r02b.sh` holds it); a rebuild must not overlap a running game.
-- `unreal/WebHomage/Scripts/run_game.sh` was edited in this worktree by another session (22:41, frame caps / perf only under the perf
-  lock). Not mine: left uncommitted, as found.
-- Movie routes take ~12-18 min each in a hold when the other slot renders; a 2-route hold can hit the 2,400 s max hold.
+## Next (round 4)
+0. Traversal: index streamed cells (REQUEST §0). Until then add a `WH_StreamSrc_*` per area that is swung in (north: y -2800; south end: y 3000),
+   or accept that the swingable area is the union of the sources' 1.2 km discs. Check start-up time / memory before adding many.
+1. Street dressing check on every tile row (the ISM fix is verified on rows 1-6 only: `street_m2` probe; look at a few other rows with `probe_route.sh`).
+2. Traversal asks still open: topOut loop under decks (r3, 6.43 s), wall-run through decks (r4, 31 overlap frames), r2 steers into the block at
+   x 192-216 / y 729 (2.65 s gap, 52 ground frames; unchanged), camera in foliage.
+3. IP: the signage atlas shows "THE MARQUIS THEATRE" (street marquee sign); CHOCO LOCO / TOKKA / IRON GUARDIAN still unreviewed (`IP_EXCLUSIONS.md`).
+4. Perf of the whole-island map is unmeasured (exclusive perf runs need an attended Mac).
 
-# (round 01 handoff, kept for reference)
+## Gotchas learned
+- `?Portal=<tag>` is not a thing for this: UE's portal is the URL `#fragment`, and `ChoosePlayerStart` is random among unoccupied PlayerStarts.
+- Python in the running game (`-ExecCmds="py script"`) with a null world SIGSEGVs the engine (my diagnostic, crash 1 of 2 allowed; engine exited cleanly after
+  the stack dump). Do not do that again; use commandlets or the traversal dump (`-WHTravDumpPrims`).
+- I ran two engines of mine at once for ~2 minutes on 2026-10-03 12:26 (a still and a diagnostic launched from two shells); the health monitor paused
+  every launch 12:28-12:39 (WindowServer 95 %). One engine at a time: `pgrep -fl "MacOS/UnrealEditor" | grep sm2-n1/island` before every launch.
+- Never edit a shell script in place while a hold is executing it (bash reads by offset): write a new file and `mv` it over.
+- `capture_round.sh` waits while `_scratch/island/BUILDING` exists (`build_r03.sh` holds it); a rebuild must not overlap a running game.
+- run_game.sh in this worktree was edited by another session (frame caps / perf only under the perf lock): not mine, left as found.
 
-Branch `night1/island` (pushed), worktree `/Users/midir/sm2-n1/island`, scratch `/Users/midir/sm2-n1/_scratch/island`
-(a symlink to the exFAT SD card `/Volumes/memory/sm2-n1/island`: exports / GLBs / logs / frames only, never Content or DDC; exFAT writes `._*`
-AppleDouble files next to every file, skip them in globs). Dev port 5208 (Vite, only for exports).
-Owns `tools/export/*`, `Scripts/build_city.py`, `Scripts/build_manhattan.py`, `Shaders/City/`, `/Game/City`, `/Game/Tests/City`,
-`/Game/Maps/Manhattan*`, `docs/night1/island/`.
-
-## Round 01 result (read `round-01/README.md` first; numbers in `round-01/MEASURE.md`)
-- Captures from the real game on `/Game/Maps/Manhattan_WP`: a1 north / south 4K stills; r1, r2, r4 30 s 1080p60 videos + telemetry + route
-  checks; r3 take 1 archived in `round-01/r3_take1/` (the first rope swung the hero back west, it landed at 5.3 s and ran the sidewalk).
-- Every route: 0 fall-through / stuck / mid-air / wall-air / webs-on-nothing. I5 audit hollow 0.22 %, phantom 0.26 % (was 5.81 % hollow:
-  rooftop equipment penthouses had no box; `island_boxes.py` rule 4). I2 (>= 1.2 km to facadeLod) cannot pass in M1 (region 2.3 km N-S).
-- Blind critic pack (provisional, r3 pair from take 1): `/Users/midir/sm2-n1/_scratch/critic-A-r01/pack` (key `pack.key.json` beside it),
-  inputs `pairs.json`, built by `prep_pairs.py` (copy: `docs/night1/island/critic_prep_r01.py`) then
-  `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py <pack> <pairs.json>`. Rebuild it after r3 take 2.
-
-## Not done (blocked by the GPU auto-pause) — do these first
-Hold B never ran: queued 20:41, the health monitor auto-PAUSED every launch at 20:43 (WindowServer starved under another piece's capture),
-`gpu_slot` wait-timed-out at 21:53 (exit 75). Nothing of the island is running. When `/Users/midir/sm2-n1/_scratch/gpu/PAUSED` is gone:
-`/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label island -- /Users/midir/sm2-n1/island/docs/night1/island/holdB_r01.sh`
-(~25 min hold) = (1) `verify_map.sh /Game/Maps/Manhattan_WP_ism _scratch/island/verify_ism r1 r4` (telemetry-only ISM collision check, log
-`_scratch/island/logs/verify_ism.log`) and (2) r3 take 2 movie (route now starts x -300 / 40 m / 26 m/s; log `capture_r01e.log`). Then:
-route-check r3 (`python3 tools/export/island_route_check.py /Users/midir/sm2-n1/_scratch/island/export/midtown
-docs/night1/island/round-01/r3_crosstown_east_telemetry.csv --out docs/night1/island/round-01/route_check_r3.json`), README table, re-run
-`/Users/midir/sm2-n1/_scratch/critic-A-r01/prep_pairs.py` + abpack, commit. ISM verdict: `verify_ism/route_check.json` must show 0 events
-and the game log `WebTravWorld:` line ~56.5 k *instance* boxes; then make `ism` the default in `spawn_boxes` and rebuild `Manhattan_WP`
-(`SM2_WHBOX_MODE=ism SM2_ISLAND_CITY_STEPS=wp python3 unreal/WebHomage/Scripts/build_manhattan.py --steps city,map`, ~2 min).
-
-## Rebuild from scratch
-`python3 unreal/WebHomage/Scripts/build_manhattan.py` (all steps; editor closed; ~94 min with actor boxes, ~60 min expected with
-`SM2_WHBOX_MODE=ism`; needs 150 GB free internal). Partial: `--steps a,b`, `SM2_ISLAND_CITY_STEPS=<build_city steps>` (e.g. `wp`),
-`SM2_ISLAND_WP_MAP=/Game/Maps/<test>` builds a test WP map beside the real one. After editing `island_boxes.py`:
-`python3 tools/export/island_boxes.py <export>` then the `wp` step. Captures: `docs/night1/island/capture_round.sh <round dir> r1 r2 r3 r4 a1`
-(each run its own lock cycle) or `ISLAND_IN_LOCK=1 gpu_slot.sh capture --label island -- capture_round.sh <round> r3 r4` (one hold, <= 2
-movie routes inside the 2,400 s max hold).
-
-## Next (round 2)
-1. ISM boxes default (above), drop the classic `City_Midtown_Collision` pass from the WP flow.
-2. M2 whole island: export (spike: 22.1 M tris, 2.85 GB, ~5 min), import split per district across 2 `-nullrhi` commandlets (mesh import is
-   now the long pole: 2,470 s for M1, ~6,200 s island). I2 can only pass once the island is detailed.
-3. Route scripts: r2 drifts east into the facades (wall-runs at x 267 / 289 / 318 from the x 250 avenue) — traversal steering, reported, not
-   ours to change. The traversal's `AddBox` skips boxes < 1.0 m tall (282 of 56,816).
-
-## Not mine, left as found
-`unreal/WebHomage/Scripts/run_game.sh` was edited in this worktree at 18:12 by another session (non-perf captures frame-capped to 30 / 45 fps
-after a WindowServer starvation probe). It is uncommitted; I neither reverted nor committed it. Movie frames are unaffected (fixed 1/60 s step).
+# (older handoffs: `git log -p docs/night1/island/HANDOFF.md`; round 01 / 02 / 03 READMEs hold their results)
