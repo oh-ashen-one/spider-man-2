@@ -6,12 +6,16 @@ Branch `night1/island` (pushed), worktree `/Users/midir/sm2-n1/island`, scratch 
 exports / GLBs / logs / frames only, never Content or DDC; exFAT writes `._*` files next to every file, skip them in globs).
 Owns `tools/export/*`, `Scripts/build_city.py`, `Scripts/build_manhattan.py`, `Scripts/island_wp_sources.py`, `Shaders/City/`, `/Game/City`,
 `/Game/Tests/City`, `/Game/Maps/Manhattan*`, `docs/night1/island/`. Traversal C++ is P3's: `REQUEST-traversal-r03.md` (§0 is the important one).
-Last merge of `Opus-5.5-Loop-Night-1`: aad3ac3 (r26 traversal NOT merged: the C++ stayed the r03 build's; merging would need a C++ rebuild and
-every r1-r5 capture repeated; the sims below show the island content is unaffected by the traversal changes only if re-run on the merged build).
+Last merge of `Opus-5.5-Loop-Night-1`: aad3ac3. The later commits (r26 traversal C++, original default suit) are NOT merged: the island content does not depend on
+them, a merge changes the traversal C++ (`build_editor.sh` rebuild) and would invalidate every r1-r5 capture. Do it deliberately: merge, rebuild C++, run `sim_route.sh`
+on r1-r5 and compare with `round-03/*_telemetry.csv` (identical today: 0.0000 m), re-capture what differs.
 
 ## Read first: `round-03/README.md` (pass lines, numbers, honest failures), `REQUEST-traversal-r03.md`, `IP_EXCLUSIONS.md`
 
 ## What is true now (verified 2026-10-03)
+- **r5 (30 s swing held from y 1010 over the M2 tiles, `round-03/README.md`)**: every swing / ground / drawn / overlap pass line passes (max re-web gap 0.30 s, 100 % of gaps <= 0.5 s,
+  0 ground frames, 0 webs on nothing, 0 fall / stuck / mid-air / wall-air, 0 overlap frames, 1,482 m); road band 3 of 4 seconds (t12 2.19 %, t20 4.27 %, t26 1.64 %, **t28 0.94 %** lane paint: miss).
+  r2 is unchanged (2.65 s gap, 52 ground frames). I5 0.25 % / 0.37 %.
 - **Whole island at full detail (M2)**: 1,793 tile meshes, 23.58 M tris; `/Game/Maps/Manhattan_WP` (World Partition, 256 m cells, 1.2 km range),
   173,097 WHBox cubes (per-tile components), 198,063 instances. I5 audit re-run today: phantom 0.25 %, hollow 0.37 %, facadeLod 0 (unchanged).
 - **Two defects found and fixed this round (both invisible while every route stayed inside the old M1 area):**

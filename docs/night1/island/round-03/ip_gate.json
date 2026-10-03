@@ -37,7 +37,186 @@
   "WALGREENS",
   "CVS"
  ],
- "images": 0,
- "hits_total": 0,
- "results": []
+ "images": 22,
+ "hits_total": 1,
+ "results": [
+  {
+   "file": "a1_high_north_00_t000.6_3840x2160.jpg",
+   "size": [
+    3840,
+    2160
+   ],
+   "hits": []
+  },
+  {
+   "file": "a1_high_south_00_t000.6_3840x2160.jpg",
+   "size": [
+    3840,
+    2160
+   ],
+   "hits": []
+  },
+  {
+   "file": "r1_north_avenue_t12s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r1_north_avenue_t20s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r1_north_avenue_t26s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r1_north_avenue_t28s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r1_north_avenue_t5s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r2_south_avenue_t12s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r2_south_avenue_t20s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r2_south_avenue_t26s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r2_south_avenue_t28s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r2_south_avenue_t5s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r3_crosstown_east_t12s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r3_crosstown_east_t20s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r3_crosstown_east_t26s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r3_crosstown_east_t28s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r3_crosstown_east_t5s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r4_wallrun_roofs_t12s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": [
+    "CVS"
+   ]
+  },
+  {
+   "file": "r4_wallrun_roofs_t20s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r4_wallrun_roofs_t26s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r4_wallrun_roofs_t28s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r4_wallrun_roofs_t5s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  }
+ ]
 }

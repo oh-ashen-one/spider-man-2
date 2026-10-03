@@ -61,7 +61,8 @@ route() {  # name script
   rm -rf "$PL"
   echo "$NAME.mp4 2-pass ${KB}k $(stat -f %z "$ROUND/$NAME.mp4") bytes, $(ls "$TMP/$NAME/${NAME}_frames" | wc -l | tr -d ' ') frames"
   # contact frames for the critic pack (1080p jpg at 5 / 12 / 20 / 26 / 28 s; r03: 26 + 28 s are the r2 road-band test frames)
-  for s in 5 12 20 26 28; do f=$(printf "%05d" $((s * 60))); [ -f "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" ] && \
+  # (island r03) movie frame k shows game time (k - 1) / 60 s (probe stills at -shots 12 / 20 / 26 match frames 721 / 1201 / 1561 to 0.2-0.4 grey levels): t = s -> frame 60 s + 1
+  for s in 5 12 20 26 28; do f=$(printf "%05d" $((s * 60 + 1))); [ -f "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" ] && \
     ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_frames/MovieFrame$f.png" -q:v 3 "$ROUND/stills/${NAME}_t${s}s_1920x1080.jpg"; done
   rm -rf "$TMP/$NAME/${NAME}_frames"
 }

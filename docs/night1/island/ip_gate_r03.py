@@ -10,7 +10,7 @@ from PIL import Image, ImageOps
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
 DENY = json.load(open(os.path.join(ROOT, 'docs', 'night1', 'city', 'spec_regions.json')))['ip_denylist']
-DENY += ['CHASE', 'DUANE', 'READE', 'SUBWAY EATS', 'STARBUCKS', 'MCDONALD', 'WALGREENS', 'CVS']   # island additions (signs.png rows, real chains)
+DENY += ['CHASE BANK', 'DUANE READE', 'SUBWAY EATS', 'STARBUCKS', 'MCDONALD', 'WALGREENS', 'CVS PHARMACY']   # island additions (signs.png rows, real chains; 3-letter tokens like CVS hit OCR noise on roof grime: r4 t12)
 tmp = tempfile.mkdtemp()
 
 
