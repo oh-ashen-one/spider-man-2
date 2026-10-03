@@ -140,11 +140,21 @@ def _band(Y, edge_x, win=60, thr=180.0):
     return W, M
 
 
+# r05b: the seawall's pile line in the 1200 x 910 crop is STATIC geometry (same camera in every build), but the per-frame fit of _wall_edge moves with
+# the water colour (round 03: -0.039 x + 460.6, round 04: -0.039 x + 448.3, r05 builds: -0.054 x + 464.8 ... -0.118 x + 480.2, i.e. up to 55 px off at the
+# bottom of the crop, into the water). The gate uses ONE fixed line, the median of the per-frame fits over six frames (checked by overlay on the
+# round-05 final crop: it runs along the pile faces); the per-frame fit is still reported (rows_ge12px_pct_perframe_fit).
+FOAM_EDGE_REF = (-0.0541, 464.8)
+
+
 def foam(path, dolly_path=None):
     im = cv2.imread(path).astype(np.float32)
-    A, Y = _wall_edge(im); ys = np.arange(Y.shape[0])
+    Af, Y = _wall_edge(im); ys = np.arange(Y.shape[0])
+    A = np.array(FOAM_EDGE_REF)
     W, M = _band(Y, np.polyval(A, ys))
-    out = dict(file=os.path.basename(path), edge_line=[round(float(A[0]), 4), round(float(A[1]), 1)], band_px_mean=round(float(W.mean()), 1),
+    Wf, _ = _band(Y, np.polyval(Af, ys))
+    out = dict(file=os.path.basename(path), edge_line=[round(float(A[0]), 4), round(float(A[1]), 1)], edge_line_perframe_fit=[round(float(Af[0]), 4), round(float(Af[1]), 1)],
+               rows_ge12px_pct_perframe_fit=round(float((Wf >= 12).mean() * 100), 1), band_px_mean=round(float(W.mean()), 1),
                band_px_median=float(np.median(W)), rows_ge12px_pct=round(float((W >= 12).mean() * 100), 1),
                band_Y_mean=round(float(Y[M].mean()), 1) if M.any() else None)
     if dolly_path:

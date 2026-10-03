@@ -69,6 +69,8 @@ P.append(pair_same('prev-vs-this-harbour', R5 + '/harbour_high_4k.jpg', R3 + '/h
 P.append(pair_same('prev-vs-this-river-sun', R5 + '/river_sun_4k.jpg', R3 + '/river_sun_4k.jpg', 'two builds of the same low view into the sun'))
 P.append(pair_same('prev-vs-this-perch', R5 + '/S4_golden_4k.jpg', R3 + '/S4_golden_4k.jpg', 'two builds of the same perch view over the river'))
 P.append(pair_video('prev-vs-this-dolly', R5 + '/river_low_dolly.mp4', R3 + '/river_low_dolly.mp4', 'two builds of the same 10 s river dolly along the seawall'))
+if os.path.exists(R5 + '/river_sun_dolly.mp4') and os.path.exists(R3 + '/river_sun_dolly.mp4'):
+    P.append(pair_video('prev-vs-this-sun-dolly', R5 + '/river_sun_dolly.mp4', R3 + '/river_sun_dolly.mp4', 'two builds of the same 10 s dolly toward the low sun'))
 json.dump(P, open(os.path.join(CR, 'pairs.json'), 'w'), indent=1)
 pack = os.path.join(CR, 'pack')
 if os.path.isdir(pack):

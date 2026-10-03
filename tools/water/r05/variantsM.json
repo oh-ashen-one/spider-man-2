@@ -1,0 +1,4 @@
+{
+ "C50": {"CovMax": 0.5, "_views": ["river_low", "river_low_p3", "river_low_p7"]},
+ "C62": {"CovMax": 0.62, "_views": ["river_low", "river_low_p3", "river_low_p7"]}
+}

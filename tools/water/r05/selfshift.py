@@ -5,7 +5,7 @@ import sys, os, numpy as np, cv2
 sys.path.insert(0, '/Users/midir/sm2-n1/water/tools/water')
 import water_spec as ws
 REF = os.environ.get('FOAM_REF', '/Users/midir/sm2-n1/_scratch/water/r05g/crop_foam.jpg')
-A, _ = ws._wall_edge(cv2.imread(REF).astype(np.float32))
+A = np.array(ws.FOAM_EDGE_REF)
 def measure(path, k=16):
     fr = cv2.imread(path); s = fr.shape[1] / 3840.0; y0 = int(ws.FOAMCROP[1] * s)
     Y = ws.luma(fr.astype(np.float32))[y0:fr.shape[0]]

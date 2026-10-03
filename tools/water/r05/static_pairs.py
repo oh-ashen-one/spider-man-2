@@ -7,7 +7,7 @@ import water_spec as ws
 sys.path.insert(0, '/Users/midir/sm2-n1/water/tools/water/r05')
 import selfshift
 REF = os.environ.get('FOAM_REF', '/Users/midir/sm2-n1/_scratch/water/r05g/crop_foam.jpg')
-A, _ = ws._wall_edge(cv2.imread(REF).astype(np.float32))
+A = np.array(ws.FOAM_EDGE_REF)
 for d in sys.argv[1:]:
     fs = sorted(glob.glob(os.path.join(d, '*_t0*.png'))); prev = None; xs = []; area = []; rows = []
     for f in fs:

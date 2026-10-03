@@ -3,7 +3,7 @@ usage: dolly_pairs.py <crop_river_low_4k_seawall_foam.jpg> <river_low_dolly.mp4>
 import sys, numpy as np, cv2
 sys.path.insert(0, '/Users/midir/sm2-n1/water/tools/water')
 import water_spec as ws
-im = cv2.imread(sys.argv[1]).astype(np.float32); A, Y = ws._wall_edge(im)
+im = cv2.imread(sys.argv[1]).astype(np.float32); A = np.array(ws.FOAM_EDGE_REF)
 cap = cv2.VideoCapture(sys.argv[2]); fps = cap.get(cv2.CAP_PROP_FPS) or 60; step = int(round(fps / 4)); n = 0; prev = None; out = []
 while True:
     ok, fr = cap.read()
