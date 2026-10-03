@@ -194,6 +194,7 @@ def rect_minus(r, h):
     out = [(u0, a0, n0, n1), (a1, u1, n0, n1), (a0, a1, n0, b0), (a0, a1, b1, n1)]
     return [q for q in out if q[1] - q[0] > 0.02 and q[3] - q[2] > 0.02]
 
+FE_SOLID = os.environ.get('SM2_FE_SOLID', '1') == '1'   # (island r04) 0 = diagnostic: the whole fire escape visual-only (in the street-kit tile)
 FE_WELL_LEN, FE_WELL_N = 1.5, (0.25, 0.95)   # (island r04) stair well: the arriving flight's last 1.5 m (head room ~2 m under the deck), over the flight's width
 FE_LADDER_HOLE = 0.30                          # (island r04) drop-ladder hatch: +-0.30 m along the wall around the ladder, n 0.10 .. 0.60
 
@@ -342,7 +343,7 @@ def main():
                     kp = min(nb - 1, max(1, int(round((uc + 1.3) / bw)))); uc = kp * bw - 1.3
                 ytop = min(f['h'] - 1.0, 48.0 if prewar else 30.0)
                 fe_col = FE_COLS[int(hrand(seed, 40) * len(FE_COLS)) % len(FE_COLS)] if hrand(seed, 41) < 0.6 else FE_COLS[0]
-                n = fire_escape(fmb, F, uc, 3.3, gH + 0.7, ytop, fh, seed, fe_col, vis=mb, stats=stats)   # (island r04) platforms solid, the rest visual-only
+                n = fire_escape(fmb if FE_SOLID else mb, F, uc, 3.3, gH + 0.7, ytop, fh, seed, fe_col, vis=mb, stats=stats)   # (island r04) platforms solid, the rest visual-only
                 if n: elements.append(['fire_escape', *[round(float(v), 2) for v in F.p(uc, gH + 0.7 + fh * n / 2.0, 0.6)]]); stats['fire_escapes'] += 1; stats['fire_escape_faces'].append([round(F.O[0] + F.T[0] * uc, 1), round(F.O[1] + F.T[1] * uc, 1), kind, n])
     out = EXP + 'mesh/streetkit/'; os.makedirs(out, exist_ok=True)
     for f in os.listdir(out):   # (island r02) skip exFAT AppleDouble '._*' files (they vanish with their sibling)
