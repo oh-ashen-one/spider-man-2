@@ -77,3 +77,13 @@ under-island 27.6 Y; harbour_sun_high glints 1.72 %, p1 52.3; S4 C14 15.4; river
 the high-passed dolly crop. These files are kept in scratch (`_scratch/water/r06g/attempt1/`), not in this folder. A single-still version
 of the dolly instrument (`tools/water/r06/still_ac.py`) reads 0.099-0.115 on the OpenRgh 0.5 stills and 0.046-0.058 when the open-water
 chop and second realization are shaded (R3B0C, CB): hold H screens OpenRgh 0.4 / 0.45 / 0.5 with OpenChop 1, OpenB 1 (shots at 8-16 s).
+
+| hold H (OpenChop 1, OpenB 1; 1080p) | river_low near mean / hp | still ac80 (mean of 4 shots, 8-16 s) | river_sun flanks / path400 ratio / sparkle native |
+|---|---|---|---|
+| OpenRgh 0.5 | 72.3 / 12.2 | 0.099 | 73.7 / 2.64 / 32.7 % |
+| OpenRgh 0.45 | 75.3 / 12.7 | 0.084 | 77.1 / 2.63 / 36.1 % |
+| OpenRgh 0.4 | 76.1 / 12.6 | 0.073 | 81.4 / 2.46 / 32.1 % |
+
+Shading the open-water chop / second realization does not lower the autocorrelation at OpenRgh 0.5; the roughness itself does (a uniform
+rough lobe smears the horizon reflection into row-coherent bands). Hold I tries patchy roughness (RghVar: the floor x 1 +- RghVar x 4-30 m
+noise) on OpenRgh 0.45.
