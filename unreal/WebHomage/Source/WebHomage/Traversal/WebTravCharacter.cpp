@@ -12,6 +12,14 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "TextureResource.h"
 #include "Core/WebHomagePlayerController.h"
+#include "Characters/WHHeroSuit.h"
+#include "CoreGlobals.h"
+#include "ImageUtils.h"
+#include "Async/Async.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/FileManager.h"
+#include "Misc/CoreDelegates.h"
+#include <atomic>
 #include "WebHomage.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -300,9 +308,17 @@ void AWebTravCharacter::BuildFigure()
 		C->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		C->SetCastShadow(false);
 		C->SetVisibility(false);
+		C->SetTranslucentSortPriority(10); // round 25: the two-tone strand is translucent (it reads the scene colour behind it)
 		C->RegisterComponent();
 		WebSegs.Add(C);
 	}
+	// round 25: unlit two-tone strand (see RopeLook in WebTraversalComponent.h); built by Scripts/build_traversal.py (traversal_web_material.py)
+	if (UMaterialInterface* WebBase = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Traversal/Materials/M_TravWeb.M_TravWeb")))
+	{
+		WebMatTwoTone = UMaterialInstanceDynamic::Create(WebBase, this);
+	}
+	else UE_LOG(LogTemp, Warning, TEXT("WebTrav: /Game/Traversal/Materials/M_TravWeb missing -- web strands keep the r24 dark line"));
+	WebLookNow = 0;
 }
 
 bool AWebTravCharacter::SetupHeroMesh()
@@ -333,15 +349,27 @@ bool AWebTravCharacter::SetupHeroMesh()
 	// of a studio suit layout/emblem. The playable hero must wear P2's ORIGINAL round-08 suit (Tessera, MI_Hero_Suit), which is authored on
 	// the same body UV atlas (tools/ue_char/hero_suit_r8.py evaluates the same spiderman.glb body). Override the 'SpiderSuit' slot whenever
 	// that material exists (build_characters.py ran); traversal keeps its own skeleton, clips and flip shapes untouched.
+	// round 26 (director hard line: no capture and no default launch may show the proxy's licensed-looking suit): the first entry of P2's
+	// suit set (/Game/Characters/Hero/Suits/DA_HeroSuits, characters r14: Tessera) wins, then MI_Hero_Suit; when neither exists the slot
+	// gets the engine's plain default material instead of the proxy texture. UWHHeroSuitSubsystem then applies the chosen / saved suit.
 	{
 		static const TCHAR* OriginalSuit = TEXT("/Game/Characters/Hero/Materials/MI_Hero_Suit.MI_Hero_Suit");
 		const int32 Slot = M->GetMaterialIndex(FName(TEXT("SpiderSuit")));
-		UMaterialInterface* Suit = Slot != INDEX_NONE ? LoadObject<UMaterialInterface>(nullptr, OriginalSuit) : nullptr;
-		if (Suit) M->SetMaterial(Slot, Suit);
-		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s"), Suit ? TEXT("ORIGINAL (MI_Hero_Suit, slot SpiderSuit)")
-			: Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : TEXT("MI_Hero_Suit MISSING - run build_characters.py; proxy suit shown"));
-		if (Slot != INDEX_NONE && !Suit)
-			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: original suit material %s not found"), OriginalSuit);
+		UMaterialInterface* Suit = nullptr;
+		const TCHAR* Src = TEXT("none");
+		if (Slot != INDEX_NONE)
+		{
+			if (const UWHHeroSuitSet* Set = LoadObject<UWHHeroSuitSet>(nullptr, UWHHeroSuitSubsystem::SetPath))
+				for (const FWHHeroSuitEntry& E : Set->Suits) if (E.Material) { Suit = E.Material; Src = TEXT("DA_HeroSuits entry"); break; }
+			if (!Suit) { Suit = LoadObject<UMaterialInterface>(nullptr, OriginalSuit); Src = TEXT("MI_Hero_Suit"); }
+			if (!Suit)
+			{
+				Suit = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial")); Src = TEXT("NEUTRAL engine default (no original suit built)");
+				UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: no original suit (DA_HeroSuits / %s) - run build_characters.py; neutral material, never the proxy suit"), OriginalSuit);
+			}
+			if (Suit) M->SetMaterial(Slot, Suit);
+		}
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s %s"), Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : Src, Suit ? *Suit->GetName() : TEXT("-"));
 	}
 	M->SetCastShadow(true);
 	// round 06: the suit rendered white / unshaded for the first frames of a capture (textures streaming in late):
@@ -386,6 +414,46 @@ bool AWebTravCharacter::SetupHeroMesh()
 	for (USceneComponent* P : ArmPivot) { if (P) P->SetVisibility(false, true); }
 	for (USceneComponent* P : LegPivot) { if (P) P->SetVisibility(false, true); }
 	return true;
+}
+
+// round 26 (shared machine: 1080p movie frames at 0.25-0.9 /s; `sample` of the game thread: 77 % of it inside the synchronous PNG deflate of
+// -dumpmovie, 20 % in the read-back flush): -WHMovieAsync takes the movie frames through UGameViewportClient::OnScreenshotCaptured (the engine
+// then skips its own PNG write) and writes the SAME lossless PNG (zlib level 3, the engine default) on pool threads, in frame order by name
+// (Saved/Screenshots/<platform>/MovieFrameNNNNN.png, numbered from 0 like -dumpmovie). At most 24 frames in flight (the game thread waits);
+// EndPlay waits until every frame is on disk.
+namespace WHMovieAsync
+{
+	std::atomic<int32> InFlight{0};
+	int32 Next = 0;
+	FDelegateHandle Handle;
+	void OnShot(int32 W, int32 H, const TArray<FColor>& Bitmap)
+	{
+		if (!GIsDumpingMovie) return;
+		while (InFlight.load() >= 24) FPlatformProcess::Sleep(0.002f);
+		const FString Path = FPaths::ScreenShotDir() / FString::Printf(TEXT("MovieFrame%05d.png"), Next++);
+		TArray<FColor> Copy = Bitmap;
+		++InFlight;
+		Async(EAsyncExecution::ThreadPool, [Path, W, H, Copy = MoveTemp(Copy)]()
+		{
+			FImageView Img(Copy.GetData(), W, H);
+			if (!FImageUtils::SaveImageByExtension(*Path, Img, 0)) UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV movie async: write failed %s"), *Path);
+			--InFlight;
+		});
+	}
+	void Drain()
+	{
+		const double T0 = FPlatformTime::Seconds();
+		while (InFlight.load() > 0 && FPlatformTime::Seconds() - T0 < 300.0) FPlatformProcess::Sleep(0.01f);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie async: %d frames written, %d still in flight after %.1f s"), Next, InFlight.load(), FPlatformTime::Seconds() - T0);
+	}
+	void Arm()
+	{
+		if (Handle.IsValid()) return;
+		IFileManager::Get().MakeDirectory(*FPaths::ScreenShotDir(), true);
+		Handle = UGameViewportClient::OnScreenshotCaptured().AddStatic(&OnShot);
+		FCoreDelegates::OnEnginePreExit.AddStatic(&Drain);   // the quit path may skip EndPlay: every frame on disk before the process ends
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie async PNG writer armed (%s)"), *FPaths::ScreenShotDir());
+	}
 }
 
 void AWebTravCharacter::BeginPlay()
@@ -438,6 +506,15 @@ void AWebTravCharacter::BeginPlay()
 	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHMovieAsync")) && GIsDumpingMovie != 0) WHMovieAsync::Arm(); // round 26
+	{ // round 26: split movie capture
+		double MF = 0.0;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHMovieFrom="), MF) && MF > 0.0 && GIsDumpingMovie != 0)
+		{
+			MovieFrom = MF; MovieDumpSaved = GIsDumpingMovie; GIsDumpingMovie = 0; bMovieGated = true;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie dump gated until sequence t=%.4f"), MovieFrom);
+		}
+	}
 	if (ProxyBody) ProxyBody->SetVisibility(false);
 	GetCharacterMovement()->SetMovementMode(MOVE_None);
 	GetCharacterMovement()->SetComponentTickEnabled(false);
@@ -591,6 +668,11 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	}
 	else TravTime += Dt;
 	if (bPre) ++PrerollFrames;
+	if (bMovieGated && bTravStarted && TravTime >= MovieFrom - 1e-6)
+	{
+		GIsDumpingMovie = MovieDumpSaved; bMovieGated = false;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie dump on at sequence t=%.4f frame=%llu"), TravTime, (unsigned long long)GFrameCounter);
+	}
 
 	ReadHeroMask(); // previous frame's hero pixel mask (telemetry)
 	// ---- input: live (keyboard / mouse / pad) or scripted playback
@@ -1105,8 +1187,33 @@ void AWebTravCharacter::PoseFigure(float Dt)
 
 void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 {
+	// round 25: the rope look (RopeLook 1 = unlit two-tone M_TravWeb with a screen-space width clamp; 0 = r24 lit dark line)
+	const bool bTwoTone = Traversal->RopeLook > 0.5f && WebMatTwoTone != nullptr;
+	if (WebLookNow != (bTwoTone ? 1 : 0))
+	{
+		WebLookNow = bTwoTone ? 1 : 0;
+		for (UStaticMeshComponent* C : WebSegs) { if (C) C->SetMaterial(0, bTwoTone ? static_cast<UMaterialInterface*>(WebMatTwoTone) : static_cast<UMaterialInterface*>(WebMat)); }
+	}
+	if (bTwoTone)
+	{
+		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreBright"), Traversal->RopeCoreBright);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreDark"), Traversal->RopeCoreDark);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("Pivot"), Traversal->RopePivot);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("CoreLvl"), Traversal->RopeCoreLvl);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("RimLvl"), Traversal->RopeRimLvl);
+		WebMatTwoTone->SetScalarParameterValue(TEXT("Solid"), Traversal->RopeSolid);
+	}
+	// pixels per cm at 1 cm distance: viewport height / (2 tan(vfov / 2)) -- the strand width is clamped in screen space
+	double ViewH = 1080.0;
+	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+	{
+		const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
+		if (Sz.Y > 0) ViewH = double(Sz.Y);
+	}
+	const double PxK = ViewH / (2.0 * FMath::Tan(FMath::DegreesToRadians(FMath::Clamp(double(Cam.OutVFov), 20.0, 150.0) * 0.5)));
 	for (int32 SI = 0; SI < 2; ++SI)
 	{
+		bRopeDrawn[SI] = false;
 		const FWebTravStrand& St = Traversal->Strands[SI];
 		const bool bReleased = St.bActive && St.ReleaseT >= 0.f;
 		const FVector Hand = HandWorldCm(St.bRightHand);
@@ -1134,10 +1241,22 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 		for (int32 K = 0; K < SEGS_PER_STRAND; ++K)
 		{
 			UStaticMeshComponent* C = WebSegs[SI * SEGS_PER_STRAND + K];
-			if (!St.bActive || Fade <= 0.01 || D.Size() < 5.0) { C->SetVisibility(false); continue; }
+			// r25 build 3: with RopeKeepProxy an unused segment stays "visible" at a 1e-4 scale instead of being hidden -- a segment
+			// switched visible on the attach frame rendered one frame late (rope_r25_check: no strand in the frame of the first web_on row)
+			auto HideSeg = [&](UStaticMeshComponent* Seg)
+			{
+				if (bTwoTone && Traversal->RopeKeepProxy > 0.5f) { Seg->SetWorldScale3D(FVector(1e-4)); Seg->SetVisibility(true); }
+				else Seg->SetVisibility(false);
+			};
+			if (!St.bActive || Fade <= 0.01 || D.Size() < 5.0) { HideSeg(C); continue; }
 			auto P = [&](double U)
 			{
-				return A + D * U + Perp * (Wave * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI));
+				const FVector Q = A + D * U;
+				double Wv = Wave;
+				// r25 build 4: the flying strand's wave is bounded on SCREEN (RopeWavePx at that point's distance): the 30 cm world wave
+				// put the attach-frame strand 5-15 px off its hand -> anchor line (rope_r25_check, a 0.4 / 3.4 s)
+				if (bTwoTone && Traversal->RopeWavePx >= 0.f) Wv = FMath::Min(Wv, double(Traversal->RopeWavePx) * FVector::Dist(Q, CamPosCm) / PxK);
+				return Q + Perp * (Wv * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI));
 			};
 			const double U0 = double(K) / SEGS_PER_STRAND, U1 = double(K + 1) / SEGS_PER_STRAND;
 			const FVector P0 = P(U0), P1 = P(U1);
@@ -1145,11 +1264,19 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			const double Len = FVector::Dist(P0, P1);
 			// round 08 (critic r07: thick blooming beam): world width 1.2 cm, never thinner than ~1.2 px at 1080p
 			const double CamD = FVector::Dist(Mid, CamPosCm);
-			if (CamD < 300.0) { C->SetVisibility(false); continue; } // never draw a strand segment on the lens
-			const double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
+			if (CamD < 300.0) { HideSeg(C); continue; } // never draw a strand segment on the lens
+			double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
+			if (bTwoTone)
+			{ // round 25: 1.6 cm world width, clamped to RopePxMin..RopePxMax px on screen (at the segment's distance); a released strand
+				// thins out by the fade as before
+				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax)));
+				W = Px * CamD / PxK * Fade;
+			}
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());
 			C->SetWorldScale3D(FVector(W / 100.0, W / 100.0, Len / 100.0));
 			C->SetVisibility(true);
+			if (!bRopeDrawn[SI]) { RopeDrawA[SI] = P0; RopeDrawWA[SI] = W; bRopeDrawn[SI] = true; }
+			RopeDrawB[SI] = P1; RopeDrawWB[SI] = W;
 		}
 	}
 }
@@ -1227,7 +1354,8 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("body_vel_deg,body_wallup_deg,cam_enclosed,vis_pts,vis_up_m,setbacks,topouts,tunnel_stops,cam_slew8,zip_reach_w,solid_mode,")
 		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px,")
 		TEXT("foot_sep_run_m,knee_gap_lat_m,knee_wall_l,knee_wall_r,limb_wall_max_m,body_run_elev_deg,")
-		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m"));
+		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m,alt_apex_want_m,cam_look_dir,cam_gnd_crane_m,cam_gnd_stop,")
+		TEXT("rope_drawn,rope_ax,rope_ay,rope_bx,rope_by,rope_wpx_a,rope_wpx_b,rope_look,cam_perch_hold"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1483,7 +1611,42 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		Cols23 = FString::Printf(TEXT(",%.3f,%.3f"), FVector::DotProduct(M->GetBoneLocation(TEXT("hips")) - A.Wall.Point, N) / 100.0,
 			FVector::Dist(M->GetBoneLocation(TEXT("foot_L")), M->GetBoneLocation(TEXT("foot_R"))) / 100.0);
 	}
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23);
+	// round 24: altitude-chain apex want (m over the floor), camera turn direction of the user look, ground / perch crane lift (m)
+	const FString Cols24 = FString::Printf(TEXT(",%.1f,%d,%.2f,%d"), Traversal->AltApexWant, Cam.LookYawDir, Cam.GndCrane, Cam.GndStopped + (Cam.bGndLensHold ? 2 : 0));
+	// round 25: the drawn strand (the longer one when two are drawn) projected through the final camera: hand end A / far end B in normalized
+	// screen coordinates (0..1, may lie outside the frame; B clipped to the near plane), and the strand width in px at each end (viewport
+	// height), plus the rope look (1 = two-tone) and the perch yaw hold flag of the camera
+	FString Cols25 = TEXT(",0,-1,-1,-1,-1,-1,-1");
+	{
+		int32 Best = -1; double BestL = 0.0;
+		for (int32 SI = 0; SI < 2; ++SI) { if (bRopeDrawn[SI]) { const double L = FVector::Dist(RopeDrawA[SI], RopeDrawB[SI]); if (L > BestL) { BestL = L; Best = SI; } } }
+		if (Best >= 0)
+		{
+			const FRotationMatrix RM(Cam.CamRot);
+			const FVector CF = RM.GetUnitAxis(EAxis::X), CR = RM.GetUnitAxis(EAxis::Y), CU = RM.GetUnitAxis(EAxis::Z);
+			const double TV = FMath::Tan(FMath::DegreesToRadians(Cam.OutVFov * 0.5));
+			double Aspect = 16.0 / 9.0, ViewH = 1080.0;
+			if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+			{
+				const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
+				if (Sz.X > 0 && Sz.Y > 0) { Aspect = double(Sz.X) / double(Sz.Y); ViewH = double(Sz.Y); }
+			}
+			FVector RA = RopeDrawA[Best] / 100.0 - Cam.CamPos, RB = RopeDrawB[Best] / 100.0 - Cam.CamPos;
+			double ZA = FVector::DotProduct(RA, CF), ZB = FVector::DotProduct(RB, CF);
+			if (ZA < 0.05 && ZB >= 0.05) { RA = RA + (RB - RA) * ((0.05 - ZA) / (ZB - ZA)); ZA = 0.05; }
+			if (ZB < 0.05 && ZA >= 0.05) { RB = RA + (RB - RA) * ((ZA - 0.05) / (ZA - ZB)); ZB = 0.05; }
+			if (ZA >= 0.05 && ZB >= 0.05)
+			{
+				auto SX = [&](const FVector& R, double Z) { return 0.5 + 0.5 * FVector::DotProduct(R, CR) / (Z * TV * Aspect); };
+				auto SY = [&](const FVector& R, double Z) { return 0.5 - 0.5 * FVector::DotProduct(R, CU) / (Z * TV); };
+				const double PxK = ViewH / (2.0 * TV);
+				Cols25 = FString::Printf(TEXT(",%d,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f"), int32(bRopeDrawn[0]) + int32(bRopeDrawn[1]), SX(RA, ZA), SY(RA, ZA), SX(RB, ZB), SY(RB, ZB),
+					RopeDrawWA[Best] / 100.0 / FMath::Max(0.05, ZA) * PxK, RopeDrawWB[Best] / 100.0 / FMath::Max(0.05, ZB) * PxK);
+			}
+		}
+	}
+	Cols25 += FString::Printf(TEXT(",%d,%d"), WebLookNow, Cam.PerchYawHeld);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24 + Cols25);
 }
 
 // ------------------------------------------------------------------ live input (round 19)
@@ -1669,6 +1832,7 @@ void AWebTravCharacter::RunDepthAudit(const FString& Path)
 void AWebTravCharacter::EndPlay(const EEndPlayReason::Type Reason)
 {
 	if (InputTestTicker.IsValid()) { FTSTicker::GetCoreTicker().RemoveTicker(InputTestTicker); InputTestTicker.Reset(); }
+	if (WHMovieAsync::Handle.IsValid()) { WHMovieAsync::Drain(); UGameViewportClient::OnScreenshotCaptured().Remove(WHMovieAsync::Handle); WHMovieAsync::Handle.Reset(); }
 	Super::EndPlay(Reason);
 }
 

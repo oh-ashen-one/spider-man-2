@@ -1,8 +1,8 @@
 {
  "name": "x1_rmb_cancel_flip",
- "note": "Round 20 repro (critic r19 owner bug 1: \"a held RMB during a trick waits 0.47-1.08 s\"): f1 start (autoChain, backDouble on every release); the first flip starts at ~1.35 s; at 1.75 s (0.4 s into the flip) the script takes over and presses RMB fresh -> the flip must cancel into a swing within 0.1 s (-WHTrickCancel=0 = r19 behaviour for the A/B).",
+ "note": "Round 20 repro (critic r19 owner bug 1: \"a held RMB during a trick waits 0.47-1.08 s\"): f1 start (autoChain, backDouble on every release); the first flip starts at ~1.35 s; at 1.75 s (0.4 s into the flip) the script takes over and presses RMB fresh -> the flip must cancel into a swing within 0.1 s (-WHTrickCancel=0 = r19 behaviour for the A/B). Round 24: AltChain=0 (the altitude chain is the a / m1 / d chain rule; the flip showcases keep their r17-r23 low-roof flow flips).",
  "seed": 1234,
- "tune": "ArcLowMin=14,ArcDropShallow=8,ArcDropDeep=12,WallClearance=9",
+ "tune": "ArcLowMin=14,ArcDropShallow=8,ArcDropDeep=12,WallClearance=9,AltChain=0",
  "spawn": {
   "pos": [
    -225,

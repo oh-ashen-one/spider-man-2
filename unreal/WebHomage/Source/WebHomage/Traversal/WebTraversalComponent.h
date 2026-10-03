@@ -68,6 +68,54 @@ public:
 	// (stick mostly up) keeps its run line within this many degrees of the wall's up axis (0 = r22 free diagonal)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallVertMaxDeg = 10.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
+	// round 24 (critic r23 biggest gap, SPEC T7 / T3: "every 4 s a release from >= 30 m over the floor down to a 3-13 m low point, drop >= 20 m;
+	// rope on screen 25-45 %"): ALTITUDE CHAIN. AltChain 1 = a plain web release (and a flow flip) is solved for an apex AltApexH..AltApexH +
+	// AltApexJit m over the floor (feet; per-release deterministic jitter), the release velocity turned up toward it (speed kept, at most
+	// AltTurnDeg of turn, horizontal >= AltHMin m/s, vz <= AltVzMax m/s; the climb above it still goes forward); a swing entered >= AltEntryMin m
+	// over the street bottoms out AltLowLo..AltLowHi m over the street (alternating halves of the band, so consecutive arcs differ) instead of
+	// the shallow / deep drop below the entry. 0 = r23 (ReleaseVzMax forward pop, shallow / deep arcs).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltChain = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexH = 33.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexJit = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltVzMax = 34.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltTurnDeg = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltHMin = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltFlowVzMax = 26.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltEntryMin = 20.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowLo = 5.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowHi = 10.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenAhead = 35.f; // round 24: open street needed ahead (m; 0 = always)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenUp = 8.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltWeaveK = 0.4f; // round 24: corridor weave scale (low points near the centre)
+	bool bAltArcNext = false, bAltSwing = false; // round 24: the next / current swing follows an altitude release (alt arc + centred weave)
+	// round 25 (critic r24 biggest gap, SPEC T5 / T6: "the rope readable on every web_on frame, 2-4 px, mean luminance >= 25/255 off a 6 px
+	// band either side, over dark glass AND pale facades"; r07 emissive beam bloomed, r08 pale line vanished on pale facades, r09-r24 dark
+	// lit line vanished on dark glass): read by the character's web strands (the rope look; no gameplay effect).
+	// RopeLook 1 = an UNLIT two-tone strand (/Game/Traversal/Materials/M_TravWeb: bright core, dark rim, exposure-compensated so the core
+	// never blooms, no fog) whose core share follows the luminance of the scene right behind it (a ring of 4 scene-colour taps ~5 px out):
+	// over a dark background the bright core fills RopeCoreDark of the width, over a bright one only RopeCoreBright (the dark rim carries
+	// the line), the switch at RopePivot (exposed linear luminance; ~sRGB 120); screen-space width clamp RopePxMin..RopePxMax px.
+	// 0 = r24 (lit dark M_TravColor line, world width 1.6 cm / 0.25 % of the distance).
+	// r25 build 2: RopeSolid 1 = ONE tone over the whole strand width (bright over a dark background, near-black over a bright one; the
+	// two-tone core/rim averaged back to the background's level in the resolved 3-4 px line: 18/65 frames passed), drawn after motion
+	// blur with a manual scene-depth test (M_TravWeb); width clamp 2.8-3.4 px (the build-1 3.2-4.0 px clamp measured up to 4.5 px).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeLook = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeSolid = 1.f;
+	// r25 build 3: unused strand segments stay registered as visible at a 1e-4 scale (no render-proxy re-creation on the attach frame)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeKeepProxy = 1.f;
+	// r25 build 4: the shot strand's travelling wave (30 cm world, decays in ~0.3 s) bounded to RopeWavePx on screen (< 0 = unbounded, r24)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeWavePx = 1.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 2.8f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 3.4f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.86f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 0.20f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 1.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.004f;
+	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
+	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
+	/** Round 24: vertical release speed that tops out D m higher (StepAir gravity: G, x0.55 under |vz| 3.5). */
+	static double AltVzFor(double D);
 	// round 21 (-WHTravTune): side-run torso raised this many degrees above the run line toward the wall's up axis (0 = r20 plank);
 	// MantleStep 1 = a setback is crossed ON the surfaces (up the lip, along the ledge top, onto the next face; limbs stay on them), 0 = r20 hop
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideRaiseDeg = 25.f;

@@ -1,12 +1,87 @@
-# P1 City — handoff after round 10 (for the next builder)
+# P1 City — handoff after round 11 (for the next builder)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. UE MCP port 8771 (editor not needed: everything runs as `-nullrhi` commandlets and `-game` captures), browser dev port **5202** (only for a full re-export).
-Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, plus (flagged to the integrator)
-`unreal/WebHomage/Shaders/City/` (incl. the hand-written `ShadeFill.ush`) and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
-Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. **This branch was re-merged with `Opus-5.5-Loop-Night-1` at the start of round 10 (2026-10-01 00:10); the C++ module had to be rebuilt (`Scripts/build_editor.sh`, 50 s).**
+Branch `night1/city`, worktree `/Users/midir/sm2-n1/city`. Browser dev port **5202** (only for a full re-export; start Vite for the export, stop it after), UE MCP port 8771 (not needed: everything runs as `-nullrhi` commandlets and `-game` captures through the GPU lock).
+Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, plus (flagged to the integrator) `unreal/WebHomage/Shaders/City/` and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
+Content/ is NOT committed (public fork, no LFS): everything is rebuilt by the committed scripts from the browser city.
 
+## State at the end of round 11 (Sonnet 5.5 xhigh via Devin, 2026-10-03)
+Critic r10: FAILS TARGET, axes [5, 5, 5, 5, 5]; its single gap: the S4 far-shore towers (flat pale extrusions, no windows) plus the S8 upper glass. Round-11 target (Opus director): far-LOD facade with window grid, crown / setback variation, mid-grey albedo for the S4 far-shore towers.
+Measured on the settled r11 frames (`round-11/`, 1080p auto screen percentage internal 1399x787; native 4K internal 3840x2160; `tools/export/r11_numbers.py`, `s4_far_check.py`, `city_spec_check.py`):
+| line | r10 | r11 1080p | r11 4K (reduced) | target |
+|---|---|---|---|---|
+| T1 S4 silhouette-top std, x 0-1300 (px, min of 3 definitions) | 19.0 | 23.6 | 23.6 | >= 12 |
+| T2 S4 box (0,150,1300,300) above Y 204 (%) | 29.5 | 6.6 | 6.9 | <= 10 |
+| T4 flat bright 8x8 blocks in (540,110,900,260), share of ALL blocks (%) | 24.3 | 1.4 | 1.5 | <= 10 |
+| T4 same, share of the BRIGHT blocks (%) | 46.1 | 45.8 | 48.0 | <= 10 (other reading) |
+| C11 far_shore lap / sky lap | 20.8 | 30.3 | 27.8 | >= 6 |
+| C11 far_shore flat 8x8 (%) | 4.1 | 0.0 | 0.0 | <= 40 |
+| C12 far_shore (B-R) - sky (B-R) | -1.7 | -0.1 | +0.8 | +-10 |
+| C13 far_shore Y - sky Y (committed box) | -38.5 | -68.2 | -66.3 | -35..-25 |
+| C13 with the box (0,150,1300,215) the critic used in r10 | -29.6 | -57.1 | -55.6 | -35..-25 |
+| C14 far_shore Y - river Y | +16.9 | +23.3 | +26.4 | 5..35 |
+| C15 rms far_shore / near_city | 0.24 | 0.31 | 0.31 | 0.25..0.45 |
+| T5 S8 glass box (1270,0,1640,300) above Y 204 (%) | 70.4 | 0.69 | 0.37 | <= 1.5 |
+| C1 daylight facade boxes passing (<= 1.5 % above 204; 16 boxes, 1080p) | 15 | 15 | - | 16 |
+| C2 daylight facade boxes with mean Y 52-119 (16 boxes, 1080p) | 16 | 16 | - | 16 |
+| S3 / S7 share of pixels below Y 25 (%) | 13.2 / 1.4 | 17.0 / 3.5 | - | <= 25 / <= 30 |
+| C4 / C6 vehicles at YOLO conf 0.30: S1 / S2 | 17 / 15 | 17 / 16 | - | 5-19 / 14-22 |
+Billboard: the native-4K S3 frame shows the board with MORE SHADE / ON EVERY / STREET in full (`round-11/builder_checks/S3_board_4k.jpg`); OCR of the 4K frames vs the denylist: see `round-11/ip_ocr_check.txt`.
+Not met / worse than r10: C13 (-68 vs -35..-25; r10 -38.5, and -29.6 with the box the critic used), the "flat blocks" sentence read as a share of the BRIGHT blocks (46 % vs 46 %), black crush S3 17.0 % (r10 13.2 %) and S7 3.5 % (r10 1.4 %), dusk glass `s7_left_glass` mean Y 48 (C2 floor 52, informational). Unchanged: S5 mid tower 6.0 % above 204, S6 curb 14.65 %, `s5_grey_tower` C1 3.66 %.
+Critic pack for r11: `/Users/midir/sm2-n1/_scratch/critic-P1-r11/pack` (key outside the pack: `pack.key.json`; `pairs.json`: 9 reference pairs at 1920x1080, 3 native-4K pixel crops, 6 r10-vs-r11 pairs). The critic was NOT run by the builder.
+
+
+## What round 11 changed, and why (details: `round-11/README.md`, `EXPORT.md` "Far skyline")
+Critic r10 (FAILS TARGET, lowest 5) named ONE gap: the S4 far-shore towers were flat pale extrusions (29.5 % of (0,150,1300,300) above Y 204, 25 % of the 8x8 blocks of (540,110,900,260) bright and flat), plus the S8 upper glass (70.4 % above Y 204 for three rounds).
+Root causes found by masks, projection previews and sweeps (not guessed):
+1. **The pale band was mostly NOT the towers' albedo.** The r10 S4 frame's pixels above 204 were (a) sunlit faces that clip under the test lighting (sun 6, +2 EV), (b) sky and fogged bare ground between low roofs, (c) the sky itself in the top three block rows of the critic's box (121 of the 197 flat bright blocks, Y 229, std < 1). Material work alone could not fix (c); the skyline had to rise into the box.
+2. **The bare fogged ground** between the browser's `farCityMass` blocks and the 6-17 km hinterland boxes (rows 165-230 of the S4 view) was Y ~ the sky. It is now covered by a carpet of mid-rise blocks on the Palisades plateau (`far_skyline.py` `fabric()`, 2 270 blocks, M_CityFarMass).
+3. **S8 glass**: the curtain-wall tint (F0 0.2-0.62 x F0Scale 0.8) reflects a sky that the 1.7 SkyLight makes brighter than the visible sky (Y 229): F0Scale 0.8 -> 0.5 -> 0.35 -> 0.25 gave 70.4 -> 43.6 -> 6.8 -> 3.1 % above 204; the last 3 % was ONE side face of the tower seen at a grazing angle (Fresnel x clipped horizon). Fix: below N.V 0.5 the coated glass becomes a low-F0 dielectric (Specular 0.04 -> F90 0.16): 0.72 %.
+What was built:
+- `tools/export/far_skyline.py`: plateau towers are now far-LOD facade towers (five archetypes: stepped deco, slab with setback + chamfer overlay, twin shafts, glass slab, brick block; crowns: stepped pyramid / penthouse + mechanical box / lift core / spire), vertex-alpha window codes 0.40 punched / 0.62 ribbon / 0.90 glass-with-fins, authored tones = albedo 0.22-0.36 (vertex colour = albedo / FarGain 4);
+  the plateau fabric carpet; hinterland boxes get 1-3 setback tiers, 22 % are yawed 8-35 degrees, the central columns 500-940 of the S4 view are a downtown cluster (roofs on rows 98-150, a backdrop row on rows 98-120 so the top of the critic's box is towers, not sky).
+- `M_CityFarMass` / `M_CityHinter` (build_city.py): window grid kept, plus 18 x 26 m tonal panels, pier lines every 12 m, a darker mechanical floor every 52 m (fade with the pixel footprint), 64 x 110 m coarse panels on the hinterland; MPC `FarLitK` (sun-facing faces of OUR towers x 0.3; the test lighting clips any lit albedo above ~0.1, so the authored 0.25-0.35 grey is scaled, not authored lower),
+  `FarFill` 0.12 (emissive sky / ground bounce on the shaded faces: from the S4 perch the sun is behind the far shore and nearly every visible face is shaded). M_CityHinter lit faces x FarLitK x 0.7.
+- `M_CityFacade`: grazing-angle curtain glass (above); MPC defaults `F0Scale` 0.8 -> 0.25.
+- S4 map atmosphere (`city_shots.json`): height fog 0.004 starting at 4 500 m (`fogstart`, new per-shot key), colour (0.60, 0.62, 0.66) (r10: 0.0012 from 400 m, 0.76/0.78/0.80). The near / mid field is clear, the 5-12 km skyline gets real atmospheric perspective.
+- `ip_original_art.py` P27: caption "MORE SHADE ON EVERY STREET" on three lines in the left 77 % of the board (the first r11 frame lost the last letter behind the water tank and the top of 'MORE' above the frame).
+- Tools: `r11_plan.sh` (plan runner: build / mpc / variants / cap / score inside ONE gpu_slot hold, settle pair, GPU-util record, watchdog), `settle_check.py`, `s4_far_check.py` (T4 + the critic's C13 box), `s4_mask.py`, `s4_proj.py` (CPU preview of the S4 skyline coverage), `box_stats.py`, `make_pairs_r11.py`, `post_round_r11.sh`, `r11_final_plan.py`; `view_variants.py` knows `fs_<n>` (fog start, metres).
+
+
+## Ranked to-do for round 12
+1. **C13 vs T2 (decision for the director, not a build item):** no configuration tried (FarLitK, FarFill, fog density / colour / start distance, see `round-11/README.md`) gave far-shore mean 25-35 below the sky AND <= 10 % of the box above Y 204 AND C15 >= 0.25; the r10 pass of C13 came from a white haze band (49 % of its rows 150-215 above Y 204). Either relax C13 for S4 to the measured ref ratio at the T2 level, or re-measure it on a box that excludes the river / shore (the critic's own box changed between rounds).
+2. T4 read as a share of the bright blocks: 11 flat of 24 bright blocks are one pale lit face (x 740-790, y 142-175 of the 1080p frame) of a plateau glass tower (`M_CityFarMass` glass branch `gl` colour 0.34-0.46 at height, lit). Texture or darken that branch (window codes 0.90).
+3. Secondary r10 items still open: S6 curb crop (1150,760,1920,1080) 14.65 % above 204 and red steps (sat 0.30, V 163 vs ref >= 0.44), S5 mid tower 6.0 %, `s5_grey_tower` 3.66 %, S3 white roof primitives (1590-1760, 960-1060), cars (clearcoat is in, plates are generic), S2 traffic (16 vehicles at conf .30 is inside 14-22), people / traffic lights (P6).
+4. Image quality: black crush rose with F0Scale 0.25 (S3 17.0 %, S7 3.5 %); `DayEmisK` or a floor on the glass interior (`InteriorGain`) would bring the window interiors back without touching the sky reflection. `s7_left_glass` at dusk fell under the C2 floor.
+5. r09 to-dos that were never done: measure the shade-fill march under `gpu_slot.sh perf` (needs an attended Mac; add the `k <= 0.0001` early-out first), extend the height field beyond the detailed block (the fill is 0 above 8 m outside it), far tree crowns as clumps.
+6. `capture_round.sh` still shoots at t = 28 s (cold-start unsafe, gotcha 36): switch it to the 34 / 38 s pair or use `r11_plan.sh`; `run_game.sh` is not P1's file.
+7. Integration: the fabric carpet / backdrop row / fog start only exist in the S4 view map (fog) and the shared geometry level; if C (Manhattan) reuses `City_Midtown_Geo` the far skyline comes with it (about 2.3 k blocks, 590 hinterland boxes, no shadow casting, no distance fields), the S4 fog does not.
+
+
+## Commands (all from the worktree root; the GPU lock wraps every Unreal launch)
+```
+# merge + C++:       git merge origin/Opus-5.5-Loop-Night-1 ; unreal/WebHomage/Scripts/build_editor.sh      (50 s)
+# export (3 min):    (nohup npx vite --port 5202 --host 127.0.0.1 --strictPort > $SCR/vite.log 2>&1 &) ; node tools/export/export_city.mjs ; stop the vite node + npm exec processes YOU started (lsof -iTCP:5202)
+# CPU preparation:   tools/export/build_city.sh without its first and last lines: patch_export, prep_textures (IP sanitiser + original art), gen_street_signs, street_kit, street_props, export_vehicles,
+#                    street_cars, street_trees, street_traffic, far_skyline, bake_sunmask, gen_shaders.mjs   (the scratch export in /Users/midir/sm2-n1/_scratch/city can be deleted between rounds)
+# full content:      tools/export/ue/run_commandlet.sh unreal/WebHomage/Scripts/build_city.py steps=clean,tex,mat,mesh,proto,kit,fsky,map     (~35 min on a clean Content/; steps=tex,mat,fsky,map is 2-6 min)
+# iterate in ONE hold with a plan file (build / mpc / variants / cap / score lines, tools/export/r11_plan.sh header):
+/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label city -- zsh tools/export/r11_plan.sh <out_dir> <plan.txt>
+# final plans:       python3 tools/export/r11_final_plan.py <dir>   (final_1080.txt, final_4k.txt)
+# checks:            tools/export/settle_check.py <raw> | s4_far_check.py <frame> | s4_mask.py <frame> <png> | box_stats.py <frame> x0 y0 x1 y1 | city_spec_check.py <round_dir> --res 1080 --yolo --ip | s4_proj.py (CPU preview of the S4 skyline)
+```
+Stop an engine of yours with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "[/]Users/midir/sm2-n1/city/unreal/WebHomage"` (bracket form; kill your plan driver by PID first: gotcha 38); never `kill -9` a rendering engine.
+
+### New gotchas (r11)
+36. **Cold start after a content rebuild: the first rendered frame can arrive at game time ~27 s** (asset registry scan + shader / DDC fill; the clean build leaves Intermediate/DDC cold). `run_game.sh -shots 24,28 -perf 18:28` then fires both screenshots on the first frames: mean |dY| between the pair 4.5, 14 % of the pixels differ by > 8 levels, `WH_PERF frames=1 avg_ms=5786`. r11 runs take the pair at t = 34 / 38 s with the perf window 26:38 (`r11_plan.sh`) and `tools/export/settle_check.py <raw>` must print mean |dY| < 1 and < 1 % of pixels differing by > 8 levels before a frame is used (settled baseline: 0.33 / 0.05 %). The old `capture_round.sh` still shoots at 28 s.
+37. **A clean content build takes ~35 min** (the clean step 4.6 min, 511 tile meshes ~25 min, protos 5 min, kit 2 min, fsky 1-5 min, map 1 min). Never use `clean` for a material or far-skyline change: `steps=mat,fsky,map` is 2-6 min. The scratch export (`_scratch/city/export`, `tex`) can disappear between rounds: the CPU preparation chain is in `tools/export/build_city.sh` (run its python/node lines by hand, one `export_city.mjs` + Vite on 5202 for ~3 min).
+38. **`stop_ue.sh <pattern>` also matches the calling shell** when the pattern is a plain path: use the bracket form `"[/]Users/midir/sm2-n1/city/unreal/WebHomage"`. It finds drivers by command-line match only: a plan runner started as `zsh tools/export/r11_plan.sh /Users/.../_scratch/...` does NOT match, so kill that driver (and its `( sleep N; stop_ue ...)` watchdog subshell) by PID first, then call stop_ue.sh for the engine.
+39. Each farsky tile mesh (non-Nanite) spent 7-12 s on its mesh distance field at import; the plateau fabric (30 tiles) sets `distance_field_resolution_scale 0` (they are 2.5-8 km away).
+40. **T4 counts sky.** In the r10 S4 frame 121 of the 197 flat bright 8x8 blocks of the critic's box (540,110,900,260) are the top three block rows (rows 110-133), i.e. sky above a low skyline (Y 229, std < 1). No material fixes that: the central skyline has to rise into the box (far_skyline.py `central` cluster, `tools/export/s4_proj.py` previews the coverage on the CPU).
+41. **The health monitor can SIGTERM a run and pause the lock without any crash** (r11, 12:27: WindowServer CPU 97 % while the owner was working, `STOP(TERM) newest -game ... WS-HOT`, then `PAUSED`; the engine log ends with "Engine exit requested (reason: Mac GracefulTerminationHandler)", rc=1 after 25 s). It is not an engine crash: stop your plan driver by PID (it would try the next view), wait for the `AUTO-LIFT` (10 calm minutes, no loop engine rendering), re-run only the missing views (`wait_and_run.sh` pattern: poll for PAUSED, one hold).
+
+## Earlier rounds (kept for reference; the r10 section below was written before this round)
 ## Read this first: round 10 (Sonnet 5.5, 2026-10-01) — WORK IN PROGRESS NOTE, final numbers are in `round-10/README.md`
 Critic r09 (FAILS TARGET, lowest 4) named ONE gap: **the S4 far-shore band** (x 0-1300, y 150-300): white box plateau (silhouette-top row std 6.1 px, 38.8 % of the box above Y 204), grey wall embankment, no trees.
 Tests: T1 silhouette-top std >= 12 px, T2 <= 10 % of (0,150,1300,300) above Y 204, C11-C15 still pass. `tools/export/s4_far_check.py <frame>` measures T1 / T2 / C11-C15 (it reproduces the critic's numbers on the r08 / r09 frames: 6.0 / 6.1, 38.7 / 38.8 %); `city_spec_check.py` (regions v3) includes them plus the other critic boxes (S8 glass, S5 mid tower, S6 curb).

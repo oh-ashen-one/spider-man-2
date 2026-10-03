@@ -4,6 +4,8 @@
 # deleted hot-reload dylib), then run the F1 wrapper.
 cd "$(dirname "$0")/../../../unreal/WebHomage" || exit 1
 mkdir -p Saved
+# round 26: build_editor.sh refuses while this worktree's game runs -- check BEFORE deleting the dylibs (r26 deleted them, then the build refused)
+if pgrep -f "[s]m2-n1/traversal/unreal/WebHomage/WebHomage.uproject" > /dev/null; then echo "build_p3: this worktree's engine is running; nothing deleted, not built"; exit 3; fi
 rm -f Binaries/Mac/libUnrealEditor-WebHomage*.dylib Binaries/Mac/UnrealEditor.modules
 Scripts/build_editor.sh > Saved/build_last.log 2>&1
 RC=$?

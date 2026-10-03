@@ -25,7 +25,7 @@ bottom half 64 portrait cells 256 x 512 (16 x 4, index = row * 16 + col). `ts_si
 | L 34 | FROSTED HALOS, "Start Bright" | L 20 (Big Apple Burger) |
 | L 39 | HELL'S KITCHEN BLUES, "New Season Streaming"; its round-05 donor L41 was the "NEON RACERS - OUT NOW" game key art (round-06 critic) | **original art**: NIGHT LANTERN MARKET (paper lanterns over a pier) |
 | L 27 | COLTEX SPORT (sneaker brand; round-04 critic: too close to the real game's COLEXCO) | L 4 (Lumen X5) |
-| P 27 | COLTEX - "Own the Court" (same brand, portrait cell); its round-04 donor P8 was a basketball-shoe photo | **original art**: PLANT A TREE leaf poster |
+| P 27 | COLTEX - "Own the Court" (same brand, portrait cell); its round-04 donor P8 was a basketball-shoe photo | **original art**: PLANT A TREE leaf poster; caption 'MORE SHADE ON EVERY STREET' (r10: 'GREENER BLOCKS START HERE' was reworded by the integrator because the partial S3 crop 'LOCKS START' read like a games publisher's name; r11 sets the caption on three lines, MORE SHADE / ON EVERY / STREET, in the left 77 % of the board so every crop shows whole words) |
 | P 38 | COLEXCO - "Run the City" (near-copy of the real game's brand) | P 15 (Skyward Air) |
 | L 35 | COLEXCO SPORT (red-on-white sneaker ad; the "COLEX SPOR..." banner in S6, found after the round-04 critic note) | L 47 (Big Apple Tours) |
 | L 32 | HAUTE UNLIMITED, "New York - Paris - Milan" (fictional brand copied from the real game; round-05 critic) | L 7 (Vantor) |

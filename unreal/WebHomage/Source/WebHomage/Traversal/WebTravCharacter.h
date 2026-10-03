@@ -172,6 +172,9 @@ private:
 	float FlipPreT = 0.38f;
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
+	// round 26: split movie capture (-WHMovieFrom=<sequence s>): -dumpmovie writes frames only from that sequence time on (the replay is
+	// deterministic; the earlier frames come from a run that quits there). 0 = off
+	double MovieFrom = 0.0; int32 MovieDumpSaved = 0; bool bMovieGated = false;
 	int32 PrerollFrames = 0;
 	// autoChain rhythm rule state
 	bool bAutoHeld = true, bAutoWasSwinging = false;
@@ -190,6 +193,12 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FigureParts;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> WebSegs;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMatTwoTone; // round 25: M_TravWeb (null when the asset is missing)
+	int32 WebLookNow = -1;
+	// round 25: the strand as drawn this frame (cm; telemetry projects it through the final camera), and its width (cm) at each end
+	FVector RopeDrawA[2], RopeDrawB[2];
+	double RopeDrawWA[2] = { 0.0, 0.0 }, RopeDrawWB[2] = { 0.0, 0.0 };
+	bool bRopeDrawn[2] = { false, false };
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
 	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
 	void UpdateHeroFill();

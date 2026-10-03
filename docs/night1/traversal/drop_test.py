@@ -3,11 +3,11 @@
 # Swing arc test on a telemetry CSV: for every swing, drop = height at the preceding release (or the spawn / take-off
 # height for the first swing) minus the lowest height during that swing; also rope length, duration, release height.
 # PASS rule (critic round 01; round 07: >= 10 m, relaxed by the orchestrator with the cadence gap): drop >= DROP_MIN m on every swing, and consecutive swings differ (drop or rope or duration > 5 %).
-# usage: drop_test.py <telemetry.csv> [--skip-first]
+# usage: drop_test.py <telemetry.csv> [--skip-first] [--min M]   (round 24: --min 20 = the T7 drop of critic r23)
 import csv, math, sys
 rows = list(csv.DictReader(open(sys.argv[1])))
 skip_first = "--skip-first" in sys.argv
-DROP_MIN = 10.0
+DROP_MIN = float(sys.argv[sys.argv.index("--min") + 1]) if "--min" in sys.argv else 10.0
 z = lambda r: float(r["height_above_floor_m"]) if float(r["height_above_floor_m"]) < 900 else 0.0
 # horizon (vanishing point) height on screen, fraction of frame height above centre: 0.5 tan(-pitch) / tan(vfov/2)
 vp = lambda r: 0.5 * math.tan(math.radians(-float(r["cam_pitch_deg"]))) / math.tan(math.radians(float(r["cam_vfov_deg"]) / 2))
