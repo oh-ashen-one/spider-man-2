@@ -11,8 +11,8 @@ FLAG=/Users/midir/sm2-n1/_scratch/island/BUILDING
 WT=/Users/midir/sm2-n1/island
 LOG=/Users/midir/sm2-n1/_scratch/island/r04/logs
 while pgrep -f "$WT/unreal/WebHomage/WebHomage.uproject" >/dev/null; do sleep 10; done
-FREE=$(df -g /Users/midir | awk 'NR==2 {print $4}'); echo "free GB before: $FREE"
-[ "$FREE" -lt 150 ] && { echo "ABORT: $FREE GB free < 150 GB"; exit 1; }
+FREE=$(df -k /Users/midir | awk 'NR==2 {printf "%d", $4 * 1024 / 1e9}'); echo "free GB (decimal) before: $FREE"
+[ "$FREE" -lt 150 ] && { echo "ABORT: $FREE GB free < 150 GB"; exit 1; }   # build_manhattan.py re-checks before every commandlet
 touch "$FLAG"; trap 'rm -f "$FLAG"' EXIT
 T0=$(date +%s)
 cd "$WT" && SM2_ISLAND_GPU_SLOT=1 SM2_ISLAND_SPLIT_FROM=${SPLIT_FROM:-a} python3 unreal/WebHomage/Scripts/build_manhattan.py --steps ${STEPS:-cpp,city,traversal,characters,look,map}
@@ -21,5 +21,5 @@ T1=$(date +%s)
 echo "rebuild rc $RC wall $((T1 - T0)) s"
 du -sk "$WT/unreal/WebHomage/Content" | awk '{printf "Content %.2f GB\n", $1 / 1048576}'
 du -sh "$WT/unreal/WebHomage/Content"/* 2>/dev/null | sort -h | tail -8
-FREE=$(df -g /Users/midir | awk 'NR==2 {print $4}'); echo "free GB after: $FREE"
+FREE=$(df -k /Users/midir | awk 'NR==2 {printf "%d", $4 * 1024 / 1e9}'); echo "free GB (decimal) after: $FREE"
 exit $RC

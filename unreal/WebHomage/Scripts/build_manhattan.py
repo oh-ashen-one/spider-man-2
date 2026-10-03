@@ -113,6 +113,9 @@ def ue_python(name, code, env=None, timeout=7200):
     if USE_SLOT:
         cmd = [GPU_SLOT, 'capture', '--label', 'island', '--'] + cmd
         timeout = max(timeout, 3 * 3600)   # queue wait (<= 60 min) + hold (<= 40 min)
+    st = os.statvfs('/Users/midir'); free = st.f_bavail * st.f_frsize / 1e9
+    if free < MIN_FREE_GB:   # (island r04) RULES / SPEC I9: stop (and report) below the free-disk floor, before every commandlet
+        raise SystemExit('ABORT %s: %.1f GB free < %.0f GB' % (name, free, MIN_FREE_GB))
     for attempt in range(40):
         wait_slot()
         if os.path.exists(lg): os.remove(lg)
