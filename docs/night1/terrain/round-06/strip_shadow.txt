@@ -1,0 +1,4 @@
+p4 sunlit strip (the only part of the Great Lawn the 9 deg sun reaches), luma 0-255 on the 4K stills (Rec.709 weights):
+lit = 90th percentile of x 2450-2900, y 1480-1600; box = mean of the box
+round-05 box (3030,1525,3075,1555) 124.2 / lit 140.1 = 0.89 ; box (3050,1480,3110,1520) 96.5 / 140.1 = 0.69
+round-06 box (3030,1525,3075,1555)  74.9 / lit 160.2 = 0.47 ; box (3050,1480,3110,1520) 81.3 / 160.2 = 0.51

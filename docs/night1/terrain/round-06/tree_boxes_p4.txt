@@ -1,0 +1,79 @@
+{
+ "image": "p4_greatlawn.jpg",
+ "lit_box": [
+  2560,
+  1080,
+  2700,
+  1150
+ ],
+ "rule": "darkest 15 px lawn box (local hp3 SD < 6.0) within 60 px on the anti-sun side <= 0.6 x lit lawn (median of the lit box)",
+ "trees": [
+  {
+   "tree": [
+    3005,
+    1100
+   ],
+   "anti_sun_dir_img": [
+    0.994,
+    0.112
+   ],
+   "px_per_10m_shadow": 107.9,
+   "ground_m": [
+    41.8,
+    -1346.1
+   ],
+   "box_centre": [
+    3055,
+    1133
+   ],
+   "box_luma": 56.4,
+   "lit_luma": 108.3,
+   "ratio": 0.521
+  },
+  {
+   "tree": [
+    3040,
+    1078
+   ],
+   "anti_sun_dir_img": [
+    0.994,
+    0.109
+   ],
+   "px_per_10m_shadow": 106.1,
+   "ground_m": [
+    40.4,
+    -1354.5
+   ],
+   "box_centre": [
+    3071,
+    1027
+   ],
+   "box_luma": 50.5,
+   "lit_luma": 108.3,
+   "ratio": 0.467
+  },
+  {
+   "tree": [
+    2900,
+    1060
+   ],
+   "anti_sun_dir_img": [
+    0.994,
+    0.109
+   ],
+   "px_per_10m_shadow": 102.9,
+   "ground_m": [
+    28.4,
+    -1348.0
+   ],
+   "box_centre": [
+    2927,
+    1050
+   ],
+   "box_luma": 49.4,
+   "lit_luma": 108.3,
+   "ratio": 0.456
+  }
+ ],
+ "pass_all": true
+}

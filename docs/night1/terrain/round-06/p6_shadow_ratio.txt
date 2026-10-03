@@ -1,0 +1,42 @@
+{
+ "image": "p6_west_shore.jpg",
+ "boxes": [
+  {
+   "name": "tree820_1298_predicted_crown_shadow",
+   "shadow_box": [
+    300,
+    1225,
+    500,
+    1265
+   ],
+   "lit_box": [
+    860,
+    1270,
+    1000,
+    1300
+   ],
+   "shadow": 100.3,
+   "lit": 112.2,
+   "ratio": 0.894
+  },
+  {
+   "name": "tree1410_1210_predicted_crown_shadow",
+   "shadow_box": [
+    880,
+    1140,
+    1080,
+    1180
+   ],
+   "lit_box": [
+    1450,
+    1190,
+    1590,
+    1220
+   ],
+   "shadow": 113.0,
+   "lit": 110.7,
+   "ratio": 1.021
+  }
+ ],
+ "pass_all": false
+}

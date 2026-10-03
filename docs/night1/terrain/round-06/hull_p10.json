@@ -1,0 +1,105 @@
+{
+ "image": "p10_lawn_eye.jpg",
+ "rule": "sky-bordered foliage patch, local hp3 SD < 5, width > 30 px, y < 691",
+ "widest": 48,
+ "n_over_30": 2,
+ "patches": [
+  {
+   "width_px": 48,
+   "bbox": [
+    172,
+    532,
+    219,
+    572
+   ],
+   "n_px": 1040,
+   "mean_sd": 3.57,
+   "mean_luma": 57.7
+  },
+  {
+   "width_px": 32,
+   "bbox": [
+    1250,
+    385,
+    1275,
+    416
+   ],
+   "n_px": 370,
+   "mean_sd": 3.37,
+   "mean_luma": 35.1
+  },
+  {
+   "width_px": 27,
+   "bbox": [
+    1225,
+    414,
+    1251,
+    433
+   ],
+   "n_px": 206,
+   "mean_sd": 3.82,
+   "mean_luma": 39.0
+  },
+  {
+   "width_px": 15,
+   "bbox": [
+    3808,
+    281,
+    3808,
+    295
+   ],
+   "n_px": 15,
+   "mean_sd": 1.85,
+   "mean_luma": 157.2
+  },
+  {
+   "width_px": 14,
+   "bbox": [
+    1188,
+    307,
+    1192,
+    320
+   ],
+   "n_px": 45,
+   "mean_sd": 4.34,
+   "mean_luma": 47.4
+  },
+  {
+   "width_px": 12,
+   "bbox": [
+    1604,
+    484,
+    1615,
+    492
+   ],
+   "n_px": 55,
+   "mean_sd": 4.22,
+   "mean_luma": 198.8
+  },
+  {
+   "width_px": 12,
+   "bbox": [
+    283,
+    546,
+    292,
+    557
+   ],
+   "n_px": 69,
+   "mean_sd": 4.2,
+   "mean_luma": 136.9
+  },
+  {
+   "width_px": 10,
+   "bbox": [
+    2687,
+    681,
+    2693,
+    690
+   ],
+   "n_px": 39,
+   "mean_sd": 4.2,
+   "mean_luma": 187.3
+  }
+ ],
+ "pass": false
+}
