@@ -1,42 +1,30 @@
-# P3 Traversal + camera — handoff (after round 23)
+# P3 Traversal + camera — handoff (round 25, IN PROGRESS)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 24 DONE, 2026-10-02 ~14:25, Opus 5.5): build 8 = HEAD. All 11 shot-list clips are in `round-24/` (1920x1080 movies,
-r.ScreenPercentage 100 = native internal res, offscreen -game, fixed 1/60 s step; 11-14 MB each). Every clip is reproduced by build 8: c was
-captured with build 8 (hold G); a / m1 (hold D, build 5), x2 / r1 / s1 (hold C), w1 / w2 / f1 / f4 / x1 (hold A) were re-probed -nullrhi
-on builds 6-8 and their path + camera are bit-identical (`round-24/tools/holdG.sh` log lines "SAME"). Measurements: `round-24/R24_CHECK.txt`,
-`DROP_RHYTHM.txt`, `R23_CHECK.txt`, `R22_GATES.txt`, `OWNER_BUGS.txt`, `SIZES.txt`, `SHOTLIST.md`. Blind critic pack:
-`/Users/midir/sm2-n1/_scratch/critic-P3-r24/pack` (key `pack.key.json` outside; rebuild with `round-24/tools/critic_make_pairs.sh`).
-The critic has NOT run.**
-GPU queue note: seven holds (A-G) were needed; a hold queued from INSIDE another hold dies when that hold ends -- queue from your own shell.
-Older handoffs: r23 `git show 7a96916:docs/night1/traversal/HANDOFF.md`, r22 `9ad5222`, r01-18 `047a342`.
-NOTE: a hold queued from INSIDE another hold dies when that hold ends (hold A's hold-B child was killed at 07:45): queue follow-up holds from your own shell.
+**Status (round 25 in progress, 2026-10-02 ~22:00, Claude Opus 5.5 high via Devin):** builds 2-4 of round 25 change only the web strand look
+(M_TravWeb + `UpdateWebs`). Captures in `round-25/` so far: `a_swing_chain` (build 3), `c_wallrun_perch` (build 2), `p1_pawn_run` (build 1;
+no web in the clip, its -nullrhi probe on build 2 is bit-identical), `w1_wallrun_tall_zip` (build 3, in progress). GPU holds E-H are queued
+from `_scratch/traversal/r25/chain2.sh` (build 4 -> F: a, m1, s1; G: x2, x1, r1, f1; H: f4, w2, c). Worker: `round-25/tools/hold4.sh <tag>`
+(queue `_scratch/traversal/r25/queue_<tag>.txt`, probes `probes_<tag>.txt`, tune `tune.env`). If this session died: re-queue the clips that
+are missing from `round-25/` (or older than build 4) with hold4.sh, then `round-25/tools/analyze.sh` and `round-25/tools/critic_make_pairs.sh`.
 
-## 0. Round 24 -- what changed (critic r23 biggest gap: T7 altitude + T3 rope time; hard gate: c roof camera)
-| # | Item | Fix (file) | A/B |
-|---|---|---|---|
-| 1 | ALTITUDE CHAIN (T7) | a plain web release toward an OPEN street (no facade within `AltOpenAhead` 35 m at body height / +`AltOpenUp` 8 m) is solved for an apex `AltApexH` 33 + 0..`AltApexJit` 5 m over the floor: velocity turned up (speed kept, <= `AltTurnDeg` 40, horizontal >= `AltHMin` 14, vz <= `AltVzMax` 34; climb beyond the need goes forward as the r07 pop). A flow flip's apex target gets the same floor (vz cap `AltFlowVzMax` 26). `ReleaseSwing` | `-WHTravTune=AltChain=0` = r23 |
-| 2 | arcs from the roofline (build 4: only the swing right after an altitude release, `bAltArcNext`) | a swing entered >= `AltEntryMin` 20 m over the street bottoms out `AltLowLo` 5.5..`AltLowHi` 10.5 m (alternating halves); corridor weave x `AltWeaveK` .4 (low points within 0-2.5 m of the street centre) `StartSwing`, `Corridor` | same flag |
-| 3 | a / m1 scripts | the scripted player re-presses the web once falling at 12 m/s (`repressVz -12`, was 99 = 0.8 s after the release, on the climb) | probe: -6 / -12 / -18 x AltApexH 33 / 36, -12 / 33 best |
-| 4 | f1-f5, x1 | script tune `AltChain=0` (flip showcases keep their r17-r23 flow flips; bit-identical captures) | -- |
-| 5 | c roof camera (hard gate) -- builds 5-6 add: the LENS is held where the stop began until the stick is idle `GndLensRelease` 1.5 s or the zip is 0.3 s old; build 7-8: on foot / perched the chase spot is pulled in (to .6 of the distance) rather than over a raised roof feature (`GndFloorPull`) | on foot / perched a user camera turn STOPS where the chase spot would enter geometry (`GndStop`, a `GndStopR` 0.9 m sphere swept `GndStopExtra` 2.4 m past the spot -- hold-B probe pick; 0.5 / 1.2 left an 18.9 deg backtrack when the look input stopped; the soft side push is off while stopped); the zip's first 0.25 s keeps the ground framing clamp (build 4: the zip fired from the roof dipped the standing hero out of the bottom edge for 4 frames); plus a turn-direction-only orbit search, orbit offset absorbed into the look yaw, and a crane to keep >= `GndMinDist` 3 m (`WebTravCamera.cpp`) | `-WHCamTune=GndMinDist=0` = r23; hold A (build 1, no stop) still FAILED (backtrack 95 deg) |
-| 6 | telemetry | `alt_apex_want_m`, `cam_look_dir`, `cam_gnd_crane_m`, `cam_gnd_stop` | -- |
+Older handoffs: r24 `git show c3415073:docs/night1/traversal/HANDOFF.md`, r23 `7a96916`, r22 `9ad5222`, r01-18 `047a342`.
 
-**Measured on the final captures (`round-24/`):**
-| Test | r23 | r24 |
+## 0. Round 25 -- what changed (critic r24 biggest gap: rope readable on every web_on frame; merge gate: c perch 8.6-10.5 s; hard line: pawn run cadence)
+| # | Item | Fix (file) |
 |---|---|---|
-| T7 every 4 s window from the first release holds a release whose apex is >= 30 m over the floor, next low 3-13 m, drop >= 20 m, hero_occl 0 through the drop | 0/100 (apex 13-23 m, drops 8-15 m) | **100/100 PASS**: releases 1.67 / 4.90 / 8.03 (backDouble) / 11.97 s, apex 32.9 / 34.6 / 31.5 / 34.1 m, lows 8.3 / 7.6 / 9.9 / 6.5 m, drops 24.6 / 27.0 / 21.6 / 27.7 m, occl 0, lows 0.5-3.0 m off the street centre |
-| release-instant height (literal reading of "release at >= 30 m") | 10-17 m | 7.8-16.9 m -- the 30 m+ is the apex of the release's climb |
-| T3 web_on (25-45 %) | 55.4 % | **41.5 % PASS** |
-| T1 rope held 0.5-1.6 s / T2 2-4 attaches per 8 s | pass / pass | 1.03-1.47 s PASS / 2-3 PASS |
-| T4 web-less phases > 0.6 s change pose every 0.1 s (rise > apex > dive / trick) | pass | 1.83-2.45 s phases, 18/18-24/24 changes PASS |
-| drop_test.py --min 20 | FAIL | FAIL only on swing 1 (spawn drop 16.3 m, no release before it); --skip-first PASS |
-| c camera 7.7-8.5 s: in frame / occl / cam dist / yaw reversal | 2/49, 1.0, 1.59 m, 45.5 deg | **49/49, 0.000, >= 3.83 m, 0.0 deg PASS** (the turn stops at -83.9 deg where the chase spot would enter the tower wall) |
-| flips: f1 / f4 / x1 | -- | bit-identical to r23 (AltChain=0) -> flips >= 7 and roof_check unchanged |
-| V23 a/b/c, X23, T22, Z23, w2 side-run U22/B22/L22/F22 | pass | identical numbers (w2 / w1 bit-identical, c's path = r23 until 7.7 s) PASS |
-| owner bugs: x1 / x2 swings, perches, m1 mouse look | pass | x1 / x2 / s1 / r1 bit-identical to r23; w1 / w2 perches unchanged; m1 swings 1.27 / 1.38 s |
-| NEW: c perch 9.85-9.98 s | -- | the zip from the held view lands ~9 m from r23's perch; the perch recenter lifts the lens over a rooftop box and the hero dips under the bottom edge for 9 frames (2 mask frames read occl 1.0 = out of frame, not behind geometry). Not fixed (build 7/8 floor pull-in did not catch it). |
+| 1 | rope look (build 1, commit 1034b587) | unlit translucent two-tone strand `M_TravWeb` (`Scripts/traversal_web_material.py`): bright core / dark rim whose share follows 4 scene-colour taps ~5 px out, divided by the eye adaptation (no bloom), screen-space width clamp. Measured 18/65 web frames pass (the resolved 3-4 px line averaged back to the background level). |
+| 2 | rope look (build 2) | `RopeSolid` 1 = ONE tone over the whole strand (bright over a dark background, near-black over a bright one, switch `RopePivot` 0.20 exposed linear), drawn AFTER MOTION BLUR (before DOF the camera-speed blur smeared it into the background) with a manual scene-depth test in the material (`Occ` 25 cm), width clamp `RopePxMin/Max` 2.8-3.4 px. 0-5 s probe 25/26. `RopePivot` 0.12 probe: 25/27 and a worse whole-rope reading -> kept 0.20. |
+| 3 | build 3 | `RopeKeepProxy`: unused segments stay registered as visible at a 1e-4 scale (a segment switched visible on the attach frame rendered one frame late: no strand in the frame of the first web_on row). |
+| 4 | build 4 | `RopeWavePx` 1.5: the shot strand's travelling wave (30 cm world) bounded on screen (attach-frame strand 5-15 px off its line). |
+| 5 | c perch gate (build 1) | perch recenter yaw hold + zip lens dolly cap (`WebTravCamera.cpp`). |
+| 6 | pawn run (build 1) | run anchor 9.3 m/s + weighted loco phase rate (`Anim/WebTravAnimInstance.cpp`), GroundBlendS 0.18 s kept; script `scripts/city/p1_pawn_run.json`. |
+| 7 | a script | `repressVz` -12 -> -8 (T2 attach gaps; -nullrhi probes: -12 3.48/3.50/3.35, -10 3.43/3.43/3.33, -9 3.40/3.38/3.32, -8 3.37/3.38/3.30 with T7 100/100; -6 / -5 bring all gaps <= 3.32 / <= 3.27 but T7 99 / 98 of 100). |
+
+Measured so far (build 3 a, build 2 c, build 1 p1): rope_r25_check a 63/65 web frames pass (pale facades 0.9-1.1 s P P P, dark glass
+10.5-11.2 s 8/8 P; the 2 fails = attach frames 0.4 / 3.4 s, wavy shot strand -> build 4); c G1 113/113 in frame, 4.14-6.00 m, max pitch
+change 14.3 deg / 0.3 s PASS; p1 head-top FFT 3.549 Hz (3.2-3.8) PASS.
 
 ## 1. Architecture map (Source/WebHomage/Traversal)
 
@@ -160,18 +148,13 @@ trick at 1.4 s (frontPikeSwan), drop 3.05-3.3 s, zip 3.35 s. The r12 `f*_sky_*` 
 Never `pkill -f` a pattern that can match your own gpu_slot / batch processes (round 13 killed its own capture batch with `[c]ap_batch.sh f[14]_`):
 kill by PID.
 
-## 6. Known issues / open (after round 24)
-- T7 reading: the 30 m+ is each release's APEX (release-instant heights 8-15 m: the climb happens after the release, velocity turned up by
-  <= 40 deg). If the critic wants the RELEASE itself at roofline height, the swing must climb higher before the release (longer rope /
-  later release phase) -- next lever.
-- Altitude release only toward an open street (35 m clear ahead) and the altitude arc only on the swing right after it: c / x2 / r1 keep
-  their r23 paths (hold-A x2 hid the hero 0.8 s behind a facade before that rule).
-- c: the ground orbit STOPS at the tower wall (yaw -83.9 deg, lens held) -- it no longer follows the user's turn past the wall; the view is
-  steady but the hero stands against a brick wall. The zip from that view lands on a different perch (8.92 s) where the perch recenter
-  dips the hero under the bottom edge at 9.85-9.98 s (see the table). A crane (`GndMinDist`) exists but only engages under 3 m.
-- f-series / x1 run AltChain=0 (r23 flips kept bit-identical); f4 still swings at canopy height (critic r23 multi-flip pair).
-- Deferred by the director: knee_gap_lat <= .25 m on the vertical run (r23 .49), zip rope drawn to zipCatch, wall-run bbox .40-.47.
-- Carried: x2 post-cancel camera whip, T22 c pitch 55 % (r23), setback crossing posture on c 3.30-3.60 s.
+
+## 6. Known issues / open (round 25)
+- T2 attach gaps 3.37 / 3.38 / 3.30 s on a (<= 3.3 not met on two gaps without losing T7 100/100).
+- T4 silhouette at 12.6-13.4 s (held sky-dive arch/track pose, `AirFastW` layer) not changed.
+- Vertical run knee_gap_lat median <= .25 m not addressed (r23 .49).
+- The strand alternates black / white along its length where the background luminance crosses `RopePivot` (each part reads locally).
+- Carried: x2 post-cancel camera whip, T22 c pitch 55 % (r23), setback crossing posture on c 3.30-3.60 s, f4 canopy-height swings.
 
 ## 7. Critic history (summary; full table in `git show 047a342:docs/night1/traversal/HANDOFF.md` §7)
 | Round | Scores (swing/camera/web/moves/body, flips) | Biggest gap |
@@ -180,11 +163,9 @@ kill by PID.
 | r21 | 7/6/6/6/6, flips 7 -- FAILS TARGET, merged | side run a slither, facade luma 15-30 |
 | r22 | 7/6/6/6/6, flips 7 -- FAILS TARGET, mergeable | vertical run frozen, legs together |
 | r23 | 7/6/6/6/6, flips 7 -- FAILS TARGET (`critic/round-23-CRITIC.md`), mergeable | swing chain altitude + rope time (T7 / T3); c camera snap 7.7-8.5 s |
-| r24 | not judged yet -- pack `_scratch/critic-P3-r24/pack` (swing chain x2 vs swing_chase / S45_chain, vertical, side run, flips, r23 vs r24 swing) | -- |
+| r24 | 7/6/6/6/6, flips 7 -- FAILS TARGET (`critic/round-24-CRITIC.md`), merge held on owner bug 5 | rope readable on every web frame (T5/T6) |
+| r25 | not judged yet | -- |
 
 ## 8. Queue for the next session
-1. Done this round: captures, analysis, pack. (Re-run `round-24/tools/analyze.sh` / `critic_make_pairs.sh` after any re-capture.)
-2. Run the blind critic on `/Users/midir/sm2-n1/_scratch/critic-P3-r24/pack` (key `pack.key.json` stays outside); record `critic/round-24-CRITIC.md` + §7.
-3. Plateau watch (director): if Swing stays 7 with the swing-chain pair still lost on altitude, the next director step re-plans the piece.
-4. Teardown after the r24 critic: `_scratch/traversal/r24/probe*`, `_scratch/critic-P3-r22/`, `_scratch/critic-P3-r23/` (refcuts copied into r24's).
-   Capture frame folders `_scratch/traversal/capture/*` are deleted at the end of each round (movies + telemetry are committed).
+1. Finish the queued captures (see Status), run `round-25/tools/analyze.sh`, `make_shotlist.py`, `round-25/tools/critic_make_pairs.sh`.
+2. Blind critic on `/Users/midir/sm2-n1/_scratch/critic-P3-r25/pack` (orchestrator).
