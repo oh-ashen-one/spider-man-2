@@ -396,15 +396,21 @@ namespace WebFlips
 	namespace
 	{
 		constexpr float CatchWinMin = 0.3f, CatchWinMax = 0.6f, CatchShapeWin = 0.3f, CatchRate = 250.f, CatchLook = 0.75f, CatchClipLen = 1.2f;
+		// r02 probe b: the predicted facing about the rope is ill-conditioned (the rope runs almost along the velocity at a catch: the swing
+		// frame's forward is the small velocity component off the rope) -- the measured post-catch twist was ~0.3 x the predicted one
+		// (residual vs the body 0.1 s after the catch, 18 catches: mean 35 deg at 0.3 x, 46 deg at 1 x, 37 deg at 0 x)
+		constexpr float CatchTwistK = 0.3f;
 		struct FCatchLean
 		{
 			uint64 Frame = ~0ull;
 			const FWebFlipProgram* P = nullptr; int32 Ver = -99; float Side = 1.f;
-			bool bTarget = false, bOn = false, bSwing = false, bRight = true, bShape = false, bShapeRight = true;
+			bool bTarget = false, bOn = false, bSwing = false, bRight = true, bShapeRight = true;
+			float ShapeK = 0.f;                        // weight of the swing node's catch pose (follows the prediction: 0.15 s ramps)
 			float Ts = 0.f, Te = 0.f;                  // root window [Ts, Te] (program time); the lean weight is 1 from Te on
 			float Beta = 0.f, Gamma = 0.f, Rho = 0.f;  // smoothed lean (deg): pitch about the lateral axis (+ head forward), twist about the long axis, sideways rest
 			float BankW = 0.f;
 			FVector Anchor = FVector::ZeroVector;
+			FQuat TargetQ = FQuat::Identity;           // the predicted frame (world), pose log only
 			double LastWT = -1.0; FVector LastVel = FVector::ZeroVector;
 		};
 		FCatchLean GC;
@@ -546,27 +552,36 @@ namespace WebFlips
 			const FQuat Tw = FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(Gamma));
 			const FQuat Sw = R2 * Tw.Inverse();
 			const float Rho = FMath::UnwindDegrees(FMath::RadiansToDegrees(2.f * FMath::Atan2(float(Sw.X), float(Sw.W))));
-			if (!GC.bTarget) { GC.Beta = Beta; GC.Gamma = Gamma; GC.Rho = Rho; GC.bTarget = true; }
+			const float GammaK = CatchTwistK * Gamma;
+			if (!GC.bTarget) { GC.Beta = Beta; GC.Gamma = GammaK; GC.Rho = Rho; GC.bTarget = true; }
 			else
 			{
-				const float K = 1.f - FMath::Exp(-float(DtF) * 14.f);
-				GC.Beta += K * FMath::UnwindDegrees(Beta - GC.Beta);
-				GC.Gamma = FMath::UnwindDegrees(GC.Gamma + K * FMath::UnwindDegrees(Gamma - GC.Gamma));
+				// the target follows the prediction smoothly and at <= CatchRate deg/s (a prediction that changes from the air frame to a swing
+				// frame late in the window must not whip the body round)
+				const float K = 1.f - FMath::Exp(-float(DtF) * 14.f), MaxStep = CatchRate * float(DtF);
+				GC.Beta += FMath::Clamp(K * FMath::UnwindDegrees(Beta - GC.Beta), -MaxStep, MaxStep);
+				GC.Gamma = FMath::UnwindDegrees(GC.Gamma + FMath::Clamp(K * FMath::UnwindDegrees(GammaK - GC.Gamma), -MaxStep, MaxStep));
 				GC.Rho += K * FMath::UnwindDegrees(Rho - GC.Rho);
 			}
-			GC.bSwing = bSwing; GC.bRight = bRight; GC.Anchor = AP;
+			GC.bSwing = bSwing; GC.bRight = bRight; GC.Anchor = AP; GC.TargetQ = Wq;
 			GC.BankW = bSwing ? 0.85f * Smooth(FMath::Abs(A.Swing.Bank)) : 0.f;
+			if (GC.bOn)
+			{ // the catch pose follows the prediction (a web found / lost late in the window); the hand is chosen while the pose is out
+				if (GC.ShapeK <= 0.f) GC.bShapeRight = bRight;
+				GC.ShapeK = FMath::Clamp(GC.ShapeK + (bSwing ? 1.f : -1.f) * float(DtF) / 0.15f, 0.f, 1.f);
+			}
 			if (!GC.bOn)
 			{
-				// window length: the whole turn at <= CatchRate deg/s peak (smoothstep peaks at 1.5 x its mean rate)
-				const float Te = bSwing ? Tc : P->Dur() + Tr->FlipReachHold;
+				// window: ends at the catch time (also with no web predicted: the lean then holds while the program runs out); length = the
+				// whole turn at <= CatchRate deg/s peak (smoothstep peaks at 1.5 x its mean rate)
+				const float Te = Tc;
 				const float Rest = FMath::Abs(P->PitchDeg - SampleBase(*P, FMath::Min(Te, P->Dur())).PitchDeg);
 				const float Ang = FMath::RadiansToDegrees((FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(GC.Beta)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(GC.Gamma))).GetAngle()) + Rest;
 				const float Win = FMath::Clamp(1.5f * Ang / CatchRate + 0.04f, CatchWinMin, CatchWinMax);
 				if (T >= Te - Win)
 				{
-					GC.bOn = true; GC.Ts = T; GC.Te = FMath::Max(T + 0.05f, Te - 1.f / 60.f);
-					GC.bShape = bSwing; GC.bShapeRight = bRight;
+					GC.bOn = true; GC.Ts = T; GC.Te = FMath::Max(T + 0.15f, Te - 1.f / 60.f);
+					GC.ShapeK = bSwing ? 1.f : 0.f; GC.bShapeRight = bRight;
 					UE_LOG(LogTemp, Display, TEXT("WH_TRICK_CATCH %s t %.3f window %.3f-%.3f %s lean pitch %.1f twist %.1f rest-roll %.1f hand %s bank %.2f anchor (%.1f, %.1f, %.1f)"),
 						*P->Name.ToString(), T, GC.Ts, GC.Te, bSwing ? TEXT("swing") : TEXT("air"), GC.Beta, GC.Gamma, GC.Rho, bRight ? TEXT("R") : TEXT("L"), GC.BankW, AP.X, AP.Y, AP.Z);
 				}
@@ -590,7 +605,7 @@ namespace WebFlips
 			O.PitchDeg = FMath::Lerp(O.PitchDeg, PitchTgt, W);
 			O.TwistDeg = FMath::Lerp(O.TwistDeg, TwTgt, W);
 			O.AxisOffDeg *= 1.f - W;
-			if (!GC.bShape) return;
+			if (GC.ShapeK <= 0.f) return;
 			// shapes: the program's shape at the start of the last 0.3 s -> the swing node's starting pose (major clip, then its minor share)
 			const float Ts2 = FMath::Max(GC.Ts, GC.Te - CatchShapeWin), Span2 = FMath::Max(0.05f, GC.Te - Ts2);
 			const EWebFlipShape Low = GC.bShapeRight ? EWebFlipShape::CatchLow : EWebFlipShape::CatchLowL;
@@ -598,7 +613,9 @@ namespace WebFlips
 			const bool bBankMajor = GC.BankW > 0.5f;
 			const EWebFlipShape Major = bBankMajor ? Bank : Low, Minor = bBankMajor ? Low : Bank;
 			const float WMinor = bBankMajor ? 1.f - GC.BankW : GC.BankW;
-			const float ClipH = FMath::Clamp((T - GC.Te) / CatchClipLen, 0.f, 1.f); // the catch clips start at frame 0 at the catch (the swing node's T 0)
+			// the catch clips reach frame 0 at the catch (the swing node starts its clips at T 0): before it they play backward into it (moving limbs)
+			const float ClipH = FMath::Clamp(FMath::Abs(T - GC.Te) / CatchClipLen, 0.f, 1.f);
+			const float SK = GC.ShapeK;
 			const float Lead = P.Lead >= 0.f ? P.Lead : FlipLead, Lag = P.Lag >= 0.f ? P.Lag : FlipLag;
 			auto Blend = [&](float U, float Tf, EWebFlipShape& A, EWebFlipShape& B, float& Wt, float& HA, float& HB)
 			{
@@ -609,7 +626,7 @@ namespace WebFlips
 				float FromH = FW < 0.5f ? FHA : FHB;
 				if (Wt < 0.5f && A == From) FromH = HA; else if (Wt >= 0.5f && B == From) FromH = HB; // the shape keeps breathing / marching
 				constexpr float Split = 0.6f;
-				if (U < Split) { A = From; HA = FromH; B = Major; HB = ClipH; Wt = Smooth(U / Split); }
+				if (U < Split || SK < 0.999f) { A = From; HA = FromH; B = Major; HB = ClipH; Wt = Smooth(FMath::Min(1.f, U / Split)) * SK; }
 				else { A = Major; HA = ClipH; B = Minor; HB = ClipH; Wt = WMinor * Smooth((U - Split) / (1.f - Split)); }
 			};
 			// upper body Lead ahead (reaches the pose Lead s before the catch), legs start Lag later and arrive at the catch
@@ -715,6 +732,7 @@ namespace WebFlips
 					for (const FName& B : Bones()) { const FString N = B.ToString(); H += FString::Printf(TEXT(",%s_x,%s_y,%s_z"), *N, *N, *N); }
 					H += TEXT(",head_fx,head_fy,head_fz,head_ux,head_uy,head_uz,chest_fx,chest_fy,chest_fz,chest_ux,chest_uy,chest_uz,pelvis_fx,pelvis_fy,pelvis_fz");
 					H += TEXT(",catch_on,catch_w,catch_beta,catch_gamma,catch_rho,catch_bank,catch_hand,catch_swing,catch_ax,catch_ay,catch_az"); // r02 catch lean
+					H += TEXT(",mesh_qx,mesh_qy,mesh_qz,mesh_qw,body_qx,body_qy,body_qz,body_qw,catch_qx,catch_qy,catch_qz,catch_qw"); // r02: root / body frame / predicted frame
 					Rows.Add(H);
 				}
 				const FWebTravAnim& A = Tr->Anim;
@@ -743,7 +761,9 @@ namespace WebFlips
 				{ // r02: the catch lean of the program playing now (prediction made during this frame's Sample calls)
 					const bool bC = GC.bOn && GC.P && A.Trick == GC.P->Name && A.Sub == FName(TEXT("trick"));
 					R += FString::Printf(TEXT(",%d,%.3f,%.2f,%.2f,%.2f,%.3f,%d,%d,%.2f,%.2f,%.2f"), bC ? 1 : 0, bC ? CatchW(A.T) : 0.f, bC ? GC.Beta : 0.f, bC ? GC.Gamma : 0.f,
-						bC ? GC.Rho : 0.f, bC ? GC.BankW : 0.f, bC ? (GC.bShapeRight ? 1 : -1) : 0, bC ? int32(GC.bSwing) : 0, GC.Anchor.X, GC.Anchor.Y, GC.Anchor.Z);
+						bC ? GC.Rho : 0.f, bC ? GC.BankW * GC.ShapeK : 0.f, bC ? (GC.bShapeRight ? 1 : -1) : 0, bC ? int32(GC.bSwing) : 0, GC.Anchor.X, GC.Anchor.Y, GC.Anchor.Z);
+					const FQuat MQ = M->GetComponentQuat(), BQ = A.BodyQ, CQ = GC.TargetQ;
+					R += FString::Printf(TEXT(",%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f,%.5f"), MQ.X, MQ.Y, MQ.Z, MQ.W, BQ.X, BQ.Y, BQ.Z, BQ.W, CQ.X, CQ.Y, CQ.Z, CQ.W);
 				}
 				Rows.Add(R);
 				if (Rows.Num() >= 240) Flush();

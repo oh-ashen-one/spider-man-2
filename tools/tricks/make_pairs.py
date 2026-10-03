@@ -1,7 +1,10 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Tricks C r01: source clips + pairs.json for the blind A/B critic pack (tools/night1/abpack.py). Everything it writes stays in _scratch
 # (the owner clip is footage of the real game: local only, never committed).
-#   python3 tools/tricks/make_pairs.py <reel.mp4> <reel_telemetry.csv> <traversal f4.mp4> <out dir>      -> <out dir>/pairs.json
+#   python3 tools/tricks/make_pairs.py <reel.mp4> <reel_telemetry.csv> <traversal f4.mp4 | -> <out dir>      -> <out dir>/pairs.json
+#   r02: PREV_REEL / PREV_TEL (the previous round's reel + telemetry, same route) add catch pairs: the CATCHES trick ends (default: the
+#   r01 critic's five fastest catches) from 0.7 s before to 0.6 s after the end, hero-centred 16:9 crop, both 1280x720 60 fps;
+#   x = this reel, y = the previous one. F4 = '-' skips the progress pair.
 # x = ours (tricks r01 reel excerpt, cropped around the hero to the owner clip's 610:556 aspect), y = the owner clip segment (FLIPS_SPEC
 # S1 / S2 / S3 / S6), both scaled to the SAME 1220x1112; progress pairs: traversal r26 f4 vs the tricks r01 reel, both 1280x720.
 import csv, json, os, statistics, subprocess, sys
@@ -104,9 +107,36 @@ for shape in ('Tuck', 'Layout', 'Pencil', 'Straddle'):
     ff('-ss', '%.3f' % OWNER_T[shape][0], '-i', OWNER, '-frames:v', '1', '-vf', 'scale=%d:%d:flags=lanczos' % (W, H), ya)
     pairs.append(dict(id='shape-' + shape.lower(), x=xa, y=ya, note='Held %s shape in the air (still). Both %dx%d.' % (shape.lower(), W, H)))
     print('shape', shape, cand[0]['prog'], 'ours t %.2f' % float(r['t']), 'ref t %.2f' % OWNER_T[shape][0])
+# r02: catch pairs (this round vs the previous round at the same trick end of the same route)
+PREV_REEL, PREV_TEL = os.environ.get('PREV_REEL'), os.environ.get('PREV_TEL')
+if PREV_REEL and PREV_TEL:
+    TP = list(csv.DictReader(open(PREV_TEL)))
+    IP = [c for c in instances(TP) if c['scale'] > 0]
+    def end_t(Tx, c): return float(Tx[c['rows'][-1][0]]['t'])
+    def crop169(Tx, reel, t0, t1, dst):
+        rows = [r for r in Tx if t0 <= float(r['t']) <= t1 and float(r.get('px_bottom') or 0) > float(r.get('px_top') or 0)]
+        cx = statistics.median((float(r['px_left']) + float(r['px_right'])) / 2 for r in rows)
+        cy = statistics.median((float(r['px_top']) + float(r['px_bottom'])) / 2 for r in rows)
+        hh = statistics.median(max(float(r['px_bottom']) - float(r['px_top']), float(r['px_right']) - float(r['px_left'])) for r in rows)
+        ch = min(1080.0, max(400.0, hh / 0.30)); cw = ch * 16 / 9
+        if cw > 1920: cw, ch = 1920.0, 1080.0
+        bx = max(0, min(1920 - cw, cx - cw / 2)); by = max(0, min(1080 - ch, cy - ch / 2))
+        ff('-ss', '%.3f' % max(0, t0 + OFF), '-t', '%.3f' % (t1 - t0), '-i', reel, '-an', '-vf',
+           'crop=%d:%d:%d:%d,scale=1280:720,setsar=1' % (cw, ch, bx, by), '-r', '60', '-c:v', 'libx264', '-crf', '16', '-pix_fmt', 'yuv420p', dst)
+    want = [x.split('@') for x in os.environ.get('CATCHES', 'frontDouble@16.45,rudi@26.57,fullTwist@18.95,backSingle@35.88,frontPikeSwan@21.25').split(',')]
+    for prog, tt in want:
+        cp = min((c for c in IP if c['prog'] == prog), key=lambda c: abs(end_t(TP, c) - float(tt)), default=None)
+        cn = min((c for c in I if c['prog'] == prog), key=lambda c: abs(end_t(T, c) - float(tt)), default=None)
+        if not cp or not cn: print('catch pair: no instance', prog, tt); continue
+        en, ep = end_t(T, cn), end_t(TP, cp)
+        pid = 'catch-%s-%s' % (prog, tt.replace('.', '_'))
+        xa = os.path.join(OUT, 'ours_' + pid + '.mp4'); ya = os.path.join(OUT, 'prev_' + pid + '.mp4')
+        crop169(T, REEL, en - 0.7, en + 0.6, xa); crop169(TP, PREV_REEL, ep - 0.7, ep + 0.6, ya)
+        pairs.append(dict(id=pid, x=xa, y=ya, note='The end of one aerial trick into the next web catch (0.7 s before to 0.6 s after the catch). Both 1280x720 60 fps.'))
+        print(pid, 'ours end %.2f' % en, 'prev end %.2f' % ep)
 # progress: traversal's merged r26 f4 flip chain vs this reel (the same lit city, 1280x720 each)
-dur_f4 = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', F4], capture_output=True, text=True).stdout)
-for n, (a, b) in enumerate([(0.0, dur_f4)]):
+dur_f4 = 0.0 if F4 == '-' else float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', F4], capture_output=True, text=True).stdout)
+for n, (a, b) in enumerate([(0.0, dur_f4)] if F4 != '-' else []):
     xa = os.path.join(OUT, 'reel_%d.mp4' % n); ya = os.path.join(OUT, 'f4_%d.mp4' % n)
     ff('-ss', '%.3f' % (a + OFF), '-t', '%.3f' % (b - a), '-i', REEL, '-an', '-vf', 'scale=1280:720,setsar=1', '-c:v', 'libx264', '-crf', '20', '-pix_fmt', 'yuv420p', xa)
     ff('-ss', '%.3f' % a, '-t', '%.3f' % (min(b, dur_f4) - a), '-i', F4, '-an', '-vf', 'scale=1280:720,setsar=1', '-c:v', 'libx264', '-crf', '20', '-pix_fmt', 'yuv420p', ya)

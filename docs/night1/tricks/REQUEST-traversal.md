@@ -31,3 +31,21 @@ Nothing else in traversal is needed: programs, shapes, tempo variation and the p
    (e.g. probe 13.35 s: backLayout ends, node `air_fallCalm` until the next web); WebTravFlips now keeps the final reach / kick-out moving
    while the flip node is active, but the fallCalm node itself is traversal's.
 6. Items 1-2 are still open (the reel reaches the 8 new programs through its script's `flip` list only).
+
+## Tricks C r02 (catch snap; critic r01 "every catch snaps", target <= 250 deg/s chest rotation in every 0.1 s window after a trick)
+Tricks r02 starts the catch inside the program (WebTravFlips.cpp catch lean: the predicted swing frame is reached by the flip's pitch +
+twist before the web attaches, and the shapes blend into the swing node's starting pose). Three parts of the catch are outside
+WebTravFlips and keep a pop at the attach frame (measured in the r02 probes, see round-02/NUMBERS.md):
+7. **SpineBank switches on in one frame** (WebTravAnimInstance.cpp `Frame.SpineBank = A.Mode == Swing ? -0.35f * A.Swing.Bank : 0.f`):
+   at the catch the chest rolls by 0.35 x |Sw.Bank| rad (up to 20 deg) in a single frame, and Sw.Bank is the PREVIOUS swing's stale
+   bank (StartSwing does not reset it; Orient only updates it while swinging). Ask: ramp SpineBank like BodyAlignW (e.g. `Dt / 0.2f`
+   steps) and start Sw.Bank from 0 (or from the air bank S.Bank) in StartSwing. The same stale bank drives the swing node's
+   corner-bank clip weight at the catch.
+8. **No roll channel for a flip**: PoseFigure applies `Ry(pitch) * Rz(twist)` only, so the rope's sideways lean at the catch
+   (8-68 deg in the r02 probe) cannot be prepared by the program and is left to the 14/s body slerp. Ask: an optional roll term
+   (e.g. `FWebFlipPose::RollDeg`, applied as `* FQuat(FVector(1,0,0), Roll)` after the twist) -- WebTravFlips already computes it
+   (`GC.Rho`, logged as catch_rho in the -WHTrickPose log).
+9. **A program that ends with no web in reach** pitches the body to the streamlined air frame (Orient, AirAlignV0/V1) and the web
+   often catches 0.1-0.3 s later from that dive frame (r02 probe: barani 10.63 s, backLayout 45.73 s, frontDouble 49.40 s): the
+   second change lands inside the 0.4 s after the trick end. WebTravFlips now leans into the air frame before such an end; the late
+   catch itself is a traversal transition.
