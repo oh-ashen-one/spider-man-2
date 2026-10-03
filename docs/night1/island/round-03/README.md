@@ -141,7 +141,7 @@ The round-02 critic's open items this pack can show: M2 street layer and dressin
 `r2_check.json`, `road_band_r2.json`, `r4_check.json`, `dump_check.json`, `prims_dump.csv.gz`, `coll_audit.json` + map,
 `build_timings_island.json`, `gpu_hold_*.json`.
 2026-10-03 additions: `r5_m2_avenue.mp4` (+ telemetry, log excerpt), `route_check_r5.json`, `r5_check.json` (pass lines + road band), `r5_search.json` (every sim of the route
-search and the map state it ran on), `dump_check_r5.json` (traversal primitive dump with the stream source: 918 solids), `stills/r5_m2_avenue_t*s_1920x1080.jpg`,
+search and the map state it ran on), `dump_check_r5.json` (traversal primitive dump with the stream source: 918 solids), `road_band_probes.json` (the three rendered probes behind the numbers above), `coll_audit_recheck_20261003.json` (I5 re-run), `stills/r5_m2_avenue_t*s_1920x1080.jpg`,
 `stills/street_m2b_before_ism_fix_1920x1080.jpg` / `street_m2b_after_ism_fix_1920x1080.jpg` (same camera at (248, 1690), bare vs dressed), `street_m2_after_ism_fix_1920x1080.jpg` ((-2, 1690)), `street_m1_control_1920x1080.jpg` ((248, 330), M1), `ip_gate.json` (OCR gate over the round's stills, `../ip_gate_r03.py`),
 `stills/a1_*` (re-shot 2026-10-03 on the fixed map). Captures of 2026-10-02 (r1-r4) are unchanged: the final map reproduces their telemetry to 0.0000 m.
 
