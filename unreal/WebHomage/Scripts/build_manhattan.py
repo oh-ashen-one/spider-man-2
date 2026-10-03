@@ -94,25 +94,45 @@ def wait_slot():
         log('3+ Unreal instances running, waiting 60 s'); time.sleep(60)
 
 
+GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'
+# (island r04) SM2_ISLAND_GPU_SLOT=1: every commandlet runs inside its own `gpu_slot.sh capture --label island` hold (RULES.md: every Unreal launch
+# goes through the lock; max hold 2,400 s). Resumable steps get SM2_ISLAND_BUDGET_S (default 1,650 s of script time) and stop at it.
+USE_SLOT = os.environ.get('SM2_ISLAND_GPU_SLOT', '0') == '1'
+
+
 def ue_python(name, code, env=None, timeout=7200):
     """run python code in a headless commandlet of THIS worktree's project; fails on a Python error in the log"""
     if subprocess.run(['pgrep', '-f', UPROJECT], capture_output=True).returncode == 0:
-        raise SystemExit('an Unreal process of this worktree is running; stop it first: pkill -9 -f "%s"' % UPROJECT)
+        raise SystemExit('an Unreal process of this worktree is running; stop it first (stop_ue.sh "%s")' % WT)
     jobs = os.path.join(SCR, 'jobs'); os.makedirs(jobs, exist_ok=True)
     job = os.path.join(jobs, name + '.py')
     open(job, 'w').write(code)
     lg = os.path.join(SCR, 'logs', name + '.log')
-    wait_slot()
-    log('UE commandlet', name, '-> log', lg)
-    t0 = time.time()
-    with open(lg + '.stdout', 'w') as so:
-        r = subprocess.run([UE, UPROJECT, '-run=pythonscript', '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen',
-                            '-NoSound', '-NoCrashReports', '-abslog=' + lg], env={**os.environ, **(env or {})}, stdout=so, stderr=subprocess.STDOUT,
-                           timeout=timeout)
+    cmd = [UE, UPROJECT, '-run=pythonscript', '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen',
+           '-NoSound', '-NoCrashReports', '-abslog=' + lg]
+    if USE_SLOT:
+        cmd = [GPU_SLOT, 'capture', '--label', 'island', '--'] + cmd
+        timeout = max(timeout, 3 * 3600)   # queue wait (<= 60 min) + hold (<= 40 min)
+    for attempt in range(40):
+        wait_slot()
+        if os.path.exists(lg): os.remove(lg)
+        log('UE commandlet', name, '-> log', lg, '(gpu_slot hold)' if USE_SLOT else '')
+        t0 = time.time()
+        with open(lg + '.stdout', 'w') as so:
+            r = subprocess.run(cmd, env={**os.environ, **(env or {})}, stdout=so, stderr=subprocess.STDOUT, timeout=timeout)
+        if USE_SLOT and r.returncode == 75:   # gpu_slot: waited too long / paused, command NOT run
+            log('gpu_slot exit 75 (not run), retry in 60 s'); TIMINGS.append({'cmd': 'gpu_slot wait (not run) ' + name, 'seconds': round(time.time() - t0, 1), 'rc': 75})
+            time.sleep(60); continue
+        break
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
+    run_s = None
+    m = [l for l in open(lg + '.stdout', errors='replace').read().splitlines() if 'gpu_slot[' in l and 'release exit=' in l] if USE_SLOT else []
+    if m:
+        try: run_s = float(m[-1].split('hold_s=')[1].split()[0])
+        except Exception: run_s = None
     bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l]
-    log('UE commandlet %s: rc %d, %.0f s, %d python error lines' % (name, r.returncode, time.time() - t0, len(bad)))
-    TIMINGS.append({'cmd': 'UE ' + name, 'seconds': round(time.time() - t0, 1), 'rc': r.returncode,
+    log('UE commandlet %s: rc %d, %.0f s (hold %s s), %d python error lines' % (name, r.returncode, time.time() - t0, run_s, len(bad)))
+    TIMINGS.append({'cmd': 'UE ' + name, 'seconds': round(time.time() - t0, 1), 'hold_s': run_s, 'rc': r.returncode,
                     'steps': [l.split('LogPython: ')[-1][:160] for l in txt.splitlines() if 'LogPython: [build_city' in l][-60:]})
     if bad:
         print('\n'.join(bad[:30]))
@@ -184,6 +204,7 @@ LOAD_SME = 'import unreal\nunreal.SystemLibrary.execute_console_command(None, "M
 
 
 def step_city():
+    if os.environ.get('SM2_ISLAND_CITY_SPLIT', '1' if USE_SLOT else '0') == '1': return step_city_split()
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}
     bc = os.path.join(HERE, 'build_city.py')
     # one pass in build_city.py's own default order (tools/export/build_city.sh): the map step spawns the kit + far-skyline actors
@@ -206,6 +227,49 @@ def step_city():
     # default timeout killed it at 07:24; SM2_ISLAND_UE_TIMEOUT (s, default 6 h) for this commandlet
     ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), env,
               timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+
+
+def drop_wp_map_files():
+    content = os.path.join(PROJ, 'Content')
+    names = [WP_MAP.split('/')[-1]] + [n for n in os.environ.get('SM2_ISLAND_DROP_MAPS', '').split(',') if n]
+    for name in names:
+        for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name, 'Maps/%s_HLODLayer_Merged.uasset' % name):
+            f = os.path.join(content, rel)
+            if os.path.exists(f): os.remove(f)
+        for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
+            safe_rmtree(os.path.join(content, rel))
+
+
+def step_city_split():
+    """(island r04) the city pass as separate commandlets, each one GPU-lock hold (<= 40 min): clean,tex,mat | mesh (resumable, repeated) | proto |
+    kit (resumable, repeated) | fsky,map,coll | wp. Same build_city.py steps and order as the single pass."""
+    bc = os.path.join(HERE, 'build_city.py')
+    base = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX, 'SM2_ISLAND_BUDGET_S': os.environ.get('SM2_ISLAND_BUDGET_S', '1650')}
+    def run(name, steps, extra=None):
+        return ue_python(name, exec_wrapper(bc, LOAD_SME + 'import time as _t, os as _o\n_o.environ["SM2_ISLAND_DEADLINE"] = str(_t.time() + float(_o.environ.get("SM2_ISLAND_BUDGET_S", "0") or 0)) if _o.environ.get("SM2_ISLAND_BUDGET_S") else ""\n'
+                                       + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), {**base, **(extra or {})},
+                         timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+    first = os.environ.get('SM2_ISLAND_SPLIT_FROM', 'a')   # resume point: a | mesh | proto | kit | b | wp
+    order = ['a', 'mesh', 'proto', 'kit', 'b', 'wp']
+    todo = order[order.index(first):]
+    if 'a' in todo: run('city_a', 'clean,tex,mat')
+    for part, step, key, env1 in (('mesh', 'mesh', 'MESH_REMAINING', {'SM2_ISLAND_MESH_ONLY': 'missing'}), ('proto', 'proto', None, {}),
+                                  ('kit', 'kit', 'KIT_REMAINING', {'SM2_ISLAND_KIT_ONLY': 'missing'})):
+        if part not in todo: continue
+        for k in range(30):
+            try: txt = run('city_%s_%02d' % (part, k), step, env1)
+            except SystemExit as ex:
+                if key and 'did not finish' in str(ex): log('resumable step %s stopped (%s), resuming' % (part, ex)); continue
+                raise
+            if not key: break
+            rem = [l.split(key)[-1].strip() for l in txt.splitlines() if key in l]
+            log('%s: %s' % (key, rem[-1:] or '?'))
+            if rem and rem[-1].split()[0] == '0': break
+        else: raise SystemExit('step %s did not converge in 30 commandlets' % part)
+    if 'b' in todo: run('city_b', 'fsky,map,coll')
+    if 'wp' in todo:
+        drop_wp_map_files()
+        run('city_wp', 'wp', {'SM2_ISLAND_BUDGET_S': ''})
 
 
 def step_ism():

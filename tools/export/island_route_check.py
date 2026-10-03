@@ -56,6 +56,8 @@ R_CAP, CAP_H, PEN = 0.36, 1.8, 0.08
 SUP_KINDS = ('wall', 'roof', 'parapet', 'coping', 'cornice', 'ledge', 'equipment', 'bulkhead', 'watertower', 'fireescape', 'skylight', 'spire', 'hero',
              'park', 'pier', 'glass')
 OVL_KINDS = ('parapet', 'coping', 'fireescape', 'trunk')
+# (island r04) landing strips beside the stair wells / ladder hatches are 0.15-0.35 m2 (street_kit.py r04): count them (r03: 0.5 m2 = whole landings only)
+KIT_MIN_AREA = float(os.environ.get('ISLAND_KIT_MIN_AREA', '0.12'))
 
 
 class Drawn:
@@ -83,7 +85,7 @@ class Drawn:
             up = (NQ[:, 1] > 0.9)
             for q in Q[up]:
                 lo, hi = q.min(0), q.max(0)
-                if hi[1] - lo[1] > 0.05 or (hi[0] - lo[0]) * (hi[2] - lo[2]) < 0.5: continue   # stairs (sloped) / tiny caps
+                if hi[1] - lo[1] > 0.05 or (hi[0] - lo[0]) * (hi[2] - lo[2]) < KIT_MIN_AREA: continue   # stairs (sloped) / tiny caps
                 rows.append((lo[0] + c[0], lo[2] + c[2], hi[1] - 0.08, hi[0] + c[0], hi[2] + c[2], hi[1], 'fireescape_kit', 0)); n_kit += 1
         n_tr = 0
         sp = os.path.join(E, 'streettrees.json')

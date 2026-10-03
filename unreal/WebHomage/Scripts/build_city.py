@@ -24,6 +24,9 @@ EAL = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
 T0 = time.time()
 def log(*a): print('[build_city %5.0fs]' % (time.time() - T0), *a)
+DEADLINE = float(os.environ.get('SM2_ISLAND_DEADLINE', '0') or 0)   # (island r04) unix time: resumable steps stop here (GPU-lock hold max)
+BATCH = int(os.environ.get('SM2_ISLAND_BATCH', '40'))
+def past_deadline(): return bool(DEADLINE) and time.time() > DEADLINE
 
 # ------------------------------------------------------------------------------------------------ helpers
 def import_files(files, dest, pipeline=None):
@@ -920,11 +923,13 @@ def full_fallback(sm):
     railings and copings would be simplified away by the default fallback error)"""
     ns = sm.get_editor_property('nanite_settings')
     if not ns.enabled: return
+    changed = False
     for k, v in (('fallback_target', getattr(getattr(unreal, 'NaniteFallbackTarget', None), 'PERCENT_TRIANGLES', None)), ('fallback_percent_triangles', 1.0), ('fallback_relative_error', 0.0)):
         if v is None: continue
-        try: ns.set_editor_property(k, v)
+        try:
+            if ns.get_editor_property(k) != v: ns.set_editor_property(k, v); changed = True
         except Exception as ex: log('WARN nanite', k, ex)
-    sm.set_editor_property('nanite_settings', ns)
+    if changed: sm.set_editor_property('nanite_settings', ns)   # (island r04) a setter rebuilds the mesh: only when a value differs
 def make_solid(sm):
     """(island r02) cooked triangle collision: no simple shapes, complex (render triangles) used for every query"""
     try: sms.remove_collisions(sm)   # no simple hull / boxes (a merged tile's hull is a giant invisible block)
@@ -938,14 +943,19 @@ def make_solid(sm):
     else: log('WARN no body setup', sm.get_name())
     full_fallback(sm)
     return bool(bsetup)
+FINISH_STATS = {'lod_set': 0, 'lod_skip': 0}
 def finish_mesh(sm, mat, collide, nanite=False):
     sm.set_material(0, mat)
     ns = sm.get_editor_property('nanite_settings')  # Nanite quantises UVs: the facade / roof data channels need full precision
     if ns.enabled != nanite: ns.enabled = nanite; sm.set_editor_property('nanite_settings', ns)
     bs = sms.get_lod_build_settings(sm, 0)
-    bs.set_editor_property('use_full_precision_u_vs', True); bs.set_editor_property('generate_lightmap_u_vs', False)
-    bs.set_editor_property('recompute_normals', False); bs.set_editor_property('recompute_tangents', False)
-    sms.set_lod_build_settings(sm, 0, bs)
+    want = (('use_full_precision_u_vs', True), ('generate_lightmap_u_vs', False), ('recompute_normals', False), ('recompute_tangents', False))
+    # (island r04) set_lod_build_settings rebuilds the render data (+ distance field): the import pipeline already sets these, so only call it
+    # when a value differs (r03: ~10 s per tile mesh, two builds each). SM2_ISLAND_FORCE_LOD_SETTINGS=1 = the old always-set behaviour.
+    if os.environ.get('SM2_ISLAND_FORCE_LOD_SETTINGS') == '1' or any(bs.get_editor_property(k) != v for k, v in want):
+        for k, v in want: bs.set_editor_property(k, v)
+        sms.set_lod_build_settings(sm, 0, bs); FINISH_STATS['lod_set'] += 1
+    else: FINISH_STATS['lod_skip'] += 1
     bsetup = sm.get_editor_property('body_setup')
     if collide:
         make_solid(sm)   # (island r02) remove_collisions + complex-as-simple + full Nanite fallback
@@ -966,23 +976,31 @@ if 'mesh' in STEPS:
         # md5, 2026-10-02), so only the meshes without an asset yet are imported (a clean build imports everything)
         recs = [r for r in recs if not EAL.does_asset_exist(f'{ROOT}/Meshes/{r["kind"]}/SM_' + os.path.basename(r['file'])[:-4])]
         log('mesh step: %d missing meshes to import' % len(recs))
-    for nan in (False, True):
-        group = [r for r in recs if (r['kind'] == 'detail') == nan]
-        dest = ROOT + '/Meshes'
-        import_files([os.path.join(EXPORT, r['file']) for r in group], dest + '/_in', mesh_pipeline(nan))
-    n = 0
-    for r in recs:
-        base = os.path.basename(r['file'])[:-4]
-        src = f'{ROOT}/Meshes/_in/{base}/StaticMeshes/{base}'
-        dst = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
-        if not EAL.does_asset_exist(src): log('MISSING import', src); continue
-        EAL.rename_asset(src, dst)
-        sm = load(dst)
-        mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
-        finish_mesh(sm, mat, solid_rec(r), nanite=r['kind'] == 'detail')   # (island r02) traversal solids collide with their own triangles (solid_rec)
-        EAL.save_asset(dst); n += 1
-    if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')
+    # (island r04) batches of SM2_ISLAND_BATCH meshes (default 40), stopping at SM2_ISLAND_DEADLINE (unix time; 0 = none) so that one commandlet
+    # fits a GPU-lock hold (40 min max); with SM2_ISLAND_MESH_ONLY=missing the next commandlet resumes. Logs 'MESH_REMAINING <n>'.
+    if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')   # leftovers of a stopped run
+    n = 0; left = len(recs)
+    for b0 in range(0, len(recs), BATCH):
+        if past_deadline(): break
+        batch = recs[b0:b0 + BATCH]
+        for nan in (False, True):
+            group = [r for r in batch if (r['kind'] == 'detail') == nan]
+            if group: import_files([os.path.join(EXPORT, r['file']) for r in group], ROOT + '/Meshes/_in', mesh_pipeline(nan))
+        for r in batch:
+            base = os.path.basename(r['file'])[:-4]
+            src = f'{ROOT}/Meshes/_in/{base}/StaticMeshes/{base}'
+            dst = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+            if not EAL.does_asset_exist(src): log('MISSING import', src); continue
+            EAL.rename_asset(src, dst)
+            sm = load(dst)
+            mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
+            finish_mesh(sm, mat, solid_rec(r), nanite=r['kind'] == 'detail')   # (island r02) traversal solids collide with their own triangles (solid_rec)
+            EAL.save_asset(dst); n += 1
+        left = len(recs) - (b0 + len(batch))
+        if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')
+        log('mesh batch: %d imported, %d left, finish %s' % (n, left, FINISH_STATS))
     log('meshes', n)
+    log('MESH_REMAINING %d' % left)
 
 # (r04) 'frames' step: re-import the patched tsFrames meshes (tools/export/patch_export.py) into an already built project WITHOUT deleting the
 # referenced old assets (a delete pops a modal dialog): the new mesh gets the suffix _r04 and the geo level actors are pointed at it.
@@ -1175,28 +1193,42 @@ def kit_spawn(wp=False, only=None):
 
 def kit_import(only=None):
     """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them.
-    (island r04) only = set of tile names ('streetkit__t-1_2', 'fireescape__t-1_2', ...): delete + re-import just those assets (step 'fepatch')"""
+    (island r04) only = set of tile names ('streetkit__t-1_2', 'fireescape__t-1_2', ...): delete + re-import just those assets (step 'fepatch');
+    SM2_ISLAND_KIT_ONLY=missing: import only tiles without an asset, in batches, stopping at SM2_ISLAND_DEADLINE (logs 'KIT_REMAINING <n>')"""
     kp = os.path.join(EXPORT, 'streetkit.json')
     K = json.load(open(kp))
     mat = load(MAT + '/M_CityKit')
+    missing = os.environ.get('SM2_ISLAND_KIT_ONLY') == 'missing'
+    left = 0
     for recs, kdir, solid in ((K['files'], KIT_DIR, False), (K.get('fireescape_files', []), FE_DIR, True)):   # (island r02) fire escapes: solids
         if only is not None:
             recs = [r for r in recs if r['name'] in only]
             for r in recs:
                 if EAL.does_asset_exist(f'{kdir}/SM_{r["name"]}'): EAL.delete_asset(f'{kdir}/SM_{r["name"]}')
             if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
+        elif missing:
+            recs = [r for r in recs if not EAL.does_asset_exist(f'{kdir}/SM_{r["name"]}')]
+            if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
         elif EAL.does_directory_exist(kdir): EAL.delete_directory(kdir)
         if not recs: continue
-        import_files([os.path.join(EXPORT, r['file']) for r in recs], kdir + '/_in', mesh_pipeline(True))
-        for r in recs:
-            base = r['name']; src = f'{kdir}/_in/{base}/StaticMeshes/{base}'; dst = f'{kdir}/SM_{base}'
-            if not EAL.does_asset_exist(src): log('MISSING kit mesh', src); continue
-            EAL.rename_asset(src, dst); sm = load(dst)
-            finish_mesh(sm, mat, solid, nanite=True); EAL.save_asset(dst)
-        EAL.delete_directory(kdir + '/_in')
-        log('kit meshes', kdir, len(recs), 'solid' if solid else 'visual-only')
+        n = 0
+        for b0 in range(0, len(recs), BATCH):
+            if past_deadline(): left += len(recs) - b0; break
+            batch = recs[b0:b0 + BATCH]
+            import_files([os.path.join(EXPORT, r['file']) for r in batch], kdir + '/_in', mesh_pipeline(True))
+            for r in batch:
+                base = r['name']; src = f'{kdir}/_in/{base}/StaticMeshes/{base}'; dst = f'{kdir}/SM_{base}'
+                if not EAL.does_asset_exist(src): log('MISSING kit mesh', src); continue
+                EAL.rename_asset(src, dst); sm = load(dst)
+                finish_mesh(sm, mat, solid, nanite=True); EAL.save_asset(dst); n += 1
+            if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
+            log('kit batch', kdir, n, '/', len(recs), FINISH_STATS)
+        log('kit meshes', kdir, n, 'solid' if solid else 'visual-only')
+    log('KIT_REMAINING %d' % left)
 
-if 'kit' in STEPS:
+if 'kit' in STEPS and os.environ.get('SM2_ISLAND_KIT_ONLY') == 'missing':
+    kit_import()   # (island r04) resumable import only: the map step rebuilds the geometry level (and its kit actors) from scratch
+elif 'kit' in STEPS:
     # (r07) clean build: no geometry level yet -> only import the kit meshes (the map step spawns them). Existing project: remove the kit actors from the geometry level
     # first (deleting referenced assets pops a modal dialog), re-import, respawn.
     if EAL.does_asset_exist(TESTS + '/City_Midtown_Geo'):

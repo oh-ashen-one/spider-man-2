@@ -177,10 +177,62 @@ def select(E, use_raster=True):
     return out, stats
 
 
+FILL_MIN_CELLS, FILL_PASSES, FILL_PCT = 16, 3, 10
+
+
+def box_raster(rows, reg, shape):
+    """highest box top per 1 m cell, the audit's (island_coll_audit.py) cell rounding"""
+    X0, Z0 = reg['x0'], reg['z0']; NZ, NX = shape
+    Hb = np.zeros((NZ, NX), np.float32)
+    for x0, y0, z0, x1, y1, z1, *_ in rows:
+        c0, c1 = max(int(np.floor(x0 - X0 + 0.5)), 0), min(int(np.floor(x1 - X0 + 0.5)), NX)
+        r0, r1 = max(int(np.floor(z0 - Z0 + 0.5)), 0), min(int(np.floor(z1 - Z0 + 0.5)), NZ)
+        if c1 > c0 and r1 > r0: np.maximum(Hb[r0:r1, c0:c1], y1, out=Hb[r0:r1, c0:c1])
+    return Hb
+
+
+def fill_hollow(rows, reg, hv, stats):
+    """(island r04) rule 5: drawn building mass with no box under it (hv > 3 m and > box top + 1.5 m) that is NOT a 1-2 m facade rim of a box
+    (a box within 2 cells already reaches that height), in 8-connected patches >= 16 m2: covered by maximal rectangles (min 2 x 2 m) with
+    top = the 10th percentile of the drawn top in the rectangle (never above most of what is drawn), bottom 0; up to 3 passes for stepped
+    roofs. Round 03's audit: 3.64 % of the island's building cells were such hollows (west-side pier sheds 11-15 m, stepped crowns,
+    buildings whose solid is not a kept kind); they had no anchor / roof index."""
+    from scipy import ndimage
+    X0, Z0 = reg['x0'], reg['z0']; NZ, NX = hv.shape
+    added = []
+    for ps in range(FILL_PASSES):
+        Hb = box_raster(rows + added, reg, hv.shape)
+        hol = (hv > 3.0) & (hv > Hb + 1.5)
+        P = np.pad(Hb, 2)
+        nmax = np.max(np.stack([P[2 + dy:2 + dy + NZ, 2 + dx:2 + dx + NX] for dy in range(-2, 3) for dx in range(-2, 3)]), 0)
+        cand = hol & ~(nmax >= hv - 1.5)
+        lab, n = ndimage.label(cand, structure=np.ones((3, 3), bool))
+        if not n: break
+        sizes = np.bincount(lab.ravel()); sl = ndimage.find_objects(lab)
+        k0 = len(added)
+        for i in range(1, n + 1):
+            if sizes[i] < FILL_MIN_CELLS: continue
+            s = sl[i - 1]; m = lab[s] == i
+            for (a0, b0, a1, b1) in max_rects(m, min_side=2, max_rects=24, stop_frac=0.1):
+                cells = m[a0:a1, b0:b1]
+                h = hv[s][a0:a1, b0:b1][cells]
+                if h.size < 4: continue
+                top = float(np.percentile(h, FILL_PCT))
+                if top <= 3.0: continue
+                added.append([X0 + s[1].start + b0, 0.0, Z0 + s[0].start + a0, X0 + s[1].start + b1, round(top, 3), Z0 + s[0].start + a1, 'drawn', 'fill'])
+        stats['fill_pass%d' % ps] = len(added) - k0
+        if len(added) == k0: break
+    stats['fill'] = len(added)
+    return rows + added
+
+
 def main():
     E = sys.argv[1]
     t0 = time.time()
     rows, stats = select(E)
+    if os.environ.get('ISLAND_BOX_FILL', '1') == '1':
+        reg, hv, ha = drawn_rasters(E)
+        rows = fill_hollow(rows, reg, hv, stats)
     rows = [[round(float(v), 3) for v in r[:6]] + [str(r[6]), str(r[7])] for r in rows]
     json.dump({'note': 'WHBox cubes, browser metres [x0, y0, z0, x1, y1, z1, kind, source]; tools/export/island_boxes.py', 'stats': stats, 'boxes': rows},
               open(os.path.join(E, 'whboxes.json'), 'w'))
