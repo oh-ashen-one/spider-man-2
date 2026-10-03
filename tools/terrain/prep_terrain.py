@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Terrain prep (piece E, CPU only): turns the terrain export (tools/export/export_terrain.mjs) into the derived inputs of unreal/WebHomage/Scripts/build_terrain.py.
   <scratch>/prep/pathmask.png    park path mask, 0.5 m texels over the park rectangle: R = edge distance e*2 (0 at the ribbon edge .. 1 at the centre line), G = inside any path
-  <scratch>/prep/tuft.glb        one grass clump (9 curved blades, unit height; vertex colour R = height along the blade for the wind weight)
-  <scratch>/prep/tufts.bin       float32 records [x, z, yaw, widthScale, heightMetres] (browser frame) scattered over the grass mask (parkmask.rgba)
+  (r04: the tuft prototype + scatter moved to tools/terrain/prep_lawn.py: grass_near_* / grass_far_* patches, lawn_detail.png, blanket_weave.png; run at the end of this script)
   <scratch>/prep/stats.json      areas for the checkers (park land, grass-covered land, path / water / rock shares)
   unreal/WebHomage/Shaders/Terrain/ParkData.ush   meadow + pond constants of the park shader (gitignored: regenerated from the export on every build)
 usage: prep_terrain.py [export_dir] [prep_dir]"""
@@ -106,43 +105,9 @@ if os.path.exists(sp):
     write_glb(os.path.join(PREP, 'park_rocks.glb'), {'POSITION': Pn.astype(np.float32), 'NORMAL': Nn.astype(np.float32), 'TEXCOORD_0': np.zeros((len(Pn), 2), np.float32), 'COLOR_0': np.concatenate([col, np.ones((len(col), 1))], 1).astype(np.float32)}, Ik, 'park_rocks')
     print('park_rocks.glb: %d tris (museum dropped: %d)' % (len(Ik) // 3, int((~keep_t).sum())))
 
-# ------------------------------------------------------------------ grass tuft prototype (unit height)
-rng = np.random.default_rng(7)
-PP, NN, UU, CC, II = [], [], [], [], []
-blades, segs = 9, 3
-for b in range(blades):
-    a = rng.uniform(0, 2 * math.pi); r = 0.02 + rng.uniform(0, 0.12); lean = 0.10 + rng.uniform(0, 0.22); ha = rng.uniform(0, 2 * math.pi)
-    ox, oz = math.cos(a) * r, math.sin(a) * r; w = 0.012 + rng.uniform(0, 0.008); hk = 0.65 + rng.uniform(0, 0.4)
-    dx, dz = math.cos(ha), math.sin(ha); px, pz = -dz, dx
-    v0 = len(PP)
-    for s in range(segs + 1):
-        t = s / segs; y = t * hk; bend = lean * t * t; ww = w * (1 - t * 0.85)
-        for side in (-1, 1):
-            PP.append((ox + dx * bend + px * ww * side, y, oz + dz * bend + pz * ww * side)); NN.append((dx * 0.3, 1.0, dz * 0.3)); UU.append((0.5 + 0.5 * side, t)); CC.append((t, t, t, 1.0))
-    for s in range(segs):
-        k = v0 + s * 2; II += [k, k + 1, k + 3, k, k + 3, k + 2]
-PPa = np.array(PP, np.float32); NNa = np.array(NN, np.float32); NNa /= np.linalg.norm(NNa, axis=1, keepdims=True)
-write_glb(os.path.join(PREP, 'tuft.glb'), {'POSITION': PPa, 'NORMAL': NNa, 'TEXCOORD_0': np.array(UU, np.float32), 'COLOR_0': np.array(CC, np.float32)}, np.array(II), 'tuft')
-print('tuft.glb: %d blades, %d verts' % (blades, len(PP)))
-
-# ------------------------------------------------------------------ tuft scatter over the grass mask (browser frame x, z)
+# ------------------------------------------------------------------ r04: the star-sprite tufts (tuft.glb / tufts.bin) are gone: dense blade patches, lawn detail and blanket weave come from prep_lawn.py (run last: needs pathmask.png)
 M = np.fromfile(os.path.join(EXP, T['mask']['file']), np.uint8).reshape(PH, PW, 4)
-dens = M[..., 0] / 255.0; hgt = M[..., 1] / 255.0
-PER_M2 = float(os.environ.get('SM2_TUFT_PER_M2', '1.6'))
-cell = 1.0 / math.sqrt(PER_M2)
-nx, nz = int((PARK['x1'] - PARK['x0']) / cell), int((PARK['z1'] - PARK['z0']) / cell)
-gi, gj = np.meshgrid(np.arange(nx), np.arange(nz))
-jit = rng.uniform(0, 1, (nz, nx, 4))
-x = PARK['x0'] + (gi + jit[..., 0]) * cell; z = PARK['z0'] + (gj + jit[..., 1]) * cell
-mi = np.clip(np.floor(x - PX0).astype(int), 0, PW - 1); mj = np.clip(np.floor(z - PZ0).astype(int), 0, PH - 1)
-keep = jit[..., 2] < dens[mj, mi]
-# the path mask clears the path ribbons (with a soft margin) so no tuft grows through the gravel
-pi_ = np.clip(np.floor((x - PX0) / TEXEL).astype(int), 0, MW - 1); pj_ = np.clip(np.floor((z - PZ0) / TEXEL).astype(int), 0, MH - 1)
-keep &= (COV[pj_, pi_] == 0) & (DRV[pj_, pi_] == 0)
-h = (0.06 + 0.4 * hgt[mj, mi]) * (0.7 + 0.6 * jit[..., 3])                  # grass.js blade height (m) x clump height (unit tuft is ~0.85 m high)
-rec = np.stack([x[keep], z[keep], rng.uniform(0, 2 * math.pi, keep.sum()), rng.uniform(0.9, 1.5, keep.sum()), np.maximum(h[keep], 0.085)], 1).astype(np.float32)
-rec.tofile(os.path.join(PREP, 'tufts.bin'))
-print('tufts: %d instances (%.2f / m2 target), %.1f %% of cells kept' % (len(rec), PER_M2, 100 * keep.mean()))
+dens = M[..., 0] / 255.0
 
 # ------------------------------------------------------------------ stats for the checkers (0.5 m grid over the mask rectangle)
 from PIL import ImageDraw
@@ -162,6 +127,8 @@ px = TEXEL * TEXEL
 st = {'park_rect_m2': float(rect.sum() * px), 'water_m2': water_m2, 'park_land_m2': float(land.sum() * px), 'path_and_drive_m2': float((land & PATH).sum() * px), 'met_lot_m2': float((land & MET).sum() * px),
       'open_land_m2': float(open_land.sum() * px), 'grass_mask_on_open_land_m2': float((open_land & GRASS).sum() * px),
       'grass_cover_of_open_land_pct': 100 * float((open_land & GRASS).sum()) / float(open_land.sum()),
-      'grass_cover_of_all_park_land_pct': 100 * float((land & GRASS & ~PATH).sum()) / float(land.sum()), 'tufts': int(len(rec))}
+      'grass_cover_of_all_park_land_pct': 100 * float((land & GRASS & ~PATH).sum()) / float(land.sum())}
 json.dump(st, open(os.path.join(PREP, 'stats.json'), 'w'), indent=1)
 print(json.dumps(st, indent=1))
+import subprocess
+subprocess.run([sys.executable, os.path.join(HERE, 'prep_lawn.py'), EXP, PREP], check=True)
