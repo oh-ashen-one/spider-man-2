@@ -1177,7 +1177,12 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			if (!St.bActive || Fade <= 0.01 || D.Size() < 5.0) { HideSeg(C); continue; }
 			auto P = [&](double U)
 			{
-				return A + D * U + Perp * (Wave * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI));
+				const FVector Q = A + D * U;
+				double Wv = Wave;
+				// r25 build 4: the flying strand's wave is bounded on SCREEN (RopeWavePx at that point's distance): the 30 cm world wave
+				// put the attach-frame strand 5-15 px off its hand -> anchor line (rope_r25_check, a 0.4 / 3.4 s)
+				if (bTwoTone && Traversal->RopeWavePx >= 0.f) Wv = FMath::Min(Wv, double(Traversal->RopeWavePx) * FVector::Dist(Q, CamPosCm) / PxK);
+				return Q + Perp * (Wv * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI));
 			};
 			const double U0 = double(K) / SEGS_PER_STRAND, U1 = double(K + 1) / SEGS_PER_STRAND;
 			const FVector P0 = P(U0), P1 = P(U1);
