@@ -86,14 +86,6 @@ if has lineupx; then      # round 17: the corruption-cause experiment (same came
   for d in e0_r16 e1_stream e2_nostream; do n=${d%%_*}; [ -f "$LX/$d/$n.log" ] && grep -E "WH_PROBE|WH_SETTLE|WH_STAGE_SHOT|WH_SHOT|WH_QUIT|WH_PERF" "$LX/$d/$n.log" > "$LX/$d/probe_log.txt" 2>/dev/null; done
 fi
 
-if has lineupx0; then      # round 17: the dose-response of the r16 protocol: screenshots at 1 .. 10 world seconds in ONE run (no settle), with the per-frame probe (assets still compiling, textures not resident)
-  LX="$OUT/lineupx0"; mkdir -p "$LX"; gpu lx_x0
-  log "lineupx0: r16 protocol, shots at 1,2,3,4,5,6,8,10 s"
-  Scripts/run_game.sh "$LX" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 1.0,2.0,3.0,4.0,5.0,6.0,8.0,10.0 -perf 2:5 -quit 12 -name x0 -timeout 1200 -- -WHCharShot=5 -WHProbeFrames=400 < /dev/null | tail -3
-  check "$LX" x0
-  grep -E "WH_PROBE|WH_SHOT|WH_QUIT|WH_PERF" "$LX/x0.log" > "$LX/probe_log.txt" 2>/dev/null
-fi
-
 if has stills; then
   TIMES=$(python3 - <<PY
 import json

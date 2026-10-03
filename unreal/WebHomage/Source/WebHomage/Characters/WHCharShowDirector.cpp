@@ -71,9 +71,17 @@ void AWHCharShowDirector::BeginPlay()
 			if (bStageShotRel) for (double& St : StageShots) St += double(T);
 			FParse::Value(FCommandLine::Get(), TEXT("WHSettleFrames="), SettleFrames);
 			double Ss = 0.0; if (FParse::Value(FCommandLine::Get(), TEXT("WHSettleSeconds="), Ss)) SettleSeconds = Ss;
+			FString DumpList;
+			if (FParse::Value(FCommandLine::Get(), TEXT("WHSettleDump="), DumpList, false) && !DumpList.IsEmpty())
+			{
+				TArray<FString> Ps; DumpList.ParseIntoArray(Ps, TEXT(","));
+				for (const FString& P_ : Ps) SettleDumpCounts.Add(FCString::Atoi(*P_));
+				SettleDumpCounts.Sort(); bSettleDumpAll = FParse::Param(FCommandLine::Get(), TEXT("WHSettleDumpAll"));
+			}
 			if (SettleFrames > 0) UE_LOG(LogTemp, Display, TEXT("WH_SETTLE protocol on: %d static rendered frames + %.1f world s after every texture of the visible actors is resident; %d shots at stage T (rel=%d)"), SettleFrames, SettleSeconds, StageShots.Num(), bStageShotRel ? 1 : 0);
 		}
 	}
+	FParse::Value(FCommandLine::Get(), TEXT("WHProbeFrames="), ProbeFrames);
 	if (FParse::Value(FCommandLine::Get(), TEXT("WHBoneLog="), BoneLogPath) && !BoneLogPath.IsEmpty())
 	{
 		IFileManager::Get().Delete(*BoneLogPath);
@@ -129,6 +137,16 @@ void AWHCharShowDirector::Tick(float Dt)
 			FAssetCompilingManager::Get().FinishAllCompilation();
 			IStreamingManager::Get().StreamAllResources(5.0f);
 			UE_LOG(LogTemp, Display, TEXT("WH_PRELOAD all assets compiled + streamed in %.1f s wall (frame %llu)"), FPlatformTime::Seconds() - P0, GFrameCounter);
+		}
+	}
+	if (ProbeFrames > 0 && ProbeTick < ProbeFrames)
+	{   // round 17: per-frame residency probe (every frame for 40 ticks, then every 4th): what the r16 'capture at 3.0 s' protocol would have seen
+		++ProbeTick;
+		if (ProbeTick <= 40 || (ProbeTick % 4) == 0)
+		{
+			int32 Bad = 0; FString First; AllVisibleTexturesResident(Bad, First);
+			UE_LOG(LogTemp, Display, TEXT("WH_PROBE tick=%d frame=%llu world=%.3f stage_T=%.3f dt_ms=%.1f textures_not_resident=%d (%s) assets_compiling=%d shaders_compiling=%d"), ProbeTick, GFrameCounter, GetWorld()->GetTimeSeconds(), T, Dt * 1000.0, Bad, *First,
+				FAssetCompilingManager::Get().GetNumRemainingAssets(), (GShaderCompilingManager && GShaderCompilingManager->IsCompiling()) ? 1 : 0);
 		}
 	}
 	if (!Cam || Shots.Num() == 0) return;
@@ -287,19 +305,48 @@ bool AWHCharShowDirector::AllVisibleTexturesResident(int32& OutBad, FString& Out
 	return OutBad == 0;
 }
 
-// a cheap fingerprint of every skeletal mesh's pose: component location + the head / root bone location
+// a cheap fingerprint of every skeletal mesh's pose: component location + the head bone location; LastMover names the first component whose own fingerprint changed since the last call (reset diagnostics)
 double AWHCharShowDirector::PoseSignature() const
 {
-	double Sig = 0.0; int32 k = 1;
+	AWHCharShowDirector* Self = const_cast<AWHCharShowDirector*>(this);
+	double Sig = 0.0; int32 k = 1; Self->LastMover.Empty();
 	for (TObjectIterator<USkeletalMeshComponent> It; It; ++It)
 	{
 		if (It->GetWorld() != GetWorld() || !It->IsVisible()) continue;
 		const FVector L = It->GetComponentLocation();
+		if (Cam)
+		{   // only what the camera can see counts (r17 E1: the player pawn falls from its off-stage PlayerStart for 30 frames and reset the count; it is nowhere near the frame)
+			const FVector Rel = Cam->GetActorTransform().InverseTransformPosition(It->Bounds.Origin);       // x forward, y right, z up
+			const float R = It->Bounds.SphereRadius;
+			const float HalfH = FMath::Tan(FMath::DegreesToRadians(Cam->GetCameraComponent()->FieldOfView * 0.5f));
+			const float Asp = 16.f / 9.f;
+			if (Rel.X + R < 1.f || FMath::Abs(Rel.Y) - R > Rel.X * HalfH * 1.3f || FMath::Abs(Rel.Z) - R > Rel.X * HalfH / Asp * 1.3f) continue;
+		}
 		FVector B = L;
 		if (It->GetBoneIndex(FName(TEXT("head"))) != INDEX_NONE) B = It->GetBoneLocation(FName(TEXT("head")), EBoneSpaces::WorldSpace);
-		Sig += (L.X + 2.0 * L.Y + 3.0 * L.Z + 5.0 * B.X + 7.0 * B.Y + 11.0 * B.Z) * double(k++);
+		const double Part = (L.X + 2.0 * L.Y + 3.0 * L.Z + 5.0 * B.X + 7.0 * B.Y + 11.0 * B.Z);
+		const double* Old = Self->PoseParts.Find(*It);
+		if (Old && FMath::Abs(*Old - Part) > 0.01 && Self->LastMover.IsEmpty()) Self->LastMover = FString::Printf(TEXT("%s (%s) d=%.3f"), *It->GetOwner()->GetName(), *It->GetName(), Part - *Old);
+		Self->PoseParts.Add(*It, Part);
+		Sig += Part * double(k++);
 	}
 	return Sig;
+}
+
+void AWHCharShowDirector::FreezeWalkers(bool bFreeze)
+{
+	if (bFreeze)
+	{
+		FrozenWalkers.Reset();
+		for (TActorIterator<AWHCharLoopWalker> It(GetWorld()); It; ++It)
+			if (It->IsActorTickEnabled()) { FrozenWalkers.Add(*It); It->SetActorTickEnabled(false); }
+		UE_LOG(LogTemp, Display, TEXT("WH_SETTLE froze %d walker actors (Tick disabled while the shot settles)"), FrozenWalkers.Num());
+	}
+	else
+	{
+		for (TWeakObjectPtr<AActor>& A : FrozenWalkers) if (A.IsValid()) A->SetActorTickEnabled(true);
+		FrozenWalkers.Reset();
+	}
 }
 
 void AWHCharShowDirector::TickSettle()
@@ -310,7 +357,7 @@ void AWHCharShowDirector::TickSettle()
 	{
 		if (NextStageShot >= StageShots.Num() || double(T) < StageShots[NextStageShot]) return;
 		SettleState = 1; SettleWall0 = Now; SettleWorld0 = W->GetTimeSeconds(); SettleFrame0 = GFrameCounter; bSettleSigValid = false; SettleResets = 0; SettleLastTexBad = -1;
-		PauseAllAnims(true);
+		PauseAllAnims(true); FreezeWalkers(true); NextDump = 0; PoseParts.Reset();
 		if (!bSettleCvars)
 		{
 			bSettleCvars = true;
@@ -340,10 +387,24 @@ void AWHCharShowDirector::TickSettle()
 		const FVector CL = Cam ? Cam->GetActorLocation() : FVector::ZeroVector; const FRotator CR = Cam ? Cam->GetActorRotation() : FRotator::ZeroRotator;
 		const double Pose = PoseSignature();
 		const bool bViewOk = !PC || PC->GetViewTarget() == Cam;
-		if (!bSettleSigValid || !bViewOk || !CL.Equals(SettleSigLoc, 0.02) || !CR.Equals(SettleSigRot, 0.002) || FMath::Abs(Pose - SettleSigPose) > 0.02)
+		const double WallWait0 = Now - SettleWall0;
+		if (WallWait0 > 240.0 && !FScreenshotRequest::IsScreenshotRequested())      // never hang a hold: take the shot anyway and flag it
 		{
-			if (bSettleSigValid) ++SettleResets;
-			SettleSigLoc = CL; SettleSigRot = CR; SettleSigPose = Pose; bSettleSigValid = true; SettleCount = 0; SettleCountWorld0 = W->GetTimeSeconds();
+			const FString File = StageShotDir / FString::Printf(TEXT("%s_%02d_t%05.1f.png"), *StageShotName, NextStageShot, StageShots[NextStageShot]);
+			FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
+			SettleShotFrame = GFrameCounter; SettleState = 3;
+			UE_LOG(LogTemp, Warning, TEXT("WH_STAGE_SHOT %s stage T=%.3f world=%.3f settle_frames=%d resets=%d wall_s=%.1f SETTLE_TIMEOUT last mover %s"), *File, T, W->GetTimeSeconds(), SettleCount, SettleResets, WallWait0, *LastMover);
+			return;
+		}
+		const bool bMoved = !bSettleSigValid || !bViewOk || !CL.Equals(SettleSigLoc, 0.02) || !CR.Equals(SettleSigRot, 0.002) || FMath::Abs(Pose - SettleSigPose) > 0.02;
+		if (bMoved)
+		{
+			if (bSettleSigValid)
+			{
+				++SettleResets;
+				if (SettleResets <= 12) UE_LOG(LogTemp, Display, TEXT("WH_SETTLE shot %d: reset %d at count %d (view ok %d, camera moved %d, pose moved %d, mover %s)"), NextStageShot, SettleResets, SettleCount, bViewOk ? 1 : 0, (!CL.Equals(SettleSigLoc, 0.02) || !CR.Equals(SettleSigRot, 0.002)) ? 1 : 0, FMath::Abs(Pose - SettleSigPose) > 0.02 ? 1 : 0, *LastMover);
+			}
+			SettleSigLoc = CL; SettleSigRot = CR; SettleSigPose = Pose; bSettleSigValid = true; SettleCount = 0; SettleCountWorld0 = W->GetTimeSeconds(); NextDump = 0;
 			return;
 		}
 		++SettleCount;
@@ -352,14 +413,23 @@ void AWHCharShowDirector::TickSettle()
 			int32 Bad = 0; FString First;
 			if (!AllVisibleTexturesResident(Bad, First) || FAssetCompilingManager::Get().GetNumRemainingAssets() > 0) { SettleState = 1; SettleWall0 = Now; UE_LOG(LogTemp, Display, TEXT("WH_SETTLE shot %d: a texture became non-resident again (%s): back to waiting"), NextStageShot, *First); return; }
 		}
+		// the convergence curve: extra screenshots after N static rendered frames (the first shot of the run only unless -WHSettleDumpAll)
+		if ((NextStageShot == 0 || bSettleDumpAll) && NextDump < SettleDumpCounts.Num() && SettleCount >= SettleDumpCounts[NextDump] && !FScreenshotRequest::IsScreenshotRequested())
+		{
+			const FString DFile = StageShotDir / FString::Printf(TEXT("%s_%02d_c%03d.png"), *StageShotName, NextStageShot, SettleDumpCounts[NextDump]);
+			FScreenshotRequest::RequestScreenshot(DFile, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
+			UE_LOG(LogTemp, Display, TEXT("WH_SETTLE_DUMP %s after %d static rendered frames (frame %llu, world %.3f)"), *DFile, SettleCount, GFrameCounter, W->GetTimeSeconds());
+			++NextDump;
+			return;
+		}
 		const double WorldS = W->GetTimeSeconds() - SettleCountWorld0;
 		const double WallWait = Now - SettleWall0;
-		if ((SettleCount >= SettleFrames + 2 && WorldS >= SettleSeconds) || WallWait > 600.0)
+		if (SettleCount >= SettleFrames + 2 && WorldS >= SettleSeconds && NextDump >= SettleDumpCounts.Num() && !FScreenshotRequest::IsScreenshotRequested())
 		{
 			const FString File = StageShotDir / FString::Printf(TEXT("%s_%02d_t%05.1f.png"), *StageShotName, NextStageShot, StageShots[NextStageShot]);
 			FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
 			SettleShotFrame = GFrameCounter; SettleState = 3;
-			UE_LOG(LogTemp, Display, TEXT("WH_STAGE_SHOT %s stage T=%.3f world=%.3f settle_frames=%d static_world_s=%.2f resets=%d wall_s=%.1f%s"), *File, T, W->GetTimeSeconds(), SettleCount, WorldS, SettleResets, Now - SettleWall0, WallWait > 600.0 ? TEXT(" SETTLE_TIMEOUT") : TEXT(""));
+			UE_LOG(LogTemp, Display, TEXT("WH_STAGE_SHOT %s stage T=%.3f world=%.3f settle_frames=%d static_world_s=%.2f resets=%d wall_s=%.1f"), *File, T, W->GetTimeSeconds(), SettleCount, WorldS, SettleResets, WallWait);
 		}
 		return;
 	}
@@ -367,7 +437,8 @@ void AWHCharShowDirector::TickSettle()
 	{
 		if (!FScreenshotRequest::IsScreenshotRequested() && GFrameCounter >= SettleShotFrame + 3)
 		{
-			PauseAllAnims(false); SettleState = 0; bSettleSigValid = false; ++NextStageShot;
+			PauseAllAnims(false); FreezeWalkers(false); SettleState = 0; bSettleSigValid = false; ++NextStageShot;
+			WHStage::Offset() = double(T) - GetWorld()->GetTimeSeconds();      // the world clock ran on while the stage clock stood still: re-sync the scripted-fight clock to the director's
 			if (bStageShotQuit && NextStageShot >= StageShots.Num()) StageQuitAt = double(T) + 3.0;
 		}
 	}

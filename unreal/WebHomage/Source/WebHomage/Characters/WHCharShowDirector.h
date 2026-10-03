@@ -78,6 +78,13 @@ private:
 	FVector SettleSigLoc = FVector::ZeroVector; FRotator SettleSigRot = FRotator::ZeroRotator; double SettleSigPose = 0.0; bool bSettleSigValid = false;
 	bool bSettleCvars = false, bSettleFinished = false; uint64 SettleQuitFrame = 0; double SettleQuitWall = 0.0;
 	int32 PreloadTicks = 0;                      // round 17: -WHPreload (movies): finish every asset compile + stream everything in on the 2nd tick, before the first recorded frame
+	// round 17 (resume): the r17a lineup run never settled because the Char_Lineup map also holds LANE walkers (AWHCharLoopWalker: they move in Tick, in world time) -> the pose signature changed every
+	// frame forever.  While a shot settles every walker's Tick is disabled (and the stage clock offset is re-synced afterwards), the timeout is checked BEFORE the reset branch, and the reset reasons are logged.
+	TArray<TWeakObjectPtr<AActor>> FrozenWalkers;
+	TArray<int32> SettleDumpCounts; int32 NextDump = 0; bool bSettleDumpAll = false;      // -WHSettleDump=1,2,4,8,16,32 : extra screenshots after that many static frames (the convergence curve of a shot)
+	int32 ProbeFrames = 0; int32 ProbeTick = 0;                                             // -WHProbeFrames=N : per-frame residency probe for the first N director ticks (the r16-style runs without the settle protocol)
+	TMap<const void*, double> PoseParts; FString LastMover;
+	void FreezeWalkers(bool bFreeze);
 	void TickSettle();
 	void PauseAllAnims(bool bPause);
 	bool AllVisibleTexturesResident(int32& OutBad, FString& OutFirstBad) const;

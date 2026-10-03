@@ -70,11 +70,9 @@ fi
 
 if has lineupx; then      # round 17: the corruption-cause experiment (same camera, same content, same lock load): E0 = the r16 command; E1 = settle protocol, texture streaming ON; E2 = settle protocol, -NoTextureStreaming; E1 / E2 dump the convergence curve
   LX="$OUT/lineupx"; mkdir -p "$LX"
-  if [ -z "${LX_SKIP_E0:-}" ]; then
   log "lineupx E0: the r16 protocol (-shots 3.0, no settle), probe"; gpu lx_e0
   Scripts/run_game.sh "$LX/e0_r16" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 3.0 -perf 2:5 -quit 6 -name e0 -timeout 900 -- -WHCharShot=5 -WHProbeFrames=240 < /dev/null | tail -3
   check "$LX/e0_r16" e0
-  fi
   log "lineupx E1: settle protocol, texture streaming ON, convergence dump"; gpu lx_e1
   Scripts/run_game.sh "$LX/e1_stream" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -quit 3000 -name e1 -timeout 1200 \
       -- -WHCharShot=5 -WHStageShot=3.0 -WHStageShotRel -WHStageShotQuit -WHSettleFrames=32 -WHSettleSeconds=4.0 -WHSettleDump=${LX_DUMP:-1,2,4,8,16,24} -WHProbeFrames=60 < /dev/null | tail -3
@@ -83,15 +81,7 @@ if has lineupx; then      # round 17: the corruption-cause experiment (same came
   Scripts/run_game.sh "$LX/e2_nostream" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -quit 3000 -name e2 -timeout 1200 \
       -- -WHCharShot=5 -WHStageShot=3.0 -WHStageShotRel -WHStageShotQuit -WHSettleFrames=32 -WHSettleSeconds=4.0 -WHSettleDump=${LX_DUMP:-1,2,4,8,16,24} -WHProbeFrames=60 -NoTextureStreaming < /dev/null | tail -3
   check "$LX/e2_nostream" e2
-  for d in e0_r16 e1_stream e2_nostream; do n=${d%%_*}; [ -f "$LX/$d/$n.log" ] && grep -E "WH_PROBE|WH_SETTLE|WH_STAGE_SHOT|WH_SHOT|WH_QUIT|WH_PERF" "$LX/$d/$n.log" > "$LX/$d/probe_log.txt" 2>/dev/null; done
-fi
-
-if has lineupx0; then      # round 17: the dose-response of the r16 protocol: screenshots at 1 .. 10 world seconds in ONE run (no settle), with the per-frame probe (assets still compiling, textures not resident)
-  LX="$OUT/lineupx0"; mkdir -p "$LX"; gpu lx_x0
-  log "lineupx0: r16 protocol, shots at 1,2,3,4,5,6,8,10 s"
-  Scripts/run_game.sh "$LX" -map $LINE -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0" -shots 1.0,2.0,3.0,4.0,5.0,6.0,8.0,10.0 -perf 2:5 -quit 12 -name x0 -timeout 1200 -- -WHCharShot=5 -WHProbeFrames=400 < /dev/null | tail -3
-  check "$LX" x0
-  grep -E "WH_PROBE|WH_SHOT|WH_QUIT|WH_PERF" "$LX/x0.log" > "$LX/probe_log.txt" 2>/dev/null
+  for d in e0_r16 e1_stream e2_nostream; do n=${d%%_*}; grep -E "WH_PROBE|WH_SETTLE|WH_STAGE_SHOT|WH_SHOT|WH_QUIT|WH_PERF" "$LX/$d/$n.log" > "$LX/$d/probe_log.txt" 2>/dev/null; done
 fi
 
 if has stills; then

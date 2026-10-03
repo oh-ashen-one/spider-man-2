@@ -13,17 +13,17 @@
     {
       "id": "verdant",
       "name": "Verdant",
-      "concept": "forest green with olive-bronze and brass (round 12 re-block: no black raglans, no chest ring): V-yoke, ring net, arch mark, racing stripes",
+      "concept": "forest green with dark pine and copper (round 17 re-block: no yellow anywhere, no yellow forearm / shin / glove / boot blocks, plain crown): V-yoke, ring net, arch mark",
       "style": {
         "palette": {
-          "body": "#2e5233",
+          "body": "#2d5236",
           "crown": "#244128",
-          "deep": "#4b4a22",
-          "ink": "#1b1a0c",
-          "accent": "#d4a843",
-          "accent_d": "#9a7a2a",
+          "deep": "#1d382b",
+          "ink": "#0b140f",
+          "accent": "#c4703a",
+          "accent_d": "#8f4e26",
           "stitch": "#a9c79a",
-          "sole": "#17160b"
+          "sole": "#0e1511"
         },
         "flip": true,
         "net": {
@@ -59,7 +59,8 @@
           "size": 1.3
         },
         "crown": {
-          "kind": "racing"
+          "kind": "plain",
+          "edge": false
         },
         "brow": "tick",
         "vent": "slots",
@@ -70,12 +71,13 @@
         ],
         "arm": {
           "upper": "body",
-          "fore": "sleeve",
-          "other_fore": "bands"
+          "fore": "deep",
+          "other_fore": "body"
         },
         "face": {
           "lift": 0.0
-        }
+        },
+        "greave": "none"
       }
     },
     {

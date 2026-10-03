@@ -790,15 +790,28 @@ def paint(P, N, G, mpt, gi, jp, style=None, dbg=None):
             # round 14: two raised PANEL SEAMS per cheek (the critic's G3 line - a horizontal luma line through the cheek bones - crosses them): the outer one runs from the eye frame down
             # the cheek bone plane to the jaw (bowing outward below the cheek bone), the inner one from the nose-bridge flank toward the mouth piece.  Light raised cords (like the face seam):
             # their luma contrast does not depend on the sun, which on a dark hood gives the sculpt only a 10 - 20 luma swing.
-            def panel_seam(xc, g, ya, yb, hwc, Hc):
+            def panel_seam(xc, g, ya, yb, hwc, Hc, tip=0.0):
                 dd = (ax - xc) / np.sqrt(1.0 + g * g)
+                if tip > 0.0:
+                    # round 17 (critic r16: "the cheek-cord ends are raw"): the free (jaw) end of the cord is finished with a ROUNDED TIP: over the last `tip` metres the half width and the height
+                    # follow a circular cap (sqrt(c (2 - c))), so the cord closes like a piped end instead of being cut off square.  The upper end sits under the eye frame.
+                    c = np.clip((y - yb) / tip, 0.0, 1.0); cap = np.sqrt(c * (2.0 - c))
+                    hw_ = hwc * np.maximum(cap, 0.05)
+                    a_c = band(dd, hw_, aa)
+                    u_ = np.clip(np.abs(dd) / np.maximum(hw_, 1e-6), 0, 1)
+                    h_c = (Hc * cap * np.sqrt(np.clip(1.0 - u_ * u_, 0.0, 1.0)) * 0.85 + 0.15 * Hc * cap).astype(np.float32)
+                    msk = is_head * cover(-z, aa) * cover(y - ya, aa) * cover((yb - 0.0008) - y, aa)
+                    C.lay(msk * a_c, fcol, h=h_c, rough=RL['rough_pipe'] + 0.05)
+                    return
                 a_c, h_c = cord(dd, hwc, aa, Hc)
                 msk = is_head * cover(-z, aa) * cover(y - ya, aa) * cover(yb - y, aa)
                 C.lay(msk * a_c, fcol, h=h_c, rough=RL['rough_pipe'] + 0.05)
             s1 = np.maximum((1.640 - y) / 0.05, 0.0)
-            panel_seam(0.056 + 0.012 * s1 * s1, -0.48 * s1, 1.662, 1.570, 0.0016, RL['seam'] * 0.85)
+            ptip = 0.006 if S['face'].get('cord_tip', True) else 0.0
+            # tip mode: the cord is drawn for y >= yb - 0.0008 and the cap closes it between yb and yb + tip (y - yb = 0 is the end)
+            panel_seam(0.056 + 0.012 * s1 * s1, -0.48 * s1, 1.662, 1.570, 0.0016, RL['seam'] * 0.85, ptip)
             u2 = np.clip((1.659 - y) / 0.039, 0.0, 1.0)
-            panel_seam(0.0185 + 0.021 * u2 ** 1.5, -0.8077 * np.sqrt(u2), 1.659, 1.620, 0.0015, RL['seam'] * 0.85)
+            panel_seam(0.0185 + 0.021 * u2 ** 1.5, -0.8077 * np.sqrt(u2), 1.659, 1.620, 0.0015, RL['seam'] * 0.85, ptip * 0.8)
     else:
         C.lay(is_head * cover(np.abs(x) - 0.0011, aa) * cover(-z, aa), INK, h=-0.3, rough=0.9)       # dorsal seam (round 08 legacy)
     if S['brow'] != 'none':
