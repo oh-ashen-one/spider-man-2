@@ -121,7 +121,10 @@ def step_perf_audit():
     bm.log('audit', json.dumps(a.get('summary')))
 
 
-bm.step_city_extra, bm.step_tree_proxy, bm.step_perf_apply, bm.step_perf_preset, bm.step_perf_audit = step_city_extra, step_tree_proxy, step_perf_apply, step_perf_preset, step_perf_audit
+# round 07 (re-baseline on integration cd42c1f2): C's build_manhattan.py now has its own step_city_extra (incl. far_skyline, which F's copy
+# above lacks), so F's override is no longer installed; F's function stays for reference only.
+if not hasattr(bm, 'step_city_extra'): bm.step_city_extra = step_city_extra
+bm.step_tree_proxy, bm.step_perf_apply, bm.step_perf_preset, bm.step_perf_audit = step_tree_proxy, step_perf_apply, step_perf_preset, step_perf_audit
 bm.STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'map', 'tree_proxy', 'perf_apply', 'perf_preset', 'perf_audit']
 if '--preset-off' in sys.argv:   # take the preset block out of Config/Mac/MacEngine.ini (as-found comparison runs)
     step_perf_preset_off(); sys.exit(0)
