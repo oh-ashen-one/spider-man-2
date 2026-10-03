@@ -25,5 +25,8 @@
 | `rebuild_city.sh` | P1's city pipeline on P4's own dev port / scratch / editor (never touches P1's) |
 | `rebuild_look.sh` | headless `Scripts/build_look.py` (editor closed) |
 | `launch_editor.sh`, `job_server.py`, `uejob.py` | P4 editor (MCP 8774, `-RenderOffScreen -NoSound`, waits while 3+ editors run) with a file-based job server; `uejob.py <script.py> [k=v]` runs a Python file in it |
+| `dome_check.py` | (round 07) twilight dome continuity L27a-e on `tod_<pose>_<res>_<variant>.jpg` stills (S4 / S4w / S4e): sky band vs far band, 8-row step, rows 0-150 clipping, sun-facing B-R, 20:30 vs 22:00 mean |
+| `round7_report.py` | (round 07) `TESTS_r07.md` of a round folder: lapse L23b, dome L27, twilight L24-L26, golden / night spec tables, clip numbers |
+| `sweeps/r07/` | (round 07) `make_v3.py` (table builder: tw_dir / tw_mul / tw_set / sun_cloud / cutoff_sched / bias curve knobs), live-pin sweeps `gen_sweep_a..g.py`, chains `hold_d.sh` (loop / build / stills / lapse / clips), `hold_build_stills.sh`, `hold_lapse.sh`, `hold_sweep.sh`, `verdict.py` (L27 table of the 12 verdict stills), `sheet.py` (labelled contact sheet), `make_pairs.py` (blind critic pairs) |
 
 Scratch (never committed): `/Users/midir/sm2-n1/_scratch/look/` (export, textures, job dir, captures). See `docs/night1/look/HANDOFF.md`.

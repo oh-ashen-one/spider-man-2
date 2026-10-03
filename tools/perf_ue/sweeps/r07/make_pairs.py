@@ -30,6 +30,7 @@ for pose, hs in (('S4w', ('19.5', '19.8', '20', '20.5')), ('S4', ('19.5', '19.8'
         P.append(('progress-%s-%s' % (pose.lower(), h.replace('.', '')), t7(pose, h), t6(pose, h), 'two versions of our twilight view (same pose, same hour %s): %s' % (h, view)))
 P.append(('progress-golden-skyline', t7('S4', '18.4'), t6('S4', '18.4'), 'two versions of our golden-hour skyline (same pose, same hour)'))
 P.append(('progress-night-skyline', t7('S4', '22'), t6('S4', '22'), 'two versions of our night skyline (same pose, same hour)'))
+P.append(('progress-lapse-sheet', '%s/round-07/tod_lapse_S4_sheet.jpg' % WT, '%s/round-06/tod_lapse_S4_sheet.jpg' % WT, 'contact sheet of two versions of our 24 h time-lapse from the perch (04:00 start, 2 h per second): sky, haze and exposure over the day'))
 out = [dict(id=i, x=x, y=y, note=n) for i, x, y, n in P]
 missing = [p['x'] for p in out if not os.path.exists(p['x'])] + [p['y'] for p in out if not os.path.exists(p['y'])]
 if missing: print('MISSING', missing)
