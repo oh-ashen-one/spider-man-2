@@ -249,9 +249,9 @@ a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 // that UE's F90 = saturate(50 F0) = 0.55 matches the browser's specularF90 0.55 (no bright grazing mirrors on masonry)
 float gm = g * (1.0 - gSash);
 // (r11, critic r10: S8 upper glass 70 % above Y 204 for three rounds) at a grazing view angle Fresnel takes any mirror to ~1 and the pale vertical slits of a tower's side face reflect the clipped sky (+2 EV): beyond
-// N.V < 0.32 the coated glass turns into a low-F0 dielectric (UE: F90 = saturate(50 F0), Specular 0.12 -> F90 0.48) and its diffuse colour falls back to the dark glass body
+// N.V < 0.5 (full below 0.25) the coated glass turns into a low-F0 dielectric (UE: F90 = saturate(50 F0), Specular 0.04 -> F90 0.16; the first version, 0.32 / Specular 0.12, left F90 0.48 x the 1.7 sky light = Y 210 and changed nothing) and its diffuse colour falls back to the dark glass body
 float nvG = saturate(dot(n, normalize(cam - wpos)));
-float graze = saturate((0.32 - nvG) / 0.17) * gm;
+float graze = saturate((0.50 - nvG) / 0.25) * gm;
 gm = gm * (1.0 - graze);
 float ek = lerp(dayemis, 1.0, saturate(nightk));
 float3 col = lerp(a, f, gm); float3 em = e * escale * ek;
@@ -272,8 +272,9 @@ if (dbgmode > 8.5 && dbgmode < 9.5) { col = float3(0, 0, 0); em = 0.05 * float3(
 if (dbgmode > 9.5 && dbgmode < 10.5) { col = float3(0, 0, 0); em = 0.3 * Texture2DSampleLevel(tSigns, tSignsSampler, frac(uv0 * 0.02), 0.0).rgb; }
 if (dbgmode > 10.5 && dbgmode < 11.5) { col = float3(0, 0, 0); em = float3(0.05, 0, 0); }   // facade-only mask (CITY-SPEC C1 check)
 if (dbgmode > 3.5 && dbgmode < 4.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI / 9.0, saturate(length(gDx) * 100.0), saturate(vF.y / 16.0)); }
+if (dbgmode > 12.5 && dbgmode < 13.5) { col = float3(0, 0, 0); em = 0.05 * float3(graze, gm, nvG); }   // (r11) grazing-glass weight (R), remaining metallic glass weight (G), N.V (B)
 if (dbgmode > 11.5 && dbgmode < 12.5) { col = float3(0, 0, 0); em = 0.05 * float3(1.0 - litS, 0.0, litS); }   // (r09) shade-fill weight: blue = full fill (shaded canyon), red = none (sunlit or above the skyline)
-Rough = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 0.0 : lerp(lerp(0.5, glassspec, g * gSash), 0.12, graze);
+Rough = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 0.0 : lerp(lerp(0.5, glassspec, g * gSash), 0.04, graze);
 return col;''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
          ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise')), ('tSunH', 'tex', TEXA('sunmask_h'))]
