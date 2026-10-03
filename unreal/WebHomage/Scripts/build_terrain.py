@@ -572,6 +572,29 @@ def build_land(path):
             try: c.set_visibility(True)   # hidden through the actor flag (in game), the component stays 'visible' for the Lumen-while-hidden path
             except Exception: pass
             log('shade proxy', kind, len(xs), 'instances, k', PROXY_K, 'crown centre z %.0f cm' % cz)
+        # r05: crown SHADOW proxy. The round's stills show the trunks' shadows crisp on the lawn (a lattice in the sunlit strip of p4) and no crown shadow at all, with VSM and with CSM:
+        # the leaf pools left the ray-tracing scene in r03, the trunks did not. A hidden shadow-only copy of the crown hull at SHADOW_K of the crown size (hidden in game, casts a hidden
+        # shadow, in the ray-tracing scene for ray-traced shadow paths, NOT in Lumen's scene: affect_indirect_lighting_while_hidden False) gives every tree a crown shadow on either path.
+        SHADOW_K = float(os.environ.get('SM2_TERRAIN_SHADOW_PROXY', '0.85'))
+        if SHADOW_K > 0:
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_shadowproxy_' + kind, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(sm_); c.set_editor_property('num_custom_data_floats', 6)
+            c.set_material(0, mi('ShadowProxy_' + kind, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, {'band': (0.0, 100000.0, 0.0, 0.0)}))
+            c.set_cast_shadow(True); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            for k_, v_ in (('cast_hidden_shadow', True), ('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', False), ('visible_in_ray_tracing', True),
+                           ('affect_indirect_lighting_while_hidden', False), ('visible_in_reflection_captures', False), ('visible_in_real_time_sky_captures', False)):
+                try: c.set_editor_property(k_, v_)
+                except Exception as ex: log('WARN shadow proxy', k_, str(ex)[:100])
+            xs = []
+            for it in d['items']:
+                s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                loc = U(it['x'], it['y'], it['z']); loc.z += (1.0 - SHADOW_K) * cz * s_ * s3[1]
+                xs.append(unreal.Transform(loc, rot, unreal.Vector(SHADOW_K * s_ * s3[0], SHADOW_K * s_ * s3[2], SHADOW_K * s_ * s3[1])))
+            c.add_instances(xs, False, True)
+            a.set_actor_hidden_in_game(True)
+            log('shadow proxy', kind, len(xs), 'instances, k', SHADOW_K)
 
     for nm_, fn_ in (('meshes', _sec_meshes), ('tufts', _sec_tufts), ('props', _sec_props), ('trees', _sec_trees)): soft(nm_, fn_)
     return world
