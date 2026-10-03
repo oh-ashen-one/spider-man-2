@@ -3,6 +3,7 @@
 #include "Traversal/WebTraversalComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Engine/GameViewportClient.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -256,7 +257,12 @@ namespace WebFlips
 			// Tricks C r01 (PLAN §4: same-type durations vary +-10-20 %; r23 flow flips at ~40 m/s all came out 0.86-0.99x): half of the
 			// caller's release-speed / apex term plus a per-instance TEMPO -- this performance is a slow, floated one (+10-16 %) or a snappy one
 			// (-10-13 %), alternating at random; the fast side is capped at 0.85x so a tuck never passes ~800 deg/s by much (FLIPS_SPEC F3)
-			const float Tempo = (R.FRand() < 0.5f ? -1.f : 1.f);
+			// r01 resume (probe: frontSingle / barani drew the same sign twice -> 12 / 65 deg/s apart): the first instance of a program picks the
+			// sign at random, every later instance of the SAME program takes the opposite one, so a repeat is always the other performance
+			static TArray<int32> LastSign; LastSign.SetNumZeroed(B.Num());
+			const float Coin = R.FRand();
+			const float Tempo = LastSign[I] != 0 ? -float(LastSign[I]) : (Coin < 0.5f ? -1.f : 1.f);
+			LastSign[I] = Tempo > 0.f ? 1 : -1;
 			const float TempoMag = Tempo > 0.f ? 0.10f + 0.06f * R.FRand() : 0.10f + 0.03f * R.FRand();
 			const float Sc = bTempo ? FMath::Clamp(1.f + 0.5f * (FMath::Clamp(Scale, 0.78f, 1.22f) - 1.f) + Tempo * TempoMag, 0.85f, 1.20f)
 				: FMath::Clamp(Scale, 0.78f, 1.22f);
@@ -389,7 +395,7 @@ namespace WebFlips
 			// -WHTrickDumpFrom=<s> -WHTrickDumpTo=<s> (sequence seconds, i.e. world time minus the -WHTravPreroll pre-roll and one frame):
 			// with -dumpmovie, movie frames are written only for this window (r.DumpingMovie toggled per frame), so a long fixed-step
 			// capture can be rendered in segments of one deterministic run (r01: background-priority PNG dumps ran at ~1 frame/s)
-			float DumpFrom = -1.f, DumpTo = -1.f, Preroll = 0.f;
+			float DumpFrom = -1.f, DumpTo = -1.f, Preroll = 0.f, Warm = -1.f;
 			bool bDumpWin = false, bDumpWas = false;
 			void Tick()
 			{
@@ -398,6 +404,7 @@ namespace WebFlips
 					bInit = true; bOn = FParse::Value(FCommandLine::Get(), TEXT("-WHTrickPose="), Path) && !Path.IsEmpty();
 					bDumpWin = FParse::Value(FCommandLine::Get(), TEXT("-WHTrickDumpFrom="), DumpFrom) | FParse::Value(FCommandLine::Get(), TEXT("-WHTrickDumpTo="), DumpTo);
 					FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Preroll);
+					FParse::Value(FCommandLine::Get(), TEXT("-WHTrickWarm="), Warm);
 					if (DumpTo < 0.f) DumpTo = 1e9f;
 				}
 				if (!GEngine) return;
@@ -414,6 +421,18 @@ namespace WebFlips
 					GIsDumpingMovie = bIn ? -1 : 0;
 					if (bIn != bDumpWas) UE_LOG(LogTemp, Display, TEXT("WH_TRICK_DUMP %s at next-frame seq t %.4f"), bIn ? TEXT("on") : TEXT("off"), SeqNext);
 					bDumpWas = bIn;
+					// r01 resume (-WHTrickWarm=<s>): the world is not rendered outside [From - Warm, To) -- the simulation, animation (the hero
+					// mesh ticks its pose when unseen) and telemetry run unchanged, only the GPU work of frames nobody keeps is skipped; Warm s
+					// of rendered frames before the window let texture streaming, Lumen and TSR history settle before the first kept frame
+					if (Warm >= 0.f && GEngine->GameViewport)
+					{
+						const bool bDraw = !W || (SeqNext >= double(DumpFrom - Warm) - 1e-4 && SeqNext < double(DumpTo) - 1e-4);
+						if (bool(GEngine->GameViewport->bDisableWorldRendering) == bDraw)
+						{
+							GEngine->GameViewport->bDisableWorldRendering = !bDraw;
+							UE_LOG(LogTemp, Display, TEXT("WH_TRICK_RENDER %s at next-frame seq t %.4f"), bDraw ? TEXT("on") : TEXT("off"), SeqNext);
+						}
+					}
 				}
 				if (!bOn || !W) return;
 				APlayerController* PC = W->GetFirstPlayerController();
