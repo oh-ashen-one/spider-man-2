@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 15:10",
+ "updated": "2026-10-03 16:53",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -1040,6 +1040,14 @@
    "verdict": "fails",
    "gap": "fire-escape WHBox collision matching drawn platforms + top-out (r3 crosstown-east: 0 s stuck, <= 1 topOut loop, past x=-235.5 by 3.5 s) on a branch that has merged integration",
    "notes": "NOT merged (Opus director): no island round merged yet; full-island map untested with traversal r26 / city r11 / terrain r05. M2 avenue route r5 passes a-d. r04 on Opus (same gap 3 rounds)."
+  },
+  {
+   "t": "2026-10-03 16:53",
+   "piece": "tricks",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "web-catch snap: chest <= 250 deg/s in 0.1 s windows from trick end to +0.4 s on all 22 tricks (r01 300-921, 1894 peak); G4 kept; reel >= 12 Mbps",
+   "notes": "Merged (Opus director): no traversal axis below r26; 12 programs / 22 tricks. Flips vs owner clip 5. r02 on Opus, queued until a GPU slot frees."
   }
  ],
  "perf": [
