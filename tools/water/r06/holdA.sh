@@ -28,7 +28,8 @@ shot() { # map name res need_s [shots]
   else echo "NO STILL $2"; grep -m3 "Failed to compile Material" "$OUT/$2/$2.log"; fi; }
 M=/Game/Water/Maps; V=/Game/Water/Variants; P=1920x1080
 for spec in ${SHOTS:-"$M/Water_View_RiverLow|base_rl" "$M/Water_View_RiverSun|base_rs" "$V/Water_Var_DBG11_river_low|DBG11_rl" "$V/Water_Var_OFF_river_low|OFF_rl" "$V/Water_Var_OFF_river_sun|OFF_rs" "$V/Water_Var_S6_river_low|S6_rl" "$V/Water_Var_S6_river_sun|S6_rs" "$V/Water_Var_CH_river_low|CH_rl" "$V/Water_Var_CH_river_sun|CH_rs" "$V/Water_Var_R2_river_low|R2_rl" "$V/Water_Var_R2_river_sun|R2_rs" "$V/Water_Var_S6G_river_sun|S6G_rs" "$V/Water_Var_F24_river_low|F24_rl" "$V/Water_Var_DBG11_river_sun|DBG11_rs" "$V/Water_Var_S6G_river_low|S6G_rl" "$V/Water_Var_F24_river_sun|F24_rs"}; do
-  shot "${spec%%|*}" "${spec#*|}" $P 150
+  IFS='|' read -r smap sname stimes <<< "$spec"
+  shot "$smap" "$sname" $P 150 "${stimes:-16}"
 done
 waitclear
 echo "HOLD DONE $(date +%T) ($(( $(date +%s) - T0 )) s)"
