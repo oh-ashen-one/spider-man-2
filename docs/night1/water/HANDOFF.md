@@ -30,7 +30,7 @@ band was really the far-line block, and the far line was gated off at harbour_hi
 | HOLD river_low near hp sd / mean Y | >= 12 / <= 80 | 9.9 / 78.5 | 11.7 / 62.0 | 10.6 / 78.8 | **21.4 / 93.5 (mean Y FAIL)** |
 | HOLD river_sun sparkle width | >= 50 % | 37.8 | 50.5 | 38.4 | **65.1 %** |
 | HOLD harbour_sun_high glints / path / sparkle | 0.5 / 50 / 6 | | 0.61 / 100 / 3 | 0.53 / 100 / 3 | 1.67 / 100 / 3 |
-| HOLD dolly autocorr 80 px; S4 C14 | <= 0.10; 5..35 | .053; 17.9 | .076; 22.0 | .064; 15.0 | .076; 15.5 |
+| HOLD river_low dolly autocorr 80 px; S4 C14 | <= 0.10; 5..35 | .053; 17.9 | .076; 22.0 | .064; 15.0 | .076; 15.5 (river_sun dolly .050) |
 Perf not measured (no attended Mac). The near field now actually runs: expect more than r04's 2.51 ms.
 
 ## Next steps (in order)
@@ -43,11 +43,13 @@ Perf not measured (no attended Mac). The near field now actually runs: expect mo
    `TopVarK`, the 6.7 m / 2.2 m layer gains for `down` > 0.5, `ChopFar`.
 4. river_sun is a bright gold sheet (near-crop mean Y 145, 63 % of pixels >= 140; r03 148 / 53 %). MicroK 0.5 gave a more defined sun path and a wider
    sparkle (53-69 %) in the E/F stills but the same mean; the mean there is the sun, so judge it by the critic's "molten metal" wording, not by Y.
-5. harbour_sun_high R-B 98 is the atmosphere's (look piece). Nothing in the water moves it (SunSpecK, SunTilt tried in part A).
-6. Foam: the map's zero contour is 0.1-1.4 m land-side of the rendered waterline (0.9 m/px; CPU lookups are stair-stepped by ~0.38 m, probably the 2625 -> 4096 resize), which is why the
+5. harbour_sun_high shows a faint square lattice on the far water at the left horizon (a tile repeat of the 64 m long-wave layer or the 21 m layer
+   at 2-3 km; `harbour_sun_high_4k.jpg` x 0-700, y 480-600): break it with a per-tile rotation / offset beyond 1 km.
+6. harbour_sun_high R-B 98 is the atmosphere's (look piece). Nothing in the water moves it (SunSpecK, SunTilt tried in part A).
+7. Foam: the map's zero contour is 0.1-1.4 m land-side of the rendered waterline (0.9 m/px; CPU lookups are stair-stepped by ~0.38 m, probably the 2625 -> 4096 resize), which is why the
    zone is 1.9 m wide and lacy. A second contact map at ~0.15 m/px for a ~600 m box around the river_low seawall would let the band hug the wall.
    `BandPx` (screen-pixel cap) is implemented but needs that map to work.
-7. The foam gate instrument uses a FIXED edge line (`FOAM_EDGE_REF` in water_spec.py); re-derive it only if the river_low camera or the seawall changes.
+8. The foam gate instrument uses a FIXED edge line (`FOAM_EDGE_REF` in water_spec.py); re-derive it only if the river_low camera or the seawall changes.
 
 ## How to rebuild / re-capture (all headless; every Unreal process inside `gpu_slot.sh capture`)
 ```

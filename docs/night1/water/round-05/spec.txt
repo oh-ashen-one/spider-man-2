@@ -1,12 +1,16 @@
+{"file": "S4_golden_1080.jpg", "C14": 10.8, "far_shore_Y": 150.3, "river_Y": 139.4, "farfield_json": "S4_golden_1080.jpg.farfield.json"}
 {"file": "S4_golden_4k.jpg", "C14": 15.5, "far_shore_Y": 150.6, "river_Y": 135.1, "farfield_json": "S4_golden_4k.jpg.farfield.json"}
 {"file": "crop_river_low_4k_seawall_foam.jpg", "edge_line": [-0.0541, 464.8], "edge_line_perframe_fit": [-0.0613, 466.5], "rows_ge12px_pct_perframe_fit": 79.8, "band_px_mean": 22.2, "band_px_median": 21.0, "rows_ge12px_pct": 80.5, "band_Y_mean": 193.9, "dolly": "river_low_dolly.mp4", "dolly_samples_4fps": 40, "dolly_band_px_mean": 1453.1, "dolly_samples_with_band_pct": 100.0, "dolly_band_change_xor_over_or": 0.677, "dolly_band_change_min": 0.483, "dolly_rows_ge6px_pct_min": 2.2, "dolly_rows_ge6px_pct_mean": 21.4}
+{"file": "harbour_high_1080.jpg", "src_width": 1920, "mean_Y": 101.3, "rgb": [114.6, 99.3, 82.2], "p1": 60.2, "p99_5": 146.2, "highpass_sd": 11.78, "glint_pct_ge140": 2.05, "glint_pct_ge130": 9.01, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "harbour": {"file": "harbour_high_1080.jpg", "crop": "native 4K x0-2400 y1300-2160", "mean_Y": 95.4, "highpass_sd": 10.88, "glint_pct_ge140": 1.31, "pale_blobs_ge20px": 902, "p1": 54.1, "p99_5": 144.4}, "under_island": {"under_Y": 113.9, "open_Y": 147.3, "open_minus_under": 33.4, "streak_spread": 54.7}}
 {"file": "harbour_high_4k.jpg", "src_width": 3840, "mean_Y": 99.6, "rgb": [112.8, 97.6, 80.9], "p1": 56.7, "p99_5": 148.8, "highpass_sd": 16.29, "glint_pct_ge140": 3.1, "glint_pct_ge130": 10.7, "note": "", "harbour": {"file": "harbour_high_4k.jpg", "crop": "native 4K x0-2400 y1300-2160", "mean_Y": 93.6, "highpass_sd": 14.72, "glint_pct_ge140": 1.76, "pale_blobs_ge20px": 1398, "p1": 51.8, "p99_5": 146.7}, "under_island": {"under_Y": 113.5, "open_Y": 141.6, "open_minus_under": 28.0, "streak_spread": 42.6}, "contact_line": {"file": "harbour_high_4k.jpg", "edge_ref": "harbour_high_4k.jpg", "columns": 1050, "line_px_median": 4.0, "cols_ge3px_pct": 72.6}}
+{"file": "harbour_sun_high_1080.jpg", "src_width": 1920, "mean_Y": 127.1, "rgb": [167.6, 120.5, 73.0], "p1": 63.2, "p99_5": 213.2, "highpass_sd": 18.3, "glint_pct_ge140": 33.97, "glint_pct_ge130": 42.65, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "sunhigh": {"file": "harbour_sun_high_1080.jpg", "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360", "mean_Y": 138.6, "highpass_sd": 15.6, "glint_pct": 0.977, "path_cols_pct_ge2pct_rows": 100.0, "path_cols_pct_any": 100.0, "sparkles": 2761, "sparkle_px_median": 3.0, "sparkle_px_p90": 12.0, "p99_5": 246.5}, "sun_colour": {"crop": {"p1": 55.7, "R_minus_B": 95.0, "mean_RGB": [178, 133, 83]}, "upper": {"p1": 100.1, "R_minus_B": 106.5, "mean_RGB": [213, 167, 106]}}}
 {"file": "harbour_sun_high_4k.jpg", "src_width": 3840, "mean_Y": 126.8, "rgb": [167.5, 120.3, 71.6], "p1": 60.0, "p99_5": 217.9, "highpass_sd": 23.9, "glint_pct_ge140": 33.78, "glint_pct_ge130": 42.27, "note": "", "sunhigh": {"file": "harbour_sun_high_4k.jpg", "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360", "mean_Y": 137.7, "highpass_sd": 19.8, "glint_pct": 1.67, "path_cols_pct_ge2pct_rows": 100.0, "path_cols_pct_any": 100.0, "sparkles": 6708, "sparkle_px_median": 3.0, "sparkle_px_p90": 10.0, "p99_5": 242.1}, "sun_colour": {"crop": {"p1": 52.7, "R_minus_B": 98.1, "mean_RGB": [178, 132, 80]}, "upper": {"p1": 98.2, "R_minus_B": 111.8, "mean_RGB": [212, 164, 100]}}}
-{"file": "river_low_1080.jpg", "src_width": 1920, "mean_Y": 76.8, "rgb": [84.1, 76.0, 63.3], "p1": 38.9, "p99_5": 110.6, "highpass_sd": 7.27, "glint_pct_ge140": 0.02, "glint_pct_ge130": 0.04, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame"}
+{"file": "river_low_1080.jpg", "src_width": 1920, "mean_Y": 99.1, "rgb": [107.9, 98.2, 82.6], "p1": 37.2, "p99_5": 164.1, "highpass_sd": 15.06, "glint_pct_ge140": 7.34, "glint_pct_ge130": 15.95, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame"}
 {"file": "river_low_4k.jpg", "src_width": 3840, "mean_Y": 93.5, "rgb": [99.2, 92.9, 82.0], "p1": 30.9, "p99_5": 175.1, "highpass_sd": 21.36, "glint_pct_ge140": 8.2, "glint_pct_ge130": 15.44, "note": "", "farshore": {"file": "river_low_4k.jpg", "bright_bar_pct": 6.86, "refl_hp": 20.04}}
 {"file": "river_low_dolly.mp4", "frames": 600, "sampled": 100, "autocorr_80px": 0.076, "autocorr_80px_max": 0.151, "water_dT_per_sample": 6.22}
+{"file": "river_sun_1080.jpg", "src_width": 1920, "mean_Y": 147.8, "rgb": [184.2, 142.7, 90.9], "p1": 41.8, "p99_5": 209.5, "highpass_sd": 23.5, "glint_pct_ge140": 64.55, "glint_pct_ge130": 70.9, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "sparkle_width_pct": 65.9}
 {"file": "river_sun_4k.jpg", "src_width": 3840, "mean_Y": 144.8, "rgb": [178.3, 140.4, 89.8], "p1": 38.6, "p99_5": 215.7, "highpass_sd": 34.29, "glint_pct_ge140": 62.61, "glint_pct_ge130": 67.85, "note": "", "sparkle_width_pct": 65.1}
-{"file": "river_sun_dolly.mp4", "frames": 586, "sampled": 98, "autocorr_80px": -0.001, "autocorr_80px_max": 0.062, "water_dT_per_sample": 12.06}
+{"file": "river_sun_dolly.mp4", "frames": 600, "sampled": 100, "autocorr_80px": 0.05, "autocorr_80px_max": 0.132, "water_dT_per_sample": 6.82}
 -- r03 targets
 PASS river_low near hp sd >= 12                                 21.36
 PASS river_low near p99.5 >= 150                                175.1
@@ -20,7 +24,7 @@ PASS harbour crop hp sd >= 10                                   14.72
 FAIL harbour crop glints >= 2 %                                 1.76
 FAIL harbour crop pale blobs (>= 20 px) == 0                    1398
 PASS river_low_dolly.mp4 autocorr at 80 px <= 0.10              0.076
-PASS river_sun_dolly.mp4 autocorr at 80 px <= 0.10              -0.001
+PASS river_sun_dolly.mp4 autocorr at 80 px <= 0.10              0.05
 PASS S4 C14 5..35                                               15.5
 -- r04 round targets
 PASS harbour_high crop hp sd >= 10                              14.72
@@ -34,7 +38,7 @@ PASS seawall foam changes between 4 fps dolly samples (xor/or >= 0.3) 0.677
 PASS river_low near hp sd >= 9.9 (hold)                         21.36
 FAIL river_low near mean Y <= 80 (hold)                         93.5
 PASS river_low_dolly.mp4 autocorr at 80 px <= 0.10 (hold)       0.076
-PASS river_sun_dolly.mp4 autocorr at 80 px <= 0.10 (hold)       -0.001
+PASS river_sun_dolly.mp4 autocorr at 80 px <= 0.10 (hold)       0.05
 PASS S4 C14 5..35 (hold)                                        15.5
 -- r05 round targets
 PASS GATE seawall band >= 12 px (Y >= 180) on >= 60 % of wall rows      80.5

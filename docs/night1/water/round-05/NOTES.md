@@ -10,7 +10,8 @@ engine crashed. The Studio was shared with the look / terrain sessions (1-2 othe
 
 ## PART B: round 05b result (everything in this folder is ONE build: `build_water.py` blob 5e552fcd6edb)
 4K stills are native 3840x2160 (`r.ScreenPercentage 100`, t = 16 s); the dollies are 1920x1080 (internal 100 %), fixed 60 fps step, clip = t 6-16 s
-(600 frames), x264 CRF 23, 11.3 MB. Numbers: `spec.json` / `spec.txt` (`python3 tools/water/water_spec.py all docs/night1/water/round-05`).
+(600 frames), x264 CRF 23 (`river_low_dolly.mp4` 11.3 MB) / CRF 26 (`river_sun_dolly.mp4` 10.8 MB; CRF 20 and 23 were 25.9 / 16.8 MB). The five 1080p
+stills (`*_1080.jpg`) are 1920x1080 at 100 % screen percentage, from the same build (holds G3 07:40-08:14 and G4 08:15-08:40, `SKIP_BUILD`). Numbers: `spec.json` / `spec.txt` (`python3 tools/water/water_spec.py all docs/night1/water/round-05`).
 
 | check | target | r03 | r04 | r05 as Opus left it (legacy shader) | r05b FINAL |
 |---|---|---|---|---|---|
@@ -25,7 +26,7 @@ engine crashed. The Studio was shared with the look / terrain sessions (1-2 othe
 | HOLD harbour_sun_high glints / path columns / median sparkle | 0.5 % / 50 % / 6 px | | 0.61 / 100 / 3 | 0.53 / 100 / 3 | **1.67 / 100 / 3** PASS |
 | HOLD river_low near hp sd | >= 12 | 9.93 | 11.74 | 10.64 FAIL | **21.36** PASS |
 | HOLD river_low near mean Y | <= 80 | 78.5 | 62.0 | 78.8 | **93.5 FAIL** (silver sky reflection; reference 58.6) |
-| HOLD river_low_dolly autocorr 80 px | <= 0.10 | 0.053 | 0.076 | 0.064 | 0.076 PASS (max 0.151) |
+| HOLD river_low_dolly autocorr 80 px (river_sun_dolly) | <= 0.10 | 0.053 (0.015) | 0.076 (0.024) | 0.064 | 0.076 PASS (max 0.151) (0.050) |
 | HOLD S4 C14 | 5..35 | 17.9 | 22.0 | 15.0 | 15.5 PASS |
 | HOLD river_sun sparkle width | >= 50 % | 37.8 | 50.5 | 38.4 FAIL | **65.1 %** PASS |
 | Not scored since r03: river_low p1 <= 25 / p99.5 >= 150 / glints >= 1 % | | | | | 30.9 FAIL / 175 PASS / 8.2 % PASS |
@@ -75,7 +76,7 @@ D (04:34) Dbg 10 build -> found the bug. E (04:47) DistFix build: harbour_high g
 of the four water views + ScatK / MicroK / CBias / CovMax variants (ScatK 0.02 made the water brighter, not darker: not used). G (05:48) CovMax 0.9:
 gate 1 88.7 % but dolly min 0.107 (solid sheet). H-I (06:13-06:35) lace parameters, static screens. J-K (06:37-06:58) dolly-position stills;
 BandPx dead end. L (07:02) CBias 1.6 / CovMax 0.66: dolly min 0.15 at the lap maxima. M (07:23) LapDens 0, CovMax 0.56: p3 @ 7.5 s proxy 0.76,
-4K gate 1 67.5 % -> the final build. G3/G4 (07:40-) the final captures. One engine hung 5 min at exit after its screenshot (hold M, C50_p3):
+4K gate 1 67.5 % -> the final build. G3/G4 (07:40-08:40) the final captures. One engine hung 5 min at exit after its screenshot (hold M, C50_p3):
 stopped with `stop_ue.sh` (drivers first, SIGTERM was enough); no crash, no SIGKILL.
 
 ## Honest failures, open items
