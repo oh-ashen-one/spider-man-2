@@ -1,6 +1,7 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Characters/WHCharLoopWalker.h"
 #include "Characters/WHCharAnimInstance.h"
+#include "Characters/WHCharStage.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Materials/MaterialInterface.h"
 #include "EngineUtils.h"
@@ -68,8 +69,8 @@ void AWHCharLoopWalker::BeginPlay()
 		const TArray<FName> Slots = Mesh->GetMaterialSlotNames();
 		for (int32 i = 0; i < Slots.Num(); ++i)
 		{
-			const FString Path = FString::Printf(TEXT("/Game/Tests/Characters/Materials/MI_Flat_%s.MI_Flat_%s"), *Slots[i].ToString(), *Slots[i].ToString());
-			if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, *Path)) Mesh->SetMaterial(i, M);
+			const FString MatPath = FString::Printf(TEXT("/Game/Tests/Characters/Materials/MI_Flat_%s.MI_Flat_%s"), *Slots[i].ToString(), *Slots[i].ToString());
+			if (UMaterialInterface* M = LoadObject<UMaterialInterface>(nullptr, *MatPath)) Mesh->SetMaterial(i, M);
 		}
 	}
 	Center = GetActorLocation();
@@ -86,6 +87,7 @@ void AWHCharLoopWalker::Tick(float Dt)
 	Super::Tick(Dt);
 	UWHCharAnimInstance* AI = Mesh ? Cast<UWHCharAnimInstance>(Mesh->GetAnimInstance()) : nullptr;
 	if (AI) AI->IdleOffset = AnimOffset;
+	if (AI && Script.Num() > 0 && ScriptTarget.Get() != AI) { AI->Script = Script; ScriptTarget = AI; }   // round 09: the choreography goes to the AnimInstance once
 	if (Mode == EWHWalkerMode::Loop)
 	{
 		const float S = FMath::Sin(Theta), C = FMath::Cos(Theta);
@@ -118,7 +120,31 @@ void AWHCharLoopWalker::Tick(float Dt)
 		SetActorRotation(FRotator(0.f, Yaw, 0.f));
 		if (AI) AI->ForcedSpeed = Speed;
 	}
+	else if (Mode == EWHWalkerMode::Stand && StagePath.Num() > 0)
+	{
+		FVector P; float Y;
+		SamplePath(WHStage::Now(GetWorld()), P, Y);
+		const FVector Prev = GetActorLocation();
+		SetActorLocationAndRotation(P, FRotator(0.f, Y, 0.f));
+		const float Spd = (Dt > 1e-4f && !bPathFirst) ? FVector::Dist2D(P, Prev) / Dt : 0.f;
+		bPathFirst = false;
+		if (AI) AI->ForcedSpeed = Spd;
+	}
 	else if (AI) AI->ForcedSpeed = 0.f;
+}
+
+bool AWHCharLoopWalker::SamplePath(float T, FVector& OutP, float& OutYaw) const
+{
+	if (StagePath.Num() == 0) return false;
+	if (T <= StagePath[0].Time || StagePath.Num() == 1) { OutP = StagePath[0].Loc; OutYaw = StagePath[0].Yaw; return true; }
+	if (T >= StagePath.Last().Time) { OutP = StagePath.Last().Loc; OutYaw = StagePath.Last().Yaw; return true; }
+	int32 I = 0;
+	while (I + 2 < StagePath.Num() && T >= StagePath[I + 1].Time) ++I;
+	const FWHPathKey& A = StagePath[I]; const FWHPathKey& B = StagePath[I + 1];
+	const float U = FMath::Clamp((T - A.Time) / FMath::Max(1e-4f, B.Time - A.Time), 0.f, 1.f);
+	OutP = FMath::Lerp(A.Loc, B.Loc, U);
+	OutYaw = A.Yaw + FRotator::NormalizeAxis(B.Yaw - A.Yaw) * U;
+	return true;
 }
 
 void AWHCharLoopWalker::TickHop(float Dt)

@@ -11,7 +11,7 @@ Blender bone's own rest orientation R). The posed armature-space bone matrix is 
   basis_b = rest_b^-1 . M_parent^-1 . M_b . rest_b   (root: rest^-1 . M . rest)
 Coordinates: game is Y-up, facing +Z; Blender is Z-up, facing -Y: C maps (x, y, z) -> (x, -z, y).
 """
-import bpy, json, os
+import bpy, json, os, sys
 import numpy as np
 from mathutils import Matrix
 
@@ -31,6 +31,10 @@ def load_people():
     M = np.zeros((p['frames'], p['nb'], 4, 4))
     M[:, :, :3, :] = A
     M[:, :, 3, 3] = 1
+    if os.environ.get('CIT_LIFT_CAP', '1') != '0':   # round 09 (critic r08: the rear shin goes horizontal at 18 % of stature): swing-foot lift capped at 10 % of stature
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'crowd'))
+        from lift_cap import cap_lift
+        M, _ = cap_lift(p, M)
     return p, M
 
 

@@ -36,7 +36,7 @@ def steel(seed=2):
     """galvanised pipe: brushed streaks along the length, rust bloom around the ends and in a few patches, bright scratches, grime."""
     r = np.random.RandomState(seed)
     u = np.linspace(0, 1, W)[None, :]; v = np.linspace(0, 1, H)[:, None]
-    base = np.array([112, 116, 122], np.float32)
+    base = np.array([62, 64, 69], np.float32)     # round 10: was (112, 116, 122): in full sun the galvanised pipe read as a pale, untextured limb (critic r09 'grey arm'); now a weathered gunmetal pipe
     brushed = _n(r, 0.5, 60) * 0.6 + _n(r, 1.0, 20) * 0.4
     tone = 1 + 0.10 * brushed + 0.05 * _n(r, 8, 40)
     col = base[None, None, :] * tone[..., None]
@@ -46,8 +46,13 @@ def steel(seed=2):
     col = col * (1 - rust[..., None]) + rust_col * rust[..., None]
     scr = (_n(r, 0.35, 30) > 2.6)                                             # thin bright scratches along the pipe
     col = np.where(scr[..., None], np.minimum(col * 1.35 + 20, 255), col)
-    grime = np.clip(_n(r, 4, 50) - 0.6, 0, 1) * 0.25
+    grime = np.clip(_n(r, 4, 50) - 0.6, 0, 1) * 0.35
     col = col * (1 - grime[..., None])
+    # round 10: dark oil streaks / paint chips so the pipe has visible structure at 1080p (bands across the length, lighter bare-metal chips)
+    bands = 0.5 + 0.5 * np.sin((u * 14 + 0.6 * _n(r, 3, 30)) * 2 * np.pi)
+    col = col * (0.82 + 0.28 * bands[..., None] ** 1.5)
+    chips = (_n(r, 0.8, 6) > 2.1)
+    col = np.where(chips[..., None], np.minimum(col * 1.5 + 18, 255), col)
     return np.clip(col, 0, 255)
 
 

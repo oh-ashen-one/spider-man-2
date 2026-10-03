@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-02T11:35",
+ "updated": "2026-10-03 04:19",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -44,28 +44,28 @@
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "active",
-   "round": 10,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar."
+   "state": "paused",
+   "round": 17,
+   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
+   "gap": "Paused by Opus director (flat 5 rounds r13-r17). Resume on Opus: lens curvature/gloss + angle-dependent cloth sheen (see HANDOFF 2026-10-03 01:25)."
   },
   {
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "active",
-   "round": 23,
-   "verdict": "fails \u2014 lowest 6 (opus)",
-   "gap": "c camera hits a wall at 7.7-8.5 s (keep hero in frame, cam >= 3 m, no yaw reversal); vertical-run knees splay (lateral knee gap <= .25 m, knees drive forward, arms alternate)"
+   "state": "paused",
+   "round": 26,
+   "verdict": "fails \u2014 lowest 6 (Opus 5.5)",
+   "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s"
   },
   {
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (sun 4, GI 4, atmos 4, refl 4, post 5, night 5)",
-   "gap": "Midday not per spec, far-field purple/white band, night swing is day-for-night"
+   "state": "active",
+   "round": 7,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5 (resumed an Opus start))",
+   "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5"
   },
   {
    "id": "P5",
@@ -928,6 +928,62 @@
    "verdict": "fails",
    "gap": "Animated contact foam at the seawall/piles/island edges (engine reads the contact map at >=4 m vs 0.6-1.9 m CPU); far-field structure at swing height",
    "notes": "Merged (no axis below merged r01 Opus build). Rings gone, resolved chop, sun sparkle, SLW pass 1.0 ms."
+  },
+  {
+   "t": "2026-10-02T11:35",
+   "piece": "P2 Characters",
+   "round": 14,
+   "verdict": "fails",
+   "gap": "IQ >= 6: back emblem bleed, groove jogs, face seam, limb net ends",
+   "notes": "Merged on the owner suit approval (11:31): 8 original suits with sculpted heads + in-game swap; IP gate PASS."
+  },
+  {
+   "t": "2026-10-02T14:30",
+   "piece": "P3 Traversal",
+   "round": 24,
+   "verdict": "fails",
+   "gap": "Rope readable on every web_on frame (two-tone strand, width clamp); perch dip at c 9.85 s; run cadence 3.2-3.8 Hz",
+   "notes": "Merged. Altitude swing chain: apex 33-38 m, drops 21.6-27.7 m (T7 100/100), web_on 55->41.5 %, ground-orbit camera wall-snap fixed."
+  },
+  {
+   "t": "2026-10-03 01:22",
+   "piece": "traversal",
+   "round": 25,
+   "verdict": "fails",
+   "gap": "w1 vertical wall-run as a sprint (knee_gap_lat median <= 0.25 m, limb pose changes every 0.3 s, cam 4-7 m, hero box p90 .30-.38) + original suit in every capture and the playable default",
+   "notes": "Merged (Opus director): rope readable 63/65, perch gate 113/113, cadence 3.61 Hz, web 6->7, no axis below r24. Critic flagged licensed-looking default suit in traversal captures (pre-existing since <= r24)."
+  },
+  {
+   "t": "2026-10-03 01:22",
+   "piece": "characters",
+   "round": 17,
+   "verdict": "fails",
+   "gap": "pawn run cadence 3.2-3.8 Hz (P3-owned, fixed in traversal r25); P2 next target pending director",
+   "notes": "Lineup corruption fixed (0.45 % vs 13.7 %): capture fired while assets compiled + animations ran. Verdant re-blocked copper/dark pine, IP 8/8 PASS. Director decision pending. Merged (Opus director, merge=true). Stream paused (stop=true)."
+  },
+  {
+   "t": "2026-10-03 03:32",
+   "piece": "terrain",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "crowns as lit leaf volumes casting lawn shadows (p1 crowns sigma3 >= 9, median >= 12; sat >= 0.65; E9c <= 42 px; tree shadows <= 0.6x lawn); E1 >= 8 eye-level only, aerial p4 sigma6 <= 5",
+   "notes": "NOT merged (Opus director): ties r03 but critic preferred the old build 4/5, E9c 54.1 px regressed, perf evidence invalid. r05 on Opus (crowns repeated as biggest gap r01/r02/r04)."
+  },
+  {
+   "t": "2026-10-03 03:58",
+   "piece": "look",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5",
+   "notes": "NOT merged (Opus director): sun/sky 4 < r03 6, night 4 < r03 5. L27 twilight dome now passes 12/12. r08 on Opus; stop look if r08 misses sun/sky >= 6 and night >= 5 (slot -> island r3)."
+  },
+  {
+   "t": "2026-10-03 04:19",
+   "piece": "traversal",
+   "round": 26,
+   "verdict": "fails",
+   "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s",
+   "notes": "Merged (Opus director): camera 6->7, body 6->7, original Tessera suit everywhere incl. playable default. Traversal STOPPED (director gate: moves stayed 6 for 4 rounds). Slot -> water r5 (Sonnet)."
   }
  ],
  "perf": [

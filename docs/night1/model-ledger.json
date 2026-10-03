@@ -794,6 +794,101 @@
     2,
     4
    ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 14,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 24,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "traversal",
+   "round": 25,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    7,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "characters",
+   "round": 17,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "terrain",
+   "round": 4,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "look",
+   "round": 7,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "traversal",
+   "round": 26,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    7,
+    7,
+    6,
+    7,
+    7
+   ]
   }
  ],
  "agents": [
@@ -920,6 +1015,13 @@
    "effort": "high",
    "why": "Traversal camera axis stuck at 5 for rounds 12-15 (oscillating critic demands)",
    "output": "docs/night1/traversal/TRICK_CAMERA_SPEC.md (TC1-TC12); reassigned r16 builder to Sonnet 5.5 (mostly deletions)"
+  },
+  {
+   "when": "2026-10-02 20:35",
+   "model": "Opus 5.5",
+   "effort": "high",
+   "why": "Owner: we were using Devin and I didn't want to use Fable 5.1 for this. Loop taken over by a Devin session (lead Opus 5.5 high, sidekick Sonnet 5.5 medium); director role moved from Fable 5.1 to Opus 5.5 high.",
+   "output": "Builder split: traversal r25 Opus 5.5 high; skins r17 + look/sky r7 Sonnet 5.5 xhigh; blind critics Opus 5.5 high; director once per wave. A Sonnet stream moves to Opus only if the same biggest gap repeats two rounds running. GPU cap 3 (owner)."
   }
  ]
 }

@@ -54,7 +54,7 @@ ART = _cfg('art', 'P2_ART', ART, _LEGACY_ART, lambda: WT + '/art/night1/characte
 GLB = _cfg('inputs', 'P2_INPUTS', GLB, _LEGACY_GLB, lambda: SCRATCH + '/ueimport')
 CIT = ART + '/export/citizens'
 _ENV = dict(os.environ, P2_WT=WT, P2_SCRATCH=SCRATCH)   # the 'prep' tools read these (tools/ue_char/p2paths.py)
-STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,abp,map,maps5,mapkey').split(','))
+STEPS = set((ARGS.get('steps') or 'prep,clean,tex,mat,mesh,citizens,rename,fightclips,abp,map,maps5,mapkey').split(','))
 ROOT, TESTS = '/Game/Characters', '/Game/Tests/Characters'
 EAL = unreal.EditorAssetLibrary
 AT = unreal.AssetToolsHelpers.get_asset_tools()
@@ -71,7 +71,14 @@ if 'prep' in STEPS:
     # round 08: the ORIGINAL hero suit (Tessera: procedural base colour / normal / orm on the hero UV atlas, tools/ue_char/suit8) and the rebuilt eyes (one closed
     # bezel ring sealed to a lens conformed to the mask) in the UE-only hero GLB; replaces the round-05 browser-suit quality pass (hero_hand_fix / hero_suit_r5 / hero_lens_r5)
     subprocess.run(['python3', WT + '/tools/ue_char/hero_suit_r8.py'], check=True, capture_output=True, env=_ENV)
-    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r8.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    # round 14: the shared mask sculpt is FINISHED by one script (tools/ue_char/suit8/hero_head_r14.py: a brow ridge that overhangs the lenses, a nose-bridge notch, cheek-bone planes,
+    # mouth bulge, chin plane - round 13's sculpt was hero_head_r13.py), then the eyes are re-seated in the eye sockets under the brow (tools/ue_char/hero_lens_r14.py: >= 1.6x r12 width,
+    # one closed raised rim each; r8's hero_lens_r8.py is its library), the shoulders / upper arms are de-faceted (hero_shoulder_r14.py: one Phong-tessellation refinement level) and the
+    # skin weights are smoothed on the torso side / armpit (round 12) AND the trapezius (round 14: hero_weights_r14.py applies r12's pass first)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_head_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/hero_lens_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_shoulder_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
+    subprocess.run(['python3', WT + '/tools/ue_char/suit8/hero_weights_r14.py', GLB + '/SK_Hero.glb'], check=True, capture_output=True, env=_ENV)
     # round 05: citizen under-layer hulls (CH18 cracks) then the FBX export with them
     subprocess.run(['python3', WT + '/tools/ue_char/eval/underlayer.py'] + CITIZENS, check=True, capture_output=True, env=_ENV)
     # round 06: the citizens are refit from the raw Tripo meshes with welded skin weights (no seam cracks / coat flaps / finger claws); the pack LOD0 + hull is the fallback
@@ -230,7 +237,59 @@ def build_suit_master():
     blend = E(m, unreal.MaterialExpressionMaterialFunctionCall, -250, 500)
     blend.set_editor_property('material_function', load('/Engine/Functions/Engine_MaterialFunctions02/Utility/BlendAngleCorrectedNormals'))
     MEL.connect_material_expressions(nrm, 'RGB', blend, 'BaseNormal')
-    MEL.connect_material_expressions(dmul, '', blend, 'AdditionalNormal')
+    detail_out = dmul
+    # round 12: the fabric weave is laid out from the PRE-SKINNED 3D position (triplanar, whiteout blend), not from the UV atlas: one continuous weave over
+    # every UV island (the round-11 weave flipped direction and scale at island edges and per stretched triangle).  The local-space weave normal is
+    # rotated onto the skinned vertex normal and converted to tangent space for the blend.  Static switch WeaveFromPosition (default on) keeps the UV path.
+    try:
+        lp = E(m, unreal.MaterialExpressionLocalPosition, -2000, 1200)
+        try: lp.set_editor_property('local_origin', unreal.LocalPositionOrigin.INSTANCE_PRE_SKINNING)
+        except Exception as e_: log('LocalPosition origin enum:', str(e_)[:120]); lp = E(m, unreal.MaterialExpressionPreSkinnedPosition, -2000, 1200)
+        ln = E(m, unreal.MaterialExpressionPreSkinnedNormal, -2000, 1320)
+        vi_p = E(m, unreal.MaterialExpressionVertexInterpolator, -1800, 1200); vi_n = E(m, unreal.MaterialExpressionVertexInterpolator, -1800, 1320)
+        okc = [MEL.connect_material_expressions(lp, '', vi_p, ''), MEL.connect_material_expressions(ln, '', vi_n, '')]
+        vn = E(m, unreal.MaterialExpressionVertexNormalWS, -1800, 1440)
+        wtex = E(m, unreal.MaterialExpressionTextureObjectParameter, -1800, 1560); wtex.set_editor_property('parameter_name', 'WeaveNormal')
+        wt_def = ROOT + '/Shared/Textures/T_Fabric_Twill_N'
+        wtex.set_editor_property('texture', load(wt_def) if EAL.does_asset_exist(wt_def) else load('/Engine/EngineMaterials/FlatNormal'))
+        wtex.set_editor_property('sampler_type', ST.SAMPLERTYPE_NORMAL)
+        wsc = scalar(m, 'WeaveTilesPerCm', 0.694, -1800, 1680)
+        cw = E(m, unreal.MaterialExpressionCustom, -1500, 1300)
+        cw.set_editor_property('description', 'WeaveFromPreSkinnedPosition'); cw.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+        cw.set_editor_property('code', '''
+float3 N0 = normalize(LN);
+float3 bw = pow(abs(N0), 4.0); bw /= (bw.x + bw.y + bw.z + 1e-5);
+float3 tx, ty, tz;
+tx.xy = (Texture2DSample(Tex, TexSampler, LP.yz * Scale).rg * 2.0 - 1.0) * Strength; tx.z = sqrt(saturate(1.0 - dot(tx.xy, tx.xy)));
+ty.xy = (Texture2DSample(Tex, TexSampler, LP.xz * Scale).rg * 2.0 - 1.0) * Strength; ty.z = sqrt(saturate(1.0 - dot(ty.xy, ty.xy)));
+tz.xy = (Texture2DSample(Tex, TexSampler, LP.xy * Scale).rg * 2.0 - 1.0) * Strength; tz.z = sqrt(saturate(1.0 - dot(tz.xy, tz.xy)));
+tx = float3(tx.xy + N0.zy, abs(tx.z) * N0.x);
+ty = float3(ty.xy + N0.xz, abs(ty.z) * N0.y);
+tz = float3(tz.xy + N0.xy, abs(tz.z) * N0.z);
+float3 nl = normalize(tx.zyx * bw.x + ty.xzy * bw.y + tz.xyz * bw.z);
+float3 b = normalize(VN);
+float c = dot(N0, b); float3 k = cross(N0, b); float s = length(k);
+float3 r = nl;
+if (s > 1e-4) { k /= s; r = nl * c + cross(k, nl) * s + k * dot(k, nl) * (1.0 - c); }
+else if (c < 0.0) { r = -nl; }
+return r;''')
+        ins = []
+        for n_ in ('LP', 'LN', 'VN', 'Tex', 'Scale', 'Strength'):
+            ci = unreal.CustomInput(); ci.set_editor_property('input_name', n_); ins.append(ci)
+        cw.set_editor_property('inputs', ins)
+        okc += [MEL.connect_material_expressions(vi_p, '', cw, 'LP'), MEL.connect_material_expressions(vi_n, '', cw, 'LN'), MEL.connect_material_expressions(vn, '', cw, 'VN'),
+                MEL.connect_material_expressions(wtex, '', cw, 'Tex'), MEL.connect_material_expressions(wsc, '', cw, 'Scale'), MEL.connect_material_expressions(ds, '', cw, 'Strength')]
+        tr = E(m, unreal.MaterialExpressionTransform, -1250, 1300)
+        tr.set_editor_property('transform_source_type', unreal.MaterialVectorCoordTransformSource.TRANSFORMSOURCE_WORLD)
+        tr.set_editor_property('transform_type', unreal.MaterialVectorCoordTransform.TRANSFORM_TANGENT)
+        okc.append(MEL.connect_material_expressions(cw, '', tr, ''))
+        sw_w = E(m, unreal.MaterialExpressionStaticSwitchParameter, -450, 1000); sw_w.set_editor_property('parameter_name', 'WeaveFromPosition'); sw_w.set_editor_property('default_value', True)
+        okc += [MEL.connect_material_expressions(tr, '', sw_w, 'True'), MEL.connect_material_expressions(dmul, '', sw_w, 'False')]
+        detail_out = sw_w
+        log('M_Char_Suit weave from pre-skinned position: connections', okc)
+    except Exception as e:
+        log('M_Char_Suit weave-from-position FAILED, UV weave kept:', str(e)[:200])
+    MEL.connect_material_expressions(detail_out, '', blend, 'AdditionalNormal')
     MEL.connect_material_property(blend, '', unreal.MaterialProperty.MP_NORMAL)
     # cloth sheen
     fz = vector(m, 'FuzzColor', (0.55, 0.45, 0.45, 1), -350, -600)
@@ -303,7 +362,7 @@ def build_maskother():
     MEL.recompile_material(m)
     return m
 
-def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None):
+def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None, two_sided=False):
     full = path + '/' + name
     if EAL.does_asset_exist(full): EAL.delete_asset(full)
     i = AT.create_asset(name, path, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
@@ -312,6 +371,12 @@ def mi(name, path, parent, tex=None, scal=None, vec=None, switches=None):
     for k, v in (scal or {}).items(): MEL.set_material_instance_scalar_parameter_value(i, k, v)
     for k, v in (vec or {}).items(): MEL.set_material_instance_vector_parameter_value(i, k, unreal.LinearColor(*v))
     for k, v in (switches or {}).items(): MEL.set_material_instance_static_switch_parameter_value(i, k, v)
+    if two_sided:   # round 10: hair-card gaps show the inside of the hair shell instead of the sky (critic r09: 'beard_face_4k: detached rear hair shell with a background gap')
+        try:
+            ov = i.get_editor_property('base_property_overrides')
+            ov.set_editor_property('override_two_sided', True); ov.set_editor_property('two_sided', True)
+            i.set_editor_property('base_property_overrides', ov)
+        except Exception as ex: log('two_sided override failed for', name, str(ex)[:160])
     MEL.update_material_instance(i)
     return i
 
@@ -349,7 +414,9 @@ if 'mat' in STEPS:
     except Exception as e:
         log('hero lens: glossy lens failed, simple lens', str(e)[:160])
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
-    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.5, 'Specular': 0.25}, vec={'Color': (0.006, 0.011, 0.013, 1)})
+    # round 13: the rim of the sculpted eyes is polished gunmetal (base 0.30 / 0.30 / 0.33, metallic 0.9; r12: matte near-black 0.006 / 0.011 / 0.013, invisible on a dark mask = 'rimless'): the sky and the key light
+    # run along its raised profile, so it reads on every suit's mask while staying a dark ring against the glossy lens
+    mi('MI_Hero_LensFrame', ROOT + '/Hero/Materials', lensf, scal={'Roughness': 0.25, 'Specular': 0.6, 'Metallic': 0.9}, vec={'Color': (0.22, 0.22, 0.24, 1)})
     th = {'Normal': ROOT + '/Thug/Textures/T_Thug_Normal', 'ORM': ROOT + '/Thug/Textures/T_Thug_ORM'}
     for v, t in (('', 'T_Thug_BaseColor'), ('_B', 'T_Thug_BaseColor_B'), ('_C', 'T_Thug_BaseColor_C'), ('Brute', 'T_Brute_BaseColor')):
         n = 'MI_Brute' if v == 'Brute' else 'MI_Thug' + v
@@ -360,7 +427,7 @@ if 'mat' in STEPS:
         mi(n, ROOT + '/Thug/Materials', suit, tex=dict(th, BaseColor=ROOT + '/Thug/Textures/' + t), scal=sc_, vec=vc_, switches={'HasORM': True})
     for k in PEOPLE + [a + b for a, b in PEOPLE_TINTS]:   # street people: one 4096 atlas each (skin, cloth, mask, cap / weapon strip); Cloth shading, light sheen
         mi('MI_Street_' + k, ROOT + '/People/Materials', suit, tex={'BaseColor': ROOT + '/People/Textures/T_Street_%s_BaseColor' % k},
-           scal={'Roughness': 0.78, 'Cloth': 0.16, 'DetailStrength': 0.0, 'Specular': 0.35}, switches={'HasORM': False})
+           scal={'Roughness': 0.78, 'Cloth': 0.16, 'DetailStrength': 0.0, 'Specular': 0.35}, switches={'HasORM': False}, two_sided=(k in ('Beard', 'Hood', 'HoodGrey')))
     if EAL.does_asset_exist(ROOT + '/Thug/Textures/T_Brute_Regions'):
         mi('MI_BruteMask', ROOT + '/Thug/Materials', build_idmask(), tex={'Regions': ROOT + '/Thug/Textures/T_Brute_Regions'})
         mi('MI_MaskOther', ROOT + '/Shared/Materials', build_maskother())
@@ -498,6 +565,52 @@ if 'rename' in STEPS:
     EAL.save_directory(ROOT, only_if_is_dirty=True, recursive=True)
     log('rename ok', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT, recursive=True) if '/Anims/' not in p and 'Textures' not in p and 'Materials' not in p))
 
+# ------------------------------------------------------------------------------------------------ round 09: re-import of the street enemies only
+# (the tee's see-through lip-crease slivers are flipped by people/mask.py flip_seethrough; build_people.sh rewrote the GLBs): a partial build without the wipe of 'clean'
+if 'peoplemesh' in STEPS:
+    for k in PEOPLE:        # base colour atlases (round 09: the thug's nape texels, tools/ue_char/people/nape_fix.py)
+        import_tex(ART + '/people/%s_basecolor.png' % k.lower(), ROOT + '/People/Textures', 'T_Street_%s_BaseColor' % k, 'srgb')
+    for k, v in PEOPLE_TINTS:
+        import_tex(ART + '/people/%s_%s_basecolor.png' % (k.lower(), v), ROOT + '/People/Textures', 'T_Street_%s%s_BaseColor' % (k, v), 'srgb')
+    names_ = ['SK_Street_' + k for k in PEOPLE] + ['SK_Street_%s_%s' % kw for kw in PEOPLE_ARMED]
+    for n_ in names_:
+        if os.path.exists('%s/%s.glb' % (GLB, n_)): do_import('%s/%s.glb' % (GLB, n_), ROOT + '/People', skeleton=HERO_SKEL, anims=False)
+    rename_anims(ROOT + '/People', 'SK_Street_Walks', 'A_Street_')     # flattens meshes that landed in subfolders (no loose clips are expected)
+    for k in PEOPLE + ['%s_%s' % kw for kw in PEOPLE_ARMED]:
+        set_slots(ROOT + '/People/SK_Street_' + k, {'*': ROOT + '/People/Materials/MI_Street_' + k.split('_')[0]})
+        load(ROOT + '/People/SK_Street_' + k).set_editor_property('physics_asset', load(HERO_PHYS))
+    EAL.save_directory(ROOT + '/People', only_if_is_dirty=True, recursive=True)
+    log('people meshes re-imported', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People', recursive=False) if 'SK_Street' in p))
+
+# ------------------------------------------------------------------------------------------------ round 09: in-place hit-reaction clips
+# tools/ue_char/fight/make_fight_clips.py writes SK_Street_Fight.glb (the thug mesh + hitBack / hitLeft / hitRight / down / getUp, pelvis travel removed;
+# the travel lives in fight_script.json's actor paths).  Imported onto the hero skeleton like the street walks; the mesh that carries them is deleted.
+if 'fightclips' in STEPS:
+    if os.path.exists(GLB + '/SK_Street_Fight.glb'):
+        do_import(GLB + '/SK_Street_Fight.glb', ROOT + '/People', skeleton=HERO_SKEL, anims=True)
+        rename_anims(ROOT + '/People', 'SK_Street_Fight', 'A_Fight_')
+        if EAL.does_asset_exist(ROOT + '/People/SK_Street_Fight'): EAL.delete_asset(ROOT + '/People/SK_Street_Fight')
+        EAL.save_directory(ROOT + '/People', only_if_is_dirty=True, recursive=True)
+        log('fight clips', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People/Anims', recursive=True) if 'A_Fight_' in p))
+    else:
+        log('fightclips: SK_Street_Fight.glb missing (run tools/ue_char/fight/make_fight_clips.py)')
+
+# ------------------------------------------------------------------------------------------------ round 09: crowd walk clips with the swing-foot lift capped
+# tools/ue_char/crowd/lift_cap.py (hooked into eval/citizen_rig.load_people) caps the rear-foot lift at 10 % of stature; export_citizens.sh rewrote the FBX takes.  Only the clips
+# are re-imported (from the first citizen's FBX, onto the existing citizen skeleton); the old A_Citizen_* clips are deleted first and the AnimBPs ('abp' step) rebuilt after.
+if 'citizenclips' in STEPS:
+    import shutil
+    os.makedirs(CIT_TMP, exist_ok=True)
+    f_ = '%s/SK_CitClips.fbx' % CIT_TMP
+    shutil.copyfile('%s/%s.fbx' % (CIT, CITIZENS[0]), f_)
+    for p_ in EAL.list_assets(ROOT + '/Citizens/Anims', recursive=True):
+        if 'A_Citizen_' in p_: EAL.delete_asset(p_.split('.')[0])
+    do_import(f_, ROOT + '/Citizens', skeleton=CIT_SKEL, anims=True, physics=False)
+    rename_anims(ROOT + '/Citizens', 'SK_CitClips', 'A_Citizen_')
+    if EAL.does_asset_exist(ROOT + '/Citizens/SK_CitClips'): EAL.delete_asset(ROOT + '/Citizens/SK_CitClips')
+    EAL.save_directory(ROOT + '/Citizens', only_if_is_dirty=True, recursive=True)
+    log('citizen clips', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/Citizens/Anims', recursive=True)))
+
 # ------------------------------------------------------------------------------------------------ AnimBPs (children of UWHCharAnimInstance)
 def make_abp(name, path, skel, idle, loco, jump=None, fall=None, land=None, takeoff=None, seq=None, seq_blend=0.15, jump_variants=None,
              air_blend=None, hold_descent=False, takeoff_hold=None):
@@ -556,17 +669,14 @@ if 'abp' in STEPS:
     # ---- round 05: running leap (takeoff crouch -> open stride -> tuck -> reach, alternating legs), staged fight sequences
     make_abp('ABP_Hero_Leap', ROOT + '/Hero', HERO_SKEL, HA + 'idle', hero_loco, HA + 'runLeap', HA + 'fallCalm', HA + 'landLight', HA + 'runTakeoff',
              jump_variants=[HA + 'runLeap', HA + 'runLeapB'], air_blend=7.0, hold_descent=True, takeoff_hold=0.18)
-    make_abp('ABP_Hero_Fight', ROOT + '/Hero', HERO_SKEL, HA + 'fightIdle', hero_loco, seq_blend=0.12,
-             seq=[HA + 'fightIdle', HA + 'punch1', HA + 'punch2', HA + 'kick', HA + 'fightIdle', HA + 'punch3'])
+    # round 09: the fight is a SCRIPT (tools/ue_char/fight/choreo.py -> fight_script.json, applied to the walkers by the 'maps5' step): timed beats play
+    # over the base idle, so the ABPs only carry the base: the hero's fight stance; the armed enemies (bat, pipe, pistol) stand relaxed with the weapon
+    # hanging (the hero's standing idle) and the unarmed ones keep the boxing guard (thugIdle, chin tucked, head never above the horizon).
+    make_abp('ABP_Hero_Fight', ROOT + '/Hero', HERO_SKEL, HA + 'fightIdle', hero_loco)
     FA_ = ROOT + '/Thug/Anims/A_Thug_'
-    # each enemy: guard (thugIdle: boxing stance, chin tucked, head never above the horizon) between one action; heads stay <= 10 deg up
-    # armed enemies (bat, pipe, pistol) stand relaxed with the weapon hanging (the hero's standing idle, head +6 deg) until they swing; the unarmed ones
-    # keep the boxing guard (thugIdle) between punches / kicks / hit reactions.  'H:' = a hero clip.
-    fights = {'Thug': ['H:idle', 'thugPunch1', 'thugPunch2'], 'Brute': ['H:idle', 'thugPunch2', 'thugPunch1'], 'Hood': ['H:idle', 'thugStumbleBack'],
-              'Tee': ['thugKick', 'thugIdle', 'thugPunch2'], 'Beard': ['thugPunch2', 'thugPunch1', 'thugIdle'], 'Oxblood': ['thugIdle', 'thugStumbleLeft', 'thugPunch1']}
-    for k, clips in fights.items():
-        make_abp('ABP_Fight_' + k, ROOT + '/People', HERO_SKEL, FA_ + 'thugIdle', [(PA + 'walkStreet', 114.0)],
-                 seq=[(HA + c[2:]) if c.startswith('H:') else (FA_ + c) for c in clips], seq_blend=0.14)
+    fight_base = {'Thug': HA + 'idle', 'Brute': HA + 'idle', 'Hood': HA + 'idle', 'Tee': FA_ + 'thugIdle', 'Beard': FA_ + 'thugIdle', 'Oxblood': FA_ + 'thugIdle'}
+    for k, base_ in fight_base.items():
+        make_abp('ABP_Fight_' + k, ROOT + '/People', HERO_SKEL, base_, [(PA + 'walkBrute', 110.0)] if k == 'Brute' else [(PA + 'walkStreet', 114.0)])
     log('abp ok')
 
 # ------------------------------------------------------------------------------------------------ test map
@@ -623,6 +733,11 @@ if 'map' in STEPS:
         skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
         spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
         ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
+        try:    # round 13 (critic r12: 'lighting is washed out'): the pale sunlit wall pushed auto exposure up (wall luma 208 of 255 in r04 AND r12, the same in both: the EV of the skins stage did NOT leak into this map, measured); -0.6 EV bias + a weaker enemy fill give the lineup contrast
+            ps_ = ppv.get_editor_property('settings')
+            ps_.set_editor_property('override_auto_exposure_bias', True); ps_.set_editor_property('auto_exposure_bias', float(ARGS.get('lineup_ev', -0.6)))
+            ppv.set_editor_property('settings', ps_)
+        except Exception as ex: log('lineup exposure bias not set', str(ex)[:120])
         spawn(unreal.PlayerStart, (-6000, -6000, 120), label='PlayerStart_OffStage')
         # street backdrop: asphalt road along X, sidewalk + curb, a row of facades behind (+Y), crosswalk stripes
         box((0, 0, -10), (80, 30, 0.2), 'M_Env_Asphalt', 'Road')
@@ -675,10 +790,11 @@ if 'map' in STEPS:
                 ('Crew_BrutePipe', 'SK_Street_Brute_Pipe', TL, 'Brute', BRUTE_SCALE, BRUTE_GIRTH),
                 ('Crew_TeeBat', 'SK_Street_Tee_Bat', TH, 'Tee', 1.0, 1.0),
                 ('Crew_BeardPipe', 'SK_Street_Beard_Pipe', TH, 'Beard', 1.0, 1.0),
-                ('Crew_ThugPistol', 'SK_Street_Thug_Pistol', GA, 'ThugOxblood', 1.0, 1.0)]   # round 05: the grey-hoodie twin of the hood is gone
+                ('Crew_ThugPistol', 'SK_Street_Thug_Pistol', GA, 'ThugOxblood', 1.0, 1.0),
+                ('Crew_HoodGrey', 'SK_Street_Hood', TL, 'HoodGrey', 1.0, 1.0)]   # round 05 dropped the grey-hoodie twin (6 enemies); round 13 puts it back at the end of the row: 7 enemies in the lineup frame (critic r12: 'lineup has 6 enemies (7 needed)', CH11 / CH13)
         enemies = []
         for i, (lbl, mesh, abp, mat, sc_, g_) in enumerate(crew):
-            x = LX + (i - 2.5) * 105.0
+            x = LX + (i - 3.0) * 100.0
             y = LY + (60.0 if i % 2 else -60.0)
             e = walker(lbl, PP + mesh, abp, (x, y, 0), W.STAND, 0.0, scale=sc_, girth=g_, mat=PP + 'Materials/MI_Street_' + mat, yaw=-90.0 + (i - 3) * 6.0)
             enemies.append(e)
@@ -691,7 +807,7 @@ if 'map' in STEPS:
         for fi, fyaw in enumerate((0, 90, 180, 270)):
             fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'EnemyFill_%d' % fi)   # rot = (yaw, pitch, roll)
             fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
-            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 1.4))); fc.set_editor_property('cast_shadows', False)
+            fc.set_editor_property('intensity', float(ARGS.get('enemy_fill', 1.0))); fc.set_editor_property('cast_shadows', False)
             fc.set_editor_property('lighting_channels', only1)
         # civilians: 12 distinct crowd people on the south sidewalk, each its own walk style at that style's foot-locked speed, both
         # directions, gait phases spread by start position; a mesh-less tracker walks with them for the tracking camera
@@ -734,7 +850,7 @@ if 'map' in STEPS:
                  shot(hero_jump, K.SIDE, 6.5, 620, 110, 0, 42, restart=[hero_jump], label='hero run -> jump side'),                   # 3  @17
                  shot(hero_tt, K.CLOSEUP, 4, 95, 135, 5, 30, label='suit fabric close-up (chest)'),                                   # 4  @23.5
                  shot(crew_center, K.WIDE, 6, 0, 95, 0, 55, wl=(LX, LY - 950, 165), label='enemy lineup (7) wide'),                  # 5  @27.5
-                 shot(crew_center, K.WIDE, 5, 0, 95, 0, 50, wl=(LX - 900, LY - 780, 175), label='enemy lineup 3/4'),                  # 6  @33.5
+                 shot(crew_center, K.WIDE, 5, 0, 95, 0, 50, wl=(LX - 420, LY - 900, 165), label='enemy lineup 3/4'),                  # 6  @33.5
                  shot(track, K.SIDE, 6, 420, 95, 10, 64, restart=[thug_l, brute_l, track], label='thug + brute side tracking (4.2 m)'),  # 7  @38.5
                  shot(thug_l, K.SIDE, 5, 300, 92, 5, 62, restart=[thug_l], label='thug side tracking 3 m'),                          # 8  @44.5
                  shot(brute_l, K.SIDE, 5, 300, 100, 5, 66, restart=[brute_l], label='brute side tracking 3 m'),                      # 9  @49.5
@@ -861,27 +977,50 @@ if 'maps5' in STEPS:
     save_map(TESTS + '/Char_Hero', hero_shots, managed=[hero_tt, hero_run, hero_jump])
 
     # ================= Char_Fight: a staged street fight, hero in the middle of 6 enemies =================
+    # round 09: a SCRIPTED fight (tools/ue_char/fight/choreo.py -> fight_script.json): the enemies walk in, strike, get hit (stumble back / left / right,
+    # flinch), go down and get up; every actor's path and timed clips are pure functions of the stage clock (the capture director's shot clock).
     new_stage('Fight', fills=True)
     FX, FY = 0.0, 0.0
-    hero_f = walker('Fight_Hero', H5 + 'SK_Hero', H5 + 'ABP_Hero_Fight', (FX, FY, 0), W5.STAND, 0.0, yaw=245.0)   # faces the thug at 235 deg
-    ring = [('Fight_Thug', 'SK_Street_Thug_Bat', 'Thug', 'Thug', 235, 265, 1.0, 1.0, 2.4),
-            ('Fight_Brute', 'SK_Street_Brute_Pipe', 'Brute', 'Brute', 312, 285, BRUTE_SCALE, BRUTE_GIRTH, 3.0),
-            ('Fight_Hood', 'SK_Street_Hood_Pistol', 'Hood', 'Hood', 188, 270, 1.0, 1.0, 1.6),
-            ('Fight_Tee', 'SK_Street_Tee', 'Tee', 'Tee', 358, 275, 1.0, 1.0, 0.0),
-            ('Fight_Beard', 'SK_Street_Beard', 'Beard', 'Beard', 128, 290, 1.0, 1.0, 0.7),
-            ('Fight_Oxblood', 'SK_Street_Thug', 'Oxblood', 'ThugOxblood', 58, 300, 1.0, 1.0, 1.3)]
+    FS = _json.load(open(WT + '/tools/ue_char/fight/fight_script.json'))
+    def clip_asset(key):
+        w_, c_ = key.split(':')
+        return {'hero': ROOT + '/Hero/Anims/A_Hero_', 'thug': ROOT + '/Thug/Anims/A_Thug_', 'fight': ROOT + '/People/Anims/A_Fight_'}[w_] + c_
+    def apply_script(actor, label):
+        d_ = FS['actors'][label]
+        keys = []
+        for k in d_['path']:
+            pk = unreal.WHPathKey(); pk.set_editor_property('time', k['t']); pk.set_editor_property('loc', unreal.Vector(k['x'], k['y'], 0.0)); pk.set_editor_property('yaw', k['yaw'])
+            keys.append(pk)
+        actor.set_editor_property('stage_path', keys)
+        beats = []
+        for b_ in d_['beats']:
+            sb = unreal.WHScriptBeat()
+            sb.set_editor_property('clip', load(clip_asset(b_['clip'])))
+            for kk in ('start', 'rate', 'blend_in', 'blend_out', 'hold', 'weight'): sb.set_editor_property(kk, float(b_[kk]))
+            beats.append(sb)
+        actor.set_editor_property('script', beats)
+    p0 = FS['actors']['Fight_Hero']['path'][0]
+    hero_f = walker('Fight_Hero', H5 + 'SK_Hero', H5 + 'ABP_Hero_Fight', (p0['x'], p0['y'], 0), W5.STAND, 0.0, yaw=p0['yaw'])
+    apply_script(hero_f, 'Fight_Hero')
+    ring = [('Fight_Thug', 'SK_Street_Thug_Bat', 'Thug', 'Thug', 1.0, 1.0, 2.4),
+            ('Fight_Brute', 'SK_Street_Brute_Pipe', 'Brute', 'Brute', BRUTE_SCALE, BRUTE_GIRTH, 3.0),
+            ('Fight_Hood', 'SK_Street_Hood_Pistol', 'Hood', 'Hood', 1.0, 1.0, 1.6),
+            ('Fight_Tee', 'SK_Street_Tee', 'Tee', 'Tee', 1.0, 1.0, 0.0),
+            ('Fight_Beard', 'SK_Street_Beard', 'Beard', 'Beard', 1.0, 1.0, 0.7),
+            ('Fight_Oxblood', 'SK_Street_Thug', 'Oxblood', 'ThugOxblood', 1.0, 1.0, 1.3)]
     fight_actors = [hero_f]
-    for lbl, mesh, abpk, mat, ang, rad, sc_, g_, off in ring:
-        x = FX + rad * _m.cos(_m.radians(ang)); y = FY + rad * _m.sin(_m.radians(ang))
-        e = walker(lbl, PP5 + mesh, PP5 + 'ABP_Fight_' + abpk, (x, y, 0), W5.STAND, 0.0, scale=sc_, girth=g_, mat=PP5 + 'Materials/MI_Street_' + mat,
-                   yaw=ang + 180.0, anim_offset=off)
+    for lbl, mesh, abpk, mat, sc_, g_, off in ring:
+        q0 = FS['actors'][lbl]['path'][0]
+        e = walker(lbl, PP5 + mesh, PP5 + 'ABP_Fight_' + abpk, (q0['x'], q0['y'], 0), W5.STAND, 0.0, scale=sc_, girth=g_, mat=PP5 + 'Materials/MI_Street_' + mat,
+                   yaw=q0['yaw'], anim_offset=off)
+        apply_script(e, lbl)
         fight_actors.append(e)
     both_channels(fight_actors)
     fc_ = spawn(unreal.TargetPoint, (FX, FY, 0), label='FightCenter')
     fight_shots = [
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 52, wl=(-120, -1050, 330), label='street fight wide (hero + 6 enemies)'),                           # 0 @0
-        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-760, -800, 330), label='street fight 3/4'),                                               # 1 @8
-        mkshot(fc_, K5.ORBIT, 8, 1000, 95, 230, 48, 16, 250, label='street fight orbit')]                                                      # 2 @16
+        mkshot(fc_, K5.WIDE, 8.6, 0, 95, 0, 52, wl=(-30, -900, 500), label='street fight wide (hero + 6 enemies)'),                           # 0 @0   (round 10: 8.6 s = 0.6 s of texture warm-up + a full 8 s clip)
+        mkshot(fc_, K5.WIDE, 8, 0, 95, 0, 48, wl=(-660, -335, 410), label='street fight 3/4'),                                               # 1 @8.6
+        mkshot(fc_, K5.ORBIT, 8, 830, 95, 280, 48, 16, 271, label='street fight orbit')]                                                      # 2 @16.6 (round 10: starts at azimuth 271, sweeps to 39: side view of the Brute (55) and Tee (0) knockdowns)                                                      # 2 @16
     save_map(TESTS + '/Char_Fight', fight_shots)
 
     # ================= Char_Crowd: two-way flow, walkers passing near the camera =================
@@ -925,8 +1064,8 @@ if 'maps5' in STEPS:
         cit_center5 = spawn(unreal.TargetPoint, (500, CY5, 0), label='CitizensCenter')
         civ_all5 = civ5 + [civ_track5]
         crowd_shots = [
-            mkshot(civ_track5, K5.SIDE, 8, 1150, 100, 45, 64, restart=civ_all5, label='crowd walking past a tracking camera'),                      # 0 @0
-            mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @8
+            mkshot(civ_track5, K5.SIDE, 12, 1150, 100, 45, 64, restart=civ_all5, label='crowd walking past a tracking camera'),                     # 0 @0  (round 17: 8 -> 12 s: the r14-r16 crowd clip's 7.483 s cut was this shot ending at 8 s and the director cutting to 'crowd wide'; the clip is 8 s)
+            mkshot(cit_center5, K5.WIDE, 6, 0, 110, 0, 50, wl=(-1400, CY5 + 420, 175), restart=civ_all5, label='crowd wide')]                        # 1 @12
         save_map(TESTS + '/' + map_name, crowd_shots)
     crowd_map('Char_Crowd', MID7, NEAR7)
     if 'mapavoid' in STEPS:      # only when asked: telemetry test of the avoidance on the OLD (colliding) layout, nullrhi run, no captures
@@ -1055,5 +1194,188 @@ if 'mapkey' in STEPS:
                 a.set_editor_property('settings', st)
         log(map_name, 'saved', unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level(), nh, 'hero actors flat-coloured + stencil')
     hero_key_map('Char_HeroKey')
+
+# ------------------------------------------------------------------------------------------------ round 11 (first-pass piece G): the hero's ORIGINAL suits
+# tools/ue_char/suits/gen_suits.py writes <ART>/hero/suits/<id>_{basecolor,normal,orm}.png from tools/ue_char/suits/suits.json (a style override of the Tessera
+# generator, tools/ue_char/suit8/design.py); this step imports them (4096, NeverStream so a swap is one frame), makes MI_HeroSuit_<id> instances of M_Char_Suit and the
+# data asset DA_HeroSuits (UWHHeroSuitSet) that the game's UWHHeroSuitSubsystem reads: the order of suits.json is the cycle order of T / D-pad Up / wh.Suit <n>.
+# Tessera (texture_set 'hero') keeps its round-08 8192 maps and MI_Hero_Suit (the 'mat' step).   Step 'skinsmap' builds /Game/Tests/Characters/Char_Skins (stage + shots).
+SUITS_CFG = _json0.load(open(WT + '/tools/ue_char/suits/suits.json'))
+SUITS_DIR = ROOT + '/Hero/Suits'
+if 'skins' in STEPS:
+    master = load(ROOT + '/Shared/Materials/M_Char_Suit')
+    twill_p = ROOT + '/Shared/Textures/T_Fabric_Twill_N'
+    if not EAL.does_asset_exist(twill_p): twill_p = ROOT + '/Shared/Textures/T_Fabric_Knit_N'
+    _hj8 = ART + '/hero/tex/suit_r8.json'
+    tile_ = float(_json0.load(open(_hj8))['detail_tiling']) if os.path.exists(_hj8) else 122.0
+    if EAL.does_directory_exist(SUITS_DIR):
+        try: EAL.delete_directory(SUITS_DIR)
+        except Exception as e: log('skins: delete failed', str(e)[:120])
+    def _lin(h):
+        c = int(h, 16) / 255.0
+        return ((c + 0.055) / 1.055) ** 2.4 if c > 0.04045 else c / 12.92
+    def make_suit(e_):
+        """-> (material, lens material) of one suit; textures NeverStream (a swap is one frame), BC7 base colour."""
+        sid = e_['id']
+        if e_.get('texture_set') == 'hero':
+            return load(ROOT + '/Hero/Materials/MI_Hero_Suit'), load(ROOT + '/Hero/Materials/MI_Hero_Lens'), load(ROOT + '/Hero/Materials/MI_Hero_LensFrame')
+        D_ = ART + '/hero/suits/' + sid
+        if not all(os.path.exists(D_ + k) for k in ('_basecolor.png', '_normal.png', '_orm.png')):
+            raise RuntimeError('maps missing for %s (run tools/ue_char/suits/gen_suits.py)' % sid)
+        TD = SUITS_DIR + '/Textures'
+        tb = import_tex(D_ + '_basecolor.png', TD, 'T_HeroSuit_%s_BaseColor' % sid, 'srgb')
+        tn = import_tex(D_ + '_normal.png', TD, 'T_HeroSuit_%s_Normal' % sid, 'normal_gl')
+        to = import_tex(D_ + '_orm.png', TD, 'T_HeroSuit_%s_ORM' % sid, 'linear')
+        try: tb.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_BC7)
+        except Exception as ex: log('BC7 not set', sid, str(ex)[:100])
+        for t_ in (tb, tn, to):
+            try: t_.set_editor_property('never_stream', True)
+            except Exception as ex: log('never_stream not set', sid, str(ex)[:100])
+        fz = list(e_.get('style', {}).get('fuzz', [0.50, 0.62, 0.68]))
+        mat_ = mi('MI_HeroSuit_' + sid, SUITS_DIR + '/Materials', master,
+                  tex={'BaseColor': TD + '/T_HeroSuit_%s_BaseColor' % sid, 'ORM': TD + '/T_HeroSuit_%s_ORM' % sid,
+                       'Normal': TD + '/T_HeroSuit_%s_Normal' % sid, 'DetailNormal': twill_p},
+                  scal={'DetailTiling': tile_, 'DetailStrength': 0.8, 'Cloth': 0.45, 'Specular': 0.5}, vec={'FuzzColor': (fz[0], fz[1], fz[2], 1.0)}, switches={'HasORM': True})
+        # lens: the suit's accent colour (linear, x 0.67 like Tessera's amber 0.50 / 0.13 / 0.01 of 0.745 / 0.188 / 0.004)
+        pal_ = e_.get('style', {}).get('palette', {})
+        ac = pal_.get('lens', pal_.get('accent', '#e0780c'))      # a suit may name its own lens colour (saffron: teal, not a pale lens)
+        lin = [_lin(ac[i:i + 2]) for i in (1, 3, 5)]
+        lens_ = None
+        try:
+            lens_ = mi('MI_HeroLens_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_HeroLens'),
+                       scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.67 * lin[0], 0.67 * lin[1], 0.67 * lin[2], 1.0)})
+        except Exception as ex: log('lens instance failed', sid, str(ex)[:120])
+        # round 13: the rim of the eyes per suit (WHHeroSuitEntry.FrameMaterial): polished silver-gunmetal on a near-black mask, dark graphite on a mid / pale one (a rim that matches its mask is
+        # invisible: the r12 'rimless' read; r13's first run with one silver rim for every suit: 3 of 8 suits had a closed rim >= 6 px, the mid / pale masks lost it)
+        frame_ = None
+        try:
+            stl_ = e_.get('style', {}); pl_ = stl_.get('palette', {})
+            def _c(k, dflt): h_ = pl_.get(k, dflt); return [int(h_[i:i + 2], 16) / 255.0 for i in (1, 3, 5)]
+            deep_, crown_, body_, accd_ = _c('deep', '#071a21'), _c('crown', '#0b3441'), _c('body', '#0f4452'), _c('accent_d', '#ad5c08')
+            role_ = stl_.get('hood', 'deep')
+            hc_ = [0.5 * a + 0.5 * b for a, b in zip(deep_, crown_)] if role_ == 'deep' else {'body': body_, 'crown': crown_, 'accent_d': accd_}[role_]
+            lift_ = float(stl_.get('face', {}).get('lift', 1.0)) if role_ == 'deep' else 0.0      # round 14: design.py lifts a 'deep' hood toward the body colour (face.lift, default 1.0)
+            hc_ = [a * (1.0 - lift_) + b * lift_ for a, b in zip(hc_, body_)]
+            luma_ = 0.2126 * hc_[0] + 0.7152 * hc_[1] + 0.0722 * hc_[2]
+            dark_mask = luma_ < 0.36      # round 14: a polished silver rim reflects the sky / floor (luma 110 - 190) and reads on every hood up to ~0.35 (sRGB luma): r13's graphite rims on the MID hoods (Verdant, Ash, Saffron: hood 0.22 - 0.32) were open on 25 - 45 % of the angles; graphite stays for the pale hoods (Glacier 0.67, Sage 0.55)
+            frame_ = mi('MI_HeroFrame_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_LensFrame'),
+                        scal={'Roughness': 0.25 if dark_mask else 0.22, 'Specular': 0.6, 'Metallic': 0.9},
+                        vec={'Color': (0.22, 0.22, 0.24, 1.0) if dark_mask else (0.06, 0.06, 0.065, 1.0)})
+            log('skins: rim', sid, 'hood luma %.3f' % luma_, 'silver' if dark_mask else 'graphite')
+        except Exception as ex: log('frame instance failed', sid, str(ex)[:160])
+        return mat_, lens_, frame_
+    entries = []
+    for e_ in SUITS_CFG['suits']:
+        sid = e_['id']
+        try:
+            mat_, lens_, frame_ = make_suit(e_)
+            if mat_ is None: raise RuntimeError('no material')
+            en = unreal.WHHeroSuitEntry()
+            en.set_editor_property('id', sid); en.set_editor_property('display_name', e_.get('name', sid)); en.set_editor_property('material', mat_)
+            if lens_ is not None: en.set_editor_property('lens_material', lens_)
+            if frame_ is not None: en.set_editor_property('frame_material', frame_)
+            entries.append(en)
+            log('skins: suit', len(entries) - 1, sid, mat_.get_name(), 'lens', lens_.get_name() if lens_ is not None else None)
+        except Exception as ex_:
+            import traceback
+            log('skins: suit', sid, 'FAILED:', str(ex_)[:300]); traceback.print_exc()
+    if EAL.does_asset_exist(SUITS_DIR + '/DA_HeroSuits'): EAL.delete_asset(SUITS_DIR + '/DA_HeroSuits')
+    da = AT.create_asset('DA_HeroSuits', SUITS_DIR, unreal.WHHeroSuitSet, unreal.DataAssetFactory())
+    da.set_editor_property('suits', entries)
+    EAL.save_directory(SUITS_DIR, only_if_is_dirty=False, recursive=True)
+    EAL.save_directory(ROOT, only_if_is_dirty=True, recursive=True)      # everything the data asset references (MI_Hero_Suit, MI_Hero_Lens) is on disk
+    log('skins ok:', len(entries), 'suits in', SUITS_DIR + '/DA_HeroSuits')
+
+if 'skinsmap' in STEPS:
+    # ================= Char_Skins: the hero stands on a plain floor under a key sun + fills; four views of every suit (director shots switch the suit through the
+    # same UWHHeroSuitSubsystem path as `wh.Suit n`), then an orbit that cycles the suits.  Char_SkinsPlay: the same stage with the PLAYABLE pawn (WebTravGameMode, the real
+    # game's pawn + camera hook) and two director shots that follow it (bTargetPlayer).
+    WS = unreal.WHWalkerMode; KS = unreal.WHShotKind
+    names = [e_.get('name', e_['id']) for e_ in SUITS_CFG['suits']]
+    def skins_stage(tag, play):
+        les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        les.new_level('/Temp/Char_%s_Build_%d' % (tag, int(time.time())))
+        sun = spawn(unreal.DirectionalLight, (0, 0, 1000), (150, -38, 0), 'Sun')       # spawn() rot = (yaw, pitch, roll): yaw 150, pitch -38 = the light travels toward -X, front-lighting a hero that faces +X
+        sc = sun.get_component_by_class(unreal.DirectionalLightComponent)
+        sc.set_editor_property('intensity', 8.0); sc.set_editor_property('atmosphere_sun_light', True); sc.set_editor_property('light_source_angle', 3.0)
+        spawn(unreal.SkyAtmosphere, (0, 0, 0), label='SkyAtmosphere')
+        sky = spawn(unreal.SkyLight, (0, 0, 300), label='SkyLight')
+        skc = sky.get_component_by_class(unreal.SkyLightComponent); skc.set_editor_property('real_time_capture', True); skc.set_editor_property('mobility', unreal.ComponentMobility.MOVABLE)
+        spawn(unreal.ExponentialHeightFog, (0, 0, 0), label='Fog')
+        ppv = spawn(unreal.PostProcessVolume, (0, 0, 0), label='Post'); ppv.set_editor_property('unbound', True)
+        try:   # MANUAL exposure: auto exposure re-normalised every close-up (a dark suit filling the frame came out pastel).  AEM_Manual = camera EV100 of f/4, 1/60 s, ISO 100 (9.9) minus the bias, and this stage's sun is
+               # 8 lux (surface radiance ~0.8 cd/m2), so the bias that gives the floor the same level auto exposure gave it (sRGB luma ~170) is +10.0 (measured: floor luma 121 at +9, 172 at +10; -0.3 rendered black).
+               # -WHExposure=<bias> overrides the bias at run time
+            ps = ppv.get_editor_property('settings')
+            ps.set_editor_property('override_auto_exposure_method', True); ps.set_editor_property('auto_exposure_method', unreal.AutoExposureMethod.AEM_MANUAL)
+            ps.set_editor_property('override_auto_exposure_bias', True); ps.set_editor_property('auto_exposure_bias', float(ARGS.get('skin_ev', 10.0)))
+            ppv.set_editor_property('settings', ps)
+        except Exception as ex: log('manual exposure not set', str(ex)[:120])
+        box((0, 0, -10), (4000, 4000, 0.2), 'M_Env_Sidewalk', 'Floor')                # 4 km x 4 km (the horizon is the floor's edge, not the sky atmosphere's ground); the pawn demo runs far
+        if play:
+            spawn(unreal.PlayerStart, (-4000, 0, 120), label='PlayerStart_Pawn')
+            gm = unreal.load_class(None, '/Script/WebHomage.WebTravGameMode')
+            if gm: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world().get_world_settings().set_editor_property('default_game_mode', gm)
+            else: log('WebTravGameMode missing: the playable pawn will not spawn')
+            return None
+        spawn(unreal.PlayerStart, (-130000, -130000, 120), label='PlayerStart_OffStage')   # round 11: 1.8 km away (at 60 m the default pawn showed as a dark post on the horizon in the orbit movie)
+        only1 = unreal.LightingChannels(); only1.set_editor_property('channel0', False); only1.set_editor_property('channel1', True)
+        for fi, fyaw in enumerate((0, 90, 180, 270)):
+            fl = spawn(unreal.DirectionalLight, (0, 0, 1500), (fyaw, -30, 0), 'HeroFill_%d' % fi)
+            fc = fl.get_component_by_class(unreal.DirectionalLightComponent)
+            fc.set_editor_property('intensity', float(ARGS.get('skin_fill', 0.5))); fc.set_editor_property('cast_shadows', False); fc.set_editor_property('lighting_channels', only1)   # round 12: 0.8 -> 0.5 (four equal shadowless fills flattened the raised piping)
+        hs = walker('Hero_Skin', ROOT + '/Hero/SK_Hero', ROOT + '/Hero/ABP_Hero_Lineup', (0, 0, 0), WS.STAND, 0.0, yaw=0.0)
+        chan = unreal.LightingChannels(); chan.set_editor_property('channel0', True); chan.set_editor_property('channel1', True)
+        hs.get_editor_property('mesh').set_editor_property('lighting_channels', chan)
+        return hs
+    def sshot(t, kind, dur, dist, aim=100.0, camh=10.0, fov=40.0, orbit=40.0, az=0.0, label='', suit=-1, player=False, head_lock=False):
+        sh = unreal.WHShot()
+        for k, v in (('kind', kind), ('duration', dur), ('distance', dist), ('aim_height', aim), ('cam_height', camh), ('fov', fov),
+                     ('orbit_deg_per_sec', orbit), ('azimuth', az), ('label', label), ('suit', suit), ('target_player', player)):
+            sh.set_editor_property(k, v)
+        if head_lock:      # round 16 (critic r15: "the Cinder centre seam zig-zags ~60 px" = the idle head turn seen by a body-fixed camera): the portrait follows the head bone
+            try: sh.set_editor_property('head_lock', True)
+            except Exception as ex: log('head_lock not available (old C++ module?)', str(ex)[:120])
+        if t is not None: sh.set_editor_property('target', t)
+        return sh
+    def save_skins_map(MAP, shots):
+        d = spawn(unreal.WHCharShowDirector, (0, 0, 0), label='CaptureDirector')
+        d.set_editor_property('shots', shots)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        return unreal.EditorLoadingAndSavingUtils.save_map(world, MAP)
+    # ---- Char_Skins
+    hero_s = skins_stage('Skins', False)
+    # round 12: front / back framed for CH1 (hero 0.48 - 0.62 of the frame height): 7.85 m at FOV 40 (round 11's 5.6 m gave 0.77H)
+    # round 13: the head views of the sculpted mask: 'head' = 12 deg off the face axis (CLOSEUP adds 25 deg: azimuth -13), 1.0 m, the brow flashes and the crown piping in frame;
+    # 'head34' = the round-12 head framing exactly (25 deg, 1.0 m, aim 160: the lens-width comparison against r12 is made on this one); 'headside' = the profile (azimuth 65 = 90 deg
+    # off the face), 1.25 m, aim 166.5 so the whole head is in frame (the nose bump is measured against the head height there)
+    VIEWS = [('front', KS.FRONT, 0.0, 785.0, 92.0, 8.0, 40.0), ('back', KS.FRONT, 180.0, 785.0, 92.0, 8.0, 40.0),
+             ('chest', KS.CLOSEUP, 0.0, 150.0, 135.0, 4.0, 30.0), ('head', KS.CLOSEUP, -13.0, 100.0, 164.0, 0.0, 26.0),
+             ('head34', KS.CLOSEUP, 0.0, 100.0, 160.0, 0.0, 26.0), ('headside', KS.CLOSEUP, 65.0, 125.0, 166.5, 0.0, 26.0),
+             ('headfront', KS.CLOSEUP, -25.0, 100.0, 164.0, 0.0, 26.0)]       # round 14: 'headfront' = the 'head' framing straight on (0 deg): the cheek-line luma test of the critic's "front stills"
+    shots = []
+    SHOT_S = 3.0
+    # round 15: the first still waits FIRST_EXTRA seconds longer (r14: 1.0): the eight suits' base colours are 8192 px now (21 + 3 textures compile on the first load; the r13 first run caught
+    # the 8192 Tessera maps still streaming in at 2.2 s = a white mannequin).  The chain reads first_extra from skins_shots.json: the first still is at first_extra + 2.7 s.
+    FIRST_EXTRA = float(os.environ.get('P2_FIRST_EXTRA', '1.0'))
+    for i, nm in enumerate(names):
+        for j, (vn, kd, az, dist, aim, camh, fov) in enumerate(VIEWS):
+            shots.append(sshot(hero_s, kd, SHOT_S + (FIRST_EXTRA if (i == 0 and j == 0) else 0.0), dist, aim, camh, fov, 0.0, az, label='%s %s' % (nm, vn), suit=i if j == 0 else -1,
+                               head_lock=(vn == 'headfront' and os.environ.get('P2_HEADLOCK', '1') == '1')))
+    N_STILL = len(shots)
+    ORBIT_S, ORBIT_RATE = 1.5, 40.0
+    for i, nm in enumerate(names):          # continuous 40 deg/s orbit across the suit changes (the azimuth continues from shot to shot)
+        shots.append(sshot(hero_s, KS.ORBIT, ORBIT_S, 560.0, 92.0, 20.0, 40.0, ORBIT_RATE, ORBIT_RATE * ORBIT_S * i, label='orbit %s' % nm, suit=i))
+    ok1 = save_skins_map(TESTS + '/Char_Skins', shots)
+    # ---- Char_SkinsPlay (the real pawn)
+    skins_stage('SkinsPlay', True)
+    # the pawn's origin is its capsule centre (0.95 m): aim 0; ORBIT with 0 deg/s = a world-fixed azimuth that follows the runner exactly (SIDE / THREE_QUARTER smooth the aim and lag a 9.8 m/s runner)
+    pshots = [sshot(None, KS.ORBIT, 16.0, 520.0, 0.0, 10.0, 40.0, 0.0, -90.0, label='playable pawn, side (T swaps the suit)', player=True),      # round 17: 10 -> 16 s: the r16 clip's 9.933 s 'yaw snap' was THIS shot ending (10 s) and the director cutting to the front 3/4 shot; the clip is 11.4 s
+              sshot(None, KS.ORBIT, 6.0, 480.0, 0.0, 20.0, 40.0, 0.0, -45.0, label='playable pawn, front 3/4', player=True)]
+    ok2 = save_skins_map(TESTS + '/Char_SkinsPlay', pshots)
+    _json0.dump(dict(stills=N_STILL, orbit=len(shots) - N_STILL, shot_s=SHOT_S, views=[v[0] for v in VIEWS], suits=names, orbit_s=ORBIT_S,
+                   first_extra=FIRST_EXTRA, first_still=0, first_orbit=N_STILL, first_pawn=0, map_stills=TESTS + '/Char_Skins', map_play=TESTS + '/Char_SkinsPlay'),
+              open(SCRATCH + '/skins_shots.json', 'w'), indent=1)
+    log('skinsmap saved', ok1, ok2, 'stills', N_STILL, 'orbit', len(shots) - N_STILL)
 
 log('done')
