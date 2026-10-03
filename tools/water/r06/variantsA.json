@@ -1,0 +1,9 @@
+{
+ "OFF": {"ShoreMask": 0.0, "_views": ["river_low", "river_sun"]},
+ "DBG11": {"Dbg": 11, "_views": ["river_low", "river_sun"]},
+ "CH": {"OpenB": 1.0, "_views": ["river_low", "river_sun"]},
+ "S6": {"OpenSl": 0.6, "_views": ["river_low", "river_sun"]},
+ "R2": {"OpenRgh": 0.2, "_views": ["river_low", "river_sun"]},
+ "S6G": {"OpenSl": 0.6, "OpenGlit": 2.5, "_views": ["river_low", "river_sun"]},
+ "F24": {"ShoreB": 24.0, "_views": ["river_low", "river_sun"]}
+}

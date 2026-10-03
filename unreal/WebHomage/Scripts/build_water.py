@@ -301,7 +301,6 @@ float2 dpx = ddx(p), dpy = ddy(p);
 float foot = max(length(abs(dpx) + abs(dpy)), 1e-4);
 // r03: near field (<= %(near).0f m): two realizations per layer, the resolved wind chop, foam, contact map; beyond: one realization
 float nearW = 1.0 - smoothstep(%(near).1f * 0.73, %(near).1f, dist);
-float wbR = 0.70711 * nearW, waR = sqrt(1.0 - wbR * wbR);
 // ---- wind gusts (broad, wind-aligned patches of rougher water). r03: wind-streak and slick terms deleted (pale comet streaks)
 float2 wdir = float2(%(wx).6f, %(wy).6f);
 float4 nA = NZG(p / 620.0, 1.0 / 620.0), nB = NZG(p / 230.0 + float2(t * 0.0009, 0.37), 1.0 / 230.0);
@@ -310,6 +309,18 @@ float gust = saturate((nA.r * 0.62 + nB.g * 0.38 - 0.5) * 2.4 + 0.5);
 //      the far field is seen at steep angles, so its resolved long waves and a sharper lobe carry the structure instead of roughness)
 float2 su = (p - float2(%(sx).1f, %(sz).1f)) / float2(%(sw).1f, %(sh).1f);
 float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampler, su, dpx / float2(%(sw).1f, %(sh).1f), dpy / float2(%(sw).1f, %(sh).1f)).r * 400.0 : 400.0;
+// r06 contact mask (director r06: the near-field sparkle / foam layer stays along shores, walls and piers, fade-out <= 40 m). Inside the contact
+//      box the 0.9 m/px contact map (distance to geometry crossing the water line: seawalls, bulkheads, piles, bridge piers; 32 m cap) fades it
+//      out between ShoreA and ShoreB m; outside, the 8 m/px layout shore map between ShoreSA and ShoreSB m (it reads ~28 m at the built river_low
+//      seawall, so it is the fallback only). openW = how much of the open-water treatment applies: only within OpenD1 m of the camera (the
+//      river-level near / mid field; the swing-height views and the far field keep r05b's shading), ShoreMask 0 = r05b.
+float2 cuM = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
+float inbM = (all(cuM > 0.0) && all(cuM < 1.0)) ? 1.0 : 0.0;
+float cdM = lerp(%(cmax).1f, Texture2DSampleLevel(tC, tCSampler, saturate(cuM), 0).r * %(cmax).1f, inbM);
+float cmask = inbM > 0.5 ? 1.0 - smoothstep(ShoreA, ShoreB, cdM) : 1.0 - smoothstep(ShoreSA, ShoreSB, shore);
+float openW = saturate(ShoreMask) * (1.0 - cmask) * (1.0 - smoothstep(OpenD0, OpenD1, dist));
+// near field: two realizations per layer; r06: open water keeps OpenB of the second one (it doubles the resolved slope detail = the frost)
+float wbR = 0.70711 * nearW * lerp(1.0, OpenB, openW), waR = sqrt(1.0 - wbR * wbR);
 // r05: the far-field gains fade out within ShoreCalm m of land: sheltered water along the island stays calm enough to mirror it (r03's
 //      island reflections, lost to LongK 3 in r04)
 float down = smoothstep(0.08, 0.25, V.z);
@@ -337,11 +348,12 @@ float chopW = max(nearW, down * (1.0 - smoothstep(ChopFar * 0.6, ChopFar, dist))
 [branch] if (chopW > 0.0) {
     lostC = 0.0;
     %(chop)s
-    slC *= chopW * 0.70711;
+    slC *= chopW * 0.70711 * lerp(1.0, OpenChop, openW);   // r06: the resolved chop (sparkle) stays along walls / piers
     lostC = lerp(1.0, lostC, chopW);
 }
 float ck = ChopK * gk, mk = ChopK * MicroK * gk * %(crms).4f;
 slT *= ck; varL *= ck * ck;
+slT *= lerp(1.0, OpenSl, openW);   // r06: open-water gain on the spectrum layers (1 = r05b)
 float2 slope = sl2 + slT + slC * mk;
 // r04: under a low sun (9 deg) facets tilted away from it by more than the sun elevation get N.L <= 0 and SLW lights them as black,
 //      crisp-edged specks (Dbg 5). Soft-limit only the slope component pointing away from the sun (SunClampK 0 = r03)
@@ -385,7 +397,7 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
     //       t 1.0-1.5 s and 3.2-4 s: XOR / OR 0.10-0.15); the swell still moves the band's outer edge (lap, brt)
     float lapD = lerp(0.55, lap, LapDens);
     float foam = cf * (0.4 + 0.45 * lapD) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lapD) * FoamK;
-    foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
+    foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2 * lerp(1.0, OpenWC, openW));   // r06: whitecap flecks off open water
     // r05b: CovMax < 1 keeps the foam threshold above the noise floor (lace instead of a solid strip: the r05 band was one flat cream sheet
     //       and its XOR / OR between 4 fps dolly frames fell to 0.2 where the band was widest); FoamTK / LapW: foam drift + swell breathing
     float cov = saturate(foam) * CovMax;
@@ -398,9 +410,7 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
 //      breathes with the swell (lap). Branch-free and without a shore-map gate (final hold 1: the gated, branched form rendered nothing; the
 //      8 m/px layout shore distance reads 70-100 m at the built tip seawall): away from shores the map itself returns 32 m (no foam)
 {
-    float2 cuF = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
-    float inb = (all(cuF > 0.0) && all(cuF < 1.0)) ? 1.0 : 0.0;
-    float cdF = lerp(%(cmax).1f, Texture2DSampleLevel(tC, tCSampler, saturate(cuF), 0).r * %(cmax).1f, inb);
+    float cdF = cdM;   // r06: the contact-map fetch of the mask (same UV / sample as r05b's own fetch here)
     float lapF = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest;
     float fF = NZG(p / 9.0 + float2(t * 0.012, -t * 0.008), 1.0 / 9.0).b;
     // a 1-2 m band is < 1 px at 1 km from swing height (hold 1: line in 0.3 pct of columns): the band reaches at least FarPx pixel footprints
@@ -427,6 +437,7 @@ float rr = clamp(pow(a2, 0.25), 0.03, rcap);
 // r04 perf: at grazing views (river level) the far field gets a rough lobe beyond ~1.7 x near (Lumen does not trace it; its slope
 //      variance is unresolved there anyway); from above (down -> 1) this floor is off
 rr = max(rr, GrazeRough * smoothstep(%(near).1f, %(near).1f * 1.7, dist) * (1.0 - down));
+rr = max(rr, OpenRgh * openW);   // r06: optional roughness floor on open water (0 = off)
 Rough = lerp(rr, 0.6, wf);
 // r04 foam fix: foam pixels take the long-wave (Gerstner) normal, not the steep resolved chop normal (r03's chop-lit foam rendered as dark
 //      specks under the 9 deg sun); FoamNK 0.6 ~ r03 behaviour
@@ -457,7 +468,8 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
     float3 nG = normalize(N + float3(gn * GSpread, 0.0));
     float gl = pow(saturate(dot(nG, Hh)), 700.0);
     float spark = smoothstep(0.62, 0.9, NZG(pg / 5.0 + float2(t * 0.02 / gs, 0.0), 1.0 / (5.0 * gs)).r);
-    gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
+    gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK
+                  * lerp(1.0, OpenGlit, openW));   // r06: sun-glitter gain on open water (the sun path lives there)
 }
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
@@ -467,6 +479,11 @@ Emis = FarEmisK * farF * float3(0.62, 0.6, 0.55);   // r05b candidate (default 0
 //   (recomputed with the simple band); 3 the real wf of this material evaluation; 4 nearW; 5 dist / 2000 m; 6 the real near contact
 //   cf; 7 the real near contact distance dbgC / 4 m. The bottom 6 pct of the frame is a calibration ramp (value = x / width) in the same
 //   shading, so the grey levels can be read back through it.
+// r06 Dbg 11: the contact mask as unlit colour: R = cmask (1 at walls / piers), G = openW, B = nearW
+[branch] if (Dbg > 10.5) {
+    Emis = float3(cmask, openW, nearW) * DbgK * 0.01; Opac = 1.0; NormalW = float3(0, 0, 1); Rough = 1.0;
+    return float3(cmask, openW, nearW);
+}
 [branch] if (Dbg > 9.5) {
     float2 cuF = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
     float inb = (all(cuF > 0.0) && all(cuF < 1.0)) ? 1.0 : 0.0;
@@ -547,7 +564,13 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
           'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.56, 'FoamTK': 28.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
-          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0, 'BandPx': 0.0, 'LapDens': 0.0}
+          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0, 'BandPx': 0.0, 'LapDens': 0.0,
+          # r06 contact mask (docs/night1/water/round-06/NOTES.md): the near-field sparkle (resolved chop OpenChop, second realization OpenB,
+          # spectrum-layer gain OpenSl), the whitecap flecks (OpenWC), an optional roughness floor (OpenRgh) and the sun glitter (OpenGlit) take
+          # their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
+          # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
+          'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
+          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.0, 'OpenGlit': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
