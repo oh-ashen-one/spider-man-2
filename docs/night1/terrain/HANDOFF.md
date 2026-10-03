@@ -40,8 +40,9 @@ One engine crash this round (the build commandlet on a re-run of the `map` step,
 
 ## Open items, in order
 1. **p10 smooth patches (r06 target 4)**: two remain — (172-219, 532-572) in the left tree line (luma 58) and a dark crown interior (1250-1275, 385-416, luma 35). Both are dark;
-   the core speckle (`Foliage.ush`, core branch) scales with luma. Next: identify them (a VB_p10 city-only still is in `round-06/diag/base_p10_lawn_eye.jpg` if the last hold ran),
-   then lift the core's shade or add speckle in absolute terms.
+   the core speckle (`Foliage.ush`, core branch) scales with luma. The city-only still at the same camera (`round-06/diag/base_p10_lawn_eye.jpg`, comparison
+   `round-06/diag/p10_patches_vb_vs_r06.png`) shows the city's own blocky trees there, so both patches are terrain crowns (shaded core / interior). Next: lift the core's shade
+   (`occ` in the core branch) or add speckle in absolute terms.
 2. **p4 lawn under the skyline shadow**: no sun shadow can form where the 9 deg sun does not reach (most of the Great Lawn / p1 lawn). The look piece owns the rig; a higher sun or
    a different azimuth would put crown shadows on the open lawn. The terrain's levers left: canopy occlusion strength (`CANOPY_OCC`), lawn sky occlusion (`LAWN_SKYOCC`).
 3. **p6 esplanade shadows (r06 target 3)**: city street trees on city paving; the paving material decides the shadow depth (the terrain lawn needed sky occlusion 0.25 to
