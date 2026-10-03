@@ -1,0 +1,535 @@
+{
+ "groups": [
+  {
+   "name": "n1_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.05",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.15",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.666667",
+    "exec wh.ToDSet sky.Intensity 1.07812"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.2",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.05",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.15",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.666667",
+    "exec wh.ToDSet sky.Intensity 1.87392"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.2",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.05",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.15",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.666667",
+    "exec wh.ToDSet sky.Intensity 4.88489"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.2",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.05",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.15",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.666667",
+    "exec wh.ToDSet sky.Intensity 0.49905"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.2",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.12",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.05",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.15",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.666667",
+    "exec wh.ToDSet sky.Intensity 0.49905"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.2",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -0.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "bs1_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 69.3 45.1052 32.9375 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.01 0.0042 0.0012 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringExponent 12",
+    "exec wh.ToDSet fog.DirectionalInscatteringStartDistance 1e+06"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "bs2_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 69.3 45.1052 32.9375 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.03 0.0126 0.0036 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringExponent 12",
+    "exec wh.ToDSet fog.DirectionalInscatteringStartDistance 1e+06"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "bs3_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 69.3 45.1052 32.9375 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.03 0.0126 0.0036 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringExponent 8",
+    "exec wh.ToDSet fog.DirectionalInscatteringStartDistance 2e+06"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  }
+ ],
+ "variants": {
+  "n1": {
+   "le": [
+    0.12,
+    0.2,
+    -1
+   ]
+  },
+  "n2": {
+   "le": [
+    0.12,
+    0.2,
+    -0.5
+   ]
+  },
+  "n3": {
+   "le": [
+    0.05,
+    0.2,
+    -1
+   ]
+  },
+  "n4": {
+   "le": [
+    0.15,
+    0.2,
+    -0.5
+   ],
+   "sky": 1.5
+  },
+  "n5": {
+   "le": [
+    0.2,
+    0.0,
+    -0.5
+   ]
+  }
+ },
+ "variants_blue": {
+  "bs1": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     69.3,
+     45.105208333333344,
+     32.93750000000001,
+     1
+    ],
+    "fog.DirectionalInscatteringLuminance": [
+     0.01,
+     0.0042,
+     0.0012,
+     1
+    ],
+    "fog.DirectionalInscatteringExponent": 12,
+    "fog.DirectionalInscatteringStartDistance": 1000000.0
+   }
+  },
+  "bs2": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     69.3,
+     45.105208333333344,
+     32.93750000000001,
+     1
+    ],
+    "fog.DirectionalInscatteringLuminance": [
+     0.03,
+     0.012599999999999998,
+     0.0036,
+     1
+    ],
+    "fog.DirectionalInscatteringExponent": 12,
+    "fog.DirectionalInscatteringStartDistance": 1000000.0
+   }
+  },
+  "bs3": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     69.3,
+     45.105208333333344,
+     32.93750000000001,
+     1
+    ],
+    "fog.DirectionalInscatteringLuminance": [
+     0.03,
+     0.012599999999999998,
+     0.0036,
+     1
+    ],
+    "fog.DirectionalInscatteringExponent": 8,
+    "fog.DirectionalInscatteringStartDistance": 2000000.0
+   }
+  }
+ }
+}

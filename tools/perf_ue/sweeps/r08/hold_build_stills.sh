@@ -13,6 +13,9 @@ fi
 mkdir -p "$2"
 python3 tools/perf_ue/sweeps/r08/gen_plans_r08.py --out "$2" --set ${3:-full}
 python3 tools/perf_ue/sweeps/run_r06.py --plan "$2/plan_${3:-full}.json" --out "$2" --timeout ${STILLS_TMO:-1800}; echo "stills rc=$? t=$(( $(date +%s) - T0 ))s"
+if [ -n "$MIDDAY" ]; then   # the r03 midday floor on the fixed midday preset map (Look_Midtown, the merged round-03 look): S1-S8, one session
+  python3 tools/perf_ue/capture_tour.py --round "$2/midday_round" --presets midday --res 1920x1080 --timeout 900; echo "midday rc=$? t=$(( $(date +%s) - T0 ))s"
+fi
 python3 tools/perf_ue/dome_check.py --dir "$2" --out "$2/DOME" > /dev/null
 python3 tools/perf_ue/r08_check.py --dir "$2" --out "$2/R08" > /dev/null
 echo "hold_build_stills done t=$(( $(date +%s) - T0 ))s"
