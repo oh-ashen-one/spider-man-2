@@ -1,0 +1,4 @@
+{
+ "LA": {"CBias": 1.3, "_views": ["river_low_p3", "river_low_p7"]},
+ "LB": {"CBias": 2.0, "CovMax": 0.6, "_views": ["river_low_p3", "river_low_p7"]}
+}
