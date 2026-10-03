@@ -26,3 +26,7 @@ print('  $n attaches', on, 'gaps', g, 'max', max(g) if g else None, '-> PASS' if
 python3 $TD/r24_checks.py $RD --rendered > /dev/null 2>&1; [ -f R24_CHECK.txt ] && cat R24_CHECK.txt
 python3 $TD/round-25/tools/owner_bugs.py > OWNER_BUGS.txt 2>&1 || true
 for f in $RD/*.mp4; do s=$(stat -f %z "$f"); echo "$(basename $f) $((s / 1048576)) MB $([ $s -le 15728640 ] && echo ok || echo OVER)"; done | tee $RD/SIZES.txt
+# vertical run lateral knee gap (critic r24 secondary 3: median <= .25 m) and wall-run gait, r21 checker
+{ echo "# wall-run stride / lateral knee gap (r21_checks.py W21)"; python3 $TD/r21_checks.py $RD 2>&1 | sed -n '/== W21/,/== S21/p' | grep -v "== S21"
+  for n in w1_wallrun_tall_zip w2_wallrun_side_zip c_wallrun_perch; do [ -f $RD/${n}_telemetry.csv ] && python3 $TD/wall_check.py $RD/${n}_telemetry.csv $n; done
+} > $RD/WALL.txt 2>&1; cat $RD/WALL.txt

@@ -18,12 +18,12 @@ Builds 2-4 change only the web strand drawing (`UpdateWebs`, M_TravWeb); paths a
 | clip | captured on | path / camera check |
 |---|---|---|
 | a_swing_chain | build 4 | script changed this round (`repressVz` -8); build 3 and build 4 captures SAME |
-| c_wallrun_perch | build 2 | SAME as the build-1 capture; perch gate PASS (R25_GATES.txt). The zip strand's first frame / wave differ from build 4 |
+| c_wallrun_perch | build 2 | SAME as the build-1 capture; body path = r24; camera = r24 until the zip flight at 8.65 s (the gate fix); perch gate PASS (R25_GATES.txt). The zip strand's first frame / wave differ from build 4 |
 | p1_pawn_run | build 1 | no web in the clip (web_on 0 on every row); build-2 -nullrhi probe SAME -> the build-4 frames would be identical |
-| w1_wallrun_tall_zip | build 3 | wall-run numbers identical to r24 (wall_check.py); zip strand wave differs from build 4 |
+| w1_wallrun_tall_zip | build 3 | body path = r24 on every row; camera = r24 until the perch at 5.80 s (r25 perch recenter yaw hold, max 3.2 m); wall_check.py numbers identical; the zip strand's wave differs from build 4 |
 | m1_mouse_swing | build 4 | SAME as r24 |
 | f1_flow_backDouble | build 4 | SAME as r24 |
-| w2_wallrun_side_zip | build 4 | see R24_CHECK.txt (side-run gates) |
+| w2_wallrun_side_zip | build 4 | body path = r24 on every row; camera = r24 until the perch at 6.43 s (perch recenter, max 1.4 m) |
 | x2_rmb_cancel_wall | build 4 (if present) | SAME as r24 (build-1 probe) |
 | x1_rmb_cancel_flip, s1_high_swing, r1_roofrun_zip | build 4 (if present in round-25/) | SAME as r24 (probes) |
 | f4_chain_flips | not re-captured: `round-24/f4_chain_flips.mp4` | build-4 -nullrhi probe SAME as r24 (only the strand look differs) |
