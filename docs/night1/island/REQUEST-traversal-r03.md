@@ -10,15 +10,15 @@ filed here with the island-side facts. Items 1-2 repeat `REQUEST-traversal-r02.m
 `AWebTravCharacter::BeginPlay` calls `Traversal->InitWorld(GetWorld(), this)` with the pawn at the map's PlayerStart, and only then teleports
 to the script spawn. `FWebTravWorld::InitWorld` walks `TActorIterator<AActor>` once and fills `AllowedComps`; `Raycast` ignores every component
 that is not in it (`Allowed()`). On the whole-island World Partition map only the cells inside the 1.2 km loading range of the PlayerStart exist
-at that moment, so a cell that streams in later is **not a traversal solid** (no web anchor, no wall, no roof; only the always-loaded ground
-plane is hit). Measured on `Manhattan_WP` (PlayerStart y 178 m): the 775 solids of `round-03/prims_dump.csv.gz` include 55 facade / roofs /
-detail / fire-escape tiles with centres y -896 .. 1404 m (tile rows to y 1536); in 28 telemetry-only runs along the avenues from y 1010 the last
-web anchor is always y <= ~1500 m and the hero then falls to the street (e.g. x 250 route: last anchor (195.6, 1490.4), ground at y 1551;
-spawn at y 1700 = no web for 1.6 s, ground at 1.67 s). With `?Portal=M2` (an always-loaded PlayerStart at y 1560, island build) the same
-engine, content and route indexes 481 solids around it and the 30 s route passes (round-03/README.md r5).
+at that moment, so a cell that streams in later is **not a traversal solid** (no web anchor, no wall, no roof; the always-loaded ground still
+catches the hero). Measured on `Manhattan_WP` (PlayerStart y 178 m): the 775 solids of `round-03/prims_dump.csv.gz` include 55 facade / roofs /
+detail / fire-escape tiles with centres y -896 .. 1404 m (tile rows to y 1536); in 17 telemetry-only runs of 30 s swing chains from y 1010 on the default map the last
+web anchor is always y <= 1,506 m and the hero then falls to the street (e.g. x 250 route: last anchor (195.6, 1490.4), ground at y 1551;
+spawn at y 1700 = no web for 1.6 s, ground at 1.67 s). With an extra always-loaded World Partition streaming source at (250, 1560) (`Scripts/island_wp_sources.py`, island build) the same
+engine, content and route index 918 instead of 775 solids and the 30 s route r5 passes its swing lines (round-03/README.md).
 Ask: re-index when World Partition cells load / unload (e.g. `FWorldDelegates::LevelAddedToWorld`, or `UWorldPartitionSubsystem` cell-loaded
-events, or a 1 Hz rescan of `Allowed()` misses), at least for the facade / roofs / detail / fireescape / ground components. The island cannot
-fix this from the content side without loading the whole island at start (grid loading range >= 4.5 km, three times the start-up load).
+events, or a 1 Hz rescan of `Allowed()` misses), at least for the facade / roofs / detail / fireescape / ground components. The island's content-side workaround is one extra streaming source per area to be
+swung in (it also works as a load-everything switch, at the cost of start-up time and memory that the island has not measured).
 
 ## 1. topOut loop under a fire-escape deck (open since r02)
 `round-02/r3_crosstown_east_telemetry.csv` t 2.50-8.50 s: `air / topOut` re-launches from the 32.0 m kit deck into the underside of the

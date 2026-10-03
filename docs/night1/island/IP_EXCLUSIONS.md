@@ -29,6 +29,7 @@ DRY CLEANERS, OPTICAL, COFFEE, HALAL GYRO.
 | CHOCO LOCO | Times Square ad / sign art | not changed this round; flagged for the next IP pass (image review needed) |
 | TOKKA | sign art | not changed this round; flagged for the next IP pass |
 | IRON GUARDIAN mural | wall-ad art | not changed this round; flagged for the next IP pass (the name evokes armoured-hero branding) |
+| THE MARQUIS THEATRE | street-level marquee / blade sign on the x 0 avenue near y 1730 (round-03 r5 frames, `r5_m2_avenue_t20s`); baked into the browser signage atlas (`src/world/signage.js` THEATRE cells, city piece's `ts_signs` family) | the name of a real Broadway venue (generic words, but a real marquee) | not changed this round (the atlas is the city piece's; needs an image review); flagged for the next IP pass |
 
 Verification: `python3 tools/export/ip_sanitize.py public/assets/city/tex <out>` writes `signs_clean.jpg` (contact check). The built
 texture is `/Game/City/Textures/signs` (from `<scratch>/tex/signs.png`).
