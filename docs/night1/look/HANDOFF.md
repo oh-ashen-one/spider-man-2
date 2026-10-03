@@ -1,16 +1,40 @@
-# P4 Look / Sky: handoff (round 07 IN PROGRESS, Opus 5.5, started 2026-10-02 08:50)
+# P4 Look / Sky: handoff (round 07 finished, 2026-10-03 03:40; started by Opus 5.5, resumed by Sonnet 5.5 xhigh via Devin 20:35)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-## Round 07 (in progress) - resume here
-Target: twilight dome continuity (SPEC L27, from `critic/round-06-CRITIC.md`). Not merged with `Opus-5.5-Loop-Night-1` this round (122 commits behind; keeps the comparison with r06 clean).
-Tools (committed): `tools/perf_ue/dome_check.py` (L27a-e; reproduces the critic's r06 numbers), `sweeps/r07/make_v3.py` (the r07 table builder on top of make_v2 + round-06 knobs D: cutoff 0 on every key,
-geometric sun surface decay, sun / moon volumetric scattering, twilight schedules for sky factor / clouds / directional fog / min and max EV, dense bias curve), `gen_sweep_a.py` / `gen_sweep_b.py` (live-pin sweeps),
-`hold_b.sh` (loop + build + dome stills + stitched lapse; `hold_c2.sh` = it with the v1 knobs), `hold_c.sh` (final 44 stills + 2 clips), `gen_plans_r07.py`, `make_pairs.py` (critic pairs), `analyze_a.py`.
-C++ (built): relative 1 % surface-scale threshold, sun shadows while > 0.5 lux. `look_tod.py`: sunc.* / moonc.VolumetricScatteringIntensity defaults.
-Evidence so far: `round-07/diag/holdA_findings.md`, `holdB_findings.md` (+ DOME / pivot tables, knobs_v0 / v1).
-Holds: A (sweep, done 10:37), B (sweep + v0 lapse windows, done 11:38), C (`hold_c2.sh`: v1 loop + build + dome stills + lapse; queued), D (`hold_c.sh` final stills + clips; placeholder queued, NEXT_HOLD written after C is checked).
-Queue mechanics: placeholder `sweeps/r07/hold_ph.sh` runs the chain named in `$SM2_LOOK_SCRATCH/r07/NEXT_HOLD` (renders nothing when absent; two placeholders back to back consume one NEXT_HOLD each).
+## Round 07 result - start here
+Branch `night1/look`, worktree `~/sm2-n1/look`, pushed. Target: twilight dome continuity (SPEC L27, `critic/round-06-CRITIC.md` "Biggest gap"). Evidence in `round-07/` (`NOTES.md` capture facts and conditions, `TESTS_r07.md` all numbers, `stills_source.json`, `diag/`), blind critic pack `/Users/midir/sm2-n1/_scratch/critic-P4-r07/pack` (29 pairs: 14 against the private refs, 15 round 06 vs round 07; key `../pack.key.json`, `make_pairs.py` + `abpack.py`). The critic of this round has NOT been run by the builder.
+All captures are real-game (`run_game.sh -game`, offscreen, `gpu_slot.sh capture`): stills / clips 1920x1080 internal 100 %, lapse 960x540 internal 100 %.
+### Measured (final committed stills, table v10)
+| line | start of the resume (hold F, committed by Opus) | final |
+|---|---|---|
+| L27 a-d on the 12 verdict stills (S4 + S4w 19:30 19:48 20:00 20:30, S4 + S4e 06:30 07:00) | 26 of 42 | **42 of 42** (`diag/final_verdict.md`; sky-far +14.3 .. +62.8, 8-row step <= 24.3, clip <= 0.22 %, facing B-R -32 .. -78) |
+| L27e S4 20:30 vs 22:00 mean | 46.9 vs 40.7 | 46.6 vs 42.3 |
+| L23b/L27f stitched lapse max jump / p99 / frames > 3 / > 1.5 | 4.79 / 2.79 / 7 / 48 | **2.58 / 2.07 / 0 / 33** (p99 <= 1.5 not met) ; max mean 98.2, clipped <= 0.14 % |
+| L24a (S4 sky band above far band, 9 hours) | 7 of 9 (21:00 -11.2, 21:30 -1.3) | 8 of 9: 21:00 fails (-11.7; -12.9 in the previous capture), 20:00 +30.9 (round 06: 20:00 fails, 21:00 passes) |
+| L10 night S4 22:00 sky-far (round 06 +15.5) | -6.7 | +16.5 (+15.0 / +20.8 in other captures) |
+| L25a moon disk (S4m, Y >= 200 blob equivalent diameter; round 06 20.5 px) | 127 px (a blown halo, blob 12690 px) | 30.8 px, peak 255 |
+| L25b sky high-pass std (S4m, >= 3) | - | 2.32 (fails; round 06 2.17) |
+| L26 dawn S1 correlation (<= 0.6; round 06 0.597) | - | 0.54 |
+| golden 18:24 (hold X stills) | - | L1 7 of 8 (S3 46.8 out), S4 97.7, S7 clipped 1.80 %, Y<10 4 of 8, p5 <= 12 6 of 8 (round-06 C: 7 / 98.6 / 2.05 / 5 / 6) |
+| night 22:00 | - | L3 / L8 8 of 8, L22a 2.71 %, median 33.9, L13 blobs 10 / 13 / 4 |
+| hero swing night clip (box luma) | - | mean 58.0, 91 of 718 frames < 40, clipped px max 2159 (round 06: 58.0 / 92 / 2103) |
+Not met: L25b, the moon halo (ring Y at r=100 122-190 in single captures; round 06 160; critic wants <= 60), L24a 21:00, lapse p99 <= 1.5, golden Y<10 4 of 8 and S3 46.8, L13 S6 4 blobs, 13:00 midday cloud structure, golden sun disk / bloom core (critic secondary items 1, 2, 4: not worked this round).
+### What changed (details `round-07/diag/holdJ-P_findings.md`, `SPEC.md` L27 "Round-07 design")
+Fog directional inscattering cut per hour; haze colour x.4-.55 19:48-21:00; twilight tonemapper (shoulder x.4, slope x.88, white clip 0, red highlights x.8, saturation x.6) ramping in 18:33-19:00 and out by 21:24 / 05:36-07:36; sun cloud luminance 0 19:39-20:36 and 06:06-06:48; sky factor x1.5 19:57-20:12; thin clouds 19:54-20:24; `FogCutoffDistance` 0 only 05:36-20:42 (7e5 = unfogged sky at night: the round-07 start state had 0 on every key and lost the night depth cue); linear exposure bias 18:27-18:45; loop biases. Table builder `tools/perf_ue/sweeps/r07/make_v3.py` (new knobs `tw_mul`, `cutoff_sched`; `sun_cloud`, `tw_dir`, `tw_minev` ...), knob files `round-07/diag/knobs_v4..v10.json` (v10 = committed), bias file `round-07/lapse_bias_overrides.json`.
+### Honest caveats
+- Cloud noise: every capture of the same table draws a different volumetric cloud pattern (sky-far +-5 Y, clip +-0.3 %). `diag/verdict_captures.md` lists the 5 captures of every verdict still: S4w 19:30 clipped 0.35 % in two of four captures of the same hour (committed one 0.06 %), S4 20:00 sky-far 9.3 / 13.1 / 10.8 / 30.9 (the margin of the final table is larger: v10 lowered the 20:24-20:36 biases).
+- Stills of other hours are from hold X (table v7) / hold Y (v8): `stills_source.json` says which; later tables changed only keys outside those hours (checked by diff of the key values).
+- Segments 0 / 1 / 2 / 4 of the lapse come from earlier holds (tables v8 / v9) whose keys in those hours equal v10 (`segments[].reused_from_earlier_hold`); segment 3 (dusk) is from the final table.
+- The perf was not measured (not this round's target); the twilight changes add no passes.
+### Next (ranked)
+1. Run the critic on `/Users/midir/sm2-n1/_scratch/critic-P4-r07/pack` (fresh session, blind). Expect the weakest items: moon halo, L25b, midday cloud structure, golden sun core.
+2. Night sky: moon halo (ring Y at r=100 <= 60, `S4m`): bloom / lens flare / Mie / `moonc.*` single-capture pins did not separate from the cloud noise; needs repeated captures (`gen_sweep_*.py` + `/tmp`-style `moonq` ring analysis is in `diag/holdJ-P_findings.md` item 11) or a darker night Mie glow key.
+3. L24a 21:00 (city lights lit far band vs afterglow sky: `pp.AutoExposureMinBrightness` / afterglow `atm.SkyLuminanceFactor` at 21:00), lapse p99 <= 1.5 (the dawn rise 07:50-08:10 is ~2.4 Y per frame, the dusk bump 20:14-20:20 2.5 Y: both from natural scene change, would need a second loop iteration with a smoother target `--slope 1.0`).
+4. Golden: S3 46.8 (L1), Y<10 (S1 / S3 / S5 / S7), golden bias .85 vs .95 trade-off (hold E vs F).
+### Commands (worktree root; every Unreal run through the lock)
+`python3 tools/perf_ue/sweeps/r07/make_v3.py --knobs round-07/diag/knobs_v10.json --bias-overrides round-07/lapse_bias_overrides.json --in-place` writes the table; `tools/perf_ue/rebuild_look.sh rigs,maps midday,golden,night,tod` bakes it; live-pin sweeps: `gen_sweep_*.py --out <dir>` then `gpu_slot.sh capture --label look --timeout 3600 -- tools/perf_ue/sweeps/r07/hold_sweep.sh <plan.json> <out>`; `hold_build_stills.sh <knobs> <bias> <plan> <out>` (bake + stills); `hold_d.sh loop|build,stills|lapse|clips` (HOLD_DIR, STILLS_SET) = the old chain; `hold_loopw.sh` (one loop iteration on chosen windows); `hold_lapse.sh` (`REUSE=1` to keep segments; per-segment timeout 1700 s); clips: `capture_looks.py --presets tod@22 --clips --no-stills --no-warmup --res 1920x1080 --timeout 2100`; `verdict.py <dome json>`; `round7_report.py --round docs/night1/look/round-07`.
+GPU facts: no wait for the lock tonight (other agents held 1-2 slots); a loop iteration (dawn + dusk x16 windows) 21-24 min, a dusk-only window 13 min, 40 stills 16 min + 4 min build, lapse 5 segments 33 min, 720-frame 1080p clip 27 min.
 
 # P4 Look / Sky: handoff (round 06, Sonnet 5.5; started 2026-10-01 20:50, resumed 2026-10-02 05:02)
 
