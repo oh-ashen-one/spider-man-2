@@ -72,6 +72,15 @@ Settled stills (>= 8 s after the hour change), 1920x1080. Instrument: `tools/per
 Keep: L27a-e on the 12 verdict stills, L23b max jump <= 3 and p99 <= 1.5, the round-03 floors (midday L2 / L7, night L3 / L8 / L13) and the round-06 hold-C floors.
 Design rule of the round (director): light the city with SURFACE-ONLY light (sky light / fill on the city, or local exposure); no lift of fog, haze or far band; no global saturation / tonemapper desaturation.
 
+### L29 golden S4 far band on the integrated map (added round 09, director brief after city r11; city lines C11-C15 / T1 / T2 / T4)
+Frame: `/Game/Maps/Manhattan_View_S4` (fixed golden preset `Look_Rig_golden`), 1920x1080, internal 100 %. Instrument: `tools/export/s4_far_check.py` (via `tools/perf_ue/sweeps/r09/quick_s4.py`).
+| id | target | note |
+|---|---|---|
+| L29a | sky (0,0,1650,80) mean Y <= 205 | city r11 frame 229 (city test map); the round-08 golden on the integrated map 192.5 |
+| L29b | far band 25..32 Y under the sky on (450,192,1350,236) AND (0,150,1300,215) | C13 (-35..-25) and L10 (-32..-15) at once |
+| L29c | T2 <= 10 % above Y 204 in (0,150,1300,300); T4 <= 10 % flat bright 8x8 blocks in (540,110,900,260) (both readings) | |
+| L29d | C12 within +-10, C11 >= 6 (flat <= 40 %), C14 5..35, C15 0.25..0.45, T1 >= 12 px | T1 definition A (first Y < 215) is 0 whenever the sky is under 215, i.e. it cannot pass with L29a; B / C are reported |
+Guards: golden S3 / S7 / S8 share below Y 25 (city r10 13.2 / 1.4 / 7.8 %), the round-03 floors, the time-of-day table unchanged (`tools/perf_ue/sweeps/r09/tod_guard.py --check`).
 ### L25 night sky (added round 06)
 | id | target | note |
 |---|---|---|

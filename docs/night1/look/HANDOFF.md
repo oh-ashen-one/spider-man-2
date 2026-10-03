@@ -1,13 +1,66 @@
-# P4 Look / Sky: handoff (round 09 IN PROGRESS, Claude Opus 5.5 high via Devin, 2026-10-03)
+# P4 Look / Sky: handoff (round 09, Claude Opus 5.5 high via Devin, 2026-10-03)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-## Round 09 (in progress) - state
-- Target: S4 perch on the integrated Manhattan map under the fixed golden preset (`Look_Rig_golden`), sky / aerial-perspective settings only (director brief after city r11).
-- Done: merged `origin/Opus-5.5-Loop-Night-1` (city r11, terrain r05, traversal r26, characters r17); C++ rebuilt; Manhattan maps rebuilt with `build_manhattan.py` (scratch `_scratch/look/manhattan`, export made on port 5205; water / life / combat steps not run).
-- Live-tuning sweeps on `/Game/Maps/Manhattan` (S4 tour pose): `round-09/diag/sweep*.txt` (variants `sweep*_variants.json`, generator `tools/perf_ue/sweeps/r09/gen_s4.py`, checker `quick_s4.py`, 8-shot checker `quick_all.py`).
-- Base (round-08 golden preset, new city): S4 sky 192.9, far box -27.0, critic box -22.4, C11 3.9, C15 0.09, T2 0.5 %, T4 0; golden S3 / S7 / S8 Y<25 52 / 44 / 19 %.
-- Next: pick the preset values, bake (`hold_a.sh`), ToD stills (`hold_b.sh`), perf, pack.
+## Round 09 result - start here
+Branch `night1/look`, worktree `~/sm2-n1/look`, pushed. Rounds 07 / 08 / 09 are NOT merged; integration (`Opus-5.5-Loop-Night-1`) still carries look round 03. This round merged `origin/Opus-5.5-Loop-Night-1` first (city r11 far-shore LOD facades, terrain r05, traversal r26, characters r17).
+Target (Opus director after city r11): the S4 perch on the INTEGRATED Manhattan map under the fixed golden preset (`Look_Rig_golden`), 1080p, sky / aerial-perspective settings only; lines written down as SPEC **L29** (sky <= 205; far band 25-32 under the sky on BOTH boxes; T2, T4, C12, T1, C11, C14, C15) plus guards (golden S3 / S7 / S8 Y<25, round-03 floors, other hours unchanged).
+Evidence in `round-09/`: `TESTS_r09.md` (every number; generator `tools/perf_ue/round9_report.py --round docs/night1/look/round-09`), `NOTES.md` (capture facts, build, preset table), `TESTS_tod.md`, `DOME_r09.md`, `TWILIGHT_r09.md`, `diag/` (15 live sweeps `sweep*.txt` + variants, `bakes.txt`, S4 PNGs), `stills/` (80 stills), `S4_perch_golden.mp4` (5 s, 1.3 MB), `perf/`. Blind critic pack `/Users/midir/sm2-n1/_scratch/critic-P4-r09/pack` (26 pairs, key `../pack.key.json`, pairs `../pairs.json`, generator `tools/perf_ue/sweeps/r09/make_pairs.py` + `abpack.py`; both sides 1920x1080 before abpack's 84 % crop -> 1613x907). The critic of this round has NOT been run by the builder.
+All captures: real game (`run_game.sh -game`, offscreen, `gpu_slot.sh capture`), 1920x1080 output, internal 1920x1080 (`r.ScreenPercentage 100`).
+
+### Measured (final bake; S4 frame = `/Game/Maps/Manhattan_View_S4`, t = 38 s, PNG `round-09/diag/png/view_s4_1_t038.png`)
+| line (target) | before (round-08 golden, same city) | round 09 |
+|---|---|---|
+| sky (0,0,1650,80) mean Y (<= 205) | 192.5 | **183.1** |
+| far (450,192,1350,236) - sky (-32..-25) | -26.5 | **-31.7** (margin 0.3; second session -31.7, fixed-step movie frames at 8 / 13 s -31.5 / -31.7) |
+| (0,150,1300,215) - sky (-32..-25) | -22.0 | **-27.2** |
+| T2 % above 204 in (0,150,1300,300) (<= 10) | 0.5 | **2.0** |
+| T4 flat / bright blocks (<= 10 %), flat / all | 0 of 0, 0 % | **0 of 1, 0 %** |
+| C12 far - sky B-R (+-10) | -5.9 | **+8.1** |
+| T1 silhouette std A / B / C (>= 12 px) | 0 / 79 / 0 | **0 / 26.7 / 0.7 (FAIL on A and C)** |
+| C11 lap ratio (>= 6), flat 8x8 % | 3.9, 16.4 | **9.0, 1.2** |
+| C14 far - river (5..35) | 18.4 | **30.3** |
+| C15 rms far / near (0.25..0.45) | 0.09 | **0.26** |
+| same pose in the golden tour of `/Game/Maps/Manhattan` (hero pawn at the perch) | -26.5 / -22.0 | -28.7 / **-24.7** (critic box FAILS by 0.3) |
+| golden S1-S8 on Manhattan, L1 / L5 pass | 3 / 8 | 3 / 8 (merged r03 on the r03 city: 5 / 8) |
+| golden Y<25 S3 / S7 / S8 % (city r10 13.2 / 1.4 / 7.8) | 51.7 / 44.1 / 19.2 | **51.9 / 53.2 / 17.9** (FAIL; S7 +9 points: the S7 sun glow in the street haze is aerial perspective, S7 mean 60 -> 42) |
+| fixed midday L2 mean / L7 B-R / clipped 0.00 | (unchanged inputs) | 7 / 8 (S7 71.1) / 8 / 8 / 7 / 8 (S7 0.03 %); r03 8 / 8, 8 / 8, 6 / 8 |
+| fixed night L3 / L8 / L13 (S1 S5 S6 blobs) | (unchanged inputs) | 7 / 8 (S3 33.2) / 8 / 8 / 9, 14, **4**; r03 8 / 8, 8 / 8, 14 / 14 / 9 (4K) |
+| ToD 18:24 golden L1 / 22:00 L3, L8, L13, L22a | (table unchanged) | 5 / 8 / 8 / 8, 8 / 8, 10-13-4, 2.69 % (r08: 5 / 8 critic count, 8 / 8, 8 / 8, 10-13-3, 2.83 %) |
+| L25a moon (S4m 22:00) | | 78.2 px / 255 (the Y >= 200 blob includes the halo; r08 22.5 px) |
+| L27 dome (12 verdict stills, 42 lines) | | 9 / 12 stills, 39 / 42: S4 20:00 a +8.1, S4w 20:00 b 25.6, S4w 20:30 d -13.7 (r08 10 / 12) |
+| L23b lapse | | not re-run (key table unchanged, `tod_guard.py --check`: 71 / 71 keys equal; round-08 lapse 3.07 / 2.20) |
+| perf | | see `round-09/perf/PERF.md` |
+
+### What changed (only `presets.golden` sky / atmosphere / fog keys; `round-09/NOTES.md` has the table)
+- aerial perspective distance scale 5 -> 2.5, sky-and-AP luminance factor 0.5 (new key, darker AP veil), sky luminance 0.925, height-fog contribution 0.8: the far shore gets its contrast back (C11 3.9 -> 9.0, C15 0.09 -> 0.26) and sits 27-32 Y under the sky.
+- sky light 2.5 -> 5.7: lowering the sky luminance also lowered the real-time sky-light capture (S4 near city, canyons); the sky light keeps the city ambient (S4 near box 55 -> ~74 Y). Sweeps 5-6: without it the vertical far-band gradient (crit box - far box) is 11-13 Y; with it 4.5-6.
+- volumetric fog extinction 0.5 -> 2.0 (within 360 m only): near haze that AP 2.5 no longer gives (S8 Y<25 24.6 -> 17.9; it did not bring the S7 glow back).
+- Time of day unchanged: `tod.derived.golden_r08` (round-08 golden values) replaces every `golden` base in the tod section; `look_tod.ATM_DEFAULTS` has the new param at its engine default 1. Check: `python3 tools/perf_ue/sweeps/r09/tod_guard.py --check caaf7002`.
+
+### Findings (sweeps `round-09/diag/sweep1..15.txt`)
+1. On the integrated map the round-08 golden S4 sky is 192.5, not the city frame's 229 (the city r11 frame comes from the city's own test map: manual +2 EV, its own fog). The golden failures there were the critic box (-22), C11 and C15 (a 5x AP veil).
+2. Far contrast needs less AP; with less AP the far band drops 40+ Y under the sky unless the sky luminance drops too. The sky band is mostly fog-on-sky + clouds: `SkyLuminanceFactor` moves it 10-50 Y per unit, `FogCutoffDistance` (any value 3-200 km) darkens the far band itself (-20 Y), fog max opacity / directional inscattering / ground fog / Mie anisotropy did not separate far band and sky.
+3. The two far boxes differ by 4.5-6 Y whenever C15 >= 0.25 (lower rows = nearer shore, less veil; left = sun side): the 25..32 window leaves ~1.5 Y for the sky. The tour pose and the view map differ by ~1.3 Y on the far box, so no knob set put both frames inside both windows (`diag/bakes.txt`).
+4. T1 definition A (first row with Y < 215) is 0 for any sky under 215 and cannot pass with L29a; definition C (Y < column sky - 12) is ~1 because the horizon fog band (rows 100-130) is > 12 Y darker than rows 0-60.
+5. Every AP reduction removes the S7 street glow (S7 mean 60 -> 40-45) and raises S7 Y<25 by 4-12 points; the round-08 golden on this city already has S3 / S7 / S8 Y<25 52 / 44 / 19 % (round 03 on the round-03 city 12 / 10 / 14 %): the darkening comes with city r11.
+
+### Not met / open
+T1 (A 0, C 0.7); critic box on the tour frame (-24.7); near-black guard (S3 / S7 / S8 51.9 / 53.2 / 17.9 % vs 13.2 / 1.4 / 7.8; S7 worse than before); far-box margin 0.3 Y; L27 9 / 12 (was 10 / 12) and the moon blob 78 px with the table unchanged (city / cloud draw); midday S7 mean, night S3 mean and S6 blobs (city since r03); lapse not re-run.
+
+### Next (ranked)
+1. Run the critic on `/Users/midir/sm2-n1/_scratch/critic-P4-r09/pack` (fresh, blind).
+2. S7 glow and near-black: an S7-only lever is missing (the glow is Mie AP toward the sun); candidates not tried: higher `mie_scattering_scale` with lower AP distance, AP start depth, a golden local-exposure shadow lift (`pp.LocalExposureShadowContrastScale`, used in the ToD twilights) - it is post, not sky, so it needs the director's OK.
+3. T1 C: remove the dark horizon fog band (rows 100-130) without `FogCutoffDistance` (e.g. second fog height offset / falloff, `fog.SkyAtmosphereAmbientContributionColorScale`).
+4. Margin on the far box: sky light 5.7 -> 5.8 or sky luminance .90 (each moves far - sky by ~0.5 Y on the view frame).
+
+### Commands (worktree root; every Unreal run through the lock)
+- Manhattan build: `SM2_MANHATTAN_SCR=/Users/midir/sm2-n1/_scratch/look/manhattan gpu_slot.sh capture --label P4 --timeout 7200 -- python3 unreal/WebHomage/Scripts/build_manhattan.py --steps cpp,city_prep,city_extra,city,traversal,characters,look,map` (the city step alone took 2082 s; split across two holds: `--steps traversal,characters,look,map` after the first). City export on port 5205 by hand (NOTES.md).
+- Live sweep: `python3 tools/perf_ue/sweeps/r09/gen_s4.py <v.json> '{"name": {"ap": 2.5, ...}}'`, then `python3 tools/perf_ue/capture_tour.py --round <dir> --presets golden --res 1920x1080 [--shots S4] --map /Game/Maps/Manhattan --variants <v.json> --settle 5 --first-settle 14 --work <dir>` (capture_tour wraps itself in `gpu_slot.sh capture`); numbers `tools/perf_ue/sweeps/r09/quick_s4.py <dir>` / `quick_all.py <dir>`.
+- Apply + bake: `python3 tools/perf_ue/sweeps/r09/apply_golden.py '<knobs>'` (then re-run `tod_guard.py apply` ONLY if the golden_r08 block is missing; `--check` after every golden edit), `gpu_slot.sh capture --label P4 --timeout 7200 -- tools/perf_ue/sweeps/r09/hold_c.sh <out>` (golden rig + view S4 x2 + tour + 13 s movie; `NOMOVIE=1`), `hold_a.sh` (all rigs + golden + fixed presets), `hold_b.sh` (48 ToD stills + dome / r08 checks).
+- Report + pack: `python3 tools/perf_ue/round9_report.py --round docs/night1/look/round-09`; `python3 tools/perf_ue/sweeps/r09/make_pairs.py <pairs.json> <norm>` + `abpack.py`.
+- Perf: `gpu_slot.sh perf --label P4 --timeout 3600 --json <dir>/perf_gpu.json -- tools/perf_ue/sweeps/r09/perf_s4.sh <out>` (4K output, TSR 67 %).
+GPU facts this round: queue waits 0-25 min per hold (island, tricks, water held 1-2 slots); one 9-min PAUSE (health monitor, WindowServer CPU 97 %) inside hold A; no engine crash.
 
 # P4 Look / Sky: handoff (round 08, Claude Opus 5.5 high via Devin, 2026-10-03)
 
