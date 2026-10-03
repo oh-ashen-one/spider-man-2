@@ -10,6 +10,12 @@ PARK_INC = '/Project/Terrain/Park.ush'
 LAWN_GRADE = (0.86, 1.62, 0.12, 1.0)   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
 LAWN_K = (1.0, 0.16, 1.0, 1.0)        # r04 Lawn.ush: (detail amplitude, mowing-stripe amplitude, grass saturation)
 LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand-written; Park.ush is generated)
+# r05 lawn sun share (target: tree shadows on the lawn <= 0.6 x the lit lawn luma). Under the golden rig (sun 9 deg, sky light x8, indirect x3.2) a horizontal lawn gets ~sin 9 = 0.16 of the
+# sun's irradiance and the sky / Lumen bounce dominates it, so the trees' shadows (near cards cast at every distance) read ~0.9 of the lit lawn (r05 diag: ShowFlag.DynamicShadows 0 vs on,
+# 1080p p4: lawn ratio 0.93-1.0 except a few spots). The turf's material AO (indirect diffuse / sky only, the sun is untouched) is LAWN_SKYOCC and the albedo is raised by LAWN_SUNGAIN so the
+# sunlit lawn keeps its r04 brightness (sky / sun ~3.8 on the lawn: gain = (1 + 3.8) / (1 + 3.8 x skyocc)); shade becomes the sky-lit share only.
+LAWN_SKYOCC = 0.12
+LAWN_SUNGAIN = 3.3
 FILL = 450.0   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
@@ -25,7 +31,7 @@ def materials(pm):
 float r; float3 n;
 float2 p = wpos.xy * 0.01;
 float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 0.0, r, n);
-c = TerrainLawnR4(tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk);   // r04: lawn grade (blue ~0), 0.3-16 m albedo detail (mottling, wear, clover, mowing stripes), saturation
+c = TerrainLawnR4(tCol, tColSampler, tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk, length(wpos - cam) * 0.01);   // r04: lawn grade (blue ~0), 0.3-16 m albedo detail (mottling, wear, clover, mowing stripes), saturation
 ''' + consts + '''
 float4 pm = Texture2DSample(tPath, tPathSampler, (p - mo) / ms);
 float3 n1 = Texture2DSample(tNoise, tNoiseSampler, fl2(p / 9.0)).rgb;
@@ -44,16 +50,16 @@ c = lerp(c, float3(0.0742, 0.0704, 0.0648) * (0.9 + 0.2 * n2.r) * (0.82 + 0.36 *
 r = lerp(r, 0.9, max(edge, dr));
 float Lk = dot(c, float3(0.2126, 0.7152, 0.0722));   // soft luma knee: sunlit light gravel must not clip under the golden rig (same idea as the city sidewalk's SunK)
 c *= lerp(1.0, min(1.0, (0.30 + (Lk - 0.30) * 0.3) / max(Lk, 0.0001)), step(0.30, Lk));
-Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); Spec = lerp(0.04, 0.25, max(edge, dr)); return c * gain;   // r04: Spec 0.04 on turf (UE default 0.5: at the p10 eye height (73 deg incidence) the Fresnel term mirrored the sky: display blue 49 on a lawn whose albedo blue is 0.004)''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR')]))
+Rough = r; NormalW = lerp(n, float3(0.0, 0.0, 1.0), max(edge, dr)); Spec = lerp(0.04, 0.25, max(edge, dr)); AO = skyocc; return min(c * gain * sungain, float3(0.9, 0.9, 0.9));   // r05: AO = sky / bounce share, albedo x sungain (LAWN_SKYOCC)   // r04: Spec 0.04 on turf (UE default 0.5: at the p10 eye height (73 deg incidence) the Fresnel term mirrored the sky: display blue 49 on a lawn whose albedo blue is 0.004)''',
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('cam', 'cam', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K), ('skyocc', 'scalar', LAWN_SKYOCC), ('sungain', 'scalar', LAWN_SUNGAIN)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')]))
     # coast / plaza lawns: the same lawn shader, lawn variant (meadow everywhere, no ball fields / ponds / woodland floor)
     M.append(dict(name='M_TerrainLawn', include=LAWN_INC, code='''
 float r; float3 n;
 float2 p = wpos.xy * 0.01;
 float3 c = TerrainParkEntry(tCol, tColSampler, tNoise, tNoiseSampler, wpos, 1.0, r, n);
-c = TerrainLawnR4(tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk);
-Rough = r; NormalW = n; Spec = 0.04; return c * gain;''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR')]))
+c = TerrainLawnR4(tCol, tColSampler, tDet, tDetSampler, tNoise, tNoiseSampler, p, c, grade, lk, length(wpos - cam) * 0.01);
+Rough = r; NormalW = n; Spec = 0.04; AO = skyocc; return min(c * gain * sungain, float3(0.9, 0.9, 0.9));''',
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('cam', 'cam', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K), ('skyocc', 'scalar', LAWN_SKYOCC), ('sungain', 'scalar', LAWN_SUNGAIN)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')]))
     # City Hall Park / Bowling Green / Battery lawns (ground.js 'mapLawns': grass_col at 7 m x tint 0xb4b89a)
     M.append(dict(name='M_TerrainMapLawn', include=None, code='''
 float2 p = wpos.xy * 0.01;
@@ -112,11 +118,11 @@ float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27)) + vc.g * 5.0;
 float gust = 0.5 + 0.5 * sin(p.x * 0.1 - t * 0.5) * cos(p.y * 0.08);
 float sway = h * h * windamp * (0.4 + 0.9 * gust) * sin(t * 1.6 + wo);
 Wpo = float3(sway, sway * 0.7, -(wpos.z - rootz) * (1.0 - fade) - 1.5 * (1.0 - fade));
-float3 tip = float3(0.17, 0.35, 0.007);
-float3 mid = float3(0.105, 0.225, 0.0045);
-float3 root = float3(0.027, 0.06, 0.0025);
+float3 tip = float3(0.23, 0.35, 0.007);   // r05: R x1.35 (r04 critic: p10 R / G 0.77 = lime; meadow reference 0.88)
+float3 mid = float3(0.142, 0.225, 0.0045);
+float3 root = float3(0.036, 0.06, 0.0025);
 float3 g = lerp(lerp(root, mid, smoothstep(0.0, 0.45, h)), tip, smoothstep(0.35, 1.0, h));
-float3 yel = float3(0.22, 0.32, 0.014);
+float3 yel = float3(0.27, 0.32, 0.014);
 g = lerp(g, yel * lerp(0.35, 1.0, h), saturate((vc.b - 0.62) * 3.0) * 0.8);
 g *= lerp(0.72, 1.28, vc.g) * lerp(0.9, 1.1, rnd);
 g = lerp(g, float3(0.3, 0.23, 0.05) * lerp(0.4, 1.0, h), step(0.988, vc.g) * 0.85);
@@ -157,9 +163,9 @@ float4 tx = Texture2DSample(tLeaf, tLeafSampler, float2(uv0.x, 1.0 - uv0.y));
 float lum = dot(tx.rgb, float3(0.3, 0.59, 0.11));
 float twig = 1.0 - smoothstep(-0.03, 0.02, tx.g - max(tx.r, tx.b) - 0.015);
 float hsel = uv1.y * 0.7 + lum * 0.6 - 0.2;
-float3 leaf = lerp(float3(a0, a1, a2), float3(b0, b1, b2), smoothstep(0.15, 0.85, hsel));
+float3 leaf = lerp(tfSummer(float3(a0, a1, a2)), tfSummer(float3(b0, b1, b2)), smoothstep(0.15, 0.85, hsel));   // r05 summer palette (Foliage.ush tfSummer)
 float odd = frac(uv1.y * 13.7);
-leaf = lerp(leaf, float3(0.13, 0.06, 0.025), step(0.95, odd));
+leaf = lerp(leaf, float3(0.13, 0.06, 0.025), step(0.98, odd));
 leaf *= 0.5 + 1.25 * lum;
 float expo = saturate(uv1.x);
 float occ = lerp(0.36, 1.05, pow(expo, 1.3));
@@ -178,10 +184,20 @@ return c;''',
     # ez-tree bark / park trunks (vertex colour = ambient occlusion, flat bark tint) with the same LOD band clip
     M.append(dict(name='M_TerrainBark', include=FOLI_INC, code='''
 float3 c = lerp(tint.rgb, vc.rgb * tint.rgb, usevc);
+// r05 bark (r04 critic: t4 passes untextured trunks 320-460 px wide): vertical furrows + ridges + fine grain, projected on the two horizontal axes by the normal
+float3 pw = wpos * 0.01f;
+float2 an = abs(wn.xy) / max(abs(wn.x) + abs(wn.y), 0.001f);
+float hu = pw.y * an.x + pw.x * an.y;
+float f1 = Texture2DSample(tNoise, tNoiseSampler, float2(hu * 3.1f, pw.z * 0.32f)).r;
+float f2 = Texture2DSample(tNoise, tNoiseSampler, float2(hu * 9.0f + 0.37f, pw.z * 1.3f)).g;
+float f3 = Texture2DSample(tNoise, tNoiseSampler, float2(hu * 23.0f, pw.z * 6.0f + 0.5f)).b;
+float furrow = smoothstep(0.3f, 0.7f, f1 * 0.65f + f2 * 0.35f);
+c *= (0.42f + 0.85f * furrow) * (0.85f + 0.3f * f3);
+c = lerp(c, c * float3(0.75f, 0.85f, 0.6f), smoothstep(0.62f, 0.8f, f2) * 0.5f);   // lichen / moss tint in a few ridges
 Op = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);
 Rough = roughp; return c;''',
         inputs=[('vc', 'vc', None), ('tint', 'vector', (0.33, 0.29, 0.25, 1)), ('usevc', 'scalar', 1.0), ('roughp', 'scalar', 0.92), ('wpos', 'wpos', None), ('cam', 'cam', None),
-                ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None)],
+                ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('wn', 'wn', None), ('tNoise', 'tex', 'noise')],
         outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Rough', 1, 'MP_ROUGHNESS')], blend='masked', nanite=True))
     # near leaf-card canopies (browser pool `trees-*-near`, 44-165 m, casts shadows): the city's leaf atlas + the lobe-fitted card / core geometry, per-instance autumn tints
     M.append(dict(name='M_TerrainCards', include=FOLI_INC, code='''
@@ -211,7 +227,7 @@ return c * gain;''',
 float d = length(wpos - cam) * 0.01;
 Op = tfBand(d, band, Parameters.SvPosition.xy, t);   // r02: the browser's dithered hand-over (crown -> crownfar over 478-520 m), nothing nearer
 float nz = 0.5 + 0.5 * sin(wpos.x * 0.011 + 1.7 * sin(wpos.y * 0.0093)) * cos(wpos.y * 0.0127);
-float3 c = lerp(float3(a0, a1, a2), float3(b0, b1, b2), 0.5) * lerp(0.7, 1.15, nz) * gain;
+float3 c = lerp(tfSummer(float3(a0, a1, a2)), tfSummer(float3(b0, b1, b2)), 0.5) * lerp(0.7, 1.15, nz) * gain;   // r05 summer palette
 Rough = 0.95;
 return c;''',
         inputs=[('wpos', 'wpos', None), ('cam', 'cam', None), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),

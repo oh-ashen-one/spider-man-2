@@ -301,6 +301,9 @@ CHAIN_RE = re.compile(r'^(trees_(park|elm|conifer)_(near|lod1|crown)|trunks_(par
 # the clump hull (`trees-*-crown`, M_TerrainClump) takes the >= 520 m band itself (CROWN_BAND)
 POOL_RE = re.compile(r'^(ez-(park|elm|conifer)\d-l[01]-(leaves|bark)|trees-(park|elm|conifer)-(near|lod1|crown)|trunks-(park|elm|conifer)(-mid|-far)?)$')
 CROWN_BAND = (520.0, 3200.0)
+# r05: the near leaf-card canopy (`trees-*-near`: 220-240 cards + a 0.27 core) is drawn out to NEAR_FAR and the LOD1 pool (`trees-*-lod1`: 18-24 cards around a 0.85 solid core) is not
+# built: the r04 critic's 'hull / saucer cards in p10' and the smooth olive balls of the p1 mid band were that LOD1 core. The clump hull keeps >= 520 m (CROWN_BAND).
+NEAR_FAR = float(os.environ.get('SM2_TERRAIN_NEAR_FAR', '520'))
 def leaf_name(rec):
     u = (rec.get('mat') or {}).get('map') or ''
     return os.path.basename(u).split('.')[0] or 'oak'
@@ -466,14 +469,16 @@ def build_land(path):
         nt = 0; counts = {}
         def pool_material(pool, d):
             """a material instance per pool: parent by pool kind, LOD band from the export"""
-            b = CROWN_BAND if pool.endswith('-crown') else pool_band(d); vec = {'band': (b[0], b[1], 0.0, 0.0)}
+            b = CROWN_BAND if pool.endswith('-crown') else pool_band(d)
+            if pool.endswith('-near') and pool.startswith('trees-'): b = (b[0], NEAR_FAR, 0.0, 0.0)   # r05: cards out to the hull hand-over
+            vec = {'band': (b[0], b[1], 0.0, 0.0)}
             nm = 'Pool_' + pool.replace('-', '_')
             if pool.startswith('ez-') and pool.endswith('-leaves'):
                 rec = [p for p in MAN['protos'] if p['name'] == pool.replace('-', '_')][0]; ln = leaf_name(rec)
                 m = mi(nm, 'M_TerrainLeaves', {'gain': 1.0}, vec)
                 mel.set_material_instance_texture_parameter_value(m, 'tLeaf', load(f'{TEXD}/leaf_{ln}')); EAL.save_asset(f'{MAT}/Inst/MI_{nm}')
                 return m
-            if pool.startswith(('ez-', 'trunks-')): return mi(nm, 'M_TerrainBark', {'usevc': 1.0, 'roughp': 0.92}, dict(vec, tint=(0.33, 0.29, 0.25, 1.0)))
+            if pool.startswith(('ez-', 'trunks-')): return mi(nm, 'M_TerrainBark', {'usevc': 1.0, 'roughp': 0.92}, dict(vec, tint=(0.2, 0.175, 0.15, 1.0)))   # r05: darker bark (0.33 read cream under the 9 deg golden sun), furrows in M_TerrainBark
             if pool.endswith(('-near', '-lod1')): return mi(nm, 'M_TerrainCards', {'gain': 1.0}, vec)
             if pool.endswith('-crownfar'): return mi(nm, 'M_TerrainCrown', {'gain': 1.0}, vec)
             return mi(nm, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, vec)   # r03: only >= 520 m (CROWN_BAND), bump at the browser's 3.0 / 0.5 (Foliage.ush tfBumpH)
@@ -481,6 +486,7 @@ def build_land(path):
         for pool in order:
             d = INS[pool]
             if not POOL_RE.match(pool) or not d.get('items'): continue
+            if pool.endswith('-lod1') and NEAR_FAR >= CROWN_BAND[0]: log('r05: LOD1 pool not built (near cards reach the hull)', pool); continue
             nmu = pool.replace('-', '_'); crownfar = pool.endswith('-crownfar')
             if crownfar:      # the city's own far-crown blob mesh (20-tri lobes); only drawn >= 520 m by the material band
                 sp = None

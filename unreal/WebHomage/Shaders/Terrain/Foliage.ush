@@ -38,6 +38,27 @@ float tfVn(float3 p)
     float b = lerp(lerp(tfH3(i + float3(0.0f, 0.0f, 1.0f)), tfH3(i + float3(1.0f, 0.0f, 1.0f)), f.x), lerp(tfH3(i + float3(0.0f, 1.0f, 1.0f)), tfH3(i + float3(1.0f, 1.0f, 1.0f)), f.x), f.y);
     return lerp(a, b, f.z);
 }
+// r05 summer grade of the browser's per-tree palette (aTintA / aTintB). The export's tints run hue 22-68 deg (brown .. olive, HSV saturation ~0.67 in linear albedo), which read
+// 0.52 saturated through the golden haze (r04 critic: crown saturation 0.52, the reference crowns are yellow-green / leaf-green). The tint's luminance is kept; its hue becomes a
+// yellow-green .. leaf-green pair chosen by how green the original tint was, so the per-tree variety survives. Blue is ~0.05-0.08 of green (display saturation >= 0.65 target).
+float3 tfSummer(float3 c)
+{
+    float L = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+    float gsel = saturate((c.g - c.r) / max(L, 0.0001f) * 3.0f + 0.5f);
+    float3 hy = float3(0.66f, 1.0f, 0.05f);
+    float3 hg = float3(0.42f, 1.0f, 0.08f);
+    float3 h = lerp(hy, hg, gsel);
+    h /= dot(h, float3(0.2126f, 0.7152f, 0.0722f));
+    return h * L;
+}
+// r05 clump-scale light / shade breakup (world space, ~0.4-1.3 m): at 100-500 m a 4K pixel covers 3-17 cm, the leaf texture's own contrast is mip-averaged away there,
+// while sunlit / shaded leaf clumps are what the reference crowns show at swing height (crown sigma-3 SD 13-23 against our 8.1).
+float tfClumpShade(float3 cpw)
+{
+    float q = tfVn(cpw * 0.9f + 4.7f) * 0.42f + tfVn(cpw * 2.6f + 1.1f) * 0.36f + tfVn(cpw * 6.5f + 8.3f) * 0.22f;
+    return lerp(0.45f, 1.5f, smoothstep(0.32f, 0.68f, q));
+}
+
 // clump height field (trees.js crownMaterial): clumps (~1.6 m) of sub-clumps (~0.5 m); n3 = leaf speckle (~0.2 m), returned through the out parameter
 float tfClump(float3 cp, out float n1, out float n2, out float n3)
 {
@@ -62,6 +83,7 @@ float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float
     float dist = length(toCam) * 0.01f;
     float3 V = toCam / max(length(toCam), 1.0f);
     float3 N = normalize(wn);
+    tA = tfSummer(tA); tB = tfSummer(tB);       // r05 summer palette
     float3 cp = wpos * 0.01f + float3(rnd * 37.1f, rnd * 53.7f, rnd * 29.3f);
     float n1, n2, n3;
     float crClump = tfClump(cp, n1, n2, n3);
@@ -102,6 +124,7 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
     float3 toCam = cam - wpos;
     float dist = length(toCam) * 0.01f;
     float3 V = toCam / max(length(toCam), 1.0f);
+    tA = tfSummer(tA); tB = tfSummer(tB);       // r05 summer palette
     float core = aLeaf.x >= 1.5f ? 1.0f : 0.0f;
     float2 luv = core > 0.5f ? frac(uv) : uv;
     float4 tx = Texture2DSampleGrad(tAtlas, tAtlasSampler, float2(luv.x, 1.0f - luv.y), float2(gx.x, -gx.y), float2(gy.x, -gy.y));
@@ -126,14 +149,25 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
         float2 tl = frac(luv * 2.0f);
         float eb = min(min(tl.x, 1.0f - tl.x), min(tl.y, 1.0f - tl.y));
         tx.a *= smoothstep(0.0f, 0.09f, eb + 0.05f * (tx.r - 0.5f));
+#if !(RAYTRACINGSHADER || RAYHITGROUPSHADER || SHADOW_DEPTH_SHADER || LUMEN_CARD_CAPTURE)
+        // r05: edge-on cards (r04 critic: 'saucer cards float in p10'): a card seen within ~15 deg of its plane is a smeared streak / a flat saucer against the sky; its coverage
+        // fades with the geometric facing (face normal from the position derivatives; the vertex normals are the clump-outward normals, not the card plane)
+        float3 fn = cross(ddx(wpos), ddy(wpos));
+        float fc = abs(dot(fn, V)) / max(length(fn), 1e-6f);
+        tx.a *= smoothstep(0.08f, 0.3f, fc);
+#endif
     }
     float twig = tx.g >= 0.97f ? 1.0f : 0.0f;
     float hsel = tx.g * 0.8f + aLeaf.y * 0.55f - 0.18f;
     float3 leaf = lerp(tA, tB, smoothstep(0.15f, 0.85f, hsel));
     float odd = frac(tx.g * 13.7f + aLeaf.y * 5.3f);                                   // a scatter of dry brown / still-green leaves
-    leaf = odd > 0.93f ? float3(0.13f, 0.06f, 0.025f) : (odd < 0.035f ? float3(0.16f, 0.14f, 0.035f) : leaf);
+    leaf = odd > 0.975f ? float3(0.13f, 0.06f, 0.025f) : (odd < 0.02f ? float3(0.16f, 0.17f, 0.02f) : leaf);   // r05: 2.5 % dry leaves (r04 7 %: summer crowns)
     leaf *= 0.32f + 0.9f * tx.r;                                                         // r03 pass 2: per-leaf value spread (browser 0.42 + 0.72 r)
     float occ = lerp(0.4f, 1.0f, pow(saturate(expo), 1.4f)) * lerp(0.45f, 1.0f, tx.b);   // r03 pass 2: deeper spray interiors (browser 0.62): leaf-scale contrast
+    // r05: clump-scale light / shade (fades in beyond 25 m, where the leaf texture is mip-averaged), sunlit outer clumps a touch yellower
+    float csh = tfClumpShade(wpos * 0.01f);
+    occ *= lerp(1.0f, csh, smoothstep(25.0f, 70.0f, dist));
+    leaf = lerp(leaf, leaf * float3(1.18f, 1.08f, 0.6f), smoothstep(1.0f, 1.4f, csh) * saturate(expo));
     if (core > 0.5f)
     {
         float3 cpw2 = wpos * 0.01f;
