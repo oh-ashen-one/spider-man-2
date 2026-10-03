@@ -49,4 +49,20 @@ pairs = [dict(id=i, x=x, y=y, note=n) for i, x, y, n in pairs]
 miss = [(p['id'], k, p[k]) for p in pairs for k in ('x', 'y') if not p[k] or not os.path.exists(p[k])]
 for m in miss: print('MISSING', m)
 pairs = [p for p in pairs if p['x'] and p['y'] and os.path.exists(p['x']) and os.path.exists(p['y'])]
+if os.environ.get('NORMALIZE', '1') != '0':
+    # r06 (r05 critic: '1612 vs 3226 px widths leak identity'): both sides of every still pair become the same 3840x2160 image (Lanczos, centre crop to 16:9), so abpack's
+    # 84 % crop gives 3226 px on both sides; the copies live in <critic dir>/norm (scratch, never committed). Movies are 1920x1080 on both sides already (checked here).
+    from PIL import Image
+    ND = os.path.join(os.path.dirname(os.path.abspath(out)), 'norm'); os.makedirs(ND, exist_ok=True)
+    def norm(src, tag):
+        im = Image.open(src).convert('RGB'); w, h = im.size; tw = min(w, round(h * 16 / 9)); th = round(tw * 9 / 16)
+        im = im.crop(((w - tw) // 2, (h - th) // 2, (w - tw) // 2 + tw, (h - th) // 2 + th))
+        if im.size != (3840, 2160): im = im.resize((3840, 2160), Image.LANCZOS)
+        dst = os.path.join(ND, tag + '.jpg'); im.save(dst, quality=92); return dst
+    for p in pairs:
+        if p['x'].lower().endswith('.mp4'):
+            sz = [subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', p[k]], capture_output=True, text=True).stdout.strip() for k in ('x', 'y')]
+            if sz[0] != sz[1]: print('WARN movie sizes differ', p['id'], sz)
+            continue
+        p['x'], p['y'] = norm(p['x'], p['id'] + '_x'), norm(p['y'], p['id'] + '_y')
 os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True); json.dump(pairs, open(out, 'w'), indent=1); print(len(pairs), 'pairs ->', out)

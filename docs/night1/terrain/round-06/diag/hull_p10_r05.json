@@ -1,0 +1,165 @@
+{
+ "image": "p10_lawn_eye.jpg",
+ "rule": "sky-bordered foliage patch, local hp3 SD < 5, width > 30 px, y < 691",
+ "widest": 52,
+ "n_over_30": 3,
+ "patches": [
+  {
+   "width_px": 52,
+   "bbox": [
+    1139,
+    237,
+    1190,
+    280
+   ],
+   "n_px": 1383,
+   "mean_sd": 3.33,
+   "mean_luma": 82.9
+  },
+  {
+   "width_px": 52,
+   "bbox": [
+    371,
+    544,
+    422,
+    591
+   ],
+   "n_px": 1135,
+   "mean_sd": 3.63,
+   "mean_luma": 58.5
+  },
+  {
+   "width_px": 50,
+   "bbox": [
+    171,
+    530,
+    220,
+    574
+   ],
+   "n_px": 1192,
+   "mean_sd": 3.6,
+   "mean_luma": 55.9
+  },
+  {
+   "width_px": 24,
+   "bbox": [
+    1250,
+    396,
+    1273,
+    416
+   ],
+   "n_px": 218,
+   "mean_sd": 3.37,
+   "mean_luma": 35.5
+  },
+  {
+   "width_px": 21,
+   "bbox": [
+    489,
+    480,
+    504,
+    500
+   ],
+   "n_px": 249,
+   "mean_sd": 3.65,
+   "mean_luma": 72.0
+  },
+  {
+   "width_px": 14,
+   "bbox": [
+    3809,
+    257,
+    3809,
+    270
+   ],
+   "n_px": 14,
+   "mean_sd": 1.75,
+   "mean_luma": 153.7
+  },
+  {
+   "width_px": 14,
+   "bbox": [
+    1187,
+    307,
+    1192,
+    320
+   ],
+   "n_px": 47,
+   "mean_sd": 4.24,
+   "mean_luma": 47.8
+  },
+  {
+   "width_px": 11,
+   "bbox": [
+    1605,
+    486,
+    1615,
+    492
+   ],
+   "n_px": 41,
+   "mean_sd": 4.5,
+   "mean_luma": 197.6
+  },
+  {
+   "width_px": 10,
+   "bbox": [
+    3808,
+    285,
+    3808,
+    294
+   ],
+   "n_px": 10,
+   "mean_sd": 1.9,
+   "mean_luma": 155.5
+  },
+  {
+   "width_px": 10,
+   "bbox": [
+    1979,
+    440,
+    1988,
+    444
+   ],
+   "n_px": 22,
+   "mean_sd": 4.56,
+   "mean_luma": 192.5
+  },
+  {
+   "width_px": 10,
+   "bbox": [
+    1879,
+    467,
+    1885,
+    476
+   ],
+   "n_px": 34,
+   "mean_sd": 4.1,
+   "mean_luma": 181.4
+  },
+  {
+   "width_px": 10,
+   "bbox": [
+    284,
+    546,
+    290,
+    555
+   ],
+   "n_px": 48,
+   "mean_sd": 4.34,
+   "mean_luma": 133.1
+  },
+  {
+   "width_px": 10,
+   "bbox": [
+    2687,
+    681,
+    2693,
+    690
+   ],
+   "n_px": 37,
+   "mean_sd": 3.89,
+   "mean_luma": 183.7
+  }
+ ],
+ "pass": false
+}
