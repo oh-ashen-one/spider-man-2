@@ -101,6 +101,8 @@ public:
 	// blur with a manual scene-depth test (M_TravWeb); width clamp 2.8-3.4 px (the build-1 3.2-4.0 px clamp measured up to 4.5 px).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeLook = 1.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeSolid = 1.f;
+	// r25 build 3: unused strand segments stay registered as visible at a 1e-4 scale (no render-proxy re-creation on the attach frame)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeKeepProxy = 1.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 2.8f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 3.4f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.30f;

@@ -1167,7 +1167,14 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 		for (int32 K = 0; K < SEGS_PER_STRAND; ++K)
 		{
 			UStaticMeshComponent* C = WebSegs[SI * SEGS_PER_STRAND + K];
-			if (!St.bActive || Fade <= 0.01 || D.Size() < 5.0) { C->SetVisibility(false); continue; }
+			// r25 build 3: with RopeKeepProxy an unused segment stays "visible" at a 1e-4 scale instead of being hidden -- a segment
+			// switched visible on the attach frame rendered one frame late (rope_r25_check: no strand in the frame of the first web_on row)
+			auto HideSeg = [&](UStaticMeshComponent* Seg)
+			{
+				if (bTwoTone && Traversal->RopeKeepProxy > 0.5f) { Seg->SetWorldScale3D(FVector(1e-4)); Seg->SetVisibility(true); }
+				else Seg->SetVisibility(false);
+			};
+			if (!St.bActive || Fade <= 0.01 || D.Size() < 5.0) { HideSeg(C); continue; }
 			auto P = [&](double U)
 			{
 				return A + D * U + Perp * (Wave * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI));
@@ -1178,7 +1185,7 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			const double Len = FVector::Dist(P0, P1);
 			// round 08 (critic r07: thick blooming beam): world width 1.2 cm, never thinner than ~1.2 px at 1080p
 			const double CamD = FVector::Dist(Mid, CamPosCm);
-			if (CamD < 300.0) { C->SetVisibility(false); continue; } // never draw a strand segment on the lens
+			if (CamD < 300.0) { HideSeg(C); continue; } // never draw a strand segment on the lens
 			double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
 			if (bTwoTone)
 			{ // round 25: 1.6 cm world width, clamped to RopePxMin..RopePxMax px on screen (at the segment's distance); a released strand
