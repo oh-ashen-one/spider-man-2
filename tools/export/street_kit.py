@@ -195,6 +195,7 @@ def rect_minus(r, h):
     return [q for q in out if q[1] - q[0] > 0.02 and q[3] - q[2] > 0.02]
 
 FE_SOLID = os.environ.get('SM2_FE_SOLID', '1') == '1'   # (island r04) 0 = diagnostic: the whole fire escape visual-only (in the street-kit tile)
+FE_GAP = float(os.environ.get('SM2_FE_GAP', '0.02'))   # (island r04) wall-side edge of the landing grating (m from the facade; r03: 0.02)
 FE_WELL_LEN, FE_WELL_N = 1.5, (0.25, 0.95)   # (island r04) stair well: the arriving flight's last 1.5 m (head room ~2 m under the deck), over the flight's width
 FE_LADDER_HOLE = 0.30                          # (island r04) drop-ladder hatch: +-0.30 m along the wall around the ladder, n 0.10 .. 0.60
 
@@ -222,7 +223,7 @@ def fire_escape(mb, F, uc, w, y_first, y_top, fh, seed, GRATE_COL=FE_COLS[0], vi
             holes.append((sb - FE_WELL_LEN, sb, FE_WELL_N[0], FE_WELL_N[1]) if (i - 1) % 2 == 0 else (sb, sb + FE_WELL_LEN, FE_WELL_N[0], FE_WELL_N[1]))
         else:       # drop-ladder hatch
             holes.append((ul - FE_LADDER_HOLE, ul + FE_LADDER_HOLE, 0.10, 0.60))
-        rects = [(u0 + 0.05, u1 - 0.05, 0.02, depth - 0.06)]
+        rects = [(u0 + 0.05, u1 - 0.05, FE_GAP, depth - 0.06)]
         for h in holes: rects = [q for r in rects for q in rect_minus(r, h)]
         for (a0, a1, b0, b1) in rects:
             mb.quad([P(a0, y, b0), P(a1, y, b0), P(a1, y, b1), P(a0, y, b1)], up, 4, 0, GRATE_COL, [(a0 - u0, b0), (a1 - u0, b0), (a1 - u0, b1), (a0 - u0, b1)], [(a0 - u0, b0), (a1 - u0, b0), (a1 - u0, b1), (a0 - u0, b1)])
@@ -232,8 +233,11 @@ def fire_escape(mb, F, uc, w, y_first, y_top, fh, seed, GRATE_COL=FE_COLS[0], vi
             for (pa, pb, nn) in (((a0, b0), (a1, b0), -n3), ((a1, b1), (a0, b1), n3), ((a0, b1), (a0, b0), -t3), ((a1, b0), (a1, b1), t3)):
                 mb.quad([P(pa[0], y - 0.03, pa[1]), P(pb[0], y - 0.03, pb[1]), P(pb[0], y, pb[1]), P(pa[0], y, pa[1])], -nn, 1, 4, GRATE_COL)
         box(mb, F, u0, u1, y - 0.08, y, depth - 0.06, depth, 1, 4, GRATE_COL, 'FTLUD')
-        box(mb, F, u0, u0 + 0.05, y - 0.08, y, 0.0, depth - 0.06, 1, 4, GRATE_COL, 'FTUD')
-        box(mb, F, u1 - 0.05, u1, y - 0.08, y, 0.0, depth - 0.06, 1, 4, GRATE_COL, 'FLUD')
+        box(mb, F, u0, u0 + 0.05, y - 0.08, y, FE_GAP, depth - 0.06, 1, 4, GRATE_COL, 'FTUD')
+        box(mb, F, u1 - 0.05, u1, y - 0.08, y, FE_GAP, depth - 0.06, 1, 4, GRATE_COL, 'FLUD')
+        if FE_GAP > 0.05:   # wall-side rail of the landing frame (the grating hangs from it on the brackets), and the wall angle the brackets bolt to: visual only
+            box(vis, F, u0, u1, y - 0.08, y, FE_GAP - 0.05, FE_GAP, 1, 4, GRATE_COL, 'FBUD')
+            box(vis, F, u0, u1, y - 0.12, y - 0.02, 0.0, 0.04, 1, 4, GRATE_COL, 'FUD')
         if stats is not None: stats['fe_landings'] = stats.get('fe_landings', 0) + 1; stats['fe_wells'] = stats.get('fe_wells', 0) + len(holes)
         # railing planes (front + two sides), masked bars: visual only (the hero vaults / lands over them)
         rh = 1.05
