@@ -208,7 +208,40 @@ def plateau_towers():
                 m = meshes.setdefault(tile_key(x, z), Mesh()); tower(m, x, z, w, d, h, np.random.default_rng(int(abs(x) * 7 + abs(z) * 13))); placed.append((x, z, w, d)); tot += 1; break
     flush(meshes, 'farsky_towers', 'towers')
     stats['plateau_towers'] = tot
-plateau_towers()
+    return placed
+PLACED = plateau_towers()
+
+# ================================================================ 1b. plateau fabric (r11): a carpet of mid-rise blocks on the Palisades plateau
+# The S4 rows 165-230 look over the plateau at 2.5-8 km. Between the browser's farCityMass blocks and the hinterland boxes the ground was bare fogged land (Y ~ the sky), which made up
+# most of the 'pixels above Y 204' of the critic's far-band test. The carpet is M_CityFarMass with the same window codes / authored mid-grey tones as the towers; cells grow with distance
+# (64 m next to the cliff -> ~180 m at 6.5 km: blocks stay ~8-12 px wide on screen), heights follow smooth 'district' noise (lognormal, taller near the cliff).
+def fabric():
+    meshes = {}; rg = np.random.default_rng(909); n = 0; tris0 = 0
+    u = 56.0
+    while u < 6500.0:
+        cs = 64.0 + 0.018 * u
+        z = -5050.0
+        while z < 900.0:
+            if rg.random() < 0.20: z += cs; continue
+            zc = z + rg.uniform(-0.2, 0.2) * cs; uc = u + rg.uniform(-0.2, 0.2) * cs
+            w, d = cs * rg.uniform(0.46, 0.80), cs * rg.uniform(0.46, 0.80)
+            xc = cliff_x(zc) - uc - w / 2
+            hood = float(vnoise(xc / 700.0, zc / 700.0, 21)); hood2 = float(vnoise(xc / 190.0, zc / 190.0, 22))
+            h = float(np.clip(math.exp(rg.normal(math.log(25.0), 0.5)) * (0.65 + 1.5 * hood) * (1.0 + 0.5 * hood2) * (1.5 if uc < 700 else 1.0), 9.0, 150.0))
+            if any(abs(xc - px) < (w + pw) / 2 + 6 and abs(zc - pz) < (d + pd) / 2 + 6 for px, pz, pw, pd in PLACED if abs(px - xc) < 400): z += cs; continue
+            m = meshes.setdefault(tile_key(xc, zc), Mesh()); t = tone(rg, h > 70 and rg.random() < 0.4)
+            glass = h > 70 and rg.random() < 0.35
+            fl = FL_GLASS if glass else (FL_RIBBON if rg.random() < 0.18 else FL_PUNCHED)
+            if h > 46 and rg.random() < 0.6:   # podium + setback shaft
+                ph = h * rg.uniform(0.25, 0.4); m.box(xc - w / 2, zc - d / 2, xc + w / 2, zc + d / 2, PAL_Y, PAL_Y + ph, t, t, FL_PUNCHED)
+                t2 = tone(rg, glass); m.box(xc - w * 0.38, zc - d * 0.38, xc + w * 0.38, zc + d * 0.38, PAL_Y + ph, PAL_Y + h, t2, t2, fl)
+            else:
+                m.box(xc - w / 2, zc - d / 2, xc + w / 2, zc + d / 2, PAL_Y, PAL_Y + h, t, A(.22, .22, .23), fl)
+            n += 1; z += cs
+        u += cs
+    flush(meshes, 'farsky_fabric', 'fabric')
+    stats['fabric_blocks'] = n
+if os.environ.get('FAR_FABRIC', '1') != '0': fabric()
 
 # ================================================================ 2. hinterland skyline (items in the exporter's hinterland.json format)
 # camera of S4 (city_shots.json): used only to PLACE clusters at chosen screen columns; the clusters stay in the world for every other view

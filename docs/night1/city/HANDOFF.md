@@ -7,6 +7,13 @@ Owned: `tools/export/`, `/Game/City`, `/Game/Tests/City`, `docs/night1/city/`, p
 `unreal/WebHomage/Shaders/City/` (incl. the hand-written `ShadeFill.ush`) and `unreal/WebHomage/Scripts/{build_city.py,city_shots.json}`.
 Content/ is NOT committed (public fork, no LFS): everything is rebuilt by scripts from the browser city. **This branch was re-merged with `Opus-5.5-Loop-Night-1` at the start of round 10 (2026-10-01 00:10); the C++ module had to be rebuilt (`Scripts/build_editor.sh`, 50 s).**
 
+## Round 11 (Sonnet 5.5 xhigh via Devin, 2026-10-03) — WORK IN PROGRESS NOTE (rewritten at the end of the round)
+Target (Opus director): S4 far-shore towers with a far-LOD facade (window grid, crown / setback variation, mid-grey albedo 0.25-0.35); T2 <= 10 % above Y 204 in (0,150,1300,300), T4 flat bright 8x8 blocks <= 10 % in (540,110,900,260),
+S8 glass (1270,0,1640,300) <= 1.5 % above 204, T1 >= 12 px and C11-C15 kept, native-4K S3 billboard reads 'MORE SHADE ON EVERY STREET'.
+State at 10:30: branch merged with `origin/Opus-5.5-Loop-Night-1`, C++ rebuilt, city re-exported (the scratch export had been deleted: `tools/export/build_city.sh` steps by hand, Vite started on 5202 only for the export and stopped), full content build running.
+Changed so far: `far_skyline.py` (five tower archetypes, window codes 0.40 / 0.62 / 0.90, plateau fabric carpet, hinterland tiers), `M_CityFarMass` / `M_CityHinter` (panel structure, FarLitK), `ip_original_art.py` (P27 caption on three lines),
+tools `r11_plan.sh` (plan runner inside one GPU hold), `s4_far_check.py` T4, `s4_mask.py`, `settle_check.py`, `make_pairs_r11.py`.
+
 ## Read this first: round 10 (Sonnet 5.5, 2026-10-01) — WORK IN PROGRESS NOTE, final numbers are in `round-10/README.md`
 Critic r09 (FAILS TARGET, lowest 4) named ONE gap: **the S4 far-shore band** (x 0-1300, y 150-300): white box plateau (silhouette-top row std 6.1 px, 38.8 % of the box above Y 204), grey wall embankment, no trees.
 Tests: T1 silhouette-top std >= 12 px, T2 <= 10 % of (0,150,1300,300) above Y 204, C11-C15 still pass. `tools/export/s4_far_check.py <frame>` measures T1 / T2 / C11-C15 (it reproduces the critic's numbers on the r08 / r09 frames: 6.0 / 6.1, 38.7 / 38.8 %); `city_spec_check.py` (regions v3) includes them plus the other critic boxes (S8 glass, S5 mid tower, S6 curb).
