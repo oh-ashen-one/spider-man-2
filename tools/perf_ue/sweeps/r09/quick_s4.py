@@ -15,11 +15,11 @@ def rows(paths):
         im = cv2.imread(p); im = im if im.shape[1] == 1920 else cv2.resize(im, (1920, 1080), interpolation=cv2.INTER_AREA)
         Y = C.luma(im); L = r['lines']
         d = dict(file=os.path.basename(p), sky=r['sky_Y'], far=r['far_Y'], far_m_sky=r['far_Y'] - r['sky_Y'], crit_m_sky=r['C13_critic_box'], T2=r['box_pct204'],
-                 T4b=r['T4']['flat_of_bright_pct'], T4a=r['T4']['flat_of_all_pct'], nbright=r['T4']['bright'], T1=min(r['T1_std'].values()), C11=L['C11 lap/sky']['value'],
+                 T4b=r['T4']['flat_of_bright_pct'], T4a=r['T4']['flat_of_all_pct'], nbright=r['T4']['bright'], T1=min(r['T1_std'].values()), T1A=r['T1_std']['first_Y_lt_215'], T1B=r['T1_std']['first_absdY_gt_4'], T1C=r['T1_std']['first_Y_lt_sky_minus_12'], C11=L['C11 lap/sky']['value'],
                  C11f=L['C11 flat8 %']['value'], C12=L['C12 dBR']['value'], C14=L['C14 far-river Y']['value'], C15=L['C15 rms far/near']['value'], mean=float(Y.mean()),
                  sky_rows_110_150=float(Y[110:150, 540:900].mean()))
         d['pass'] = dict(sky=d['sky'] <= 205, far=-32 <= d['far_m_sky'] <= -25, crit=-32 <= d['crit_m_sky'] <= -25, T2=d['T2'] <= 10, T4=d['T4b'] <= 10 and d['T4a'] <= 10,
-                         C12=abs(d['C12']) <= 10, T1=d['T1'] >= 12, C11=L['C11 lap/sky']['passed'] and L['C11 flat8 %']['passed'], C14=L['C14 far-river Y']['passed'], C15=L['C15 rms far/near']['passed'])
+                         C12=abs(d['C12']) <= 10, T1=d['T1'] >= 12, T1BC=min(d['T1B'], d['T1C']) >= 12, C11=L['C11 lap/sky']['passed'] and L['C11 flat8 %']['passed'], C14=L['C14 far-river Y']['passed'], C15=L['C15 rms far/near']['passed'])
         out.append(d)
     return out
 if __name__ == '__main__':
@@ -28,8 +28,8 @@ if __name__ == '__main__':
     ps = []
     for x in a: ps += sorted(glob.glob(os.path.join(x, '*S4*.png')) + glob.glob(os.path.join(x, '*S4*.jpg'))) if os.path.isdir(x) else [x]
     R = rows(ps)
-    print('%-34s %6s %6s %6s %6s %5s %5s %3s %5s %5s %6s %5s %5s %5s  fails' % ('frame', 'sky', 'far', 'f-s', 'c-s', 'T2', 'T4b', 'nb', 'T1', 'C12', 'C11', 'C14', 'C15', 'mean'))
+    print('%-34s %6s %6s %6s %6s %5s %5s %3s %5s %5s %5s %6s %5s %5s %5s  fails' % ('frame', 'sky', 'far', 'f-s', 'c-s', 'T2', 'T4b', 'nb', 'T1B', 'T1C', 'C12', 'C11', 'C14', 'C15', 'mean'))
     for d in R:
-        print('%-34s %6.1f %6.1f %6.1f %6.1f %5.1f %5.1f %3d %5.1f %5.1f %6.1f %5.1f %5.2f %5.1f  %s' % (d['file'][:34], d['sky'], d['far'], d['far_m_sky'], d['crit_m_sky'], d['T2'], d['T4b'], d['nbright'], d['T1'], d['C12'], d['C11'], d['C14'], d['C15'], d['mean'],
+        print('%-34s %6.1f %6.1f %6.1f %6.1f %5.1f %5.1f %3d %5.1f %5.1f %5.1f %6.1f %5.1f %5.2f %5.1f  %s' % (d['file'][:34], d['sky'], d['far'], d['far_m_sky'], d['crit_m_sky'], d['T2'], d['T4b'], d['nbright'], d['T1B'], d['T1C'], d['C12'], d['C11'], d['C14'], d['C15'], d['mean'],
               ','.join(k for k, v in d['pass'].items() if not v) or 'ALL PASS'))
     if jo: json.dump(R, open(jo, 'w'), indent=1)
