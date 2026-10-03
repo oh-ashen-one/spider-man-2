@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 10:01",
+ "updated": "2026-10-03 10:09",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -1008,6 +1008,14 @@
    "verdict": "fails",
    "gap": "light the city with a low directional sun, not a uniform lift (p5 <= 15, p95 >= 120, 32-px local contrast >= 0.17, sunlit/shaded facade ratio >= 3)",
    "notes": "NOT merged; look STOPPED (director gate: sun/sky 5 < 6, night 4 < 5). Slot -> city r11 (Sonnet)."
+  },
+  {
+   "t": "2026-10-03 10:09",
+   "piece": "terrain",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "real offset sun shadows from crowns: needs a foliage shadow path (distance-field shadows or Nanite foliage) timed in a clean perf run",
+   "notes": "NOT merged (Opus director): ties r05 but undisclosed regressions (lit lawn -15 %, p4 sigma6 5.71->6.52, ~16 % GPU cost). Finding: non-Nanite instanced pools with DF lighting off cast no shadows. Terrain STOPPED (overall 3 for six rounds). Slot -> island r3 (Sonnet)."
   }
  ],
  "perf": [
