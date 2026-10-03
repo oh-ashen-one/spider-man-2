@@ -19,7 +19,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 ATM_DEFAULTS = {'atm.RayleighScattering': [0.175287, 0.409607, 1.0, 1.0], 'atm.MieScattering': [1.0, 1.0, 1.0, 1.0], 'atm.SkyLuminanceFactor': [1.0, 1.0, 1.0, 1.0],
                 'atm.RayleighScatteringScale': 0.0331, 'atm.MieScatteringScale': 0.003996, 'atm.MieAbsorptionScale': 0.000444, 'atm.MieAnisotropy': 0.8,
-                'atm.AerialPespectiveViewDistanceScale': 1.0, 'atm.AerialPerspectiveStartDepth': 0.1, 'atm.HeightFogContribution': 1.0}
+                'atm.AerialPespectiveViewDistanceScale': 1.0, 'atm.AerialPerspectiveStartDepth': 0.1, 'atm.HeightFogContribution': 1.0,
+                'atm.SkyAndAerialPerspectiveLuminanceFactor': [1.0, 1.0, 1.0, 1.0]}   # (round 09) engine default; the fixed golden preset sets it
 FOG_DEFAULTS = {'fog.SkyAtmosphereAmbientContributionColorScale': [1.0, 1.0, 1.0, 1.0]}
 PP_DEFAULTS = {'pp.ColorGainShadows': [1.0, 1.0, 1.0, 1.0], 'pp.ColorGainHighlights': [1.0, 1.0, 1.0, 1.0], 'pp.ColorOffset': [0.0, 0.0, 0.0, 0.0],
                'pp.ColorSaturation': [1.0, 1.0, 1.0, 1.0], 'pp.ColorContrast': [1.0, 1.0, 1.0, 1.0], 'pp.LensFlareIntensity': 0.0, 'pp.LumenDiffuseColorBoost': 1.0,

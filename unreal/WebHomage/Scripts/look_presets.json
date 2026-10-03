@@ -737,8 +737,30 @@
   },
   "default_hour": 18.4,
   "derived": {
-   "golden_am": {
+   "golden_r08": {
     "from": "golden",
+    "set": {
+     "atm.AerialPespectiveViewDistanceScale": 5.0,
+     "atm.HeightFogContribution": 1.0,
+     "atm.SkyLuminanceFactor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "atm.SkyAndAerialPerspectiveLuminanceFactor": [
+      1.0,
+      1.0,
+      1.0,
+      1.0
+     ],
+     "sky.Intensity": 2.5,
+     "fog.VolumetricFogExtinctionScale": 0.5
+    },
+    "_r09": "round-08 golden for the time of day (the round-09 golden change is for the fixed golden preset only)"
+   },
+   "golden_am": {
+    "from": "golden_r08",
     "set": {
      "fill.E": 0.0,
      "fill.W": 5.0,
@@ -808,7 +830,7 @@
     }
    },
    "dusk": {
-    "from": "golden",
+    "from": "golden_r08",
     "set": {
      "sun.Temperature": 3000.0,
      "sun.Intensity": 40000.0,
@@ -834,7 +856,7 @@
    "blue": {
     "from": "night",
     "mix": [
-     "golden",
+     "golden_r08",
      0.35
     ],
     "set": {
@@ -6251,7 +6273,7 @@
    },
    {
     "h": 18.4,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.05,
      "cloud.Cloud_GlobalDensity": 0.015,
@@ -6334,7 +6356,7 @@
    },
    {
     "h": 18.45,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 43475.37364130434,
      "sun.Temperature": 4159.120244565216,
@@ -6535,7 +6557,7 @@
    },
    {
     "h": 18.5,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 43096.46739130434,
      "sun.Temperature": 4100.135869565216,
@@ -6736,7 +6758,7 @@
    },
    {
     "h": 18.55,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42829.65353260869,
      "sun.Temperature": 4027.2248641304327,
@@ -6937,7 +6959,7 @@
    },
    {
     "h": 18.6,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42641.30434782607,
      "sun.Temperature": 3944.5652173913013,
@@ -7138,7 +7160,7 @@
    },
    {
     "h": 18.65,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42497.792119565216,
      "sun.Temperature": 3856.3349184782637,
@@ -7339,7 +7361,7 @@
    },
    {
     "h": 18.7,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42365.489130434784,
      "sun.Temperature": 3766.711956521741,
@@ -7540,7 +7562,7 @@
    },
    {
     "h": 18.75,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42210.76766304348,
      "sun.Temperature": 3679.874320652175,
@@ -7741,7 +7763,7 @@
    },
    {
     "h": 18.8,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "cloud.Cloud_GlobalCoverage": 0.25,
      "cloud.Cloud_GlobalDensity": 0.03,
@@ -7826,7 +7848,7 @@
    },
    {
     "h": 18.85,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 41875.00000000001,
      "sun.Temperature": 3513.671874999999,
@@ -8027,7 +8049,7 @@
    },
    {
     "h": 18.9,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 41928.57142857143,
      "sun.Temperature": 3411.1607142857188,
@@ -8228,7 +8250,7 @@
    },
    {
     "h": 18.95,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42000.0,
      "sun.Temperature": 3302.1763392857174,
@@ -8429,7 +8451,7 @@
    },
    {
     "h": 19.0,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42000.0,
      "sun.Temperature": 3196.428571428572,
@@ -8630,7 +8652,7 @@
    },
    {
     "h": 19.05,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 42000.0,
      "sun.Temperature": 3103.627232142856,
@@ -8831,7 +8853,7 @@
    },
    {
     "h": 19.1,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 41785.71428571426,
      "sun.Temperature": 3033.4821428571413,
@@ -9032,7 +9054,7 @@
    },
    {
     "h": 19.15,
-    "base": "golden",
+    "base": "golden_r08",
     "set": {
      "sun.Intensity": 41125.000000000015,
      "sun.Temperature": 3000.0,
