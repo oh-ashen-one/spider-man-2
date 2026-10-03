@@ -27,6 +27,10 @@ cd $WT
 ( while [ $(el) -lt 2280 ]; do sleep 5; [ -f $R/hold_$TAG.done ] && exit 0; done
   pgrep -f "[s]m2-n1/traversal/unreal/WebHomage/WebHomage.uproject" >/dev/null && { echo "== WATCHDOG: stopping my engine at $(el) s"; \
     /Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/traversal"; } ) &
+if [ -f $R/NEED_BUILD ]; then   # C++ changed since the last build (no engine of mine runs at this point)
+  echo "== C++ build at $(el) s"; $TD/build_p3.sh 2>&1 | tail -3
+  grep -q "Result: Succeeded" $UE/Saved/build_last.log && rm -f $R/NEED_BUILD || { echo "== BUILD FAILED: no engine run in this hold"; touch $R/hold_$TAG.done; rm -f $R/hold_$TAG.running; exit 0; }
+fi
 if [ ! -f $R/SUITS_DONE ] && [ -f $WT/art/night1/characters/hero/tex/suit_orm_r8.png ]; then
   echo "== content: original hero suits at $(el) s"
   "$UEB" "$UE/WebHomage.uproject" -run=pythonscript -script="$RD/tools/build_suits_p3.py" -unattended -nullrhi -NoSound \
@@ -47,9 +51,7 @@ if [ -s $R/probes_$TAG.txt ]; then
     echo "   probe $n done at $(el) s"
   done < $R/probes_$TAG.txt
 fi
-est() { case "$1" in a_swing_chain) echo 1370;; f4_chain_flips) echo 1200;; c_wallrun_perch) echo 970;; p1_pawn_run) echo 1090;; r1_roofrun_zip) echo 890;; f1_flow_backDouble) echo 850;;
-        w1_wallrun_tall_zip) echo 740;; w2_wallrun_side_zip) echo 700;; s1_high_swing|m1_mouse_swing) echo 620;; x2_rmb_cancel_wall) echo 540;; x1_rmb_cancel_flip) echo 470;;
-        warm) echo 200;; default) echo 300;; *) echo 900;; esac; }
+est() { python3 $RD/tools/split_est.py "$1"; }   # round 26: estimates from the measured s/frame (split_est.py)
 [ -n "${EST_SCALE:-}" ] || EST_SCALE=1.0
 while true; do
   s=$(head -1 $R/queue_$TAG.txt 2>/dev/null | tr -d ' ')
@@ -66,6 +68,12 @@ while true; do
       rm -rf /Users/midir/sm2-n1/_scratch/traversal/capture/warmup
       "$UE/Scripts/run_game.sh" /Users/midir/sm2-n1/_scratch/traversal/capture/warmup -map /Game/Maps/Manhattan -res 960x540 -quit 4 -name warmup -timeout 1500 \
         -- -benchmark -fps=60 -WHTravScript="$SC/a_swing_chain.json" $EXTRA_ARGS < /dev/null | tail -1 ;;
+    splitA:*|splitB:*)   # split movie capture (round-26/tools/split_capture.sh): "splitA:<clip>:<tm>" / "splitB:<clip>:<tm>"
+      M=$(echo $s | cut -d: -f1); C=$(echo $s | cut -d: -f2); TMS=$(echo $s | cut -d: -f3)
+      EXTRA_ARGS="$EXTRA_ARGS" $RD/tools/split_capture.sh ${M#split} $C $TMS
+      L=/Users/midir/sm2-n1/_scratch/traversal/capture/${C}_${M#split}/$C.log
+      echo "   $(grep -c 'Tracing Screenshot' $L 2>/dev/null) frames written; $(grep -h 'WH_TRAV hero suit' $L | sed 's/^.*Display: //' | head -1)"
+      echo "$s $(date +%T) $EXTRA_ARGS" >> $R/captured.txt ;;
     default)
       D=$R/default_launch; rm -rf $D; mkdir -p $D
       "$UE/Scripts/run_game.sh" $D -map /Game/Maps/Manhattan -res 1920x1080 -shots 3,5,7 -quit 8 -name default -timeout 1500 -exec "r.ScreenPercentage 100" < /dev/null | tail -1

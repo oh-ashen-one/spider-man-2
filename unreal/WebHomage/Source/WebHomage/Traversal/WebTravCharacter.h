@@ -172,6 +172,9 @@ private:
 	float FlipPreT = 0.38f;
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
+	// round 26: split movie capture (-WHMovieFrom=<sequence s>): -dumpmovie writes frames only from that sequence time on (the replay is
+	// deterministic; the earlier frames come from a run that quits there). 0 = off
+	double MovieFrom = 0.0; int32 MovieDumpSaved = 0; bool bMovieGated = false;
 	int32 PrerollFrames = 0;
 	// autoChain rhythm rule state
 	bool bAutoHeld = true, bAutoWasSwinging = false;

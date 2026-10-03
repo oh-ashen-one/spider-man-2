@@ -13,6 +13,7 @@
 #include "TextureResource.h"
 #include "Core/WebHomagePlayerController.h"
 #include "Characters/WHHeroSuit.h"
+#include "CoreGlobals.h"
 #include "WebHomage.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -459,6 +460,14 @@ void AWebTravCharacter::BeginPlay()
 	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
+	{ // round 26: split movie capture
+		double MF = 0.0;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHMovieFrom="), MF) && MF > 0.0 && GIsDumpingMovie != 0)
+		{
+			MovieFrom = MF; MovieDumpSaved = GIsDumpingMovie; GIsDumpingMovie = 0; bMovieGated = true;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie dump gated until sequence t=%.4f"), MovieFrom);
+		}
+	}
 	if (ProxyBody) ProxyBody->SetVisibility(false);
 	GetCharacterMovement()->SetMovementMode(MOVE_None);
 	GetCharacterMovement()->SetComponentTickEnabled(false);
@@ -612,6 +621,11 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	}
 	else TravTime += Dt;
 	if (bPre) ++PrerollFrames;
+	if (bMovieGated && bTravStarted && TravTime >= MovieFrom - 1e-6)
+	{
+		GIsDumpingMovie = MovieDumpSaved; bMovieGated = false;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie dump on at sequence t=%.4f frame=%llu"), TravTime, (unsigned long long)GFrameCounter);
+	}
 
 	ReadHeroMask(); // previous frame's hero pixel mask (telemetry)
 	// ---- input: live (keyboard / mouse / pad) or scripted playback
