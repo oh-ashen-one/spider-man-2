@@ -193,7 +193,7 @@
    },
    "moon": null,
    "sky": {
-    "intensity": 5.5,
+    "intensity": 5.7,
     "tint": [
      0.88,
      0.94,
@@ -215,9 +215,9 @@
      255
     ],
     "sky_luminance_factor": [
-     0.96,
-     0.96,
-     0.96,
+     0.925,
+     0.925,
+     0.925,
      1.0
     ],
     "mie_scattering": [
@@ -366,7 +366,7 @@
      "temp": 5600.0
     }
    ],
-   "_r09": "round 09 (S4 far band / sky, director brief after city r11): S4 far band 25-32 Y under the sky with far-shore contrast (C11 / C15): aerial perspective 5 -> 2.5, AP + sky luminance factor .5 (darker AP veil), sky luminance x.96 on top, height-fog contribution .8, sky light 2.5 -> 5.5 (keeps the city ambient when the sky dims), volumetric fog extinction x4 (.5 -> 2: near-canyon haze inside 360 m that AP 2.5 no longer gives); sweeps round-09/diag/sweep*.txt",
+   "_r09": "round 09 (S4 far band / sky, director brief after city r11): S4 far band 25-32 Y under the sky with far-shore contrast (C11 / C15): aerial perspective 5 -> 2.5, AP + sky luminance factor .5 (darker AP veil), sky luminance x.925 on top (x.96 in the first bake: Manhattan_View_S4 far box -32.9, tour S4 -30.2), height-fog contribution .8, sky light 2.5 -> 5.7 (5.5 in the first two bakes) (keeps the city ambient when the sky dims), volumetric fog extinction x4 (.5 -> 2: near-canyon haze inside 360 m that AP 2.5 no longer gives); sweeps round-09/diag/sweep*.txt",
    "_r09_previous": {
     "ap": 5.0,
     "hfc": 1.0,
