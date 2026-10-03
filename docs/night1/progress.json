@@ -107,10 +107,10 @@
    "id": "C",
    "name": "Integrated Manhattan map",
    "branch": "night1/manhattan",
-   "state": "active",
-   "round": 3,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5 (resumed an Opus start))",
-   "gap": "fire-escape WHBox collision matching drawn platforms + top-out (r3 crosstown-east: 0 s stuck, <= 1 topOut loop, past x=-235.5 by 3.5 s) on a branch that has merged integration"
+   "state": "done",
+   "round": 1,
+   "verdict": "Map builds headless in ~10 min; route clean (0 fall-through/T-pose/stuck)",
+   "gap": "Integration bugs routed to owners; hero swap to /Game/Characters pending P3"
   },
   {
    "id": "F",
