@@ -1,0 +1,268 @@
+{
+ "groups": [
+  {
+   "name": "p1_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p2_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p3_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet pp.FilmSlope 0.8"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p4_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.06 0.06 0.06 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p5_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p6_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet pp.ColorContrast 1 1 1 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p7_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorContrast 1 1 1 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p1_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p2_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p3_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet pp.FilmSlope 0.8"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p4_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.025 0.025 0.025 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p5_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p6_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet pp.ColorContrast 1 1 1 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p7_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorContrast 1 1 1 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p1_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p2_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p3_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet pp.FilmSlope 0.8"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p4_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.025 0.025 0.025 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p5_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p6_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.1",
+    "exec wh.ToDSet pp.ColorContrast 1 1 1 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "p7_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorContrast 1 1 1 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  }
+ ]
+}

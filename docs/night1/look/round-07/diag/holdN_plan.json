@@ -1,0 +1,220 @@
+{
+ "groups": [
+  {
+   "name": "n0_h19.5",
+   "hour": 19.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.048 0.048 0.048 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorGainHighlights 0.441184 0.731927 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.048 0.048 0.048 1",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.441184 0.731927 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.048 0.048 0.048 1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.75 0.75 0.75 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n0_h19.8",
+   "hour": 19.8,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.02 0.02 0.02 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorGainHighlights 0.521356 0.814055 0.902 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.02 0.02 0.02 1",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.521356 0.814055 0.902 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.02 0.02 0.02 1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.75 0.75 0.75 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n0_h20",
+   "hour": 20.0,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n1_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.02 0.02 0.02 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n2_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n3_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorGainHighlights 0.586551 0.838793 0.92941 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n4_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.02 0.02 0.02 1",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.586551 0.838793 0.92941 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n5_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.02 0.02 0.02 1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.75 0.75 0.75 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  }
+ ]
+}

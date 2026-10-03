@@ -1,0 +1,126 @@
+{
+ "groups": [
+  {
+   "name": "n6_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n7_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.005 0.005 0.005 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n8_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.3 0.3 0.3 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n9_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0 0 0 1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.5 0.5 0.5 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n10_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.6"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n6_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n7_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.005 0.005 0.005 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n8_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.3 0.3 0.3 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n9_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0 0 0 1",
+    "exec wh.ToDSet cloudv.Cloud_AlbedoColor 0.5 0.5 0.5 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "n10_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.FilmShoulder 0.6"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  }
+ ]
+}
