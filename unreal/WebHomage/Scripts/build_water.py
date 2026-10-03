@@ -342,19 +342,21 @@ float2 slT = 0; float varL = 0; float2 slL = 0;
 slT += slL * lk;
 %(lay)s
 // ---- r03 resolved wind chop 0.15-0.5 m: two realizations, two scroll directions (near field only; beyond, all of it is sub-pixel variance)
-float2 slC = 0; float lostC = 1.0;
+float2 slC = 0; float lostC = 1.0; float2 slCx = 0;   // r06: slCx = the chop removed from open water (kept for the glint selection)
 // r04: seen from above (down -> 1) the resolved chop continues to ChopFar m (0.15-0.5 m waves are 1-3 px there from swing height)
 float chopW = max(nearW, down * (1.0 - smoothstep(ChopFar * 0.6, ChopFar, dist)));
 [branch] if (chopW > 0.0) {
     lostC = 0.0;
     %(chop)s
-    slC *= chopW * 0.70711 * lerp(1.0, OpenChop, openW);   // r06: the resolved chop (sparkle) stays along walls / piers
+    slC *= chopW * 0.70711;
+    slCx = slC * (1.0 - lerp(1.0, OpenChop, openW)); slC -= slCx;   // r06: the resolved chop (sparkle) stays along walls / piers
     lostC = lerp(1.0, lostC, chopW);
 }
 float ck = ChopK * gk, mk = ChopK * MicroK * gk * %(crms).4f;
 slT *= ck; varL *= ck * ck;
 slT *= lerp(1.0, OpenSl, openW);   // r06: open-water gain on the spectrum layers (1 = r05b)
 float2 slope = sl2 + slT + slC * mk;
+float2 slopeX = slCx * mk;   // r06: open-water chop slope not shaded (OpenChop < 1), used only to pick sun glints (OpenGlS)
 // r04: under a low sun (9 deg) facets tilted away from it by more than the sun elevation get N.L <= 0 and SLW lights them as black,
 //      crisp-edged specks (Dbg 5). Soft-limit only the slope component pointing away from the sun (SunClampK 0 = r03)
 float3 LsN = normalize(SunDir);
@@ -474,6 +476,14 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
     gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK
                   * lerp(1.0, OpenGlit, openW));   // r06: sun-glitter gain on open water (the sun path lives there)
 }
+// r06 open-water sun glints (OpenGlS): the open water's base is rough (OpenRgh: no sky frost), but its sharp facets still mirror the sun.
+//      A pixel whose full-detail normal (the shaded slope + the open-water chop that is not shaded) lies within ~GlitPow of the sun
+//      half-vector is drawn as a sharp facet on the half-vector (roughness 0.06), i.e. r05b's sun glints without r05b's sky frost
+[branch] if (OpenGlS > 0.0 && openW > 0.0 && dist > 8.0 && dist < GlitDist && Ls.z > 0.0 && dot(Rm, Ls) > 0.5) {
+    float3 Nx = normalize(float3(-(slope.x + slopeX.x), -(slope.y + slopeX.y), 1.0));
+    float gx = pow(saturate(dot(Nx, Hh)), GlitPow);
+    gw = max(gw, saturate(gx * OpenGlS * openW * (1.0 - wf) * saturate(Ls.z * 8.0)));
+}
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
 Emis = FarEmisK * farF * float3(0.62, 0.6, 0.55);   // r05b candidate (default 0): the far line also as emission, independent of the Opacity path
@@ -570,10 +580,10 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0, 'BandPx': 0.0, 'LapDens': 0.0,
           # r06 contact mask (docs/night1/water/round-06/NOTES.md): the near-field sparkle (resolved chop OpenChop, second realization OpenB,
           # spectrum-layer gain OpenSl), the whitecap flecks (OpenWC), an optional roughness floor (OpenRgh) and the sun glitter (OpenGlit) take
-          # OpenBend (BendK share) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
+          # OpenBend (BendK share), OpenGlS / GlitPow (open-water sun glints picked from the full-detail normal) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
           # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
           'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
-          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.0, 'OpenGlit': 1.0, 'OpenBend': 1.0}
+          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.4, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 3000.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

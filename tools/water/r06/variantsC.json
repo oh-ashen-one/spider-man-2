@@ -1,0 +1,8 @@
+{
+ "NG": {"OpenGlS": 0.0, "_views": ["river_sun"]},
+ "P1k": {"GlitPow": 1000.0, "_views": ["river_sun"]},
+ "P10k": {"GlitPow": 10000.0, "_views": ["river_sun"]},
+ "GS4": {"OpenGlS": 4.0, "_views": ["river_sun"]},
+ "CB": {"OpenChop": 1.0, "OpenB": 1.0, "_views": ["river_low", "river_sun"]},
+ "R5": {"OpenRgh": 0.5, "_views": ["river_low", "river_sun"]}
+}
