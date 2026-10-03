@@ -21,6 +21,9 @@ LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand
 LAWN_SKYOCC = float(__import__('os').environ.get('SM2_TERRAIN_LAWN_SKYOCC', '0.25'))     # r05: 1.0 (the r05 AO 0.12 test showed no crown shadow because nothing cast one)
 LAWN_SUNGAIN = 0.55 * (1.0 + 0.25) / (LAWN_SKYOCC + 0.25)   # r05: 0.55 (albedo scale with the sun-facing turf normal)
 LAWN_TILT = 0.85
+# r06 canopy sky occlusion: the ground under a crown sees ~0.4 of the open sky (baked per tree into the pathmask alpha by tools/terrain/prep_canopy.py; sky / Lumen indirect only,
+# the sun term is untouched). Most of the p4 Great Lawn lies in the West Side skyline's shadow at the 9 deg sun, where this, not a cast sun shadow, darkens the lawn under a tree.
+CANOPY_OCC = float(__import__('os').environ.get('SM2_TERRAIN_CANOPY_OCC', '0.4'))
 FILL = 650.0   # r05 (was 450): the shaded foreground crowns of p1 read luma 60-75   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
@@ -55,8 +58,8 @@ c = lerp(c, float3(0.0742, 0.0704, 0.0648) * (0.9 + 0.2 * n2.r) * (0.82 + 0.36 *
 r = lerp(r, 0.9, max(edge, dr));
 float Lk = dot(c, float3(0.2126, 0.7152, 0.0722));   // soft luma knee: sunlit light gravel must not clip under the golden rig (same idea as the city sidewalk's SunK)
 c *= lerp(1.0, min(1.0, (0.30 + (Lk - 0.30) * 0.3) / max(Lk, 0.0001)), step(0.30, Lk));
-Rough = r; NormalW = lerp(lwTurfNormal(n, sun, tilt), float3(0.0, 0.0, 1.0), max(edge, dr)); Spec = lerp(0.04, 0.25, max(edge, dr)); AO = skyocc; return min(c * gain * sungain, float3(0.9, 0.9, 0.9));   // r05: AO = sky / bounce share, albedo x sungain (LAWN_SKYOCC)   // r04: Spec 0.04 on turf (UE default 0.5: at the p10 eye height (73 deg incidence) the Fresnel term mirrored the sky: display blue 49 on a lawn whose albedo blue is 0.004)''',
-        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('cam', 'cam', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K), ('skyocc', 'scalar', LAWN_SKYOCC), ('sungain', 'scalar', LAWN_SUNGAIN), ('sun', 'sun', 0), ('tilt', 'scalar', LAWN_TILT)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')]))
+Rough = r; NormalW = lerp(lwTurfNormal(n, sun, tilt), float3(0.0, 0.0, 1.0), max(edge, dr)); Spec = lerp(0.04, 0.25, max(edge, dr)); AO = skyocc * lerp(1.0, canopyocc, 1.0 - pm.a); return min(c * gain * sungain, float3(0.9, 0.9, 0.9));   // r06: x canopy sky occlusion (pathmask alpha, tools/terrain/prep_canopy.py)   // r05: AO = sky / bounce share, albedo x sungain (LAWN_SKYOCC)   // r04: Spec 0.04 on turf (UE default 0.5: at the p10 eye height (73 deg incidence) the Fresnel term mirrored the sky: display blue 49 on a lawn whose albedo blue is 0.004)''',
+        inputs=[('tCol', 'tex', 'grass_col'), ('tNoise', 'tex', 'noise'), ('tAsph', 'tex', 'asphalt_col'), ('tPath', 'tex', 'pathmask'), ('tDet', 'tex', 'lawn_detail'), ('wpos', 'wpos', None), ('cam', 'cam', None), ('gain', 'scalar', 1.0), ('grade', 'vector', LAWN_GRADE), ('lk', 'vector', LAWN_K), ('skyocc', 'scalar', LAWN_SKYOCC), ('sungain', 'scalar', LAWN_SUNGAIN), ('sun', 'sun', 0), ('tilt', 'scalar', LAWN_TILT), ('canopyocc', 'scalar', CANOPY_OCC)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')]))
     # coast / plaza lawns: the same lawn shader, lawn variant (meadow everywhere, no ball fields / ponds / woodland floor)
     M.append(dict(name='M_TerrainLawn', include=LAWN_INC, code='''
 float r; float3 n;

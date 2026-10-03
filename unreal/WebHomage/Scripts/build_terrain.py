@@ -317,6 +317,24 @@ def pool_band(d):
     if abs(fi - float(d.get('fadeIn') or 0.0)) > 0.01 or abs(fo - float(d.get('fadeOut') or 0.0)) > 0.01:
         log('WARN pool fades differ from the pool.js defaults: near %.1f far %.1f fadeIn %s fadeOut %s' % (near, far, d.get('fadeIn'), d.get('fadeOut')))
     return (near, far, 0.0, 0.0)
+def tree_copies():
+    """r06 render / shadow copies of the tree prototypes (also its own step 'treecopies': re-run without re-importing)"""
+    for p in MAN['protos']:
+        nm = p['name']; dst = f'{TREED}/SM_{nm}'
+        if not EAL.does_asset_exist(dst): continue
+        # r06: a Nanite copy of every near-card canopy for the hidden shadow-caster pools (ISM_shadowcards_*, see _sec_trees): round-06/diag found that no non-Nanite
+        # instanced component with affect_distance_field_lighting off writes the sun's shadow (VSM or CSM), while Nanite HISMs do (also hidden, with cast_hidden_shadow)
+        if TREE_RE.match(nm) and nm.endswith('_l1_leaves'):
+            # r06: the smooth olive 'balls' at ez-tree branch tips in p10 (r05 critic: (1125-1200, 235-295), hp3 SD 3.4) are Nanite-simplified leaf-card clusters of the
+            # ez L1 leaves (20-44 m). The visible L1 leaves draw a non-Nanite copy (culled at 46 m); the Nanite pool stays as a hidden shadow caster (see _sec_trees).
+            rr = dst + '_raster'
+            if EAL.does_asset_exist(rr): EAL.delete_asset(rr)
+            EAL.duplicate_asset(dst, rr); finish_mesh(load(rr), load(f'{MAT}/M_TerrainLeaves'), False, nanite=False); EAL.save_asset(rr)
+        if nm.endswith('_near') and nm.startswith('trees_'):
+            nn = dst + '_nanite'
+            if EAL.does_asset_exist(nn): EAL.delete_asset(nn)
+            EAL.duplicate_asset(dst, nn); finish_mesh(load(nn), load(f'{MAT}/M_TerrainCards'), False, nanite=True); EAL.save_asset(nn)
+    log('tree copies done')
 @step('trees')
 def _step_trees():
     recs = [p for p in MAN['protos'] if TREE_RE.match(p['name'])]
@@ -337,14 +355,12 @@ def _step_trees():
         elif nm.endswith(('_near', '_lod1')): finish_mesh(sm, load(f'{MAT}/M_TerrainCards'), False)
         else: finish_mesh(sm, load(f'{MAT}/M_TerrainClump'), False)
         EAL.save_asset(dst)
-        # r06: a Nanite copy of every near-card canopy for the hidden shadow-caster pools (ISM_shadowcards_*, see _sec_trees): round-06/diag found that no non-Nanite
-        # instanced component with affect_distance_field_lighting off writes the sun's shadow (VSM or CSM), while Nanite HISMs do (also hidden, with cast_hidden_shadow)
-        if nm.endswith('_near') and nm.startswith('trees_'):
-            nn = dst + '_nanite'
-            if EAL.does_asset_exist(nn): EAL.delete_asset(nn)
-            EAL.duplicate_asset(dst, nn); finish_mesh(load(nn), load(f'{MAT}/M_TerrainCards'), False, nanite=True); EAL.save_asset(nn)
     if EAL.does_directory_exist(TREED + '/_in'): EAL.delete_directory(TREED + '/_in')
     log('tree prototypes', len(recs), '+ chain', len(chain))
+    tree_copies()
+
+@step('treecopies')
+def _step_treecopies(): tree_copies()
 
 # ------------------------------------------------------------------------------------------------ maps
 def U(x, y, z): return unreal.Vector(x * 100.0, z * 100.0, y * 100.0)   # browser metres -> UE cm
@@ -508,6 +524,19 @@ def build_land(path):
             c.add_instances(xs, False, True)
             a.set_actor_hidden_in_game(True)
             log('shadow cards', kind, len(xs), 'instances (Nanite, hidden, cast hidden shadow)')
+        def l1_caster(pool, sp_, mat, xs, items):
+            """r06: the ez L1 leaves as a hidden Nanite shadow caster (the visible L1 leaves are a non-Nanite copy: Nanite simplified the leaf clusters into smooth balls)"""
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_l1caster_' + pool, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(load(sp_)); c.set_editor_property('num_custom_data_floats', 6); c.set_material(0, mat)
+            c.set_cast_shadow(True); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c)
+            for k_, v_ in (('cast_hidden_shadow', True), ('visible_in_ray_tracing', False), ('affect_indirect_lighting_while_hidden', False),
+                           ('visible_in_reflection_captures', False), ('visible_in_real_time_sky_captures', False)):
+                try: c.set_editor_property(k_, v_)
+                except Exception as ex: log('WARN l1caster', k_, str(ex)[:100])
+            c.add_instances(xs, False, True)
+            a.set_actor_hidden_in_game(True)
+            log('l1 caster', pool, len(xs), 'instances (Nanite, hidden)')
         order = sorted(INS.keys(), key=lambda k: (0 if k.startswith('ez-') else 1, k))
         for pool in order:
             d = INS[pool]
@@ -523,6 +552,8 @@ def build_land(path):
             else:
                 sp = f'{TREED}/SM_{nmu}'
                 if not EAL.does_asset_exist(sp): log('no mesh for', pool); continue
+            l1raster = pool.startswith('ez-') and pool.endswith('-l1-leaves') and EAL.does_asset_exist(sp + '_raster')   # r06: visible = non-Nanite copy, Nanite = hidden caster
+            if l1raster: sp_nanite, sp = sp, sp + '_raster'
             tinted = pool.startswith(('ez-',)) and pool.endswith('leaves') or pool.startswith('trees-')
             l1 = '-l1-' in pool
             a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_' + pool, folder='Terrain/Trees')
@@ -534,6 +565,7 @@ def build_land(path):
             # per-instance cull distance: only a cost optimisation for pools that need no shadow / Lumen presence beyond their band (the band itself is the material clip)
             cull = None
             if pool.startswith('ez-') and not l1: cull = 2500       # ez L0 (heavy, non-Nanite); L1 is Nanite and keeps casting shadows at every distance (the band clip is skipped in shadow passes, Foliage.ush)
+            if l1raster: cull = 4600                                  # r06: the non-Nanite L1 leaves copy only draws in its 20-44 m band (+ fade); the hidden Nanite pool casts
             elif pool in ('trunks-park', 'trunks-elm', 'trunks-conifer'): cull = 7200
             elif pool.endswith('-mid'): cull = 20000
             if cull:
@@ -541,6 +573,7 @@ def build_land(path):
                 except Exception as ex: log('WARN cull distance', str(ex)[:100])
             casts = not (pool.endswith(('-crown', '-crownfar', '-far', '-lod1')))       # browser: LOD1 cards, crown LODs and far trunks cast no shadows; near cards / ez / near + mid trunks do
             if pool.startswith('trees-') and pool.endswith('-near'): casts = False      # r06: the hidden Nanite ISM_shadowcards_* pool casts for it (shadow_cards)
+            if l1raster: casts = False
             c.set_cast_shadow(casts)
             c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
             # r03 (why r02 cards crushed to black): this project runs Lumen with HARDWARE ray tracing. UE 5.8 puts every drawn primitive into the ray-tracing scene as visible to
@@ -567,6 +600,7 @@ def build_land(path):
                     for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
             nt += len(xs); counts[pool] = len(xs)
             if pool.startswith('trees-') and pool.endswith('-near'): soft('shadowcards ' + pool, shadow_cards, pool, xs)
+            if l1raster: soft('l1 caster ' + pool, l1_caster, pool, sp_nanite, c.get_material(0), xs, d['items'])
         log('park woodland instances', nt, 'in', len(counts), 'pools')
         # r03 pass 2: Lumen-only shade proxy. With every leaf pool out of the ray-tracing scene nothing occluded the sky under the canopy (pass 1: the lawn under the trees was
         # fully sky-lit, the p1 foreground lost its shade). A lighter proxy: the crown hull of each tree at PROXY_K of its size about the crown centre, hidden in game but kept for
