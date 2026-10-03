@@ -442,7 +442,10 @@ float rr = clamp(pow(a2, 0.25), 0.03, rcap);
 // r04 perf: at grazing views (river level) the far field gets a rough lobe beyond ~1.7 x near (Lumen does not trace it; its slope
 //      variance is unresolved there anyway); from above (down -> 1) this floor is off
 rr = max(rr, GrazeRough * smoothstep(%(near).1f, %(near).1f * 1.7, dist) * (1.0 - down));
-rr = max(rr, OpenRgh * openW);   // r06: optional roughness floor on open water (0 = off)
+// r06: roughness floor on open water; RghVar modulates it with 4-30 m patches (wind patches: a uniform rough lobe smeared the horizon
+//      reflection into row-coherent bands, dolly autocorr 0.115 at OpenRgh 0.5)
+float rnv = NZG(p / 60.0 + float2(t * 0.004, -t * 0.003), 1.0 / 60.0).r;
+rr = max(rr, OpenRgh * openW * clamp(1.0 + RghVar * (rnv - 0.5) * 4.0, 0.2, 1.8));
 Rough = lerp(rr, 0.6, wf);
 // r04 foam fix: foam pixels take the long-wave (Gerstner) normal, not the steep resolved chop normal (r03's chop-lit foam rendered as dark
 //      specks under the 9 deg sun); FoamNK 0.6 ~ r03 behaviour
@@ -598,7 +601,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # OpenBend (BendK share), OpenGlS / GlitPow (open-water sun glints picked from the full-detail normal) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
           # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
           'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
-          'OpenChop': 1.0, 'OpenB': 1.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.5, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 150.0, 'OpenGSp': 1.0, 'GlitSlK': 3.0, 'GlitRgh': 0.025, 'GlitE': 0.0, 'GlitT': 0.4}
+          'OpenChop': 1.0, 'OpenB': 1.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.45, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 150.0, 'OpenGSp': 1.0, 'GlitSlK': 3.0, 'GlitRgh': 0.025, 'GlitE': 0.0, 'GlitT': 0.4, 'RghVar': 0.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

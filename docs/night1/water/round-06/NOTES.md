@@ -69,6 +69,11 @@ water pixels exceed 0.5, so the GlitPow pick is ~0.5 %: about 2-3 pixels per 108
 the glint path moved the sparkle width above 33 %; the final keeps the sparse pick (OpenGlS 1, GlitPow 150, GlitSlK 3, GlitRgh 0.025) and
 GlitE 0. River_low is north-facing (the pick is gated off), so none of this touches it.
 
-Final defaults (build_water.py blob 329f2d5fa61b, the hold-G build; the final captures reuse it with SKIP_BUILD): ShoreMask 1, ShoreA 2,
-ShoreB 14, ShoreSA 10, ShoreSB 40, OpenD0 250, OpenD1 400, OpenChop 0, OpenB 0, OpenSl 1, OpenWC 0, OpenRgh 0.5, OpenGlit 1, OpenBend 1,
-OpenGlS 1, GlitPow 150, OpenGSp 1, GlitSlK 3, GlitRgh 0.025, GlitE 0, GlitT 0.4. Everything else as r05b.
+### Final attempt 1 (hold-G build, blob 329f2d5fa61b: OpenRgh 0.5, OpenChop 0, OpenB 0) - rejected by the dolly
+4K native, final hold 1 (11:47-12:11): river_low near mean 72.9 / hp 17.42 (pack 17.82), far-strip bright share 4.84 %; river_sun flanks 73.7
+(84.4 / 62.9), path400 ratio 2.57, sparkle 29.9 % native (34.9 % pack); seawall band 64.6 % of rows; harbour_high contact line 73.1 %,
+under-island 27.6 Y; harbour_sun_high glints 1.72 %, p1 52.3; S4 C14 15.4; river_low_dolly XOR / OR min 0.475 / mean 0.663 but
+**autocorr(80 px) 0.115 (gate <= 0.10; r05b 0.076)**: with the open-water detail neither shaded nor sharp, the long-wave pattern dominates
+the high-passed dolly crop. These files are kept in scratch (`_scratch/water/r06g/attempt1/`), not in this folder. A single-still version
+of the dolly instrument (`tools/water/r06/still_ac.py`) reads 0.099-0.115 on the OpenRgh 0.5 stills and 0.046-0.058 when the open-water
+chop and second realization are shaded (R3B0C, CB): hold H screens OpenRgh 0.4 / 0.45 / 0.5 with OpenChop 1, OpenB 1 (shots at 8-16 s).
