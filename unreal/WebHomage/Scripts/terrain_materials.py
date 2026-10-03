@@ -82,6 +82,24 @@ c *= 0.8 + 0.28 * g1 + 0.2 * (g2 - 0.5);
 Rough = roughp; Metal = metalp; return c;''',
             inputs=[('vc', 'vc', None), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None), ('tint', 'vector', (1, 1, 1, 1)), ('usevc', 'scalar', 0.0), ('roughp', 'scalar', 0.8), ('metalp', 'scalar', 0.0)],
             outputs=[('', 3, 'MP_BASE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Metal', 1, 'MP_METALLIC')], two_sided=two))
+    # r04 schist outcrops / bank rocks: the vertex colour (0.46, 0.44, 0.40 x 0.7-1.2) went white under the golden sun (critic r3: 'white lumps' at the pond banks, p3). Darker grey-brown stone, triplanar
+    # (the mesh has no UVs) albedo texture at 0.4 / 1.9 / 7 m, foliation joints, dark crevices on the steep faces, a little moss on the up-facing parts.
+    M.append(dict(name='M_TerrainRock', include=None, code='''
+float3 pw = wpos * 0.01;
+float3 an = abs(wn); an = an / max(an.x + an.y + an.z, 0.001);
+float4 a1 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 1.9) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 1.9) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 1.9) * an.z;
+float4 a2 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 0.43) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 0.43) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 0.43) * an.z;
+float4 a3 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 7.0) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 7.0) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 7.0) * an.z;
+float3 c = vc.rgb * 0.5;
+c *= (0.55 + 0.9 * a1.r) * (0.78 + 0.5 * a2.g) * (0.82 + 0.36 * a3.b);
+float jn = frac((pw.x * 0.8 + pw.y * 0.6 + pw.z * 1.3) / 1.7 + a1.g * 1.4);
+c *= 1.0 - 0.5 * smoothstep(0.55, 0.64, jn) * (1.0 - smoothstep(0.64, 0.72, jn));                       // foliation joints
+c *= 1.0 - 0.4 * smoothstep(0.62, 0.8, a2.b) * (1.0 - saturate(wn.z));                                   // dark crevices on steep faces
+float up = saturate(wn.z);
+c = lerp(c, float3(0.07, 0.095, 0.03) * (0.7 + 0.6 * a2.r), smoothstep(0.5, 0.78, a1.b * 0.6 + a3.r * 0.4) * up * 0.55);   // moss
+Rough = 0.92; return c;''',
+        inputs=[('vc', 'vc', None), ('wn', 'wn', None), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None)],
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS')]))
     # r04 blade turf (replaces the 9-blade star-sprite tuft): patches of ~600 blades (tools/terrain/prep_lawn.py), per-blade colour from the vertex colour (R height along the blade,
     # G blade random, B clump random), dark root -> saturated yellow-green tip, two-sided foliage (light through the blades), the blades shrink to the ground between fade0 and fade1 metres
     # (no pop at the instance cull distance), wind sways the tips. Lumen / ray tracing never see these pools (HWRT would treat every blade as a shell, see build_terrain.py).

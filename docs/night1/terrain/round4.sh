@@ -28,6 +28,12 @@ case "${STAGE:-A}" in
   M) # movies hold: t5 (on the probe's chosen route) then t4; each only starts in the first 25 min of the hold; the shaders are cached by the stills hold (no warm-up)
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" MOVIES="${MOVIES:-t5_avenue_to_park t4_lawn_sprint}"
      ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(moves); AFTER=();;
+  W) # hold 5 (r04 final build, 2026-10-03): safe warm-up (the final build adds M_TerrainRock), then the t5 movie (on the committed route) and the t4 movie; each only starts in the first 25 min of the hold
+     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" MOVIES="${MOVIES:-t5_avenue_to_park t4_lawn_sprint}"
+     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm moves); AFTER=();;
+  S) # hold 6 (r04 final build): the nine 4K stills (p10 p4 p9 p1 first), then the GPU ms of p1 / p10 on the HEAD content (/Game/Terrain) vs this build again, same hold (basegpu, as far as the hold budget allows)
+     export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" BASE_ROOT=/Game/Terrain PRIO_IDS="p10_lawn_eye p4_greatlawn p9_park_panorama p1_south" STILL_TAG=r04
+     ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills); AFTER=("basegpu");;
   B) # hold 2: everything the first hold did not take (the other five stills + the t5 movie on the chosen route); BASE_IDS stays empty
      export TERRAIN_ROOT="${TERRAIN_ROOT:-/Game/TerrainR4}" ONLY_IDS="${ONLY_IDS:-p2_reservoir p3_lake p6_west_shore p7_east_shore p8_pier}" PRIO_IDS="${PRIO_IDS-}" STILL_TAG="${STILL_TAG:-r04}" MOVIES=t5_avenue_to_park
      ROUND="$HERE/${ROUND_NAME:-round-04}"; WANT=(warm stills moves basegpu); AFTER=();;

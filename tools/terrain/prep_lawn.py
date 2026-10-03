@@ -118,6 +118,30 @@ clear = ndimage.distance_transform_edt(~PATH) * TEXEL                           
 blank = T['instances'].get('park-blankets', {}).get('items', [])
 BL = np.array([[r[0], r[2], 0.5 * math.hypot(1.8 * r[4], 1.5 * r[6]) + 0.45] for r in blank], np.float64) if blank else np.zeros((0, 3))
 
+def _sstep(a, b, v): t = np.clip((v - a) / (b - a), 0.0, 1.0); return t * t * (3.0 - 2.0 * t)
+def infield_sand(x, z):
+    """r04: the ball-field clay (skinned fan + pitcher's mound) of Park.ush, evaluated here WITHOUT its noise gate: blades are removed there so the clay reads (round-03 critic: pale squares
+    for ball fields; the blades had hidden the browser's dirt). Same geometry as Park.ush's `for (i = 1..2, k = 0..3)` loop over the meadows uMd[1], uMd[2] (browser x, z in metres)."""
+    out = np.zeros_like(x)
+    for i in (1, 2):
+        m = T['meadows'][i]; c = np.array([m['x'], m['z']]); half = np.array([m['rx'], m['rz']])
+        for k in range(4):
+            if i == 2 and k in (1, 2): continue
+            fk = float(i * 4 + k)
+            hp = c + np.array([(k & 1) * 2.0 - 1.0, (k >> 1) * 2.0 - 1.0]) * half * np.array([0.55 + 0.08 * math.sin(fk * 2.3), 0.5 + 0.08 * math.cos(fk * 1.7)])
+            d0 = c - hp; d0 = d0 / np.linalg.norm(d0)
+            ra = 0.35 * math.sin(fk * 3.1 + 0.4)
+            dv = np.array([d0[0] * math.cos(ra) - d0[1] * math.sin(ra), d0[0] * math.sin(ra) + d0[1] * math.cos(ra)])
+            R = 22.0 + 5.0 * ((fk * 0.618) % 1.0)
+            dx, dz = x - hp[0], z - hp[1]; r = np.hypot(dx, dz); ca = (dx * dv[0] + dz * dv[1]) / np.maximum(r, 1e-3)
+            fan = (1.0 - _sstep(R, R + 1.5, r)) * _sstep(0.66, 0.72, ca)
+            qx = dx * dv[0] + dz * dv[1]; qy = -dx * dv[1] + dz * dv[0]
+            qdx = (qx + qy) * 0.7071; qdy = (qx - qy) * 0.7071; gs = R * 0.64
+            grass_sq = (qdx >= 1.5) & (qdy >= 1.5) & (qdx <= gs) & (qdy <= gs)
+            mound = 1.0 - _sstep(2.5, 3.2, np.hypot(qx - R * 0.48, qy))
+            out = np.maximum(out, np.maximum(fan * (~grass_sq), mound))
+    return out
+
 def scatter(cell, seed, hcap, dens_pow):
     rng = np.random.default_rng(seed)
     nx, nz = int((PARK['x1'] - PARK['x0']) / cell), int((PARK['z1'] - PARK['z0']) / cell)
@@ -128,6 +152,7 @@ def scatter(cell, seed, hcap, dens_pow):
     keep = jit[..., 2] < dens[mj, mi] ** dens_pow
     pi_ = np.clip(np.floor((x - PX0) / TEXEL).astype(int), 0, pm.shape[1] - 1); pj_ = np.clip(np.floor((z - PZ0) / TEXEL).astype(int), 0, pm.shape[0] - 1)
     keep &= (clear[pj_, pi_] > 0.45)
+    keep &= jit[..., 4] > 0.93 * infield_sand(x, z)                                      # r04: bare clay on the ball-field infields (a few stray blades remain)
     xk, zk = x[keep], z[keep]
     if len(BL):
         ok = np.ones(len(xk), bool)

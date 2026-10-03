@@ -278,7 +278,7 @@ def _step_foliage():
         if EAL.does_asset_exist(dst): EAL.delete_asset(dst)   # r04: re-running the foliage step alone replaces the prototype (rename onto an existing asset fails)
         EAL.rename_asset(src, dst); sm = load(dst)
         if nm in GRASS_PROTOS: finish_mesh(sm, load(f'{MAT}/Inst/MI_Grass_' + ('Near' if nm.startswith('grass_near') else 'Far')), False)
-        elif nm == 'park_rocks': finish_mesh(sm, mi('P_park_rocks', 'M_TerrainVC', {'usevc': 1.0, 'roughp': 0.9}, {'tint': (1.0, 1.0, 1.0, 1.0)}), False)   # schist outcrops (vertex-coloured, museum triangles dropped in prep)
+        elif nm == 'park_rocks': finish_mesh(sm, mi('P_park_rocks', 'M_TerrainRock'), False)   # schist outcrops / bank rocks (r04: triplanar stone texture, darker grey-brown; museum triangles dropped in prep)
         elif nm == 'shore_patch': finish_mesh(sm, mi('P_shore_patch', 'M_TerrainVC', {'usevc': 0.0, 'roughp': 0.85}, {'tint': (0.2, 0.19, 0.17, 1.0)}), False)   # granite bulkhead blocks closing the shoreline gaps (tools/terrain/shore_audit.py)
         else:
             rec = [p for p in MAN['protos'] if p['name'] == nm][0]; m = rec.get('mat') or {}
