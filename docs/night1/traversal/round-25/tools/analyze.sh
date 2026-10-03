@@ -12,6 +12,17 @@ cd $RD
 { echo "# Round 25 gates (r25_checks.py)"; python3 $TD/r25_checks.py $RD
   echo "# pawn run cadence (cadence_r25.py, head-top FFT over 1.5-11 s)"; [ -f p1_pawn_run.mp4 ] && python3 $TD/cadence_r25.py p1_pawn_run.mp4 p1_pawn_run_telemetry.csv 1.5 11
 } > R25_GATES.txt 2>&1; cat R25_GATES.txt
+{ echo "# attach-to-attach gaps (critic r24 secondary 2: <= 3.3 s)"
+  for n in a_swing_chain m1_mouse_swing s1_high_swing f4_chain_flips; do [ -f ${n}_telemetry.csv ] && python3 -c "
+import csv
+r=list(csv.DictReader(open('${n}_telemetry.csv'))); prev=0; on=[]
+for x in r:
+    w=float(x['web_on'])>0.5
+    if w and not prev: on.append(round(float(x['t']),2))
+    prev=w
+g=[round(b-a,2) for a,b in zip(on,on[1:])]
+print('  $n attaches', on, 'gaps', g, 'max', max(g) if g else None, '-> PASS' if g and max(g) <= 3.3 else '-> FAIL')"; done
+} > GAPS.txt 2>&1; cat GAPS.txt
 python3 $TD/r24_checks.py $RD --rendered > /dev/null 2>&1; [ -f R24_CHECK.txt ] && cat R24_CHECK.txt
 python3 $TD/round-25/tools/owner_bugs.py > OWNER_BUGS.txt 2>&1 || true
 for f in $RD/*.mp4; do s=$(stat -f %z "$f"); echo "$(basename $f) $((s / 1048576)) MB $([ $s -le 15728640 ] && echo ok || echo OVER)"; done | tee $RD/SIZES.txt
