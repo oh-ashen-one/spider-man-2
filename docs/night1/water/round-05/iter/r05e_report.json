@@ -1,0 +1,369 @@
+{
+ "DBG10_harbour_high": {
+  "contact_dist/32m": {
+   "luma_mean": 126.5,
+   "value": 0.291,
+   "p90_value": 0.999
+  },
+  "foot/8m": {
+   "luma_mean": 132.3,
+   "value": 0.311,
+   "p90_value": 0.65
+  },
+  "far_cov(recomputed)": {
+   "luma_mean": 117.3,
+   "value": 0.26,
+   "p90_value": 0.489
+  },
+  "real_wf": {
+   "luma_mean": 81.4,
+   "value": 0.151,
+   "p90_value": 0.248
+  },
+  "nearW": {
+   "luma_mean": 68.6,
+   "value": 0.115,
+   "p90_value": 0.215
+  },
+  "dist/2000m": {
+   "luma_mean": 145.9,
+   "value": 0.364,
+   "p90_value": 0.592
+  },
+  "real_cf": {
+   "luma_mean": 66.2,
+   "value": 0.108,
+   "p90_value": 0.21
+  },
+  "real_dbgC/4m": {
+   "luma_mean": 154.6,
+   "value": 0.402,
+   "p90_value": 0.999
+  },
+  "_ramp_luma_at_0_.25_.5_.75_1": [
+   27.5,
+   114.1,
+   171.1,
+   188.7,
+   186.5
+  ]
+ },
+ "DBG10_river_low": {
+  "contact_dist/32m": {
+   "luma_mean": 99.6,
+   "value": 0.155,
+   "p90_value": 0.286
+  },
+  "foot/8m": {
+   "luma_mean": 49.8,
+   "value": 0.039,
+   "p90_value": 0.074
+  },
+  "far_cov(recomputed)": {
+   "luma_mean": 38.8,
+   "value": 0.017,
+   "p90_value": 0.032
+  },
+  "real_wf": {
+   "luma_mean": 42.7,
+   "value": 0.025,
+   "p90_value": 0.034
+  },
+  "nearW": {
+   "luma_mean": 217.9,
+   "value": 0.999,
+   "p90_value": 0.999
+  },
+  "dist/2000m": {
+   "luma_mean": 50.6,
+   "value": 0.04,
+   "p90_value": 0.059
+  },
+  "real_cf": {
+   "luma_mean": 67.0,
+   "value": 0.075,
+   "p90_value": 0.212
+  },
+  "real_dbgC/4m": {
+   "luma_mean": 194.2,
+   "value": 0.999,
+   "p90_value": 0.999
+  },
+  "_ramp_luma_at_0_.25_.5_.75_1": [
+   29.8,
+   135.3,
+   124.2,
+   106.9,
+   91.8
+  ]
+ },
+ "DF0_harbour_high": {
+  "harbour": {
+   "file": "DF0_harbour_high.png",
+   "crop": "native 4K x0-2400 y1300-2160",
+   "mean_Y": 82.4,
+   "highpass_sd": 5.76,
+   "glint_pct_ge140": 0.0,
+   "pale_blobs_ge20px": 106,
+   "p1": 53.9,
+   "p99_5": 115.4
+  },
+  "under": {
+   "under_Y": 100.2,
+   "open_Y": 122.9,
+   "open_minus_under": 22.7,
+   "streak_spread": 41.1
+  },
+  "line": {
+   "file": "DF0_harbour_high.png",
+   "edge_ref": "harbour_high_4k.jpg",
+   "columns": 1050,
+   "line_px_median": 4.0,
+   "cols_ge3px_pct": 77.8
+  }
+ },
+ "DF0_river_low": {
+  "file": "DF0_river_low.png",
+  "src_width": 1920,
+  "mean_Y": 78.3,
+  "rgb": [
+   85.5,
+   77.5,
+   64.3
+  ],
+  "p1": 40.1,
+  "p99_5": 112.4,
+  "highpass_sd": 7.3,
+  "glint_pct_ge140": 0.0,
+  "glint_pct_ge130": 0.0,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "bright_bar_pct": 9.75,
+  "refl_hp": 11.32,
+  "foam": {
+   "file": "DF0_river_low_seawall_foam.jpg",
+   "edge_line": [
+    -0.0566,
+    466.1
+   ],
+   "band_px_mean": 22.4,
+   "band_px_median": 17.0,
+   "rows_ge12px_pct": 57.6,
+   "band_Y_mean": 195.4
+  }
+ },
+ "DF0_river_sun": {
+  "file": "DF0_river_sun.png",
+  "src_width": 1920,
+  "mean_Y": 140.6,
+  "rgb": [
+   174.9,
+   136.4,
+   81.6
+  ],
+  "p1": 38.0,
+  "p99_5": 246.6,
+  "highpass_sd": 18.96,
+  "glint_pct_ge140": 48.74,
+  "glint_pct_ge130": 53.38,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "sparkle_width_pct": 38.2
+ },
+ "MK05_river_low": {
+  "file": "MK05_river_low.png",
+  "src_width": 1920,
+  "mean_Y": 101.6,
+  "rgb": [
+   110.1,
+   100.8,
+   84.9
+  ],
+  "p1": 33.7,
+  "p99_5": 164.2,
+  "highpass_sd": 15.61,
+  "glint_pct_ge140": 11.01,
+  "glint_pct_ge130": 21.11,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "bright_bar_pct": 6.38,
+  "refl_hp": 19.36,
+  "foam": {
+   "file": "MK05_river_low_seawall_foam.jpg",
+   "edge_line": [
+    -0.0611,
+    465.8
+   ],
+   "band_px_mean": 10.5,
+   "band_px_median": 2.0,
+   "rows_ge12px_pct": 34.5,
+   "band_Y_mean": 198.0
+  }
+ },
+ "MK05_river_sun": {
+  "file": "MK05_river_sun.png",
+  "src_width": 1920,
+  "mean_Y": 126.9,
+  "rgb": [
+   159.3,
+   121.9,
+   80.7
+  ],
+  "p1": 37.9,
+  "p99_5": 215.7,
+  "highpass_sd": 25.89,
+  "glint_pct_ge140": 41.76,
+  "glint_pct_ge130": 48.79,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "sparkle_width_pct": 53.0
+ },
+ "MK1_river_low": {
+  "file": "MK1_river_low.png",
+  "src_width": 1920,
+  "mean_Y": 98.0,
+  "rgb": [
+   106.4,
+   97.1,
+   81.6
+  ],
+  "p1": 38.0,
+  "p99_5": 157.2,
+  "highpass_sd": 14.47,
+  "glint_pct_ge140": 6.13,
+  "glint_pct_ge130": 14.36,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "bright_bar_pct": 6.2,
+  "refl_hp": 18.75,
+  "foam": {
+   "file": "MK1_river_low_seawall_foam.jpg",
+   "edge_line": [
+    -0.061,
+    465.8
+   ],
+   "band_px_mean": 11.8,
+   "band_px_median": 5.0,
+   "rows_ge12px_pct": 38.7,
+   "band_Y_mean": 198.8
+  }
+ },
+ "MK1_river_sun": {
+  "file": "MK1_river_sun.png",
+  "src_width": 1920,
+  "mean_Y": 148.4,
+  "rgb": [
+   185.4,
+   143.2,
+   90.7
+  ],
+  "p1": 42.6,
+  "p99_5": 208.1,
+  "highpass_sd": 22.62,
+  "glint_pct_ge140": 65.49,
+  "glint_pct_ge130": 72.78,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "sparkle_width_pct": 66.4
+ },
+ "base_harbour_high_4k": {
+  "harbour": {
+   "file": "base_harbour_high_4k.png",
+   "crop": "native 4K x0-2400 y1300-2160",
+   "mean_Y": 93.6,
+   "highpass_sd": 14.8,
+   "glint_pct_ge140": 1.59,
+   "pale_blobs_ge20px": 1411,
+   "p1": 52.0,
+   "p99_5": 145.9
+  },
+  "under": {
+   "under_Y": 112.7,
+   "open_Y": 138.2,
+   "open_minus_under": 25.6,
+   "streak_spread": 40.9
+  },
+  "line": {
+   "file": "base_harbour_high_4k.png",
+   "edge_ref": "harbour_high_4k.jpg",
+   "columns": 1050,
+   "line_px_median": 4.0,
+   "cols_ge3px_pct": 73.3
+  }
+ },
+ "base_harbour_sun_high": {
+  "sun": {
+   "crop": {
+    "p1": 57.7,
+    "R_minus_B": 99.8,
+    "mean_RGB": [
+     181,
+     135,
+     81
+    ]
+   },
+   "upper": {
+    "p1": 98.0,
+    "R_minus_B": 111.1,
+    "mean_RGB": [
+     213,
+     167,
+     102
+    ]
+   }
+  },
+  "sunhigh": {
+   "file": "base_harbour_sun_high.png",
+   "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360",
+   "mean_Y": 140.6,
+   "highpass_sd": 15.34,
+   "glint_pct": 1.003,
+   "path_cols_pct_ge2pct_rows": 100.0,
+   "path_cols_pct_any": 100.0,
+   "sparkles": 2283,
+   "sparkle_px_median": 4.0,
+   "sparkle_px_p90": 13.0,
+   "p99_5": 244.6
+  }
+ },
+ "base_river_low": {
+  "file": "base_river_low.png",
+  "src_width": 1920,
+  "mean_Y": 90.4,
+  "rgb": [
+   98.4,
+   89.6,
+   75.4
+  ],
+  "p1": 32.2,
+  "p99_5": 145.5,
+  "highpass_sd": 12.89,
+  "glint_pct_ge140": 1.38,
+  "glint_pct_ge130": 5.64,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "bright_bar_pct": 5.83,
+  "refl_hp": 14.99,
+  "foam": {
+   "file": "base_river_low_seawall_foam.jpg",
+   "edge_line": [
+    -0.0571,
+    465.3
+   ],
+   "band_px_mean": 9.9,
+   "band_px_median": 0.0,
+   "rows_ge12px_pct": 33.5,
+   "band_Y_mean": 198.6
+  }
+ },
+ "base_river_sun": {
+  "file": "base_river_sun.png",
+  "src_width": 1920,
+  "mean_Y": 145.9,
+  "rgb": [
+   183.2,
+   140.5,
+   89.7
+  ],
+  "p1": 44.5,
+  "p99_5": 204.3,
+  "highpass_sd": 20.24,
+  "glint_pct_ge140": 62.57,
+  "glint_pct_ge130": 71.62,
+  "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame",
+  "sparkle_width_pct": 65.3
+ }
+}

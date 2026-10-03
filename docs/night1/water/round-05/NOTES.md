@@ -1,4 +1,96 @@
-# Water round 05: contact foam (gate), island reflections, sun colour (Opus 5.5)
+# Water round 05: contact foam, island reflections, sun colour
+
+> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
+
+Branch `night1/water`, merged with `origin/Opus-5.5-Loop-Night-1` at 44821e6d (traversal r26 / characters r17; C++ rebuilt with
+`build_editor.sh`: OK). Part A (below) is Opus 5.5's interrupted round; part B is the resumed round (Sonnet 5.5 xhigh via Devin) and
+supersedes every number in part A: the shader both used had the distance bug found in part B.
+Every Unreal process ran inside a `gpu_slot.sh capture --label water` hold, one engine at a time, stopped with `stop_ue.sh` (drivers first); no
+engine crashed. The Studio was shared with the look / terrain sessions (1-2 other engines, GPU 0-80 %).
+
+## PART B: round 05b result (everything in this folder is ONE build: `build_water.py` blob 5e552fcd6edb)
+4K stills are native 3840x2160 (`r.ScreenPercentage 100`, t = 16 s); the dollies are 1920x1080 (internal 100 %), fixed 60 fps step, clip = t 6-16 s
+(600 frames), x264 CRF 23, 11.3 MB. Numbers: `spec.json` / `spec.txt` (`python3 tools/water/water_spec.py all docs/night1/water/round-05`).
+
+| check | target | r03 | r04 | r05 as Opus left it (legacy shader) | r05b FINAL |
+|---|---|---|---|---|---|
+| GATE seawall band >= 12 px (Y >= 180) on share of wall rows (crop) | >= 60 % | 0 | 0 | 96.5 % | **80.5 %** PASS (22.2 px mean, band Y 194) |
+| GATE band present in every 4 fps dolly sample (>= 50 band px) | 100 % | | 0 | 100 % | **100 %** PASS (min 308 px at the end of the clip) |
+| GATE XOR / OR of the band masks, every consecutive 4 fps pair | >= 0.20 | 0.03 | 0.0 | min 0.197, mean 0.375 | **min 0.483, mean 0.677** PASS (39 pairs) |
+| GATE harbour_high bright contact line >= 3 px, share of island-seawall columns | >= 50 % | 0.6 | 0.7 | 0.6 | **72.6 %** PASS (median 4 px) |
+| BLOCKER harbour_high water under the island vs open water (Y darker) | >= 15 | 32.0 | 18.8 | 21.4 | **28.0** PASS (streak spread 42.6; r03 44.0, r04 22.3) |
+| BLOCKER river_low far-shore reflection | visible | yes | no | yes (but a flat white bar over the far quay) | **yes**; far-strip bright share 6.86 % (r03 4.16, legacy r05 13.3; guard <= 7.16) |
+| BLOCKER harbour_sun_high p1 / R-B (crop) | <= 55 / <= 70 | | 52.7 / 100.0 | 51.7 / 98.8 | **52.7 PASS / 98.1 FAIL** (atmosphere: look piece, not chased) |
+| HOLD harbour_high crop hp sd | >= 7.5 | 4.27 | 8.19 | 8.11 | 14.72 PASS (reference 9.3: possibly too busy, see next steps) |
+| HOLD harbour_sun_high glints / path columns / median sparkle | 0.5 % / 50 % / 6 px | | 0.61 / 100 / 3 | 0.53 / 100 / 3 | **1.67 / 100 / 3** PASS |
+| HOLD river_low near hp sd | >= 12 | 9.93 | 11.74 | 10.64 FAIL | **21.36** PASS |
+| HOLD river_low near mean Y | <= 80 | 78.5 | 62.0 | 78.8 | **93.5 FAIL** (silver sky reflection; reference 58.6) |
+| HOLD river_low_dolly autocorr 80 px | <= 0.10 | 0.053 | 0.076 | 0.064 | 0.076 PASS (max 0.151) |
+| HOLD S4 C14 | 5..35 | 17.9 | 22.0 | 15.0 | 15.5 PASS |
+| HOLD river_sun sparkle width | >= 50 % | 37.8 | 50.5 | 38.4 FAIL | **65.1 %** PASS |
+| Not scored since r03: river_low p1 <= 25 / p99.5 >= 150 / glints >= 1 % | | | | | 30.9 FAIL / 175 PASS / 8.2 % PASS |
+| Perf (water <= 2.5 ms) | | | 2.51 | not measured | **not measured** (no attended Mac: HID idle 5.8 h; `gpu_slot perf` would exit 75). The near field now really runs, so expect it to cost more than r04's 2.5 ms: measure first thing |
+
+## What was wrong (found with Dbg 10, hold D, evidence `iter/e_DBG10_*`, `iter/e_base_harbour_high_4k.jpg`)
+`Dbg 10` on harbour_high showed the contact map and the pixel footprint reading correctly at the island tip (a CPU ray-cast of the camera onto
+the map, `tools/water/r05/proj_contact.py`, puts the 2 m contour exactly on the rendered seawall edge: the map covers the tip as rendered), but the
+column `dist / 2000 m` read >= 1 at every water row from 300 m to 1.5 km and `nearW` read 0. In the pixel shader `WPos` (the WorldPosition
+node, "exclude all shader offsets") is the grid vertex position BEFORE the camera-following WPO, i.e. relative to the water actor at the
+origin, not the pixel's world position. So `dist`, `V`, `down` and `nearW` were computed from (camera - that point): about |camera| from the
+origin (777 m at river_low, 4.7 km at harbour_high), a horizontal view vector, `nearW` = 0 and `down` = 0, in every view, since round 02 (Dbg 10
+river_low: nearW 0.00 under the camera before the fix, 0.999 after). That explains every open question of part A:
+- the far contact line was multiplied by `1 - smoothstep(1750, 2500, dist)` = 0 at harbour_high (gate 3: 0.6 %), but not at river_low
+  (|camera| = 777 m);
+- the "near-field" foam branch never ran: the seawall band of part A was the FAR block (that is why `Dbg 4` / `Dbg 7` "lied": they read variables
+  of a branch that never executed; r04's "no foam" was not the ternary and not the texture import either);
+- the two-realization near field, the resolved wind chop (MicroK was never exercised), the from-above weighting of r04 (`down`) and
+  everything using V (bend, glitter, grazing roughness) ran with a garbage view vector;
+- r04's near-crop mean Y 62 came from `GrazeRough 0.42` applying to ALL water (garbage dist) and the legacy hp numbers from that matte floor.
+**Fix**: `wp = float3(Lag.xy, -1.6)` (the pixel's world xy from the vertex interpolator, water plane z); `DistFix` 1 (0 = legacy, kept as a variant);
+the far line's range gate uses the true distance in both modes. Legacy vs fixed at 1080p (hold E): river_low hp 7.3 -> 12.9 (4K 21.4),
+river_sun sparkle width 38.2 -> 65.3 %, harbour_high hp 5.8 -> 14.8, harbour_high contact line 77.8 % (legacy + the gate fix) / 73.3 %.
+
+## What else changed in `build_water.py` (all parameters of the material, defaults in PARAMS)
+- `FarMaxM` 16 / `FarLowK` 0.7: the far contact line is capped in metres. Part A's `FarPx` footprints painted a 40 px flat white bar over the far
+  quay at river level (bright share of the far strip 13.3 % vs r03 4.2 %); from 1.3 km up 16 m is ~5 px, enough for gate 3.
+- Near foam is lace, not a sheet: `CovMax` 0.56 (coverage cap), `CBias` 1.6 (the map's zero contour lies 0.1-1.4 m land-side of the rendered
+  waterline, so the zone must reach ~1.9 m), `PatFine` 1 (finer 0.4 m term, less 1.9 m clumping), `FoamTK` 28 (foam drift 0.1-0.2 m/s),
+  `BreathK` 0.3 / `BreathW` 2.2 (the band's edge breathes with the swell), `LapDens` 0 (density does NOT follow the swell: with it, the band
+  saturated into a solid sheet at the lap maxima, T = 7.0-7.7 s and 9.3-10 s, and the pairwise XOR / OR fell to 0.10-0.15).
+- `BandPx` (screen-pixel cap of the band; default 0 = off): at 55 it removed the foam (map offset), kept as a documented dead end.
+- `RCalm`, `LFa`, `LFb`, `GSpread`, `FarEmisK`, `MicroK` (now 1.0, was 2.0), `DistFix`: parameters used by the variants; not needed by the final.
+- Dbg 10 (8 interleaved columns + calibration ramp) stays in the shader; decoder in `tools/water/r05/report_r05d.py`.
+
+## Instruments added / changed (`tools/water/`)
+- `water_spec.py foam`: the seawall edge line is now FIXED (`FOAM_EDGE_REF`, median of six per-frame fits; the per-frame `_wall_edge` fit
+  moved 12-55 px with the water colour, r05 final per-frame fit would read 71.5 % instead of 80.5 %); the per-frame value is still printed.
+  Part A's table used the per-frame fit (old r05 build: 96.5 % per-frame, 96.7 % fixed).
+- `farshore.py` (river_low far-quay bright-bar guard, in `water_spec.py all`), `r05/selfshift.py` (single-still gate-2 proxy),
+  `r05/static_pairs.py`, `r05/dolly_pairs.py` (per-pair XOR / OR), `r05/make_pack.py` (blind-critic pack), `r05/report_r05d.py`.
+- The dolly gate was screened WITHOUT dollies: stills at the dolly positions 3 m / 7 m (`Water_View_RiverLow_P3/_P7`) at the dolly times
+  (T = 7.5 / 9.5 s); `selfshift` of those stills tracked the dolly pairs (0.17 -> 0.11 at the saturated phase of the CovMax 0.9 build).
+
+## Iteration log (holds; scratch `_scratch/water/r05{d..m}`, kept iteration stills in `iter/`)
+D (04:34) Dbg 10 build -> found the bug. E (04:47) DistFix build: harbour_high gate 3 73 %, DF0 vs fixed, MicroK 0.5/1/2. F/F2 (05:18-05:44) 4K stills
+of the four water views + ScatK / MicroK / CBias / CovMax variants (ScatK 0.02 made the water brighter, not darker: not used). G (05:48) CovMax 0.9:
+gate 1 88.7 % but dolly min 0.107 (solid sheet). H-I (06:13-06:35) lace parameters, static screens. J-K (06:37-06:58) dolly-position stills;
+BandPx dead end. L (07:02) CBias 1.6 / CovMax 0.66: dolly min 0.15 at the lap maxima. M (07:23) LapDens 0, CovMax 0.56: p3 @ 7.5 s proxy 0.76,
+4K gate 1 67.5 % -> the final build. G3/G4 (07:40-) the final captures. One engine hung 5 min at exit after its screenshot (hold M, C50_p3):
+stopped with `stop_ue.sh` (drivers first, SIGTERM was enough); no crash, no SIGKILL.
+
+## Honest failures, open items
+- river_low near mean Y 93.5 (hold <= 80) and p1 30.9: bright silver sky reflection on the chop; ScatK did not darken it; reference is 58.6 / 14.
+  Likely lever: sky / look piece, or more slope variance at 10-60 m with a darker environment.
+- harbour_sun_high R-B 98.1 (<= 70): the atmosphere's in-scatter toward the 9 deg sun (part A; look piece).
+- harbour_high is busier than the reference (hp 14.7 vs 9.3) and its from-above ripple texture is uniform; river_sun is a bright gold sheet
+  (near-crop mean Y 145, 63 % of pixels Y >= 140; r03 148 / 53 %). The r03 "0 pale blobs" counter reads 1398 on any textured surface (it was a decal detector).
+- The per-frame dolly row share (>= 6 px at 1080p) falls to 2 % late in the clip: the static edge line leaves the wall as the camera passes
+  the pier corner; the band itself is present (>= 308 px) in all 40 samples.
+- Not measured: perf; critic not run (builder never runs it).
+
+---
+
+# PART A: round 05 as Opus 5.5 left it (LEGACY shader: all numbers in this part were measured with the distance bug described in part B)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
@@ -61,26 +153,6 @@ FarPx 6), which should give coverage ~0.7; so either the ray-cast does not match
 tip's rendered seawall. `Dbg 10` (committed: contact distance, footprint and coverage as emissive columns, the Dbg 9 style that proved
 reliable) answers which; hold C runs it if its time allows (`iter/h3_DBG10_harbour_high.jpg`).
 
-
-## Round 05b (Sonnet 5.5 xhigh via Devin, resumed after the interruption): the far line was gated off by a distance bug, found with Dbg 10
-
-**Finding (hold D/E, `_scratch/water/r05d,e`).** `Dbg 10` on harbour_high: the contact map and the footprint read correctly at the island
-tip (contact distance 0 at the visible waterline: a CPU ray-cast of the camera onto the map puts the 2 m contour exactly on the rendered
-seawall edge, `tools/water` scratch `proj_contact.py`), but the column `dist / 2000 m` read >= 1 at every water row from 300 m to 1.5 km,
-and `nearW` read 0. In the pixel shader `WPos` (the `WorldPosition` node set to exclude all shader offsets) is the grid vertex position
-BEFORE the camera-following WPO, i.e. relative to the water actor at the origin, not the pixel's world position. `dist`, `V`, `down`
-and `nearW` were therefore computed from (camera - that point): about |camera| from the origin (777 m at river_low, 4.7 km at
-harbour_high), a horizontal view vector, `nearW` = 0 and `down` = 0 in every view since round 02 (Dbg 10 river_low: nearW 0 under the
-camera before the fix, 0.999 after). Consequences, all explained by it:
-- r05's far contact line was multiplied by `1 - smoothstep(1750, 2500, dist)` = 0 at harbour_high (gate 3 at 0.6 %) while it rendered at
-  river_low (|camera| = 777 m);
-- the "near-field" foam branch never ran: the seawall band r05 rendered at river_low was the FAR block (that is why `Dbg 4` / `Dbg 7`
-  "lied": they read variables of a branch that never executed), and the two-realization / resolved-chop near field, the `down`
-  (from-above) logic of r04 and the V-dependent bending / glitter code all ran with a garbage V;
-- r05's far line at river level (FarPx footprints) painted a 40 px flat white bar over the far quay (bright share of the far strip 13.3 %
-  vs r03 4.2 %): capped now in metres (`FarMaxM`).
-**Fix**: `wp = float3(Lag.xy, -1.6)` (the pixel's world xy from the vertex interpolator, water plane z), `DistFix` 1 (0 = the legacy
-behaviour, kept as a variant); the far line's range gate uses the true distance in both modes.
 
 ## Foam gate: diagnosis and fix
 - **`Dbg 9` (hold 1) clears the import path.** Thermometer bands (`iter/h1_DBG9_river_low_00_t016.0.jpg`, identical at t 45 s) read in-engine:
