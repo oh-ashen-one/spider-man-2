@@ -1,34 +1,22 @@
-# Look round capture notes (neutral facts only)
+# Look round 08: capture notes (neutral facts only)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Everything below was rendered by the running game (`Scripts/run_game.sh`: standalone `-game`, offscreen, true back-buffer size; every run inside `gpu_slot.sh capture`), not by an editor viewport.
-Presets are defined in `unreal/WebHomage/Scripts/look_presets.json` (midday / golden / night) and built by `unreal/WebHomage/Scripts/build_look.py`.
-Camera positions are browser metres (x east, y up, z south); the UE position is (100 x, 100 z, 100 y) cm. Stills are JPEG converted from the PNG screenshot taken at the given game time.
+Everything in this folder was rendered by the running game (`unreal/WebHomage/Scripts/run_game.sh`: standalone `-game`, offscreen, true back-buffer size), every run inside `/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture` (shared GPU, background priority; no perf numbers in this round).
+Map `/Game/Tests/Look/Look_Midtown_tod` (rig `Look_Rig_tod`, C++ driver `AWHLookTimeOfDay`); the table is baked from `unreal/WebHomage/Scripts/look_presets.json` = `tools/perf_ue/sweeps/r08/make_v4.py --knobs diag/knobs_r08.json --r07-bias lapse_bias_overrides.json`.
+
+## Builds
+- `stills/tod_*`: bake of `diag/knobs_r08.json` with the loop biases + the hand-set 19:54 / 20:12 keys (`/Users/midir/sm2-n1/_scratch/look/r08/final6`). The final bake (the committed table) differs from it ONLY in exposure-bias keys 06:42-06:54, 07:06-07:09, 18:54 and 19:06-19:15 (tapered next to the held keys, `HANDOFF.md`). The still hours (06:30, 07:00, 07:30, 07:36, 19:00, 19:30, 19:48, 20:00, 20:30 and every other) are keys or segments whose Catmull-Rom neighbours are unchanged, so their exposure is identical; `diag/second_capture/` is a 17-pose capture of an intermediate taper build with the same still-hour values (L28a 65.7 / 71.8 / 70.9 against 65.7 / 71.7 / 70.8).
+- `stills/midday_S*` (the fixed midday preset map `Look_Midtown`, the round-03 floor): captured from the bake of knobs v5 (`final5`); the midday preset and its rig inputs are identical in every round-08 bake (only time-of-day keys and the fills' specular changed; the midday preset has no fills).
+- `tod_lapse_S4.*`: the final bake (stitched; the day / night x4 segments 03:42-05:30, 08:36-17:36 reused from the previous bake, whose keys there are identical).
+- `swing_tod_19.mp4`, `swing_tod_22.mp4`: the intermediate taper build (19:00 and 22:00 are keys whose neighbours did not change).
 
 ## Stills
+`stills/tod_<pose>_1920x1080_<variant>.jpg`: 1920x1080 output, internal resolution 100 % of output (`r.ScreenPercentage 100`), ONE game session (`tools/perf_ue/sweeps/run_r06.py`, plan in `stills_session.json`, generator `gen_plans_r08.py --set full`); the first pose of an hour waits 8-14 s after the hour change, the next poses 5 s, at least 90 frames each. Poses: `Scripts/city_shots.json` (S1-S8) and `tools/perf_ue/sky_poses.json` (S4w: perch turned to compass azimuth 250, S4e: azimuth 60, S4m: the 22:00 moon). `w1_h13` = 13:00 with `wh.Weather 1` (overcast), `mist_h7.6` = 07:36.
+The volumetric cloud pattern differs between sessions (same table, same hour): `diag/second_capture/DOME.md` vs `DOME_r08.md` (S4e 06:30 sky-far +9.3 / +18.0, S4w 19:30 rows 0-150 clipped 1.72 % / 0.05 %, S4e 06:30 8-row step 12.4 / 25.1).
 
-| file | preset | view | output | internal resolution | camera pos (m) | camera target (m) | fov | game time (s) |
-|---|---|---|---|---|---|---|---|---|
-| stills/midday_S1_1920x1080.jpg | midday | S1_avenue_street | 1920x1080 | 100% of output | [246, 2.0, 150] | [251, 16, -300] | 75 | 20.0 |
-| stills/midday_S2_1920x1080.jpg | midday | S2_avenue_swing | 1920x1080 | 100% of output | [243, 42, 185] | [252, 18, -350] | 80 | 20.0 |
-| stills/midday_S3_1920x1080.jpg | midday | S3_rooftop_watertower | 1920x1080 | 100% of output | [166, 48.5, -122] | [158, 51, -150] | 75 | 20.0 |
-| stills/midday_S4_1920x1080.jpg | midday | S4_perch_skyline | 1920x1080 | 100% of output | [182, 306, -92] | [-120, 150, -470] | 75 | 20.0 |
-| stills/midday_S5_1920x1080.jpg | midday | S5_timessq_south | 1920x1080 | 100% of output | [-12, 6, -255] | [0, 48, -40] | 80 | 20.0 |
-| stills/midday_S6_1920x1080.jpg | midday | S6_timessq_street | 1920x1080 | 100% of output | [8, 1.8, -110] | [-4, 26, -330] | 80 | 20.0 |
-| stills/midday_S7_1920x1080.jpg | midday | S7_sunset_crosstown | 1920x1080 | 100% of output | [300, 30, -160] | [-300, 22, -160] | 75 | 20.0 |
-| stills/midday_S8_1920x1080.jpg | midday | S8_aerial_midtown | 1920x1080 | 100% of output | [420, 160, 220] | [0, 20, -320] | 75 | 20.0 |
+## Time-lapse
+`tod_lapse_S4.mp4` (+ `.json`, `_sheet.jpg`): stitched from five segments (`tools/perf_ue/lapse_stitch.py`; x4 sub-steps by day and night, x16 in the twilights 05:12-09:12 and 17:18-21:24, each segment rendered 0.3 game hours early and those frames dropped), 960x540 output, internal 100 % of output, fixed 1/60 s step, nominal 2 game hours per second; eye adaptation metered per frame for the capture (`pp.AutoExposureSpeedUp/Down 40`, live pins written in the json).
 
 ## Clips
-
-| file | preset | map | output | internal resolution | frames | seconds | bytes | time step | script |
-|---|---|---|---|---|---|---|---|---|---|
-| swing_tod_19.mp4 | tod@19 | /Game/Tests/Look/Look_Midtown_tod | 1920x1080 60 fps H.264 | 100% of output (1920x1080) | 719 | 11.98 | 14138720 | fixed 1/60 s (-benchmark -fps=60 -dumpmovie) | tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript, 0.8 s pre-roll trimmed) |
-| swing_tod_22.mp4 | tod@22 | /Game/Tests/Look/Look_Midtown_tod | 1920x1080 60 fps H.264 | 100% of output (1920x1080) | 719 | 11.98 | 14105638 | fixed 1/60 s (-benchmark -fps=60 -dumpmovie) | tools/perf_ue/scripts/city_swing_clip.json (P3 traversal hero, -WHTravScript, 0.8 s pre-roll trimmed) |
-
-## Night test numbers (tools/perf_ue/night_tests.py; luma Y = 0.2126 R + 0.7152 G + 0.0722 B of the 8-bit sRGB values)
-
-- swing_tod_19.mp4: hero pixel bounding box mean luma per frame: min 64.2, p5 74.3, mean 96.5, max 132.8 /255 over 718 frames (0 frames below 40; 0 frames without hero pixels)
-- swing_tod_22.mp4: hero pixel bounding box mean luma per frame: min 18.6, p5 34.7, mean 55.7, max 121.9 /255 over 718 frames (108 frames below 40; 0 frames without hero pixels)
-
-Clip frames are rendered offline at a fixed 1/60 s step (`-benchmark -fps=60 -dumpmovie`), so a clip says nothing about real-time frame rate; see `PERF.md` for measured frame times.
+`swing_tod_19.mp4`, `swing_tod_22.mp4`: 1920x1080 output, internal 100 %, 60 fps H.264, fixed 1/60 s step (`-benchmark -fps=60 -dumpmovie`), P3 traversal hero on `tools/perf_ue/scripts/city_swing_clip.json`, 0.8 s pre-roll trimmed; < 15 MB each. A clip says nothing about real-time frame rate.

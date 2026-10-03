@@ -4,6 +4,18 @@
 
 All numbers from the real game (`Scripts/run_game.sh -game`, offscreen, inside `gpu_slot.sh capture`); stills and clips 1920x1080 internal 100 % of output; the lapse at the resolution and sub-stepping written in its json (fixed 1/60 s step). Instruments: `tools/perf_ue/{capture_tod_lapse,twilight_check,tod_tests,night_tests,clip_check}.py`.
 
+## L23b time-lapse (S4 perch, 04:00 start, nominal 2 h/s, 720 frames, 960x540 output, internal 100% of output, sub-steps 1)
+
+Instrument condition: metering pinned per frame: pp.AutoExposureSpeedUp / Down = 40 (capture-only live pins; the game keeps 6 / 3) + segmented sub-stepped render: 4-5.5 h x4; 5.5-9.2 h x16; 9.2-17.6 h x4; 17.6-21.4 h x16; 21.4-28 h x4 (each segment starts 0.3 h early and drops those frames: warm-up of the lighting caches); x16 = clock 0.125 h/s, x4 = 0.5 h/s, fixed 1/60 s step, every N-th frame kept; no render setting is changed.
+
+Live commands: `exec wh.ToDSet pp.AutoExposureSpeedUp 40;exec wh.ToDSet pp.AutoExposureSpeedDown 40`.
+
+| max jump | p99 | median | frames > 3 | frames > 1.5 | 05:00-21:30 max mean | at h | max clipped % | at h | verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| 3.07 | 2.20 | 0.05 | 1 | 37 | 98.2 | 18.31 | 0.16 | 5.51 | FAIL |
+
+Biggest jumps: 19.11 h +3.1 (82 -> 79), 20.27 h +2.8 (40 -> 43), 19.94 h +2.8 (48 -> 45), 6.87 h +2.6 (61 -> 64), 19.47 h +2.5 (67 -> 64), 19.54 h +2.4 (64 -> 62)
+
 ## L28 twilight city light (r08_check.py: L5 on S4e 07:00 / 07:30 and S4w 19:00, sky saturation, blue hour, sub-horizon disk)
 
 | still | mean (59..118) | Y<10 % (<= 8.8) | clipped % (<= 0.7) | L5 | sky sat (>= .40) | SAT | sky B-R | sky Y |
@@ -136,4 +148,24 @@ L26 S1 correlation vs golden (tod_S1_1920x1080_h18.4.jpg): mist_h7.6 0.436
 ```
 
 Per-still tables: `TESTS_tod.md`.
+
+## Hero box (swing_tod_19_hero_luma.json)
+
+| frames_measured | bbox_mean_luma_min | bbox_mean_luma_p5 | bbox_mean_luma_mean | bbox_mean_luma_max | frames_below_threshold | L15b_frames_with_clipped_px | L15b_max_clipped_px_in_box |
+|---|---|---|---|---|---|---|---|
+| 718 | 64.2 | 74.3 | 96.5 | 132.8 | 0 | 84 | 86 |
+
+## Hero box (swing_tod_22_hero_luma.json)
+
+| frames_measured | bbox_mean_luma_min | bbox_mean_luma_p5 | bbox_mean_luma_mean | bbox_mean_luma_max | frames_below_threshold | L15b_frames_with_clipped_px | L15b_max_clipped_px_in_box |
+|---|---|---|---|---|---|---|---|
+| 718 | 18.6 | 34.7 | 55.7 | 121.9 | 108 | 676 | 2191 |
+
+## swing_tod_19.mp4
+
+mean Y 72.5 (min 57.9 max 88.2), B-R mean -59.8, clipped mean 0.04 %, L18 edge/centre p50 0.72
+
+## swing_tod_22.mp4
+
+mean Y 35.3 (min 21.4 max 52.1), B-R mean +3.8, clipped mean 0.54 %, L18 edge/centre p50 0.57
 
