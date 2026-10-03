@@ -947,7 +947,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": -0.8016,
+     "pp.AutoExposureBias": -0.8005,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -972,12 +972,25 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.0063,
-      0.00315,
-      0.00126,
+      0.000945,
+      0.000472,
+      0.000189,
       1.0
      ],
      "pp.AutoExposureMinBrightness": 0.0,
+     "pp.ColorSaturation": [
+      0.97625,
+      0.971,
+      1.0084,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.9706,
+      0.9706,
+      0.9706,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0358,
      "pp.AutoExposureMaxBrightness": 4.3,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
@@ -1047,15 +1060,15 @@
      "fog.StartDistance": 47532.69610074346,
      "fog.FogMaxOpacity": 0.9271570323167957,
      "fog.FogInscatteringLuminance": [
-      0.07469525337581548,
-      0.061204547489000116,
-      0.06816263086026397,
+      0.052287,
+      0.042843,
+      0.047714,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.016054,
-      0.008027,
-      0.003211,
+      0.002408,
+      0.001204,
+      0.000482,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 9.605421028675465,
@@ -1097,9 +1110,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.8213982096798667,
-      0.9250803519951449,
-      0.9250803519951449,
+      0.657119,
+      0.878826,
+      0.92508,
       1.0
      ],
      "pp.ColorOffset": [
@@ -1109,9 +1122,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0168925428614777,
-      1.0035140342891822,
-      1.0214056137156728,
+      0.610136,
+      0.602108,
+      0.612843,
       1.0
      ],
      "pp.ColorContrast": [
@@ -1124,11 +1137,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 72.67570171445912,
      "pp.AutoExposureHighPercent": 98.26757017144591,
-     "pp.FilmWhiteClip": 0.029297193142163565,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 10.8,
-     "pp.AutoExposureBias": 0.0897,
+     "pp.AutoExposureBias": 0.0758,
      "pp.BloomIntensity": 0.47324298285540894,
      "pp.BloomThreshold": 0.7605421028675465,
      "pp.VignetteIntensity": 0.43662149142770446,
@@ -1212,7 +1225,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.1266,
+     "pp.AutoExposureBias": -0.1404,
      "sky.Intensity": 0.1655,
      "fill.N": 0.0785,
      "fill.S": 0.0785,
@@ -1229,8 +1242,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7667,
-      0.902,
+      0.61336,
+      0.8569,
       0.902,
       1.0
      ],
@@ -1253,12 +1266,25 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.021,
-      0.0105,
-      0.0042,
+      0.00315,
+      0.001575,
+      0.00063,
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
+     "pp.ColorSaturation": [
+      0.6225,
+      0.612,
+      0.6168,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
+     "fog.FogInscatteringLuminance": [
+      0.052553,
+      0.042254,
+      0.04565,
+      1.0
+     ],
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
@@ -1324,15 +1350,15 @@
      "fog.StartDistance": 33394.90909090912,
      "fog.FogMaxOpacity": 0.9228909090909092,
      "fog.FogInscatteringLuminance": [
-      0.12308559999999986,
-      0.0974494909090908,
-      0.10259054545454538,
+      0.067697,
+      0.053597,
+      0.056425,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.02753,
-      0.013765,
-      0.005506,
+      0.00413,
+      0.002065,
+      0.000826,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 10.75301818181818,
@@ -1374,9 +1400,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7197061090909094,
-      0.8715258181818183,
-      0.8715258181818183,
+      0.575765,
+      0.82795,
+      0.871526,
       1.0
      ],
      "pp.ColorOffset": [
@@ -1386,9 +1412,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0647090909090906,
-      1.0417672727272727,
-      1.036706909090909,
+      0.638825,
+      0.62506,
+      0.622024,
       1.0
      ],
      "pp.ColorContrast": [
@@ -1401,11 +1427,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 74.58836363636364,
      "pp.AutoExposureHighPercent": 98.45883636363635,
-     "pp.FilmWhiteClip": 0.02164654545454548,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.4131,
+     "pp.AutoExposureBias": -0.4046,
      "pp.BloomIntensity": 0.45411636363636376,
      "pp.BloomThreshold": 0.8753018181818178,
      "pp.VignetteIntensity": 0.4270581818181819,
@@ -1520,15 +1546,15 @@
      "fog.StartDistance": 29465.69696969694,
      "fog.FogMaxOpacity": 0.9270363636363637,
      "fog.FogInscatteringLuminance": [
-      0.14191340000000013,
-      0.11155173636363647,
-      0.1159858181818183,
+      0.078052,
+      0.061353,
+      0.063792,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.031995,
-      0.015998,
-      0.006399,
+      0.004799,
+      0.0024,
+      0.00096,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 11.199527272727277,
@@ -1570,9 +1596,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6927878303030303,
-      0.850688727272727,
-      0.850688727272727,
+      0.55423,
+      0.808154,
+      0.850689,
       1.0
      ],
      "pp.ColorOffset": [
@@ -1582,9 +1608,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0833136363636364,
-      1.056650909090909,
-      1.0426603636363638,
+      0.649988,
+      0.633991,
+      0.625596,
       1.0
      ],
      "pp.ColorContrast": [
@@ -1597,11 +1623,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 75.33254545454547,
      "pp.AutoExposureHighPercent": 98.53325454545453,
-     "pp.FilmWhiteClip": 0.018669818181818162,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.464,
+     "pp.AutoExposureBias": -0.4682,
      "pp.BloomIntensity": 0.4466745454545454,
      "pp.BloomThreshold": 0.9199527272727276,
      "pp.VignetteIntensity": 0.42333727272727273,
@@ -1716,15 +1742,15 @@
      "fog.StartDistance": 25557.65656565655,
      "fog.FogMaxOpacity": 0.9314545454545456,
      "fog.FogInscatteringLuminance": [
-      0.16093746666666675,
-      0.1258009878787879,
-      0.12952072727272734,
+      0.088516,
+      0.069191,
+      0.071236,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.036507,
-      0.018253,
-      0.007301,
+      0.005476,
+      0.002738,
+      0.001095,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 11.65069090909091,
@@ -1766,9 +1792,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6680397010101009,
-      0.8296344242424242,
-      0.8296344242424242,
+      0.534432,
+      0.788153,
+      0.829634,
       1.0
      ],
      "pp.ColorOffset": [
@@ -1778,9 +1804,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1021121212121212,
-      1.071689696969697,
-      1.048675878787879,
+      0.661267,
+      0.643014,
+      0.629206,
       1.0
      ],
      "pp.ColorContrast": [
@@ -1793,11 +1819,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 76.08448484848485,
      "pp.AutoExposureHighPercent": 98.60844848484848,
-     "pp.FilmWhiteClip": 0.015662060606060596,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.4289,
+     "pp.AutoExposureBias": -0.432,
      "pp.BloomIntensity": 0.4391551515151515,
      "pp.BloomThreshold": 0.965069090909091,
      "pp.VignetteIntensity": 0.41957757575757576,
@@ -1881,7 +1907,7 @@
      ],
      "fog.FogCutoffDistance": 0.0,
      "sun.Intensity": 12866.6,
-     "pp.AutoExposureBias": -0.3874,
+     "pp.AutoExposureBias": -0.3832,
      "sky.Intensity": 0.3327,
      "fill.N": 0.1142,
      "fill.E": 0.0956,
@@ -1900,9 +1926,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6488,
-      0.8109999999999999,
-      0.8109999999999999,
+      0.51904,
+      0.77045,
+      0.811,
       1.0
      ],
      "lights": 0.85,
@@ -1923,12 +1949,25 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.0405,
-      0.02025,
-      0.0081,
+      0.006075,
+      0.003038,
+      0.001215,
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
+     "pp.ColorSaturation": [
+      0.67125,
+      0.651,
+      0.6324,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
+     "fog.FogInscatteringLuminance": [
+      0.097776,
+      0.076127,
+      0.077825,
+      1.0
+     ],
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
@@ -1998,15 +2037,15 @@
      "fog.StartDistance": 18657.828282828294,
      "fog.FogMaxOpacity": 0.9377967171717172,
      "fog.FogInscatteringLuminance": [
-      0.19227233796296295,
-      0.14864535458754205,
-      0.1507405303030303,
+      0.10575,
+      0.081755,
+      0.082907,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.044275,
-      0.022103,
-      0.008799,
+      0.006641,
+      0.003315,
+      0.00132,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 12.413573232323232,
@@ -2048,9 +2087,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6348430134680135,
-      0.7940332491582491,
-      0.7940332491582491,
+      0.507874,
+      0.754332,
+      0.794033,
       1.0
      ],
      "pp.ColorOffset": [
@@ -2060,9 +2099,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1338988846801346,
-      1.0971191077441078,
-      1.0588476430976432,
+      0.680339,
+      0.658271,
+      0.635309,
       1.0
      ],
      "pp.ColorContrast": [
@@ -2075,11 +2114,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 77.3559553872054,
      "pp.AutoExposureHighPercent": 98.73559553872052,
-     "pp.FilmWhiteClip": 0.010576178451178461,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.3233,
+     "pp.AutoExposureBias": -0.3254,
      "pp.BloomIntensity": 0.4264404461279461,
      "pp.BloomThreshold": 1.041357323232323,
      "pp.VignetteIntensity": 0.41322022306397305,
@@ -2194,15 +2233,15 @@
      "fog.StartDistance": 15268.68686868689,
      "fog.FogMaxOpacity": 0.9406464646464646,
      "fog.FogInscatteringLuminance": [
-      0.2060603703703703,
-      0.15759594276094271,
-      0.15818787878787877,
+      0.113333,
+      0.086678,
+      0.087003,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.048285,
-      0.024031,
-      0.009479,
+      0.007243,
+      0.003605,
+      0.001422,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 12.784040404040402,
@@ -2244,9 +2283,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6234968350168351,
-      0.7767447811447813,
-      0.7767447811447813,
+      0.498797,
+      0.737908,
+      0.776745,
       1.0
      ],
      "pp.ColorOffset": [
@@ -2256,9 +2295,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1493350168350167,
-      1.1094680134680133,
-      1.0637872053872055,
+      0.689601,
+      0.665681,
+      0.638272,
       1.0
      ],
      "pp.ColorContrast": [
@@ -2271,11 +2310,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 77.97340067340068,
      "pp.AutoExposureHighPercent": 98.79734006734007,
-     "pp.FilmWhiteClip": 0.008106397306397322,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.114,
+     "pp.AutoExposureBias": -0.132,
      "pp.BloomIntensity": 0.4202659932659933,
      "pp.BloomThreshold": 1.07840404040404,
      "pp.VignetteIntensity": 0.4101329966329967,
@@ -2390,15 +2429,15 @@
      "fog.StartDistance": 11970.454545454517,
      "fog.FogMaxOpacity": 0.9434204545454545,
      "fog.FogInscatteringLuminance": [
-      0.21943312500000017,
-      0.16623548295454554,
-      0.16533977272727282,
+      0.120688,
+      0.09143,
+      0.090937,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.052197,
-      0.025911,
-      0.010139,
+      0.007829,
+      0.003887,
+      0.001521,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 13.144659090909094,
@@ -2440,9 +2479,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6144304545454545,
-      0.7599159090909089,
-      0.7599159090909089,
+      0.491544,
+      0.72192,
+      0.759916,
       1.0
      ],
      "pp.ColorOffset": [
@@ -2452,9 +2491,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1643607954545456,
-      1.1214886363636365,
-      1.0685954545454548,
+      0.698616,
+      0.672893,
+      0.641157,
       1.0
      ],
      "pp.ColorContrast": [
@@ -2467,11 +2506,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 78.57443181818182,
      "pp.AutoExposureHighPercent": 98.85744318181817,
-     "pp.FilmWhiteClip": 0.005702272727272707,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.0363,
+     "pp.AutoExposureBias": -0.0321,
      "pp.BloomIntensity": 0.41425568181818173,
      "pp.BloomThreshold": 1.1144659090909093,
      "pp.VignetteIntensity": 0.4071278409090909,
@@ -2586,15 +2625,15 @@
      "fog.StartDistance": 8901.010101010084,
      "fog.FogMaxOpacity": 0.945989898989899,
      "fog.FogInscatteringLuminance": [
-      0.2326846296296297,
-      0.17553519360269368,
-      0.17369393939393946,
+      0.127977,
+      0.096544,
+      0.095532,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.055676,
-      0.027616,
-      0.01078,
+      0.008351,
+      0.004142,
+      0.001617,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 13.47868686868687,
@@ -2636,9 +2675,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6073128619528619,
-      0.7443279461279461,
-      0.7443279461279461,
+      0.48585,
+      0.707112,
+      0.744328,
       1.0
      ],
      "pp.ColorOffset": [
@@ -2648,9 +2687,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1782786195286195,
-      1.1326228956228956,
-      1.0730491582491584,
+      0.706967,
+      0.679574,
+      0.643829,
       1.0
      ],
      "pp.ColorContrast": [
@@ -2663,11 +2702,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 79.13114478114478,
      "pp.AutoExposureHighPercent": 98.91311447811448,
-     "pp.FilmWhiteClip": 0.0034754208754208633,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0155,
+     "pp.AutoExposureBias": 0.0105,
      "pp.BloomIntensity": 0.40868855218855216,
      "pp.BloomThreshold": 1.147868686868687,
      "pp.VignetteIntensity": 0.4043442760942761,
@@ -2782,15 +2821,15 @@
      "fog.StartDistance": 6198.232323232313,
      "fog.FogMaxOpacity": 0.94822601010101,
      "fog.FogInscatteringLuminance": [
-      0.24610891203703708,
-      0.18646629313973068,
-      0.18474810606060613,
+      0.13536,
+      0.102556,
+      0.101611,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.058388,
-      0.029021,
-      0.0114,
+      0.008758,
+      0.004353,
+      0.00171,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 13.769381313131314,
@@ -2832,9 +2871,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6018130471380472,
-      0.7307622053872053,
-      0.7307622053872053,
+      0.48145,
+      0.694224,
+      0.730762,
       1.0
      ],
      "pp.ColorOffset": [
@@ -2844,9 +2883,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1903908880471379,
-      1.1423127104377102,
-      1.0769250841750841,
+      0.714235,
+      0.685388,
+      0.646155,
       1.0
      ],
      "pp.ColorContrast": [
@@ -2859,11 +2898,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 79.61563552188552,
      "pp.AutoExposureHighPercent": 98.96156355218855,
-     "pp.FilmWhiteClip": 0.0015374579124579058,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 1.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0586,
+     "pp.AutoExposureBias": 0.0951,
      "pp.BloomIntensity": 0.40384364478114476,
      "pp.BloomThreshold": 1.1769381313131313,
      "pp.VignetteIntensity": 0.4019218223905724,
@@ -2945,7 +2984,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.1627,
+     "pp.AutoExposureBias": 0.1679,
      "sky.Intensity": 0.5,
      "fill.N": 0.15,
      "fill.E": 0.0,
@@ -2964,8 +3003,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.5976,
-      0.72,
+      0.47808,
+      0.684,
       0.72,
       1.0
      ],
@@ -2988,12 +3027,25 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.06,
-      0.03,
-      0.012,
+      0.009,
+      0.0045,
+      0.0018,
       1.0
      ],
      "pp.AutoExposureMinBrightness": 2.0,
+     "pp.ColorSaturation": [
+      0.72,
+      0.69,
+      0.648,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
+     "fog.FogInscatteringLuminance": [
+      0.143,
+      0.11,
+      0.11,
+      1.0
+     ],
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
@@ -3059,15 +3111,15 @@
      "fog.StartDistance": 3000.0,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.2745626562499999,
-      0.21837054687499993,
-      0.2231656249999999,
+      0.151009,
+      0.120104,
+      0.122741,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.059441,
-      0.03,
-      0.012551,
+      0.008173,
+      0.004125,
+      0.001726,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -3109,8 +3161,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.5976,
-      0.72,
+      0.47808,
+      0.684,
       0.72,
       1.0
      ],
@@ -3121,9 +3173,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -3140,7 +3192,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.156,
+     "pp.AutoExposureBias": 0.1554,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -3255,15 +3307,15 @@
      "fog.StartDistance": 3000.0,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.28961125000000015,
-      0.24132937500000023,
-      0.2539250000000003,
+      0.159286,
+      0.132731,
+      0.139659,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.056725,
-      0.029425,
-      0.013045,
+      0.007091,
+      0.003678,
+      0.001631,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -3305,8 +3357,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.598685,
-      0.72,
+      0.478948,
+      0.684,
       0.72,
       1.0
      ],
@@ -3317,9 +3369,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -3336,7 +3388,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.2113,
+     "pp.AutoExposureBias": 0.1714,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -3451,15 +3503,15 @@
      "fog.StartDistance": 3000.0,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.30485421875000007,
-      0.2661235156250001,
-      0.2877218750000001,
+      0.16767,
+      0.146368,
+      0.158247,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.053147,
-      0.028378,
-      0.013517,
+      0.005979,
+      0.003193,
+      0.001521,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -3501,8 +3553,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.604250625,
-      0.72,
+      0.483401,
+      0.684,
       0.72,
       1.0
      ],
@@ -3513,9 +3565,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -3532,7 +3584,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.683,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1815,
+     "pp.AutoExposureBias": 0.1401,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -3621,15 +3673,15 @@
      "fog.FogHeightFalloff": 0.1925,
      "fog.StartDistance": 3000.0,
      "fog.FogInscatteringLuminance": [
-      0.32,
-      0.29,
-      0.32,
+      0.176,
+      0.1595,
+      0.176,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.05,
-      0.0275,
-      0.014,
+      0.005,
+      0.00275,
+      0.0014,
       1.0
      ],
      "pp.ColorContrast": [
@@ -3640,7 +3692,7 @@
      ],
      "pp.AutoExposureMinBrightness": 4.367,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1755,
+     "pp.AutoExposureBias": 0.1423,
      "fill.N": 0.15,
      "fill.E": 0.0,
      "fill.S": 0.15,
@@ -3657,8 +3709,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.612,
-      0.72,
+      0.4896,
+      0.684,
       0.72,
       1.0
      ],
@@ -3680,6 +3732,13 @@
       0.2,
       1.0
      ],
+     "pp.ColorSaturation": [
+      0.72,
+      0.69,
+      0.648,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
     "mix": [
@@ -3748,15 +3807,15 @@
      "fog.StartDistance": 2750.0000000000005,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.3349999999999999,
-      0.31249999999999983,
-      0.3499999999999999,
+      0.209375,
+      0.195312,
+      0.21875,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.07125,
-      0.040312,
-      0.02175,
+      0.033844,
+      0.019148,
+      0.010331,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -3798,8 +3857,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6227156249999999,
-      0.72,
+      0.498172,
+      0.684,
       0.72,
       1.0
      ],
@@ -3810,9 +3869,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -3829,7 +3888,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 5.05,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.2008,
+     "pp.AutoExposureBias": 0.1593,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -3944,15 +4003,15 @@
      "fog.StartDistance": 2500.0000000000023,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.34999999999999987,
-      0.3349999999999998,
-      0.3799999999999997,
+      0.245,
+      0.2345,
+      0.266,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.09,
-      0.0525,
-      0.03,
+      0.059625,
+      0.034781,
+      0.019875,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -3994,8 +4053,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6365249999999999,
-      0.72,
+      0.50922,
+      0.684,
       0.72,
       1.0
      ],
@@ -4006,9 +4065,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -4025,7 +4084,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 5.733,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1492,
+     "pp.AutoExposureBias": 0.1576,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4140,15 +4199,15 @@
      "fog.StartDistance": 2249.999999999999,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.3650000000000001,
-      0.3575000000000001,
-      0.4100000000000001,
+      0.282875,
+      0.277063,
+      0.31775,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.10625,
-      0.064063,
-      0.03875,
+      0.082344,
+      0.049648,
+      0.030031,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -4190,8 +4249,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6515718750000001,
-      0.72,
+      0.521258,
+      0.684,
       0.72,
       1.0
      ],
@@ -4202,9 +4261,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -4221,7 +4280,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 6.417,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1073,
+     "pp.AutoExposureBias": 0.0553,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4311,15 +4370,15 @@
      "fog.FogHeightFalloff": 0.295,
      "fog.StartDistance": 2000.0,
      "fog.FogInscatteringLuminance": [
-      0.38,
-      0.38,
-      0.44,
+      0.323,
+      0.323,
+      0.374,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.12,
-      0.075,
-      0.048,
+      0.102,
+      0.06375,
+      0.0408,
       1.0
      ],
      "pp.ColorContrast": [
@@ -4330,7 +4389,7 @@
      ],
      "pp.AutoExposureMinBrightness": 7.1,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.1143,
+     "pp.AutoExposureBias": 0.0039,
      "fill.N": 0.33,
      "fill.E": 0.0,
      "fill.S": 0.33,
@@ -4347,8 +4406,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.666,
-      0.72,
+      0.5328,
+      0.684,
       0.72,
       1.0
      ],
@@ -4369,6 +4428,13 @@
       0.6,
       1.0
      ],
+     "pp.ColorSaturation": [
+      0.72,
+      0.69,
+      0.648,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
     "mix": [
@@ -4437,15 +4503,15 @@
      "fog.StartDistance": 1750.0000000000011,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.3949999999999999,
-      0.4024999999999999,
-      0.4699999999999998,
+      0.365375,
+      0.372313,
+      0.43475,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.13125,
-      0.085312,
-      0.05775,
+      0.118594,
+      0.077086,
+      0.052181,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -4487,8 +4553,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6847499999999999,
-      0.72,
+      0.564919,
+      0.6885,
       0.72,
       1.0
      ],
@@ -4499,9 +4565,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.78,
+      0.7475,
+      0.702,
       1.0
      ],
      "pp.ColorContrast": [
@@ -4518,7 +4584,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.225,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0431,
+     "pp.AutoExposureBias": -0.0209,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4633,15 +4699,15 @@
      "fog.StartDistance": 1500.0000000000025,
      "fog.FogMaxOpacity": 0.95,
      "fog.FogInscatteringLuminance": [
-      0.40999999999999986,
-      0.42499999999999977,
-      0.4999999999999997,
+      0.41,
+      0.425,
+      0.5,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.14,
-      0.095,
-      0.068,
+      0.132125,
+      0.089656,
+      0.064175,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -4683,8 +4749,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7069999999999999,
-      0.72,
+      0.60095,
+      0.693,
       0.72,
       1.0
      ],
@@ -4695,9 +4761,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.84,
+      0.805,
+      0.756,
       1.0
      ],
      "pp.ColorContrast": [
@@ -4714,7 +4780,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.35,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0272,
+     "pp.AutoExposureBias": 0.0246,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4835,9 +4901,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.14625,
-      0.104062,
-      0.07875,
+      0.142594,
+      0.101461,
+      0.076781,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -4879,8 +4945,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.72,
-      0.72,
+      0.63,
+      0.6975,
       0.72,
       1.0
      ],
@@ -4891,9 +4957,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.9,
+      0.8625,
+      0.81,
       1.0
      ],
      "pp.ColorContrast": [
@@ -4910,7 +4976,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.475,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0478,
+     "pp.AutoExposureBias": 0.0448,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -5018,7 +5084,7 @@
      ],
      "pp.AutoExposureMinBrightness": 7.6,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1305,
+     "pp.AutoExposureBias": 0.1029,
      "fill.N": 0.555,
      "fill.E": 0.0,
      "fill.S": 0.555,
@@ -5035,8 +5101,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.72,
-      0.72,
+      0.648,
+      0.702,
       0.72,
       1.0
      ],
@@ -5058,6 +5124,13 @@
       1.0,
       1.0
      ],
+     "pp.ColorSaturation": [
+      0.96,
+      0.92,
+      0.864,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
     "mix": [
@@ -5176,8 +5249,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6849765624999999,
-      0.72,
+      0.633603,
+      0.7065,
       0.72,
       1.0
      ],
@@ -5188,9 +5261,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      1.02,
+      0.9775,
+      0.918,
       1.0
      ],
      "pp.ColorContrast": [
@@ -5207,7 +5280,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.8051562500000005,
      "pp.AutoExposureMaxBrightness": 12.815625,
-     "pp.AutoExposureBias": 0.1846,
+     "pp.AutoExposureBias": 0.1914,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -5290,7 +5363,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.2314,
+     "pp.AutoExposureBias": 0.2966,
      "sky.Intensity": 1.375,
      "fill.N": 0.825,
      "fill.E": 0.0,
@@ -5338,6 +5411,13 @@
       1.0,
       1.0
      ],
+     "pp.ColorSaturation": [
+      1.2,
+      1.15,
+      1.08,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
    },
@@ -5483,7 +5563,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 8.2,
      "pp.AutoExposureMaxBrightness": 13.145833333333332,
-     "pp.AutoExposureBias": 0.2722,
+     "pp.AutoExposureBias": 0.2373,
      "pp.BloomIntensity": 0.4093750000000001,
      "pp.BloomThreshold": 1.1874999999999998,
      "pp.VignetteIntensity": 0.395,
@@ -5566,7 +5646,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.2948,
+     "pp.AutoExposureBias": 0.2874,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -5733,7 +5813,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 8.126333333333333,
      "pp.AutoExposureMaxBrightness": 13.736666666666666,
-     "pp.AutoExposureBias": 0.4908,
+     "pp.AutoExposureBias": 0.4136,
      "pp.BloomIntensity": 0.45525000000000004,
      "pp.BloomThreshold": 1.1263333333333334,
      "pp.VignetteIntensity": 0.3705333333333333,
@@ -5816,7 +5896,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.1249,
+     "pp.AutoExposureBias": 0.1331,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -6178,7 +6258,7 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.5977526324728267,
+      0.597753,
       0.72,
       0.72,
       1.0
@@ -6209,7 +6289,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.925704823369561,
      "pp.AutoExposureMaxBrightness": 12.822053328804346,
-     "pp.AutoExposureBias": 0.489,
+     "pp.AutoExposureBias": 0.4696,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6374,8 +6454,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6282989130434793,
-      0.72,
+      0.614337,
+      0.716,
       0.72,
       1.0
      ],
@@ -6386,9 +6466,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      1.146667,
+      1.098889,
+      1.032,
       1.0
      ],
      "pp.ColorContrast": [
@@ -6405,7 +6485,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.76793478260869,
      "pp.AutoExposureMaxBrightness": 12.75815217391304,
-     "pp.AutoExposureBias": 0.5221,
+     "pp.AutoExposureBias": 0.542,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6570,8 +6650,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6596828294836948,
-      0.72,
+      0.630364,
+      0.712,
       0.72,
       1.0
      ],
@@ -6582,9 +6662,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      1.093333,
+      1.047778,
+      0.984,
       1.0
      ],
      "pp.ColorContrast": [
@@ -6601,7 +6681,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.595422894021743,
      "pp.AutoExposureMaxBrightness": 12.69323199728261,
-     "pp.AutoExposureBias": 0.4487,
+     "pp.AutoExposureBias": 0.4707,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6766,8 +6846,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6880183423913039,
-      0.72,
+      0.64215,
+      0.708,
       0.72,
       1.0
      ],
@@ -6778,9 +6858,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      1.04,
+      0.996667,
+      0.936,
       1.0
      ],
      "pp.ColorContrast": [
@@ -6797,7 +6877,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.419225543478265,
      "pp.AutoExposureMaxBrightness": 12.628057065217392,
-     "pp.AutoExposureBias": 0.4485,
+     "pp.AutoExposureBias": 0.4928,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6962,8 +7042,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7094194123641302,
-      0.72,
+      0.64636,
+      0.704,
       0.72,
       1.0
      ],
@@ -6974,9 +7054,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.986667,
+      0.945556,
+      0.888,
       1.0
      ],
      "pp.ColorContrast": [
@@ -6993,7 +7073,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.250399116847827,
      "pp.AutoExposureMaxBrightness": 12.563391644021738,
-     "pp.AutoExposureBias": 0.3822,
+     "pp.AutoExposureBias": 0.4644,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7076,7 +7156,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": 0.3156,
+     "pp.AutoExposureBias": 0.3843,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -7084,8 +7164,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.72,
-      0.72,
+      0.64,
+      0.7,
       0.72,
       1.0
      ],
@@ -7112,6 +7192,13 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": 7.1,
+     "pp.ColorSaturation": [
+      0.933333,
+      0.894444,
+      0.84,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
@@ -7187,9 +7274,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.28125,
-      0.140625,
-      0.05625,
+      0.279375,
+      0.139687,
+      0.055875,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -7231,8 +7318,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7188824218749998,
-      0.72,
+      0.623031,
+      0.696,
       0.72,
       1.0
      ],
@@ -7243,9 +7330,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.88,
+      0.843333,
+      0.792,
       1.0
      ],
      "pp.ColorContrast": [
@@ -7262,7 +7349,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 6.583,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.3301,
+     "pp.AutoExposureBias": 0.348,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7383,9 +7470,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.2625,
-      0.13125,
-      0.0525,
+      0.25875,
+      0.129375,
+      0.05175,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -7427,8 +7514,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7093915178571433,
-      0.72,
+      0.599042,
+      0.692,
       0.72,
       1.0
      ],
@@ -7439,9 +7526,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.826667,
+      0.792222,
+      0.744,
       1.0
      ],
      "pp.ColorContrast": [
@@ -7458,7 +7545,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 6.067,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.3533,
+     "pp.AutoExposureBias": 0.3568,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7579,9 +7666,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.24375,
-      0.121875,
-      0.04875,
+      0.238125,
+      0.119063,
+      0.047625,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -7623,8 +7710,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6939450334821431,
-      0.72,
+      0.570577,
+      0.688,
       0.72,
       1.0
      ],
@@ -7635,9 +7722,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.773333,
+      0.741111,
+      0.696,
       1.0
      ],
      "pp.ColorContrast": [
@@ -7654,7 +7741,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 5.55,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.4488,
+     "pp.AutoExposureBias": 0.4462,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7775,9 +7862,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.225,
-      0.1125,
-      0.045,
+      0.2175,
+      0.10875,
+      0.0435,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -7819,8 +7906,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6749607142857142,
-      0.72,
+      0.539969,
+      0.684,
       0.72,
       1.0
      ],
@@ -7831,9 +7918,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -7850,7 +7937,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 5.033,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.5065,
+     "pp.AutoExposureBias": 0.5121,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7971,9 +8058,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.20625,
-      0.103125,
-      0.04125,
+      0.196875,
+      0.098437,
+      0.039375,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -8015,8 +8102,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.654856305803571,
-      0.72,
+      0.523885,
+      0.684,
       0.72,
       1.0
      ],
@@ -8027,9 +8114,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -8046,7 +8133,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 4.517,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.5894,
+     "pp.AutoExposureBias": 0.5861,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -8167,9 +8254,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.1875,
-      0.09375,
-      0.0375,
+      0.17625,
+      0.088125,
+      0.03525,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -8211,8 +8298,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6360495535714279,
-      0.72,
+      0.50884,
+      0.684,
       0.72,
       1.0
      ],
@@ -8223,9 +8310,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -8242,7 +8329,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 4.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.6538,
+     "pp.AutoExposureBias": 0.6568,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -8363,9 +8450,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.16875,
-      0.084375,
-      0.03375,
+      0.155625,
+      0.077813,
+      0.031125,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 14.0,
@@ -8407,8 +8494,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6209582031250002,
-      0.72,
+      0.496767,
+      0.684,
       0.72,
       1.0
      ],
@@ -8419,9 +8506,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.2,
-      1.15,
-      1.08,
+      0.72,
+      0.69,
+      0.648,
       1.0
      ],
      "pp.ColorContrast": [
@@ -8438,7 +8525,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.667,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.7413,
+     "pp.AutoExposureBias": 0.6681,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -8520,7 +8607,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.6931,
+     "pp.AutoExposureBias": 0.6181,
      "sky.Intensity": 2.3,
      "fill.N": 0.69,
      "fill.E": 2.3,
@@ -8539,8 +8626,8 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.612,
-      0.72,
+      0.4896,
+      0.684,
       0.72,
       1.0
      ],
@@ -8562,12 +8649,19 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.15,
-      0.075,
-      0.03,
+      0.135,
+      0.0675,
+      0.027,
       1.0
      ],
      "pp.AutoExposureMinBrightness": 3.333,
+     "pp.ColorSaturation": [
+      0.72,
+      0.69,
+      0.648,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
@@ -8639,9 +8733,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.130699,
-      0.065349,
-      0.02614,
+      0.101655,
+      0.050827,
+      0.020331,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 13.80396825396825,
@@ -8683,9 +8777,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.612,
-      0.7291481481481482,
-      0.7291481481481482,
+      0.4896,
+      0.692691,
+      0.729148,
       1.0
      ],
      "pp.ColorOffset": [
@@ -8695,9 +8789,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1918320105820104,
-      1.1434656084656085,
-      1.0773862433862433,
+      0.715099,
+      0.686079,
+      0.646432,
       1.0
      ],
      "pp.ColorContrast": [
@@ -8710,11 +8804,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 79.6732804232804,
      "pp.AutoExposureHighPercent": 98.96732804232803,
-     "pp.FilmWhiteClip": 0.0013068783068783286,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.7784,
+     "pp.AutoExposureBias": 0.542,
      "pp.BloomIntensity": 0.40326719576719583,
      "pp.BloomThreshold": 1.1803968253968251,
      "pp.VignetteIntensity": 0.40163359788359787,
@@ -8835,9 +8929,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.110613,
-      0.055306,
-      0.022123,
+      0.069133,
+      0.034566,
+      0.013827,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 13.515079365079359,
@@ -8879,9 +8973,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.612,
-      0.74262962962963,
-      0.74262962962963,
+      0.4896,
+      0.705498,
+      0.74263,
       1.0
      ],
      "pp.ColorOffset": [
@@ -8891,9 +8985,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.179794973544973,
-      1.1338359788359784,
-      1.0735343915343913,
+      0.707877,
+      0.680302,
+      0.644121,
       1.0
      ],
      "pp.ColorContrast": [
@@ -8906,11 +9000,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 79.19179894179892,
      "pp.AutoExposureHighPercent": 98.9191798941799,
-     "pp.FilmWhiteClip": 0.0032328042328042873,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.667,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.7002,
+     "pp.AutoExposureBias": 0.5429,
      "pp.BloomIntensity": 0.4080820105820107,
      "pp.BloomThreshold": 1.1515079365079357,
      "pp.VignetteIntensity": 0.4040410052910054,
@@ -9031,9 +9125,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.090834,
-      0.045417,
-      0.018167,
+      0.038929,
+      0.019465,
+      0.007786,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 13.1642857142857,
@@ -9075,9 +9169,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6169169642857146,
-      0.7590000000000006,
-      0.7590000000000006,
+      0.493534,
+      0.72105,
+      0.759,
       1.0
      ],
      "pp.ColorOffset": [
@@ -9087,9 +9181,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1651785714285707,
-      1.1221428571428567,
-      1.0688571428571427,
+      0.699107,
+      0.673286,
+      0.641314,
       1.0
      ],
      "pp.ColorContrast": [
@@ -9102,11 +9196,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 78.60714285714283,
      "pp.AutoExposureHighPercent": 98.86071428571428,
-     "pp.FilmWhiteClip": 0.005571428571428662,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.333,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.8397,
+     "pp.AutoExposureBias": 0.3339,
      "pp.BloomIntensity": 0.4139285714285717,
      "pp.BloomThreshold": 1.11642857142857,
      "pp.VignetteIntensity": 0.40696428571428583,
@@ -9227,9 +9321,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.072205,
-      0.036102,
-      0.014441,
+      0.012034,
+      0.006017,
+      0.002407,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 12.782539682539694,
@@ -9271,9 +9365,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6255396825396823,
-      0.7768148148148143,
-      0.7768148148148143,
+      0.500432,
+      0.737974,
+      0.776815,
       1.0
      ],
      "pp.ColorOffset": [
@@ -9283,9 +9377,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.149272486772487,
-      1.1094179894179896,
-      1.0637671957671957,
+      0.689563,
+      0.665651,
+      0.63826,
       1.0
      ],
      "pp.ColorContrast": [
@@ -9298,11 +9392,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 77.97089947089948,
      "pp.AutoExposureHighPercent": 98.79708994708993,
-     "pp.FilmWhiteClip": 0.008116402116402056,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.6838,
+     "pp.AutoExposureBias": 0.3065,
      "pp.BloomIntensity": 0.4202910052910051,
      "pp.BloomThreshold": 1.0782539682539691,
      "pp.VignetteIntensity": 0.4101455026455026,
@@ -9423,9 +9517,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.055314,
-      0.027657,
-      0.011063,
+      0.006085,
+      0.003042,
+      0.001217,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 12.400793650793656,
@@ -9467,9 +9561,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6364151785714284,
-      0.7946296296296294,
-      0.7946296296296294,
+      0.509132,
+      0.754898,
+      0.79463,
       1.0
      ],
      "pp.ColorOffset": [
@@ -9479,9 +9573,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1333664021164023,
-      1.0966931216931217,
-      1.0586772486772487,
+      0.68002,
+      0.658016,
+      0.635206,
       1.0
      ],
      "pp.ColorContrast": [
@@ -9494,11 +9588,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 77.33465608465609,
      "pp.AutoExposureHighPercent": 98.73346560846561,
-     "pp.FilmWhiteClip": 0.010661375661375636,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 1.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.5626,
+     "pp.AutoExposureBias": 0.2831,
      "pp.BloomIntensity": 0.42665343915343906,
      "pp.BloomThreshold": 1.0400793650793654,
      "pp.VignetteIntensity": 0.41332671957671957,
@@ -9581,7 +9675,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": 0.5095,
+     "pp.AutoExposureBias": 0.2789,
      "sky.Intensity": 0.3327,
      "fill.N": 0.1142,
      "fill.E": 0.3456,
@@ -9600,9 +9694,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6488,
-      0.8109999999999999,
-      0.8109999999999999,
+      0.51904,
+      0.77045,
+      0.811,
       1.0
      ],
      "fog.FogInscatteringLuminance": [
@@ -9612,9 +9706,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.0405,
-      0.02025,
-      0.0081,
+      0.001012,
+      0.000506,
+      0.000202,
       1.0
      ],
      "cloudv.Layout_GlobalTexturePlacement": [
@@ -9634,6 +9728,13 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": 1.0,
+     "pp.ColorSaturation": [
+      0.67125,
+      0.651,
+      0.6324,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
@@ -9703,15 +9804,15 @@
      "fog.StartDistance": 25039.682539682573,
      "fog.FogMaxOpacity": 0.9320039682539681,
      "fog.FogInscatteringLuminance": [
-      0.1611345767195765,
-      0.1258275595238094,
-      0.12932827380952366,
+      0.149049,
+      0.11639,
+      0.119629,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.036589,
-      0.018294,
-      0.007318,
+      0.00282,
+      0.00141,
+      0.000564,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 11.709623015873012,
@@ -9753,9 +9854,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.663487863756614,
-      0.8268842592592595,
-      0.8268842592592595,
+      0.53079,
+      0.78554,
+      0.826884,
       1.0
      ],
      "pp.ColorOffset": [
@@ -9765,9 +9866,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.1045676256613752,
-      1.0736541005291003,
-      1.0494616402116401,
+      0.662741,
+      0.644192,
+      0.629677,
       1.0
      ],
      "pp.ColorContrast": [
@@ -9780,11 +9881,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 76.18270502645503,
      "pp.AutoExposureHighPercent": 98.61827050264549,
-     "pp.FilmWhiteClip": 0.015269179894179922,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.3782,
+     "pp.AutoExposureBias": 0.3716,
      "pp.BloomIntensity": 0.43817294973544985,
      "pp.BloomThreshold": 0.970962301587301,
      "pp.VignetteIntensity": 0.4190864748677249,
@@ -9899,15 +10000,15 @@
      "fog.StartDistance": 28126.9841269842,
      "fog.FogMaxOpacity": 0.9284126984126984,
      "fog.FogInscatteringLuminance": [
-      0.1426582010582006,
-      0.1118295238095235,
-      0.11572603174603142,
+      0.121259,
+      0.095055,
+      0.098367,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.032258,
-      0.016129,
-      0.006452,
+      0.004167,
+      0.002083,
+      0.000833,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 11.350793650793642,
@@ -9949,9 +10050,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.6812322751322756,
-      0.8436296296296301,
-      0.8436296296296301,
+      0.544986,
+      0.801448,
+      0.84363,
       1.0
      ],
      "pp.ColorOffset": [
@@ -9961,9 +10062,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0896164021164014,
-      1.0616931216931214,
-      1.0446772486772484,
+      0.65377,
+      0.637016,
+      0.626806,
       1.0
      ],
      "pp.ColorContrast": [
@@ -9976,11 +10077,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 75.58465608465607,
      "pp.AutoExposureHighPercent": 98.55846560846561,
-     "pp.FilmWhiteClip": 0.017661375661375718,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.2767,
+     "pp.AutoExposureBias": 0.3069,
      "pp.BloomIntensity": 0.4441534391534393,
      "pp.BloomThreshold": 0.9350793650793643,
      "pp.VignetteIntensity": 0.42207671957671966,
@@ -10095,15 +10196,15 @@
      "fog.StartDistance": 31214.2857142856,
      "fog.FogMaxOpacity": 0.9248214285714287,
      "fog.FogInscatteringLuminance": [
-      0.12365071428571497,
-      0.09740482142857196,
-      0.10166267857142909,
+      0.095829,
+      0.075489,
+      0.078789,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.02781,
-      0.013905,
-      0.005562,
+      0.00533,
+      0.002665,
+      0.001066,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 10.9919642857143,
@@ -10145,9 +10246,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7012294642857135,
-      0.8603749999999993,
-      0.8603749999999993,
+      0.560984,
+      0.817356,
+      0.860375,
       1.0
      ],
      "pp.ColorOffset": [
@@ -10157,9 +10258,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.074665178571429,
-      1.0497321428571433,
-      1.0398928571428574,
+      0.644799,
+      0.629839,
+      0.623936,
       1.0
      ],
      "pp.ColorContrast": [
@@ -10172,11 +10273,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 74.98660714285717,
      "pp.AutoExposureHighPercent": 98.4986607142857,
-     "pp.FilmWhiteClip": 0.020053571428571344,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.25,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0823,
+     "pp.AutoExposureBias": 0.1863,
      "pp.BloomIntensity": 0.4501339285714283,
      "pp.BloomThreshold": 0.8991964285714297,
      "pp.VignetteIntensity": 0.42506696428571417,
@@ -10291,15 +10392,15 @@
      "fog.StartDistance": 34253.96825396817,
      "fog.FogMaxOpacity": 0.921825396825397,
      "fog.FogInscatteringLuminance": [
-      0.10541195767195811,
-      0.08354238095238128,
-      0.08810761904761938,
+      0.073788,
+      0.05848,
+      0.061675,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.023549,
-      0.011775,
-      0.00471,
+      0.006149,
+      0.003074,
+      0.00123,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 10.65158730158731,
@@ -10341,9 +10442,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7226756613756609,
-      0.8762592592592587,
-      0.8762592592592587,
+      0.578141,
+      0.832446,
+      0.876259,
       1.0
      ],
      "pp.ColorOffset": [
@@ -10353,9 +10454,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0604828042328043,
-      1.0383862433862436,
-      1.0353544973544975,
+      0.63629,
+      0.623032,
+      0.621213,
       1.0
      ],
      "pp.ColorContrast": [
@@ -10368,11 +10469,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 74.41931216931219,
      "pp.AutoExposureHighPercent": 98.44193121693122,
-     "pp.FilmWhiteClip": 0.02232275132275127,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.157,
+     "pp.AutoExposureBias": -0.0732,
      "pp.BloomIntensity": 0.45580687830687816,
      "pp.BloomThreshold": 0.865158730158731,
      "pp.VignetteIntensity": 0.4279034391534391,
@@ -10487,15 +10588,15 @@
      "fog.StartDistance": 37198.412698412656,
      "fog.FogMaxOpacity": 0.9200198412698413,
      "fog.FogInscatteringLuminance": [
-      0.08924177248677266,
-      0.0712311309523811,
-      0.07603025793650807,
+      0.055776,
+      0.044519,
+      0.047519,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.019778,
-      0.009889,
-      0.003956,
+      0.006538,
+      0.003269,
+      0.001308,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 10.348115079365083,
@@ -10537,9 +10638,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7447670965608463,
-      0.8904212962962962,
-      0.8904212962962962,
+      0.595814,
+      0.8459,
+      0.890421,
       1.0
      ],
      "pp.ColorOffset": [
@@ -10549,9 +10650,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0478381283068785,
-      1.0282705026455028,
-      1.031308201058201,
+      0.628703,
+      0.616962,
+      0.618785,
       1.0
      ],
      "pp.ColorContrast": [
@@ -10564,11 +10665,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 73.91352513227513,
      "pp.AutoExposureHighPercent": 98.3913525132275,
-     "pp.FilmWhiteClip": 0.02434589947089945,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.75,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.2483,
+     "pp.AutoExposureBias": -0.2301,
      "pp.BloomIntensity": 0.46086474867724864,
      "pp.BloomThreshold": 0.8348115079365083,
      "pp.VignetteIntensity": 0.43043237433862436,
@@ -10650,7 +10751,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.2964,
+     "pp.AutoExposureBias": -0.2865,
      "sky.Intensity": 0.1655,
      "fill.N": 0.0785,
      "fill.E": 0.1912,
@@ -10669,21 +10770,21 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7667,
-      0.902,
+      0.61336,
+      0.8569,
       0.902,
       1.0
      ],
      "fog.FogInscatteringLuminance": [
-      0.07644,
-      0.06146,
-      0.0664,
+      0.042042,
+      0.033803,
+      0.03652,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.0168,
-      0.0084,
+      0.00672,
       0.00336,
+      0.001344,
       1.0
      ],
      "cloudv.Layout_GlobalTexturePlacement": [
@@ -10704,6 +10805,13 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
+     "pp.ColorSaturation": [
+      0.6225,
+      0.612,
+      0.6168,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
@@ -10769,15 +10877,15 @@
      "fog.StartDistance": 42664.062500000044,
      "fog.FogMaxOpacity": 0.9216992187500002,
      "fog.FogInscatteringLuminance": [
-      0.06667368164062484,
-      0.05396083984374989,
-      0.05892656249999989,
+      0.036671,
+      0.029678,
+      0.03241,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.014542,
-      0.007271,
-      0.002908,
+      0.005272,
+      0.002636,
+      0.001054,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 9.905175781249998,
@@ -10819,9 +10927,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.7895508789062505,
-      0.9110917968750001,
-      0.9110917968750001,
+      0.631641,
+      0.865537,
+      0.911092,
       1.0
      ],
      "pp.ColorOffset": [
@@ -10831,9 +10939,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0293823242187496,
-      1.013505859375,
-      1.02540234375,
+      0.617629,
+      0.608104,
+      0.615241,
       1.0
      ],
      "pp.ColorContrast": [
@@ -10846,11 +10954,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 73.17529296875,
      "pp.AutoExposureHighPercent": 98.317529296875,
-     "pp.FilmWhiteClip": 0.02729882812500002,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.317,
+     "pp.AutoExposureBias": -0.3534,
      "pp.BloomIntensity": 0.46824707031250007,
      "pp.BloomThreshold": 0.7905175781249996,
      "pp.VignetteIntensity": 0.43412353515625,
@@ -10965,15 +11073,15 @@
      "fog.StartDistance": 45241.07142857133,
      "fog.FogMaxOpacity": 0.924486607142857,
      "fog.FogInscatteringLuminance": [
-      0.05855119419642886,
-      0.04767136160714308,
-      0.05256223214285737,
+      0.032203,
+      0.026219,
+      0.028909,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.012681,
-      0.00634,
-      0.002536,
+      0.004121,
+      0.002061,
+      0.000824,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 9.744084821428576,
@@ -11015,9 +11123,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.8143128348214278,
-      0.9186093749999996,
-      0.9186093749999996,
+      0.65145,
+      0.872679,
+      0.918609,
       1.0
      ],
      "pp.ColorOffset": [
@@ -11027,9 +11135,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      1.0226702008928572,
-      1.0081361607142858,
-      1.0232544642857144,
+      0.613602,
+      0.604882,
+      0.613953,
       1.0
      ],
      "pp.ColorContrast": [
@@ -11042,11 +11150,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 72.9068080357143,
      "pp.AutoExposureHighPercent": 98.29068080357143,
-     "pp.FilmWhiteClip": 0.028372767857142822,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.31,
+     "pp.AutoExposureBias": -0.2014,
      "pp.BloomIntensity": 0.4709319196428571,
      "pp.BloomThreshold": 0.7744084821428577,
      "pp.VignetteIntensity": 0.43546595982142855,
@@ -11129,7 +11237,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": -0.4428,
+     "pp.AutoExposureBias": -0.405,
      "sky.Intensity": 0.1427,
      "fill.N": 0.0592,
      "fill.E": 0.1081,
@@ -11148,21 +11256,21 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
+      0.7608,
+      0.90345,
       0.951,
-      0.9510000000000001,
-      0.9510000000000001,
       1.0
      ],
      "fog.FogInscatteringLuminance": [
-      0.0282,
-      0.02401,
-      0.02833,
+      0.01551,
+      0.013206,
+      0.015582,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.005776,
-      0.002888,
-      0.001154,
+      0.001444,
+      0.000722,
+      0.000289,
       1.0
      ],
      "sun.Intensity": 5000.0,
@@ -11184,6 +11292,13 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
+     "pp.ColorSaturation": [
+      0.59625,
+      0.591,
+      0.6084,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     },
@@ -11253,15 +11368,15 @@
      "fog.StartDistance": 71249.9999999999,
      "fog.FogMaxOpacity": 0.9668749999999998,
      "fog.FogInscatteringLuminance": [
-      0.013600625000000087,
-      0.013440625000000058,
-      0.018973125000000042,
+      0.00748,
+      0.007392,
+      0.010435,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.002199,
-      0.0011,
-      0.000439,
+      0.00055,
+      0.000275,
+      0.00011,
       1.0
      ],
      "fog.DirectionalInscatteringExponent": 8.459375000000005,
@@ -11303,9 +11418,9 @@
       1.0
      ],
      "pp.ColorGainHighlights": [
-      0.9870187499999998,
-      0.9785624999999998,
-      0.9785624999999998,
+      0.789615,
+      0.929634,
+      0.978562,
       1.0
      ],
      "pp.ColorOffset": [
@@ -11315,9 +11430,9 @@
       0.0
      ],
      "pp.ColorSaturation": [
-      0.9691406250000001,
-      0.9653125000000001,
-      1.0061250000000002,
+      0.581484,
+      0.579188,
+      0.603675,
       1.0
      ],
      "pp.ColorContrast": [
@@ -11330,11 +11445,11 @@
      "pp.LumenDiffuseColorBoost": 1.0,
      "pp.AutoExposureLowPercent": 70.765625,
      "pp.AutoExposureHighPercent": 98.0765625,
-     "pp.FilmWhiteClip": 0.03693749999999996,
+     "pp.FilmWhiteClip": 0.0,
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 10.5,
-     "pp.AutoExposureBias": -0.3532,
+     "pp.AutoExposureBias": -0.4748,
      "pp.BloomIntensity": 0.49234374999999997,
      "pp.BloomThreshold": 0.6459375000000004,
      "pp.VignetteIntensity": 0.44617187499999994,
@@ -11416,7 +11531,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.555,
+     "pp.AutoExposureBias": -0.5429,
      "sky.Intensity": 0.12,
      "fill.N": 0.04,
      "fill.E": 0.025,
@@ -11435,9 +11550,9 @@
       1.0
      ],
      "fog.FogInscatteringLuminance": [
-      0.00525,
-      0.00788,
-      0.015,
+      0.003478,
+      0.005221,
+      0.009938,
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
@@ -11466,6 +11581,19 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
+     "pp.ColorSaturation": [
+      0.57,
+      0.57,
+      0.6,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.8,
+      0.95,
+      1.0,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.0,
      "pp.AutoExposureMaxBrightness": 6.0,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
@@ -11499,7 +11627,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": -0.8635,
+     "pp.AutoExposureBias": -0.8745,
      "sky.Intensity": 0.66,
      "fill.N": 0.22,
      "fill.E": 0.1375,
@@ -11547,6 +11675,19 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": -1.0,
+     "pp.ColorSaturation": [
+      0.633333,
+      0.633333,
+      0.666667,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.833333,
+      0.958333,
+      1.0,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.006667,
      "pp.AutoExposureMaxBrightness": 4.3,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
@@ -11580,7 +11721,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": -0.8164,
+     "pp.AutoExposureBias": -0.8136,
      "sky.Intensity": 1.092,
      "fill.N": 0.364,
      "fill.E": 0.2275,
@@ -11616,6 +11757,19 @@
       1.0
      ],
      "pp.AutoExposureMinBrightness": 1.0,
+     "pp.ColorSaturation": [
+      0.886667,
+      0.886667,
+      0.933333,
+      1.0
+     ],
+     "pp.ColorGainHighlights": [
+      0.966667,
+      0.991667,
+      1.0,
+      1.0
+     ],
+     "pp.FilmWhiteClip": 0.033333,
      "moonc.VolumetricScatteringIntensity": 0.1
     }
    }

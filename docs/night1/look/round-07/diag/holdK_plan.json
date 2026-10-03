@@ -1,0 +1,418 @@
+{
+ "groups": [
+  {
+   "name": "k0_h19.5",
+   "hour": 19.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k1_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0162 0.0081 0.00324 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.7 0.7 0.7 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k2_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0162 0.0081 0.00324 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.51904 0.77045 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k3_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0081 0.00405 0.00162 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.51904 0.77045 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k4_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0162 0.0081 0.00324 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.35 0.35 0.35 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.42172 0.7299 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k0_h19.8",
+   "hour": 19.8,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k1_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00672 0.00336 0.001344 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.7 0.7 0.7 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k2_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00672 0.00336 0.001344 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.61336 0.8569 0.902 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k3_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00336 0.00168 0.000672 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.61336 0.8569 0.902 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k4_h19.8",
+   "hour": 19.8,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00672 0.00336 0.001344 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.35 0.35 0.35 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.498355 0.8118 0.902 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k0_h20",
+   "hour": 20.0,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k1_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00409742 0.00204854 0.000819269 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.7 0.7 0.7 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k2_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00409742 0.00204854 0.000819269 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.690061 0.88294 0.92941 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k3_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00204871 0.00102427 0.000409635 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.690061 0.88294 0.92941 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k4_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00409742 0.00204854 0.000819269 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.35 0.35 0.35 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.560674 0.836469 0.92941 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k0_h20.5",
+   "hour": 20.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k1_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00033205 0.000166133 6.62667e-05 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.7 0.7 0.7 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k2_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00033205 0.000166133 6.62667e-05 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.796825 0.941878 0.991451 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k3_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.000166025 8.30667e-05 3.31333e-05 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.796825 0.941878 0.991451 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k4_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.00033205 0.000166133 6.62667e-05 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.35 0.35 0.35 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.64742 0.892305 0.991451 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k0_h6.5",
+   "hour": 6.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k1_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0162 0.0081 0.00324 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.7 0.7 0.7 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k2_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0162 0.0081 0.00324 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.51904 0.77045 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k3_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0081 0.00405 0.00162 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.51904 0.77045 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k4_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.0162 0.0081 0.00324 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.35 0.35 0.35 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.42172 0.7299 0.811 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k0_h7",
+   "hour": 7.0,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k1_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.02 0.011 0.0056 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.7 0.7 0.7 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k2_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.02 0.011 0.0056 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.4896 0.684 0.72 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k3_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.01 0.0055 0.0028 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.5 0.5 0.5 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.4896 0.684 0.72 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "k4_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.02 0.011 0.0056 1",
+    "exec wh.ToDSet pp.ColorSaturation 0.35 0.35 0.35 1",
+    "exec wh.ToDSet pp.FilmWhiteClip 0",
+    "exec wh.ToDSet pp.ColorGainHighlights 0.3978 0.648 0.72 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  }
+ ]
+}

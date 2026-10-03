@@ -1,0 +1,502 @@
+{
+ "groups": [
+  {
+   "name": "base_h19.5",
+   "hour": 19.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogInsc50_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.08889 0.069205 0.07075 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogAmb0_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.SkyAtmosphereAmbientContributionColorScale 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogDir0_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "apd1.5_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "hfc0.3_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet atm.HeightFogContribution 0.3"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "dens50_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogDensity 0.0063"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "maxop60_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogMaxOpacity 0.6"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sat60_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorSaturation 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "skyX1.8_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet atm.SkyLuminanceFactor 16.2 5.4 1.98 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "nocloud_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet cloud.Cloud_GlobalCoverage -0.2"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "cloudlit_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.4 0.4 0.4 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fog2off_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog2.FogDensity 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "volfog30_h19.5",
+   "hour": 19.5,
+   "cmds": [
+    "exec wh.ToDSet fog.VolumetricFogExtinctionScale 0.19875"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "base_h20",
+   "hour": 20.0,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogInsc50_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.0238973 0.0196275 0.0219437 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogAmb0_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.SkyAtmosphereAmbientContributionColorScale 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogDir0_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "apd1.5_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "hfc0.3_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet atm.HeightFogContribution 0.3"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "dens50_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogDensity 0.0170344"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "maxop60_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogMaxOpacity 0.6"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sat60_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorSaturation 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "skyX1.8_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet atm.SkyLuminanceFactor 59.2429 31.7218 20.655 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "nocloud_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet cloud.Cloud_GlobalCoverage -0.2"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "cloudlit_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.4 0.4 0.4 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fog2off_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog2.FogDensity 0"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "volfog30_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet fog.VolumetricFogExtinctionScale 0.262184"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "base_h6.5",
+   "hour": 6.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogInsc50_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogInscatteringLuminance 0.0888875 0.0692062 0.07075 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogAmb0_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.SkyAtmosphereAmbientContributionColorScale 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fogDir0_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0 0 0 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "apd1.5_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet atm.AerialPespectiveViewDistanceScale 1.5"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "hfc0.3_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet atm.HeightFogContribution 0.3"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "dens50_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogDensity 0.0063"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "maxop60_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogMaxOpacity 0.6"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sat60_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet pp.ColorSaturation 0.6 0.6 0.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "skyX1.8_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet atm.SkyLuminanceFactor 7.2 4.5 3.6 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "nocloud_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet cloud.Cloud_GlobalCoverage -0.2"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "cloudlit_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet sunc.CloudScatteredLuminanceScale 0.4 0.4 0.4 1"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fog2off_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog2.FogDensity 0"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "volfog30_h6.5",
+   "hour": 6.5,
+   "cmds": [
+    "exec wh.ToDSet fog.VolumetricFogExtinctionScale 0.19875"
+   ],
+   "shots": [
+    "S4",
+    "S4e"
+   ],
+   "settle_first": 8
+  }
+ ]
+}
