@@ -44,10 +44,10 @@
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "active",
+   "state": "paused",
    "round": 17,
    "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
-   "gap": "pawn run cadence 3.2-3.8 Hz (P3-owned, fixed in traversal r25); P2 next target pending director"
+   "gap": "Paused by Opus director (flat 5 rounds r13-r17). Resume on Opus: lens curvature/gloss + angle-dependent cloth sheen (see HANDOFF 2026-10-03 01:55)."
   },
   {
    "id": "P3",
@@ -959,7 +959,7 @@
    "round": 17,
    "verdict": "fails",
    "gap": "pawn run cadence 3.2-3.8 Hz (P3-owned, fixed in traversal r25); P2 next target pending director",
-   "notes": "Lineup corruption fixed (0.45 % vs 13.7 %): capture fired while assets compiled + animations ran. Verdant re-blocked copper/dark pine, IP 8/8 PASS. Director decision pending."
+   "notes": "Lineup corruption fixed (0.45 % vs 13.7 %): capture fired while assets compiled + animations ran. Verdant re-blocked copper/dark pine, IP 8/8 PASS. Director decision pending. Merged (Opus director, merge=true). Stream paused (stop=true)."
   }
  ],
  "perf": [
