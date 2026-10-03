@@ -36,6 +36,7 @@ for f in sorted(os.listdir(D)):
         im4 = cv2.resize(im, (3840, 2160), interpolation=cv2.INTER_CUBIC) if im.shape[1] < 3840 else im
         c = os.path.join(D, n + '_seawall_foam.jpg'); cv2.imwrite(c, im4[1250:2160, 1500:2700]); r['foam'] = ws.foam(c)
     elif 'river_sun' in n: r = ws.near(p); r.update(ws.sparkle(p))
+    elif 'harbour_sun_high' in n: r = dict(sun=ws.sun_colour(p), sunhigh=ws.sunhigh(p))
     else: continue
     res[n] = r
     print('%-24s %s' % (n, json.dumps({k: v for k, v in r.items() if k not in ('file', 'crop', 'note', 'rgb', 'src_width')})))

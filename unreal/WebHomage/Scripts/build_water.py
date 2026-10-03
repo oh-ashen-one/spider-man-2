@@ -533,7 +533,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # r05b: FarMaxM / FarLowK cap the far contact line (r05's FarPx footprints painted a 40 px white bar over the far quay at river
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
-          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.62, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
+          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.8, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
           'GSpread': 0.22, 'DistFix': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 

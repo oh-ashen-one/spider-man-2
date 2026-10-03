@@ -1,0 +1,58 @@
+{
+ "SK2": {
+  "ScatK": 0.02,
+  "_views": [
+   "river_low",
+   "river_sun",
+   "harbour_high",
+   "harbour_sun_high"
+  ]
+ },
+ "SK1": {
+  "ScatK": 0.01,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "MK3": {
+  "MicroK": 3.0,
+  "_views": [
+   "river_low",
+   "river_sun"
+  ]
+ },
+ "MK3SK2": {
+  "MicroK": 3.0,
+  "ScatK": 0.02,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "CB09": {
+  "CBias": 0.9,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "CM10": {
+  "CovMax": 1.0,
+  "_views": [
+   "river_low"
+  ]
+ },
+ "LM1": {
+  "LongK": 2.2,
+  "MidK": 1.3,
+  "_views": [
+   "harbour_high",
+   "river_low"
+  ]
+ },
+ "LM2": {
+  "LongK": 1.6,
+  "MidK": 1.0,
+  "_views": [
+   "harbour_high"
+  ]
+ }
+}
