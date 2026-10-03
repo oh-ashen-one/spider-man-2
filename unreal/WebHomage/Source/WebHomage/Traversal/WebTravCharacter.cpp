@@ -12,6 +12,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "TextureResource.h"
 #include "Core/WebHomagePlayerController.h"
+#include "Characters/WHHeroSuit.h"
 #include "WebHomage.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -341,15 +342,27 @@ bool AWebTravCharacter::SetupHeroMesh()
 	// of a studio suit layout/emblem. The playable hero must wear P2's ORIGINAL round-08 suit (Tessera, MI_Hero_Suit), which is authored on
 	// the same body UV atlas (tools/ue_char/hero_suit_r8.py evaluates the same spiderman.glb body). Override the 'SpiderSuit' slot whenever
 	// that material exists (build_characters.py ran); traversal keeps its own skeleton, clips and flip shapes untouched.
+	// round 26 (director hard line: no capture and no default launch may show the proxy's licensed-looking suit): the first entry of P2's
+	// suit set (/Game/Characters/Hero/Suits/DA_HeroSuits, characters r14: Tessera) wins, then MI_Hero_Suit; when neither exists the slot
+	// gets the engine's plain default material instead of the proxy texture. UWHHeroSuitSubsystem then applies the chosen / saved suit.
 	{
 		static const TCHAR* OriginalSuit = TEXT("/Game/Characters/Hero/Materials/MI_Hero_Suit.MI_Hero_Suit");
 		const int32 Slot = M->GetMaterialIndex(FName(TEXT("SpiderSuit")));
-		UMaterialInterface* Suit = Slot != INDEX_NONE ? LoadObject<UMaterialInterface>(nullptr, OriginalSuit) : nullptr;
-		if (Suit) M->SetMaterial(Slot, Suit);
-		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s"), Suit ? TEXT("ORIGINAL (MI_Hero_Suit, slot SpiderSuit)")
-			: Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : TEXT("MI_Hero_Suit MISSING - run build_characters.py; proxy suit shown"));
-		if (Slot != INDEX_NONE && !Suit)
-			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: original suit material %s not found"), OriginalSuit);
+		UMaterialInterface* Suit = nullptr;
+		const TCHAR* Src = TEXT("none");
+		if (Slot != INDEX_NONE)
+		{
+			if (const UWHHeroSuitSet* Set = LoadObject<UWHHeroSuitSet>(nullptr, UWHHeroSuitSubsystem::SetPath))
+				for (const FWHHeroSuitEntry& E : Set->Suits) if (E.Material) { Suit = E.Material; Src = TEXT("DA_HeroSuits entry"); break; }
+			if (!Suit) { Suit = LoadObject<UMaterialInterface>(nullptr, OriginalSuit); Src = TEXT("MI_Hero_Suit"); }
+			if (!Suit)
+			{
+				Suit = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial")); Src = TEXT("NEUTRAL engine default (no original suit built)");
+				UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: no original suit (DA_HeroSuits / %s) - run build_characters.py; neutral material, never the proxy suit"), OriginalSuit);
+			}
+			if (Suit) M->SetMaterial(Slot, Suit);
+		}
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s %s"), Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : Src, Suit ? *Suit->GetName() : TEXT("-"));
 	}
 	M->SetCastShadow(true);
 	// round 06: the suit rendered white / unshaded for the first frames of a capture (textures streaming in late):

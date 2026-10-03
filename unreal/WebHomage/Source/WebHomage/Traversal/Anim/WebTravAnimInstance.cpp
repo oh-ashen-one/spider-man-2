@@ -51,7 +51,9 @@ static double SideTd = 0.45, SideTo = 0.50, SideTuck = 0.55, SideSwOff = 28.0, S
 //   VRoll   torso side roll with the stride (deg)
 //   VArmOut sprint arm pump: the back-swinging elbow / hand flares this far out to the side (cm) -- the silhouette widens on every step
 //   VArmUp  forward reach of the pump (arm lengths up the run line), VArmK = threshold of the out flare (share of the back swing)
-static double VKick = 1.0, VSw = 34.0, VTr = 0.80, VKt = 0.45, VTrack = 4.0, VKneeLat = 0.70, VHip = 40.0, VRoll = 4.0, VArmOut = 22.0, VArmUp = 0.35, VArmK = 0.5;
+static double VKick = 1.0, VSw = 34.0, VTr = 0.80, VKt = 0.45, VTrack = 4.0, VKneeLat = 0.0, VHip = 40.0, VRoll = 4.0, VArmOut = 22.0, VArmUp = 0.35, VArmK = 0.5;
+static double VCad = 5.0; // round 26: vertical wall-run cadence (steps/s), see the gait drive
+static double VKneeIn = -0.2; // round 26: stance knee pole across the run (vertical run only; r25 0), VKneeLat .70 -> 0 (probe g3: knee gap med .49 -> .20 m)
 static double GaitHi = 0.28, GaitKp = 0.75, GaitSwOff = 15.0, GaitSig = 0.40, GaitCadMin = 5.6, GaitCadMax = 6.6, GaitCadBase = 3.2, GaitCadK = 0.22;
 
 namespace
@@ -91,6 +93,7 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 				else if (K == TEXT("SSw")) SideSwOff = X; else if (K == TEXT("SReach")) SideReach = X; else if (K == TEXT("SArm")) SideArmFwd = X;
 				else if (K == TEXT("VKick")) VKick = X; else if (K == TEXT("VSw")) VSw = X; else if (K == TEXT("VTr")) VTr = X; else if (K == TEXT("VKt")) VKt = X;
 				else if (K == TEXT("VTrack")) VTrack = X; else if (K == TEXT("VKneeLat")) VKneeLat = X; else if (K == TEXT("VHip")) VHip = X;
+				else if (K == TEXT("VCad")) VCad = X; else if (K == TEXT("VKneeIn")) VKneeIn = X;
 				else if (K == TEXT("VRoll")) VRoll = X; else if (K == TEXT("VArmOut")) VArmOut = X; else if (K == TEXT("VArmUp")) VArmUp = X; else if (K == TEXT("VArmK")) VArmK = X;
 			}
 		}
@@ -535,7 +538,12 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 				Frame.WallZ = Z.IsNearlyZero() ? U : Z;
 			}
 			// cadence: r20 3.4 steps/s at 4 m/s .. 6 steps/s at 17 m/s (ref wallrun-glass-midday ~5 steps/s); r21 5.6 .. 6.6 (a touchdown every <= .18 s)
-			const float StepsPerS = FMath::Clamp(float(GaitCadBase + GaitCadK * A.Speed), float(GaitCadMin), float(GaitCadMax));
+			float StepsPerS = FMath::Clamp(float(GaitCadBase + GaitCadK * A.Speed), float(GaitCadMin), float(GaitCadMax));
+			// round 26 (critic r25: "the vertical run is the same frog pose in 4 of 4 frames" sampled 0.3 s apart): 6.46 steps/s = a 0.31 s
+			// stride cycle, so every 0.3 s sample landed on the same phase. The VERTICAL run steps at VCad (5.0 steps/s = 2.5 cycles/s: a
+			// 0.3 s sample moves the phase by 0.75 cycle, a different limb pose each time; ~5 steps/s is also the reference run's cadence);
+			// the side run (SideUp 1) keeps the r21 cadence. -WHGaitTune=VCad=0 = r25.
+			if (VCad > 0.0) StepsPerS = FMath::Lerp(float(VCad), StepsPerS, FMath::Clamp(A.Wall.SideUp, 0.f, 1.f));
 			WallGaitPh = FMath::Fmod(WallGaitPh + Dt * StepsPerS * 0.5f, 1.f);
 		}
 		Frame.GaitPh = WallGaitPh;
@@ -895,7 +903,10 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			  // toe-off (ankle VSw off it at mid-swing, near-straight leg, knee by the hip plane bending partly sideways), then the knee drives
 			  // it back up onto the face at the touchdown point
 				const double LatV = GaitLat + VTrack;
-				FVector TgtV, PoleV = Pole, ToeV = ToeUp;
+				// round 26 (critic r25: knee_gap_lat median .49 m = "frog"): the stance knee pole leans IN by VKneeIn (pole weight across the
+				// run; r25 0) and the recovery knee drives straight up the run line (VKneeLat 0; r23-r25 .70 bent it sideways at mid-swing)
+				const FVector PoleS = Pole + Sd * (Sg * VKneeIn);
+				FVector TgtV, PoleV = PoleS, ToeV = ToeUp;
 				float EndV = EndW;
 				if (bStance) { const float K = Phi / Sig; TgtV = Base + U * FMath::Lerp(OTd, OTo, double(K)) + N * 2.0 + Sd * (Sg * LatV); }
 				else
@@ -906,7 +917,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 					const double Sw = FMath::Pow(FMath::Sin(PI * K), 0.8);
 					TgtV = Base + U * OV + N * (2.0 + VSw * Sw) + Sd * (Sg * (LatV + 3.0 * Sw));
 					const FVector PoleMid = (U * 1.0 + Sd * (Sg * VKneeLat) + N * (1.0 - VKneeLat) * 0.45).GetSafeNormal();
-					PoleV = FMath::Lerp(Pole.GetSafeNormal(), PoleMid, Sw).GetSafeNormal();
+					PoleV = FMath::Lerp(PoleS.GetSafeNormal(), PoleMid, Sw).GetSafeNormal();
 					ToeV = FMath::Lerp(ToeUp, (-U * 0.8 + N * 0.35).GetSafeNormal(), Sw).GetSafeNormal(); // pointed, trailing toe
 					EndV = 0.5f;
 				}

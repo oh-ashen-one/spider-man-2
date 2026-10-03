@@ -629,7 +629,18 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			const double Out = FMath::Max(WallCamOut, FMath::Sqrt(FMath::Max(0.0, WallCamDist * WallCamDist - Dz * Dz)));
 			FVector WallCam(Base.X + N.X * Out, Base.Y + N.Y * Out, WZ), WallClear;
 			ClearFrom(From, WallCam, WallClear);
-			Cam = FMath::Lerp(Cam, WallClear, Smooth(WallK, 0.0, 1.0));
+			const double K = Smooth(WallK, 0.0, 1.0);
+			FVector Bl = FMath::Lerp(Cam, WallClear, K);
+			// round 26 (director: w1 camera 4-7 m on the whole run): the chord of the position blend passed ~0.3-0.7 m closer to the hero
+			// than either end (w1 3.96 m at the wall entry): the blended spot keeps the blended DISTANCE (pushed out along its own ray, swept clear)
+			const double DB = FMath::Lerp(FVector::Dist(Cam, Hero), FVector::Dist(WallClear, Hero), K), DN = FVector::Dist(Bl, Hero);
+			if (WallDistBlend > 0.0 && DN > 0.5 && DN < DB - 0.02)
+			{
+				FVector Far;
+				ClearFrom(From, Hero + (Bl - Hero) * (DB / DN), Far);
+				if (FVector::Dist(Far, Hero) > DN) Bl = Far;
+			}
+			Cam = Bl;
 		}
 	}
 	// ---- round 20 (critic r19 camera 4: after a zip a parapet hides the perched hero for 1.3 s; frames inside facades): the camera must SEE the
@@ -892,7 +903,7 @@ bool FWebTravCamera::SetTune(const FString& Name, double V)
 		{TEXT("FlipLeadDeg"), &FlipLeadDeg}, {TEXT("FlipSFrame"), &FlipSFrame}, {TEXT("FlipPitchUpMax"), &FlipPitchUpMax}, {TEXT("MaxLookUpDeg"), &MaxLookUpDeg},
 		{TEXT("FlipInT"), &FlipInT}, {TEXT("FlipOutT"), &FlipOutT}, {TEXT("FlipZInT"), &FlipZInT}, {TEXT("FlipDollyInT"), &FlipDollyInT}, {TEXT("FlipDollyOutT"), &FlipDollyOutT},
 		{TEXT("FlipWallMargin"), &FlipWallMargin}, {TEXT("FlipAheadT"), &FlipAheadT},
-		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist},
+		{TEXT("WallCamBelow"), &WallCamBelow}, {TEXT("WallCamOut"), &WallCamOut}, {TEXT("WallCamDist"), &WallCamDist}, {TEXT("WallDistBlend"), &WallDistBlend},
 		{TEXT("WallFrameS"), &WallFrameS}, {TEXT("FlipSkyW"), &FlipSkyW}, {TEXT("FlipInRate"), &FlipInRate}, {TEXT("FlipInAcc"), &FlipInAcc}, {TEXT("FlipInDec"), &FlipInDec}, {TEXT("WallMaxUpDeg"), &WallMaxUpDeg}, {TEXT("SettleDownMin"), &SettleDownMin},
 		{TEXT("SettleDownMax"), &SettleDownMax}, {TEXT("GlareDeg"), &GlareDeg}, {TEXT("GlareW"), &GlareW},
 		{TEXT("GndFloorPull"), &GndFloorPull}, {TEXT("GndFloorPullMin"), &GndFloorPullMin}, {TEXT("GndStop"), &GndStop}, {TEXT("GndHoldLens"), &GndHoldLens}, {TEXT("GndLensRelease"), &GndLensRelease}, {TEXT("GndStopExtra"), &GndStopExtra}, {TEXT("GndStopR"), &GndStopR}, {TEXT("GndMinDist"), &GndMinDist}, {TEXT("GndLookHold"), &GndLookHold}, {TEXT("GndAbsorb"), &GndAbsorb}, {TEXT("GndCraneT"), &GndCraneT}, {TEXT("GndCraneMax"), &GndCraneMax}, {TEXT("PerchHold"), &PerchHold}, {TEXT("GndZipHoldMax"), &GndZipHoldMax} };

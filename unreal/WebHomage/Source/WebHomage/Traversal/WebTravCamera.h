@@ -75,9 +75,12 @@ public:
 	// grazing angle (view 20-35 deg off the wall plane) so the wall converges to the roof edge; hero in the lower third
 	// (round 15, orchestrator: "wall-run camera c must not look 56 deg up" -- 2.2 m below / 2.2 m out / hero at 0.68 made the view
 	// ~57 deg up): 1.3 m below, 3.1 m out, hero at 0.60, look-up capped at WallMaxUpDeg)
-	double WallCamBelow = 1.3;     // m under the hero centre
-	double WallCamOut = 3.1;       // m out from the wall (min; more when the street floor pushes the camera up)
-	double WallCamDist = 3.4;      // m camera -> hero kept while the floor clamps the camera height
+	// round 26 (director after the r25 critic: w1 camera 3.4 m, hero box p90 .44 -> T15 4-7 m, T8 p90 .30-.38): 1.6 m below, 4.2 m out = 4.5 m
+	// (r25: 1.3 / 3.1 / 3.4); WallDistBlend 1 = the chase -> wall blend keeps the blended distance (r25 0)
+	double WallCamBelow = 1.6;     // m under the hero centre
+	double WallCamOut = 4.2;       // m out from the wall (min; more when the street floor pushes the camera up)
+	double WallCamDist = 4.5;      // m camera -> hero kept while the floor clamps the camera height
+	double WallDistBlend = 1.0;
 	double WallFrameS = 0.60;      // hero screen centre on the wall
 	double WallMaxUpDeg = 30.0;    // round 15: wall camera look-up cap (was 80)
 	double WallFovAdd = 4.0;       // deg vertical FOV added on the wall
