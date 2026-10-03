@@ -17,7 +17,7 @@ The director's target: one 30 s swing-held avenue route from y ~1010 over the ne
 | # | defect | evidence | fix |
 |---|---|---|---|
 | A | **the traversal only knows the cells loaded at BeginPlay**: `WebTravWorld::InitWorld` indexes `TActorIterator` once (with the pawn at the PlayerStart, y 178 m), the hero is teleported to the script spawn afterwards, streamed-in cells are never solids | `prims_dump.csv.gz`: 775 solids, facade tiles y -896..1404; 17 telemetry-only sims of 30 s swing chains from y 1010 on that map: last web anchor y <= 1,506 m in every one, then the hero falls to the street; a spawn at y 1700 never webs and lands in 1.67 s | content workaround: always-loaded World Partition streaming source actor `WH_StreamSrc_M2` at (250, 1560) (`Scripts/island_wp_sources.py`): 918 solids, facade / roofs / detail / fire-escape tiles 86 / 86 / 87 / 86 solid (`dump_check_r5.json`). The real fix is traversal's: `../REQUEST-traversal-r03.md` section 0 |
-| B | **street dressing (trees, parked cars, stopped traffic, furniture) existed only within ~1.2 km of the map origin**: all 9,763 per-tile HISM actors were spawned at (0,0,0); their saved World Partition bounds were empty (the instance tree builds asynchronously in the commandlet), so every one sat in the origin cell | M1 control (`street_m1`, y 330) full of cars / trees; M2 probes at y 1250 / 1690 / 1730 / 2000 on both avenues bare; ISM actor descriptors all at the origin | `build_city.py` `spawn_instances`: actors at their tile centre; applied to the built map by `build_manhattan.py --steps ism` (9,763 packages removed, 198,063 instances respawned, 201 s). After: `stills/street_m2_after_ism_fix_1920x1080.jpg` (y 1690: trees, parked cars, taxis, cones) |
+| B | **street dressing (trees, parked cars, stopped traffic, furniture) existed only within ~1.2 km of the map origin**: all 9,763 per-tile HISM actors were spawned at (0,0,0); their saved World Partition bounds were empty (the instance tree builds asynchronously in the commandlet), so every one sat in the origin cell | M1 control (`street_m1`, y 330) full of cars / trees; M2 frames at y 1250 / 1690 / 1730 / 2000 on both avenues bare; the two ISM actor descriptors decoded (one M1, one M2 tile) have empty bounds at (0, 0, 0) | `build_city.py` `spawn_instances`: actors at their tile centre; applied to the built map by `build_manhattan.py --steps ism` (9,763 packages removed, 198,063 instances respawned, 201 s). Before / after, same camera (248, 1690), standing hero, game second 2: `stills/street_m2b_before_ism_fix_1920x1080.jpg` (bare) vs `street_m2b_after_ism_fix_1920x1080.jpg` (trees, parked cars, taxis, a van, shop awnings); also `street_m2_after_ism_fix` ((-2, 1690)) and the M1 control `street_m1_control` ((248, 330)) |
 
 Defect B is why the M2 avenues looked bare (no trees, no cars) even after the street layer arrived, the round-02 critic's gap for y > 1010 (the first M2 probe: lane paint and
 street kit present, no dressing). Everything below is on the fixed map.
@@ -82,8 +82,8 @@ while the frames were moved to the SD card; the move was finished by hand in par
 | city_pass1 resumed: mesh (419 remaining) 4,325 + kit (272 tiles, ~20 s each: 3 distance-field builds per mesh) 5,360 + fsky/map/coll ~490 + **wp 1,610 (boxes 973)** | 11,869 |
 | build_manhattan map step | 34 |
 | 2026-10-03 `--steps map` (classic maps + WP player start + `WH_StreamSrc_M2`; the editor rebuilt distance fields of the classic geometry level) | 429 |
-| 2026-10-03 `--steps ism`: 9,763 per-tile ISM packages removed, respawned at their tile centres (198,063 instances), saved | 206 (commandlet 201) |
-| 2026-10-03 `island_wp_sources.py` alone (commandlet) | ~60 |
+| 2026-10-03 `--steps ism`: 9,763 per-tile ISM packages removed, respawned at their tile centres (198,063 instances), saved | 261 (commandlet 255.5: ~55 s start-up, spawn 127 s, save) |
+| 2026-10-03 `island_wp_sources.py` alone (commandlet) | ~90 (commandlet: 18 s to the map, 15 s to save, start-up) |
 Content: 1.5 GB (`du -sh unreal/WebHomage/Content`). Internal disk >= 273 GB free throughout (exports / frames on the SD card).
 Long poles: the double static-mesh build per mesh (import, then `finish_mesh` collision / Nanite settings rebuild) and distance fields.
 
@@ -129,6 +129,12 @@ it (fire-escape decks: the 20 overlap frames), lands on a deck at 41 m and conti
 nothing is phantom or hollow there (I5). The steering away from the avenue is traversal behaviour (`../REQUEST-traversal-r03.md`); the
 route script was not changed to dodge it.
 
+## Blind critic pack (not judged by the builder)
+`/Users/midir/sm2-n1/_scratch/critic-A-r03/pack` (key `pack.key.json` beside it, inputs `pairs.json`, sources `src/`; built by `../critic_prep_r03.py` then `abpack.py <pack> <pairs.json> .`):
+14 pairs, both sides of every pair the same pixel size (1920x1080 or 2048x1152 before abpack's 84 % crop): v1-v4 the four M1 routes vs the matching real-game clips, v2 uses r5 (16-24 s),
+s1-s6 stills (a1 north / south re-shot on the fixed map, r5 t20 / t12, r4 roofs, M2 street level), p1-p4 this round vs round 02 (r5 vs the round-02 r2 over the same blocks, a1 north / south, r2 chain).
+The round-02 critic's open items this pack can show: M2 street layer and dressing (s3 / s4 / s6 / p1), streaming-free continuity (s1 / s2 / p2 / p3).
+
 ## Files
 `r1_north_avenue.mp4`, `r2_south_avenue.mp4`, `r3_crosstown_east.mp4`, `r4_wallrun_roofs.mp4` (1920x1080 60 fps, H.264 2-pass,
 <= 14.7 MB), `*_telemetry.csv`, `*_log_excerpt.txt`, `stills/` (contact frames 5/12/20/26/28 s; a1 3840x2160), `route_check_r*.json`,
@@ -136,8 +142,7 @@ route script was not changed to dodge it.
 `build_timings_island.json`, `gpu_hold_*.json`.
 2026-10-03 additions: `r5_m2_avenue.mp4` (+ telemetry, log excerpt), `route_check_r5.json`, `r5_check.json` (pass lines + road band), `r5_search.json` (every sim of the route
 search and the map state it ran on), `dump_check_r5.json` (traversal primitive dump with the stream source: 918 solids), `stills/r5_m2_avenue_t*s_1920x1080.jpg`,
-`stills/street_m2_after_ism_fix_1920x1080.jpg` (street level at (-2, 1690), y 1690 m, after the ISM fix; the same spot before it was bare), `stills/street_m2_before_ism_fix_1920x1080.jpg`
-and `stills/street_m1_control_1920x1080.jpg` (same camera at (248, 330), M1: full dressing), `ip_gate.json` (OCR gate over the round's stills, `../ip_gate_r03.py`),
+`stills/street_m2b_before_ism_fix_1920x1080.jpg` / `street_m2b_after_ism_fix_1920x1080.jpg` (same camera at (248, 1690), bare vs dressed), `street_m2_after_ism_fix_1920x1080.jpg` ((-2, 1690)), `street_m1_control_1920x1080.jpg` ((248, 330), M1), `ip_gate.json` (OCR gate over the round's stills, `../ip_gate_r03.py`),
 `stills/a1_*` (re-shot 2026-10-03 on the fixed map). Captures of 2026-10-02 (r1-r4) are unchanged: the final map reproduces their telemetry to 0.0000 m.
 
 Honest slips this session (also in `../HANDOFF.md`): two engines of mine ran together for ~2 minutes at 12:26 (a still and a Python diagnostic launched from two shells; the diagnostic

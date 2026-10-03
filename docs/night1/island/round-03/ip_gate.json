@@ -28,17 +28,16 @@
   "NEED FOR",
   "OUT NOW",
   "RACER",
-  "CHASE",
-  "DUANE",
-  "READE",
+  "CHASE BANK",
+  "DUANE READE",
   "SUBWAY EATS",
   "STARBUCKS",
   "MCDONALD",
   "WALGREENS",
-  "CVS"
+  "CVS PHARMACY"
  ],
- "images": 22,
- "hits_total": 1,
+ "images": 31,
+ "hits_total": 0,
  "results": [
   {
    "file": "a1_high_north_00_t000.6_3840x2160.jpg",
@@ -182,9 +181,7 @@
     1920,
     1080
    ],
-   "hits": [
-    "CVS"
-   ]
+   "hits": []
   },
   {
    "file": "r4_wallrun_roofs_t20s_1920x1080.jpg",
@@ -212,6 +209,78 @@
   },
   {
    "file": "r4_wallrun_roofs_t5s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r5_m2_avenue_t12s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r5_m2_avenue_t20s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r5_m2_avenue_t26s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r5_m2_avenue_t28s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "r5_m2_avenue_t5s_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "street_m1_control_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "street_m2_after_ism_fix_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "street_m2b_after_ism_fix_1920x1080.jpg",
+   "size": [
+    1920,
+    1080
+   ],
+   "hits": []
+  },
+  {
+   "file": "street_m2b_before_ism_fix_1920x1080.jpg",
    "size": [
     1920,
     1080

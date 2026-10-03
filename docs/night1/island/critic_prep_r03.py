@@ -67,6 +67,8 @@ P = [
      'note': 'still, 1920x1080: swinging high over an avenue canyon; facades both sides, street layer below'},
     {'id': 's5-rooftops', 'x': still(S + 'r4_wallrun_roofs_t20s_1920x1080.jpg', 'r4_t20', need_fresh=True), 'y': still(REF + '/streets/rooftops-watertowers-golden__nm_0314.jpg', 'ref_rooftops'),
      'note': 'still, 1920x1080: hero on / just above mid-rise roofs (water tanks, bulkheads)'},
+    {'id': 's6-street-level-m2', 'x': still(S + 'street_m2_after_ism_fix_1920x1080.jpg', 'street_m2', need_fresh=True), 'y': still(REF + '/streets/street-walk-taxis__dn_0715.jpg', 'ref_walk_taxis'),
+     'note': 'still, 1920x1080: street level on an avenue block (parked cars, traffic, trees, crosswalk, shop fronts)'},
     # ---- this round vs round 02 (x = round 03)
     {'id': 'p1-same-place-m2', 'x': clip(mine('r5_m2_avenue'), 'r5_p1', 0.0, 10.0), 'y': clip(R2 + '/r2_south_avenue.mp4', 'r02_r2_p1', R02_R2_Y1010, 10.0),
      'note': 'movement, 10 s: the same stretch of avenue (the blocks south of the old detailed area) in two builds, a held swing down the avenue'},

@@ -177,6 +177,58 @@
    },
    "total_seconds": 11903.1,
    "finished": "2026-10-02 10:43:25"
+  },
+  {
+   "region": "island",
+   "tiles": "-4,-14,3,13",
+   "steps_wanted": [
+    "map"
+   ],
+   "steps_done": [
+    {
+     "step": "map",
+     "seconds": 429.0
+    }
+   ],
+   "commands": [
+    {
+     "cmd": "UE manhattan_map",
+     "seconds": 428.8,
+     "rc": 0,
+     "steps": []
+    }
+   ],
+   "env": {},
+   "total_seconds": 429.0,
+   "finished": "2026-10-03 11:37:57"
+  },
+  {
+   "region": "island",
+   "tiles": "-4,-14,3,13",
+   "steps_wanted": [
+    "ism"
+   ],
+   "steps_done": [
+    {
+     "step": "ism",
+     "seconds": 260.9
+    }
+   ],
+   "commands": [
+    {
+     "cmd": "UE wp_ism",
+     "seconds": 255.5,
+     "rc": 0,
+     "steps": [
+      "[build_city   127s] stopped traffic cars 1579",
+      "[build_city   200s] WP map /Game/Maps/Manhattan_WP saved 198063 instances (per-tile HISM actors at their tile centre)",
+      "[build_city   201s] DONE"
+     ]
+    }
+   ],
+   "env": {},
+   "total_seconds": 260.9,
+   "finished": "2026-10-03 12:43:24"
   }
  ]
 }
