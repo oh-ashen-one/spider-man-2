@@ -1,0 +1,7 @@
+{
+ "NG": {"OpenGlS": 0.0, "_views": ["river_sun"]},
+ "GA": {"GlitPow": 300.0, "GlitSlK": 2.0, "_views": ["river_sun"]},
+ "GC": {"GlitPow": 80.0, "GlitSlK": 3.0, "_views": ["river_sun"]},
+ "GD": {"GlitPow": 150.0, "GlitSlK": 4.0, "OpenGlS": 2.0, "_views": ["river_sun"]},
+ "CB": {"OpenChop": 1.0, "OpenB": 1.0, "_views": ["river_low", "river_sun"]}
+}

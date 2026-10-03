@@ -1,8 +1,61 @@
 {
- "K2": {"GlitSlK": 2.0, "OpenGlS": 4.0, "_views": ["river_sun"]},
- "K3": {"GlitSlK": 3.0, "OpenGlS": 4.0, "_views": ["river_sun"]},
- "K3P": {"GlitSlK": 3.0, "OpenGlS": 4.0, "GlitPow": 1000.0, "_views": ["river_sun"]},
- "SP3": {"OpenGSp": 3.0, "OpenGlit": 6.0, "_views": ["river_sun"]},
- "K3SP": {"GlitSlK": 3.0, "OpenGlS": 4.0, "OpenGSp": 3.0, "OpenGlit": 6.0, "_views": ["river_sun"]},
- "K4": {"GlitSlK": 4.0, "OpenGlS": 8.0, "GlitPow": 1500.0, "_views": ["river_sun"]}
+ "K2": {
+  "GlitSlK": 2.0,
+  "OpenGlS": 4.0,
+  "_views": [
+   "river_sun"
+  ]
+ },
+ "K3": {
+  "GlitSlK": 3.0,
+  "OpenGlS": 4.0,
+  "_views": [
+   "river_sun"
+  ]
+ },
+ "K3P": {
+  "GlitSlK": 3.0,
+  "OpenGlS": 4.0,
+  "GlitPow": 1000.0,
+  "_views": [
+   "river_sun"
+  ]
+ },
+ "SP3": {
+  "OpenGSp": 3.0,
+  "OpenGlit": 6.0,
+  "_views": [
+   "river_sun"
+  ]
+ },
+ "K3SP": {
+  "GlitSlK": 3.0,
+  "OpenGlS": 4.0,
+  "OpenGSp": 3.0,
+  "OpenGlit": 6.0,
+  "_views": [
+   "river_sun"
+  ]
+ },
+ "K4": {
+  "GlitSlK": 4.0,
+  "OpenGlS": 8.0,
+  "GlitPow": 1500.0,
+  "_views": [
+   "river_sun"
+  ]
+ },
+ "R5": {
+  "OpenRgh": 0.5,
+  "_views": [
+   "river_low",
+   "river_sun"
+  ]
+ },
+ "R45": {
+  "OpenRgh": 0.45,
+  "_views": [
+   "river_low"
+  ]
+ }
 }
