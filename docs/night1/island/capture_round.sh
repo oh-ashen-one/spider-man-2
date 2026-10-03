@@ -40,8 +40,8 @@ budget_ok() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) )); if [ "$left"
 # run_game.sh's own -timeout (SIGTERM, 60 s wait) ends a slow run 450 s before the hold does (r03 r1: 3 engines on the GPU, 45 frames / min;
 # r03 r3: moving 1,824 1080p PNGs to the exFAT scratch took > 5 min after the engine quit)
 run_timeout() { local left=$(( HOLD_MAX - ($(date +%s) - T_HOLD0) - 450 )); [ "$left" -gt "$1" ] && left=$1; echo "$left"; }
-route() {  # name script [portal]   (portal: PlayerStart tag of the WP map, `?Portal=<tag>`: the cells around it are loaded and indexed by the traversal)
-  local NAME="$1" JSON="$2" MAPURL="$MAP${3:+?Portal=$3}"
+route() {  # name script
+  local NAME="$1" JSON="$2" MAPURL="$MAP"
   budget_ok "" "$NAME" || return 0
   echo "== $NAME  $(gpu)"
   rm -rf "$TMP/$NAME"
@@ -70,7 +70,7 @@ want r2 && route r2_south_avenue r2_south_avenue.json
 want r3 && route r3_crosstown_east r3_crosstown_east.json
 want r4 && route r4_wallrun_roofs r4_wallrun_roofs.json
 # (island r03) r5: swing-held avenue route over the M2 tiles, starting at y ~1010 (stills 12 / 20 / 26 / 28 s are the road-band test frames)
-want r5 && route r5_m2_avenue r5_m2_avenue.json M2
+want r5 && route r5_m2_avenue r5_m2_avenue.json
 # (island r02) A/B for traversal's default: r1 with the instanced props / trees solid (-WHTravIsmSolid=1), telemetry only (fixed 1/60 s step,
 # so the sim is the movie run's; 960x540, no frames kept)
 if want ab; then

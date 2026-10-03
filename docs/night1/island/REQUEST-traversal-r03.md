@@ -6,6 +6,20 @@ Filed 2026-10-02 by the island builder (round 03, M2 whole island). The island n
 top-out loop, the wall-run through decks and camera-in-foliage are explicitly *not* island work this round (director's brief); they are
 filed here with the island-side facts. Items 1-2 repeat `REQUEST-traversal-r02.md` §3-§4 (still open).
 
+## 0. Index the collision of cells that stream in AFTER BeginPlay (found 2026-10-03, the biggest open item for "swingable everywhere")
+`AWebTravCharacter::BeginPlay` calls `Traversal->InitWorld(GetWorld(), this)` with the pawn at the map's PlayerStart, and only then teleports
+to the script spawn. `FWebTravWorld::InitWorld` walks `TActorIterator<AActor>` once and fills `AllowedComps`; `Raycast` ignores every component
+that is not in it (`Allowed()`). On the whole-island World Partition map only the cells inside the 1.2 km loading range of the PlayerStart exist
+at that moment, so a cell that streams in later is **not a traversal solid** (no web anchor, no wall, no roof; only the always-loaded ground
+plane is hit). Measured on `Manhattan_WP` (PlayerStart y 178 m): the 775 solids of `round-03/prims_dump.csv.gz` include 55 facade / roofs /
+detail / fire-escape tiles with centres y -896 .. 1404 m (tile rows to y 1536); in 28 telemetry-only runs along the avenues from y 1010 the last
+web anchor is always y <= ~1500 m and the hero then falls to the street (e.g. x 250 route: last anchor (195.6, 1490.4), ground at y 1551;
+spawn at y 1700 = no web for 1.6 s, ground at 1.67 s). With `?Portal=M2` (an always-loaded PlayerStart at y 1560, island build) the same
+engine, content and route indexes 481 solids around it and the 30 s route passes (round-03/README.md r5).
+Ask: re-index when World Partition cells load / unload (e.g. `FWorldDelegates::LevelAddedToWorld`, or `UWorldPartitionSubsystem` cell-loaded
+events, or a 1 Hz rescan of `Allowed()` misses), at least for the facade / roofs / detail / fireescape / ground components. The island cannot
+fix this from the content side without loading the whole island at start (grid loading range >= 4.5 km, three times the start-up load).
+
 ## 1. topOut loop under a fire-escape deck (open since r02)
 `round-02/r3_crosstown_east_telemetry.csv` t 2.50-8.50 s: `air / topOut` re-launches from the 32.0 m kit deck into the underside of the
 35.7 m deck (x -235.5, y 616.4), no web for 6.43 s while swing is held. Ask: abort top-out when the climb path is capped by an overhang
