@@ -138,6 +138,13 @@ mel.recompile_material(color_m)
 for m in (facade, ground_m, color_m):
     eal.save_loaded_asset(m)
 
+# round 25: M_TravWeb, the unlit two-tone web strand (traversal_web_material.py, also runnable alone)
+import importlib, sys as _sys
+_sys.path.insert(0, os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()), "Scripts"))  # (__file__ is unset under build_manhattan's exec wrapper)
+import traversal_web_material
+importlib.reload(traversal_web_material)
+traversal_web_material.build(eal, mel, tools)
+
 
 # ------------------------------------------------------------------ HeroDev: dev proxy of the real hero (round 04)
 # public/assets/spiderman.glb (58 bones, 79 clips at 30 fps) -> /Game/Traversal/HeroDev. P2 owns the final hero in

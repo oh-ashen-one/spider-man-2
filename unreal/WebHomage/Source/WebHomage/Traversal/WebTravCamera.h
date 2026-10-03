@@ -144,6 +144,14 @@ public:
 	bool bGndYawOk = false; int32 GndStopped = 0;
 	double GndFloorPull = 1.0, GndFloorPullMin = 0.6; // round 24: on foot / perched, pull the chase spot in rather than over a raised roof feature
 	double GndHoldLens = 1.0, GndLensRelease = 1.5; bool bGndLensHold = false; FVector GndStopPos = FVector::ZeroVector; // round 24: the lens is held where a ground orbit stop began
+	// round 25 (critic r24 owner bug 5, c 9.85-9.98 s: the perch recenter swung the chase spot over a 3 m rooftop box, the floor clamp popped the
+	// lens 2 m up in 2 frames and the slew-limited pitch left the hero under the bottom edge, then whipped -6 -> -45 deg): perched, the auto
+	// recenter does not turn the view onto a chase spot whose floor would lift the lens (or whose sweep from the chest is blocked) while the
+	// spot it leaves is clear -- the yaw is held there (PerchYawHeld). PerchHold 0 = r24.
+	// (c 8.65-8.85 s: the lens held where the ground orbit stopped stayed put through the zip's first 0.3 s while the hero flew 10 m away):
+	// a held lens follows the hero along its own line of sight once he is more than GndZipHoldMax m away (0 = r24).
+	double PerchHold = 1.0, GndZipHoldMax = 6.0;
+	int32 PerchYawHeld = 0;
 	bool bCamEnclosed = false;
 	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipMaxStepYawDeg = 2.4;
 	int32 SlewFlags = 0;
@@ -172,6 +180,8 @@ public:
 	void Impact(double Sev) { if (!bJolts) return; Trauma = FMath::Min(1.0, Trauma + 0.12 + 0.55 * Sev); PunchV -= 40.0 * Sev; DipV -= 5.0 * Sev; }
 	/** Camera-relative directions (browser cam.forward / forwardFlat / rightFlat). */
 	FVector Forward() const { const double CP = FMath::Cos(Pitch); return FVector(FMath::Cos(Yaw) * CP, FMath::Sin(Yaw) * CP, -FMath::Sin(Pitch)); }
+	/** Round 25: the chase spot behind the hero at heading InYaw would be lifted by its floor (or its sweep from the chest is blocked). */
+	bool PerchSpotBad(double InYaw, const FTravCamInput& P, const class FWebTravWorld& World) const;
 	FVector ForwardFlat() const { return FVector(FMath::Cos(Yaw), FMath::Sin(Yaw), 0.0); }
 	FVector RightFlat() const { return FVector(-FMath::Sin(Yaw), FMath::Cos(Yaw), 0.0); }
 

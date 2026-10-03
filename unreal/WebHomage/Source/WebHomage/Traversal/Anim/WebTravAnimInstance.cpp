@@ -34,6 +34,11 @@ static double GaitPoleN = -0.35;
 // round 22 upright side run (-WHGaitTune=STd=,STo=,STuck=,SSw=,SReach=,SArm=): touchdown ahead / toe-off behind (leg lengths, along the run
 // line), recovery heel tuck (share of the drop), recovery toe off the facade (cm), stance leg reach (leg lengths), arm pump reach (arm lengths)
 static float GroundBlendS = 0.18f; // round 22: ground locomotion weight blend (s), -WHGaitTune=GBlend=
+// round 25 (director hard line, characters r12-r14 measure: the pawn ran 4.0 steps/s, head-top FFT 4.13 Hz, target 3.2-3.8): the run anchor
+// moves 8.5 -> 9.3 m/s (-WHGaitTune=RunV=) and the shared locomotion phase advances at the WEIGHTED rate of the two bracketing anchors
+// (r21-r24: the lower anchor's rate alone -- the run clip played 1.15x at 9.8 m/s and the cadence jumped 5.3 -> 3.75 steps/s across the 14 m/s
+// sprint anchor); -WHGaitTune=LocoMix=0 = the lower-anchor rate. Run clip 0.567 s / 2 steps: 9.8 m/s full-stick run -> 3.60 steps/s.
+static float LocoRunV = 9.3f, LocoMix = 1.f;
 static double SideTd = 0.45, SideTo = 0.50, SideTuck = 0.55, SideSwOff = 28.0, SideReach = 0.95, SideArmFwd = 0.40; // r23: SSw 14 -> 28 (r22 captures ran -WHGaitTune=SSw=28)
 // round 23 (critic r22: "the vertical run slides frozen, legs together, bbox_w .082-.088 for 1.5 s"; director: fix the EXCURSION, not the
 // cadence): vertical wall-run sprint. -WHGaitTune=VKick=,VSw=,VTr=,VKt=,VTrack=,VKneeLat=,VHip=,VRoll=,VArmOut=,VArmUp=,VArmK=
@@ -81,6 +86,7 @@ void UWebTravAnimInstance::NativeInitializeAnimation()
 				else if (K == TEXT("Sig")) GaitSig = X; else if (K == TEXT("CadMin")) GaitCadMin = X; else if (K == TEXT("CadMax")) GaitCadMax = X;
 				else if (K == TEXT("CadBase")) GaitCadBase = X; else if (K == TEXT("CadK")) GaitCadK = X; else if (K == TEXT("PoleN")) GaitPoleN = X;
 				else if (K == TEXT("GBlend")) GroundBlendS = float(FMath::Max(0.02, X));
+				else if (K == TEXT("RunV")) LocoRunV = float(FMath::Clamp(X, 5.0, 13.5)); else if (K == TEXT("LocoMix")) LocoMix = float(X);
 				else if (K == TEXT("STd")) SideTd = X; else if (K == TEXT("STo")) SideTo = X; else if (K == TEXT("STuck")) SideTuck = X;
 				else if (K == TEXT("SSw")) SideSwOff = X; else if (K == TEXT("SReach")) SideReach = X; else if (K == TEXT("SArm")) SideArmFwd = X;
 				else if (K == TEXT("VKick")) VKick = X; else if (K == TEXT("VSw")) VSw = X; else if (K == TEXT("VTr")) VTr = X; else if (K == TEXT("VKt")) VKt = X;
@@ -250,7 +256,7 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 	if (Node == NA_ground)
 	{ // locomotion anchors (browser LOCO): walk 1.6, jog 4.5, run 8.5, sprint 14 m/s; one shared normalized phase
 		struct FL { const TCHAR* C; float V; };
-		static const FL Loco[] = { { TEXT("walk"), 1.6f }, { TEXT("jog"), 4.5f }, { TEXT("run"), 8.5f }, { TEXT("sprint"), 14.f } };
+		const FL Loco[] = { { TEXT("walk"), 1.6f }, { TEXT("jog"), 4.5f }, { TEXT("run"), LocoRunV }, { TEXT("sprint"), 14.f } }; // round 25: run 8.5 -> LocoRunV
 		// target weights (round 21 logic: idle below 0.25 m/s, idle -> walk below 1.6 m/s, then the two bracketing anchors)
 		float Want[5] = { 0.f, 0.f, 0.f, 0.f, 0.f };
 		int32 K = 0;
@@ -281,7 +287,15 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 		UAnimSequence* S0 = Clip(Loco[Kp].C);
 		const float Len0 = S0 ? S0->GetPlayLength() : 1.f;
 		const float SpPh = Sp < 0.25f ? Loco[Kp].V * (1.f - GroundW[0]) : Sp;
-		LocoPhase = FMath::Fmod(LocoPhase + Dt * (SpPh / Loco[Kp].V) / Len0, 1.f);
+		float PhRate = (SpPh / Loco[Kp].V) / Len0;
+		if (LocoMix > 0.5f && Sp >= 0.25f && K < 3 && Sp > Loco[K].V)
+		{ // round 25: weighted rate of the two bracketing anchors (continuous across every anchor)
+			UAnimSequence* S1 = Clip(Loco[K + 1].C);
+			const float Len1 = S1 ? S1->GetPlayLength() : Len0;
+			const float W1 = FMath::Clamp((Sp - Loco[K].V) / (Loco[K + 1].V - Loco[K].V), 0.f, 1.f);
+			PhRate = (1.f - W1) * PhRate + W1 * (Sp / Loco[K + 1].V) / FMath::Max(Len1, 0.01f);
+		}
+		LocoPhase = FMath::Fmod(LocoPhase + Dt * PhRate, 1.f);
 		if (GroundW[0] > 0.001f) Add(TEXT("idle"), T, GroundW[0], true);
 		for (int32 J = 0; J < 4; ++J)
 		{
