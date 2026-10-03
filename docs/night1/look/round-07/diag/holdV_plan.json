@@ -1,0 +1,87 @@
+{
+ "groups": [
+  {
+   "name": "w0_h22",
+   "hour": 22.0,
+   "cmds": [],
+   "shots": [
+    "S4m",
+    "S4",
+    "S1",
+    "S6"
+   ],
+   "settle_first": 12
+  },
+  {
+   "name": "w1_h22",
+   "hour": 22.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogCutoffDistance 700000"
+   ],
+   "shots": [
+    "S4m",
+    "S4",
+    "S1",
+    "S6"
+   ],
+   "settle_first": 12
+  },
+  {
+   "name": "w2_h22",
+   "hour": 22.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogCutoffDistance 700000",
+    "exec wh.ToDSet pp.BloomIntensity 0.2",
+    "exec wh.ToDSet moonc.VolumetricScatteringIntensity 0",
+    "exec wh.ToDSet pp.LensFlareIntensity 0",
+    "exec wh.ToDSet atm.MieScatteringScale 0.004",
+    "exec wh.ToDSet moonc.LightSourceAngle 0.6"
+   ],
+   "shots": [
+    "S4m",
+    "S4",
+    "S1",
+    "S6"
+   ],
+   "settle_first": 12
+  },
+  {
+   "name": "w3_h22",
+   "hour": 22.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogCutoffDistance 700000",
+    "exec wh.ToDSet pp.BloomIntensity 0.25",
+    "exec wh.ToDSet pp.LensFlareIntensity 0"
+   ],
+   "shots": [
+    "S4m",
+    "S4",
+    "S1",
+    "S6"
+   ],
+   "settle_first": 12
+  },
+  {
+   "name": "w1_h21",
+   "hour": 21.0,
+   "cmds": [
+    "exec wh.ToDSet fog.FogCutoffDistance 700000"
+   ],
+   "shots": [
+    "S4"
+   ],
+   "settle_first": 10
+  },
+  {
+   "name": "w1_h21.5",
+   "hour": 21.5,
+   "cmds": [
+    "exec wh.ToDSet fog.FogCutoffDistance 700000"
+   ],
+   "shots": [
+    "S4"
+   ],
+   "settle_first": 10
+  }
+ ]
+}

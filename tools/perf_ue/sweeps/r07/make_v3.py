@@ -34,6 +34,7 @@ R07 = {
     'tw_minev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMinBrightness (hold B: the twilight exposure sat on its MIN clamp, so the sun-facing views blew out at the S4 bias)
     'bias_curve': None,    # {'dusk': [(h, bias)], 'dawn': [...]}: pp.AutoExposureBias on EVERY key inside the range (no zigzag between main keys and snapshot keys); --bias-overrides apply after it
     'tw_set': None,        # {param: {'dusk': [(h, number | [r, g, b, a])], 'dawn': [...]}}: explicit values of any param inside the listed hours (e.g. cloudv.Cloud_AlbedoColor)
+    'cutoff_sched': None,  # {'dusk': [(h, cm)], 'dawn': [...]}: fog.FogCutoffDistance inside the listed hours (cutoff_all outside): round 07 resume - the night keeps the round-06 sky (7e5 = unfogged sky, L10 / L24a at 21:00-22:00)
     'tw_mul': None,        # {param: {'dusk': [(h, mult | [mr, mg, mb])], 'dawn': [...]}}: multiplier of the base (v2) value of any param inside the listed hours (e.g. pp.ColorSaturation x0.6, fog.DirectionalInscatteringLuminance)
     'moon_vol': None,      # number: moonc.VolumetricScatteringIntensity on every key
     'golden_sky': None,    # {'hours': [..], 'factor': [r, g, b]} SkyLuminanceFactor on golden keys (golden S4 <= 100 with the fog on the sky)
@@ -134,7 +135,8 @@ def apply(K, R):
         if R.get('moon_vol') is not None: s['moonc.VolumetricScatteringIntensity'] = float(R['moon_vol'])
         gs = R.get('golden_sky')
         if gs and any(abs(h - x) < 1e-6 for x in gs['hours']): s['atm.SkyLuminanceFactor'] = list(gs['factor'][:3]) + [1.0]
-        s['fog.FogCutoffDistance'] = R['cutoff_all']
+        cs = sch('cutoff_sched')
+        s['fog.FogCutoffDistance'] = round(cs, 1) if cs is not None else R['cutoff_all']
     return d, rep
 
 
