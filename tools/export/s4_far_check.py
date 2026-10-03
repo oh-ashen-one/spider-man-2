@@ -4,6 +4,8 @@
       'first |dY|>4', both reproduced here). Target >= 12 px.
   T2  share of the box (0,150,1300,300) above Y 204. Target <= 10 %.
   T3  C11-C15 with the boxes of docs/night1/city/spec_regions.json (the same code as city_spec_check.py).
+  T4  (r11, critic r10) flat bright blocks in (540,110,900,260): non-overlapping 8x8 blocks, 'bright' = block mean Y > 200, 'flat' = block std < 3. Two readings of the critic's sentence are reported:
+      flat_of_bright (flat bright blocks / bright blocks; target <= 10 %) and flat_of_all (flat bright blocks / all blocks; the r10 frame gives 24.3 %, the critic wrote 25 %).
 usage: python3 tools/export/s4_far_check.py <frame.(jpg|png)> [more frames ...] [--json out.json]
 """
 import sys, os, json
@@ -28,6 +30,16 @@ def silhouette_tops(Y, x0=0, x1=1300, y0=100, y1=420):
         out[k] = dict(std=float(np.std(t)), mean=float(np.mean(t)), p5=float(np.percentile(t, 5)), p95=float(np.percentile(t, 95)))
     return out
 
+def flat_blocks(Y, box=(540, 110, 900, 260), bs=8, ymin=200.0, smax=3.0):
+    x0, y0, x1, y1 = box; b = Y[y0:y1, x0:x1]; H, W = b.shape; n = bright = flat = 0
+    for y in range(0, H - bs + 1, bs):
+        for x in range(0, W - bs + 1, bs):
+            blk = b[y:y + bs, x:x + bs]; n += 1
+            if blk.mean() > ymin:
+                bright += 1
+                if blk.std() < smax: flat += 1
+    return dict(blocks=n, bright=bright, flat_bright=flat, flat_of_bright_pct=100.0 * flat / max(bright, 1), flat_of_all_pct=100.0 * flat / max(n, 1), bright_of_all_pct=100.0 * bright / max(n, 1))
+
 def analyse(path, cfg):
     im = cv2.imread(path)
     if im is None: return None
@@ -46,10 +58,12 @@ def analyse(path, cfg):
         'C14 far-river Y': (fs['Y'] - rv['Y'], '%d..%d' % tuple(th['C14']['river_below_far_Y']), C.ok(fs['Y'] - rv['Y'], *th['C14']['river_below_far_Y'])),
         'C15 rms far/near': (fs['rms'] / max(nc['rms'], 1e-6), '%.2f..%.2f' % tuple(th['C15']['rms_far_over_near']), C.ok(fs['rms'] / max(nc['rms'], 1e-6), *th['C15']['rms_far_over_near'])),
     }
+    fb = flat_blocks(Y)
+    crit_c13 = float(Y[150:215, 0:1300].mean() - sky['Y'])   # (r11) the r10 critic's C13 box (0,150,1300,215): -30.3 on the r10 frame, -29.5 here; the committed far_shore box gives -38.5
     sil = silhouette_tops(Y)
     t1 = {k: v['std'] for k, v in sil.items()}
     return dict(file=path, sky_Y=sky['Y'], far_Y=fs['Y'], river_Y=rv['Y'], near_Y=nc['Y'], box_mean_Y=float(box.mean()), box_pct204=float((box > 204).mean() * 100),
-                T1_std=t1, T1_pass=bool(min(t1.values()) >= 12.0), T2_pass=bool((box > 204).mean() <= 0.10),
+                T1_std=t1, T1_pass=bool(min(t1.values()) >= 12.0), T2_pass=bool((box > 204).mean() <= 0.10), C13_critic_box=crit_c13, T4=fb, T4_pass=bool(fb['flat_of_bright_pct'] <= 10.0 and fb['flat_of_all_pct'] <= 10.0),
                 lines={k: dict(value=round(float(v[0]), 2), target=v[1], passed=bool(v[2])) for k, v in lines.items()}, silhouette=sil)
 
 if __name__ == '__main__':
@@ -62,6 +76,8 @@ if __name__ == '__main__':
         res.append(r)
         print('==', os.path.basename(p))
         print('  sky Y %.1f  far Y %.1f  river Y %.1f  near Y %.1f | box(0,150,1300,300) mean Y %.1f  > 204: %.1f %%  (T2 <= 10: %s)' % (r['sky_Y'], r['far_Y'], r['river_Y'], r['near_Y'], r['box_mean_Y'], r['box_pct204'], 'PASS' if r['T2_pass'] else 'fail'))
+        print('  C13 with the critic box (0,150,1300,215): far - sky Y = %.1f (target -35..-25)' % r['C13_critic_box'])
+        f4 = r['T4']; print('  T4 flat bright 8x8 blocks in (540,110,900,260): %d of %d bright (%d blocks): %.1f %% of bright / %.1f %% of all  (<= 10 %%: %s)' % (f4['flat_bright'], f4['bright'], f4['blocks'], f4['flat_of_bright_pct'], f4['flat_of_all_pct'], 'PASS' if r['T4_pass'] else 'fail'))
         print('  T1 silhouette-top std (px): ' + '  '.join('%s %.1f' % (k, v) for k, v in r['T1_std'].items()) + '  (>= 12: %s)' % ('PASS' if r['T1_pass'] else 'fail'))
         print('  ' + ' | '.join('%s %s %s' % (k, v['value'], 'ok' if v['passed'] else 'FAIL') for k, v in r['lines'].items()))
     if jo: json.dump(res, open(jo, 'w'), indent=1)

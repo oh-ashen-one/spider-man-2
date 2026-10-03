@@ -79,5 +79,6 @@ img = np.zeros((N, N, 3), np.uint8); img[..., 0] = v >> 8; img[..., 1] = v & 255
 img[..., 2] = np.clip(np.round(np.minimum(H, 400.0) / 400.0 * 255.0), 0, 255).astype(np.uint8)   # B = height / 400 m (8 bit): read at high mips = mean building height around a point (enclosure)
 os.makedirs(TEX, exist_ok=True)
 Image.fromarray(img, 'RGB').save(os.path.join(TEX, 'sunmask_h.png'))
+os.makedirs(os.path.join(SCRATCH, 'r09'), exist_ok=True)   # (r11) fresh scratch: the preview folder did not exist
 Image.fromarray(np.clip(H / 340.0 * 255, 0, 255).astype(np.uint8), 'L').save(os.path.join(SCRATCH, 'r09', 'sunmask_h_preview.png'))
 print(f'sunmask_h.png: {nfp} outer footprint boxes, {ntri} roof triangles, {nfill} inner boxes filled, {nv} facade vertices, max h {H.max():.1f} m, covered texels {(H > 0).mean() * 100:.1f} %')
