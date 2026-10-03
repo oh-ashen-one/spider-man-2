@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 09:04",
+ "updated": "2026-10-03 10:01",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -62,10 +62,10 @@
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "active",
-   "round": 7,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5 (resumed an Opus start))",
-   "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5"
+   "state": "paused",
+   "round": 8,
+   "verdict": "fails \u2014 lowest 4 (Opus 5.5)",
+   "gap": "light the city with a low directional sun, not a uniform lift (p5 <= 15, p95 >= 120, 32-px local contrast >= 0.17, sunlit/shaded facade ratio >= 3)"
   },
   {
    "id": "P5",
@@ -1000,6 +1000,14 @@
    "verdict": "fails",
    "gap": "keep sparkle/foam to the contact zone (distance-to-shore mask, fade <= 40 m): river_low near mean Y <= 80, river_sun flanks <= 85, sun path >= 2.2x flanks; gates a-e kept",
    "notes": "NOT merged (Opus director): colour 3 < r03 5, believability 3 < r03 4; foam 2->3; WPos pre-WPO bug found + fixed (DistFix). r06 on Opus, last bounded round."
+  },
+  {
+   "t": "2026-10-03 10:01",
+   "piece": "look",
+   "round": 8,
+   "verdict": "fails",
+   "gap": "light the city with a low directional sun, not a uniform lift (p5 <= 15, p95 >= 120, 32-px local contrast >= 0.17, sunlit/shaded facade ratio >= 3)",
+   "notes": "NOT merged; look STOPPED (director gate: sun/sky 5 < 6, night 4 < 5). Slot -> city r11 (Sonnet)."
   }
  ],
  "perf": [
