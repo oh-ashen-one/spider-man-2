@@ -22,3 +22,12 @@ Nothing else in traversal is needed: programs, shapes, tempo variation and the p
    the frame). The held world azimuth (TRICK_CAMERA_SPEC) does not re-check obstruction when the travel heading turns under it.
 4. **A flip whose catch swings into a corner tower starts a vertical wall-run** (probe, a west turn into the 10 m cross street at y 80
    mid-backTripleChain: 30 s of wall-run up a 166 m tower). Not in the reel (route changed), noted for the corridor / catch logic.
+
+## After traversal r26 (Tricks C r01 resume, 2026-10-03)
+5. **r26 critic T4 gap (a_swing_chain 12.4-13.1 s, held fallCalm).** A trick program can fill it only if the release that precedes it
+   asks for one: the shortest release program at base tempo (`WebFlips::FindBase(..)->CatchT()`) is backLayout / backPike, ~1.2-1.3 s,
+   so a 0.7 s fall needs either a re-attach (traversal) or the hook in item 1 with `Air` from `AirTimeToClear()` (ChooseForInput
+   returns NAME_None when nothing fits). In the tricks reel the same pattern appears after a program ends before the catch
+   (e.g. probe 13.35 s: backLayout ends, node `air_fallCalm` until the next web); WebTravFlips now keeps the final reach / kick-out moving
+   while the flip node is active, but the fallCalm node itself is traversal's.
+6. Items 1-2 are still open (the reel reaches the 8 new programs through its script's `flip` list only).

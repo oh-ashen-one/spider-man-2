@@ -9,7 +9,20 @@ the flip programs and keyed shape clips (`docs/night1/traversal/blender/make_fli
 characters r17, terrain r05, city r11); `git diff origin/Opus-5.5-Loop-Night-1 -- unreal/` touches only WebTravFlips.{h,cpp}.
 
 ## State
-STATE_PLACEHOLDER
+- Round 01 is captured and measured, not yet judged: `docs/night1/tricks/round-01/` (reel `t60_trick_reel.mp4` 60.48 s 1920x1080 native,
+  stitched telemetry + pose CSVs, `CHECK.txt`, `NUMBERS.md`, `SHOTLIST.md`, `shapes_ours.jpg`). Measured: P 12 programs / 22 instances,
+  V1 PASS (min 141 / 199 deg/s), V2 PASS (0.850-1.131), K PASS, **L FAIL 4 of 345** (28.50 corkscrew straddle, 38.20 frontSingle reach,
+  54.10 frontPikeSwan swan, 57.60 backDouble kick-out; .074-.097 m), G1 PASS (median rule; single rows down to 156.9 / 138.3 deg),
+  G2 99.9 %, G3 22/22, G4 22/22.
+- Blind critic pack (owner-clip pairs, local only): `/Users/midir/sm2-n1/_scratch/critic-C-r01/pack` (12 pairs, key outside the pack:
+  `critic-C-r01/pack.key.json`; sources + `pairs.json` in `critic-C-r01/`). The critic has not run.
+- Code: WebTravFlips.cpp -- tempo sign alternates per program repeat; reach / kick-out play back and forth past the program end;
+  `-WHTrickWarm=<s>` skips world rendering outside the dump window. make_flip_shapes.py -- reach / kick-out march (legs a quarter cycle
+  apart, even foot-height steps `_LEG_A.._LEG_D`), swan right-arm windmill + left stag, pencil tuck-up, twist arm drive.
+- Next (L): the 4 remaining slow samples; `SCAN=1 limb_sim.py --validate` on the round's telemetry lists the weak phases (kick-out of the
+  back programs, swan 0.5-0.9, pencil 0.4-0.6). Any clip change needs `STEPS=traversal` + a probe + a full 4-window re-render (~2 holds;
+  the movie dump runs at ~1.4 frames/s, rendering itself ~15 fps).
+- Traversal requests: `REQUEST-traversal.md` items 1-6 (ChooseTrick hook still not wired; r26 T4 fallCalm note).
 
 ## How to rebuild / capture (all engine work inside `gpu_slot.sh capture --label tricks`)
 - C++: `unreal/WebHomage/Scripts/build_editor.sh` (no engine of this worktree running). A C++ change made while a hold's content build runs:
