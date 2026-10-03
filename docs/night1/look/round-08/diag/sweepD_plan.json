@@ -1,0 +1,189 @@
+{
+ "groups": [
+  {
+   "name": "e1_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -1.5",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "e2_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.05",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias -2",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "d1_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 61.6 45.1052 34.875 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.01 0.0042 0.0012 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringExponent 12",
+    "exec wh.ToDSet fog.DirectionalInscatteringStartDistance 200000"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "d2_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 61.6 45.1052 34.875 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.01 0.0042 0.0012 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringExponent 12",
+    "exec wh.ToDSet fog.DirectionalInscatteringStartDistance 400000"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "d3_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 61.6 45.1052 34.875 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringLuminance 0.006 0.00252 0.00072 1",
+    "exec wh.ToDSet fog.DirectionalInscatteringExponent 16",
+    "exec wh.ToDSet fog.DirectionalInscatteringStartDistance 100000"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "d4_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 1",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.6",
+    "exec wh.ToDSet pp.LocalExposureMiddleGreyBias 0",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 1",
+    "exec wh.ToDSet atm.SkyLuminanceFactor 61.6 45.1052 34.875 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  }
+ ],
+ "variants": {
+  "d1": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     61.6,
+     45.105208333333344,
+     34.87500000000001,
+     1
+    ],
+    "fog.DirectionalInscatteringLuminance": [
+     0.01,
+     0.0042,
+     0.0012,
+     1
+    ],
+    "fog.DirectionalInscatteringExponent": 12,
+    "fog.DirectionalInscatteringStartDistance": 200000.0
+   }
+  },
+  "d2": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     61.6,
+     45.105208333333344,
+     34.87500000000001,
+     1
+    ],
+    "fog.DirectionalInscatteringLuminance": [
+     0.01,
+     0.0042,
+     0.0012,
+     1
+    ],
+    "fog.DirectionalInscatteringExponent": 12,
+    "fog.DirectionalInscatteringStartDistance": 400000.0
+   }
+  },
+  "d3": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     61.6,
+     45.105208333333344,
+     34.87500000000001,
+     1
+    ],
+    "fog.DirectionalInscatteringLuminance": [
+     0.006,
+     0.00252,
+     0.0007199999999999999,
+     1
+    ],
+    "fog.DirectionalInscatteringExponent": 16,
+    "fog.DirectionalInscatteringStartDistance": 100000.0
+   }
+  },
+  "d4": {
+   "pins": {
+    "atm.SkyLuminanceFactor": [
+     61.6,
+     45.105208333333344,
+     34.87500000000001,
+     1
+    ]
+   }
+  }
+ },
+ "variants_e": {
+  "e1": {
+   "le": [
+    0.0,
+    0.2,
+    -1.5
+   ]
+  },
+  "e2": {
+   "le": [
+    0.05,
+    0.2,
+    -2.0
+   ]
+  }
+ }
+}

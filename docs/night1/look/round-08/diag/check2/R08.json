@@ -1,0 +1,74 @@
+{
+ "L5": {
+  "S4e_7": {
+   "mean": 65.69944763183594,
+   "y_lt10_pct": 0.0,
+   "clip_pct": 0.007185570987654321,
+   "sky_sat": 0.4965241253376007,
+   "sky_BR": -81.07389831542969,
+   "sky_Y": 129.0313262939453,
+   "L5": true,
+   "SAT": true,
+   "file": "tod_S4e_1920x1080_h7.jpg"
+  },
+  "S4e_7.5": {
+   "mean": 71.6793441772461,
+   "y_lt10_pct": 0.0,
+   "clip_pct": 4.822530864197531e-05,
+   "sky_sat": 0.4477003812789917,
+   "sky_BR": -79.54087829589844,
+   "sky_Y": 146.92819213867188,
+   "L5": true,
+   "SAT": true,
+   "file": "tod_S4e_1920x1080_h7.5.jpg"
+  },
+  "S4w_19": {
+   "mean": 70.8880615234375,
+   "y_lt10_pct": 0.0,
+   "clip_pct": 0.0,
+   "sky_sat": 0.5447893142700195,
+   "sky_BR": -95.98765563964844,
+   "sky_Y": 128.02377319335938,
+   "L5": true,
+   "SAT": true,
+   "file": "tod_S4w_1920x1080_h19.jpg"
+  }
+ },
+ "DISK": {
+  "S4w_19.5": {
+   "blobs": 0,
+   "largest": null,
+   "band_peak_Y": 121.02079010009766,
+   "DISK": true,
+   "file": "tod_S4w_1920x1080_h19.5.jpg"
+  },
+  "S4w_19.8": {
+   "blobs": 0,
+   "largest": null,
+   "band_peak_Y": 142.14260864257812,
+   "DISK": true,
+   "file": "tod_S4w_1920x1080_h19.8.jpg"
+  },
+  "S4w_20": {
+   "blobs": 0,
+   "largest": null,
+   "band_peak_Y": 204.07618713378906,
+   "DISK": true,
+   "file": "tod_S4w_1920x1080_h20.jpg"
+  },
+  "S4w_20.5": {
+   "blobs": 0,
+   "largest": null,
+   "band_peak_Y": 234.0681915283203,
+   "DISK": true,
+   "file": "tod_S4w_1920x1080_h20.5.jpg"
+  }
+ },
+ "BH": {
+  "sky_BR": 5.7800140380859375,
+  "sky_Y": 91.68678283691406,
+  "sky_sat": 0.13495118916034698,
+  "BH": true,
+  "file": "tod_S4_1920x1080_h20.5.jpg"
+ }
+}
