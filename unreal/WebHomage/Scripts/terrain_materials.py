@@ -185,7 +185,8 @@ float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
 // the spray sampled at 4x its scale modulates the value by +-28 % where that sample is leaf, fading out between 35 and 60 m (the whole L0 / L1 range)
 float4 tdl = tfLeafDetail(tLeaf, tLeafSampler, float2(uv0.x, 1.0 - uv0.y) * 4.0 + float2(0.37, 0.61));   // Foliage.ush: frac + explicit gradients (the leaf textures clamp)
 float ldl = dot(tdl.rgb, float3(0.3, 0.59, 0.11));
-c *= lerp(1.0, 0.72 + 0.56 * saturate(ldl * 2.2), tdl.a * (1.0 - smoothstep(35.0, 60.0, length(wpos - cam) * 0.01)));   // the whole L0 / L1 range (< 44 m + fade)
+c *= lerp(1.0, 0.72 + 0.56 * saturate(ldl * 2.2), tdl.a * (1.0 - smoothstep(35.0, 60.0, length(wpos - cam) * 0.01)));
+c *= tfLeafGrain(wpos, 1.0 - smoothstep(60.0, 110.0, length(wpos - cam) * 0.01));   // r06: world-space leaf grain (Foliage.ush)   // the whole L0 / L1 range (< 44 m + fade)
 float bnd = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);   // r02: the ez-tree LOD band (L0 < 20 m, L1 20-44 m): UE drew L1 out to 520 m
 float eb = min(min(uv0.x, 1.0 - uv0.x), min(uv0.y, 1.0 - uv0.y));   // r03 pass 2: ragged quad borders (straight leaf-card edges against the sky in p10)
 Op = tx.a * bnd * smoothstep(0.0, 0.07, eb + 0.04 * (lum - 0.5)); Sub = c * 0.85; Rough = 0.78;

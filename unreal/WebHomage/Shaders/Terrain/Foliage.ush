@@ -48,6 +48,15 @@ float tfVn(float3 p)
     float b = lerp(lerp(tfH3(i + float3(0.0f, 0.0f, 1.0f)), tfH3(i + float3(1.0f, 0.0f, 1.0f)), f.x), lerp(tfH3(i + float3(0.0f, 1.0f, 1.0f)), tfH3(i + float3(1.0f, 1.0f, 1.0f)), f.x), f.y);
     return lerp(a, b, f.z);
 }
+// r06: leaf-scale grain in world space (2.5 / 7 cm octaves), for magnified leaf cards near the camera whose UVs span only part of their texture (the p10 'ball':
+// test S2 showed a texture-space detail sample left it unchanged). Returns a value multiplier around 1 (0.68 .. 1.32 at full strength k = 1).
+float tfLeafGrain(float3 wposCm, float k)
+{
+    float3 q = wposCm * 0.01f;
+    float g = tfVn(q * 40.0f + 3.7f) * 0.6f + tfVn(q * 14.0f + 9.1f) * 0.4f;
+    return lerp(1.0f, 0.68f + 0.64f * g, k);
+}
+
 // r05 summer grade of the browser's per-tree palette (aTintA / aTintB). The export's tints run hue 22-68 deg (brown .. olive, HSV saturation ~0.67 in linear albedo), which read
 // 0.52 saturated through the golden haze (r04 critic: crown saturation 0.52, the reference crowns are yellow-green / leaf-green). The tint's luminance is kept; its hue becomes a
 // yellow-green .. leaf-green pair chosen by how green the original tint was, so the per-tree variety survives. Blue is ~0.05-0.08 of green (display saturation >= 0.65 target).
@@ -196,6 +205,7 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
     // shows a single big leaf (0.75 m on screen-scale). Within 90 m the atlas sampled at 3x its scale modulates the value by +-30 % where that sample is leaf.
     float4 tdc = tfLeafDetail(tAtlas, tAtlasSampler, float2(luv.x, 1.0f - luv.y) * 3.0f + float2(0.29f, 0.53f));
     c *= lerp(1.0f, 0.7f + 0.6f * saturate(tdc.r * 1.4f), tdc.a * (1.0f - core) * (1.0f - smoothstep(40.0f, 90.0f, dist)));
+    c *= tfLeafGrain(wpos, 1.0f - smoothstep(60.0f, 110.0f, dist));
     float Lq = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
     c = max(lerp(Lq.xxx, c, lerp(1.0f, 1.35f, smoothstep(120.0f, 450.0f, dist))), 0.0f);   // r05: distant cards read through the golden haze (S hold: crown saturation 0.54-0.64 beyond 300 m)
     float nn = frac(tfIGN(pix + 17.0f) + frac(t * 37.0f) * 2.618034f);
