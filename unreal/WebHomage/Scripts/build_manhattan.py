@@ -255,7 +255,15 @@ def step_city_split():
     first = os.environ.get('SM2_ISLAND_SPLIT_FROM', 'a')   # resume point: a | mesh | proto | kit | b | wp
     order = ['a', 'mesh', 'proto', 'kit', 'b', 'wp']
     todo = order[order.index(first):]
-    if 'a' in todo: run('city_a', 'clean,tex'); run('city_a2', 'mat')   # two holds: the material step compiles shaders
+    if 'a' in todo:
+        # (island r04) fresh: delete /Game/City, /Game/Tests/City and the WP map ON DISK (no editor running). build_city.py's 'clean'
+        # (EditorAssetLibrary.delete_directory) loads every asset first and rebuilt ~1 mesh/s from the DDC: > 40 min for the island
+        t0 = time.time()
+        for rel in ('Content/City', 'Content/Tests/City'):
+            safe_rmtree(os.path.join(PROJ, rel))
+        drop_wp_map_files()
+        TIMINGS.append({'cmd': 'fresh: rm Content/City, Content/Tests/City, WP map files', 'seconds': round(time.time() - t0, 1), 'rc': 0})
+        run('city_a', 'clean,tex'); run('city_a2', 'mat')   # two holds: the material step compiles shaders
     for part, step, key, env1 in (('mesh', 'mesh', 'MESH_REMAINING', {'SM2_ISLAND_MESH_ONLY': 'missing'}), ('proto', 'proto', None, {}),
                                   ('kit', 'kit', 'KIT_REMAINING', {'SM2_ISLAND_KIT_ONLY': 'missing'})):
         if part not in todo: continue
