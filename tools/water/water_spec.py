@@ -297,6 +297,9 @@ def main():
             p = os.path.join(R, f)
             if f.endswith(('.jpg', '.png')) and ('river' in f or 'harbour' in f) and not f.startswith('crop'):
                 res[f] = near(p)
+                if f == 'river_low_4k.jpg':
+                    import farshore
+                    res[f]['farshore'] = farshore.score(p)
                 if 'harbour_high' in f:
                     res[f]['harbour'] = harbour(p); res[f]['under_island'] = under_island(p)
                     if f == 'harbour_high_4k.jpg' and os.path.exists(HARBOUR_REF): res[f]['contact_line'] = harbour_line(p, HARBOUR_REF)
@@ -406,6 +409,9 @@ def checks_r05(res):
     r = res.get('river_low_4k.jpg')
     if r:
         add('HOLD river_low near hp sd >= 12', r['highpass_sd'], r['highpass_sd'] >= 12); add('HOLD river_low near mean Y <= 80', r['mean_Y'], r['mean_Y'] <= 80)
+    if r and r.get('farshore'):
+        # r05b: the far contact line must not paint a white bar over the far quay at river level (r03 4.2 %, r05 first build 13.3 %)
+        add('GUARD river_low far-water strip bright (Y >= 170) share <= r03 + 3 pp', r['farshore']['bright_bar_pct'], r['farshore']['bright_bar_pct'] <= 4.16 + 3.0)
     r = res.get('river_low_dolly.mp4')
     if r: add('HOLD river_low_dolly autocorr 80 px <= 0.10', r['autocorr_80px'], r['autocorr_80px'] <= 0.10)
     r = res.get('S4_golden_4k.jpg')

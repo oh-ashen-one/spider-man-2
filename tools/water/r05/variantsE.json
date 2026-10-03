@@ -1,0 +1,6 @@
+{
+ "DF0": {"DistFix": 0, "_views": ["river_low", "river_sun", "harbour_high", "harbour_sun_high"]},
+ "MK1": {"MicroK": 1.0, "_views": ["river_low", "river_sun"]},
+ "MK05": {"MicroK": 0.5, "_views": ["river_low", "river_sun"]},
+ "DBG10": {"Dbg": 10, "_views": ["harbour_high", "river_low"]}
+}

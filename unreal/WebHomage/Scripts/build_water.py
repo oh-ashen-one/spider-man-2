@@ -288,8 +288,15 @@ def hlsl_ps():
 PS_TEMPLATE = r'''
 #define NZG(uv, s) Texture2DSampleGrad(tN, tNSampler, (uv), dpx * (s), dpy * (s))
 float2 p = Lag.xy; float t = T;
-float3 wp = WPos * 0.01, cm = Cam * 0.01;
+// r05b FIX (Dbg 10, round-05b notes): WPos here is the grid vertex position BEFORE the camera-following WPO, i.e. relative to the water actor
+//      at the origin, not the pixel's world position. dist / V / down / nearW were computed from camera minus that point: about |camera| from
+//      the origin (777 m at river_low, 4.7 km at harbour_high), a horizontal V, nearW = 0 everywhere, down = 0 everywhere, far line gated off
+//      beyond 1.75 km. Lag.xy IS the pixel's world xy (m). DistFix 1 = true position (water plane z), 0 = the legacy r02-r05 behaviour.
+float3 cm = Cam * 0.01;
+float3 wpT = float3(Lag.xy, -1.6);
+float3 wp = lerp(WPos * 0.01, wpT, DistFix);
 float3 Vv = cm - wp; float dist = length(Vv); float3 V = Vv / max(dist, 1e-3);
+float distT = length(cm - wpT);   // true camera distance (the far contact line's range gate uses it in both modes)
 float2 dpx = ddx(p), dpy = ddy(p);
 float foot = max(length(abs(dpx) + abs(dpy)), 1e-4);
 // r03: near field (<= %(near).0f m): two realizations per layer, the resolved wind chop, foam, contact map; beyond: one realization
@@ -389,7 +396,7 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
     //       FarLowK: alpha of the far line at river level (down = 0), 1 from above
     float ce1F = min(max(0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, FarPx * foot * (0.8 + 0.4 * lapF)), FarMaxM);
     float cfF = 1.0 - smoothstep(0.4 * ce1F, ce1F, cdF);
-    farF = saturate(cfF * FoamFarK * lerp(FarLowK, 1.0, down) * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, dist));
+    farF = saturate(cfF * FoamFarK * lerp(FarLowK, 1.0, down) * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, distT));
     wf = max(wf, farF);
 }
 // ---- normal / roughness. Near field: GGX alpha from RoughN only (<= 0.08: the resolved facets carry the slope variance);
@@ -527,7 +534,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
           'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.62, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
-          'GSpread': 0.22}
+          'GSpread': 0.22, 'DistFix': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
