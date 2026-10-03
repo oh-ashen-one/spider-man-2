@@ -861,6 +861,20 @@
     4,
     3
    ]
+  },
+  {
+   "piece": "look",
+   "round": 7,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    5,
+    4
+   ]
   }
  ],
  "agents": [

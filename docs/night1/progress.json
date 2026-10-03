@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 03:32",
+ "updated": "2026-10-03 03:58",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -62,10 +62,10 @@
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (sun 4, GI 4, atmos 4, refl 4, post 5, night 5)",
-   "gap": "Midday not per spec, far-field purple/white band, night swing is day-for-night"
+   "state": "active",
+   "round": 7,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5 (resumed an Opus start))",
+   "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5"
   },
   {
    "id": "P5",
@@ -968,6 +968,14 @@
    "verdict": "fails",
    "gap": "crowns as lit leaf volumes casting lawn shadows (p1 crowns sigma3 >= 9, median >= 12; sat >= 0.65; E9c <= 42 px; tree shadows <= 0.6x lawn); E1 >= 8 eye-level only, aerial p4 sigma6 <= 5",
    "notes": "NOT merged (Opus director): ties r03 but critic preferred the old build 4/5, E9c 54.1 px regressed, perf evidence invalid. r05 on Opus (crowns repeated as biggest gap r01/r02/r04)."
+  },
+  {
+   "t": "2026-10-03 03:58",
+   "piece": "look",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5",
+   "notes": "NOT merged (Opus director): sun/sky 4 < r03 6, night 4 < r03 5. L27 twilight dome now passes 12/12. r08 on Opus; stop look if r08 misses sun/sky >= 6 and night >= 5 (slot -> island r3)."
   }
  ],
  "perf": [
