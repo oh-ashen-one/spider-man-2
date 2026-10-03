@@ -25,7 +25,7 @@ FINAL_SECTION_PLACEHOLDER
   views (mirror direction more than 60 deg from the sun).
 - Also added (variants, not used by the final unless listed): OpenSl (spectrum-layer gain on open water), OpenBend (BendK share on open water),
   OpenGlit / OpenGSp (gain / facet spread of the r03 noise glitter on open water). `Dbg 11` = the mask as unlit colour (R cmask, G openW, B nearW;
-  `iter/a_DBG11_river_low.jpg`, `iter/a_DBG11_river_sun.jpg`).
+  `iter/a_DBG11_rl.jpg`, `iter/a_DBG11_rs.jpg`).
 
 ## Screening (1080p stills at t = 16 s, `tools/water/r06/screen.py`; 1080p is upscaled to 4K before the crops, so hp reads ~0.75 x native
 and the near mean ~4 Y above native)
@@ -54,6 +54,21 @@ water is the lever:
 
 The sparkle width (native rule: >= 2 % of the water rows at Y >= 200 per column) of r05b came mostly from that same frost (r05b's left flank
 mean 132). Sun glints from 9-deg sun at 6 m height need facet tilts of 35 deg or more 10-25 deg off the sun azimuth, so the pow(N.H) glint
-pick stayed at 26-35 % of the columns up to GlitPow 1000. Hold E tries broad picks (GlitPow 80-300).
+pick stayed at 26-35 % of the columns up to GlitPow 1000. Holds E-G on OpenRgh 0.5 (1080p):
 
-HOLD_E_PLACEHOLDER
+| variant (hold) | river_sun flanks / path400 ratio / sparkle native |
+|---|---|
+| GlitPow 150, GlitSlK 3 (E, F base) | 75.1 / 2.57 / 29.6 %; 75.0 / 2.58 / 30.5 % |
+| GlitPow 80 / 300 / 60 (E, F) | 76.6 / 2.55 / 31.3 %; 73.5 / 2.63 / 29.1 %; 75.9 / 2.63 / 31.7 % |
+| glint lobe GlitRgh 0.06 / 0.015 (F; default 0.025) | 74.5 / 2.60 / 29.6 %; 75.2 / 2.55 / 28.1 % |
+| glint emission GlitE 20 / 80 / 300 (G) | 74.4 / 2.61 / 29.4 %; 74.7 / 2.60 / 29.9 %; 73.9 / 2.69 / 30.8 % |
+| GlitE 80 + GlitPow 60 / + GlitSlK 4.5 (G) | 76.4 / 2.61 / 32.8 %; 76.2 / 2.51 / 28.0 % |
+
+`Dbg 12` (`iter/g_DBG12_rs.jpg`) shows the pick firing across the whole width in the near rows, but at pow(N.H, GlitPow/4) only ~2.5 % of the
+water pixels exceed 0.5, so the GlitPow pick is ~0.5 %: about 2-3 pixels per 1080p column, below the rule's 2 % of the rows. Nothing tried in
+the glint path moved the sparkle width above 33 %; the final keeps the sparse pick (OpenGlS 1, GlitPow 150, GlitSlK 3, GlitRgh 0.025) and
+GlitE 0. River_low is north-facing (the pick is gated off), so none of this touches it.
+
+Final defaults (build_water.py blob 329f2d5fa61b, the hold-G build; the final captures reuse it with SKIP_BUILD): ShoreMask 1, ShoreA 2,
+ShoreB 14, ShoreSA 10, ShoreSB 40, OpenD0 250, OpenD1 400, OpenChop 0, OpenB 0, OpenSl 1, OpenWC 0, OpenRgh 0.5, OpenGlit 1, OpenBend 1,
+OpenGlS 1, GlitPow 150, OpenGSp 1, GlitSlK 3, GlitRgh 0.025, GlitE 0, GlitT 0.4. Everything else as r05b.
