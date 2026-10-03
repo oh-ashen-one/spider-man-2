@@ -374,8 +374,12 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
     // r05b: the band breathes with the swell (BreathK): a solid band wider than the gate's 60 px window cannot change between frames; the
     //       lace has to fill the window and move (dolly gate 2: XOR / OR of the band masks at 4 fps, r05 build 0.197 min, CovMax 0.9 build 0.106)
     float brt = 1.0 + BreathK * sin(t * BreathW + dot(p, float2(1.3, -0.9)) + 6.0 * fn);
-    float ce0 = (0.12 + CBias) * brt; dbgC = cdm;
-    cf = max(cf, 1.0 - smoothstep(ce0, max((0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap) * brt, ce0 + 0.3), cdm));
+    // BandPx: the band is at most BandPx pixels (4K-equivalent) wide: a band wider than the gate's 60 px window saturates it (dolly points 3 m /
+    //         7 m: a solid sheet of ~100 px at 1080p near the bottom of the frame), a band that stays inside the window keeps its ragged
+    //         edge and lace in view at every camera position
+    float bandM = BandPx > 0.0 ? BandPx * max(length(dpx), 1.0e-4) * View.ViewSizeAndInvSize.x / 3840.0 : 1.0e3;   // length(dpx): metres per screen pixel across the view = across a wall that runs along it
+    float ce0 = min((0.12 + CBias) * brt, 0.55 * bandM); dbgC = cdm;
+    cf = max(cf, 1.0 - smoothstep(ce0, min(max((0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap) * brt, ce0 + 0.3), bandM), cdm));
     float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lap) * FoamK;
     foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
     // r05b: CovMax < 1 keeps the foam threshold above the noise floor (lace instead of a solid strip: the r05 band was one flat cream sheet
@@ -539,7 +543,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
           'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.72, 'FoamTK': 28.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
-          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0}
+          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0, 'BandPx': 55.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

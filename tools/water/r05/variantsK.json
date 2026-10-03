@@ -1,0 +1,5 @@
+{
+ "BP40": {"BandPx": 40.0, "_views": ["river_low_p3", "river_low_p7"]},
+ "BP75": {"BandPx": 75.0, "_views": ["river_low_p3", "river_low_p7"]},
+ "BP55C8": {"CovMax": 0.85, "_views": ["river_low_p3", "river_low_p7"]}
+}
