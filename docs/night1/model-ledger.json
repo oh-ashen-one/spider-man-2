@@ -942,6 +942,19 @@
     5,
     3
    ]
+  },
+  {
+   "piece": "city",
+   "round": 11,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
   }
  ],
  "agents": [

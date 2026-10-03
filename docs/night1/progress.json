@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 10:09",
+ "updated": "2026-10-03 12:56",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -35,10 +35,10 @@
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
-   "state": "active",
-   "round": 10,
-   "verdict": "fails \u2014 lowest 5 (sonnet)",
-   "gap": "S4 far-shore towers need a distant facade with window grid, mid-grey albedo: far-band \u226410% px >204 (now 29.5%)"
+   "state": "paused",
+   "round": 11,
+   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
+   "gap": "S4 sky too bright (Y 229 vs refs 119-127): fix in look (sky/aerial perspective only) so the far band sits 25-32 below it; city backlog -> island M3 (S6 curb/red steps, S5 C1, glass reflections, S3 vents)"
   },
   {
    "id": "P2",
@@ -62,7 +62,7 @@
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "paused",
+   "state": "active",
    "round": 8,
    "verdict": "fails \u2014 lowest 4 (Opus 5.5)",
    "gap": "light the city with a low directional sun, not a uniform lift (p5 <= 15, p95 >= 120, 32-px local contrast >= 0.17, sunlit/shaded facade ratio >= 3)"
@@ -1016,6 +1016,14 @@
    "verdict": "fails",
    "gap": "real offset sun shadows from crowns: needs a foliage shadow path (distance-field shadows or Nanite foliage) timed in a clean perf run",
    "notes": "NOT merged (Opus director): ties r05 but undisclosed regressions (lit lawn -15 %, p4 sigma6 5.71->6.52, ~16 % GPU cost). Finding: non-Nanite instanced pools with DF lighting off cast no shadows. Terrain STOPPED (overall 3 for six rounds). Slot -> island r3 (Sonnet)."
+  },
+  {
+   "t": "2026-10-03 12:56",
+   "piece": "city",
+   "round": 11,
+   "verdict": "fails",
+   "gap": "S4 sky too bright (Y 229 vs refs 119-127): fix in look (sky/aerial perspective only) so the far band sits 25-32 below it; city backlog -> island M3 (S6 curb/red steps, S5 C1, glass reflections, S3 vents)",
+   "notes": "Merged (Opus director): = r10, T2 29.5 -> 6.6 %, S8 glass 70.4 -> 0.69 %. City STOPPED (flat 2 rounds). Billboard conflict resolved to the owner's original art_P27 text."
   }
  ],
  "perf": [
