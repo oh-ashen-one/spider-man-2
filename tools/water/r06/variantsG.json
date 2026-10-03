@@ -1,0 +1,8 @@
+{
+ "DBG12": {"Dbg": 12, "_views": ["river_sun"]},
+ "E20": {"GlitE": 20.0, "_views": ["river_sun"]},
+ "E80": {"GlitE": 80.0, "_views": ["river_sun"]},
+ "E300": {"GlitE": 300.0, "_views": ["river_sun"]},
+ "E80P": {"GlitE": 80.0, "GlitPow": 60.0, "_views": ["river_sun"]},
+ "E80K": {"GlitE": 80.0, "GlitSlK": 4.5, "GlitPow": 100.0, "_views": ["river_sun"]}
+}

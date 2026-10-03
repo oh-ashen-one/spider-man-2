@@ -492,6 +492,16 @@ Rough = lerp(Rough, 0.06, gw);
 //          clipped to near-white: the sparkle reads as white points only with the sharper lobe
 Rough = lerp(Rough, GlitRgh, gwO);
 Emis = FarEmisK * farF * float3(0.62, 0.6, 0.55);   // r05b candidate (default 0): the far line also as emission, independent of the Opacity path
+// r06 GlitE: the open-water glint's radiance also as emission (the picked facets above GlitT), so a glint clips to a white point whatever
+//      the SLW direct-light path does with it (GlitRgh alone did not move the sparkle width)
+Emis += GlitE * smoothstep(GlitT, 1.0, gwO) * float3(1.0, 0.93, 0.8);
+// r06 Dbg 12: the open-water glint pick as unlit colour: R = gwO, G = openW, B = the Dbg 12 pick at 4 x GlitPow width (pow(N.H, GlitPow / 4))
+[branch] if (Dbg > 11.5) {
+    float3 Nx2 = normalize(float3(-(slope.x + slopeX.x * GlitSlK), -(slope.y + slopeX.y * GlitSlK), 1.0));
+    float g4 = pow(saturate(dot(Nx2, Hh)), GlitPow * 0.25);
+    Emis = float3(gwO, openW, g4) * DbgK * 0.01; Opac = 1.0; NormalW = float3(0, 0, 1); Rough = 1.0;
+    return float3(gwO, openW, g4);
+}
 // r05 Dbg 10: far contact line diagnosis (harbour_high rendered no line). Base colour = a grey value in interleaved 24-px screen columns
 //   (column mod 8): 0 contact-map distance / 32 m (recomputed here, same UV as the far line); 1 footprint foot / 8 m; 2 far-line coverage
 //   (recomputed with the simple band); 3 the real wf of this material evaluation; 4 nearW; 5 dist / 2000 m; 6 the real near contact
@@ -588,7 +598,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # OpenBend (BendK share), OpenGlS / GlitPow (open-water sun glints picked from the full-detail normal) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
           # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
           'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
-          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.5, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 150.0, 'OpenGSp': 1.0, 'GlitSlK': 3.0, 'GlitRgh': 0.025}
+          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.5, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 150.0, 'OpenGSp': 1.0, 'GlitSlK': 3.0, 'GlitRgh': 0.025, 'GlitE': 0.0, 'GlitT': 0.4}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
