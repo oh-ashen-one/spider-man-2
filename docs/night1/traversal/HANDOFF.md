@@ -1,10 +1,17 @@
-# P3 Traversal + camera — handoff (after round 25)
+# P3 Traversal + camera — handoff (after round 26)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 26 IN PROGRESS, 2026-10-03 02:00, builder Claude Opus 5.5 high via Devin).** Round 25 handoff: `git show 4c3ebd92:docs/night1/traversal/HANDOFF.md`.
-Work dir `round-26/` (tools in `round-26/tools/`: `hold.sh` GPU worker, `split_capture.sh` A/B/merge, `split_est.py`, `build_suits_p3.py`, `analyze.sh`,
-`sheets.py`, `critic_make_pairs.sh`). Scratch `_scratch/traversal/r26/` (queues `queue_<tag>.txt`, probes, `after.sh <prev> <next>` chains holds).
+**Status (round 26 DONE, 2026-10-03 ~03:45, builder Claude Opus 5.5 high via Devin).** Every shot-list clip re-captured into `round-26/`
+(12 movies, 1920x1080 output, internal 1920x1080 = `r.ScreenPercentage 100`, offscreen -game, fixed 1/60 s step, <= 15 MB; provenance per clip in
+`round-26/CLIPS.md`, builds in `round-26/tools/BUILDS.txt`). Measurements: `round-26/R26_TARGETS.txt` (targets 1-2), `SUIT.md` + `SUIT_SHEET.jpg`
+(target 3), `ROPE_CHECK.txt`, `R25_GATES.txt`, `R24_CHECK.txt`, `GAPS.txt`, `FLIPS.txt`, `WALL.txt`, `OWNER_BUGS.txt`, `SIZES.txt`, `SHOTLIST.md`.
+Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r26/pack` (key `pack.key.json` outside; pairs `/Users/midir/sm2-n1/_scratch/critic-P3-r26/pairs.json`;
+rebuild with `round-26/tools/critic_make_pairs.sh`). The critic has NOT run. Round 25 handoff: `git show 4c3ebd92:docs/night1/traversal/HANDOFF.md`.
+Tools of this round in `round-26/tools/`: `hold.sh` (GPU worker: C++ build when `$R/NEED_BUILD`, suit content, -nullrhi probes, queue of
+clips / `splitA:`/`splitB:` items / `default`), `split_capture.sh` (A / B / merge), `split_est.py` (hold time guard), `build_suits_p3.py`,
+`analyze.sh`, `sheets.py`, `clips_md.py`, `critic_make_pairs.sh`. Scratch `_scratch/traversal/r26/` (`queue_<tag>.txt`, `probes_<tag>.txt`,
+`tune.env`, `dump_s`, `after.sh <prev> <next>` = queue the next hold from my own shell once the previous one is done, carrying its leftovers).
 
 ## 0. Round 26 -- what changed (director target after the r25 critic: w1 vertical run a sprint, w1 camera 4-7 m / box p90 .30-.38, original suit everywhere, no regression)
 | # | Item | Fix (file) |
