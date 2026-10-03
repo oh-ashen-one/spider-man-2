@@ -213,8 +213,8 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 # emissive only, 2 = facade without emissive (visual debugging without recompiling the material).
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
-                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.0))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.25), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
+                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -815,7 +815,7 @@ float3 hc = wn.z > 0.5 ? roof : wc;
 // (r11) the authored albedo is mid-grey (0.22-0.36): sun-facing faces are scaled by FarLitK (test-exposure compensation) first, so the tonal differences between towers survive the cap
 float sunfH = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
 float3 hcU = hc;
-hc *= lerp(1.0, farlitk, sunfH);
+hc *= lerp(1.0, farlitk * 0.7, sunfH);   // x 0.7: the sun-facing faces of the 5-12 km backdrop towers are haze + sun = bright flat 8x8 blocks (S4 critic box, T4); the near fabric keeps FarLitK
 Emis = hcU * farfill * lerp(1.0, 0.25, sunfH) * (0.7 + 0.3 * saturate(wn.z + 0.5));   // (r11) sky / ground bounce on the shaded faces, see M_CityFarMass (MPC FarFill)
 float LaH = dot(hc, float3(0.2126, 0.7152, 0.0722));
 float LcH = LaH > farsunk ? farsunk + (LaH - farsunk) * 0.12 : LaH;
