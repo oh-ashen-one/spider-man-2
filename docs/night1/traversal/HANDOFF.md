@@ -2,11 +2,12 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. Nothing here is meant to infringe.
 
-**Status (round 25 DONE, 2026-10-02 ~23:30, builder Claude Opus 5.5 high via Devin): build 4 = HEAD code.** Clips in `round-25/`
+**Status (round 25 DONE, 2026-10-02 23:25, builder Claude Opus 5.5 high via Devin): build 4 = HEAD code.** Clips in `round-25/`
 (1920x1080 movies, internal 1920x1080 = `r.ScreenPercentage 100`, offscreen -game, fixed 1/60 s step, <= 15 MB): see
 `round-25/CLIPS.md` for the build each clip was captured on and its path/camera check (builds 2-4 change only the web strand drawing).
-Measurements: `round-25/ROPE_CHECK.txt`, `R25_GATES.txt`, `GAPS.txt`, `R24_CHECK.txt`, `WALL.txt`, `OWNER_BUGS.txt`, `SIZES.txt`,
-`SHOTLIST.md`. Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r25/pack` (key `pack.key.json` outside; pairs
+11 clips captured this round (a, c, p1, w1, w2, r1, s1, m1, x1, x2, f1); f4 not re-captured (r24 file, build-4 probe
+bit-identical); no 4K stills. Measurements: `round-25/ROPE_CHECK.txt`, `R25_GATES.txt`, `GAPS.txt`, `R24_CHECK.txt`, `WALL.txt`,
+`OWNER_BUGS.txt`, `SIZES.txt`, `SHOTLIST.md`. Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-P3-r25/pack` (key `pack.key.json` outside; pairs
 `/Users/midir/sm2-n1/_scratch/critic-P3-r25/pairs.json`; rebuild with `round-25/tools/critic_make_pairs.sh`). The critic has NOT run.
 GPU worker of this round: `round-25/tools/hold4.sh <tag>` inside `gpu_slot.sh capture --label traversal --` (queue
 `_scratch/traversal/r25/queue_<tag>.txt`, -nullrhi probes `probes_<tag>.txt`, extra args `tune.env`, time guard `est_scale`); queue
@@ -29,7 +30,7 @@ Older handoffs: r24 `git show c3415073:docs/night1/traversal/HANDOFF.md`, r23 `7
 | Test | r24 | r25 |
 |---|---|---|
 | T5/T6 rope on a_swing_chain web_on frames at 10 fps (contrast >= 25 to both 6 px bands at >= 80 % of points, median >= 25, width 2-4 px) | build 1 of r25: 18/65 | **65/65 PASS** (point-contrast median 125, p10 74; width median 3.5 px; whole-rope literal mean contrast >= 25 on 58/65); pale facades 0.9-1.1 s 3/3, dark glass 10.5-11.2 s 8/8 |
-| same on m1_mouse_swing | -- | 26/26 |
+| same on m1_mouse_swing / s1_high_swing | -- | 26/26 / 39/43 (s1 fails: 0.2 s first attach, 2.7 s a 0.15 s swing (measured width 0.5 px), 5.3-5.4 s measured width 4.5 px close to the lens) |
 | G1 c perch 8.6-10.5 s: in frame, cam 3.4-7 m, pitch change <= 15 deg / 0.3 s | FAIL (9 frames out of frame) | **PASS**: 113/113, 4.14-6.00 m, max 14.3 deg at 8.68 s, occl 0 |
 | G1b c 7.7-8.5 s (r24 gate) | PASS | PASS (unchanged) |
 | P1 pawn run head-top FFT 1.5-11 s (3.2-3.8 Hz) | -- | **3.549 Hz PASS** (mask top 3.549 Hz, 3.66 lows/s, speed 9.8 m/s, run clip on 571/571 rows) |

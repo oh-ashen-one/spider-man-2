@@ -24,6 +24,8 @@ Builds 2-4 change only the web strand drawing (`UpdateWebs`, M_TravWeb); paths a
 | m1_mouse_swing | build 4 | SAME as r24 |
 | f1_flow_backDouble | build 4 | SAME as r24 |
 | w2_wallrun_side_zip | build 4 | body path = r24 on every row; camera = r24 until the perch at 6.43 s (perch recenter, max 1.4 m) |
-| x2_rmb_cancel_wall | build 4 (if present) | SAME as r24 (build-1 probe) |
-| x1_rmb_cancel_flip, s1_high_swing, r1_roofrun_zip | build 4 (if present in round-25/) | SAME as r24 (probes) |
+| x2_rmb_cancel_wall | build 4 | SAME as r24 |
+| x1_rmb_cancel_flip | build 4 | SAME as r24 |
+| s1_high_swing | build 4 | SAME as r24 |
+| r1_roofrun_zip | build 4 | SAME as r24 (build-1 probe; capture check in R24_CHECK / OWNER_BUGS) |
 | f4_chain_flips | not re-captured: `round-24/f4_chain_flips.mp4` | build-4 -nullrhi probe SAME as r24 (only the strand look differs) |
