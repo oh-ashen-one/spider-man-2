@@ -1,0 +1,12 @@
+{
+ "DBG10": {"Dbg": 10, "_views": ["harbour_high", "river_low"]},
+ "FE6": {"FarEmisK": 6, "_views": ["harbour_high"]},
+ "FE18": {"FarEmisK": 18, "_views": ["harbour_high"]},
+ "RC0": {"RCalm": 0, "_views": ["river_low", "river_sun"]},
+ "LF40": {"LFa": 40, "_views": ["river_low", "river_sun"]},
+ "GR15": {"GrazeRough": 0.15, "_views": ["river_low", "river_sun"]},
+ "G15L40": {"GrazeRough": 0.15, "LFa": 40, "RCalm": 0, "_views": ["river_low", "river_sun"]},
+ "CM8": {"CovMax": 0.8, "_views": ["river_low"]},
+ "GS30": {"GSpread": 0.3, "_views": ["river_sun"]},
+ "GS40": {"GSpread": 0.4, "_views": ["river_sun"]}
+}

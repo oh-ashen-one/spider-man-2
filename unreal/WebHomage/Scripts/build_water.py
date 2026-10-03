@@ -308,9 +308,10 @@ float shore = (all(su > 0.0) && all(su < 1.0)) ? Texture2DSampleGrad(tS, tSSampl
 float down = smoothstep(0.08, 0.25, V.z);
 // final hold 1: at river level the calm also flattened the 100-300 m rows of the river_low near crop (hp 10.7, r04 11.7): the calm applies
 //      seen from above (down) or beyond 300-500 m (the far shore's reflection), not to river-level water inside 300 m
-float calm = ShoreCalm > 0.0 ? lerp(1.0, smoothstep(ShoreCalm * 0.35, ShoreCalm, shore), max(down, smoothstep(300.0, 500.0, dist))) : 1.0;
-float lk = lerp(1.0, LongK, smoothstep(%(lf0).1f, %(lf1).1f, dist) * calm);
-float lm = lerp(1.0, MidK, smoothstep(%(lf0).1f, %(lf1).1f, dist) * calm);   // r04: the 6.7 m layer (0.3-2.2 m waves: 1-10 px from swing height)
+// r05b: RCalm 0 = no calm at river level at all (LongK 3 everywhere beyond LFa..LFb, as r04); LFa / LFb = the LongK / MidK ramp (r04: 100..300 m)
+float calm = ShoreCalm > 0.0 ? lerp(1.0, smoothstep(ShoreCalm * 0.35, ShoreCalm, shore), max(down, RCalm * smoothstep(300.0, 500.0, dist))) : 1.0;
+float lk = lerp(1.0, LongK, smoothstep(LFa, LFb, dist) * calm);
+float lm = lerp(1.0, MidK, smoothstep(LFa, LFb, dist) * calm);   // r04: the 6.7 m layer (0.3-2.2 m waves: 1-10 px from swing height)
 float gk = lerp(0.75, 1.25, gust);
 // ---- the long Gerstner waves (waves.js waveSlope: resolved -> slope, unresolved -> slope variance)
 float2 sl2 = 0; float varU = 0, h = 0, s, c, f;
@@ -346,10 +347,10 @@ float3 LsN = normalize(SunDir);
 }
 float varF = varL + lostC * mk * mk;      // per-axis slope variance the shading cannot resolve
 // ---- foam (near field only, faded to zero by %(near).0f m): contact (the water line against anything below it), rare whitecaps
-float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-map distance and under-water ray length (Dbg 7)
+float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-map distance and under-water ray length (Dbg 7)
 [branch] if (nearW > 0.0) {
     float fn = NZG(p / 7.0 + float2(t * 0.01, -t * 0.007), 1.0 / 7.0).b;
-    float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest + 0.15 * (slT.x - slT.y);
+    float lap = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * LapW) + 0.35 * crest + 0.15 * (slT.x - slT.y);
     float dnw = max(DNW - PD, 0.0) * 0.01;
     float lr = dnw / max(dot(-V, View.ViewForward), 0.2); dbgL = lr;
     cf = 1.0 - smoothstep(0.04, 0.25 + 1.1 * fn + 0.6 * lap, lr);
@@ -367,8 +368,10 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
     cf = max(cf, 1.0 - smoothstep(ce0, max(0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap, ce0 + 0.3), cdm));
     float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lap) * FoamK;
     foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
-    float cov = saturate(foam);
-    float pat = NZG(p / 1.9 + float2(t * 0.004, 0.0), 1.0 / 1.9).r * 0.62 + NZG(p / 0.63 + float2(0.0, t * 0.006), 1.0 / 0.63).g * 0.5;
+    // r05b: CovMax < 1 keeps the foam threshold above the noise floor (lace instead of a solid strip: the r05 band was one flat cream sheet
+    //       and its XOR / OR between 4 fps dolly frames fell to 0.2 where the band was widest); FoamTK / LapW: foam drift + swell breathing
+    float cov = saturate(foam) * CovMax;
+    float pat = NZG(p / 1.9 + float2(t * 0.004 * FoamTK, 0.0), 1.0 / 1.9).r * 0.62 + NZG(p / 0.63 + float2(0.0, t * 0.006 * FoamTK), 1.0 / 0.63).g * 0.5;
     wf = saturate(smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov)) * nearW;
 }
 // r05: far contact line (beyond the near field, out to FoamFar m): the same contact map, no sub-metre pattern (it would alias at 1 km); it
@@ -381,9 +384,13 @@ float cf = 0.0, wf = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL: contact-ma
     float lapF = 0.55 + 0.225 * sin(dot(p, float2(0.11, -0.17)) + t * 1.1) + 0.35 * crest;
     float fF = NZG(p / 9.0 + float2(t * 0.012, -t * 0.008), 1.0 / 9.0).b;
     // a 1-2 m band is < 1 px at 1 km from swing height (hold 1: line in 0.3 pct of columns): the band reaches at least FarPx pixel footprints
-    float ce1F = max(0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, FarPx * foot * (0.8 + 0.4 * lapF));
+    // r05b: the band is capped at FarMaxM metres: at river level 400-600 m out one pixel row spans 14-30 m, FarPx footprints made the far
+    //       quay's line a 40 px flat white bar across the horizon (river_low r05); from swing height 1.3 km out (3 m / px) 16 m is 5 px.
+    //       FarLowK: alpha of the far line at river level (down = 0), 1 from above
+    float ce1F = min(max(0.5 + CBias * (0.7 + 0.6 * lapF) + 0.8 * fF, FarPx * foot * (0.8 + 0.4 * lapF)), FarMaxM);
     float cfF = 1.0 - smoothstep(0.4 * ce1F, ce1F, cdF);
-    wf = max(wf, saturate(cfF * FoamFarK * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, dist)));
+    farF = saturate(cfF * FoamFarK * lerp(FarLowK, 1.0, down) * (0.75 + 0.35 * lapF)) * (1.0 - nearW) * (1.0 - smoothstep(FoamFar * 0.7, FoamFar, dist));
+    wf = max(wf, farF);
 }
 // ---- normal / roughness. Near field: GGX alpha from RoughN only (<= 0.08: the resolved facets carry the slope variance);
 //      beyond: + the unresolved variance x FarVarK (Cox-Munk alpha^2 = 2 sigma^2 per axis)
@@ -427,32 +434,38 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
     float gs = lerp(1.0, GlitFar, smoothstep(250.0, 600.0, dist));
     float2 pg = p / gs;
     float2 gn = (NZG(pg / 2.3 + float2(t * 0.05, t * 0.034) / gs, 1.0 / (2.3 * gs)).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-pg.y, pg.x) / 3.7 + float2(-t * 0.041, t * 0.02) / gs, 1.0 / (3.7 * gs)).ga - 0.5) * 2.0;
-    float3 nG = normalize(N + float3(gn * 0.22, 0.0));
+    float3 nG = normalize(N + float3(gn * GSpread, 0.0));
     float gl = pow(saturate(dot(nG, Hh)), 700.0);
     float spark = smoothstep(0.62, 0.9, NZG(pg / 5.0 + float2(t * 0.02 / gs, 0.0), 1.0 / (5.0 * gs)).r);
     gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK);
 }
 NormalW = normalize(lerp(NormalW, Hh, gw));
 Rough = lerp(Rough, 0.06, gw);
-Emis = 0;
-// r05 Dbg 9: import-path diagnosis. Screen rows (y 0.54..0.99 of the frame, 14 bands of 0.032) each show one value as a thermometer
-//   along x (0 at the left edge, full scale at x = 0.48 of the width: white while value > x / 0.48 * full). Bands:
-//   0-2 T_WaterContact width / height (full 8192) and mip count (16); 3 its Load() at the texel the file reads 0 m (8 m full scale);
-//   4 SampleLevel at that UV (8 m); 5 SampleLevel at open water 10 m off the wall (file 11.7 m; 32 m); 6-7 B width / height;
-//   8-9 B at the 0 m / open UVs; 10 C height; 11-12 C at the 0 m / open UVs; 13 T_ShoreDist at the open UV (400 m full scale)
-// r05 Dbg 10: far contact line diagnosis (harbour_high rendered no line). Emissive grey in interleaved 40-px screen columns:
-//   column mod 3 = 0: contact-map distance / 32 m; 1: pixel footprint foot / 8 m; 2: the far-line coverage (recomputed here)
+Emis = FarEmisK * farF * float3(0.62, 0.6, 0.55);   // r05b candidate (default 0): the far line also as emission, independent of the Opacity path
+// r05 Dbg 10: far contact line diagnosis (harbour_high rendered no line). Base colour = a grey value in interleaved 24-px screen columns
+//   (column mod 8): 0 contact-map distance / 32 m (recomputed here, same UV as the far line); 1 footprint foot / 8 m; 2 far-line coverage
+//   (recomputed with the simple band); 3 the real wf of this material evaluation; 4 nearW; 5 dist / 2000 m; 6 the real near contact
+//   cf; 7 the real near contact distance dbgC / 4 m. The bottom 6 pct of the frame is a calibration ramp (value = x / width) in the same
+//   shading, so the grey levels can be read back through it.
 [branch] if (Dbg > 9.5) {
     float2 cuF = (p - float2(%(cx).2f, %(cz).2f)) / float2(%(cw).2f, %(ch).2f);
     float inb = (all(cuF > 0.0) && all(cuF < 1.0)) ? 1.0 : 0.0;
     float cdF = lerp(%(cmax).1f, Texture2DSampleLevel(tC, tCSampler, saturate(cuF), 0).r * %(cmax).1f, inb);
     float ce1F = max(0.5 + CBias, FarPx * foot);
     float cv = (1.0 - smoothstep(0.4 * ce1F, ce1F, cdF)) * (1.0 - nearW);
-    float k = fmod(floor(Parameters.SvPosition.x / 40.0), 3.0);
-    float dg = k < 0.5 ? saturate(cdF / 32.0) : (k < 1.5 ? saturate(foot / 8.0) : saturate(cv));
-    Emis = dg.xxx * DbgK * 0.01; Opac = 1.0; NormalW = float3(0, 0, 1); Rough = 1.0;
+    float2 sp10 = Parameters.SvPosition.xy * View.ViewSizeAndInvSize.zw;
+    float k = fmod(floor(Parameters.SvPosition.x / 24.0), 8.0);
+    float dg = k < 0.5 ? saturate(cdF / 32.0) : (k < 1.5 ? saturate(foot / 8.0) : (k < 2.5 ? saturate(cv) : (k < 3.5 ? saturate(wf) : (k < 4.5 ? saturate(nearW) :
+               (k < 5.5 ? saturate(dist / 2000.0) : (k < 6.5 ? saturate(cf) : saturate(dbgC / 4.0)))))));
+    if (sp10.y > 0.94) dg = sp10.x;
+    Emis = 0; Opac = 1.0; NormalW = float3(0, 0, 1); Rough = 1.0;
     return dg.xxx;
 }
+// r05 Dbg 9: import-path diagnosis. Screen rows (y 0.54..0.99 of the frame, 14 bands of 0.032) each show one value as a thermometer
+//   along x (0 at the left edge, full scale at x = 0.48 of the width: white while value > x / 0.48 * full). Bands:
+//   0-2 T_WaterContact width / height (full 8192) and mip count (16); 3 its Load() at the texel the file reads 0 m (8 m full scale);
+//   4 SampleLevel at that UV (8 m); 5 SampleLevel at open water 10 m off the wall (file 11.7 m; 32 m); 6-7 B width / height;
+//   8-9 B at the 0 m / open UVs; 10 C height; 11-12 C at the 0 m / open UVs; 13 T_ShoreDist at the open UV (400 m full scale)
 [branch] if (Dbg > 8.5) {
     float2 sp = Parameters.SvPosition.xy * View.ViewSizeAndInvSize.zw;
     float uu = sp.x / 0.48, yb = (sp.y - 0.54) / 0.032, bb = floor(yb);
@@ -502,14 +515,19 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
           'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.0, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
-          'CBias': 0.8, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
+          'CBias': 0.55, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
           # r05: GrazeRough 0 (r04's 0.42 grazing floor blurred the far-shore reflection at river level: merge-blocker; perf is not this
           # round's gate). CSel: which contact-map texture (0 = T_WaterContact as r04, 1 = B: half-res Interchange + NeverStream,
           # 2 = C: half-res legacy TextureFactory; Dbg 9 showed all three read correctly in-engine). ShoreCalm: the far-field long-wave
           # gains (LongK / MidK) fade out within ShoreCalm m of land (sheltered water mirrors the island: the r03 reflections).
           # FoamFarK / FoamFar: the far contact line (harbour_high: the island seawall ~1 km away had no foam: foam stopped at NEAR_M)
           # FarPx: the far line spans >= FarPx pixel footprints (a 1-2 m band is < 1 px at 1 km from swing height: hold 1 line 0.3 %)
-          'CSel': 0.0, 'ShoreCalm': 380.0, 'FoamFarK': 1.0, 'FoamFar': 2500.0, 'FarPx': 6.0}
+          'CSel': 0.0, 'ShoreCalm': 380.0, 'FoamFarK': 1.0, 'FoamFar': 2500.0, 'FarPx': 6.0,
+          # r05b: FarMaxM / FarLowK cap the far contact line (r05's FarPx footprints painted a 40 px white bar over the far quay at river
+          # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
+          # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
+          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.62, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
+          'GSpread': 0.22}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
