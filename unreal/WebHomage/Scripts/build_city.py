@@ -25,9 +25,10 @@ mel = unreal.MaterialEditingLibrary
 T0 = time.time()
 def log(*a): print('[build_city %5.0fs]' % (time.time() - T0), *a)
 DEADLINE = float(os.environ.get('SM2_ISLAND_DEADLINE', '0') or 0)   # (island r04) unix time: resumable steps stop here (GPU-lock hold max)
-BATCH = int(os.environ.get('SM2_ISLAND_BATCH', '20'))
+BATCH = int(os.environ.get('SM2_ISLAND_BATCH', '10'))
 KIT_BATCH = int(os.environ.get('SM2_ISLAND_KIT_BATCH', '8'))   # kit tiles build ~20-40 s each: small batches keep the deadline overrun short
-def past_deadline(): return bool(DEADLINE) and time.time() > DEADLINE
+LAST_BATCH_S = [0.0]   # (island r04) duration of the previous batch: a batch only starts if it is projected to end before the deadline
+def past_deadline(): return bool(DEADLINE) and time.time() + 1.25 * LAST_BATCH_S[0] > DEADLINE
 
 # ------------------------------------------------------------------------------------------------ helpers
 def import_files(files, dest, pipeline=None):
@@ -990,6 +991,7 @@ if 'mesh' in STEPS:
     n = 0; left = len(recs)
     for b0 in range(0, len(recs), BATCH):
         if past_deadline(): break
+        tb = time.time()
         batch = recs[b0:b0 + BATCH]
         for nan in (False, True):
             group = [r for r in batch if (r['kind'] == 'detail') == nan]
@@ -1006,7 +1008,8 @@ if 'mesh' in STEPS:
             EAL.save_asset(dst); n += 1
         left = len(recs) - (b0 + len(batch))
         if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')
-        log('mesh batch: %d imported, %d left, finish %s' % (n, left, FINISH_STATS))
+        LAST_BATCH_S[0] = time.time() - tb
+        log('mesh batch: %d imported, %d left, %.0f s, finish %s' % (n, left, LAST_BATCH_S[0], FINISH_STATS))
     log('meshes', n)
     log('MESH_REMAINING %d' % left)
 
@@ -1222,6 +1225,7 @@ def kit_import(only=None):
         n = 0
         for b0 in range(0, len(recs), KIT_BATCH):
             if past_deadline(): left += len(recs) - b0; break
+            tb = time.time()
             batch = recs[b0:b0 + KIT_BATCH]
             import_files([os.path.join(EXPORT, r['file']) for r in batch], kdir + '/_in', mesh_pipeline(True))
             for r in batch:
@@ -1230,7 +1234,8 @@ def kit_import(only=None):
                 EAL.rename_asset(src, dst); sm = load(dst)
                 finish_mesh(sm, mat, solid, nanite=True); EAL.save_asset(dst); n += 1
             if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
-            log('kit batch', kdir, n, '/', len(recs), FINISH_STATS)
+            LAST_BATCH_S[0] = time.time() - tb
+            log('kit batch', kdir, n, '/', len(recs), '%.0f s' % LAST_BATCH_S[0], FINISH_STATS)
         log('kit meshes', kdir, n, 'solid' if solid else 'visual-only')
     log('KIT_REMAINING %d' % left)
 
