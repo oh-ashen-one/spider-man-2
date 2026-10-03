@@ -239,7 +239,8 @@ def mesh_material(rec):
     if n.startswith('coastLawn'): return load(f'{MAT}/M_TerrainLawn')
     if n.startswith('parkWater'): return load(f'{MAT}/M_TerrainPond')
     col = m.get('color') or [1, 1, 1]
-    vc = 1.0 if ('COLOR_0' in rec.get('attrs', []) or rec.get('color')) else 0.0
+    if n == 'park_reeds' and list(col) == [1, 1, 1] and 'color' not in rec.get('attrs', []): col = [0.15, 0.17, 0.06]   # r05: white default tint (see parkReeds)
+    vc = 1.0 if ('COLOR_0' in rec.get('attrs', []) or 'color' in rec.get('attrs', []) or rec.get('color')) else 0.0   # r05: the export lists the attribute as 'color' (r01-r04 read no vertex colour: white (1, 1, 1) tints)
     two = m.get('side') == 2 or n == 'park_reeds'
     return mi(n, 'M_TerrainVC2' if two else 'M_TerrainVC', {'usevc': vc, 'roughp': m.get('roughness') or 0.8, 'metalp': m.get('metalness') or 0.0}, {'tint': (col[0], col[1], col[2], 1.0)})
 
@@ -284,6 +285,7 @@ def _step_foliage():
             rec = [p for p in MAN['protos'] if p['name'] == nm][0]; m = rec.get('mat') or {}
             col = m.get('color') or [1, 1, 1]
             if nm == 'parklamp': col = [0.045, 0.047, 0.05]
+            if nm == 'parkReeds' and list(col) == [1, 1, 1]: col = [0.15, 0.17, 0.06]   # r05: the reed clumps had the export's white default tint: the 'white egg-shaped lumps' along the p3 Lake banks (r03 / r04 critics)
             two = nm in ('parkReeds', 'park_blankets')
             finish_mesh(sm, mi('P_' + nm, 'M_TerrainVC2' if two else 'M_TerrainVC', {'usevc': 0.0, 'roughp': m.get('roughness') or 0.8, 'metalp': 0.4 if nm == 'parklamp' else 0.0}, {'tint': (col[0], col[1], col[2], 1.0)}), False)
         EAL.save_asset(dst)
