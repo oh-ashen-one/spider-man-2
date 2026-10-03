@@ -229,6 +229,9 @@ def mi(name, parent, scalars=None, vectors=None):
 MESHD = ROOT + '/Meshes'
 GROUND_TAG = ('park', 'mapLawns', 'coastLawn', 'parkWater')           # actors tagged WHGround (floors that never hold a web)
 SKIP_MESH = ('park_ballfield_fences', 'park_setpieces', 'parkPaths', 'park_drives', 'plazaPaving', 'park_water_shallows', 'wetBands', 'coastPickets')   # paths / drives = baked mask; plaza paving is the city's; shallows / wet bands / pickets: later rounds
+# r06: non-Nanite meshes with affect_distance_field_lighting off cast no sun shadow in this project (round-06/diag/NOTES.md): the benches, lamps, posts, fences and copings
+# (world-space static meshes, kept out of the distance-field scene since r01) become Nanite so they write the virtual shadow map; ground / water stay non-Nanite (they cast nothing).
+NANITE_KINDS = ('furniture', 'edge')
 def keep(rec):
     n = rec['name']
     return not any(n == s or n.startswith(s) for s in SKIP_MESH)
@@ -256,7 +259,7 @@ def _step_mesh():
         EAL.rename_asset(src, dst)
         sm = load(dst)
         collide = base == 'park' or base.startswith(('mapLawns', 'coastLawn', 'parkWater'))
-        finish_mesh(sm, mesh_material(r), collide)
+        finish_mesh(sm, mesh_material(r), collide, nanite=r['kind'] in NANITE_KINDS)   # r06: furniture / edges are Nanite so they cast (see NANITE_KINDS)
         EAL.save_asset(dst); n += 1
     if EAL.does_directory_exist(MESHD + '/_in'): EAL.delete_directory(MESHD + '/_in')
     log('meshes', n)
@@ -287,7 +290,7 @@ def _step_foliage():
             if nm == 'parklamp': col = [0.045, 0.047, 0.05]
             if nm == 'parkReeds' and list(col) == [1, 1, 1]: col = [0.15, 0.17, 0.06]   # r05: the reed clumps had the export's white default tint: the 'white egg-shaped lumps' along the p3 Lake banks (r03 / r04 critics)
             two = nm in ('parkReeds', 'park_blankets')
-            finish_mesh(sm, mi('P_' + nm, 'M_TerrainVC2' if two else 'M_TerrainVC', {'usevc': 0.0, 'roughp': m.get('roughness') or 0.8, 'metalp': 0.4 if nm == 'parklamp' else 0.0}, {'tint': (col[0], col[1], col[2], 1.0)}), False)
+            finish_mesh(sm, mi('P_' + nm, 'M_TerrainVC2' if two else 'M_TerrainVC', {'usevc': 0.0, 'roughp': m.get('roughness') or 0.8, 'metalp': 0.4 if nm == 'parklamp' else 0.0}, {'tint': (col[0], col[1], col[2], 1.0)}), False, nanite=(nm == 'parklamp'))   # r06: the park lamps are Nanite (they cast)
         EAL.save_asset(dst)
     if EAL.does_directory_exist(PROD + '/_in'): EAL.delete_directory(PROD + '/_in')
     log('foliage prototypes done')
@@ -334,6 +337,16 @@ def tree_copies():
             nn = dst + '_nanite'
             if EAL.does_asset_exist(nn): EAL.delete_asset(nn)
             EAL.duplicate_asset(dst, nn); finish_mesh(load(nn), load(f'{MAT}/M_TerrainCards'), False, nanite=True); EAL.save_asset(nn)
+    # r06: furniture / edge meshes and the park lamp prototype as Nanite (in place, for an incremental build that skips the mesh / foliage imports)
+    for r in MAN['meshes']:
+        if r['kind'] not in NANITE_KINDS or not keep(r): continue
+        sp = f'{MESHD}/{r["kind"]}/SM_{r["name"]}'
+        if EAL.does_asset_exist(sp):
+            sm = load(sp)
+            if not sm.get_editor_property('nanite_settings').enabled: finish_mesh(sm, sm.get_material(0), False, nanite=True); EAL.save_asset(sp); log('nanite on', sp)
+    if EAL.does_asset_exist(f'{PROD}/SM_parklamp'):
+        sm = load(f'{PROD}/SM_parklamp')
+        if not sm.get_editor_property('nanite_settings').enabled: finish_mesh(sm, sm.get_material(0), False, nanite=True); EAL.save_asset(f'{PROD}/SM_parklamp'); log('nanite on SM_parklamp')
     log('tree copies done')
 @step('trees')
 def _step_trees():
@@ -748,6 +761,13 @@ def _step_map():
     unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), ROOT + '/Terrain_Land')
     log('Terrain_Land saved')
     build_persistent(ROOT + '/Maps/Manhattan_Terrain')
+@step('land')
+def _step_land():
+    """r06: Terrain_Land only (the incremental rebuild): re-running build_persistent on an existing Manhattan_Terrain crashed the commandlet in K2_AddLevelToWorld
+    (SharedPointer IsValid assertion, 2026-10-03 07:55); the persistent / view maps only reference Terrain_Land, so they need no rebuild after a land change"""
+    build_land(ROOT + '/Terrain_Land')
+    unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), ROOT + '/Terrain_Land')
+    log('Terrain_Land saved (land step)')
 @step('views')
 def _step_views(): build_views()
 

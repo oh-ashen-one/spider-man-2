@@ -95,7 +95,7 @@ float g2 = Texture2DSample(tNoise, tNoiseSampler, float2(pw.x * 0.31 + pw.y * 0.
 c *= 0.8 + 0.28 * g1 + 0.2 * (g2 - 0.5);
 Rough = roughp; Metal = metalp; return c;''',
             inputs=[('vc', 'vc', None), ('tNoise', 'tex', 'noise'), ('wpos', 'wpos', None), ('tint', 'vector', (1, 1, 1, 1)), ('usevc', 'scalar', 0.0), ('roughp', 'scalar', 0.8), ('metalp', 'scalar', 0.0)],
-            outputs=[('', 3, 'MP_BASE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Metal', 1, 'MP_METALLIC')], two_sided=two))
+            outputs=[('', 3, 'MP_BASE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Metal', 1, 'MP_METALLIC')], two_sided=two, nanite=True))   # r06: Nanite furniture / lamps
     # r04 schist outcrops / bank rocks: the vertex colour (0.46, 0.44, 0.40 x 0.7-1.2) went white under the golden sun (critic r3: 'white lumps' at the pond banks, p3). Darker grey-brown stone, triplanar
     # (the mesh has no UVs) albedo texture at 0.4 / 1.9 / 7 m, foliation joints, dark crevices on the steep faces, a little moss on the up-facing parts.
     M.append(dict(name='M_TerrainRock', include=None, code='''
