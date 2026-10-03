@@ -1,46 +1,58 @@
-# Terrain (piece E) — HANDOFF (round 04 DONE: fresh captures + blind critic pack, critic not run yet)
+# Terrain (piece E) — HANDOFF (round 05 DONE: captures + blind critic pack; critic not run by me)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/terrain` (pushed), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain` (r04 notes / scripts in `r04/`), dev port 5209 (Vite, exports only; stopped).
+Branch `night1/terrain` (pushed; r04 and r05 are NOT merged — the integration branch still has r03), worktree `/Users/midir/sm2-n1/terrain`, scratch `/Users/midir/sm2-n1/_scratch/terrain` (r05 notes / drivers in `r05/`).
 Owns `/Game/Terrain*`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_terrain_shaders.mjs}`, `tools/terrain/`, `unreal/WebHomage/Scripts/{build_terrain.py,terrain_materials.py}`,
-`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E10 = r04), `SHOTLIST.md`, `shots.json`. Nothing of mine is running; no engine, no hold script.
+`unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E1 reconciled in r05, E11 = r05 targets), `SHOTLIST.md`, `shots.json`. Nothing of mine is running.
 
-## Round 04 (2026-10-02 .. 10-03, Sonnet 5.5 via Devin): THE LAWN — final state (details and every number: `round-04/README.md`)
-Target (r03 critic's biggest gap): the yellow star tufts replaced by dense blade grass + 0.3-16 m lawn albedo detail. Built in committed scripts (nothing binary committed):
-`tools/terrain/prep_lawn.py` (near blade patches ~1,150 blades / 2.3 m disc on a 1.5 m grid = 176.6 k instances culled 18 m; far patches ~400 wider blades on 2.6 m = 58.8 k culled 60 m; lawn_detail.png; blanket_weave.png; **no blades on the ball-field clay fans** (`infield_sand`, mirrors the loop in `Park.ush`)),
-`Shaders/Terrain/Lawn.ush` (lawn grade, three-scale mottling, wear / clover / mowing stripes, clay mask), `terrain_materials.py` (`M_TerrainGrass` blade turf, `M_TerrainBlanket` gingham, `M_TerrainRock` triplanar stone for the schist / dugout / bank blocks, Specular 0.04 on turf), `build_terrain.py`.
-Final captures (all through `gpu_slot.sh capture`, offscreen, hero hidden in the movies): `round-04/stills/*.jpg` (9 views, 3840x2160 out, internal 1920x1080), `round-04/t5_avenue_to_park.mp4` + `t4_lawn_sprint.mp4` (1920x1080 native, crf 29, 13.1 / 14.8 MB), telemetry beside them.
-**Measured vs target** (`tools/terrain/measure_r04.sh`, files in `round-04/`): E1 hp-sigma-6 SD critic p4 10.85 / p10 11.25, guards p10 9.97, p4 11.57, p9 8.99 (all >= 8; r3 4.40 / 7.95 / 6.34 / 1.41 / 2.63); saturation 0.874-0.959 (>= 0.70; r3 0.54-0.65; reference 0.82-0.84);
-t4 flat quads > 100 px: 0 in 54 frames at 4 fps; t5 last 5 s: 20 / 20 frames over the park, 82.9 % of them at 25-40 m, ground sigma-3 SD median 7.38 / min 5.32 in the 25-40 m frames (min 3.54 in the first two frames at 18.6 / 24.3 m);
-canopy guard: E9a 9 / 24 (min 5.67), E9b PASS, **E9c 54.1 px FAIL on the final capture (42.0 and 37.7 px on the two earlier captures of the same canopy)** -> pass-2 hunks kept, the trees axis of the critic decides (`tools/terrain/revert_pass2.sh` is the tested fallback);
-GPU ms (4K out / 1080p internal) contaminated by 1-2 other renders, exclusive perf refused (exit 75: Mac unattended): final hold p1 165.1 / p10 104.5 vs HEAD content in the same hold 169.2 / 112.8; earlier holds p10 94.5 / 95.1 (r3 92) — the lawn is not what costs.
-Blind critic pack (not judged, not run by me): `/Users/midir/sm2-n1/_scratch/critic-E-r04/pack` (18 pairs: 9 views vs refs, 7 progress pairs r03 vs r04, 2 movies; every 4K image also as `_2048.jpg`), `pairs.json` beside it, key outside (`pack.key.json`).
-Movies were captured one rebuild earlier than the stills (rock albedo 0.5 -> 0.27 x vertex colour only).
+## Round 05 (2026-10-03 03:30-07:00, Claude Opus 5.5 high via Devin): crowns as lit leaf volumes — final state (every number: `round-05/README.md`)
+Target (Opus director after the r04 critic): crowns as lit leaf volumes that cast shadows on the lawn; E1 reconciled (eye level >= 8, aerial follows the reference). Built in committed scripts (nothing binary committed):
+`Foliage.ush` (`tfSummer` summer palette for the browser's per-tree tints, `tfClumpShade` world-space light / shade clumps on the leaf cards, edge-on card fade, distance / hull saturation, fixed
+shadow-pass coverage), `build_terrain.py` (near leaf cards out to 520 m, the LOD1 0.85-core pool not built, darker bark tint, furniture / reeds read their vertex colours, olive reeds, crown shadow proxies),
+`terrain_materials.py` (bark furrows, blades R x1.53, lawn grade R 0.8, turf normal bent toward the sun, pond Specular 0.25, greyer rock, FILL 650), `Lawn.ush` (aerial fade 90-200 m, `lwTurfNormal`).
+Final captures on `/Game/TerrainR5b` (stills + movies from the same content): `round-05/stills/*.jpg` (9 views, 3840x2160 out, internal 1920x1080), `round-05/t5_avenue_to_park.mp4` (11.7 MB) + `t4_lawn_sprint.mp4`
+(12.3 MB) (1920x1080 native, hero hidden); a complete fallback package of the previous build (`/Game/TerrainR5`, white reeds) in `round-05/build4/`.
+**Measured** (`tools/terrain/measure_r05.sh`, `round-05/README.md` table): (1) p1 crown sigma-3 median 12.06 (r04 8.13), 19 / 24 >= 9, min 6.11 — median met, all-crops not; (2) crown saturation median
+0.636 (r04 0.518) — not met; (3) E9c 40.3 px (r04 54.1; the longest segment is a stepped building roof, no crown edge > 40 px), no hull balls / saucer cards — met; (4) crown shadow on the p4 lawn:
+none (ratio 1.01, the one isolated tree measurable by geometry) — not met; (5) E1: p10 sigma-6 18.68 / guard 16.31, R / G 0.920 — met; p4 aerial sigma-6 5.48 (r04 10.85) — not met (<= 5).
+Guards: E10 (b) PASS (sat >= 0.700), (c) 1 flat patch (a smooth sunlit ez trunk at t4 1.0 s, 109 x 52 px; build 4: 0), (d) PASS (t5 25-40 m median 9.16, min 5.75).
+GPU ms: not measured (perf lock refused, exit 75, Mac unattended); capture-run GPU ms (contaminated) p1 163.5 / p10 92.9 / p4 105.5 (r04 165.1 / 104.5).
+Blind critic pack (not judged by me): `/Users/midir/sm2-n1/_scratch/critic-E-r05/pack` (16 pairs: 9 views vs refs, 5 progress pairs r03-merged vs r05, 2 movies; every 4K image also as `_2048.jpg`), `pairs.json` beside it, key outside (`pack.key.json`).
+Content in this worktree: `/Game/TerrainR5b` (final), `/Game/TerrainR5` (build 4), `/Game/TerrainR4`, `/Game/Terrain` (HEAD of r03/r04). A rebuild of R5b with today's scripts also builds the shadow proxies for park / elm trees (R5b has them for conifers only).
 
-## Open items, in order of what the r03 / r04 critic will most likely name
-1. **p3 white egg-shaped lumps along the Lake banks** are NOT `park_rocks` (those turned dark brown after `M_TerrainRock`; the white ones did not change). Not identified: not in `Terrain_Land` / `City_Geo_T` by name or material; candidates: a HISM pool (the `ISM_shadeproxy_park` crown hulls, `trees-park-crown`), another sublevel of the integrated map.
-   Find them with a nullrhi commandlet (`tools/terrain/inspect_actors.py`: loads `Manhattan_Terrain`, lists actor bounds / mesh / materials) or by hiding pools one at a time in a V_p3 still.
-2. E9c: the crown hull ball with saucer cards in p10 (x 1900-2400, y 450-700) is the longest straight silhouette (54 px); fix the LOD1 -> clump hull hand-over or drop the hull in the 165-300 m band.
-3. Ball-field clay is still patchy / pale from the air (the browser's `sand` noise gate in `Park.ush`); water seam p6 + khaki river p7 belong to the water piece (`/Game/Water/Maps/Water_River`), esplanade dressing is empty.
-4. Distant picnic blankets read as thin flat tints beyond ~25 m (the gingham tile is 0.24 m; add a coarser stripe or fade to a 1.2 m check); t5 hero dives into the ground at 15.0 s (route x4_y315 ends over the park lawn, the last frames are low).
-5. A t5 billboard text and city signs are the city piece's.
+## Open items, in order
+1. **Crown shadows on the lawn (r05 target 4) — not solved, root cause not found.** Facts (`round-05/diag/NOTES.md`): trunks and lamp posts cast crisp shadows on our lawn (the sunlit strip on the
+   east side of the Great Lawn in p4); the leaf-card crowns cast none, with VSM or CSM, MegaLights off, VSM non-Nanite thresholds off; the city's own flat land (VB_p4) shows tree shadows; the
+   hidden shadow-only crown proxies (`ISM_shadowproxy_*`, `SM2_TERRAIN_SHADOW_PROXY`, k 0.85) were only built for the conifers in R5b and showed nothing. Next tests, cheapest first:
+   (a) a debug map: one big cube on the lawn + one cards pool on a plain opaque two-sided material (does anything leaf-card-shaped write shadow depth?);
+   (b) the full proxy build (the loop fix is committed: `build_terrain.py` builds them per kind now) and look for crown shadows in the sunlit strip;
+   (c) under the golden rig (sun 9 deg, az 238, look piece) large parts of the park floor read as sky-lit only; check the West Side skyline's shadow (the midtown collision export does not cover it).
+2. Crown saturation median 0.64 against 0.65: the far crowns (p1 y 450-750, 300-1000 m) read 0.54-0.64 through the golden haze; the >= 520 m hull already gets +50 % albedo saturation.
+3. p1 crown crops (2250,1800), (1500,1950), (2100,1950), (2400,1650), (3450,1200) are mostly dark lawn between crowns (luma 52-74): sigma-3 6-8.
+4. p4 critic lawn box sigma-6 5.48 against <= 5: the box holds a crown corner, an infield edge and a bench (lawn-only part ~3.4-4.4).
+5. Picnic blankets read as pale flat slabs at 20-60 m in p10 (beige palettes 0.42-0.52); the pond 'white egg' lumps were the reeds' white default tint (fixed in R5b).
+6. Water seam p6 / khaki river p7 belong to the water piece; t5 storefront text and city signs are the city piece's.
 
-## Next-session recipe (everything idempotent, CPU steps need no slot)
-- Content: `SM2_TERRAIN_ROOT=/Game/TerrainR4 tools/terrain/run_build.sh` (full build only, ~2.2 min nullrhi, touches `_scratch/terrain/BUILDING`; do NOT re-run only `foliage,map` on an existing root). `/Game/Terrain` keeps the HEAD content (old tufts, pass-2 canopy) as the GPU-ms baseline. Prep first if inputs changed: `python3 tools/terrain/prep_lawn.py` (reads `_scratch/terrain/export` + `prep`), `python3 tools/terrain/check_hlsl.py` (14 / 14).
-- Captures: `docs/night1/terrain/round4.sh` under ONE hold, detached: `STAGE=S` (warm + nine stills + HEAD-vs-r04 GPU ms), `STAGE=W` (warm + t5 + t4 movies), `STAGE=M MOVIES=t4_lawn_sprint` (one movie, no warm), `STAGE=R` (ONLY_IDS / WANT / MOVIES from env). Example (what I ran, from my own shell, never inside a hold):
-  `cd <worktree> && STAGE=S /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain --timeout 28800 -- docs/night1/terrain/round4.sh` (log it; poll `gpu_status.sh`). Timings: warm-up 1.5 min (6 min after a rebuild: shaders), still ~1.9 min, t5 movie 15 min + encode, t4 movie 13 min + encode; `HOLD_BUDGET` 2100 s, a movie only starts in the first 1500 s; movie crf starts at 28 (`MOVIE_CRF`).
-  `round-04/gpu_ms.txt` appends: move it into a `holdN/` dir before a new stills hold.
-- Numbers: `tools/terrain/measure_r04.sh docs/night1/terrain/round-04` (lawn_stats, flatquad_check, t5_ground_sd incl. the 25-40 m band, t5_score, crown_stats, shore audit); pack: `LAWN_PROGRESS=1 SHORE_PROGRESS=1 python3 tools/terrain/make_pairs.py docs/night1/terrain/round-04 <critic dir>/pairs.json docs/night1/terrain/round-04-previous`, `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py <critic dir>/pack <critic dir>/pairs.json`, then `python3 tools/terrain/pack_small.py <critic dir>/pack`.
-- Safety learned: stop engines only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh /Users/midir/sm2-n1/terrain`; never edit a shell script while a hold runs it (bash reads it incrementally); chain follow-up holds from a driver script outside any hold (`_scratch/terrain/r04/chain_T4S.sh` waits for a marker file between holds); pipes into `tail` hide progress from the tool for minutes.
+## Next-session recipe (everything idempotent)
+- Content: `SM2_TERRAIN_ROOT=/Game/TerrainR5b /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label terrain -- tools/terrain/run_build.sh` (full ~11 min nullrhi; `mat` alone ~1.5 min after a
+  material-only change; run it through the lock). Offline first: `python3 tools/terrain/check_hlsl.py` (14 / 14).
+- Captures: `docs/night1/terrain/round5.sh` (copy it for round 06), detached from your own shell, never inside a hold: `STAGE=T` (warm + p4 p1 p10 -> `round-05/<TEST_NAME>`), `STAGE=S` (warm + nine stills),
+  `STAGE=M` (t5 + t4 movies, same content), `TERRAIN_ROOT` selects the content. Chain holds from a driver outside the holds (`_scratch/terrain/r05/chain_C.sh`). Timings: warm 1-1.5 min, still ~1.2 min,
+  t5 ~13 min, t4 ~12 min + encode (crf 30-32 to fit 15 MB).
+- Numbers: `tools/terrain/measure_r05.sh <round dir>`, `tools/terrain/tree_shadow_auto.py <still> p4_greatlawn <out.json> --iso 12 --preview <jpg>`; pack: `LAWN_PROGRESS=1 python3 tools/terrain/make_pairs.py
+  <round dir> <critic dir>/pairs.json docs/night1/terrain/round-03` (r03 = the merged state), `abpack.py`, `tools/terrain/pack_small.py <critic dir>/pack`.
+- Safety learned this round: the engine starts UnrealTraceServer (listening on 1981 / 1989) unless `-notraceserver` is passed — `capture_round.sh` and `run_build.sh` now pass it; stop engines only with
+  `stop_ue.sh /Users/midir/sm2-n1/terrain` (it does not match drivers in `_scratch/terrain`: stop those by PID); `ShowFlag.DirectLighting 0` / `r.Lumen.DiffuseIndirect.Allow 0` draw default materials
+  (uncompiled permutations) and are useless as diagnostics.
 
 ## Older rounds (history; numbers in `round-0N/README.md`)
-- **r03 (Opus 5.5)**: canopy leaf-card LOD1 165-520 m from the browser's own `canopyGeometry`, clump hull >= 520 m, root cause of black cards fixed (Lumen HWRT puts every drawn primitive in the ray-tracing scene: foliage pools `visible_in_ray_tracing = False`), water sublevel merged into the terrain maps. Pass 1 captured (E9a 5 / 24 FAIL, E9b PASS, E9c 47.2 px FAIL), pass 2 (shade proxy) built later and kept in r04 (E9a 9 / 24). Critic: FAILS TARGET, lowest 3 (`critic/round-03-CRITIC.md`).
-- **r02**: the browser's park-tree chain ported (46 HISM pools, 47,710 instances, dithered per-pool distance bands, `Foliage.ush`), Nanite flag on the ez materials, lawn grade. **r01**: ground, ponds, furniture, rocks, shore audit, collision.
-- Offline shader verification: `check_hlsl.py` (DXC with UE's parameter types; VectorParameter = float3), `scw_check.py` (UE's ShaderCompileWorker on dumped permutations). Emissive units: the golden rig is physical (sun 44000 lux): a sunlit albedo A radiates ~10000 A cd/m2.
-- Not built: pickets, wet bands, pond shallows, ball-field fences' alpha cards, Met-like museum (skipped on purpose: real-building copy), night look of lamps, street trees island-wide (island piece).
+- **r04 (Sonnet 5.5)**: dense blade lawn (`prep_lawn.py`, `Lawn.ush`), woven blankets, triplanar rock, infield clay; critic [4,4,4,4,3], preferred the old build 4 / 5, E9c 54 px; not merged.
+- **r03 (Opus 5.5)**: leaf-card LOD1 165-520 m, clump hull >= 520 m, foliage pools out of the ray-tracing scene (black cards fixed), water sublevel merged; critic [4,4,4,4,3]. Merged.
+- **r02**: the browser's park-tree chain (46 HISM pools, `Foliage.ush`), lawn grade. **r01**: ground, ponds, furniture, rocks, shore audit, collision.
 
 ## What exists (all committed; Content is generated, never committed)
-- `tools/export/export_terrain.mjs` + `collect_terrain.js`: headless-Chrome export of the TERRAIN kinds island-wide -> `<scratch>/export`. `tools/terrain/prep_terrain.py` (path / drive mask, rocks, leaf textures, `ParkData.ush`, stats; ends with `prep_lawn.py`), `tools/export/gen_terrain_shaders.mjs` -> `Shaders/Terrain/Park.ush`.
-- `tools/terrain/`: `shore_audit.py` (E3), `crop_manual.py` / `crop_stats.py` / `lawn_stats.py` (E1), `crown_stats.py` (E9), `flatquad_check.py`, `t5_cands.py` / `t5_score.py` / `t5_ground_sd.py`, `measure_round.sh` / `measure_r04.sh`, `make_pairs.py`, `pack_small.py`, `revert_pass2.sh`.
-- `unreal/WebHomage/Scripts/build_terrain.py` (steps clean, tex, mat, mesh, foliage, trees, map, views; fail-soft; env `SM2_TERRAIN_ROOT`): `/Game/<root>/Terrain_Land` sublevel (ground tagged WHGround, blade-grass HISMs, props, 46 tree-chain pools), `City_Geo_T` (private copy of the city geometry level with the city's flat park ribbons / lawns / ez park trees hidden), `Maps/Manhattan_Terrain`, still maps `V_<id>` / `VB_<id>` from `shots.json`.
+- `tools/export/export_terrain.mjs` + `collect_terrain.js` (headless-Chrome export -> `<scratch>/export`), `tools/terrain/prep_terrain.py` (+ `prep_lawn.py`), `tools/export/gen_terrain_shaders.mjs` -> `Shaders/Terrain/Park.ush`.
+- `Shaders/Terrain/Foliage.ush` (LOD bands, clump crown, leaf cards, r05 `tfSummer` / `tfClumpShade`), `Lawn.ush` (lawn detail, r05 aerial fade + `lwTurfNormal`), `terrain_materials.py` (all Custom-HLSL materials).
+- `build_terrain.py` steps clean, tex, mat, mesh, foliage, trees, map, views (env `SM2_TERRAIN_ROOT`, `SM2_TERRAIN_NEAR_FAR` (520), `SM2_TERRAIN_SHADOW_PROXY` (0.85; 0 = off)).
+- Tools: `measure_r05.sh`, `tree_shadow_auto.py`, `shadow_ratio.py`, `crown_stats.py` (+ saturation), `lawn_stats.py`, `flatquad_check.py`, `t5_*`, `make_pairs.py`, `pack_small.py`, `check_hlsl.py`, `shore_audit.py`.
