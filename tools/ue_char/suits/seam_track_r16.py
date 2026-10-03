@@ -93,10 +93,20 @@ def track(path, png=None, tag='', suit=None, y_start=60):
     for yy, xx in zip(ys, xsm):
         if (yy + 100) in lookup: dev.append((abs(lookup[yy + 100] - xx), int(yy)))
     d100 = max(dev) if dev else (None, None)
+    # round 17: the local jog (critic r16: the Cinder seam 'breaks and jogs ~120 px' at the chin): the largest lateral change over 20 rows (= a step), and the same over the last 350 tracked rows (chin / throat)
+    # round 17 (supplementary, NOT the gate): dev100 of a 31-row MEDIAN trace - a low-contrast cord (Glacier: pale cord on a pale hood) makes single rows jump by +-6 px, which the 9-row mean keeps
+    xm31 = _mf(xsm, size=31, mode='nearest'); lk31 = dict(zip(ys.tolist(), xm31.tolist()))
+    dev31 = [(abs(lk31[yy + 100] - xx), int(yy)) for yy, xx in zip(ys, xm31) if (yy + 100) in lk31]
+    d100_31 = max(dev31) if dev31 else (None, None)
+    st20 = [(abs(lookup[yy + 20] - xx), int(yy)) for yy, xx in zip(ys, xsm) if (yy + 20) in lookup]
+    step20 = max(st20) if st20 else (None, None)
+    st20_chin = max([t for t in st20 if t[1] >= ys[-1] - 350] or [(None, None)])
     A = np.vstack([ys, np.ones_like(ys)]).T
     co, *_ = np.linalg.lstsq(A, xsm, rcond=None)
     res = xsm - A @ co
     out = dict(ok=True, y_top=int(ys[0]), y_bot=int(ys[-1]), n_rows=int(len(ys)), dev100=round(float(d100[0]), 1), dev100_at_y=d100[1],
+               dev100_med31=round(float(d100_31[0]), 1) if d100_31[0] is not None else None, dev100_med31_at_y=d100_31[1],
+               step20=round(float(step20[0]), 1) if step20[0] is not None else None, step20_at_y=step20[1], step20_chin=round(float(st20_chin[0]), 1) if st20_chin[0] is not None else None, step20_chin_at_y=st20_chin[1],
                resid_max=round(float(np.abs(res).max()), 1), slope=round(float(co[0]), 4), range_x=round(float(xsm.max() - xsm.min()), 1),
                cols=[[int(a), round(float(b), 1)] for a, b in zip(ys[::20], xsm[::20])])
     if png:

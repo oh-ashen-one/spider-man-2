@@ -72,7 +72,9 @@ def track(path, png=None, tag=''):
     jj = np.maximum(jump, jump_gap)
     jj[:25] = 0; jj[-25:] = 0             # the first / last 25 columns: where the cord runs into the arm edge or a sash border (the tracker may step onto that border)
     k = int(np.argmax(jj))
-    out = dict(ok=True, columns=int(len(cs)), x_range=[int(cs[0] + x0), int(cs[-1] + x0)], max_jump_px=round(float(jj.max()), 1), jump_at=[int(cs[k] + x0), int(rs[k] + y0)],
+    # round 17: the same maximum over the UNDER-ARM run only (x < 1600): where the r15 stair-steps were; the run's far end meets a sash border / net line (the cord's thicker end cap), where the tracker may step
+    ua = (cs[:-1] + x0) < 1600
+    out = dict(ok=True, columns=int(len(cs)), x_range=[int(cs[0] + x0), int(cs[-1] + x0)], max_jump_px=round(float(jj.max()), 1), max_jump_under_arm_px=round(float(jj[ua].max()), 1) if ua.any() else None, jump_at=[int(cs[k] + x0), int(rs[k] + y0)],
                jumps_over_4=[[int(cs[i] + x0), int(rs[i] + y0), round(float(jj[i]), 1)] for i in np.nonzero(jj > 4)[0][:10]])
     if png:
         im = Image.open(path).convert('RGB'); dr = ImageDraw.Draw(im)

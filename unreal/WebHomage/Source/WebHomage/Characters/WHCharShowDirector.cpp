@@ -82,6 +82,18 @@ void AWHCharShowDirector::BeginPlay()
 		}
 	}
 	FParse::Value(FCommandLine::Get(), TEXT("WHProbeFrames="), ProbeFrames);
+	{
+		FString FL;
+		if (FParse::Value(FCommandLine::Get(), TEXT("WHShotFrames="), FL, false) && !FL.IsEmpty())
+		{
+			TArray<FString> Ps; FL.ParseIntoArray(Ps, TEXT(","));
+			for (const FString& P_ : Ps) ShotFrames.Add(FCString::Atoi(*P_));
+			ShotFrames.Sort();
+			ShotFrameDir = FPaths::ProjectSavedDir() / TEXT("WHCaptures"); FParse::Value(FCommandLine::Get(), TEXT("WHShotDir="), ShotFrameDir);
+			ShotFrameName = TEXT("shot"); FParse::Value(FCommandLine::Get(), TEXT("WHShotName="), ShotFrameName);
+			bShotFramesQuit = FParse::Param(FCommandLine::Get(), TEXT("WHShotFramesQuit"));
+		}
+	}
 	if (FParse::Value(FCommandLine::Get(), TEXT("WHBoneLog="), BoneLogPath) && !BoneLogPath.IsEmpty())
 	{
 		IFileManager::Get().Delete(*BoneLogPath);
@@ -148,6 +160,22 @@ void AWHCharShowDirector::Tick(float Dt)
 			UE_LOG(LogTemp, Display, TEXT("WH_PROBE tick=%d frame=%llu world=%.3f stage_T=%.3f dt_ms=%.1f textures_not_resident=%d (%s) assets_compiling=%d shaders_compiling=%d"), ProbeTick, GFrameCounter, GetWorld()->GetTimeSeconds(), T, Dt * 1000.0, Bad, *First,
 				FAssetCompilingManager::Get().GetNumRemainingAssets(), (GShaderCompilingManager && GShaderCompilingManager->IsCompiling()) ? 1 : 0);
 		}
+	}
+	if (NextShotFrame < ShotFrames.Num() && GFrameCounter >= uint64(ShotFrames[NextShotFrame]) && !FScreenshotRequest::IsScreenshotRequested())
+	{   // round 17: screenshots at engine frame numbers, no settle protocol (the dose-response of the r16 capture)
+		int32 Bad = 0; FString First; AllVisibleTexturesResident(Bad, First);
+		const FString File = ShotFrameDir / FString::Printf(TEXT("%s_f%04d.png"), *ShotFrameName, ShotFrames[NextShotFrame]);
+		FScreenshotRequest::RequestScreenshot(File, /*bShowUI*/ false, /*bAddFilenameSuffix*/ false);
+		UE_LOG(LogTemp, Display, TEXT("WH_SHOTFRAME %s requested at frame %llu (target %d) world=%.3f assets_compiling=%d shaders_compiling=%d textures_not_resident=%d"), *File, GFrameCounter, ShotFrames[NextShotFrame], GetWorld()->GetTimeSeconds(),
+			FAssetCompilingManager::Get().GetNumRemainingAssets(), (GShaderCompilingManager && GShaderCompilingManager->IsCompiling()) ? 1 : 0, Bad);
+		++NextShotFrame;
+		if (bShotFramesQuit && NextShotFrame >= ShotFrames.Num()) ShotFramesQuitAt = GFrameCounter + 4;
+	}
+	if (ShotFramesQuitAt > 0 && GFrameCounter >= ShotFramesQuitAt && !FScreenshotRequest::IsScreenshotRequested())
+	{
+		ShotFramesQuitAt = 0;
+		UE_LOG(LogTemp, Display, TEXT("WH_QUIT frame %llu (director: after the last of %d -WHShotFrames shots)"), GFrameCounter, ShotFrames.Num());
+		if (!GIsEditor && GEngine) GEngine->Exec(GetWorld(), TEXT("quit"));
 	}
 	if (!Cam || Shots.Num() == 0) return;
 	// round 16: -WHStageWaitTextures holds the STAGE clock while the target's suit textures are not fully streamed in (r16 hold 2: at 1.4 fps on a contended GPU the first

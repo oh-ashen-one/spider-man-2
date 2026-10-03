@@ -82,6 +82,7 @@ private:
 	// frame forever.  While a shot settles every walker's Tick is disabled (and the stage clock offset is re-synced afterwards), the timeout is checked BEFORE the reset branch, and the reset reasons are logged.
 	TArray<TWeakObjectPtr<AActor>> FrozenWalkers;
 	TArray<int32> SettleDumpCounts; int32 NextDump = 0; bool bSettleDumpAll = false;      // -WHSettleDump=1,2,4,8,16,32 : extra screenshots after that many static frames (the convergence curve of a shot)
+	TArray<int32> ShotFrames; int32 NextShotFrame = 0; FString ShotFrameDir, ShotFrameName; bool bShotFramesQuit = false; uint64 ShotFramesQuitAt = 0;     // -WHShotFrames=3,6,9,... : plain screenshots at ENGINE FRAME numbers (no settle: the r16 protocol seen by frame count), with the residency probe at that frame
 	int32 ProbeFrames = 0; int32 ProbeTick = 0;                                             // -WHProbeFrames=N : per-frame residency probe for the first N director ticks (the r16-style runs without the settle protocol)
 	TMap<const void*, double> PoseParts; FString LastMover;
 	void FreezeWalkers(bool bFreeze);

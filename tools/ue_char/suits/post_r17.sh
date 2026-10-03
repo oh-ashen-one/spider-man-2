@@ -141,3 +141,22 @@ for s in tessera verdant plum cinder glacier ash saffron sage; do
 done
 python3 $D/cord_jog_r17.py "$S" "$E/cord_jog_r17.json" --png "$M/cord_jog17" | tail -9
 python3 $D/cord_jog_r17.py "$R16S" "$E/cord_jog_r17_on_r16.json" | tail -1
+python3 $D/chin_crops_r17.py "$S" "$E/seam_track.json" "$R16S" "$E/seam_track_r15.json" "$M/chin_crops.jpg"
+python3 $D/lineup_crops_r17.py "$M/lineup/weapons_crops.jpg" docs/night1/characters/round-14/enemy_lineup_4k.jpg docs/night1/characters/round-16/enemy_lineup_4k.jpg "$R/enemy_lineup_4k.jpg"
+# the owner aid for the Verdant re-block: r16 (brass yellow) | r17 (copper) front + chest, side by side
+python3 - "$R16S" "$S" "$R/VERDANT_BEFORE_AFTER.jpg" <<'PY'
+import sys, cv2, numpy as np
+s16, s17, out = sys.argv[1:4]
+def crop(d, v, box):
+    im = cv2.imread('%s/skin_verdant_%s_4k.png' % (d, v)); h, w = im.shape[:2]
+    x0, y0, x1, y1 = [int(b * s) for b, s in zip(box, (w, h, w, h))]
+    c = im[y0:y1, x0:x1]; return cv2.resize(c, (int(c.shape[1] * 900 / c.shape[0]), 900), interpolation=cv2.INTER_AREA)
+fr = (0.36, 0.18, 0.64, 0.82); ch = (0.12, 0.05, 0.88, 0.95)
+rows = [np.hstack([crop(s16, 'front', fr), crop(s17, 'front', fr)]), np.hstack([crop(s16, 'chest', ch)[:, :820], crop(s17, 'chest', ch)[:, :820]])]
+W = max(r.shape[1] for r in rows)
+sheet = np.vstack([cv2.copyMakeBorder(r, 0, 6, 0, W - r.shape[1], cv2.BORDER_CONSTANT, value=(255, 255, 255)) for r in rows])
+cv2.putText(sheet, 'round 16 (brass yellow)', (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 0, 0), 3); cv2.putText(sheet, 'round 17 (copper, dark pine)', (sheet.shape[1] // 2 + 20, 40), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 0, 0), 3)
+cv2.imwrite(out, sheet, [cv2.IMWRITE_JPEG_QUALITY, 88]); print(out, sheet.shape)
+PY
+python3 $D/lineup_diff_r17.py docs/night1/characters/round-16/enemy_lineup_4k.jpg docs/night1/characters/round-14/enemy_lineup_4k.jpg --json "$E/lineup_diff_r16_vs_r14.json" > /dev/null
+python3 $D/lineup_diff_r17.py docs/night1/characters/round-16/enemy_lineup_34_4k.jpg docs/night1/characters/round-14/enemy_lineup_34_4k.jpg --json "$E/lineup34_diff_r16_vs_r14.json" > /dev/null
