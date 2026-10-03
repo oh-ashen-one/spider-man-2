@@ -29,6 +29,12 @@ ITERS = int(os.environ.get('STRETCH_ITERS', '60'))
 ALPHA = float(os.environ.get('STRETCH_ALPHA', '0.5'))
 SKIRT = os.environ.get('SKIRTW', '1') != '0'
 SMOOTH = os.environ.get('SMOOTHW', '1') != '0'
+ANKLE = os.environ.get('ANKLEW', '1') != '0'      # round 07: skin gradient across the ankle so trouser cuff and shoe collar move together
+ANKLE_R = float(os.environ.get('ANKLE_R', '0.11'))     # radius (m) around the ankle joint that gets the gradient
+ANKLE_LO = float(os.environ.get('ANKLE_LO', '-0.035'))  # gradient starts this far below the joint (all foot) ...
+ANKLE_HI = float(os.environ.get('ANKLE_HI', '0.05'))    # ... and ends this far above it (all shin)
+BONES_L = (12, 13, 0.097, 0.081, -0.03)    # shinL, footL, ankle joint (x, y, z) of the crowd rig (people.json)
+BONES_R = (15, 16, -0.097, 0.081, -0.03)
 
 
 def top4(d):
@@ -56,6 +62,27 @@ def opposite_leg_flags(P, D, E, rings=3):
         nf = fl.copy(); nf[E[fl[E[:, 0]], 1]] = True; nf[E[fl[E[:, 1]], 0]] = True
         fl = nf & (P[:, 1] < 0.9)
     return fl
+
+
+def ankle_blend(P, D):
+    """Round 07 (ankle gaps): in the crowd rig the shin bone ends and the foot bone starts at ONE height (the ankle joint, y = 0.081), so a trouser cuff
+    (100 % shin) and the shoe collar right below it (100 % foot) are two shells that touch at rest and separate as soon as the foot pitches
+    (`crowd_key_tracking_4k`: a sliver between the cuff and the collar).  Every vertex of a leg within ANKLE_R of the joint gets a smooth shin <-> foot gradient over
+    [joint + ANKLE_LO, joint + ANKLE_HI] (height only), so both shells carry the same weights at the same height and move together.  The total weight the vertex gives
+    to the two bones is kept; other bones are untouched."""
+    D = D.copy(); n = 0
+    for sh, ft, jx, jy, jz in (BONES_L, BONES_R):
+        leg = D[:, sh] + D[:, ft]
+        d = np.linalg.norm(P - np.array([jx, jy, jz]), axis=1)
+        sel = (leg > 0.5) & (d < ANKLE_R) & (P[:, 1] > jy + ANKLE_LO - 0.02)
+        t = np.clip((P[:, 1] - (jy + ANKLE_LO)) / (ANKLE_HI - ANKLE_LO), 0.0, 1.0)
+        t = t * t * (3 - 2 * t)                              # smoothstep: 0 = all foot, 1 = all shin
+        blend = np.clip(t, 0.0, 1.0)
+        # never move weight toward a bone the vertex did not use at all AND sits on the other side of the joint from it
+        newS = leg * blend; newF = leg * (1 - blend)
+        D[sel, sh] = newS[sel]; D[sel, ft] = newF[sel]
+        n += int(sel.sum())
+    return D, n
 
 
 def sample_frames(clips=CP.CLIPS_USED, every=2):
@@ -121,9 +148,11 @@ def process(name, log=print):
     if SMOOTH: D = U.smooth_weights(Pu, Nu, D)
     fl = None
     if SKIRT: D, fl = U.skirt_weights(Pu, Nu, Fu, D, extra=opposite_leg_flags(Pu, D, E) if os.environ.get('SKIRT_TOPO', '1') == '1' else None)
+    an = 0
+    if ANKLE: D, an = ankle_blend(Pu, D)
     D = top4(D)
     w1, r1 = worst_edge_growth(Pu, E, D, Ms)
-    st.update(bad_after_skirt=int((w1 > REL * r1 + ABS).sum()), skirt_verts=int(fl.sum()) if fl is not None else 0)
+    st.update(bad_after_skirt=int((w1 > REL * r1 + ABS).sum()), skirt_verts=int(fl.sum()) if fl is not None else 0, ankle_verts=an)
     D, hist = relax(Pu, E, D, Ms)
     w2, r2 = worst_edge_growth(Pu, E, D, Ms)
     st.update(relax_hist=hist, bad_after=int((w2 > REL * r2 + ABS).sum()), over_5cm_after=int((w2 > 0.05).sum()), over_10cm_after=int((w2 > 0.10).sum()),

@@ -178,6 +178,7 @@ def build_rig(name):
     vcc = vc.get_component_by_class(unreal.VolumetricCloudComponent)
     cl = P['clouds']
     mat = unreal.load_asset('/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst')
+    if cl.get('mi'): mat = make_cloud_mi(name, cl['mi']) or mat   # (round 03) overcast: own instance of the engine cloud material (coverage / density / albedo)
     if mat: setp(vcc, 'material', mat, 'Clouds')
     else: MISS.append('Clouds: m_SimpleVolumetricCloud_Inst missing')
     for k in ('layer_bottom_altitude', 'layer_height', 'tracing_max_distance'): setp(vcc, k, float(cl[k]), 'Clouds')
@@ -217,6 +218,21 @@ def build_rig(name):
     build_mpc_sequence(name, P['mpc'], world)
     unreal.EditorLoadingAndSavingUtils.save_map(world, path)
     log('rig', name)
+
+def make_cloud_mi(name, d):
+    """/Game/Look/MI_LookClouds_<preset>: instance of the engine's m_SimpleVolumetricCloud with the preset's coverage / density / albedo
+    (parameters: Cloud_GlobalCoverage, Cloud_GlobalDensity, Cloud_AlbedoColor, Layout_CloudGlobalScale; engine defaults -0.2 / 0.008 / 0.98)"""
+    parent = unreal.load_asset('/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud')
+    if not parent: MISS.append('m_SimpleVolumetricCloud missing'); return None
+    path = LOOK + '/MI_LookClouds_' + name
+    if EAL.does_asset_exist(path): mi = unreal.load_asset(path)
+    else: mi = unreal.AssetToolsHelpers.get_asset_tools().create_asset('MI_LookClouds_' + name, LOOK, unreal.MaterialInstanceConstant, unreal.MaterialInstanceConstantFactoryNew())
+    mel = unreal.MaterialEditingLibrary
+    mel.set_material_instance_parent(mi, parent)
+    for k, v in d.get('scalars', {}).items(): mel.set_material_instance_scalar_parameter_value(mi, k, float(v))
+    for k, v in d.get('vectors', {}).items(): mel.set_material_instance_vector_parameter_value(mi, k, unreal.LinearColor(*[float(x) for x in v]))
+    EAL.save_asset(path)
+    return mi
 
 def build_stars():
     MAT_PATH = LOOK + '/M_LookStars'
@@ -356,6 +372,55 @@ def mat_glass(m, mel):
     mel.connect_material_property(rough, '', unreal.MaterialProperty.MP_ROUGHNESS)
     sp = mel.create_material_expression(m, unreal.MaterialExpressionConstant, -450, 280); sp.set_editor_property('r', 0.9)
     mel.connect_material_property(sp, '', unreal.MaterialProperty.MP_SPECULAR)
+
+def mat_screen(m, mel):
+    """(round 03) abstract LED video-wall content for the Times-Square-like screens (the ads of the port are IP-excluded, the screens' own emission is black):
+    1-3 x 1-2 "ad" cells per panel, each a two-colour gradient with a soft blob and fake text rows (bars, no glyphs), a per-cell brightness, an LED dot grid, a rare flash,
+    tinted by the instance's Tint; NO text, NO logos, NO imagery. Unlit (emissive only)."""
+    uv = mel.create_material_expression(m, unreal.MaterialExpressionTextureCoordinate, -900, 0)
+    tm = mel.create_material_expression(m, unreal.MaterialExpressionTime, -900, 120)
+    rn = mel.create_material_expression(m, unreal.MaterialExpressionPerInstanceRandom, -900, 240)
+    tint = mel.create_material_expression(m, unreal.MaterialExpressionVectorParameter, -600, 320); tint.set_editor_property('parameter_name', 'Tint'); tint.set_editor_property('default_value', unreal.LinearColor(1, 0.3, 0.6, 1))
+    gain = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -600, 420); gain.set_editor_property('parameter_name', 'Gain'); gain.set_editor_property('default_value', 8.0)
+    asp = mel.create_material_expression(m, unreal.MaterialExpressionScalarParameter, -900, 380); asp.set_editor_property('parameter_name', 'Aspect'); asp.set_editor_property('default_value', 1.0)
+    code = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -600, 0)
+    code.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    ins = []
+    for nm in ('UV', 'T', 'R', 'C', 'A'):
+        ci = unreal.CustomInput(); ci.set_editor_property('input_name', nm); ins.append(ci)
+    code.set_editor_property('inputs', ins)
+    code.set_editor_property('code', r"""
+float ar = max(A, 0.05);
+float tgt = 0.55 + 0.9 * frac(R * 5.17);
+float nx = 1.0 + floor(frac(R * 3.71) * 1.99);
+float ny = clamp(floor(ar * nx / tgt + 0.5), 1.0, 8.0);
+float2 g = UV * float2(nx, ny);
+float2 cell = floor(g);
+float2 f = frac(g);
+float ch = frac(sin(dot(cell + R * 13.7, float2(12.9898, 78.233))) * 43758.5453);
+float ch2 = frac(ch * 91.3 + 0.17);
+float ch3 = frac(ch2 * 47.1 + 0.53);
+float t = T * (0.15 + 0.2 * ch2);
+float3 pa = 0.5 + 0.5 * cos(6.2831 * (ch + float3(0.0, 0.33, 0.67)));
+float3 pb = 0.5 + 0.5 * cos(6.2831 * (ch2 + 0.4 + float3(0.0, 0.33, 0.67)));
+float3 bg = lerp(pa, pb, saturate(f.y * 0.9 + 0.1 * sin(t * 3.0 + f.x * 4.0)));
+float2 bc = float2(0.3 + 0.4 * ch3, 0.5) + 0.12 * float2(sin(t * 2.0), cos(t * 1.7));
+float blob = smoothstep(0.42, 0.10, length((f - bc) * float2(1.0, 1.4)));
+float3 fg = lerp(bg, lerp(C, float3(1.0, 1.0, 1.0), 0.65), blob);
+float rows = step(0.5, frac(f.y * 14.0)) * step(f.y, 0.34) * step(f.x, 0.25 + 0.55 * frac(floor(f.y * 14.0) * 0.618 + ch));
+fg = lerp(fg, float3(1.0, 1.0, 1.0), rows * 0.85);
+float edge = smoothstep(0.0, 0.03, f.x) * smoothstep(1.0, 0.97, f.x) * smoothstep(0.0, 0.03, f.y) * smoothstep(1.0, 0.97, f.y);
+float gain = 0.3 + 0.7 * ch3;
+float2 dg = frac(UV * float2(150.0, 150.0 * ar));
+float dots = smoothstep(0.05, 0.3, dg.x) * smoothstep(0.05, 0.3, dg.y);
+float flash = smoothstep(0.985, 1.0, sin(T * (0.6 + 0.4 * R) + R * 40.0)) * 1.6;
+float3 outc = fg * gain * edge * (0.7 + 0.3 * dots);
+outc = lerp(outc, outc * C * 2.0, 0.35);
+return outc + C * flash * 0.3;""")
+    mel.connect_material_expressions(uv, '', code, 'UV'); mel.connect_material_expressions(tm, '', code, 'T'); mel.connect_material_expressions(rn, '', code, 'R'); mel.connect_material_expressions(tint, '', code, 'C'); mel.connect_material_expressions(asp, '', code, 'A')
+    mul = mel.create_material_expression(m, unreal.MaterialExpressionMultiply, -300, 60)
+    mel.connect_material_expressions(code, '', mul, 'A'); mel.connect_material_expressions(gain, '', mul, 'B')
+    mel.connect_material_property(mul, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
 
 def mat_wet(W):
     def build(m, mel):
@@ -515,18 +580,38 @@ def build_night():
                     n_s += 1
     log('night: %d storefront lights' % n_s)
     # ---- Times-Square-like screen glow (screen quads: look_ts_screens.json)
-    T = L.get('screens', {}); n_t = 0
+    T = L.get('screens', {}); n_t = 0; n_q = 0
     if T.get('enabled'):
         rng = random.Random(29)
+        cols = T['palette']['colors']
+        plane = unreal.load_asset('/Engine/BasicShapes/Plane')
+        m_scr = make_mat('M_LookScreen', mat_screen, shading_model=unreal.MaterialShadingModel.MSM_UNLIT, two_sided=True) if T.get('content', {}).get('enabled') else None
+        quad_c, quad_x = {}, {}
+        def quad_group(i, b):   # one instanced component per (palette colour, aspect bin: panel height / width = 2 ** b)
+            if (i, b) not in quad_c:
+                col = cols[i]
+                mi_s = make_mi('MI_LookScreen_%d_%d' % (i, b + 4), m_scr, vec={'Tint': (col[0], col[1], col[2], 1.0)}, scal={'Gain': T['content']['gain'], 'Aspect': float(2.0 ** b)})
+                quad_c[(i, b)] = ism('ScreenContent_%d_%d' % (i, b + 4), plane, mi_s, folder='NightLights/Screens'); quad_x[(i, b)] = []
+            return quad_x[(i, b)]
         for k, sc in enumerate(json.load(open(os.path.join(HERE, 'look_ts_screens.json')))['screens']):
             nrm, c = sc['n'], sc['c']
             if abs(nrm[1]) > 0.5: continue   # vertical screens only
-            col = pick(rng, T['palette']['colors'], T['palette']['weights'])
+            col = pick(rng, cols, T['palette']['weights'])
             pos = (c[0] + nrm[0] * T['offset'], c[1], c[2] + nrm[2] * T['offset'])
             spawn_spot(U(*pos), unreal.Rotator(pitch=T['pitch'], yaw=math.degrees(math.atan2(nrm[2], nrm[0])), roll=0.0), 'TSScreen_%d' % k, 'NightLights/Screens', T['cd_per_sqrt_area'] * math.sqrt(sc['a']),
                        T['outer'], T['inner'], T['radius'], 6500, vol=T['volumetric'], maxd=T['max_draw'], color=col)
             n_t += 1
-    log('night: %d screen lights' % n_t)
+            if m_scr and sc.get('w') and sc.get('h'):   # emissive stand-in content quad, 5 cm in front of the (black) screen, facing the same way
+                nu = unreal.Vector(nrm[0], nrm[2], nrm[1])                      # browser normal -> UE
+                tx = unreal.Vector(-nu.y, nu.x, 0.0); tl = math.hypot(tx.x, tx.y)
+                if tl < 1e-3: continue
+                tx = unreal.Vector(tx.x / tl, tx.y / tl, 0.0)
+                rot = unreal.MathLibrary.make_rot_from_zx(nu, tx)
+                loc = U(c[0] + nrm[0] * T['content']['offset'], c[1], c[2] + nrm[2] * T['content']['offset'])
+                quad_group(cols.index(col), max(-4, min(4, int(round(math.log2(max(sc['h'], 0.1) / max(sc['w'], 0.1))))))).append(unreal.Transform(loc, rot, unreal.Vector(sc['w'], sc['h'], 1.0)))
+                n_q += 1
+        for key, c_ in quad_c.items(): c_.add_instances(quad_x[key], False, True)
+    log('night: %d screen lights, %d content quads' % (n_t, n_q))
     # ---- stand-in traffic
     C = L['cars']; n_c = 0
     if C.get('enabled'):

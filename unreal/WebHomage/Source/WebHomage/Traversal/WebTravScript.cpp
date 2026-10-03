@@ -109,6 +109,10 @@ void UWebTravScript::Initialize(FSubsystemCollectionBase& Collection)
 					if (SV && SV->A.Num() == 3) SpawnVel = FVector(SV->A[0]->N, SV->A[1]->N, SV->A[2]->N);
 				}
 				if (const FVal* Sd = Root->Get(TEXT("seed"))) SeedValue = int32(Sd->N);
+				// round 17: per-script tuning ("tune": "Name=V,..." traversal floats, "camTune": camera doubles) -- same format as -WHTravTune /
+				// -WHCamTune, applied before them (the command line wins); lets a route carry its own settings through capture_round.sh
+				if (const FVal* TU = Root->Get(TEXT("tune"))) { if (TU->Type == FVal::Str) TuneStr = TU->S; }
+				if (const FVal* CT = Root->Get(TEXT("camTune"))) { if (CT->Type == FVal::Str) CamTuneStr = CT->S; }
 				if (const FVal* KeysJ = Root->Get(TEXT("keys")))
 				{
 					for (const TSharedPtr<FVal>& O : KeysJ->A)

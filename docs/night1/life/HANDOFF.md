@@ -6,6 +6,10 @@ Branch `night1/life`, worktree `~/sm2-n1/life` (integration `Opus-5.5-Loop-Night
 Owned: `/Game/Life`, `/Game/Tests/Life`, `unreal/WebHomage/Scripts/build_life.py`, `unreal/WebHomage/Scripts/life_data/`, `tools/life/`, `docs/night1/life/`, and (flagged for the integrator) `unreal/WebHomage/Source/WebHomage/Life/`.
 Scratch: `/Users/midir/sm2-n1/_scratch/life/` (capture frames, logs, venv with ultralytics for the detector, `r03/` experiment runs, `bin/` GUI probe). No `.uasset` / `.umap` is committed: `build_life.py` recreates everything.
 
+## INTERIM STATUS (round 03 resume, written 2026-10-01 01:45; the final rewrite replaces this block)
+
+Merged `origin/Opus-5.5-Loop-Night-1` (3d1a252) into `night1/life` (clean), C++ rebuilt, map rebuilt (hold 1). Captured with the real game under the GPU lock: S1 / S2 stills (1080p + 4K), swing / street / signal clips in `round-03/`. Detector (YOLO, spec instrument): S1 right share per still 27 / 31 / 37 / 39 / 43 % (full frame), 17-42 % on the critic's 84 % crop. East-side density x1.3 (`AvenueEastFactor`) did NOT raise it (sweep h1-h4: right counts stay 13-23); the right sidewalk is hidden by a truck / car in the curb lane 30-50 m ahead and by the shed pillars. New: `-WHLifeClearCurb=<m>[:<offset>]` (curb-lane corridor for stills) and `AheadCosMin` 0.9 (recycled walkers go into a 26 deg sector, not 60 deg, because 4 of 5 landed on far cross streets). hold4 (queued) sweeps the curb corridor and recaptures S1 stills + swing; perf variants queued. Scratch drivers in `_scratch/life/r03final/` (hold*.sh, sweep_*.py).
+
 ## The one thing the next builder must know first (read `round-03/NOTES.md`)
 
 **Round 03's code is committed and pushed but its final captures do not exist.** At 06:55:42 the macOS WindowServer watchdog fired and restarted; from then on the session could not start any Cocoa app, so every Unreal process hangs at

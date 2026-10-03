@@ -1,6 +1,7 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Combat/WHCombatFx.h"
 #include "Combat/WHCombatUtil.h"
+#include "WebHomage.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "GameFramework/Actor.h"
@@ -18,6 +19,8 @@ void FWHCombatFx::Init(AActor* InOwner)
 	MGlow = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFX.M_CmbFX"));
 	MTrans = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbTrans.M_CmbTrans"));
 	MSolid = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbSolid.M_CmbSolid"));
+	MFlare = LoadObject<UMaterialInterface>(nullptr, TEXT("/Game/Combat/Materials/M_CmbFlare.M_CmbFlare"));
+	if (!MFlare) MFlare = MGlow;   // (the map script builds M_CmbFlare; without it the flare falls back to the plain additive glow)
 }
 
 FWHFxItem& FWHCombatFx::Alloc(EWHFxMat Mat, UStaticMesh* Mesh)
@@ -36,7 +39,7 @@ FWHFxItem& FWHCombatFx::Alloc(EWHFxMat Mat, UStaticMesh* Mesh)
 		It.Comp->SetUsingAbsoluteLocation(true); It.Comp->SetUsingAbsoluteRotation(true); It.Comp->SetUsingAbsoluteScale(true);
 		It.Comp->SetupAttachment(O->GetRootComponent());
 		It.Comp->RegisterComponent();
-		UMaterialInterface* Base = Mat == EWHFxMat::Glow ? MGlow : Mat == EWHFxMat::Trans ? MTrans : MSolid;
+		UMaterialInterface* Base = Mat == EWHFxMat::Glow ? MGlow : Mat == EWHFxMat::Trans ? MTrans : Mat == EWHFxMat::Flare ? MFlare : MSolid;
 		if (Base) { It.Mid = UMaterialInstanceDynamic::Create(Base, O); It.Comp->SetMaterial(0, It.Mid); }
 		It.Mat = Mat;
 		Idx = Items.Add(It);
@@ -78,17 +81,19 @@ void FWHCombatFx::Place(FWHFxItem& It, double K)
 	}
 }
 
-void FWHCombatFx::Update(double Dt)
+void FWHCombatFx::Update(double GameDt, double RealDt)
 {
 	for (FWHFxItem& It : Items)
 	{
 		if (!It.bLive) continue;
+		const double Dt = It.bReal ? RealDt : GameDt;
 		It.T += Dt;
 		if (It.T >= It.Life) { It.bLive = false; It.A = nullptr; It.B = nullptr; It.Comp->SetVisibility(false); continue; }
+		if (It.bReal && It.T < It.Hold) { Place(It, 0); continue; }   // static while the hit-stop holds the frame
 		It.Vel += It.Gravity * Dt;
 		if (It.Drag > 0) It.Vel *= FMath::Exp(-It.Drag * Dt);
 		It.Pos += It.Vel * Dt;
-		Place(It, It.T / It.Life);
+		Place(It, It.bReal ? (It.T - It.Hold) / FMath::Max(1e-3, It.Life - It.Hold) : It.T / It.Life);
 	}
 }
 
@@ -103,33 +108,79 @@ int32 FWHCombatFx::LiveCount() const
 	int32 N = 0; for (const FWHFxItem& It : Items) N += It.bLive ? 1 : 0; return N;
 }
 
-void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color)
+void FWHCombatFx::Hit(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
 {
-	const FLinearColor C = Color ? *Color : FLinearColor(5.0f, 3.6f, 1.8f);
-	{ // core flash
+	// A spark burst: a small additive core + radial streaks. HoldFrames > 0 keeps everything static for that many frames (the local hit-stop),
+	// then the streaks fly out and fade in ~2.3 frames (r03: everything is gone 8 frames after the contact for a 5-frame hold).
+	const FLinearColor C = Color ? *Color * 0.8f : FLinearColor(4.0f, 2.8f, 1.3f);
+	const double Hold = HoldFrames > 0 ? (HoldFrames + 1.25) / 60.0 : 0.0, Life = Hold + (HoldFrames > 0 ? 2.3 / 60.0 : 0.09);
+	{
 		FWHFxItem& F = Alloc(EWHFxMat::Glow, Sphere);
-		F.Pos = P; F.Life = 0.11 + 0.06 * Heavy; F.Size0 = FVector(0.12 + 0.1 * Heavy); F.Size1 = FVector(0.45 + 0.5 * Heavy);
-		F.Color = C; F.Op0 = 1.0; F.Op1 = 0.0;
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = FVector(0.1 + 0.08 * Heavy); F.Size1 = FVector(0.05);
+		F.Color = C; F.Op0 = 0.9; F.Op1 = 0.0;
 		Place(F, 0);
 	}
-	const int32 N = 6 + int32(8 * Heavy);
+	const int32 N = 8 + int32(8 * Heavy);
 	const FVector D = Dir.GetSafeNormal();
 	for (int32 i = 0; i < N; ++i)
 	{
 		FWHFxItem& S = Alloc(EWHFxMat::Glow, Cyl);
-		FVector R = Rng.GetUnitVector();
-		FVector V = (D * 1.2 + R * 0.9).GetSafeNormal() * Rng.FRandRange(4.0, 9.0 + 6.0 * Heavy);
-		S.Pos = P; S.Vel = V; S.Drag = 5.0; S.Gravity = FVector(0, 0, -6); S.Life = Rng.FRandRange(0.12, 0.22 + 0.1 * Heavy);
-		S.Size0 = FVector(0.012 + 0.01 * Heavy); S.Size1 = FVector(0.004); S.bStretch = true;
-		S.Color = FLinearColor(C.R * 1.2f, C.G, C.B * 0.7f); S.Op0 = 1.0; S.Op1 = 0.0;
+		const FVector R = (D * 0.9 + Rng.GetUnitVector()).GetSafeNormal();
+		const double Len = Rng.FRandRange(0.16, 0.30 + 0.16 * Heavy) * (HoldFrames > 0 ? 1.5 : 1.0);   // r03: r02's 2-px ticks read as nothing at 5 m
+		S.bReal = true; S.Hold = Hold; S.Life = Life;
+		S.Dir = R; S.Pos = P + R * (0.08 + Len * 0.5); S.Vel = R * Rng.FRandRange(5.0, 9.0); S.Drag = 3.0;
+		S.Size0 = FVector(0.02 + 0.012 * Heavy, 0.02 + 0.012 * Heavy, Len); S.Size1 = FVector(0.006, 0.006, Len * 0.6);
+		S.Color = FLinearColor(C.R * 1.1f, C.G, C.B * 0.7f); S.Op0 = 1.0; S.Op1 = 0.0;
 		Place(S, 0);
 	}
-	if (Heavy > 0.45)
-	{ // shock ring facing the blow
-		FWHFxItem& R = Alloc(EWHFxMat::Glow, Cyl);
-		R.Pos = P; R.Dir = D; R.Life = 0.22; R.Size0 = FVector(0.2, 0.2, 0.01); R.Size1 = FVector(1.6 * Heavy + 0.4, 1.6 * Heavy + 0.4, 0.01);
-		R.Color = FLinearColor(C.R * 0.5f, C.G * 0.5f, C.B * 0.5f); R.Op0 = 0.9; R.Op1 = 0.0;
-		Place(R, 0);
+}
+
+void FWHCombatFx::Impact(const FVector& P, const FVector& Dir, double Heavy, const FLinearColor* Color, int32 HoldFrames)
+{
+	(void)Dir;
+	if (bFlareOff) return;
+	// r04 starburst. Unit U = the frame width in metres at the contact's depth; every length below is a share of it, so the picture is the same at any distance.
+	//   N = 6 (7 / 8 for heavier blows) thin streaks, evenly spread around the contact (random phase, +-18 % jitter), each in the camera's image plane, from
+	//   0.030 U (a hollow centre: only the small hot core sits on the victim's chest) to 0.128-0.16 U (length 0.098-0.127 U: always >= 8 % of the frame width)
+	//   and tapering in 6 steps (0.0094 U -> 0.0036 U wide). Covered share of its bounding circle ~8 %, of the frame ~0.5 %: the victim's body stays readable.
+	const FRotationMatrix CM(CamRot);
+	const FVector Fw = bCam ? CM.GetScaledAxis(EAxis::X) : (P - CamP).GetSafeNormal();
+	const FVector Right = bCam ? CM.GetScaledAxis(EAxis::Y) : FVector::RightVector;
+	const FVector Up = bCam ? CM.GetScaledAxis(EAxis::Z) : FVector::UpVector;
+	const double Depth = bCam ? FMath::Max(1.5, FVector::DotProduct(P - CamP, Fw)) : 5.5;
+	const double U = 2.0 * Depth * FMath::Tan(FMath::DegreesToRadians(CamFovH * 0.5)) * FlareK;
+	const double Hold = (HoldFrames + 1.25) / 60.0, Life = Hold + 2.3 / 60.0;
+	const bool bTint = Color != nullptr && Color->R + Color->G + Color->B > 8.0f && Color->B > 3.0f;   // armoured (white) blow: cooler, white-hot streaks
+	const int32 N = Heavy >= 0.55 ? 8 : Heavy >= 0.25 ? 7 : 6;
+	const double Phase = FlareRng.FRandRange(0.0, 2.0 * PI), Step = 2.0 * PI / N;
+	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_FLARE streaks %d depth %.2f m frame width %.2f m fov %.1f hold %d frames centre (%.2f, %.2f, %.2f)%s"), N, Depth, U, CamFovH, HoldFrames, P.X, P.Y, P.Z, bTint ? TEXT(" white") : TEXT(""));
+	for (int32 i = 0; i < N; ++i)
+	{
+		const double A = Phase + i * Step + FlareRng.FRandRange(-0.18, 0.18) * Step;
+		const FVector Dv = (Right * FMath::Cos(A) + Up * FMath::Sin(A)).GetSafeNormal();
+		const double L = U * FlareRng.FRandRange(0.098, 0.115) * (1.0 + 0.1 * Heavy);
+		const double R0 = U * 0.030;   // hollow centre: the streaks start beyond the victim's torso, so the body under the burst stays readable
+		const int32 NS = 6;   // 6 stacked cylinders per streak: a smooth taper (0.94 -> 0.36 of the base width) and a colour that cools from orange to red-orange
+		for (int32 j = 0; j < NS; ++j)
+		{
+			FWHFxItem& S = Alloc(EWHFxMat::Flare, Cyl);
+			const double T = (j + 0.5) / NS, SegL = L / NS, C = R0 + L * T, W = U * 0.0100 * (1.0 - 0.7 * T);
+			S.bReal = true; S.Hold = Hold; S.Life = Life;
+			S.Dir = Dv; S.Pos = P + Dv * C;
+			S.Size0 = FVector(W, W, SegL * 1.15); S.Size1 = FVector(W * 0.45, W * 0.45, SegL);
+			S.Color = bTint ? FLinearColor(FMath::Lerp(2.2f, 1.5f, float(T)), FMath::Lerp(2.0f, 1.3f, float(T)), FMath::Lerp(1.7f, 1.05f, float(T)))
+			                : FLinearColor(FMath::Lerp(2.4f, 1.5f, float(T)), FMath::Lerp(0.95f, 0.19f, FMath::Pow(float(T), 0.8f)), FMath::Lerp(0.16f, 0.02f, float(T)));
+			S.Op0 = FlareI; S.Op1 = 0.0;
+			Place(S, 0);
+		}
+	}
+	{ // hot core: a small bright dot where the blow lands (3.5 % of the frame width)
+		FWHFxItem& F = Alloc(EWHFxMat::Flare, Sphere);
+		F.bReal = true; F.Hold = Hold; F.Pos = P; F.Life = Life;
+		F.Size0 = FVector(U * 0.035); F.Size1 = FVector(U * 0.015);
+		F.Color = bTint ? FLinearColor(2.4f, 2.2f, 2.0f) : FLinearColor(2.6f, 1.5f, 0.4f); F.Op0 = FlareI; F.Op1 = 0.0;
+		Place(F, 0);
 	}
 }
 
@@ -143,9 +194,9 @@ void FWHCombatFx::Dust(const FVector& P, double Amount)
 		D.Pos = P + FVector(FMath::Cos(A), FMath::Sin(A), 0) * Rng.FRandRange(0.1, 0.5) + FVector(0, 0, 0.1);
 		D.Vel = FVector(FMath::Cos(A), FMath::Sin(A), 0) * Rng.FRandRange(1.0, 2.8) * Amount + FVector(0, 0, Rng.FRandRange(0.3, 1.2));
 		D.Drag = 2.5; D.Life = Rng.FRandRange(0.6, 1.1);
-		const double S = Rng.FRandRange(0.25, 0.45) * (0.7 + 0.5 * Amount);
+		const double S = Rng.FRandRange(0.2, 0.36) * (0.7 + 0.5 * Amount);
 		D.Size0 = FVector(S * 0.5); D.Size1 = FVector(S * 1.8);
-		D.Color = FLinearColor(0.32f, 0.3f, 0.27f); D.Op0 = 0.38; D.Op1 = 0.0;
+		D.Color = FLinearColor(0.10f, 0.09f, 0.08f); D.Op0 = 0.24; D.Op1 = 0.0;   // r02: darker dust (in daylight the old grey read as white discs)
 		Place(D, 0);
 	}
 }

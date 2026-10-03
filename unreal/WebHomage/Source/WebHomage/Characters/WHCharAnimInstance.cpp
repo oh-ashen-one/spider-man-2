@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Characters/WHCharLoopWalker.h"
+#include "Characters/WHCharStage.h"
 
 void UWHCharAnimInstance::NativeInitializeAnimation()
 {
@@ -91,7 +92,32 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 		else if (bAir && TakeoffHold > 0.f) { TakeoffHold = FMath::Max(0.f, TakeoffHold - Dt / FMath::Max(0.02f, TakeoffHoldTime)); TakeW = TakeoffHold; }
 		else TakeoffHold = 0.f;
 	}
-	const float GroundW = (1.f - AirAlpha) * (1.f - LandW) * (1.f - TakeW);
+	float GroundW = (1.f - AirAlpha) * (1.f - LandW) * (1.f - TakeW);
+
+	// ---- round 09: scripted beats (a choreographed fight): timed one-shot clips over the base (guard idle / locomotion); the base gets what is left
+	struct FBeatW { UAnimSequence* Seq; float T_; float W; };
+	TArray<FBeatW, TInlineAllocator<4>> Beats;
+	float BeatSum = 0.f;
+	if (Script.Num() > 0)
+	{
+		const float Ts = WHStage::Now(GetWorld());
+		for (const FWHScriptBeat& B : Script)
+		{
+			if (!B.Clip || Ts < B.Start) continue;
+			const float Len = B.Clip->GetPlayLength(), Rate = FMath::Max(0.05f, B.Rate);
+			const float PlayEnd = B.Start + FMath::Max(0.f, Len - B.ClipStart) / Rate;
+			const float HoldEnd = B.Hold < 0.f ? 1e9f : PlayEnd + B.Hold;
+			const float Win = B.BlendIn > 1e-3f ? FMath::Clamp((Ts - B.Start) / B.BlendIn, 0.f, 1.f) : 1.f;
+			const float Wout = Ts <= HoldEnd ? 1.f : (B.BlendOut > 1e-3f ? FMath::Clamp(1.f - (Ts - HoldEnd) / B.BlendOut, 0.f, 1.f) : 0.f);
+			const float W = B.Weight * WHStage::Smooth(Win) * WHStage::Smooth(Wout);
+			if (W <= 1e-3f) continue;
+			Beats.Add({B.Clip.Get(), FMath::Clamp(B.ClipStart + (Ts - B.Start) * Rate, 0.f, Len), W});
+			BeatSum += W;
+		}
+		if (BeatSum > 1.f) { for (FBeatW& B : Beats) B.W /= BeatSum; BeatSum = 1.f; }
+	}
+	const float ScriptW = BeatSum;
+	const float BaseW = GroundW * (1.f - ScriptW);   // idle / sequence / locomotion share what the beats leave
 
 	auto Push = [this](UAnimSequence* S, float T, float W, bool bLoop)
 	{
@@ -115,15 +141,16 @@ void UWHCharAnimInstance::NativeUpdateAnimation(float Dt)
 		const float Bk = FMath::Min(SequenceBlend, 0.45f * (Sequence[Prev] ? Sequence[Prev]->GetPlayLength() : 0.5f));
 		const float W = Bk > 1e-3f ? FMath::Clamp(Tk / Bk, 0.f, 1.f) : 1.f;
 		const float Ws = W * W * (3.f - 2.f * W);
-		Push(Sequence[K], FMath::Min(Tk, LenK), GroundW * (1.f - MoveW) * Ws, false);
-		if (Ws < 1.f) Push(Sequence[Prev], Seg[Prev] + Tk, GroundW * (1.f - MoveW) * (1.f - Ws), false);
+		Push(Sequence[K], FMath::Min(Tk, LenK), BaseW * (1.f - MoveW) * Ws, false);
+		if (Ws < 1.f) Push(Sequence[Prev], Seg[Prev] + Tk, BaseW * (1.f - MoveW) * (1.f - Ws), false);
 	}
-	else if (Idle) Push(Idle, IdleTime, GroundW * (1.f - MoveW), true);
+	else if (Idle) Push(Idle, IdleTime, BaseW * (1.f - MoveW), true);
 	if (I0 >= 0)
 	{
-		Push(Loco[I0].Clip, Phase * Loco[I0].Clip->GetPlayLength(), GroundW * MoveW * (I0 == I1 ? 1.f : 1.f - A), true);
-		if (I1 != I0) Push(Loco[I1].Clip, Phase * Loco[I1].Clip->GetPlayLength(), GroundW * MoveW * A, true);
+		Push(Loco[I0].Clip, Phase * Loco[I0].Clip->GetPlayLength(), BaseW * MoveW * (I0 == I1 ? 1.f : 1.f - A), true);
+		if (I1 != I0) Push(Loco[I1].Clip, Phase * Loco[I1].Clip->GetPlayLength(), BaseW * MoveW * A, true);
 	}
+	for (const FBeatW& B : Beats) Push(B.Seq, B.T_, GroundW * B.W, false);
 	Push(Land, LandTime, (1.f - AirAlpha) * LandW, false);
 	Push(Takeoff, FMath::Max(0.f, LastTakeoff), TakeW * (bAir ? 1.f : (1.f - AirAlpha)), false);
 	Push(JumpClip, AirTime, AirAlpha * (1.f - FallAlpha) * (1.f - (bAir ? TakeW : 0.f)), false);

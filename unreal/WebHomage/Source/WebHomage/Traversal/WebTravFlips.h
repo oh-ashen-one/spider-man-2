@@ -36,6 +36,11 @@ struct FWebFlipProgram
 	// round 13 (critic r12: "attach a web within 0.3 s of Reach"): the next web may attach from CatchOpen s before the program's end
 	// (inside its final reach, once that pose reads) -- the catch cuts the last few degrees and springs them back in ~0.07 s
 	float CatchOpen = 0.16f;
+	// round 19 (critic r18 "every trick is a canned playback"): per-instance variant data -- Lead / Lag override WebFlips::FlipLead /
+	// FlipLag (arm / leg timing) when >= 0; Ver changes with every variant (rate-table cache key); Scale = duration factor vs the base
+	float Lead = -1.f, Lag = -1.f;
+	int32 Ver = 0;
+	float Scale = 1.f;
 	float CatchT() const { return FMath::Max(0.f, Dur() - CatchOpen); }
 	float Dur() const { float D = 0.f; for (const FWebFlipSeg& S : Segs) D += S.Dur; return D; }
 };
@@ -61,10 +66,31 @@ namespace WebFlips
 	const TCHAR* ShapeName(EWebFlipShape S);
 	/** Round 14: hips->head lean of a keyed shape off the body frame (deg, + = head forward), measured on the rendered r14 probe. */
 	float ShapeAxisDeg(EWebFlipShape S);
-	/** Program by name (backDouble, frontPikeSwan, corkscrew, backSingle, wallFront); nullptr if unknown. */
+	/** Round 18: vertical extent (m) a shape reaches during its hold (trick-camera distance anticipation). */
+	float ShapeExtent(EWebFlipShape S);
+	/** Program by name (backDouble, frontPikeSwan, corkscrew, backSingle, wallFront); nullptr if unknown. Round 19: the current
+	 *  per-instance variant of that program once one was made (MakeVariant), else the base program. */
 	const FWebFlipProgram* Find(FName Name);
+	/** Round 19: the unvaried base program (planning / fit checks before a variant exists). */
+	const FWebFlipProgram* FindBase(FName Name);
+	/** Round 19: make this instance's variant of a program: total duration x Scale (0.8-1.2), each segment x its own 0.92-1.08 jitter
+	 *  (the rate curve's shape changes, not only its speed), arm lead / leg lag per instance. Returns the variant (also what Find returns). */
+	const FWebFlipProgram* MakeVariant(FName Name, float Scale, uint32 Seed);
+	/** Round 19: -WHFlipVar=0 turns variants off (A/B against round 18). */
+	extern bool bVariants;
+	/** Tricks C r01: per-instance tempo (+10-16 % / -10-13 %) on top of half the caller's scale; -WHTrickTempo=0 = the r19-r23 scale. */
+	extern bool bTempo;
 	/** All program names (for cycling). */
 	const TArray<FName>& Names();
+	/** Tricks C r01: the programs a web release may play (every program but the wall top-out), in the reel's cycling order. */
+	const TArray<FName>& ReleasePrograms();
+	/** Tricks C r01 trick input mapping (for UWebTraversalComponent::ChooseTrick, see docs/night1/tricks/REQUEST-traversal.md):
+	 *  StickFwd / StickLat = the move stick at the trick press (forward +, right +), K = a running counter (never the same program twice
+	 *  in a row), AirS = seconds of air the release has before the catch window must open (<= 0: unknown, any program).
+	 *  Stick forward -> front family (frontSingle, frontDouble, frontPikeSwan, barani, rudi, corkscrew); back -> back family (backSingle,
+	 *  backDouble, backPike, backLayout, fullTwist, backTripleChain); sideways -> twisting family (barani, fullTwist, rudi, corkscrew);
+	 *  neutral -> every release program in turn. The longest programs only play when AirS covers 1.15 x their catch time. */
+	FName ChooseForInput(float StickFwd, float StickLat, int32 K, float AirS, FName Last);
 	/** Sample a program at T seconds (clamped to [0, Dur]). */
 	FWebFlipPose Sample(const FWebFlipProgram& P, float T);
 	extern float FlipLead, FlipLag;

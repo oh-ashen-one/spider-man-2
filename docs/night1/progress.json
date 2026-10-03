@@ -1,5 +1,5 @@
 {
- "updated": "15:06",
+ "updated": "2026-10-03 18:48",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -35,55 +35,55 @@
    "id": "P1",
    "name": "City: export, facades, streets",
    "branch": "night1/city",
-   "state": "active",
-   "round": 9,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Rebuild the S4 far-shore city band: varied heights, mid-grey albedo, seawall/piers/trees instead of a grey wall."
+   "state": "paused",
+   "round": 11,
+   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
+   "gap": "S4 sky too bright (Y 229 vs refs 119-127): fix in look (sky/aerial perspective only) so the far band sits 25-32 below it; city backlog -> island M3 (S6 curb/red steps, S5 C1, glass reflections, S3 vents)"
   },
   {
    "id": "P2",
    "name": "Characters: hero, suits, crowd",
    "branch": "night1/characters",
-   "state": "active",
-   "round": 6,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Walker avoidance (people walk through each other), remaining key see-through on one jeans leg, a floating 37x27 px triangle."
+   "state": "paused",
+   "round": 17,
+   "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
+   "gap": "Paused by Opus director (flat 5 rounds r13-r17). Resume on Opus: lens curvature/gloss + angle-dependent cloth sheen (see HANDOFF 2026-10-03 01:25)."
   },
   {
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "active",
-   "round": 14,
-   "verdict": "fails \u2014 lowest 5 (Opus 5.5)",
-   "gap": "Trick camera nearly level (<= 8 deg up) with the sun behind it; sky behind the hero by flipping above the roofline, not by tilting up."
+   "state": "paused",
+   "round": 26,
+   "verdict": "fails \u2014 lowest 6 (Opus 5.5)",
+   "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s"
   },
   {
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "fixing",
-   "round": 3,
-   "verdict": "R2: FAILS (sun 4, GI 4, atmos 4, refl 4, post 5, night 5)",
-   "gap": "Midday not per spec, far-field purple/white band, night swing is day-for-night"
+   "state": "paused",
+   "round": 9,
+   "verdict": "fails \u2014 lowest 4 (Opus 5.5)",
+   "gap": "remove the dark horizon band so the far rank fades into haze (Otsu split rows 95-140 <= 12 Y; sky rows 100-130 >= far-band mean) on canonical, tour and 18:24 frames"
   },
   {
    "id": "P5",
    "name": "Combat",
    "branch": "night1/combat",
-   "state": "fixing",
-   "round": 2,
-   "verdict": "R1: FAILS (impact 3, moves 4, enemies 3, camera 3, spectacle 3)",
-   "gap": "No visible hit-stop (0% frozen frames), passive enemies without tells, camera crops the hero"
+   "state": "active",
+   "round": 4,
+   "verdict": "fails \u2014 lowest 4 (opus)",
+   "gap": "Combat camera + lighting: hero \u226535% frame height at contacts, opening not backlit (\u226415% px < gray 30), no blown-out hero, no snaps > 25 except cuts"
   },
   {
    "id": "P6",
    "name": "City life: crowd, traffic, water",
    "branch": "night1/life",
    "state": "active",
-   "round": 2,
-   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5)",
-   "gap": "Populate both sidewalks at every camera height: >=15 people on the nearest block's sidewalks in every swing sample (now 0/20); right sidewalk >=35% of people in S1."
+   "round": 3,
+   "verdict": "fails \u2014 lowest 4 (sonnet)",
+   "gap": "Plant the feet: stance foot speed \u226410 cm/s (now 47-54), ankle lift \u226420 cm, stride times spread \u22650.25 s"
   },
   {
    "id": "A",
@@ -117,9 +117,9 @@
    "name": "4K/60 perf on Manhattan (exclusive GPU)",
    "branch": "night1/perf",
    "state": "active",
-   "round": 4,
-   "verdict": "approaches \u2014 lowest 6 (Opus 5.5)",
-   "gap": "Merge ~42k tree RT instances into <=1k proxies per tile to remove the CPU/GPU gap; in-game p95 <= 17.9 ms in 3 runs; S1 crop SSIM >= 0.97; re-measure with traffic + crowd."
+   "round": 6,
+   "verdict": "fails \u2014 lowest 3 (Opus 5.5)",
+   "gap": "Life-on frame-pacing bubble (CPU/GPU sync, RT geometry updates); restore lost foliage; a committed look_gate.py run by builder and critic."
   },
   {
    "id": "G",
@@ -134,10 +134,10 @@
    "id": "W",
    "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
    "branch": "night1/water-ab-*",
-   "state": "fixing",
-   "round": 2,
-   "verdict": "A/B: Opus 3.8 vs Sonnet 3.4 (blind) \u2014 Opus merged; FAILS vs reference",
-   "gap": "Fine ripples + sun glints, darker water (C14), take Sonnet's piling foam, remove ring artifact"
+   "state": "active",
+   "round": 6,
+   "verdict": "fails \u2014 lowest 3 (Opus 5.5)",
+   "gap": "world-anchored drifting seawall lace on dark water; river_sun sparkle >= 50 %; restore r03's harbour mirror"
   }
  ],
  "comparisons": [
@@ -428,6 +428,16 @@
    "title": "Traversal r14 \u2014 chained gymnast flips (flips 7/10)",
    "src": "docs/night1/traversal/round-14/f4_chain_flips.mp4",
    "caption": "Opus 5.5 round 14: side-on trick camera, eased rotation, held shapes; still to fix: camera tilts into the sun"
+  },
+  {
+   "title": "Characters r8 \u2014 original \"Tessera\" suit, running",
+   "src": "docs/night1/characters/round-08/captures/hero_run_34.mp4",
+   "caption": "Sonnet 5.5 round 8: original suit design (the old layout copied an official suit), sealed eye lenses"
+  },
+  {
+   "title": "Traversal r17 \u2014 chained flips above the roofline",
+   "src": "/Users/midir/sm2-n1/traversal/docs/night1/traversal/round-17/f4_chain_flips.mp4",
+   "caption": "Opus 5.5 round 17: held 3/4 camera (Fable director spec), sky behind the hero 79%, sun behind the camera; next: limbs keep moving through every flip"
   }
  ],
  "critic": [
@@ -742,6 +752,310 @@
    "verdict": "approaches",
    "gap": "Merge ~42k tree RT instances into <=1k proxies per tile to remove the CPU/GPU gap; in-game p95 <= 17.9 ms in 3 runs; S1 crop SSIM >= 0.97; re-measure with traffic + crowd.",
    "notes": "3840x2160 output, 1920x1080 internal: p50 62.1\u201362.4 fps, CSV p95 55.4\u201355.5 fps (in-game counter 54.7\u201354.9), 0 hitches, worst second 57 fps. Look restored: clouds 20 km, canopy +6%, saturation back; shadow-page invalidation fixed (ShadowDepths p95 2.44 ms). Honest round: same crop, failing SSIM 0.955 disclosed. Merged (r3+r4)."
+  },
+  {
+   "t": "15:46",
+   "piece": "P3 Traversal",
+   "round": 15,
+   "verdict": "fails",
+   "gap": "Trick camera orbits freely: pick one side-on yaw at release (clear of trees, >=100 deg from the sun), hold it +-30 deg, frame the hero at .15-.38 height and x .44-.56.",
+   "notes": "Camera level and sun-aware (pitch max 1.9 deg down, was 21 deg up; sun >= 109 deg away); hero glare 93% \u2192 26%; wall camera 56 \u2192 30 deg; trees in the f3 camera 43 \u2192 8 frames. Camera axis has scored 5 for four rounds (12\u201315): each fix breaks another demand \u2192 Fable 5.1 director pass for one reconciled camera spec."
+  },
+  {
+   "t": "15:52",
+   "piece": "P2 Characters",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "Original suit layout (the current one copies an official suit \u2014 legal + quality) and sealed eye lenses inside the head silhouette.",
+   "notes": "Walker avoidance in C++ (min distance 130 cm, 0 frames under 0.70 m); stencil keyer: 0 green pixels inside clothing, 0 floating polygons; ankle gaps fixed. Civilians and image quality 4\u21925. Round 8 designs an original suit."
+  },
+  {
+   "t": "17:35",
+   "piece": "F 4K/60 perf",
+   "round": 5,
+   "verdict": "approaches",
+   "gap": "Cut Lumen screen-probe gather >=1.3 ms and the +1.24 ms traffic+crowd cost; pass with life ON: p95 <= 18.0 ms, p50 <= 16.67 ms; S1 SSIM >= 0.97.",
+   "notes": "42k tree RT instances \u2192 402 proxies. Without traffic/crowd: in-game p95 17.81\u201317.87 ms (pass), CSV p50 15.65\u201315.72 ms (~64 fps), 3840x2160 output / 1920x1080 internal. With traffic + crowd (first real-gameplay measure): p50 17.1 ms (58.5 fps), in-game p95 ~20 ms (~50 fps), 1 hitch. Honest round."
+  },
+  {
+   "t": "18:47",
+   "piece": "P2 Characters",
+   "round": 8,
+   "verdict": "fails",
+   "gap": "Enemy combat reactions: >=3 distinct hit reactions and >=1 knockdown in the street fight; no second where all thugs idle.",
+   "notes": "Original suit design 'Tessera' (legal: the previous layout copied an official suit; red/blue/white share 95% \u2192 0%); eye lenses rebuilt as sealed bezel + lens inside the head outline; shoe shards and a fused-head contact removed. Lowest axis 4\u21925; all five axes now 5."
+  },
+  {
+   "t": "19:51",
+   "piece": "P3 Traversal",
+   "round": 16,
+   "verdict": "fails",
+   "gap": "Tricks fire from street level into dark facades: flip from >= 3 m above the roofline, pick the sun-side yaw at release, faster camera blend-in; sky behind the hero in >= 35% of trick frames (now 2%).",
+   "notes": "Built the director's held 3/4-behind trick camera: most TC tests pass (yaw held 32\u201347\u00b0, rate p95 <= 25\u00b0/s, hero 18\u201326% of frame). Flips regressed 7\u21926 \u2014 NOT merged (integration keeps r15). Round 17 back on Opus: move the tricks above the roofs."
+  },
+  {
+   "t": "20:37",
+   "piece": "F 4K/60 perf",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "Life-on frame-pacing bubble (CPU/GPU sync, RT geometry updates); restore lost foliage; a committed look_gate.py run by builder and critic.",
+   "notes": "With traffic + crowd ON: median 61.5\u201361.8 fps at 3840x2160 output / 1920x1080 internal \u2014 PASS (GPU skin cache off fixed the +1.2 ms). Worst 5%: 53.1\u201354.5 fps \u2014 fail (pacing stall, not GPU load). Undisclosed foliage losses again (tree line 7.8%\u21922.5%, lit foliage 12.2%\u21920.2%) \u2014 NOT merged; round 7 must build a fixed look-gate script first."
+  },
+  {
+   "t": "21:01",
+   "piece": "P2 Characters",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "Fix the new grey untextured hero arm; >=4 reactions, 2 simultaneous knockdowns, 2 distinct get-ups and no 2 s idle guard in every fight clip.",
+   "notes": "Scripted fight choreography: 5 hit reactions (4 clips), 2 knockdowns lying ~2.9 s, no all-idle second; enemies 5\u21926; tee holes fixed. But a new untextured grey hero arm dropped image quality 5\u21924 \u2014 NOT merged (integration keeps r8)."
+  },
+  {
+   "t": "21:57",
+   "piece": "P3 Traversal",
+   "round": 17,
+   "verdict": "fails",
+   "gap": "Bodies freeze mid-trick: limbs must keep moving every 0.1 s; replace the shared frozen inverted split with a continuous unwind; a distinct shape per program.",
+   "notes": "Camera broke its stall (5\u21926) and no axis is below 6: tricks moved above the roofs (apex +3.2..+14.3 m), sky behind the hero 2%\u219279%, sun behind the camera on every flip, hero glare <1%. Flips 6 (below r15's 7) \u2014 not merged yet; integration keeps r15. Round 18 on Opus."
+  },
+  {
+   "t": "01:15",
+   "piece": "P2 Characters",
+   "round": 10,
+   "verdict": "fails",
+   "gap": "One hair asset per head, no flat cards or seams; no skin wedge in the thug collar.",
+   "notes": "Fight fixed: the grey 'arm' was a pipe piercing the hero (weapon tilt fixed); every 8 s clip has 6\u20137 reactions, 2 knockdowns with two down together ~1.9 s, two get-ups, no guard hold > 2 s. Image quality still 4 (hair cards, collar wedge worse) \u2014 not merged; r11+ on Opus."
+  },
+  {
+   "t": "01:27",
+   "piece": "P5 Combat",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Hit-stops freeze the whole frame; T-pose enemy; hero passes through enemies; dark opening seconds.",
+   "notes": "Recorded late (director ledger gap). Critic also flagged the copied chest emblem on the old hero suit \u2014 replaced by the original Tessera suit (characters r8)."
+  },
+  {
+   "t": "01:27",
+   "piece": "P5 Combat",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Additive impact burst that keeps the victim readable; every blow moves the victim.",
+   "notes": "Recorded late. Local hit-stop fixed the global freeze (0.2% frozen frames); launcher/air hit/slam read. Camera and spectacle still 4."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "piece": "P3 Traversal",
+   "round": 18,
+   "verdict": "fails",
+   "gap": "Every trick is a canned replay and the tuck is loose: vary duration/peak spin \u00b110-20% per trick, hold a tight tuck \u22650.25 s (wrists \u22640.15 m from shins)",
+   "notes": "Merged (flips 7, camera 5\u21926, no axis below r15). Hero suit switched to the original Tessera material at merge."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "piece": "P1 City",
+   "round": 10,
+   "verdict": "fails",
+   "gap": "S4 far-shore towers need a distant facade with window grid, mid-grey albedo: far-band \u226410% px >204 (now 29.5%)",
+   "notes": "Merged (rooftops/skyline 4\u21925). Guard: S4 far-band check after rebuild."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "piece": "P6 City life",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Plant the feet: stance foot speed \u226410 cm/s (now 47-54), ankle lift \u226420 cm, stride times spread \u22650.25 s",
+   "notes": "Merged (pedestrian density 5\u21926)."
+  },
+  {
+   "t": "2026-10-01T07:13",
+   "piece": "P5 Combat",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "Combat camera + lighting: hero \u226535% frame height at contacts, opening not backlit (\u226415% px < gray 30), no blown-out hero, no snaps > 25 except cuts",
+   "notes": "Merged (impact 5\u21926: additive streak bursts; every blow moves the victim in telemetry). Proxy hero emblem replaced by Tessera suit in integration."
+  },
+  {
+   "t": "2026-10-01T20:40",
+   "piece": "P3 Traversal",
+   "round": 20,
+   "verdict": "fails",
+   "gap": "Wall-run is still a scramble: upright alternating sprint; camera after a swing-cancel (yaw <= 90 deg/s, distance >= 3.5 m); roofline apex every 4 s",
+   "notes": "Merged (no axis below r18). Owner playtest bugs 5/6 PASS: swing always available incl. cancel from wall-run, zip from side-run, air pose at speed, perch camera, mouse look."
+  },
+  {
+   "t": "2026-10-02T00:10",
+   "piece": "P3 Traversal",
+   "round": 21,
+   "verdict": "fails",
+   "gap": "wallRunSide upright parkour sprint: torso within 30 deg of wall-up, along-run foot separation >= 0.6 m peak, sunlit facade, hero bbox height >= width in >= 80 % of side-run frames",
+   "notes": "Merged (ties r20 on every axis, wins progress-wallrun: real stride 5.6-6.6 steps/s, knees toward the wall, setback crossed on the ledge)."
+  },
+  {
+   "t": "2026-10-02T04:30",
+   "piece": "P3 Traversal",
+   "round": 22,
+   "verdict": "fails",
+   "gap": "Vertical wall-run freezes (no alternating stride); zip from side-run never lands; camera too tight after zip",
+   "notes": "Merged (no axis below r21). Side wall-run fixed: upright, legs apart 7/10 at 12 fps, sunlit facade."
+  },
+  {
+   "t": "2026-10-02T06:55",
+   "piece": "E Terrain",
+   "round": 2,
+   "verdict": "fails",
+   "gap": "Canopy must read as leaves at every distance: clustered leaf-card canopy 165-520 m, remove the constant emissive fill and light the cards with the engine; crown crops SD >= 9",
+   "notes": "First terrain merge (at/above r1 on every axis, won 3/3 progress pairs)."
+  },
+  {
+   "t": "2026-10-02T07:25",
+   "piece": "P3 Traversal",
+   "round": 23,
+   "verdict": "fails",
+   "gap": "c camera hits a wall at 7.7-8.5 s (keep hero in frame, cam >= 3 m, no yaw reversal); vertical-run knees splay (lateral knee gap <= .25 m, knees drive forward, arms alternate)",
+   "notes": "Merged. All 6 owner playtest bugs PASS incl. wall-run animation (vertical-run legs cycle, zip ends on a perch)."
+  },
+  {
+   "t": "2026-10-02T11:25",
+   "piece": "E Terrain",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Mid-band canopy still smooth hulls in p1; lawn texture/saturation (E1); khaki river at the shore; t5 flat taupe plain",
+   "notes": "Merged (trees/canopy 3->4, no axis below r2)."
+  },
+  {
+   "t": "2026-10-02T11:35",
+   "piece": "W River water",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "Animated contact foam at the seawall/piles/island edges (engine reads the contact map at >=4 m vs 0.6-1.9 m CPU); far-field structure at swing height",
+   "notes": "Merged (no axis below merged r01 Opus build). Rings gone, resolved chop, sun sparkle, SLW pass 1.0 ms."
+  },
+  {
+   "t": "2026-10-02T11:35",
+   "piece": "P2 Characters",
+   "round": 14,
+   "verdict": "fails",
+   "gap": "IQ >= 6: back emblem bleed, groove jogs, face seam, limb net ends",
+   "notes": "Merged on the owner suit approval (11:31): 8 original suits with sculpted heads + in-game swap; IP gate PASS."
+  },
+  {
+   "t": "2026-10-02T14:30",
+   "piece": "P3 Traversal",
+   "round": 24,
+   "verdict": "fails",
+   "gap": "Rope readable on every web_on frame (two-tone strand, width clamp); perch dip at c 9.85 s; run cadence 3.2-3.8 Hz",
+   "notes": "Merged. Altitude swing chain: apex 33-38 m, drops 21.6-27.7 m (T7 100/100), web_on 55->41.5 %, ground-orbit camera wall-snap fixed."
+  },
+  {
+   "t": "2026-10-03 01:22",
+   "piece": "traversal",
+   "round": 25,
+   "verdict": "fails",
+   "gap": "w1 vertical wall-run as a sprint (knee_gap_lat median <= 0.25 m, limb pose changes every 0.3 s, cam 4-7 m, hero box p90 .30-.38) + original suit in every capture and the playable default",
+   "notes": "Merged (Opus director): rope readable 63/65, perch gate 113/113, cadence 3.61 Hz, web 6->7, no axis below r24. Critic flagged licensed-looking default suit in traversal captures (pre-existing since <= r24)."
+  },
+  {
+   "t": "2026-10-03 01:22",
+   "piece": "characters",
+   "round": 17,
+   "verdict": "fails",
+   "gap": "pawn run cadence 3.2-3.8 Hz (P3-owned, fixed in traversal r25); P2 next target pending director",
+   "notes": "Lineup corruption fixed (0.45 % vs 13.7 %): capture fired while assets compiled + animations ran. Verdant re-blocked copper/dark pine, IP 8/8 PASS. Director decision pending. Merged (Opus director, merge=true). Stream paused (stop=true)."
+  },
+  {
+   "t": "2026-10-03 03:32",
+   "piece": "terrain",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "crowns as lit leaf volumes casting lawn shadows (p1 crowns sigma3 >= 9, median >= 12; sat >= 0.65; E9c <= 42 px; tree shadows <= 0.6x lawn); E1 >= 8 eye-level only, aerial p4 sigma6 <= 5",
+   "notes": "NOT merged (Opus director): ties r03 but critic preferred the old build 4/5, E9c 54.1 px regressed, perf evidence invalid. r05 on Opus (crowns repeated as biggest gap r01/r02/r04)."
+  },
+  {
+   "t": "2026-10-03 03:58",
+   "piece": "look",
+   "round": 7,
+   "verdict": "fails",
+   "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5",
+   "notes": "NOT merged (Opus director): sun/sky 4 < r03 6, night 4 < r03 5. L27 twilight dome now passes 12/12. r08 on Opus; stop look if r08 misses sun/sky >= 6 and night >= 5 (slot -> island r3)."
+  },
+  {
+   "t": "2026-10-03 04:19",
+   "piece": "traversal",
+   "round": 26,
+   "verdict": "fails",
+   "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s",
+   "notes": "Merged (Opus director): camera 6->7, body 6->7, original Tessera suit everywhere incl. playable default. Traversal STOPPED (director gate: moves stayed 6 for 4 rounds). Slot -> water r5 (Sonnet)."
+  },
+  {
+   "t": "2026-10-03 07:14",
+   "piece": "terrain",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "crowns cast sun shadows on lawn + paving (prove leaf-card materials write the shadow-depth pass first); remove p10 hull ball",
+   "notes": "Merged (Opus director): trees 4->5, no axis below r03, critic preferred new 5/5. r06 on Opus."
+  },
+  {
+   "t": "2026-10-03 09:04",
+   "piece": "water",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "keep sparkle/foam to the contact zone (distance-to-shore mask, fade <= 40 m): river_low near mean Y <= 80, river_sun flanks <= 85, sun path >= 2.2x flanks; gates a-e kept",
+   "notes": "NOT merged (Opus director): colour 3 < r03 5, believability 3 < r03 4; foam 2->3; WPos pre-WPO bug found + fixed (DistFix). r06 on Opus, last bounded round."
+  },
+  {
+   "t": "2026-10-03 10:01",
+   "piece": "look",
+   "round": 8,
+   "verdict": "fails",
+   "gap": "light the city with a low directional sun, not a uniform lift (p5 <= 15, p95 >= 120, 32-px local contrast >= 0.17, sunlit/shaded facade ratio >= 3)",
+   "notes": "NOT merged; look STOPPED (director gate: sun/sky 5 < 6, night 4 < 5). Slot -> city r11 (Sonnet)."
+  },
+  {
+   "t": "2026-10-03 10:09",
+   "piece": "terrain",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "real offset sun shadows from crowns: needs a foliage shadow path (distance-field shadows or Nanite foliage) timed in a clean perf run",
+   "notes": "NOT merged (Opus director): ties r05 but undisclosed regressions (lit lawn -15 %, p4 sigma6 5.71->6.52, ~16 % GPU cost). Finding: non-Nanite instanced pools with DF lighting off cast no shadows. Terrain STOPPED (overall 3 for six rounds). Slot -> island r3 (Sonnet)."
+  },
+  {
+   "t": "2026-10-03 12:56",
+   "piece": "city",
+   "round": 11,
+   "verdict": "fails",
+   "gap": "S4 sky too bright (Y 229 vs refs 119-127): fix in look (sky/aerial perspective only) so the far band sits 25-32 below it; city backlog -> island M3 (S6 curb/red steps, S5 C1, glass reflections, S3 vents)",
+   "notes": "Merged (Opus director): = r10, T2 29.5 -> 6.6 %, S8 glass 70.4 -> 0.69 %. City STOPPED (flat 2 rounds). Billboard conflict resolved to the owner's original art_P27 text."
+  },
+  {
+   "t": "2026-10-03 14:08",
+   "piece": "water",
+   "round": 6,
+   "verdict": "fails",
+   "gap": "world-anchored drifting seawall lace on dark water; river_sun sparkle >= 50 %; restore r03's harbour mirror",
+   "notes": "NOT merged (Opus director): bounded-round guard failed (critic preferred new 3/7 vs r03), undisclosed loss of r03's harbour mirror. Water STOPPED. Slot -> tricks r01 (Opus)."
+  },
+  {
+   "t": "2026-10-03 15:10",
+   "piece": "island",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "fire-escape WHBox collision matching drawn platforms + top-out (r3 crosstown-east: 0 s stuck, <= 1 topOut loop, past x=-235.5 by 3.5 s) on a branch that has merged integration",
+   "notes": "NOT merged (Opus director): no island round merged yet; full-island map untested with traversal r26 / city r11 / terrain r05. M2 avenue route r5 passes a-d. r04 on Opus (same gap 3 rounds)."
+  },
+  {
+   "t": "2026-10-03 16:53",
+   "piece": "tricks",
+   "round": 1,
+   "verdict": "fails",
+   "gap": "web-catch snap: chest <= 250 deg/s in 0.1 s windows from trick end to +0.4 s on all 22 tricks (r01 300-921, 1894 peak); G4 kept; reel >= 12 Mbps",
+   "notes": "Merged (Opus director): no traversal axis below r26; 12 programs / 22 tricks. Flips vs owner clip 5. r02 on Opus, queued until a GPU slot frees."
+  },
+  {
+   "t": "2026-10-03 18:48",
+   "piece": "look",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "remove the dark horizon band so the far rank fades into haze (Otsu split rows 95-140 <= 12 Y; sky rows 100-130 >= far-band mean) on canonical, tour and 18:24 frames",
+   "notes": "NOT merged (below r03 on sun/sky and post). Look STOPPED after five unmerged rounds (r05-r09); resume from the r03 tree with one controlled far-band/AP delta."
   }
  ],
  "perf": [
@@ -1043,6 +1357,10 @@
   {
    "t": "10:07",
    "text": "Owner merged the safety rules (agents-md#4: hard cap 2, no OS dialogs unattended, dead-session protocol). Firewall already allows every Unreal tool. Usage at 80%: all builders now Sonnet 5.5 xhigh, Opus only for blind critics. Resumed: traversal r13 renders + critic, characters r6 engine check + critic, perf r3 (preset into the shipped map)."
+  },
+  {
+   "t": "2026-10-01T06:55",
+   "text": "02:02 WindowServer reset with only 2 engines (GPU pinned, WS starved) killed the orchestrator; loop idle 02:05-06:37. Engine cap now 1 with an automatic starvation governor. Fable 5.1 morning triage: merged combat r3, look r3, traversal r18, city r10, life r3."
   }
  ]
 }

@@ -323,6 +323,9 @@ void FWHSpidey::TakeHit(AWHEnemy* E, double Dmg, bool bHeavy)
 	if (M.Name == "free") { Pos = Hero->GetTraversal()->PosM(); VisYaw = Hero->GetTraversal()->Facing(); }
 	Hp = FMath::Max(0.0, Hp - Dmg);
 	if (!OnGround() && Hp > 0) return;
+	// scripted capture ("hero_armor"): a committed launcher is not knocked out of its rise, and heavy blows stagger instead of knocking down
+	if (C->bHeroArmor && Hp > 0 && M.Name == "launch") return;
+	if (C->bHeroArmor && Hp > 0) bHeavy = false;
 	const FVector D = FlatNorm(Pos - E->Pos);
 	bKin = false; ComboStep = 0;
 	const FVector F = Feet();
@@ -618,6 +621,22 @@ bool FWHSpidey::DoAction(FName K)
 		return true;
 	}
 	if (bAir) { C->Deny(TEXT("Not in the air")); LastResult = TEXT("denied: in the air"); return true; }
+	if (K == "launcher")
+	{ // scripted capture (the hold-attack launcher without the jab-then-hold timing): best eligible target within 4.5 m (a brute only while stunned)
+		const FVector Fp = Feet(); AWHEnemy* Best = nullptr; double Bs = 1e9;
+		for (AWHEnemy* E : C->Enemies)
+		{
+			if (!E || !E->Targetable() || (E->Type == EWHEnemyType::Brute && E->Stun <= 0)) continue;
+			if (E->State == EWHEnemyState::Air || E->State == EWHEnemyState::Knock || E->State == EWHEnemyState::Down) continue;
+			const double Dd = HDist(Fp, E->Pos); if (Dd > 4.5 || FMath::Abs(E->Pos.Z - Fp.Z) > 1.0) continue;
+			double Sc = Dd - ((E->State == EWHEnemyState::Attack || E->State == EWHEnemyState::Approach) ? 0.6 : 0.0);
+			if (DP) Sc += FMath::Acos(FMath::Clamp(FVector::DotProduct(FlatNorm(E->Pos - Fp), FlatNorm(*DP)), -1.0, 1.0)) * 1.2;
+			if (Sc < Bs) { Bs = Sc; Best = E; }
+		}
+		if (Best) { Launcher(Best); ComboStep = 0; LastResult = TEXT("launcher -> ") + Best->Tag(); }
+		else { C->Deny(TEXT("No launcher target")); LastResult = TEXT("launcher: no target"); }
+		return true;
+	}
 	if (K == "heal")
 	{
 		if (Focus >= 1 && Hp < MaxHp) { Focus -= 1; C->Heal(35); LastResult = TEXT("heal +35"); }
@@ -681,7 +700,7 @@ void FWHSpidey::Override(double Dt)
 		|| M.Name == "air" || (M.Name == "airStrike" && M.bHitDone);
 	if (bCancel)
 	{
-		static const FName Order[] = { "finisher", "throw", "strike", "heal", "attack", "web" };
+		static const FName Order[] = { "finisher", "throw", "strike", "heal", "launcher", "attack", "web" };
 		for (const FName& K : Order)
 		{
 			if (!In.Has(K, Gt)) continue;

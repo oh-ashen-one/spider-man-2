@@ -500,6 +500,518 @@
     7,
     7
    ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 15,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    5,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 7,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "F 4K/60 perf",
+   "round": 5,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    8,
+    7,
+    3,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 8,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 16,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    7,
+    5,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  {
+   "piece": "F 4K/60 perf",
+   "round": 6,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    8,
+    3,
+    5,
+    7,
+    3
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 9,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    6,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 17,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    6
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 10,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    6,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 2,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 3,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 18,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "P1 City",
+   "round": 10,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P6 City life",
+   "round": 3,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    6,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P5 Combat",
+   "round": 4,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    6,
+    5,
+    5,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 20,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 21,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 22,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "E Terrain",
+   "round": 2,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    3,
+    3
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 23,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "E Terrain",
+   "round": 3,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "W River water",
+   "round": 3,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    4,
+    5,
+    5,
+    2,
+    4
+   ]
+  },
+  {
+   "piece": "P2 Characters",
+   "round": 14,
+   "model": "sonnet",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "P3 Traversal",
+   "round": 24,
+   "model": "opus",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    6,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "traversal",
+   "round": 25,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    6,
+    7,
+    6,
+    6,
+    7
+   ]
+  },
+  {
+   "piece": "characters",
+   "round": 17,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    6,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "terrain",
+   "round": 4,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    3
+   ]
+  },
+  {
+   "piece": "look",
+   "round": 7,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    5,
+    4
+   ]
+  },
+  {
+   "piece": "traversal",
+   "round": 26,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    7,
+    7,
+    6,
+    7,
+    7
+   ]
+  },
+  {
+   "piece": "terrain",
+   "round": 5,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    4,
+    5,
+    3
+   ]
+  },
+  {
+   "piece": "water",
+   "round": 5,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    3,
+    5,
+    3,
+    3
+   ]
+  },
+  {
+   "piece": "look",
+   "round": 8,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    5,
+    4,
+    4,
+    4,
+    4,
+    4
+   ]
+  },
+  {
+   "piece": "terrain",
+   "round": 6,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    4,
+    4,
+    5,
+    3
+   ]
+  },
+  {
+   "piece": "city",
+   "round": 11,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    5,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "piece": "water",
+   "round": 6,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    5,
+    5,
+    3,
+    4
+   ]
+  },
+  {
+   "piece": "island",
+   "round": 3,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    4,
+    5,
+    5,
+    4,
+    6,
+    4
+   ]
+  },
+  {
+   "piece": "tricks",
+   "round": 1,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    7,
+    7,
+    6,
+    7,
+    7,
+    5
+   ]
+  },
+  {
+   "piece": "look",
+   "round": 9,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    5,
+    4,
+    5,
+    4,
+    4,
+    5
+   ]
   }
  ],
  "agents": [
@@ -617,6 +1129,22 @@
    "winner": "Opus 5.5 high by 0.4",
    "merged": "night1/water-ab-opus",
    "note": "Both FAIL vs reference. Next water round: Opus build + Sonnet's piling foam."
+  }
+ ],
+ "director": [
+  {
+   "when": "2026-09-30",
+   "model": "Fable 5.1",
+   "effort": "high",
+   "why": "Traversal camera axis stuck at 5 for rounds 12-15 (oscillating critic demands)",
+   "output": "docs/night1/traversal/TRICK_CAMERA_SPEC.md (TC1-TC12); reassigned r16 builder to Sonnet 5.5 (mostly deletions)"
+  },
+  {
+   "when": "2026-10-02 20:35",
+   "model": "Opus 5.5",
+   "effort": "high",
+   "why": "Owner: we were using Devin and I didn't want to use Fable 5.1 for this. Loop taken over by a Devin session (lead Opus 5.5 high, sidekick Sonnet 5.5 medium); director role moved from Fable 5.1 to Opus 5.5 high.",
+   "output": "Builder split: traversal r25 Opus 5.5 high; skins r17 + look/sky r7 Sonnet 5.5 xhigh; blind critics Opus 5.5 high; director once per wave. A Sonnet stream moves to Opus only if the same biggest gap repeats two rounds running. GPU cap 3 (owner)."
   }
  ]
 }

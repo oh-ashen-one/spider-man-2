@@ -51,6 +51,85 @@ public:
 	float ReleaseBoostMul = 1.f;
 	/** Round 07: a held swing button re-searches for the next anchor this long (s) after a web release, even while rising. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReattachAfter = 0.22f;
+	// round 20 tunables (-WHTravTune=Name=V): wall-gait torso lean off the facade (rad), air body-to-velocity alignment speed band (m/s),
+	// setback look-ahead above a ledge (m), E-from-wall facade-top search range (m)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitLeanR = 0.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallGaitFootOffR = 0.42f; // round 21 (r20 .30): hips ~.5 m off the facade so the forward-bent driven knee clears it
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV0 = 22.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirAlignV1 = 28.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SetbackLook = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipRange = 260.f;
+	// round 23: a facade top more than this far above the hero (m) is only the fallback of a wall zip; the nearest roof edge / corner first (0 = off)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipFarUp = 110.f;
+	// round 23 (Z23: w2 E-zip must end on a perch <= 2 s after fire): when the facade top is far and nothing passes the camera-facing search,
+	// a second search up to this range (m) takes the nearest visible roof edge / corner in any direction off the wall (run direction preferred)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallZipFarRange = 90.f;
+	// round 23 (director: vertical run torso 5-20 deg off wall-up; c ran a 33 deg diagonal with a 30 deg torso): a vertical-dominant run
+	// (stick mostly up) keeps its run line within this many degrees of the wall's up axis (0 = r22 free diagonal)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallVertMaxDeg = 10.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AntiTunnel = 1.f;
+	// round 24 (critic r23 biggest gap, SPEC T7 / T3: "every 4 s a release from >= 30 m over the floor down to a 3-13 m low point, drop >= 20 m;
+	// rope on screen 25-45 %"): ALTITUDE CHAIN. AltChain 1 = a plain web release (and a flow flip) is solved for an apex AltApexH..AltApexH +
+	// AltApexJit m over the floor (feet; per-release deterministic jitter), the release velocity turned up toward it (speed kept, at most
+	// AltTurnDeg of turn, horizontal >= AltHMin m/s, vz <= AltVzMax m/s; the climb above it still goes forward); a swing entered >= AltEntryMin m
+	// over the street bottoms out AltLowLo..AltLowHi m over the street (alternating halves of the band, so consecutive arcs differ) instead of
+	// the shallow / deep drop below the entry. 0 = r23 (ReleaseVzMax forward pop, shallow / deep arcs).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltChain = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexH = 33.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexJit = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltVzMax = 34.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltTurnDeg = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltHMin = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltFlowVzMax = 26.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltEntryMin = 20.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowLo = 5.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltLowHi = 10.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenAhead = 35.f; // round 24: open street needed ahead (m; 0 = always)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltOpenUp = 8.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltWeaveK = 0.4f; // round 24: corridor weave scale (low points near the centre)
+	bool bAltArcNext = false, bAltSwing = false; // round 24: the next / current swing follows an altitude release (alt arc + centred weave)
+	// round 25 (critic r24 biggest gap, SPEC T5 / T6: "the rope readable on every web_on frame, 2-4 px, mean luminance >= 25/255 off a 6 px
+	// band either side, over dark glass AND pale facades"; r07 emissive beam bloomed, r08 pale line vanished on pale facades, r09-r24 dark
+	// lit line vanished on dark glass): read by the character's web strands (the rope look; no gameplay effect).
+	// RopeLook 1 = an UNLIT two-tone strand (/Game/Traversal/Materials/M_TravWeb: bright core, dark rim, exposure-compensated so the core
+	// never blooms, no fog) whose core share follows the luminance of the scene right behind it (a ring of 4 scene-colour taps ~5 px out):
+	// over a dark background the bright core fills RopeCoreDark of the width, over a bright one only RopeCoreBright (the dark rim carries
+	// the line), the switch at RopePivot (exposed linear luminance; ~sRGB 120); screen-space width clamp RopePxMin..RopePxMax px.
+	// 0 = r24 (lit dark M_TravColor line, world width 1.6 cm / 0.25 % of the distance).
+	// r25 build 2: RopeSolid 1 = ONE tone over the whole strand width (bright over a dark background, near-black over a bright one; the
+	// two-tone core/rim averaged back to the background's level in the resolved 3-4 px line: 18/65 frames passed), drawn after motion
+	// blur with a manual scene-depth test (M_TravWeb); width clamp 2.8-3.4 px (the build-1 3.2-4.0 px clamp measured up to 4.5 px).
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeLook = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeSolid = 1.f;
+	// r25 build 3: unused strand segments stay registered as visible at a 1e-4 scale (no render-proxy re-creation on the attach frame)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeKeepProxy = 1.f;
+	// r25 build 4: the shot strand's travelling wave (30 cm world, decays in ~0.3 s) bounded to RopeWavePx on screen (< 0 = unbounded, r24)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeWavePx = 1.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 2.8f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 3.4f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.86f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 0.20f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 1.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.004f;
+	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
+	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
+	/** Round 24: vertical release speed that tops out D m higher (StepAir gravity: G, x0.55 under |vz| 3.5). */
+	static double AltVzFor(double D);
+	// round 21 (-WHTravTune): side-run torso raised this many degrees above the run line toward the wall's up axis (0 = r20 plank);
+	// MantleStep 1 = a setback is crossed ON the surfaces (up the lip, along the ledge top, onto the next face; limbs stay on them), 0 = r20 hop
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideRaiseDeg = 25.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float MantleStep = 1.f;
+	// round 22 (critic r21 "side-run slither": box wider than tall; director target: upright parkour sprint, torso within 30 deg of the
+	// wall's up axis, facing along the run line): WallSideUpright 1 = the side run is an upright runner side-on to the facade (body up =
+	// wall-up leaned WallSideLeanDeg forward along the run line and WallSideOutDeg out from the wall so the feet reach it; chest along the
+	// run line); 0 = the r21 frame (chest to the wall, body WallSideRaiseDeg above the run line). WallSideFootOff = root offset (m) before the
+	// out-tilt (feet ~.1 m off the facade, hips ~.4 m)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideUpright = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideLeanDeg = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideOutDeg = 16.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideFootOff = 0.36f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallSideClimbDamp = 10.f; // round 22 (r21 3): climb-speed decay on a sideways run (1/s)
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
@@ -116,6 +195,49 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowCatchRise = 3.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMin = 6.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowVzMax = 14.f;
+	/**
+	 * Round 15 (orchestrator reconciliation of critic r11 "sky behind the hero" and critic r14 "do not tilt up into the sun": sky by
+	 * HEIGHT, not by camera pitch): a flow flip's climb is solved so the catch window opens FlowRoofOver m above the LOWER street wall's
+	 * roofline beside the path ahead (RoofBesideAhead, FlowRoofAhead m) whenever that needs a rise between FlowCatchRise and FlowRiseMax m
+	 * (a roofline further up than that is out of reach for a flow flip: the r13 FlowCatchRise rule is kept, no rocket launch).
+	 * FlowRoofOver 0 = off.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofOver = 3.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRiseMax = 14.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofAhead = 40.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofMinH = 16.f;
+	double FlowRoofUsed = -1.0, FlowRiseUsed = 0.0; // telemetry: roofline (m over the street) and rise of the last flow flip
+	/**
+	 * Round 17 (critic r16 single gap: "every trick is shot from the street into a dark facade"; TRICK_CAMERA_SPEC TC8): a flow flip fires
+	 * from an APEX with the hips >= FlowRoofOver m over the lower roofline within FlowRoofR m. Roofline = per street side the HIGHEST roof
+	 * sample (>= FlowRoofMinH over the street: canopies ignored) within FlowRoofR m behind / beside / ahead, lower side wins (FlowRoofTarget).
+	 * bFlowApexSolve: the release's climb is solved for the program's APEX (hips at target + FlowApexMargin), not for the catch height, and
+	 * the flow vz cap is FlowApexVzMax; a swing that ends in a flip is held on its rising front until the apex is reachable
+	 * (FlowApexGap <= FlowReadyGain, autoChain; a live player lets go at the top of the swing the same way).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bFlowApexSolve = true;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowRoofR = 30.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMargin = 1.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexVzMax = 20.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowApexMin = 2.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowReadyGain = 9.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlowHoldMax = 12.0f; // the roof hold applies only while the gap is under FlowReadyGain + this (a canyon roofline is not waited for)
+	/** Round 17: world Z the hips must reach at the flip apex (lower roofline within FlowRoofR + FlowRoofOver + FlowApexMargin); -1 = no roof. */
+	double FlowRoofTarget(const FVector& Dir, double* OutRoofOverStreet = nullptr) const;
+	/** Round 17: target - hips now (m; <= 0 already above it); -1e9 when there is no roofline rule here. Cached 0.1 s. */
+	double FlowApexGap() const;
+	/** Round 18 (critic r17: f4's 4th flip missed its catch over a plaza): is a web in reach where a flow flip released now ends (Dur s of flight at the
+	 *  current horizontal speed x CatchSpeedK)? The auto-chain only presses the trick when it is (else a plain release). Cached 0.1 s. */
+	bool CatchReachable(double Dur) const;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchSpeedK = 1.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchFlightS = 1.55f; // release -> catch window (CatchT: backDouble 1.6, corkscrew 1.51, frontPikeSwan 1.43)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float CatchGuard = 1.f;    // 0 = off
+	/** Round 17: apex gain (m) of a flow flip released now with vertical speed Vz0 (program boost included). */
+	double FlowApexGain(double Vz0, const struct FWebFlipProgram* FP) const;
+	mutable double GapCacheT = -1e9, GapCacheV = -1e9;
+	mutable double CatchCacheT = -1e9; mutable bool bCatchCacheV = true;
+	FVector RouteDir = FVector::ZeroVector; // round 17: smoothed horizontal travel direction (unit)
+	double FlowApexWant = 0.0; // telemetry: apex hips Z the last flow flip was solved for (world m; 0 none)
 	bool bFlowChoose = false; // round 13: ChooseTrick/FitFlip called for a flow flip (its air is solved, not ballistic)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyApexOver = 6.f;
 	/** Round 12: gravity scale while a sky launch's flip program plays (from vz 9 m/s: ~5 m more climb, ends near its start height). */
@@ -224,9 +346,33 @@ public:
 	void PosePreview() { FinalQ = Orient(1e-4); WriteAnim(FinalQ); }
 	int32 BuildingCount() const { return TravWorld.Boxes.Num(); }
 	int32 ZipKindCode() const;
+	/** Round 19: why the last E press did what it did (highlighted / facadeTop / nearest / wallZip / pointLaunch / webDash / none). */
+	FName LastZipWhy;
+	int32 LastLandSrc = 0;
+	int32 FlipVarCount = 0;
+	FRandomStream FlipRng{ 20261001 }; // round 19: own stream (the swing solver's Rng sequence and the r18 routes stay unchanged)
+	int32 GroundSrcNow() const { (void)FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1); return TravWorld.LastGroundSrc; }
+	FString LastZipFrom;
+	/** Round 20 telemetry: setback mantles and top-outs of this run. */
+	int32 SetbackCount = 0, TopOutCount = 0, TunnelStops = 0;
+	/** Round 20: a fresh RMB press cancels a trick / top-out flip / wall run into a swing at once (-WHTrickCancel=0 = r19). */
+	bool bTrickCancel = true;
+	bool bPerchTopFix = true; // round 20: facadeTop perches on the highest top within 0.15-0.6 m of the edge (parapets); -WHPerchTopFix=0 = r19
+	bool bFacadeWeb = true; // round 20: -WHFacadeWeb=0 = no facade web after a wall cancel (A/B)
+	/** Round 20: rope wrap guard (strand grazing its own facade near the anchor; re-anchor turn limit). -WHRopeGuard=0 = r19. */
+	bool bRopeGuard = true;
+	float RopeGuardNear = 6.f, RopeGuardDeg = 40.f;
+	int32 FlipCancels = 0;
+	bool NearestZip(FTravZipPoint& Out, FName& Why) const;
+	bool TryMantleSetback(const FVector& N0);
+	/** Round 20: wall normal on real facade triangles -- the face of the building box under the contact when one is within 1.5 m (window
+	 *  jambs, mullions and pilasters gave the side run a new normal every frame), else the raw normal. */
+	FVector CleanWallNormal(const FVector& Pt, const FVector& RawN) const;
+	/** Round 20: facade plane in front of the body from a 3 x 2 ray grid along -N (most protruding valid hit, cleaned normal). */
+	bool WallPlane(const FVector& N, FVector& OutN, FVector& OutPoint) const;
 
 private:
-	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop };
+	enum class EKin : uint8 { None, Vault, CornerWrap, WallHop, Mantle };
 
 	struct FSwing
 	{
@@ -256,7 +402,7 @@ private:
 	{
 		FVector Normal = FVector::ForwardVector, Up = FVector::UpVector, Point = FVector::ZeroVector, LockDir = FVector::ZeroVector;
 		FVector2D Move = FVector2D::ZeroVector;
-		double RunV = 0, Phase = 0, Off = 0, Dist = 0.38, RunK = 0, LockMx = 0, ZipT = 0;
+		double RunV = 0, Phase = 0, Off = 0, Dist = 0.38, RunK = 0, LockMx = 0, ZipT = 0, SideUpK = 0; // round 22: SideUpK 0..1 upright side-run blend
 		bool bFast = false, bLockDir = false, bZipWeb = false;
 	};
 	struct FKin
@@ -269,6 +415,9 @@ private:
 		// wallHop
 		double TA = 0, TB = 0, F0 = 0, Apex = 0, LandTop = 0, DTot = 0, ExitSpeed = 0;
 		FVector Inward = FVector::ZeroVector;
+		// round 21 surface-following setback step: centre polyline (m), surface normal per vertex, cumulative length, distance travelled
+		FVector MQ[6], MN[6]; double ML[6] = { 0 }; int32 MNum = 0; double MS = 0;
+		FVector CurN = FVector::ZeroVector, CurPt = FVector::ZeroVector; // current support surface (normal, closest point) while stepping
 	};
 	struct FQuick
 	{
@@ -288,6 +437,7 @@ private:
 		double ChargeT = 0, JumpCharge = 0, Coyote = 0, JumpBuf = 0;
 		double AirT = 0, ApexZ = 0, RelT = 99, NoAnchorT = 0, AirTapT = -9;
 		bool bDive = false, bGliding = false, bGroundSwing = false, bJumpRelHold = false, bAirTrickUsed = false;
+		bool bWallCancel = false; FVector WallCancelN = FVector::ZeroVector, WallCancelDir = FVector::ZeroVector; // round 20
 		FSwing Sw;
 		int32 Chain = 0;
 		double SinceSwing = 99;
@@ -357,6 +507,7 @@ private:
 	double FacadeAvoid(double H);
 	FVector TravelDir(const FWebTravInput& I) const;
 	bool TryStartSwing(const FWebTravInput& I);
+	bool FacadeAnchor(FTravAnchor& A) const; // round 20: RMB on a wall -- web up the facade ahead of the kick when the search finds nothing
 	void StartSwing(const FTravAnchor& A, const FVector& Fwd, const FVector* Turn, double HS);
 	double SwingPhase() const;
 	FVector PivotFor(const FVector& AnchorPoint) const;
@@ -428,5 +579,6 @@ public:
 	static constexpr double JUMP = 11.2, JUMP_MAX = 19.5;
 	// round 06 wall-run body: lean back off the wall (rad) and feet offset from the wall plane (m) while running
 	static constexpr double WallRunLean = 0.16, WallRunFootOff = 0.42;
+	// round 19: procedural IK stride -- hips off the facade, torso leaned back (round 20: UPROPERTYs WallGaitLeanR / WallGaitFootOffR)
 	static constexpr double WEB_MASS = 80;
 };

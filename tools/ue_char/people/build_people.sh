@@ -37,6 +37,8 @@ for c in $PEOPLE; do
     t=$(basename "$v" _atlas.png); t=${t#${C}_}
     cp "$v" "$ART/${c}_${t}_basecolor.png"
   done
+  # round 09: the thug's collar wedge = the skin of the nape between the hair line and the hood collar: darken those texels (final bind-pose mesh, see nape_fix.py)
+  if [ "$c" = thug ]; then python3 "$WT/tools/ue_char/people/nape_fix.py" "$GLB/SK_Street_Thug.glb" "$ART/thug_basecolor.png" "$ART/thug_Oxblood_basecolor.png"; fi
 done
 # hand weapons (Blender headless, generic shapes) rigidly skinned into the right hand: SK_Street_<Person>_<Weapon>.glb
 W="$SCR/weapons"; mkdir -p "$W"

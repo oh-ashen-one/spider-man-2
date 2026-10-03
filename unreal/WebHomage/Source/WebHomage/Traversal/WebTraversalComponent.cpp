@@ -2,6 +2,9 @@
 // Port of src/player/traversal/traversal.js (browser build). Function order and comments follow the browser file so the
 // two can be diffed by eye; owner feel notes (user rN / feedback #N) are kept where they shaped the code.
 #include "Traversal/WebTraversalComponent.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
+#include "Traversal/Anim/WebTravAnimInstance.h"
 #include "Traversal/WebTravFlips.h"
 #include "Traversal/WebTravCamera.h"
 #include "WebHomage.h"
@@ -68,6 +71,13 @@ void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 	TravWorld.Init(World, InOwner);
 	Anchors = MakeUnique<FWebTravAnchors>(TravWorld);
 	Rng.Initialize(RandomSeed);
+	FlipRng.Initialize(RandomSeed * 31 + 7);
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFlipVar="), V)) WebFlips::bVariants = V != 0; } // round 19 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravHighFix="), V)) FWebTravAnchors::bHighFix = V != 0; } // round 19 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTrickCancel="), V)) bTrickCancel = V != 0; } // round 20 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHFacadeWeb="), V)) bFacadeWeb = V != 0; } // round 20 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHPerchTopFix="), V)) bPerchTopFix = V != 0; } // round 20 A/B
+	{ int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHRopeGuard="), V)) bRopeGuard = V != 0; } // round 20 A/B
 	bWorldReady = true;
 }
 
@@ -501,11 +511,21 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		const FWebFlipProgram* FP = S.Sub == N_trick ? WebFlips::Find(S.Trick) : nullptr;
 		// round 13: from CatchOpen s before the end (inside the final reach) -- critic r12 "attach a web within 0.3 s of Reach"
 		const double BusyUntil = FP ? double(FP->CatchT()) - 0.02 : FMath::Max(0.62, S.TrickDur - 0.35);
-		const bool bTrickBusy = S.Sub == N_trick && S.SubT < BusyUntil; // let the flip finish
+		// round 20 (critic r19 owner bug 1: "a held RMB during a trick waits 0.47-1.08 s"): a FRESH press always cancels the trick / top-out
+		// flip / armed flip into a swing at once (the program's rotation springs back to the body frame in 0.07 s, PoseFigure); only a
+		// button that was already held lets the flip finish into its catch window
+		const bool bCancelTrick = I.bSwingPressed && bTrickCancel && ((S.Sub == N_trick && S.SubT < BusyUntil) || S.Sub == N_topOut || !S.ArmedFlip.IsNone());
+		const bool bTrickBusy = S.Sub == N_trick && S.SubT < BusyUntil && !bCancelTrick; // let the flip finish
+		if (bCancelTrick)
+		{
+			FlipCancels++;
+			S.ArmedFlip = NAME_None;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV trick cancel: RMB pressed in %s at %.2f s of it -> swing search now"), *S.Sub.ToString(), S.SubT);
+		}
 		// round 07 (critic r06, swing cadence): after a web release a held button searches again from 0.22 s on, even while
 		// still rising (was: only once vz < 5.5 m/s -> 1-1.7 s web-less falls); a fresh press always searches at once (the
 		// throttle left over from the previous search used to swallow the press)
-		const bool bReady = I.bSwingPressed || (S.bGroundSwing && S.AirT > 0.14) || (S.AirT > 0.1 && S.Vel.Z < 5.5 && !bTrickBusy) || S.Vel.Z < -6
+		const bool bReady = I.bSwingPressed || (S.bGroundSwing && S.AirT > (bTrickCancel && S.Sub == N_wallJump ? 0.0 : 0.14)) || (S.AirT > 0.1 && S.Vel.Z < 5.5 && !bTrickBusy) || S.Vel.Z < -6
 			|| (S.RelT > ReattachAfter && !bTrickBusy);
 		if (I.bSwingPressed) S.SearchT = 0;
 		S.SearchT -= Hs;
@@ -539,6 +559,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 
 void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 {
+	S.bWallCancel = false;
 	S.bAirTrickUsed = false; S.AirTapT = -9;
 	S.NoAnchorT = 0; S.bGliding = false; S.bGroundSwing = false;
 	const double Impact = -S.Vel.Z, Drop = S.ApexZ - F;
@@ -565,6 +586,20 @@ void UWebTraversalComponent::Land(double F, const FWebTravInput& I)
 	S.bCharging = false; S.JumpCharge = 0;
 	S.Carry = FVector::ZeroVector;
 	Emit(N_land, S.Sub == N_idle ? 0.f : float(S.LandSeverity));
+	{ // round 19 (owner: "landing in mid-air"): log every landing whose floor is not a building box / the ground mesh
+		(void)TravWorld.GroundHeight(S.Pos.X, S.Pos.Y, F + 0.3);
+		LastLandSrc = TravWorld.LastGroundSrc;
+		// round 20: in the visual-triangle mode every floor a ray can find is a visible solid (src 4 = a visible mesh outside any building box)
+		if (TravWorld.SolidMode != 2 && LastLandSrc != 2 && LastLandSrc != 3)
+		{
+			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV landing on a non-traversal floor: (%.1f, %.1f) z %.2f src %d %s"), S.Pos.X, S.Pos.Y, F, LastLandSrc,
+				LastLandSrc == 4 ? *TravWorld.LastGroundComp : TEXT(""));
+		}
+		else
+		{
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV landing: (%.1f, %.1f) z %.2f src %d %s"), S.Pos.X, S.Pos.Y, F, LastLandSrc, LastLandSrc == 4 ? *TravWorld.LastGroundComp : TEXT(""));
+		}
+	}
 }
 
 // ------------------------------------------------------------------ corridor keeping (swing / air chains stay in the street canyon)
@@ -619,6 +654,7 @@ void UWebTraversalComponent::Corridor(double Hs, const FVector& InD)
 		{
 			const double AOff = CorrWallD[W1] + FVector::DotProduct(S.Sw.Anchor - S.Pos, N1) - 0.5 * (CorrWallD[W] + CorrWallD[W1]);
 			Target = FMath::Clamp(AOff * double(WeaveK), -double(WeaveAmp), double(WeaveAmp));
+			if (bAltSwing) Target *= double(AltWeaveK); // round 24 (T7 "low point over the street centre", clear of the sidewalk trees)
 		}
 		else bFree = FMath::Abs(Off) < double(WeaveAmp) + 2.0;
 		if (!bFree)
@@ -712,19 +748,26 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	const double HS = HLen(S.Vel);
 	const double Fl = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 	FTravAnchor A;
-	if (!Anchors->Find(S.Pos, FwdSearch, Turn, S.Vel.Size(), Fl, A))
+	bool bFound = Anchors->Find(S.Pos, FwdSearch, Turn, S.Vel.Size(), Fl, A);
+	// round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
+	// round 19 (owner: "swing eventually breaks"): the behind-the-body rule only applies at speed (a slow fall / a hop off a wall or perch
+	// has no meaningful travel direction; it refused every web behind the drift)
+	if (bFound)
+	{
+		FVector HVg;
+		if (!HDir(S.Vel, HVg)) HVg = Fwd;
+		const bool bBehind = HLen(S.Vel) > 6.0 && FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0;
+		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || bBehind) bFound = false;
+	}
+	// round 20 (probe x2 / s1: RMB on a wall kicked off but the street search found nothing for 0.5-1 s, so he re-stuck to the wall):
+	// right after a wall cancel the web goes up the facade ahead of the kick
+	bool bFacade = false;
+	if (!bFound && bFacadeWeb && S.bWallCancel && S.Mode == EWebTravMode::Air && S.AirT < 0.8)
+		bFound = bFacade = FacadeAnchor(A);
+	if (!bFound)
 	{
 		Emit(N_noAnchor); S.NoAnchorT += 0.06;
 		return false;
-	}
-	{ // round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
-		FVector HVg;
-		if (!HDir(S.Vel, HVg)) HVg = Fwd;
-		if (A.Point.Z < S.Pos.Z + AnchorMinAbove || FVector::DotProduct(Flat(A.Point - S.Pos), HVg) < 2.0)
-		{
-			Emit(N_noAnchor); S.NoAnchorT += 0.06;
-			return false;
-		}
 	}
 	S.NoAnchorT = 0;
 	{
@@ -746,14 +789,44 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 		WebAttach(S.bPendingRight, A.Point, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
 		return true;
 	}
+	if (bFacade)
+	{ // swing along the facade in the kick direction
+		Fwd = FVector::DotProduct(Flat(A.Point - S.Pos), S.WallCancelDir) >= -1.0 ? S.WallCancelDir : -S.WallCancelDir; Turn = nullptr;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall cancel: facade web at (%.1f, %.1f, %.1f), %.1f m up, %.1f m ahead"), A.Point.X, A.Point.Y, A.Point.Z,
+			A.Point.Z - S.Pos.Z, FVector::DotProduct(Flat(A.Point - S.Pos), S.WallCancelDir));
+	}
+	S.bWallCancel = false;
 	StartSwing(A, Fwd, Turn, HS);
 	S.bGroundSwing = false;
 	return true;
 }
 
+bool UWebTraversalComponent::FacadeAnchor(FTravAnchor& A) const
+{
+	const FVector N = S.WallCancelN, D = S.WallCancelDir;
+	if (N.SizeSquared() < 0.5 || D.SizeSquared() < 0.5) return false;
+	// (probe s1: a vertical run 4-14 m from the tower's corner found nothing ahead -- closer points, straight up, then back along the facade)
+	for (double Ahead : { 12.0, 9.0, 16.0, 6.0, 3.0, 0.0, -6.0, -10.0 })
+		for (double Up : { 11.0, 8.0, 15.0, 6.0 })
+		{
+			const FVector Q = S.Pos + D * Ahead + FVector(0, 0, Up) + N * 2.5;
+			FTravHit FH;
+			if (!TravWorld.Raycast(Q, -N, 6.0, FH) || FH.bGround || FVector::DotProduct(FH.Normal, N) < 0.7) continue;
+			if (FH.Point.Z < S.Pos.Z + AnchorMinAbove) continue;
+			const FVector From = S.Pos + N * 1.0, To = FH.Point + N * 0.3, Dd = To - From;
+			FTravHit FH2;
+			if (TravWorld.Raycast(From, Dd.GetSafeNormal(), FMath::Max(0.1, Dd.Size() - 0.8), FH2)) continue; // the strand must reach it
+			A.Point = FH.Point; A.Normal = FH.Normal; A.Kind = FName(TEXT("wall")); A.L = FVector::Dist(S.Pos, FH.Point); A.Lat = 0.0;
+			return true;
+		}
+	return false;
+}
+
 void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd, const FVector* Turn, double HS)
 {
 	FSwing& Sw = S.Sw;
+	struct FAltArcClear { bool& B; ~FAltArcClear() { B = false; } } AltArcClear{ bAltArcNext }; // round 24: one swing per altitude release
+	bAltSwing = AltChain > 0.f && bAltArcNext;
 	S.Chain = S.SinceSwing <= CHAIN_BUF ? FMath::Min(CHAIN_MAX, S.Chain + 1) : 0; // user r10g momentum chain
 	Emit(N_swingChain, 0.f, 0.f, float(S.Chain));
 	Sw.Anchor = A.Point; Sw.Normal = A.Normal; Sw.Kind = A.Kind; Sw.ModelT = 0.1;
@@ -782,6 +855,14 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		{
 			double Drop = (S.SwingIdx % 2 ? double(ArcDropShallow) : double(ArcDropDeep)) + 1.5 * Rng.FRand();
 			BottomFeet = FMath::Max(double(ArcLowMin), HEntry - Drop); // round 10: 3 -> ArcLowMin (5 m)
+			// round 24 (T7 altitude chain): a swing entered from the roofline altitude dives to AltLowLo..AltLowHi m over the street,
+			// alternating the low / high half of the band (consecutive arcs differ by >= 1 m)
+			// (hold B r24: only after an altitude release -- the opening swing of c / x2 / r1 from a 22 m spawn changed their r23 paths)
+			if (AltChain > 0.f && bAltArcNext && !S.bSky && HEntry >= double(AltEntryMin))
+			{
+				const double Mid = 0.5 * double(AltLowLo + AltLowHi), Rj = double(Rng.FRand());
+				BottomFeet = FMath::Max(double(ArcLowMin), S.SwingIdx % 2 ? FMath::Lerp(double(AltLowLo), Mid - 0.5, Rj) : FMath::Lerp(Mid + 0.5, double(AltLowHi), Rj));
+			}
 			// round 10: the first web after a sky launch dives back into the canyon: low point 1-3 storeys over the street
 			if (S.bSky) BottomFeet = double(ArcLowMin) + double(SkyArcExtra) * Rng.FRand();
 		}
@@ -1144,13 +1225,30 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 	D /= L;
 	FTravHit Hit;
 	if (!TravWorld.Raycast(S.Pos, D, L - 1.5, Hit) || Hit.Distance < 1.5) return;
+	// round 20 (probe f4 8.0 s: with visual-triangle solids a cornice / balcony 3-5 m below the anchor on its own facade "blocked" the strand ->
+	// re-anchor onto a low point that turned a 37 m/s eastward swing 70 deg north, out of the city): the strand grazing the anchor's own facade
+	// within RopeGuardNear m of the anchor is not a wrap, and a re-anchor may not turn the travel more than RopeGuardDeg
+	if (bRopeGuard && Hit.Distance > L - double(RopeGuardNear)) return;
 	{
 		const double Fl = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 		FTravAnchor A;
 		if (Anchors->Find(S.Pos, Flat(Sw.Dir).GetSafeNormal(), nullptr, S.Vel.Size(), Fl, A) && A.Point.Z > S.Pos.Z + 3)
 		{
-			Reanchor(A); Emit(N_ropeReanchor);
-			return;
+			bool bOk = true;
+			if (bRopeGuard && S.Vel.SizeSquared() > 25.0)
+			{ // predicted velocity on the new arc (same projection as Reanchor)
+				const FVector Pv = PivotFor(A.Point);
+				FVector V2 = S.Vel;
+				ProjectPerpendicular(V2, (Pv - S.Pos).GetSafeNormal());
+				const double Cos = FVector::DotProduct(V2.GetSafeNormal(), S.Vel.GetSafeNormal());
+				bOk = Cos >= FMath::Cos(FMath::DegreesToRadians(double(RopeGuardDeg)));
+				if (!bOk) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV rope guard: re-anchor refused (would turn the travel %.0f deg)"), FMath::RadiansToDegrees(FMath::Acos(FMath::Clamp(Cos, -1.0, 1.0))));
+			}
+			if (bOk)
+			{
+				Reanchor(A); Emit(N_ropeReanchor);
+				return;
+			}
 		}
 	}
 	if (Hit.bGround) return; // the strand may only wrap on a model, never on bare terrain
@@ -1235,18 +1333,26 @@ FName UWebTraversalComponent::FitFlip(FName Want) const
 	if (bFlowChoose) return HeightAboveFloor() >= double(FlipFloorClear) ? Want : NAME_None;
 	const double Air = AirTimeToClear();
 	auto Need = [](const FWebFlipProgram* P) { return P ? double(P->CatchT()) : 1e9; };
-	const FWebFlipProgram* P = WebFlips::Find(Want);
-	if (P && Need(P) + double(FlipCatchRoom) <= Air) return Want;
+	const FWebFlipProgram* P = WebFlips::FindBase(Want);
+	if (P && Need(P) * 1.18 + double(FlipCatchRoom) <= Air) return Want; // round 19: room for the longest variant
 	const FName Short(TEXT("backSingle"));
-	if (Need(WebFlips::Find(Short)) + double(FlipCatchRoom) <= Air) return Short;
+	if (Need(WebFlips::FindBase(Short)) * 1.18 + double(FlipCatchRoom) <= Air) return Short;
 	return NAME_None;
 }
 
 void UWebTraversalComponent::StartTrick(FName Name)
 {
 	if (Name.IsNone()) return;
-	if (const FWebFlipProgram* FP = WebFlips::Find(Name))
+	if (const FWebFlipProgram* FP0 = WebFlips::FindBase(Name))
 	{ // round 11: flip program — its length is the trick; boost at 30 % of the first shape
+		// round 19 (critic r18 "every program is a replay"): this instance's variant -- a fast release spins quicker (shorter), a high apex
+		// has time for a slower, more extended program; + / - 5 % jitter; segments and arm / leg timing vary inside it (WebFlips::MakeVariant)
+		const double Sp = S.Vel.Size(), ApexH = HeightAboveFloor() + FMath::Max(0.0, S.Vel.Z) * FMath::Max(0.0, S.Vel.Z) / (2.0 * G);
+		const double Sc = 1.0 - 0.10 * FMath::Clamp((Sp - 24.0) / 12.0, -1.0, 1.0) + 0.08 * FMath::Clamp((ApexH - 18.0) / 15.0, -1.0, 1.0) + 0.05 * (2.0 * FlipRng.FRand() - 1.0);
+		const FWebFlipProgram* FP = WebFlips::MakeVariant(Name, float(Sc), uint32(++FlipVarCount * 7919 + FlipRng.RandHelper(100000)));
+		if (!FP) FP = FP0;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flip variant %s #%d: release %.1f m/s, apex ~%.1f m -> x%.3f (%.2f s, lead %.3f lag %.3f)"),
+			*Name.ToString(), FlipVarCount, Sp, ApexH, FP->Scale, FP->Dur(), FP->Lead, FP->Lag);
 		S.Trick = Name; S.LastTrickName = Name;
 		S.TrickSide = FMath::Abs(S.TrickLat) > 0.35 ? Sgn(S.TrickLat) : 1.0; // corkscrew twist direction toward the stick
 		S.TrickDur = FP->Dur(); S.TrickSnapT = 0.3 * FP->Segs[0].Dur; S.bTrickBoosted = false; S.bTrickNoUp = false;
@@ -1349,6 +1455,96 @@ double UWebTraversalComponent::RoofBesideAhead(const FVector& Dir, double Ahead)
 	return FMath::Min(Top[0], Top[1]);
 }
 
+double UWebTraversalComponent::FlowRoofTarget(const FVector& Dir, double* OutRoofOverStreet) const
+{
+	// round 17 (TC8): per street side, the HIGHEST roof inside the FlowRoofR m half-disc on that side of the travel direction (down-rays on
+	// a 5 m grid, the same measure as roof_check.py on the engine heightmap); tops under FlowRoofMinH m over the street are street trees /
+	// awnings (r15 probe) and count as low. A side with nothing taller is "low" = FlowRoofMinH. The LOWER side is the roofline the apex
+	// must clear. (A first version sampled the street wall with horizontal rays: at 8 m they hit the tree canopy, found no roof on the
+	// low side and used the 90 m side.)
+	FVector F = Flat(Dir);
+	if (F.SizeSquared() < 1e-4) return -1.0;
+	F.Normalize();
+	const FVector Rt(-F.Y, F.X, 0);
+	const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+	const double Low = Street + double(FlowRoofMinH);
+	double Top[2] = { Low, Low };
+	const double RR = double(FlowRoofR);
+	// the flip travels ~1 s of horizontal speed before its apex: the region is the capsule of radius RR around that stretch
+	const double Dap = FMath::Min(40.0, HLen(S.Vel) * 1.0);
+	for (double A = -RR; A <= Dap + RR + 1e-3; A += 5.0)
+	{
+		const double Ac = FMath::Clamp(A, 0.0, Dap);
+		for (double L = -RR; L <= RR + 1e-3; L += 5.0)
+		{
+			if ((A - Ac) * (A - Ac) + L * L > RR * RR || FMath::Abs(L) < 2.0) continue;
+			const FVector Q = S.Pos + F * A + Rt * L;
+			FTravHit Hr;
+			if (!TravWorld.Raycast(FVector(Q.X, Q.Y, S.Pos.Z + 250.0), FVector(0, 0, -1), 500.0, Hr) || Hr.bGround) continue;
+			const int32 Side = L > 0.0 ? 1 : 0;
+			Top[Side] = FMath::Max(Top[Side], Hr.Point.Z);
+		}
+	}
+	const double Roof = FMath::Min(Top[0], Top[1]);
+	if (OutRoofOverStreet) *OutRoofOverStreet = Roof - Street;
+	return Roof + double(FlowRoofOver) + double(FlowApexMargin);
+}
+
+double UWebTraversalComponent::FlowApexGap() const
+{
+	if (S.Clock - GapCacheT < 0.1) return GapCacheV;
+	GapCacheT = S.Clock;
+	// the route direction (facing), not the instantaneous velocity: on the rising front of a swing / a wall kick the velocity can point
+	// across the street and the capsule then lay over the tall blocks (r17 probe s2: "roofline 94 m" over a 20 m street side)
+	const double T = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir);
+	GapCacheV = T < 0.0 ? -1e9 : T - S.Pos.Z;
+	return GapCacheV;
+}
+
+bool UWebTraversalComponent::CatchReachable(double Dur) const
+{
+	if (!Anchors) return true;
+	if (S.Clock - CatchCacheT < 0.1) return bCatchCacheV;
+	CatchCacheT = S.Clock;
+	const FVector Vh(S.Vel.X, S.Vel.Y, 0.0);
+	if (Vh.Size() < 2.0) { bCatchCacheV = true; return true; }
+	// the catch is searched the way TryStartSwing will search it: from the predicted body position (the release turns the swing's climb into
+	// forward speed: the flight runs at ~ the FULL speed, r18 probe f4 4th flip: vx 34 / vz 31 before the release, vx 50 after) in the program's final reach (the search opens
+	// at CatchT; a catch within ~0.3 s of it reads as continuous), ~2 m under the release height (the flow apex climb and the fall after it), along
+	// the travel heading leaned AnchorAltDeg away from the previous web's side, and the anchor must be AnchorMinAbove over the body and ahead.
+	// Any of the three points attaching counts. (A single point at the program end, along the plain heading, blocked a flip that caught in r17 f1
+	// and passed the f4 4th flip that did not.)
+	bCatchCacheV = false;
+	const FVector Fwd = Vh.GetSafeNormal();
+	const FVector FwdSearch = S.LastAnchorSide != 0 ? RotZ(Fwd, -S.LastAnchorSide * FMath::DegreesToRadians(double(AnchorAltDeg))) : Fwd;
+	for (const double Tq : { Dur - 0.1, Dur + 0.05, Dur + 0.2 })
+	{
+		const FVector P = S.Pos + Fwd * (S.Vel.Size() * Tq * double(CatchSpeedK)) - FVector(0, 0, 2.0);
+		const double Fl = FloorAt(P.X, P.Y, P.Z - H + 0.1);
+		FTravAnchor A;
+		if (Anchors->Find(P, FwdSearch, nullptr, S.Vel.Size(), Fl, A) && A.Point.Z >= P.Z + AnchorMinAbove
+			&& FVector::DotProduct(Flat(A.Point - P), Fwd) >= 2.0) { bCatchCacheV = true; break; }
+	}
+	return bCatchCacheV;
+}
+
+double UWebTraversalComponent::AltVzFor(double D)
+{ // round 24: G until |vz| < 3.5 m/s, then the 0.55 x G apex hang (StepAir)
+	const double Vh = 3.5, HangH = Vh * Vh / (2.0 * G * 0.55);
+	return FMath::Sqrt(2.0 * G * FMath::Max(0.0, D - HangH) + Vh * Vh);
+}
+
+double UWebTraversalComponent::FlowApexGain(double Vz0, const FWebFlipProgram* FP) const
+{
+	// under FlowFlipGK x G; the program's Up boost lands at 0.3 x its first segment
+	const double GF = G * double(FlowFlipGK);
+	const double Tb = FP && FP->Segs.Num() > 0 ? 0.3 * double(FP->Segs[0].Dur) : 0.0;
+	const double Up = FP ? double(FP->Up) * ReleaseBoostMul : 0.0;
+	const double Zb = Vz0 * Tb - 0.5 * GF * Tb * Tb, V1 = Vz0 - GF * Tb;
+	if (V1 <= 0.0) return FMath::Max(Vz0 * Vz0 / (2.0 * GF), Zb + FMath::Square(FMath::Max(0.0, V1 + Up)) / (2.0 * GF));
+	return Zb + FMath::Square(V1 + Up) / (2.0 * GF);
+}
+
 double UWebTraversalComponent::TallestRoofAlong(const FVector& From, const FVector& Dir, double D0, double D1, double Rad) const
 {
 	// round 12: down-ray grid (5 m) over every point within R m of the horizontal segment D0..D1 m along Dir; building hits only
@@ -1437,14 +1633,31 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 	// near the street a release may still climb (16 m/s at <= 12 m, easing to ReleaseVzMax at 24 m): the chain gains the height
 	// its next drop needs
 	const double VzCap = FMath::Lerp(16.0, double(ReleaseVzMax), FMath::Clamp((HeightAboveFloor() - 12.0) / 12.0, 0.0, 1.0));
-	if (!bJump && S.Vel.Z > VzCap)
+	auto PopForward = [&]()
 	{ // round 07 (critic r06 cadence): a release is a forward pop, not a climb — the climb above ReleaseVzMax goes into forward
 	  // speed (60 %), so the hop tops out ~0.4 s later and the next web's swing starts there (was 1-2 s ballistic arcs)
+		if (S.Vel.Z <= VzCap) return;
 		FVector HV0;
 		if (!HDir(S.Vel, HV0)) HV0 = YawDir(S.Facing);
 		const double Extra = S.Vel.Z - VzCap;
 		S.Vel.Z = VzCap; S.Vel.X += HV0.X * Extra * 0.6; S.Vel.Y += HV0.Y * Extra * 0.6;
+	};
+	// round 24 (T7): the altitude chain solves a plain / flow release for a roofline apex instead (below, once the trick is known)
+	// (probe r24 c / x2 / r1: a release TOWARD a nearby facade -- the player turned into the block to wall-run -- climbed 20 m up the wall
+	//  instead of the r23 hop onto it; x2's wall kick then hid the hero behind the facade for 0.8 s): the roofline climb only applies when
+	//  the street ahead is open for AltOpenAhead m at body height and AltOpenUp m above it)
+	bool bAltRel = AltChain > 0.f && !bJump && !bLegacyTricks;
+	if (bAltRel && AltOpenAhead > 0.f)
+	{
+		FVector HVo;
+		if (!HDir(S.Vel, HVo)) HVo = YawDir(S.Facing);
+		FTravHit OH;
+		for (double Up : { 0.0, double(AltOpenUp) })
+			if (TravWorld.Raycast(S.Pos + ZUP * Up, HVo, double(AltOpenAhead), OH) && FMath::Abs(OH.Normal.Z) < 0.5) { bAltRel = false; break; }
+		if (!bAltRel) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV alt release skipped: facade %.1f m ahead"), OH.Distance);
 	}
+	if (!bJump && !bAltRel) PopForward();
+	const double AltApexNow = double(AltApexH) + double(AltApexJit) * double((AltRelIdx * 37) % 5) / 4.0; // m over the floor (feet)
 	if (bJump)
 	{ // user r11: Space-release = stronger forward push + a jump-off-the-web pop up
 		S.Vel.X += HV.X * SWING_JUMP * K; S.Vel.Y += HV.Y * SWING_JUMP * K;
@@ -1493,8 +1706,54 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			const double Tc = FMath::Max(0.5, double(FP->CatchT()));
 			const double GF = G * double(FlowFlipGK);
 			const double Up = FP->Up * ReleaseBoostMul; // TrickBoost adds this at 0.3 x the first segment
-			const double Vz0 = FMath::Clamp((double(FlowCatchRise) + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
+			// round 15: rise to FlowRoofOver m over the lower street wall's roofline when that is within FlowRiseMax (sky behind by height)
+			double Rise = double(FlowCatchRise);
+			FlowRoofUsed = -1.0;
+			if (FlowRoofOver > 0.f)
+			{
+				const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+				const double Roof = RoofBesideAhead(HV, double(FlowRoofAhead));
+				// (probe r15: street-tree canopies 9-15 m read as a "roofline" -- a roof counts only FlowRoofMinH m or more over the street)
+				if (Roof > -0.5 && Roof - Street >= double(FlowRoofMinH))
+				{
+					FlowRoofUsed = Roof - Street;
+					const double Need = Roof + double(FlowRoofOver) - FeetZ();
+					if (Need > Rise && Need <= double(FlowRiseMax)) Rise = Need;
+				}
+			}
+			FlowRiseUsed = Rise;
+			double Vz0 = FMath::Clamp((Rise + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
 				double(FlowVzMin), double(FlowVzMax));
+			FlowApexWant = 0.0;
+			if (bFlowApexSolve)
+			{ // round 17 (TC8): solve the climb for the program's APEX: hips at the lower roofline within FlowRoofR + FlowRoofOver (+ margin);
+			  // no roofline here -> the r13 rule above. Gain at least FlowApexMin (the shape reads at the top of a rise, not on a fall).
+				double RoofOver = -1.0;
+				const double Target = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir, &RoofOver);
+				const double WantRaw = FMath::Max(double(FlowApexMin), Target - S.Pos.Z);
+				// round 24 (T7): the altitude chain's apex (hips at AltApexNow m over the floor) is a floor under the roofline rule
+				// (hold C probe a: the flip cycle solved for the jittered 38 m apex ran 4.1 s release -> release; a flip takes the base apex)
+				const double WantAlt = bAltRel ? FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1) + double(AltApexH) + H - S.Pos.Z : -1e9;
+				const bool bRoofOut = Target > 0.0 && WantRaw > FlowApexGain(double(FlowApexVzMax), FP) + 0.5;
+				// TC8 "else it fires anyway": a roofline the capped climb cannot clear (Midtown canyons, 45-300 m walls) keeps the r13/r15 rule
+				// (the r17 probe of a / b solved for 72-100 m rooflines and rocketed 20 m up for 2 s)
+				if (bRoofOut && !bAltRel)
+				{
+					UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: roofline %.1f m over the street out of reach (need %.1f m) -> r13 climb"), RoofOver, WantRaw);
+				}
+				else if (Target > 0.0 || bAltRel)
+				{
+					if (Target > 0.0 && !bRoofOut) FlowRoofUsed = RoofOver;
+					const double Want = bAltRel ? FMath::Max(bRoofOut || Target <= 0.0 ? double(FlowApexMin) : WantRaw, WantAlt) : WantRaw;
+					if (bAltRel) { AltApexWant = double(AltApexH); ++AltRelIdx; bAltArcNext = true; }
+					double Lo = 0.0, Hi = bAltRel ? double(FMath::Max(FlowApexVzMax, AltFlowVzMax)) : double(FlowApexVzMax);
+					if (FlowApexGain(Hi, FP) <= Want) Lo = Hi;
+					else for (int32 It = 0; It < 30; ++It) { const double Md = 0.5 * (Lo + Hi); (FlowApexGain(Md, FP) < Want ? Lo : Hi) = Md; }
+					Vz0 = FMath::Max(double(FlowVzMin), Hi);
+					FlowApexWant = S.Pos.Z + FlowApexGain(Vz0, FP);
+					FlowRiseUsed = Vz0 * Tc - 0.5 * GF * Tc * Tc + Up * FMath::Max(0.0, Tc - 0.3 * FP->Segs[0].Dur); // height at the catch window
+				}
+			}
 			if (S.Vel.Z > Vz0)
 			{ // the rest of the swing's climb goes forward (as the plain-release cap does)
 				FVector HV0;
@@ -1504,11 +1763,46 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 			}
 			S.Vel.Z = Vz0;
 			S.bFlowFlip = true;
-			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: vz %.1f m/s, catch window at %.2f s"),
-				*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), Vz0, Tc);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: lower roofline %.1f m over the street, rise %.1f m, vz %.1f m/s, catch window at %.2f s"),
+				*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), FlowRoofUsed, FlowRiseUsed, Vz0, Tc);
+			if (FlowApexWant > 0.0) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: hips %.1f -> apex %.1f (roofline %.1f m over the street)"), S.Pos.Z, FlowApexWant, FlowRoofUsed);
 		}
 	}
-	else { S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K; }
+	else
+	{
+		S.Trick = NAME_None; S.bLastTrick = false; S.Vel.X += HV.X * REL_NOTRICK * K; S.Vel.Y += HV.Y * REL_NOTRICK * K;
+		if (bAltRel)
+		{ // round 24 (T7 altitude chain): solve the release for an apex AltApexNow m over the floor -- the velocity turns up toward it
+		  // (speed kept, <= AltTurnDeg, horizontal >= AltHMin, vz <= AltVzMax); more climb than needed goes forward as the r07 pop
+			const double D = AltApexNow - HeightAboveFloor();
+			AltApexWant = AltApexNow; ++AltRelIdx; bAltArcNext = true;
+			if (D <= 1.0) PopForward();
+			else
+			{
+				const double VzW = FMath::Min(AltVzFor(D), double(AltVzMax));
+				FVector HVa;
+				if (!HDir(S.Vel, HVa)) HVa = YawDir(S.Facing);
+				double Hh = HLen(S.Vel), Vz = S.Vel.Z;
+				if (Vz > VzW) { Hh += (Vz - VzW) * 0.6; Vz = VzW; }
+				else
+				{
+					const double Sp2 = Hh * Hh + Vz * Vz, Sp1 = FMath::Sqrt(Sp2);
+					const double A0 = FMath::Atan2(Vz, FMath::Max(Hh, 1e-3));
+					const double A1 = FMath::Min(A0 + FMath::DegreesToRadians(double(AltTurnDeg)), FMath::DegreesToRadians(80.0));
+					Vz = FMath::Max(Vz, FMath::Min(VzW, Sp1 * FMath::Sin(A1)));
+					Hh = FMath::Sqrt(FMath::Max(0.0, Sp2 - Vz * Vz));
+					if (Hh < double(AltHMin) && Sp1 > double(AltHMin))
+					{
+						Hh = double(AltHMin); Vz = FMath::Max(S.Vel.Z, FMath::Sqrt(FMath::Max(0.0, Sp2 - Hh * Hh)));
+					}
+				}
+				S.Vel = HVa * Hh + ZUP * Vz;
+				UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV alt release at (%.1f, %.1f) %.1f m over the floor: apex want %.1f m, vz %.1f (need %.1f), hs %.1f m/s"),
+					S.Pos.X, S.Pos.Y, HeightAboveFloor(), AltApexNow, Vz, AltVzFor(D), Hh);
+			}
+		}
+	}
+	if (bAltRel && !TrickN.IsNone() && !S.bFlowFlip) PopForward(); // (a non-flow trick keeps the r07 pop)
 	S.bTrickNoUp = false; // user r10f: every release gains height again
 	const double HS = HLen(S.Vel), HL = FMath::Max(VmaxC(), Sp);
 	if (HS > HL) { S.Vel.X *= HL / HS; S.Vel.Y *= HL / HS; }
@@ -1530,14 +1824,58 @@ bool UWebTraversalComponent::WideWall(const FVector& N, const FVector& Point) co
 	return Ok == 2;
 }
 
+FVector UWebTraversalComponent::CleanWallNormal(const FVector& Pt, const FVector& RawN) const
+{
+	const FVector N = Flat(RawN).GetSafeNormal();
+	if (TravWorld.SolidMode != 2 || N.IsNearlyZero()) return N;
+	TArray<int32> L;
+	TravWorld.Near(Pt.X, Pt.Y, 2.0, L);
+	double Best = 1.5; FVector BN = N;
+	for (int32 I : L)
+	{
+		const FTravBox& B = TravWorld.Boxes[I];
+		if (Pt.Z < B.Min.Z - 1.0 || Pt.Z > B.Max.Z + 1.0) continue;
+		const struct { FVector Nf; double D; bool bIn; } Faces[4] = {
+			{ FVector(1, 0, 0), FMath::Abs(Pt.X - B.Max.X), Pt.Y >= B.Min.Y - 0.5 && Pt.Y <= B.Max.Y + 0.5 },
+			{ FVector(-1, 0, 0), FMath::Abs(Pt.X - B.Min.X), Pt.Y >= B.Min.Y - 0.5 && Pt.Y <= B.Max.Y + 0.5 },
+			{ FVector(0, 1, 0), FMath::Abs(Pt.Y - B.Max.Y), Pt.X >= B.Min.X - 0.5 && Pt.X <= B.Max.X + 0.5 },
+			{ FVector(0, -1, 0), FMath::Abs(Pt.Y - B.Min.Y), Pt.X >= B.Min.X - 0.5 && Pt.X <= B.Max.X + 0.5 } };
+		for (const auto& F : Faces)
+		{
+			if (F.bIn && F.D < Best && FVector::DotProduct(F.Nf, N) > 0.5) { Best = F.D; BN = F.Nf; }
+		}
+	}
+	return BN;
+}
+
+bool UWebTraversalComponent::WallPlane(const FVector& N, FVector& OutN, FVector& OutPoint) const
+{
+	const FVector Lat(-N.Y, N.X, 0.0);
+	int32 Nv = 0; double BestD = -1e9; FVector Sum = FVector::ZeroVector; FVector BestP = FVector::ZeroVector;
+	for (double OZ : { 0.35, -0.5 })
+		for (double OL : { -0.45, 0.0, 0.45 })
+		{
+			FTravHit Hit;
+			const FVector O = S.Pos + Lat * OL + FVector(0, 0, OZ);
+			if (!TravWorld.Raycast(O, -N, R + 0.9, Hit) || FMath::Abs(Hit.Normal.Z) > 0.5 || FVector::DotProduct(Flat(Hit.Normal).GetSafeNormal(), N) < 0.3) continue;
+			++Nv; Sum += Flat(Hit.Normal).GetSafeNormal();
+			const double D = FVector::DotProduct(Hit.Point - S.Pos, N); // most protruding = largest (least negative)
+			if (D > BestD) { BestD = D; BestP = Hit.Point - Lat * OL; }
+		}
+	if (Nv < 2) return false;
+	OutN = CleanWallNormal(BestP, Sum.GetSafeNormal());
+	OutPoint = S.Pos + N * BestD; OutPoint.Z = S.Pos.Z;
+	return true;
+}
+
 void UWebTraversalComponent::EnterWall(const FVector& N, const FVector& Point, bool bRun, double Speed)
 {
 	FWall& W = S.W;
-	W.Normal = Flat(N).GetSafeNormal();
+	W.Normal = CleanWallNormal(Point, N); // round 20
 	S.Pos.X = Point.X + W.Normal.X * (R + 0.02); S.Pos.Y = Point.Y + W.Normal.Y * (R + 0.02);
 	W.RunV = bRun ? FMath::Clamp(FMath::Max(Speed * 0.8, S.Vel.Z), WALLRUN * 0.9, WALLRUN * 1.15) : FMath::Max(0.0, FMath::Min(8.0, S.Vel.Z)); // r9q
 	W.bFast = bRun; S.Vel = FVector::ZeroVector; S.bDive = false; S.Trick = NAME_None;
-	W.Up = ZUP; W.Off = 0; W.RunK = 0; W.Dist = R + 0.02; W.Point = FVector(Point.X, Point.Y, S.Pos.Z);
+	W.Up = ZUP; W.Off = 0; W.RunK = 0; W.SideUpK = 0; W.Dist = R + 0.02; W.Point = FVector(Point.X, Point.Y, S.Pos.Z);
 	SetMode(EWebTravMode::Wall, bRun ? N_wallRun : N_crawl); S.bGrounded = false; S.DashCount = 0;
 	Emit(N_wall, 0.f, 0.f, 1.f, bRun);
 }
@@ -1582,16 +1920,28 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	W.Move = FVector2D(MX, MY);
 	const double Len = FMath::Sqrt(MX * MX + MY * MY);
 	if (Len > 1) { MX /= Len; MY /= Len; }
-	const double VX = (bFast ? WALLRUN : 4.2) * MX, VYIn = (bFast ? WALLRUN : 4.2) * MY; // user r9r
-	W.RunV = Damp(W.RunV, 0, bFast && MY > 0.2 ? 0.4 : FMath::Sqrt(MX * MX + MY * MY) < 0.2 ? 9 : 3, Hs);
+	double VX = (bFast ? WALLRUN : 4.2) * MX;
+	const double VYIn = (bFast ? WALLRUN : 4.2) * MY; // user r9r
+	// round 22: an upright side run (stick sideways) sheds the climb speed fast (rate WallSideClimbDamp, r21 3/s) so the run line levels out
+	// along the facade in ~0.15 s instead of a 45 deg diagonal for half a second (the torso is upright: "above the run line" needs a level run)
+	const bool bSideLevel = WallSideUpright > 0.5f && UWebTravAnimInstance::bWallGait && FMath::Abs(MY) <= 0.2 && FMath::Abs(MX) > 0.2;
+	W.RunV = Damp(W.RunV, 0, bFast && MY > 0.2 ? 0.4 : FMath::Sqrt(MX * MX + MY * MY) < 0.2 ? 9 : bSideLevel ? double(WallSideClimbDamp) : 3, Hs);
 	if (S.Sub == N_wallZip) { W.RunV = ZV; bFast = true; }
 	const double VY = ZV != 0 ? ZV : FMath::Max(VYIn, MY >= -0.1 ? W.RunV : -1e9);
+	// round 23 (director r23: vertical sprint torso 5-20 deg off wall-up; c climbed a 33 deg diagonal -- torso 28-35 deg): a vertical-dominant
+	// fast run keeps its run line within WallVertMaxDeg of the wall's up axis (the sideways share of the stick is shed; side runs untouched)
+	if (WallVertMaxDeg > 0.f && UWebTravAnimInstance::bWallGait && bFast && S.Sub != N_wallZip && MY > 0.2 && FMath::Abs(MY) >= FMath::Abs(MX) && VY > 1.0)
+	{
+		const double MaxX = VY * FMath::Tan(FMath::DegreesToRadians(double(WallVertMaxDeg)));
+		VX = FMath::Clamp(VX, -MaxX, MaxX);
+	}
 	S.Vel = Right * VX + ZUP * VY;
 	W.bFast = bFast && (FMath::Abs(VX) + FMath::Abs(VY) > 5);
 	W.Phase += S.Vel.Size() * Hs / (W.bFast ? 2.6 : 1.2);
 	const FName Sub2 = W.bFast ? (FMath::Abs(VY) >= FMath::Abs(VX) ? N_wallRun : N_wallRunSide) : N_crawl;
 	if (S.Sub != N_wallZip && (S.Sub != N_cornerWrap || S.SubT > 0.3)) SetSub(Sub2);
-	if (S.Vel.SizeSquared() > 0.04) W.Up = FMath::Lerp(W.Up, S.Vel.GetSafeNormal(), 1 - FMath::Exp(-8 * Hs)).GetSafeNormal();
+	// round 20 (critic r19 side-run: body within 20 deg of the run direction, head leading): the body axis follows the run direction 2x faster
+	if (S.Vel.SizeSquared() > 0.04) W.Up = FMath::Lerp(W.Up, S.Vel.GetSafeNormal(), 1 - FMath::Exp(-(bTrickCancel ? 18 : 8) * Hs)).GetSafeNormal();
 	else W.Up = FMath::Lerp(W.Up, ZUP, 1 - FMath::Exp(-4 * Hs)).GetSafeNormal();
 	if (W.Up.Z < -0.2) W.Up = FMath::Lerp(W.Up, ZUP, 0.5).GetSafeNormal();
 	if (I.bJumpPressed)
@@ -1605,6 +1955,30 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	{ // RMB on a wall: kick off it and swing away
 		FVector CF = Cam ? Cam->ForwardFlat() : -N;
 		CF -= N * FVector::DotProduct(CF, N);
+		if (bTrickCancel)
+		{ // round 20 (critic r19: "a held RMB during a wall-run waits 0.47-1.08 s"): the kick and the web are one move -- the web is
+		  // fired in this same step (ground-swing rule: no rise-pending), a wall-jump hop + 0.06 s re-search only when no anchor is in range
+			// along the camera's view off the wall (the next anchor lies ahead of the velocity -- TryStartSwing refuses webs behind it), a small
+			// push off the facade; a camera looking straight at the wall uses the run direction instead
+			{ // round 20 (probe x2: a camera facing the wall left a tiny sideways residue that kicked him BACK along the run): a side run kicks
+			  // along its run direction unless the camera clearly looks along the wall; a vertical run uses the camera's side, else Right
+				// the DISPLAYED view (the wall camera faces the facade; the look yaw underneath can point anywhere)
+				if (Cam) { CF = FRotator(0.0, Cam->CamRot.Yaw, 0.0).Vector(); CF -= N * FVector::DotProduct(CF, N); }
+				const FVector RunD = Flat(S.W.Up);
+				if (RunD.SizeSquared() >= 0.09 && (CF.SizeSquared() < 0.25 || FVector::DotProduct(CF, RunD) > 0.0)) CF = RunD;
+				else if (CF.SizeSquared() < 0.09) CF = Right;
+			}
+			CF = CF.GetSafeNormal();
+			S.Vel = N * 4 + ZUP * 3 + CF * 12;
+			SetMode(EWebTravMode::Air, N_wallJump); S.AirT = 0; S.ApexZ = FeetZ(); S.WallCooldown = 0.5; S.SwingCooldown = 0; S.bGroundSwing = true;
+			S.Facing = Yaw(S.Vel); Emit(N_wallJump);
+			S.bWallCancel = true; S.WallCancelN = N; S.WallCancelDir = CF;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall cancel: RMB pressed in %s -> swing search now (kick v %.1f %.1f %.1f, along %.2f %.2f)"), *S.Sub.ToString(),
+				S.Vel.X, S.Vel.Y, S.Vel.Z, CF.X, CF.Y);
+			FlipCancels++;
+			if (!TryStartSwing(I)) { S.Vel.Z += 4; S.SwingCooldown = 0.06; }
+			return;
+		}
 		S.Vel = N * 9 + ZUP * 7 + CF * 6;
 		SetMode(EWebTravMode::Air, N_wallJump); S.AirT = 0; S.ApexZ = FeetZ(); S.WallCooldown = 0.5; S.SwingCooldown = 0.1; S.bGroundSwing = true;
 		S.Facing = Yaw(S.Vel); Emit(N_wallJump);
@@ -1618,8 +1992,12 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	{
 		const FVector Side = Right * Sgn(VX);
 		FTravHit Hit;
-		if (TravWorld.Raycast(S.Pos, Side, R + 0.25, Hit) && FMath::Abs(Hit.Normal.Z) < 0.5 && FVector::DotProduct(Hit.Normal, Side) < -0.7)
+		FTravHit Hit2;
+		if (TravWorld.Raycast(S.Pos, Side, R + 0.25, Hit) && FMath::Abs(Hit.Normal.Z) < 0.5 && FVector::DotProduct(Hit.Normal, Side) < -0.7
+			// round 20: a real inner corner (the new face reaches >= 1.2 m out from this facade), not a pilaster / jamb
+			&& (TravWorld.SolidMode != 2 || (TravWorld.Raycast(S.Pos + N * 1.2, Side, R + 0.7, Hit2) && FVector::DotProduct(Hit2.Normal, Side) < -0.7)))
 		{
+			Hit.Normal = CleanWallNormal(Hit.Point, Hit.Normal);
 			const FVector N1 = Flat(Hit.Normal).GetSafeNormal();
 			FVector P1 = Hit.Point + N1 * (R + 0.02); P1.Z = S.Pos.Z;
 			StartCornerWrap(N1, P1, 0.22, N, Sgn(VX));
@@ -1639,12 +2017,26 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 	// stay attached: probe the wall at chest and knee height
 	auto Probe = [&](double OZ, FTravHit& Out) { return TravWorld.Raycast(FVector(S.Pos.X, S.Pos.Y, S.Pos.Z + OZ), -N, R + 0.9, Out); };
 	FTravHit Hit;
-	bool bHit = Probe(0.35, Hit);
-	if (!bHit || FMath::Abs(Hit.Normal.Z) > 0.5) bHit = Probe(-0.5, Hit);
+	bool bHit = false;
+	FVector PlaneN, PlaneP;
+	if (TravWorld.SolidMode == 2 && WallPlane(N, PlaneN, PlaneP))
+	{ // round 20: the facade plane from a ray grid (real triangles: recesses / jambs / mullions must not steer the run)
+		bHit = true; Hit.Point = PlaneP; Hit.Normal = PlaneN;
+	}
+	else
+	{
+		bHit = Probe(0.35, Hit);
+		if (!bHit || FMath::Abs(Hit.Normal.Z) > 0.5) bHit = Probe(-0.5, Hit);
+	}
 	if (bHit && FMath::Abs(Hit.Normal.Z) < 0.5)
 	{
-		const FVector NN = Flat(Hit.Normal).GetSafeNormal();
-		if (FVector::DotProduct(NN, N) < 0.98) N = NN;
+		FVector NN = Flat(Hit.Normal).GetSafeNormal();
+		if (TravWorld.SolidMode == 2)
+		{ // a big turn on a facade is a corner (handled by the corner wraps), never a frame-to-frame normal swap; small drifts are eased in
+			if (FVector::DotProduct(NN, N) < 0.85 && S.ModeT > 0.15) NN = N;
+			else if (FVector::DotProduct(NN, N) < 0.999) NN = FMath::Lerp(N, NN, FMath::Min(1.0, 12.0 * Hs)).GetSafeNormal();
+		}
+		if (FVector::DotProduct(NN, N) < 0.98 || TravWorld.SolidMode == 2) N = NN;
 		// effective wall plane = the most protruding surface over the body extent (user feedback #5)
 		const double BX = Hit.Point.X, BY = Hit.Point.Y;
 		const double Prot = FMath::Min(0.12, WallProtrusion(N, BX, BY));
@@ -1663,7 +2055,7 @@ void UWebTraversalComponent::StepWall(double Hs, FWebTravInput& I)
 			FTravHit H2;
 			if (TravWorld.Raycast(O, -Side, 2, H2) && FVector::DotProduct(H2.Normal, Side) > 0.7)
 			{
-				const FVector N1 = Flat(H2.Normal).GetSafeNormal();
+				const FVector N1 = CleanWallNormal(H2.Point, H2.Normal); // round 20
 				FVector P1 = H2.Point + N1 * (R + 0.02); P1.Z = Prev.Z;
 				StartCornerWrap(N1, P1, 0.3, -N, Sgn(VX));
 				return;
@@ -1763,8 +2155,11 @@ bool UWebTraversalComponent::StartWallHop(const FVector& N, bool bFast)
 	const bool bRun = S.Mode == EWebTravMode::Wall && ((S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip);
 	const double VY0 = bRun ? FMath::Max(0.0, S.Vel.Z) : 0;
 	// user r9b: a vertical wall RUN reaching the top launches him into the air — ordinary air gameplay from there
+	if (bRun && TryMantleSetback(N)) return true;
 	if (bRun)
 	{
+		++TopOutCount;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall top-out at z %.1f (feet), %d setbacks mantled before it"), FeetZ(), SetbackCount);
 		// round 06: a lower, quicker top-out (the flip fills the air time) that carries a bit further onto the roof
 		const double VUp = 11.5; (void)VY0;
 		S.Vel = Inward * 3.0 + ZUP * VUp;
@@ -1819,6 +2214,73 @@ bool UWebTraversalComponent::StartWallHop(const FVector& N, bool bFast)
 	return true;
 }
 
+// round 20 (critic r19: "head-down mid-facade flips" -- per-mass boxes / real triangles expose setback tiers, c topped out at 35 m AND 45 m):
+// a vertical wall run reaching a ledge tops out only when no solid continues above it within SetbackLook m inward; a setback is mantled
+// (short kinematic hop over the ledge onto the next face) and the run continues up it
+bool UWebTraversalComponent::TryMantleSetback(const FVector& N0)
+{
+	const FVector N = Flat(N0).GetSafeNormal();
+	const double WallDist = R + 0.02 + S.W.Off;
+	// ledge top just inside the edge
+	FTravHit Top;
+	const FVector In = S.Pos - N * (WallDist + 0.3);
+	if (!TravWorld.Raycast(FVector(In.X, In.Y, FeetZ() + 3.2), FVector(0, 0, -1), 4.5, Top) || Top.Normal.Z < 0.5) return false;
+	const double LedgeZ = Top.Point.Z;
+	// a face continuing above the ledge, within SetbackLook m inward, facing the same way, at least 4 m tall
+	for (double Hgt : { 1.3, 2.6 })
+	{
+		FTravHit Wf;
+		const FVector O(S.Pos.X, S.Pos.Y, LedgeZ + Hgt);
+		if (!TravWorld.Raycast(O, -N, WallDist + double(SetbackLook), Wf)) continue;
+		if (FMath::Abs(Wf.Normal.Z) > 0.5 || FVector::DotProduct(Flat(Wf.Normal).GetSafeNormal(), N) < 0.7) continue;
+		FTravHit Up4;
+		const FVector N2 = Flat(Wf.Normal).GetSafeNormal();
+		const FVector O4 = Wf.Point + N2 * 0.6 + FVector(0, 0, 4.0);
+		if (!TravWorld.Raycast(O4, -N2, 1.5, Up4) || FMath::Abs(Up4.Normal.Z) > 0.5) continue; // a low parapet / rooftop box, not a tier
+		const FVector P1 = FVector(Wf.Point.X + N2.X * (R + 0.02), Wf.Point.Y + N2.Y * (R + 0.02), LedgeZ + H + 0.9);
+		const FVector Mid = FVector(S.Pos.X - N.X * (WallDist * 0.5), S.Pos.Y - N.Y * (WallDist * 0.5), LedgeZ + H + 0.7);
+		const double Sp = FMath::Max(8.0, FMath::Max(S.Vel.Z, S.W.RunV));
+		S.Kin = FKin();
+		S.Kin.Type = EKin::Mantle; S.Kin.P0 = S.Pos; S.Kin.P1 = Mid; S.Kin.P2 = P1; S.Kin.N0 = N; S.Kin.N1 = N2; S.Kin.Sp = Sp; S.Kin.bRun = true;
+		S.Kin.Dur = FMath::Clamp((FVector::Dist(S.Pos, Mid) + FVector::Dist(Mid, P1)) / Sp, 0.14, 0.38);
+		S.Kin.Inward = Wf.Point;
+		if (MantleStep > 0.5f)
+		{ // round 21 (critic r20: "mid-facade hop at c 3.55 s", limbs 3 m off the wall): cross the setback ON its surfaces -- up the lip,
+		  // round the edge, along the ledge top (normal up), cut the inner corner, onto the next face; the IK stride keeps running on
+		  // whichever surface is under him, so every limb stays on it
+			const double D = WallDist;
+			const FVector InW = -N;
+			const double Dn = FMath::Max(0.6, Wf.Distance - WallDist);
+			const FVector C(S.Pos.X - N.X * WallDist, S.Pos.Y - N.Y * WallDist, 0.0); // old face plane at the hero
+			double TopZ = LedgeZ;
+			for (double Fr : { 0.25, 0.5, 0.8 })
+			{
+				FTravHit Tp; const FVector Q = C + InW * (Dn * Fr);
+				if (TravWorld.Raycast(FVector(Q.X, Q.Y, LedgeZ + 3.2), FVector(0, 0, -1), 4.5, Tp) && Tp.Normal.Z > 0.5) TopZ = FMath::Max(TopZ, Tp.Point.Z);
+			}
+			const FVector Zu(0, 0, 1), NE = (N + Zu).GetSafeNormal();
+			const double Cut = FMath::Min(0.5, FMath::Max(0.1, Dn - 2.0 * D) * 0.5);
+			FKin& K = S.Kin;
+			K.MNum = 0;
+			auto AddQ = [&K](const FVector& Q, const FVector& Nq) { if (K.MNum < 6) { K.MQ[K.MNum] = Q; K.MN[K.MNum] = Nq; K.ML[K.MNum] = K.MNum ? K.ML[K.MNum - 1] + FVector::Dist(K.MQ[K.MNum - 1], Q) : 0.0; ++K.MNum; } };
+			AddQ(S.Pos, N);
+			if (S.Pos.Z < TopZ - 0.05) AddQ(FVector(S.Pos.X, S.Pos.Y, TopZ - 0.05), N);
+			AddQ(FVector(C.X, C.Y, TopZ) + NE * D, NE);
+			AddQ(FVector(C.X, C.Y, TopZ) + InW * 0.15 + Zu * D, Zu);
+			AddQ(FVector(C.X, C.Y, TopZ) + InW * FMath::Max(0.3, Dn - D - Cut) + Zu * D, Zu);
+			AddQ(FVector(C.X, C.Y, TopZ) + InW * (Dn - D) + Zu * (D + Cut + 0.25), N2);
+			K.MS = 0; K.CurN = N; K.CurPt = S.Pos - N * D;
+			K.Dur = FMath::Max(0.1, K.ML[K.MNum - 1] / Sp);
+			K.P2 = K.MQ[K.MNum - 1];
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV setback step: ledge top z %.2f, depth %.2f m, path %.2f m, %.2f s"), TopZ, Dn, K.ML[K.MNum - 1], K.Dur);
+		}
+		++SetbackCount;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV wall setback mantled at ledge z %.1f (next face %.1f m in): the run continues"), LedgeZ, Wf.Distance - WallDist);
+		return true;
+	}
+	return false;
+}
+
 void UWebTraversalComponent::StepWallHop(double Hs)
 {
 	FKin& K = S.Kin;
@@ -1855,11 +2317,43 @@ void UWebTraversalComponent::StepWallHop(double Hs)
 void UWebTraversalComponent::StepKin(double Hs)
 {
 	FKin& K = S.Kin;
+	if (K.Type == EKin::Mantle && K.MNum > 1)
+	{ // round 21: surface-following setback step (distance along the centre polyline at the run speed)
+		K.MS = FMath::Min(K.MS + K.Sp * Hs, K.ML[K.MNum - 1]);
+		int32 Sg = 1;
+		while (Sg < K.MNum - 1 && K.ML[Sg] < K.MS) ++Sg;
+		const double L0 = K.ML[Sg - 1], L1 = K.ML[Sg];
+		const double F = L1 > L0 + 1e-6 ? FMath::Clamp((K.MS - L0) / (L1 - L0), 0.0, 1.0) : 1.0;
+		const FVector Prev = S.Pos;
+		S.Pos = FMath::Lerp(K.MQ[Sg - 1], K.MQ[Sg], F);
+		K.CurN = FMath::Lerp(K.MN[Sg - 1], K.MN[Sg], F).GetSafeNormal();
+		const double Dd = S.W.Dist;
+		K.CurPt = S.Pos - K.CurN * Dd;
+		const FVector Tan = (K.MQ[Sg] - K.MQ[Sg - 1]).GetSafeNormal();
+		S.Vel = Tan * K.Sp;
+		S.W.Up = Tan; S.W.Point = K.CurPt;
+		(void)Prev;
+		if (K.MS >= K.ML[K.MNum - 1] - 1e-6)
+		{
+			const FKin KK = K;
+			S.Kin.Type = EKin::None; S.Kin.MNum = 0;
+			const FVector Pt = KK.Inward;
+			const double RK = S.W.RunK;
+			EnterWall(KK.N1, FVector(Pt.X, Pt.Y, S.Pos.Z), true, KK.Sp);
+			S.W.RunV = FMath::Max(S.W.RunV, KK.Sp); S.WallCooldown = 0.0; S.W.Up = ZUP; S.W.RunK = RK;
+		}
+		return;
+	}
 	K.T += Hs / K.Dur;
 	const double U = FMath::Min(1.0, K.T);
 	const double E = U * U * (3 - 2 * U);
 	const double A = 1 - E;
 	S.Pos = K.P0 * (A * A) + K.P1 * (2 * A * E) + K.P2 * (E * E);
+	if (K.Type == EKin::Mantle)
+	{
+		const FVector PV = K.P1 * (2 * A) - K.P0 * (2 * A) + K.P2 * (2 * E) - K.P1 * (2 * E);
+		if (PV.SizeSquared() > 1e-6) S.Vel = PV.GetSafeNormal() * K.Sp;
+	}
 	if (K.Type == EKin::CornerWrap)
 	{
 		S.W.Normal = FMath::Lerp(K.N0, K.N1, E).GetSafeNormal();
@@ -1875,6 +2369,12 @@ void UWebTraversalComponent::StepKin(double Hs)
 			S.W.Normal = KK.N1;
 			if (KK.bRun && KK.bHasDir1) { S.Vel = KK.Dir1 * KK.Sp; SetSub(N_wallRunSide); } else SetSub(N_crawl);
 		}
+		else if (KK.Type == EKin::Mantle)
+		{ // round 20: back on the next tier's face, still running up
+			const FVector Pt = KK.Inward;
+			EnterWall(KK.N1, FVector(Pt.X, Pt.Y, S.Pos.Z), true, KK.Sp);
+			S.W.RunV = FMath::Max(S.W.RunV, KK.Sp); S.WallCooldown = 0.0;
+		}
 		else if (KK.Type == EKin::Vault)
 		{
 			S.FloorZ = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.3); S.Pos.Z = S.FloorZ + H;
@@ -1887,6 +2387,115 @@ void UWebTraversalComponent::StepKin(double Hs)
 }
 
 // ------------------------------------------------------------------ zip / perch / point launch
+// round 19: "the nearest place" when nothing is highlighted: on a wall the top edge of this facade (<= 58 m straight up), else the nearest
+// visible roof edge / corner / water tower within 58 m, preferring what the camera faces and what is not far below the hero
+bool UWebTraversalComponent::NearestZip(FTravZipPoint& Out, FName& Why) const
+{
+	const double ZipRange = 58.0;
+	const FVector Eye = S.Pos + FVector(0, 0, 0.5);
+	// round 23 (critic r22: "w2 zipFire 4.00 s, it never lands -- z 232 m at 6.97 s"; T4): a facade top more than WallZipFarUp above the hero
+	// (a ~4 s flight up a 284 m tower) is only the fallback; the nearest roof edge / corner within reach is taken first
+	FTravZipPoint FarTop; bool bFarTop = false;
+	if (S.Mode == EWebTravMode::Wall)
+	{
+		// round 20 (critic r19: "E from a side-run ends clinging mid-facade at 61 m" -- the facade top was > 58 m up): on a wall the facade
+		// top is searched up to WallZipRange (the zip's speed profile flies any length)
+		const FVector N = S.W.Normal;
+		double LastHit = -1.0;
+		const double WallRange = FMath::Max(ZipRange, double(WallZipRange));
+		for (double DY = 0.5; DY <= WallRange; DY += 1.0)
+		{
+			FTravHit Hit;
+			const bool bWall = TravWorld.Raycast(FVector(S.Pos.X, S.Pos.Y, S.Pos.Z + DY), -N, R + 2.5, Hit) && FMath::Abs(Hit.Normal.Z) < 0.5;
+			if (bWall) { LastHit = DY; continue; }
+			if (LastHit < 0.0 && DY < 4.0) continue; // a recess right at the body
+			// the facade ended: find its roof just inside the edge
+			// round 20 (capture w1 5.0-6.1 s: the perch sat on the roof BEHIND a 1-2 m parapet -- the down ray 0.6 m inside missed the thin
+			// parapet -- so the camera saw only his head over it): the edge is the HIGHEST walkable top within 0.15-0.6 m of the facade line
+			FTravHit Top; double BestIn = -1.0;
+			for (double Inset : { 0.15, 0.3, 0.45, 0.6 })
+			{
+				FTravHit T2;
+				const FVector In = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + Inset);
+				if (TravWorld.Raycast(FVector(In.X, In.Y, S.Pos.Z + DY + 3.0), FVector(0, 0, -1), 8.0, T2) && T2.Normal.Z > 0.5
+					&& (BestIn < 0.0 || T2.Point.Z > Top.Point.Z + 0.05)) { Top = T2; BestIn = Inset; }
+			}
+			if (BestIn >= 0.0 && !bPerchTopFix) { const FVector In = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + 0.6);
+				FTravHit T3; if (TravWorld.Raycast(FVector(In.X, In.Y, S.Pos.Z + DY + 3.0), FVector(0, 0, -1), 8.0, T3) && T3.Normal.Z > 0.5) { Top = T3; BestIn = 0.6; } else BestIn = -1.0; }
+			if (BestIn >= 0.0)
+			{
+				const FVector Edge = FVector(S.Pos.X, S.Pos.Y, 0.0) - Flat(N) * (R + 0.02 + S.W.Off + (bPerchTopFix ? FMath::Max(0.2, BestIn) : 0.25));
+				Out.Pos = FVector(Edge.X, Edge.Y, Top.Point.Z); Out.Normal = Flat(N).GetSafeNormal(); Out.Kind = FName(TEXT("roofEdge")); Out.Box = Top.Box;
+				Why = TEXT("facadeTop");
+				if (WallZipFarUp > 0.f && Top.Point.Z - S.Pos.Z > double(WallZipFarUp)) { FarTop = Out; bFarTop = true; break; }
+				return true;
+			}
+			break;
+		}
+	}
+	TArray<FTravZipPoint> Pts;
+	Anchors->QueryZipPoints(Eye, ZipRange, Pts);
+	const FVector CF = Cam ? Cam->ForwardFlat() : YawDir(S.Facing);
+	const FVector Excl = S.Mode == EWebTravMode::Perch ? S.P.Pos : FVector(1e9);
+	const FTravZipPoint* Best = nullptr;
+	double BS = TNumericLimits<double>::Max();
+	for (const FTravZipPoint& P : Pts)
+	{
+		const FVector Rel = P.Pos - Eye;
+		const double Dist = Rel.Size();
+		if (Dist < 3.0 || Dist > ZipRange || FVector::DistSquared(P.Pos, Excl) < 4.0) continue;
+		const FVector RF = Flat(Rel).GetSafeNormal();
+		const double Face = RF.IsNearlyZero() ? 1.0 : FVector::DotProduct(RF, CF);
+		if (Face < -0.2) continue; // never behind the camera
+		const double Sc = Dist / ZipRange + (1.0 - Face) * 0.6 + (P.Pos.Z < Eye.Z - 4.0 ? 0.5 : 0.0) - (P.Kind == FName(TEXT("roofCorner")) ? 0.05 : 0.0);
+		if (Sc >= BS) continue;
+		FVector Tgt = P.Pos + P.Normal * 0.35; Tgt.Z += 0.35;
+		FVector D = Tgt - Eye;
+		const double L = D.Size();
+		FTravHit Hv;
+		if (TravWorld.Raycast(Eye, D / L, L, Hv) && Hv.Distance < L - 0.7) continue;
+		BS = Sc; Best = &P;
+	}
+	if (!Best && bFarTop && WallZipFarRange > 0.f)
+	{ // round 23 (Z23, probe r23: w2 found nothing in front of the wall camera -- it faces the facade -- and flew 4 s up the 300 m tower):
+	  // any visible roof edge / corner off the wall within WallZipFarRange, nearest first, along the run preferred, never through the wall
+		const double FR = double(WallZipFarRange);
+		TArray<FTravZipPoint> P2;
+		Anchors->QueryZipPoints(Eye, FR, P2);
+		const FVector Nf = Flat(S.W.Normal).GetSafeNormal();
+		const FVector RunD = Flat(S.Vel).GetSafeNormal();
+		FTravZipPoint Far2;
+		double BS2 = TNumericLimits<double>::Max();
+		bool bF2 = false;
+		for (const FTravZipPoint& P : P2)
+		{
+			const FVector Rel = P.Pos - Eye;
+			const double Dist = Rel.Size();
+			if (Dist < 3.0 || Dist > FR) continue;
+			const FVector RF = Flat(Rel).GetSafeNormal();
+			if (!RF.IsNearlyZero() && FVector::DotProduct(RF, -Nf) > 0.5) continue; // behind the facade
+			const double Run = RunD.IsNearlyZero() || RF.IsNearlyZero() ? 0.0 : FVector::DotProduct(RF, RunD);
+			const double Sc = Dist / FR + (1.0 - Run) * 0.3 + (P.Pos.Z > Eye.Z + 25.0 ? 0.4 : 0.0) - (P.Kind == FName(TEXT("roofCorner")) ? 0.05 : 0.0);
+			if (Sc >= BS2) continue;
+			FVector Tgt = P.Pos + P.Normal * 0.35; Tgt.Z += 0.35;
+			const FVector D = Tgt - Eye;
+			const double L = D.Size();
+			FTravHit Hv;
+			if (TravWorld.Raycast(Eye, D / L, L, Hv) && Hv.Distance < L - 0.7) continue;
+			BS2 = Sc; Far2 = P; bF2 = true;
+		}
+		if (bF2) { Out = Far2; Why = TEXT("nearFar2"); return true; }
+	}
+	if (!Best)
+	{
+		if (bFarTop) { Out = FarTop; Why = TEXT("facadeTop"); return true; }
+		return false;
+	}
+	Out = *Best;
+	Why = bFarTop ? TEXT("nearFar") : TEXT("nearest");
+	return true;
+}
+
 // Insomniac web-zip (USER_FEEDBACK #8 / user r10: instant): zipFire -> zipFlight -> zipCatch -> perch
 void UWebTraversalComponent::StartZip(const FTravZipPoint& T)
 {
@@ -2310,6 +2919,22 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		Fwd = YawDir(S.Facing);
 		S.Roll = S.Bank * 0.45;
 		S.Pitch = S.bDive || S.bGliding ? 0.25 : FMath::Clamp(-S.Vel.Z * 0.008, -0.2, 0.25);
+		// round 19 (owner: between-swing poses at speed): a fast descent tips the body toward the flight path -- a sky-dive lean
+		// (0.85 rad) when falling fast, head-first (1.25 rad) in a dive / glide; rising, tricks, launches and zips keep the upright frame
+		if (S.Sub != N_trick && S.Sub != N_topOut && S.Sub != N_zipPull && S.Sub != N_jumpLaunch && S.Sub != N_wallJump && S.Sub != N_pointLaunch && S.Sub != N_vault)
+		{
+			const double K = FMath::Clamp((-S.Vel.Z - 4.0) / 14.0, 0.0, 1.0) * FMath::Clamp((S.Vel.Size() - 14.0) / 16.0, 0.0, 1.0);
+			S.Pitch = FMath::Lerp(S.Pitch, S.bDive || S.bGliding ? 1.25 : 0.85, K);
+			// round 20 (critic r19 body 5: "fallCalm stands upright at 43-51 m/s"): at speed the body axis lies along the flight path --
+			// head first, chest to the ground (streamlined), full from AirAlignV1 m/s; the pitch is the angle from world up to the velocity
+			const double Sp = S.Vel.Size();
+			const double KA = FMath::Clamp((Sp - double(AirAlignV0)) / FMath::Max(1.0, double(AirAlignV1 - AirAlignV0)), 0.0, 1.0);
+			if (KA > 0.0 && HV > 1.5)
+			{
+				const double Ang = FMath::Acos(FMath::Clamp(S.Vel.Z / Sp, -1.0, 1.0));
+				S.Pitch = FMath::Lerp(S.Pitch, FMath::Min(Ang, 2.6), KA);
+			}
+		}
 		Rate = 8;
 		break;
 	case EWebTravMode::Swing:
@@ -2354,15 +2979,60 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		// round 06 (critic r05, ref wall-run): head-up climb-run — body up = along the wall, chest to the wall, torso leaned
 		// back off it while running (runK). The browser's "run cycle rotated onto the wall" frame (body up = normal) is gone.
 		FWall& W = S.W;
-		const FVector N = W.Normal;
-		const bool bRunning = (S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip;
+		const bool bMStep = S.Kin.Type == EKin::Mantle && S.Kin.MNum > 0; // round 21: crossing a setback on its surfaces
+		const FVector N = bMStep ? S.Kin.CurN : W.Normal;
+		const bool bGait = UWebTravAnimInstance::bWallGait;
+		const bool bRunning = (S.Sub == N_wallRun && W.bFast) || S.Sub == N_wallZip || (bGait && S.Sub == N_wallRunSide && W.bFast);
 		W.RunK = Damp(W.RunK, bRunning ? 1 : 0, bRunning ? 9 : 7, Dt);
 		FVector Along = W.Up - N * FVector::DotProduct(W.Up, N);
 		if (Along.SizeSquared() < 1e-4) Along = ZUP;
 		Along.Normalize();
+		// round 21 (critic r20: "the side-run is a plank"; ref side run: raised torso, head leading): a side run raises the body axis
+		// WallSideRaiseDeg above the run line toward the wall's up axis (the legs keep striding along the run line)
+		if (bGait && S.Sub == N_wallRunSide && WallSideRaiseDeg > 0.f && S.Kin.Type != EKin::Mantle)
+		{
+			FVector WU = ZUP - N * FVector::DotProduct(ZUP, N);
+			FVector Perp = WU - Along * FVector::DotProduct(WU, Along);
+			if (Perp.SizeSquared() > 1e-4)
+			{
+				Perp.Normalize();
+				const double Ar = FMath::DegreesToRadians(double(WallSideRaiseDeg)) * FMath::Clamp(W.RunK, 0.0, 1.0);
+				Along = (Along * FMath::Cos(Ar) + Perp * FMath::Sin(Ar)).GetSafeNormal();
+			}
+		}
 		Fwd = -N; Up = Along;
-		S.Pitch = -WallRunLean * W.RunK;
-		Rate = 14;
+		S.Pitch = -(bGait ? double(WallGaitLeanR) : WallRunLean) * W.RunK; // round 19: the IK stride leans further off the wall (hands reach it)
+		if (bTrickCancel && S.Sub == N_wallRunSide) S.Pitch *= 0.4; // round 20: a side run keeps the head on the run line (lean 40 %)
+		// round 22 (critic r21: side run "a slither", box wider than tall in 29/44 frames): upright parkour runner side-on to the facade --
+		// body up = the wall's up axis leaned WallSideLeanDeg forward along the run line and WallSideOutDeg out from the wall (feet reach it),
+		// chest along the run line (head leading); SideUpK blends in / out so the swing -> wall and side -> vertical changes do not pop
+		{
+			const bool bSideUp = bGait && WallSideUpright > 0.5f && S.Sub == N_wallRunSide && W.bFast && !bMStep;
+			W.SideUpK = Damp(W.SideUpK, bSideUp ? 1 : 0, bSideUp ? 12 : 8, Dt);
+			if (W.SideUpK > 1e-3)
+			{
+				FVector Zw = ZUP - N * FVector::DotProduct(ZUP, N);
+				if (Zw.SizeSquared() < 1e-4) Zw = ZUP;
+				Zw.Normalize();
+				FVector RunD = W.Up - N * FVector::DotProduct(W.Up, N);
+				RunD -= Zw * FVector::DotProduct(RunD, Zw);
+				if (RunD.SizeSquared() < 1e-3) RunD = S.Vel - N * FVector::DotProduct(S.Vel, N) - Zw * FVector::DotProduct(S.Vel, Zw);
+				if (RunD.SizeSquared() > 1e-4)
+				{
+					RunD.Normalize();
+					const double Ln = FMath::DegreesToRadians(double(WallSideLeanDeg)), Ou = FMath::DegreesToRadians(double(WallSideOutDeg));
+					FVector UpU = Zw * FMath::Cos(Ln) + RunD * FMath::Sin(Ln);
+					UpU = (UpU * FMath::Cos(Ou) + N * FMath::Sin(Ou)).GetSafeNormal();
+					const double K = W.SideUpK;
+					Up = FMath::Lerp(Up, UpU, K).GetSafeNormal();
+					Fwd = FMath::Lerp(Fwd, RunD, K).GetSafeNormal();
+					S.Pitch *= (1 - K);
+					if (Up.IsNearlyZero()) Up = UpU;
+					if (Fwd.IsNearlyZero()) Fwd = RunD;
+				}
+			}
+		}
+		Rate = bMStep ? 26 : 14; // round 21: the body follows the surface round the ledge lip / inner corner
 		break;
 	}
 	default:
@@ -2388,8 +3058,11 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 	{
 		const FWall& W = S.W;
 		const double ToPlane = W.Dist;
+		const FVector SurfN = (S.Kin.Type == EKin::Mantle && S.Kin.MNum > 0) ? S.Kin.CurN : W.Normal; // round 21
 		// feet 0.30 m off the wall when crawling, WallRunFootOff when running (the striding foot reaches the wall)
-		RootPos = S.Pos + W.Normal * (FMath::Lerp(0.30, WallRunFootOff, W.RunK) - ToPlane) - BodyUp * H;
+		double FootOff = FMath::Lerp(0.30, UWebTravAnimInstance::bWallGait ? double(WallGaitFootOffR) : WallRunFootOff, W.RunK);
+		FootOff = FMath::Lerp(FootOff, double(WallSideFootOff), W.SideUpK); // round 22: upright side run (feet ~.1 m off the facade after the out-tilt)
+		RootPos = S.Pos + SurfN * (FootOff - ToPlane) - BodyUp * H;
 	}
 	else RootPos = S.Pos - BodyUp * H;
 	if (S.Mode == EWebTravMode::Ground || S.Mode == EWebTravMode::Perch) RootPos.Z = S.Pos.Z - H + S.StepOff;
@@ -2418,6 +3091,9 @@ void UWebTraversalComponent::WriteAnim(const FQuat& Q)
 	A.Zip.bDash = S.Z.bDash && S.Sub == N_zipPull && S.Mode == EWebTravMode::Air;
 	A.Wall.Normal = S.W.Normal; A.Wall.Move = S.W.Move; A.Wall.bFast = S.W.bFast; A.Wall.Phase = float(S.W.Phase);
 	A.Wall.RunK = S.Mode == EWebTravMode::Wall ? float(S.W.RunK) : 0.f;
+	A.Wall.Point = S.W.Point * 100.0; A.Wall.Up = S.W.Up;
+	A.Wall.SideUp = S.Mode == EWebTravMode::Wall ? float(S.W.SideUpK) : 0.f; // round 22
+	if (S.Mode == EWebTravMode::Wall && S.Kin.Type == EKin::Mantle && S.Kin.MNum > 0) { A.Wall.Normal = S.Kin.CurN; A.Wall.Point = S.Kin.CurPt * 100.0; } // round 21: the support surface
 	A.Perch.Point = S.P.Pos * 100.0; A.Perch.Normal = S.P.Normal; A.Perch.Kind = S.P.Kind; A.Perch.Impact = S.P.Impact * 100.0;
 	A.LandingSeverity = float(S.LandSeverity); A.Trick = S.Trick; A.TrickSide = float(S.TrickSide); A.TrickDur = float(S.TrickDur);
 	A.bDive = S.bDive || S.bGliding; A.bGlide = S.bGliding;
@@ -2432,6 +3108,14 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 	Events.Reset();
 	if (!bWorldReady || !Anchors) return;
 	LastInput = I;
+	if (I.bZipPressed) LastZipFrom = FString::Printf(TEXT("%d/%s"), int32(S.Mode), *S.Sub.ToString());
+	{ // round 17: route direction = horizontal velocity smoothed over ~1.5 s (the roofline capsule of FlowRoofTarget follows the route, not a
+	  // swing's sideways / vertical moment)
+		const FVector HVn(S.Vel.X, S.Vel.Y, 0.0);
+		const double Hn = HVn.Size();
+		if (RouteDir.IsNearlyZero()) RouteDir = Hn > 1.0 ? HVn / Hn : YawDir(S.Facing);
+		else if (Hn > 4.0) RouteDir = FMath::Lerp(RouteDir, HVn / Hn, FMath::Clamp(Dt / 1.5, 0.0, 1.0)).GetSafeNormal();
+	}
 	S.JumpBuf = I.bJumpPressed ? 0.22 : FMath::Max(0.0, S.JumpBuf - Dt);
 	S.TrickBuf = I.bTrickPressed ? 0.4 : FMath::Max(0.0, S.TrickBuf - Dt);
 	S.SubT += Dt; S.ModeT += Dt;
@@ -2455,20 +3139,48 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 		View.Fwd = RM.GetUnitAxis(EAxis::X); View.Right = RM.GetUnitAxis(EAxis::Y); View.Up = RM.GetUnitAxis(EAxis::Z);
 		View.TanHalfV = FMath::Tan(FMath::DegreesToRadians(Cam->OutVFov * 0.5));
 		View.TanHalfH = View.TanHalfV * 16.0 / 9.0;
+		// round 15: while the side-on trick camera frames a flip (now on the sun-away side, often facing away from the route's zip
+		// points) the reticle aims along the chase heading -- the player's aim, not the cinematic view (probe r15 b: the roof point
+		// left the side view at 2.67 s and the 2.88 s zip found nothing)
+		if (Cam->FlipK > 0.3)
+		{
+			const FVector F = Cam->ForwardFlat();
+			const FRotator AimR(6.0, FMath::RadiansToDegrees(FMath::Atan2(F.Y, F.X)), 0.0);
+			const FRotationMatrix AM(AimR);
+			View.Pos = S.Pos - F * 3.8 + FVector(0, 0, 1.2);
+			View.Fwd = AM.GetUnitAxis(EAxis::X); View.Right = AM.GetUnitAxis(EAxis::Y); View.Up = AM.GetUnitAxis(EAxis::Z);
+		}
 		FVector PerchOut = Flat(S.P.Normal);
 		if (PerchOut.SizeSquared() > 0.09) PerchOut.Normalize(); else PerchOut = YawDir(S.Facing);
 		Anchors->UpdateTargeting(Dt, View, Eye, bEnabled, bPerched ? &S.P.Pos : nullptr,
 			S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing, bPerched ? &PerchOut : nullptr);
 	}
 	// E / MMB: zip to the highlighted point, or air web-dash
-	if (I.bZipPressed && S.ZipCooldown <= 0 && S.Kin.Type == EKin::None)
+	// round 19 (owner playtest 2026-10-01: "pressing E to go to the nearest place doesn't work when you're running on the side of the
+	// buildings"): E works from EVERY mode -- a vault / corner wrap / wall hop in progress is cut; a wall run, crawl or side run zips to the
+	// highlighted point, else to the nearest place (the top edge of this facade, else the nearest visible roof edge / corner), and only
+	// then bursts up the facade (WallZip); a roof run / perch with nothing highlighted zips to the nearest place too
+	if (I.bZipPressed && S.ZipCooldown <= 0 && S.Mode != EWebTravMode::Zip)
 	{
 		bLeaveSwingOK = true; // explicit button press: the only non-RMB way the held web is switched
-		const bool bHas = Anchors->HasTarget();
-		if (S.Mode == EWebTravMode::Wall && (S.Sub == N_wallRun || S.Sub == N_crawl)) WallZip(); // user r9w
-		else if (bHas) { if (S.Mode == EWebTravMode::Swing) WebRelease(); const FTravZipPoint T = Anchors->Best(); StartZip(T); S.ZipCooldown = 0.25; }
-		else if (S.Mode == EWebTravMode::Perch) { PointLaunch(S.P.Normal, FVector::ZeroVector); S.ZipCooldown = 0.25; } // never a dead button on a perch
-		else if (S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing) { if (S.Mode == EWebTravMode::Swing) WebRelease(); WebDash(); }
+		if (S.Kin.Type != EKin::None) { S.Kin.Type = EKin::None; S.Vel = FVector::ZeroVector; }
+		FTravZipPoint T;
+		bool bHas = Anchors->HasTarget();
+		FName Why = TEXT("highlighted");
+		if (bHas) T = Anchors->Best();
+		else if (S.Mode != EWebTravMode::Swing && NearestZip(T, Why)) bHas = true;
+		if (bHas)
+		{
+			if (S.Mode == EWebTravMode::Swing) WebRelease();
+			if (S.Mode == EWebTravMode::Wall) { S.W.bZipWeb = false; S.W.bLockDir = false; }
+			StartZip(T); S.ZipCooldown = 0.25;
+			LastZipWhy = Why;
+		}
+		else if (S.Mode == EWebTravMode::Wall) { WallZip(); LastZipWhy = TEXT("wallZip"); } // user r9w: burst up a facade taller than the zip range
+		else if (S.Mode == EWebTravMode::Perch) { PointLaunch(S.P.Normal, FVector::ZeroVector); S.ZipCooldown = 0.25; LastZipWhy = TEXT("pointLaunch"); } // never a dead button on a perch
+		else if (S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing) { if (S.Mode == EWebTravMode::Swing) WebRelease(); WebDash(); LastZipWhy = TEXT("webDash"); }
+		else LastZipWhy = TEXT("none");
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV zip press: %s -> %s"), *LastZipFrom, *LastZipWhy.ToString());
 		bLeaveSwingOK = false;
 	}
 	// Q / L1: quick web boost (air, or mid-swing); a press up to 0.25 s early is buffered until the cooldown ends
@@ -2483,6 +3195,8 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 	for (int32 K = 0; K < NSteps; ++K)
 	{
 		const EWebTravMode Pre = S.Mode;
+		const FVector PrevPos = S.Pos;
+		const bool bFreeFlight = S.Kin.Type == EKin::None && (S.Mode == EWebTravMode::Air || S.Mode == EWebTravMode::Swing);
 		if (S.Kin.Type == EKin::WallHop) StepWallHop(Hs);
 		else if (S.Kin.Type != EKin::None && S.Mode != EWebTravMode::Zip) StepKin(Hs);
 		else if (S.Mode == EWebTravMode::Ground) StepGround(Hs, I);
@@ -2492,6 +3206,21 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 		else if (S.Mode == EWebTravMode::Zip) StepZip(Hs, I);
 		else if (S.Mode == EWebTravMode::Perch) StepPerch(Hs, I);
 		if (K == 0 || S.Mode != Pre) { I.bJumpPressed = false; I.bSwingPressed = false; I.bDropPressed = false; }
+		// round 20: the merged facades are thin triangle surfaces now (not boxes): a fast body could step through one between two
+		// push-outs. Free flight (air / swing) sweeps its sub-step and stops short of a wall it would pass (the push-out then sees the contact).
+		if (AntiTunnel > 0.f && bFreeFlight && S.Mode == Pre && S.Kin.Type == EKin::None && TravWorld.SolidMode == 2)
+		{
+			const FVector D = S.Pos - PrevPos;
+			const double L = D.Size();
+			double HitD = 0.0; FVector HitN;
+			if (L > 0.04 && TravWorld.SweepSolid(PrevPos, S.Pos, 0.2, HitD, HitN) && FMath::Abs(HitN.Z) < 0.6)
+			{
+				S.Pos = PrevPos + D / L * FMath::Max(0.0, HitD - 0.02);
+				const double VN = FVector::DotProduct(S.Vel, HitN);
+				if (VN < 0) S.Vel -= HitN * VN;
+				++TunnelStops;
+			}
+		}
 	}
 	// user r9w: wall zip cut short (wall jump / roof hop / fell off): its web drops
 	if (S.W.bZipWeb && S.Sub != N_wallZip) { S.W.bZipWeb = false; if (S.Mode != EWebTravMode::Swing && S.Mode != EWebTravMode::Zip) WebRelease(true); }

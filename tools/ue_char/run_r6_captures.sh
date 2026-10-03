@@ -15,6 +15,7 @@ for g in $GROUPS_; do
   echo "[r6 captures] group $g start $(date +%H:%M:%S)"
   case $g in
     K) "$CAP" "$OUT" "" "gK" "" ;;
+    I) "$CAP" "$OUT" "" "gI" "" ;;
     C) "$CAP" "$OUT" "C" "" "" ;;
     S) "$CAP" "$OUT" "" "gC" "" ;;
     E) "$CAP" "$OUT" "" "gE" "" ;;

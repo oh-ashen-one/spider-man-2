@@ -7,9 +7,10 @@
   "Facade boxes are hand-placed inside facade-only areas of the current S-view cameras (no sky, no street); if a camera changes they must be re-placed and the file version bumped.",
   "S4 far-field boxes: sky = top band left of the right-hand tower; far_shore = the skyline across the river only (no near-city pixels); river = open water right of the slab, left of the piers; near = the near roof (bottom-left).",
   "Round 06 disagreement (builder far_shore 0-900 x 215-300 / river 450-1250 x 330-400 vs critic far_shore 420-1400 x 180-235 / river 450-1000 x 260-330): the builder boxes contained near-city and pier pixels; these boxes replace both.",
-  "Version 2 (round 09): the r08 street trees (S1 west sidewalk, S6 right foreground) grew over four v1 boxes, so their C1 / C2 numbers measured foliage, not facades (green-dominant share 36 % / 82 % / 30 % / 67 %). Re-placed to foliage-free wall (green share <= 1 %): s1_left_stone (0,0,190,235), s1_right_brick (1075,0,1335,230), s1_right_dark (1360,0,1690,290), s6_left_brown (0,20,270,180). Dropped, no foliage-free wall left in frame: s1_left_glass (fully behind a crown), s6_right_white. 16 daylight boxes + 3 dusk boxes remain (was 18 + 3). The v1 file is spec_regions_v1.json (r07 / r08 numbers)."
+  "Version 2 (round 09): the r08 street trees (S1 west sidewalk, S6 right foreground) grew over four v1 boxes, so their C1 / C2 numbers measured foliage, not facades (green-dominant share 36 % / 82 % / 30 % / 67 %). Re-placed to foliage-free wall (green share <= 1 %): s1_left_stone (0,0,190,235), s1_right_brick (1075,0,1335,230), s1_right_dark (1360,0,1690,290), s6_left_brown (0,20,270,180). Dropped, no foliage-free wall left in frame: s1_left_glass (fully behind a crown), s6_right_white. 16 daylight boxes + 3 dusk boxes remain (was 18 + 3). The v1 file is spec_regions_v1.json (r07 / r08 numbers).",
+  "v3 (r10): crit_boxes = the r09 critic boxes, share of pixels above Y 204 <= max_pct204 (C1 1.5 %; S4 far band 10 %); S4 also gets T1 silhouette-top std >= 12 px from s4_far_check.silhouette_tops."
  ],
- "version": 2,
+ "version": 3,
  "frames": {
   "1080": [
    1920,
@@ -325,6 +326,23 @@
       380
      ]
     }
+   },
+   "crit_boxes": {
+    "s4_far_band": {
+     "1080": [
+      0,
+      150,
+      1300,
+      300
+     ],
+     "4k": [
+      0,
+      300,
+      2600,
+      600
+     ],
+     "max_pct204": 10.0
+    }
    }
   },
   "S5_timessq_south": {
@@ -372,6 +390,23 @@
       960
      ]
     }
+   },
+   "crit_boxes": {
+    "s5_mid_tower": {
+     "1080": [
+      640,
+      40,
+      880,
+      700
+     ],
+     "4k": [
+      1280,
+      80,
+      1760,
+      1400
+     ],
+     "max_pct204": 1.5
+    }
    }
   },
   "S6_timessq_street": {
@@ -405,6 +440,23 @@
      3840,
      2160
     ]
+   },
+   "crit_boxes": {
+    "s6_curb_plaza": {
+     "1080": [
+      1150,
+      760,
+      1920,
+      1080
+     ],
+     "4k": [
+      2300,
+      1520,
+      3840,
+      2160
+     ],
+     "max_pct204": 1.5
+    }
    }
   },
   "S7_sunset_crosstown": {
@@ -526,6 +578,23 @@
       2320,
       1040
      ]
+    }
+   },
+   "crit_boxes": {
+    "s8_glass_upper": {
+     "1080": [
+      1270,
+      0,
+      1640,
+      300
+     ],
+     "4k": [
+      2540,
+      0,
+      3280,
+      600
+     ],
+     "max_pct204": 1.5
     }
    }
   }
