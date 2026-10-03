@@ -1,1 +1,2 @@
 r06 V_p10_lawn_eye frames=33 avg_ms=103.59 fps=9.7 p95_ms=114.83 p99_ms=119.84 gpu_avg_ms=101.35 out=3840x2160 internal=1920x1080 (auto_display) -> /Users/midir/sm2-n1/_scratch/terrain/capture/V_p10_lawn_eye/V_p10_lawn_eye_perf.json
+r06 V_p10_lawn_eye frames=33 avg_ms=121.34 fps=8.2 p95_ms=182.47 p99_ms=250.98 gpu_avg_ms=107.12 out=3840x2160 internal=1920x1080 (auto_display) -> /Users/midir/sm2-n1/_scratch/terrain/capture/V_p10_lawn_eye/V_p10_lawn_eye_perf.json

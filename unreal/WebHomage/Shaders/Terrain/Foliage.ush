@@ -49,12 +49,12 @@ float tfVn(float3 p)
     return lerp(a, b, f.z);
 }
 // r06: leaf-scale grain in world space (7 / 20 cm octaves), for magnified leaf cards near the camera whose UVs span only part of their texture (the p10 'ball':
-// test S2 showed a texture-space detail sample left it unchanged). Returns a value multiplier around 1 (0.75 .. 1.25 at full strength k = 1).
+// test S2 showed a texture-space detail sample left it unchanged). Returns a value multiplier around 1 (0.65 .. 1.35 at full strength k = 1).
 float tfLeafGrain(float3 wposCm, float k)
 {
     float3 q = wposCm * 0.01f;
     float g = tfVn(q * 14.0f + 9.1f) * 0.65f + tfVn(q * 5.0f + 2.3f) * 0.35f;   // 7 / 20 cm (a 2.5 cm octave would alias at 1080p in the movies)
-    return lerp(1.0f, 0.75f + 0.5f * g, k);
+    return lerp(1.0f, 0.65f + 0.7f * g, k);
 }
 
 // r05 summer grade of the browser's per-tree palette (aTintA / aTintB). The export's tints run hue 22-68 deg (brown .. olive, HSV saturation ~0.67 in linear albedo), which read
@@ -201,7 +201,7 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
         occ = lerp(0.24f, 0.42f, saturate(expo)) * lerp(0.55f, 1.6f, smoothstep(0.3f, 0.7f, cl));
         // r06: the p10 smooth 'ball' (critic r05: (1125-1200, 235-295), hp3 SD 3.4) and two dark smooth patches in the left tree line are this core showing where a crown's
         // cards thin out, 150-250 m away (a 4K pixel ~6 cm there; the 0.4-1 m clumps above are 7-17 px: smooth). Leaf-mass speckle at 11 / 29 cm:
-        occ *= lerp(0.55f, 1.45f, tfVn(cpw2 * 9.0f + 4.4f)) * lerp(0.72f, 1.28f, tfVn(cpw2 * 3.5f + 1.3f));
+        occ *= lerp(0.35f, 1.65f, tfVn(cpw2 * 9.0f + 4.4f)) * lerp(0.6f, 1.4f, tfVn(cpw2 * 3.5f + 1.3f));   // test3: 0.55-1.45 / 0.72-1.28 removed the ball, the darker cores stayed at hp3 SD 3.6-4.1
     }
     float3 c = (twig > 0.5f ? float3(0.085f, 0.06f, 0.042f) : leaf) * occ;
     // r06: the smooth olive 'ball' at a branch tip in p10 (r03-r05 critics; r05: (1125-1200, 235-295), hp3 SD 3.4) is one card of this pool at ~40-50 m whose atlas tile
