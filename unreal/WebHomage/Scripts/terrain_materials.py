@@ -90,7 +90,7 @@ float3 an = abs(wn); an = an / max(an.x + an.y + an.z, 0.001);
 float4 a1 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 1.9) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 1.9) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 1.9) * an.z;
 float4 a2 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 0.43) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 0.43) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 0.43) * an.z;
 float4 a3 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 7.0) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 7.0) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 7.0) * an.z;
-float3 c = vc.rgb * 0.5;
+float3 c = vc.rgb * 0.27;   // hold W (0.5 x vc, albedo ~0.2): the sunlit blocks still read pale (display luma 160-210 at the p3 / t5 pond banks); schist is ~0.1-0.12
 c *= (0.55 + 0.9 * a1.r) * (0.78 + 0.5 * a2.g) * (0.82 + 0.36 * a3.b);
 float jn = frac((pw.x * 0.8 + pw.y * 0.6 + pw.z * 1.3) / 1.7 + a1.g * 1.4);
 c *= 1.0 - 0.5 * smoothstep(0.55, 0.64, jn) * (1.0 - smoothstep(0.64, 0.72, jn));                       // foliation joints

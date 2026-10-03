@@ -82,7 +82,7 @@ movie() {  # <name> <script.json> <quit seconds>
     -- -WHTravScript="$([[ "$JSON" == /* ]] && echo "$JSON" || echo "$SCR/$JSON")" -WHTravCsv="$TMP/$NAME/${NAME}_telemetry.csv" | tail -4
   cp "$TMP/$NAME/${NAME}_telemetry.csv" "$ROUND/" 2>/dev/null
   grep -h "WebTravWorld:\|WH_QUIT" "$TMP/$NAME/$NAME.log" | sed 's/^.*Display: //' | head -5 > "$ROUND/${NAME}_log_excerpt.txt"
-  local CRF=23
+  local CRF="${MOVIE_CRF:-28}"   # r04: 1080p movies of the lawn need crf 28-29 to fit 15 MB (crf 23 / 25 / 27 each cost a 4 min pass and were over)
   while :; do
     ffmpeg -loglevel error -y -framerate 60 -i "$TMP/$NAME/${NAME}_frames/MovieFrame%05d.png" -c:v libx264 -preset slow -pix_fmt yuv420p -crf $CRF -movflags +faststart "$ROUND/$NAME.mp4" || break
     [ "$(stat -f %z "$ROUND/$NAME.mp4")" -le 15000000 ] && break
