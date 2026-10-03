@@ -22,4 +22,8 @@ if [ -n "${FE_OUT:-}" ]; then
   while mine; do sleep 5; done
   echo "== r3 sim -> $FE_OUT $(date +%T)"; "$HERE/sim_route.sh" "$FE_OUT" "$HERE/scripts/r3_crosstown_east.json" 2>&1 | tail -2
 fi
+for j in ${EXTRA_SIMS:-}; do   # extra route scripts (file names under scripts/) -> $S/sim_extra
+  while mine; do sleep 5; done
+  echo "== extra sim $j $(date +%T)"; "$HERE/sim_route.sh" "$S/sim_extra" "$HERE/scripts/$j" 2>&1 | tail -2
+done
 echo "hold done $(date +%T)"
