@@ -1,4 +1,18 @@
 {
+ "MK05": {
+  "MicroK": 0.5,
+  "_views": [
+   "river_low",
+   "river_sun"
+  ]
+ },
+ "MK2": {
+  "MicroK": 2.0,
+  "_views": [
+   "river_low",
+   "river_sun"
+  ]
+ },
  "SK2": {
   "ScatK": 0.02,
   "_views": [
@@ -14,16 +28,9 @@
    "river_low"
   ]
  },
- "MK3": {
-  "MicroK": 3.0,
-  "_views": [
-   "river_low",
-   "river_sun"
-  ]
- },
- "MK3SK2": {
-  "MicroK": 3.0,
+ "SK2M5": {
   "ScatK": 0.02,
+  "MicroK": 0.5,
   "_views": [
    "river_low"
   ]

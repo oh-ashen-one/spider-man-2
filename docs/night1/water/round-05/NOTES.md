@@ -62,6 +62,26 @@ tip's rendered seawall. `Dbg 10` (committed: contact distance, footprint and cov
 reliable) answers which; hold C runs it if its time allows (`iter/h3_DBG10_harbour_high.jpg`).
 
 
+## Round 05b (Sonnet 5.5 xhigh via Devin, resumed after the interruption): the far line was gated off by a distance bug, found with Dbg 10
+
+**Finding (hold D/E, `_scratch/water/r05d,e`).** `Dbg 10` on harbour_high: the contact map and the footprint read correctly at the island
+tip (contact distance 0 at the visible waterline: a CPU ray-cast of the camera onto the map puts the 2 m contour exactly on the rendered
+seawall edge, `tools/water` scratch `proj_contact.py`), but the column `dist / 2000 m` read >= 1 at every water row from 300 m to 1.5 km,
+and `nearW` read 0. In the pixel shader `WPos` (the `WorldPosition` node set to exclude all shader offsets) is the grid vertex position
+BEFORE the camera-following WPO, i.e. relative to the water actor at the origin, not the pixel's world position. `dist`, `V`, `down`
+and `nearW` were therefore computed from (camera - that point): about |camera| from the origin (777 m at river_low, 4.7 km at
+harbour_high), a horizontal view vector, `nearW` = 0 and `down` = 0 in every view since round 02 (Dbg 10 river_low: nearW 0 under the
+camera before the fix, 0.999 after). Consequences, all explained by it:
+- r05's far contact line was multiplied by `1 - smoothstep(1750, 2500, dist)` = 0 at harbour_high (gate 3 at 0.6 %) while it rendered at
+  river_low (|camera| = 777 m);
+- the "near-field" foam branch never ran: the seawall band r05 rendered at river_low was the FAR block (that is why `Dbg 4` / `Dbg 7`
+  "lied": they read variables of a branch that never executed), and the two-realization / resolved-chop near field, the `down`
+  (from-above) logic of r04 and the V-dependent bending / glitter code all ran with a garbage V;
+- r05's far line at river level (FarPx footprints) painted a 40 px flat white bar over the far quay (bright share of the far strip 13.3 %
+  vs r03 4.2 %): capped now in metres (`FarMaxM`).
+**Fix**: `wp = float3(Lag.xy, -1.6)` (the pixel's world xy from the vertex interpolator, water plane z), `DistFix` 1 (0 = the legacy
+behaviour, kept as a variant); the far line's range gate uses the true distance in both modes.
+
 ## Foam gate: diagnosis and fix
 - **`Dbg 9` (hold 1) clears the import path.** Thermometer bands (`iter/h1_DBG9_river_low_00_t016.0.jpg`, identical at t 45 s) read in-engine:
   `T_WaterContact` 4096 x 8192, 1 mip; `Load()` at the texel the file reads 0 m = 0 m; `SampleLevel` at that UV = 0 m; at the open-water probe
