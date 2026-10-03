@@ -1,0 +1,458 @@
+{
+ "variants": {
+  "g00_base": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 5",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 1",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=1,G=1,B=1,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 2.5"
+  ],
+  "g01_f10": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.45,G=0.45,B=0.45,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5.5"
+  ],
+  "g02_f10_sl47": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.47,G=0.47,B=0.47,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5.5"
+  ],
+  "g03_f10_sl50": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.5,G=0.5,B=0.5,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5.5"
+  ],
+  "g04_ap12_sl50_fc70": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.5,G=0.5,B=0.5,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.182,G=0.14,B=0.14,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5"
+  ],
+  "g05_ap12_sl55_fc70": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.55,G=0.55,B=0.55,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.182,G=0.14,B=0.14,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5"
+  ],
+  "g06_f08_sl52": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.5",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.52,G=0.52,B=0.52,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5"
+  ],
+  "g07_f08_sl55": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.5",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.55,G=0.55,B=0.55,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5"
+  ],
+  "g08_ap12_sl50_SL65": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.5,G=0.5,B=0.5,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 6.5"
+  ],
+  "g09_ap12_sl50_SL45": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.5,G=0.5,B=0.5,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 4.5"
+  ],
+  "g10_ap1_sl55_fc70": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 1",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.55,G=0.55,B=0.55,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.182,G=0.14,B=0.14,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5"
+  ],
+  "g11_base": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 5",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 1",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=1,G=1,B=1,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 2.5"
+  ],
+  "g12_f10": [
+   "set SkyAtmosphere SkyAtmosphereComponent RayleighScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScatteringScale 0.03",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAbsorptionScale 0.003",
+   "set SkyAtmosphere SkyAtmosphereComponent MieAnisotropy 0.7",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPespectiveViewDistanceScale 1.2",
+   "set SkyAtmosphere SkyAtmosphereComponent AerialPerspectiveStartDepth 0.02",
+   "set SkyAtmosphere SkyAtmosphereComponent HeightFogContribution 0.8",
+   "set SkyAtmosphere SkyAtmosphereComponent SkyLuminanceFactor (R=0.45,G=0.45,B=0.45,A=1)",
+   "set SkyAtmosphere SkyAtmosphereComponent MieScattering (R=1,G=0.72,B=0.45,A=1)",
+   "set HeightFog ExponentialHeightFogComponent FogDensity 0.0052",
+   "set HeightFog ExponentialHeightFogComponent FogHeightFalloff 0.09",
+   "set HeightFog ExponentialHeightFogComponent StartDistance 4000",
+   "set HeightFog ExponentialHeightFogComponent FogMaxOpacity 0.95",
+   "set HeightFog ExponentialHeightFogComponent FogInscatteringLuminance (R=0.26,G=0.2,B=0.2,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringLuminance (R=0.3,G=0.15,B=0.06,A=1)",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringExponent 14",
+   "set HeightFog ExponentialHeightFogComponent DirectionalInscatteringStartDistance 8000",
+   "set HeightFog ExponentialHeightFogComponent FogCutoffDistance 0",
+   "set HeightFog ExponentialHeightFogComponent SecondFogData (FogDensity=0.0026,FogHeightFalloff=0.03,FogHeightOffset=7000)",
+   "set SkyLight - Intensity 5.5"
+  ]
+ },
+ "spec": {
+  "g00_base": {},
+  "g01_f10": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.45,
+    0.45,
+    0.45
+   ],
+   "slint": 5.5
+  },
+  "g02_f10_sl47": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.47,
+    0.47,
+    0.47
+   ],
+   "slint": 5.5
+  },
+  "g03_f10_sl50": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "slint": 5.5
+  },
+  "g04_ap12_sl50_fc70": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "slint": 5.0,
+   "fogcol": [
+    0.182,
+    0.14,
+    0.14
+   ]
+  },
+  "g05_ap12_sl55_fc70": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.55,
+    0.55,
+    0.55
+   ],
+   "slint": 5.0,
+   "fogcol": [
+    0.182,
+    0.14,
+    0.14
+   ]
+  },
+  "g06_f08_sl52": {
+   "ap": 1.5,
+   "hfc": 0.7,
+   "skylum": [
+    0.52,
+    0.52,
+    0.52
+   ],
+   "slint": 5.0
+  },
+  "g07_f08_sl55": {
+   "ap": 1.5,
+   "hfc": 0.7,
+   "skylum": [
+    0.55,
+    0.55,
+    0.55
+   ],
+   "slint": 5.0
+  },
+  "g08_ap12_sl50_SL65": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "slint": 6.5
+  },
+  "g09_ap12_sl50_SL45": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "slint": 4.5
+  },
+  "g10_ap1_sl55_fc70": {
+   "ap": 1.0,
+   "skylum": [
+    0.55,
+    0.55,
+    0.55
+   ],
+   "slint": 5.0,
+   "fogcol": [
+    0.182,
+    0.14,
+    0.14
+   ]
+  },
+  "g11_base": {},
+  "g12_f10": {
+   "ap": 1.2,
+   "hfc": 0.8,
+   "skylum": [
+    0.45,
+    0.45,
+    0.45
+   ],
+   "slint": 5.5
+  }
+ },
+ "base": {
+  "ray": 0.03,
+  "mie": 0.03,
+  "mie_abs": 0.003,
+  "aniso": 0.7,
+  "ap": 5.0,
+  "ap_start": 0.02,
+  "hfc": 1.0,
+  "skylum": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "miecol": [
+   1.0,
+   0.72,
+   0.45
+  ],
+  "dens": 0.0052,
+  "fall": 0.09,
+  "start": 4000.0,
+  "maxop": 0.95,
+  "fogcol": [
+   0.26,
+   0.2,
+   0.2
+  ],
+  "dircol": [
+   0.3,
+   0.15,
+   0.06
+  ],
+  "direxp": 14.0,
+  "dirstart": 8000.0,
+  "cutoff": 0.0,
+  "haze_dens": 0.0026,
+  "haze_off": 7000.0,
+  "haze_fall": 0.03,
+  "slint": 2.5
+ }
+}
