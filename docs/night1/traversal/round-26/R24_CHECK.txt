@@ -1,4 +1,4 @@
-== r24 checks on round-26
+== r24 checks on /Users/midir/sm2-n1/traversal/docs/night1/traversal/round-26
 == T7 / T3 / T1 / T2 / T4 on a_swing_chain (935 rows, 15.57 s)
   a_swing_chain: releases 5
     t_rel h_rel  apex  want    vz    hs   low  t_low  drop   off span  occl  kind / verdict

@@ -39,6 +39,8 @@ def main():
         cols = int(sys.argv[7]) if len(sys.argv) > 7 and not sys.argv[7].startswith('--') else min(n, 5)
         crop = None
         if '--crop' in sys.argv: crop = [int(v) for v in sys.argv[sys.argv.index('--crop') + 1].split(',')]
+        dur = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', mp4], capture_output=True, text=True).stdout.strip() or 1e9)
+        t1 = min(t1, dur - 0.05)   # never ask for a frame past the end of the clip
         ts = [t0 + (t1 - t0) * i / max(1, n - 1) for i in range(n)]
         lab = '--label' in sys.argv
         tile([grab(mp4, t, crop) for t in ts], cols, ['%.1f s' % t if lab else '' for t in ts], out)

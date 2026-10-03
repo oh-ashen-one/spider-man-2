@@ -87,5 +87,5 @@ cat > $C/pairs.json <<JSON
 JSON
 rm -rf $C/pack
 python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py $C/pack $C/pairs.json
-for d in $C/pack/*/; do for f in $d*.jpg; do [ -f "$f" ] && sips -g pixelWidth "$f" | tail -1 | sed "s#^#$(basename $d)/$(basename $f) #"; done; done | head -40
+for d in $C/pack/*/; do for f in $d*.jpg; do [ -f "$f" ] || continue; sips -g pixelWidth "$f" | tail -1 | sed "s#^#$(basename $d)/$(basename $f) #"; done; done
 du -sh $C/pack
