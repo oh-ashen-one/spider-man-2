@@ -39,7 +39,7 @@ for pid, k, ref, note in pairs:
 # 2) native-4K pixel crops (same pixel size both sides): the S4 far band, the S8 upper glass, the S3 board region
 crops = [('crop4k-skyline-band', 'S4', 'skyline-perch-nm__nm_0846.jpg', (0, 220, 2048, 760), 'native-pixel crop of the far skyline and shore band, perch view over a river'),
          ('crop4k-tower-glass', 'S8', 'swing-over-city-golden-trailer__st_0052.jpg', (2300, 0, 3300, 760), 'native-pixel crop of the upper part of a glass tower, aerial view'),
-         ('crop4k-rooftop-board', 'S3', 'rooftops-watertowers-golden__nm_0314.jpg', (0, 0, 1900, 1100), 'native-pixel crop of a rooftop with a large painted advertising board and a water tank')]
+         ('crop4k-rooftop-board', 'S3', 'rooftops-watertowers-golden__nm_0314.jpg', (200, 200, 1900, 1900), 'native-pixel crop of a rooftop with a large painted advertising board and a water tank')]
 for pid, k, ref, (x0, y0, x1, y1), note in crops:
     f4 = R + S[k] + '_3840x2160.jpg'
     if not os.path.exists(f4): print('no 4K frame for', pid); continue
