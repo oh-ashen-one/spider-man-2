@@ -32,8 +32,11 @@ P = [
  ('overcast-skyline', t8('S4', 'w1_h13'), R + 'streets/skyline-overcast-dn__dn_0134.jpg', 'overcast day skyline from a perch'),
 ]
 # progress: round-03 (the merged floor; fixed presets) vs round 08 (time of day at the matching hour)
-for pose, pre, h in (('S4', 'golden', 'h18.4'), ('S7', 'golden', 'h18.4'), ('S1', 'golden', 'h18.4'), ('S4', 'night', 'h22'), ('S1', 'night', 'h22'), ('S4', 'midday', 'w1_h13'), ('S2', 'midday', 'w1_h13')):
+for pose, pre, h in (('S4', 'golden', 'h18.4'), ('S7', 'golden', 'h18.4'), ('S1', 'golden', 'h18.4'), ('S4', 'night', 'h22'), ('S1', 'night', 'h22')):
     P.append(('progress-r03-%s-%s' % (pre, pose.lower()), t8(pose, h), t3(pre, pose), 'two versions of our %s view %s (same pose)' % (pre, pose)))
+# the midday floor is the fixed midday preset map in both rounds
+for pose in ('S4', 'S2', 'S7'):
+    P.append(('progress-r03-midday-%s' % pose.lower(), '%s/round-08/stills/midday_%s_1920x1080.jpg' % (WT, pose), t3('midday', pose), 'two versions of our overcast midday view %s (same pose)' % pose))
 # progress: round 07 vs round 08 at the twilight hours
 for pose, hs in (('S4e', ('h7', 'h7.5', 'h6.5')), ('S4w', ('h19', 'h19.5', 'h19.8', 'h20', 'h20.5')), ('S4', ('h7', 'h19', 'h19.5', 'h20.5'))):
     for h in hs:
