@@ -37,6 +37,31 @@ struct FWebTravAnimFrame
 	// body), blended over the main pose's leg bones by LegW
 	TArray<FWebTravAnimLayer> LegLayers;
 	float LegW = 0.f;
+	// round 19 (owner playtest: wall-run "super cooked"): procedural wall-run stride. Two-bone IK puts the feet and hands ON the facade
+	// (component space, cm): contralateral gait, stance feet sweep down the wall (push), hands plant above the shoulder and pull down,
+	// knees drive up-and-out between contacts, shoulders counter-twist with the arms. WallW = blend weight (0 = clip pose only).
+	float WallW = 0.f;
+	FVector WallN = FVector::ForwardVector, WallP = FVector::ZeroVector, WallU = FVector::UpVector;
+	float GaitPh = 0.f;
+	// round 22: upright side run (runner side-on to the facade): SideUpW = blend (0 = the r21 chest-to-wall stride), WallZ = the wall's up
+	// axis (component space); WallU is then the run direction
+	float SideUpW = 0.f;
+	FVector WallZ = FVector::UpVector;
+	// round 19 (owner: swing / in-air poses at speed): procedural leg shaping while swinging (legs trail the velocity at the arc bottom,
+	// knees tuck on the rise) and the free arm opening against the arc; weights 0..1
+	float SwingLegW = 0.f, SwingTuck = 0.f, SwingFreeArmW = 0.f;
+	FVector VelCS = FVector::ZeroVector;  // component-space velocity direction (unit)
+	// round 19 (r18 critic): tight tuck (wrists to the shins, knees together) while a flip program is in a Tuck shape
+	float TuckW = 0.f;
+	// round 20 (critic r19: "on a zip the hero hangs limp"): both arms reach for the zip target through the flight (component space, cm)
+	float ZipReachW = 0.f;
+	FVector ZipTargetCS = FVector::ZeroVector;
+	// round 20 (critic r19: "the air pose does not change with speed", "fallCalm stands upright at 43-51 m/s"): procedural sky-dive arch
+	// (arms up and out, knees bent, legs apart) from 20 m/s blending into a streamlined track (arms swept back along the sides, legs
+	// straight and together, toes pointed) by 30-44 m/s. AirFastW = layer weight, AirTrackK = arch (0) .. track (1)
+	float AirFastW = 0.f, AirTrackK = 0.f;
+	// round 20: swing pose by speed (0 slow .. 1 >= 55 m/s): legs trail further and straighter, the free arm sweeps back
+	float SwingSpeedK = 0.f;
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy
@@ -103,6 +128,18 @@ private:
 	float NodeT = 0.f, FadeT = 1.f, FadeDur = 0.2f, TotalWeight = 0.f;
 	TArray<FWebTravAnimLayer> PrevLayers;
 	float LocoPhase = 0.f, WallRunPhase = 0.f;
+	// round 22 (characters critic: idle -> run was a 1-frame weight pop): smoothed ground locomotion weights idle / walk / jog / run / sprint
+	float GroundW[5] = { 1.f, 0.f, 0.f, 0.f, 0.f };
+	bool bGroundWInit = false;
+	float WallGaitPh = 0.f;
+	float PendingTuckW = 0.f;
+public:
+	/** Round 19: procedural wall-run stride on (default) -- -WHWallGait=0 restores the round-06 sprint-clip wall run (A/B). */
+	static bool bWallGait;
+	/** Round 20: speed-dependent air pose + swing shaping (-WHAirSpeedPose=0 = r19); ChestSign flips the body-front axis if a rig needs it. */
+	static bool bAirSpeedPose;
+	static double ChestSign;
+private:
 	// air cycle
 	bool bInAirCycle = false;
 	float AirCycleT = 0.f;

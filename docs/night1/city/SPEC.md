@@ -58,3 +58,14 @@ Checker `farfield_check.py`: depth-masked capture of S4/S8 (sky mask, depth > 15
 | C-E Image quality | C1 (clipping), C11 flat-block rule, no missing materials (any untextured mesh in frame = defect) |
 Critic rules: score against these lines; ADD observed gaps with file@coords; do not contradict a line unless the named tool run on the ref
 shows the ref violates it. A capture framed to hide an unbuilt area is judged as if it were in view.
+
+## 7. Round-gap tests added by the builder (r10-r11; instruments in `tools/export/`, boxes at 1920x1080)
+| id | test | instrument |
+|---|---|---|
+| T1 | S4 silhouette-top std over x 0-1300 >= 12 px (far skyline is not a flat plateau) | `s4_far_check.py` (3 definitions) |
+| T2 | S4 box (0,150,1300,300): <= 10 % of pixels above Y 204 | `s4_far_check.py`, `city_spec_check.py` crit box `s4_far_band` |
+| T4 | S4 box (540,110,900,260): 8x8 blocks with mean Y > 200 and std < 3 ('flat bright blocks'): <= 10 % (reported both as share of the bright blocks and of all blocks) | `s4_far_check.py` |
+| T5 | S8 glass box (1270,0,1640,300): <= 1.5 % of pixels above Y 204 (C1 on the upper tower glass) | `city_spec_check.py` crit box `s8_glass_upper` |
+| T6 | S3 rooftop board: the caption reads in full in a native-4K crop, and no partial crop of it resembles a real brand name or logo (visual + `ip_ocr_check.py`) | native-4K S3 frame, `builder_checks/billboard_*.png` |
+C11-C15 are measured on the S4 frame with the boxes of `spec_regions.json` (far_shore (450,192,1350,236), sky (0,0,1650,80), river (720,298,1000,338), near_city (0,750,500,1000)); a critic who uses
+other boxes (e.g. far (0,150,1300,215) for C13) gets other numbers: C13 is the most box-dependent line.

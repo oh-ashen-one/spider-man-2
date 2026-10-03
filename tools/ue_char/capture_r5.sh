@@ -29,7 +29,7 @@ seg_run() {   # name map start_shot quit_s [res]
   "$WT/tools/ue_char/ue_wait.sh"
   ioreg -r -d 1 -w 0 -c IOAccelerator | grep -o '"Device Utilization %"=[0-9]*' > "$OUT/seg$1_gpu_util_before.txt" || true
   "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map "$2" -res "${5:-1920x1080}" -quit "$4" -name "seg$1" -movie -exec "${MOVIE_EXEC-r.MotionBlurQuality 0}" -timeout 3000 \
-      -- -WHCharShot="$3" ${WLOG:+-WHWalkerLog="$WLOG"} < /dev/null | tail -4
+      -- -WHCharShot="$3" ${WLOG:+-WHWalkerLog="$WLOG"} ${BONELOG:+-WHBoneLog="$BONELOG"} < /dev/null | tail -4
 }
 cut_clip() {  # seg name start_s dur_s
   ffmpeg -loglevel error -y -framerate 60 -start_number $(python3 -c "print(int(round($3 * 60)))") -i "$OUT/seg$1_frames/MovieFrame%05d.png" \
@@ -44,8 +44,9 @@ for m in $MOVIES; do
        cut_clip H hero_run_side $D 6; cut_clip H hero_run_34 $(python3 -c "print($D+6)") 5; cut_clip H hero_run_leap_side $(python3 -c "print($D+11)") 6.5 ;;
     G) seg_run G /Game/Tests/Characters/Char_Hero 6 12.5     # round 05 gameplay cameras: chase (behind) 6 s, then toward the camera 6 s
        cut_clip G hero_run_chase $D 6; cut_clip G hero_run_toward $(python3 -c "print($D+6)") 6 ;;
-    F) seg_run F /Game/Tests/Characters/Char_Fight 0 24.5
-       cut_clip F street_fight_wide $D 8; cut_clip F street_fight_34 $(python3 -c "print($D+8)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16)") 8
+    F) BONELOG=${BONELOG:-$OUT/fight_bones.csv} seg_run F /Game/Tests/Characters/Char_Fight 0 25.4     # round 09: bone log of the scripted fight (-WHBoneLog)
+       # round 10: shot 0 lasts 8.6 s (0.6 s of texture-streaming warm-up + a full 8 s clip), the three clips are 8.0 s each: stage 0.65 - 8.65 | 8.65 - 16.65 | 16.65 - 24.65
+       cut_clip F street_fight_wide $(python3 -c "print($D+0.6)") 8; cut_clip F street_fight_34 $(python3 -c "print($D+8.6)") 8; cut_clip F street_fight_orbit $(python3 -c "print($D+16.6)") 8
        cut_still F street_fight_1080 $(python3 -c "print($D+3)") ;;
     A) WLOG="$OUT/avoid_demo_walkers.csv" seg_run A /Game/Tests/Characters/Char_CrowdAvoid 0 9.5     # round 07: the OLD (colliding) layout with avoidance on: the A/B of the avoidance alone
        cut_clip A crowd_avoidance_demo $D 8 ;;
@@ -60,8 +61,12 @@ run_group() { # map start_shot "still times" quit tag names...
   local map="$1" start="$2" shots="$3" quit="$4" tag="$5"; shift 5
   if [ -n "$ONLY" ]; then case " $ONLY " in *" $tag "*) ;; *) return 0;; esac; fi
   "$WT/tools/ue_char/ue_wait.sh"
+  # round 09: STAGE_SHOTS=1 takes the stills at STAGE times of the scripted fight (director clock, -WHStageShot): the automation clock of a real-time run leads the stage clock by a
+  # varying 0.4 - 2.4 s (measured), so -shots would show another moment of a choreography than the one named; the run then needs a later quit (stage + 8 s)
+  local SHOTARG=(-shots "$shots") XS=()
+  if [ "${STAGE_SHOTS:-0}" = 1 ]; then SHOTARG=(); XS=("-WHStageShot=$shots"); quit=$(( quit + 6 )); fi
   "$GPU" capture --label characters -- Scripts/run_game.sh "$OUT" -map "$map" -res 3840x2160 -exec "r.ScreenPercentage 100,r.MotionBlurQuality 0${XEXEC:-}" \
-    -shots "$shots" -perf 3:$(( quit - 1 )) -quit "$quit" -name "$tag" -timeout 3600 -- -WHCharShot="$start" ${XARGS:-} < /dev/null | tail -12
+    "${SHOTARG[@]}" -perf 3:$(( quit - 1 )) -quit "$quit" -name "$tag" -timeout 3600 -- -WHCharShot="$start" ${XARGS:-} "${XS[@]}" < /dev/null | tail -12
   for f in "$OUT"/${tag}_[0-9][0-9]_t*.png; do
     if [ "${STILL_PNG:-0}" = 1 ]; then mv "$f" "$OUT/${1}_4k.png"   # keyed / id stills stay lossless (4:2:0 JPEG bleeds the key colour into edge pixels)
     else ffmpeg -loglevel error -y -i "$f" -q:v 2 "$OUT/${1}_4k.jpg"; rm -f "$f"; fi
@@ -77,7 +82,7 @@ for g in $STILLS; do
     gH) run_group $HERO 0 "4.5"  8 gH1 hero_turntable
         run_group $HERO 1 "3.5"  7 gH2 hero_run_side
         run_group $HERO 4 "3.0,8.0,10.0,11.5" 13 gH3 suit_closeup hero_face_lens_a hero_face_lens hero_face_lens_b ;;   # round 08: two more face angles of the turntable (8.0 / 11.5 s)
-    gF) run_group $FIGHT 0 "3.5,13.0,22.0" 24 gF1 street_fight_wide street_fight_34 street_fight_orbit ;;
+    gF) run_group $FIGHT 0 "${GF_TIMES:-3.5,13.0,22.0}" $(python3 -c "print(int(max(map(float,'${GF_TIMES:-3.5,13.0,22.0}'.split(',')))+2))") gF1 street_fight_wide street_fight_34 street_fight_orbit ;;   # round 09: GF_TIMES picks the instants of the scripted fight
     gC) run_group $CROWD 0 "5.5,11.5" 13 gC1 crowd_tracking crowd_wide ;;
     gK) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $KEY 0 "3.5,5.5,7.5,11.5" 13 gK1 crowd_key_a crowd_key_tracking crowd_key_c crowd_key_wide ;;
     gI) XEXEC=",r.CustomDepth 3" STILL_PNG=1 run_group $CROWDID 0 "3.5,5.5,7.5,11.5" 13 gI1 crowd_id_a crowd_id_tracking crowd_id_c crowd_id_wide ;;

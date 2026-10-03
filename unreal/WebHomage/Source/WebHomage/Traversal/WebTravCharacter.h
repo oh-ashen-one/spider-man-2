@@ -9,6 +9,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "Core/WebHomageCharacter.h"
 #include "GameFramework/GameModeBase.h"
 #include "Traversal/WebTravTypes.h"
@@ -56,6 +57,7 @@ protected:
 
 	/** Mouse look: radians per Mouse2D unit (browser 0.0023 rad / px; Mouse2D arrives pre-scaled by 0.07). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	float MouseTestPx = 6.f; // round 20: px per engine frame injected by -WHTravInputTest=mouseLook (-WHMouseTestPx=)
 	float MouseRadPerUnit = 0.0025f; // 2026-10-01 owner playtest ("tiny move = seizure"): Enhanced Input mouse = raw pixels, so 0.011 rad/px (0.6 deg) spun the camera; 0.0025 rad/px (~0.14 deg, typical PC TPS); x wh.MouseSensitivity
 
 	/** Right stick look rate (rad/s) at full deflection (browser 900 px/s x 0.0023). */
@@ -122,6 +124,43 @@ private:
 	FVector2D LiveMove = FVector2D::ZeroVector, MouseAccum = FVector2D::ZeroVector, PadLook = FVector2D::ZeroVector;
 	bool bRMB = false, bR2 = false, bL2 = false, bShift = false, bZipKey = false, bDropKey = false, bQuickKey = false, bJumpKey = false, bTrickKey = false;
 	FWebTravInput PrevInput;
+	// round 19 (owner playtest 2026-10-01: RMB swing and mouse look "eventually stop working"): held buttons / sticks are POLLED from the
+	// player input key state every frame (the Started / Completed event latches stayed set when a release was lost to a pause, a menu
+	// or a focus change, so a new press was never an edge); a capture watchdog re-takes a lost mouse capture while the player has the
+	// game captured; WH_INPUT log lines + telemetry columns record every capture / focus / menu transition.
+	void PollLiveInput(class APlayerController* PC, FWebTravInput& I, float Dt);
+	void WatchInput(class APlayerController* PC, const FWebTravInput& I, float Dt);
+	double LastLiveTickReal = -1.0;
+	uint64 LastLiveFrame = 0;
+	double InputTestClock = 0.0;
+	int32 InCapState = -1;          // packed pc_cap | vp_cap << 1 | vp_focus << 2 | app_active << 3 | menu << 4
+	float CapLostT = 0.f, RecaptureCd = 0.f;
+	int32 NRecaptures = 0;
+	double LookMagFrame = 0.0;      // this frame's mouse delta (px) before the capture gate
+	float StatT = 0.f; double StatLook = 0.0; int32 StatLookFrames = 0, StatPress = 0, StatSwingStart = 0, StatNoAnchor = 0, StatZipPress = 0, StatZipFail = 0;
+	float PressWatchT = 0.f; FString PressFrom; int32 PressNoAnchor = 0;
+	// round 19 scripted repro of the live-input bugs: -WHTravInputTest=pauseRelease injects real key events into the player controller on a
+	// real-time core ticker (it runs while the game is paused): RMB held, game paused, RMB released DURING the pause, unpause, RMB pressed
+	// again -> must swing. -WHTravLatchInput = the round-18 event-latched flags (the A/B that shows the old failure).
+	bool bLatchInput = false;
+	FString InputTest;
+	FTSTicker::FDelegateHandle InputTestTicker;
+	double InputTestT0 = -1.0;
+	int32 InputTestStep = 0, InputTestPresses = 0, InputTestSwings = 0;
+	double InputTestPressT = -1.0;
+	bool InputTestTick(float Dt);
+	// round 20: -WHTravInputTest=mouseLook injects real mouse-axis events (MouseX / MouseY, IE_Axis) through the player controller; the
+	// automated run cannot capture the OS mouse (run_game.sh passes -WHNoMouseCapture: never trap the owner's mouse), so the capture gate
+	// is bypassed for injected look only while this test runs
+	bool bInputTestMouse = false;
+	double InjectedPx = 0.0, MouseTestYaw0 = 0.0;
+	bool bMouseTestYaw0 = false;
+	// round 20: -WHTravDepthAudit=<csv>: top-down orthographic scene-depth render of the city (all visible / without the name-excluded
+	// signs, screens, props, foliage) vs the traversal floor (GroundHeight) on the 5 m audit grid
+	int32 DepthAuditFrames = 0;
+	bool bDepthAuditDone = false;
+	void RunDepthAudit(const FString& Path);
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
 	FWebTravCamera Cam;
 	int32 SunTries = 0; // round 15: frames spent looking for the level's sun light
@@ -133,6 +172,9 @@ private:
 	float FlipPreT = 0.38f;
 	double PrerollLeft = 0.0;  // round 06: capture pre-roll (s), -WHTravPreroll=
 	bool bHadPreroll = false;
+	// round 26: split movie capture (-WHMovieFrom=<sequence s>): -dumpmovie writes frames only from that sequence time on (the replay is
+	// deterministic; the earlier frames come from a run that quits there). 0 = off
+	double MovieFrom = 0.0; int32 MovieDumpSaved = 0; bool bMovieGated = false;
 	int32 PrerollFrames = 0;
 	// autoChain rhythm rule state
 	bool bAutoHeld = true, bAutoWasSwinging = false;
@@ -151,6 +193,12 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> FigureParts;
 	UPROPERTY(Transient) TArray<TObjectPtr<UStaticMeshComponent>> WebSegs;
 	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMat;
+	UPROPERTY(Transient) TObjectPtr<UMaterialInstanceDynamic> WebMatTwoTone; // round 25: M_TravWeb (null when the asset is missing)
+	int32 WebLookNow = -1;
+	// round 25: the strand as drawn this frame (cm; telemetry projects it through the final camera), and its width (cm) at each end
+	FVector RopeDrawA[2], RopeDrawB[2];
+	double RopeDrawWA[2] = { 0.0, 0.0 }, RopeDrawWB[2] = { 0.0, 0.0 };
+	bool bRopeDrawn[2] = { false, false };
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
 	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
 	void UpdateHeroFill();
@@ -159,6 +207,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> MaskRT;
 	float PxTop = -1.f, PxBottom = -1.f, PxLeft = -1.f, PxRight = -1.f;
+	float VisTop = -1.f, VisBottom = -1.f; int32 VisPx = -1; // round 20: visible (unoccluded) hero pixels
 	// round 08: full-scene depth from the view camera (same 480x270 grid) -> near-wall share and hero occlusion
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> SceneCapture;
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> SceneRT;

@@ -1,6 +1,6 @@
 # (r10) Atmosphere / exposure variant copies of a view map (scratch maps City_View_<id>v<name>, not committed, regenerable).
 # JOB_ARGS: src (view id, default S4_perch_skyline), names 'a,b,c'; per variant (all optional) exp_<n> = manual exposure bias (EV), fog_<n> = height fog density,
-# fogc_<n> = 'r,g,b' inscattering, aerial_<n> = aerial perspective view distance scale, fh_<n> = fog height falloff, sun_<n> = sun intensity, sky_<n> = sky light intensity.
+# fogc_<n> = 'r,g,b' inscattering, aerial_<n> = aerial perspective view distance scale, fh_<n> = fog height falloff, fs_<n> = fog start distance (METRES, r11), sun_<n> = sun intensity, sky_<n> = sky light intensity.
 # Superset of atmo_variants.py (which only knew fog / fogc / aerial). Run through run_commandlet.sh (headless, GPU-lock wrapped).
 import unreal
 src = JOB_ARGS.get('src', 'S4_perch_skyline')
@@ -14,6 +14,7 @@ for n in JOB_ARGS['names'].split(','):
             fc = a.component
             if A('fog') is not None: fc.set_editor_property('fog_density', float(A('fog')))
             if A('fh') is not None: fc.set_editor_property('fog_height_falloff', float(A('fh')))
+            if A('fs') is not None: fc.set_editor_property('start_distance', float(A('fs')) * 100.0)
             if A('fogc') is not None:
                 c = [float(v) for v in A('fogc').split(',')]
                 fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(c[0], c[1], c[2], 1))

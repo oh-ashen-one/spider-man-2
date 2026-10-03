@@ -429,6 +429,62 @@ def fix_flips(P, F, cfg, min_area=5e-6):
     return F, int(bad.sum())
 
 
+def _raster_cov(Q, T, W, H, org, px):
+    """Coverage mask of the triangles T (vertex positions Q projected on x / y, orthographic, `px` metres per pixel)."""
+    m = np.zeros((H, W), bool)
+    if len(T) == 0: return m
+    A = (Q[T[:, 0], :2] - org) / px; B = (Q[T[:, 1], :2] - org) / px; C = (Q[T[:, 2], :2] - org) / px
+    for a_, b_, c_ in zip(A, B, C):
+        x0 = int(max(0, np.floor(min(a_[0], b_[0], c_[0])))); x1 = int(min(W - 1, np.ceil(max(a_[0], b_[0], c_[0]))))
+        y0 = int(max(0, np.floor(min(a_[1], b_[1], c_[1])))); y1 = int(min(H - 1, np.ceil(max(a_[1], b_[1], c_[1]))))
+        if x1 < x0 or y1 < y0: continue
+        xs, ys = np.meshgrid(np.arange(x0, x1 + 1) + 0.5, np.arange(y0, y1 + 1) + 0.5)
+        d = (b_[1] - c_[1]) * (a_[0] - c_[0]) + (c_[0] - b_[0]) * (a_[1] - c_[1])
+        if abs(d) < 1e-14: continue
+        l1 = ((b_[1] - c_[1]) * (xs - c_[0]) + (c_[0] - b_[0]) * (ys - c_[1])) / d
+        l2 = ((c_[1] - a_[1]) * (xs - c_[0]) + (a_[0] - c_[0]) * (ys - c_[1])) / d
+        m[y0:y1 + 1, x0:x1 + 1] |= (l1 >= -0.02) & (l2 >= -0.02) & (l1 + l2 <= 1.02)
+    return m
+
+
+def flip_seethrough(P, F, cfg, azimuths=(0.0, 28.0, -28.0), px=0.0005, max_area=1.5e-5, passes=3):
+    """Round 09 (critic r08: 'tee_face_4k has 3 see-through holes in the mask: 198 px, 91 px, 24 px'): the game draws single-sided, so a tiny triangle of the lip
+    crease whose winding ended up reversed is a hole through which the background shows.  The lower face is rasterised orthographically from the front and from
+    +-28 deg (0.5 mm pixels); every pixel inside the silhouette that only back-facing triangles cover is a see-through pixel, and the back-facing triangles (area
+    < 15 mm2) that cover it are flipped.  Larger back-facing walls (a real opening) are left alone.  Returns F, number flipped."""
+    from scipy import ndimage as ndi
+    F = F.copy(); nflip = 0
+    cen = P[F].mean(1)
+    phi, r = cyl(cen, cfg)
+    reg = (np.abs(phi) < np.radians(100)) & (r < 0.16) & (cen[:, 1] > cfg['chin'] - 0.07) & (cen[:, 1] < cfg['eye'] + 0.03)
+    for _ in range(passes):
+        ids = np.where(reg)[0]
+        flipped_now = 0
+        for az in azimuths:
+            a = np.radians(az)
+            R = np.array([[np.cos(a), 0, -np.sin(a)], [0, 1, 0], [np.sin(a), 0, np.cos(a)]])
+            Q = P @ R.T
+            T = F[ids]
+            xy = Q[T.reshape(-1), :2]
+            org = xy.min(0) - 0.005
+            W = int((xy[:, 0].max() - org[0] + 0.01) / px) + 1; H = int((xy[:, 1].max() - org[1] + 0.01) / px) + 1
+            fn = np.cross(Q[T[:, 1]] - Q[T[:, 0]], Q[T[:, 2]] - Q[T[:, 0]])
+            front = fn[:, 2] > 0
+            cov_front = _raster_cov(Q, T[front], W, H, org, px)
+            holes = ndi.binary_fill_holes(cov_front) & ~cov_front
+            holes = ndi.binary_opening(holes, structure=np.ones((2, 2), bool))                 # sub-pixel sliver noise is not a hole
+            if not holes.any(): continue
+            hd = ndi.binary_dilation(holes, iterations=1)
+            area = np.linalg.norm(fn, axis=1) / 2
+            for k in np.where(~front & (area < max_area))[0]:
+                c = _raster_cov(Q, T[k:k + 1], W, H, org, px)
+                if (c & hd).any():
+                    F[ids[k]] = F[ids[k]][[0, 2, 1]]; flipped_now += 1
+        nflip += flipped_now
+        if flipped_now == 0: break
+    return F, nflip
+
+
 def cloth_normals(P, F, N, cfg, iters=30):
     """Round 05: shading normals of the mask region = area-weighted face normals smoothed over the welded neighbours, so the mouth-slit
     walls / nostril pits (tiny triangles facing up, down or backwards) cannot light or darken the cloth.  Returns N."""
@@ -518,3 +574,115 @@ def paint_mask(img, cov, pos, cfg, seed):
     col = col * (1 + 0.10 * np.exp(-((phi / 0.35) ** 2)) * smoothstep(cfg['chin'], cfg['nose'], y))[..., None]
     out = img.astype(np.float32) * (1 - w[..., None]) + col * w[..., None]
     return np.clip(out, 0, 255).astype(np.uint8), w
+
+
+def drop_loose_shells(P, F, y_min=1.655, max_tris=320, z_max=0.02):
+    """Round 10 (critic r09: 'hood_face_4k has loose ribbon strands'): remove the small loose hair shells of the head -- connected components (welded at 0.1 mm) of at most max_tris triangles that lie
+    entirely above y_min metres (strands above the hair line) or entirely behind z_max (strands behind the head).  The Hood's SUNGLASSES (frame 289 triangles, lenses 2 x 40, arms,
+    nose pads: y 1.57 - 1.66, in front of z 0.02) are separate shells too and stay; so do the hair mass, the body and the hands.  Returns (F without those triangles, number of removed triangles)."""
+    from scipy import sparse
+    from scipy.sparse.csgraph import connected_components
+    key = np.round(P * 1e4).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); n = inv.max() + 1
+    e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]]])
+    g = sparse.coo_matrix((np.ones(len(e)), (inv[e[:, 0]], inv[e[:, 1]])), shape=(n, n))
+    nc, lab = connected_components(g, directed=False)
+    fl = lab[inv[F[:, 0]]]
+    sizes = np.bincount(fl, minlength=nc)
+    ymin = np.full(nc, 1e9); zmax = np.full(nc, -1e9)
+    np.minimum.at(ymin, fl, P[F].min(1)[:, 1]); np.maximum.at(zmax, fl, P[F].max(1)[:, 2])
+    drop = (sizes <= max_tris) & ((ymin >= y_min) | (zmax <= z_max))
+    keep = ~drop[fl]
+    return F[keep], int((~keep).sum())
+
+
+def bridge_hair_gap(P, N, UV, F, center, radius=0.07, max_gap=0.022, min_gap=0.0015, tex=None):
+    """Round 10 (critic r09: 'beard_face_4k has a detached rear hair shell with a background gap'): the Beard's side-hair curtain hangs 3 - 15 mm off the edge of the head surface at the
+    temple, and the sky shows through the wedge between them.  Both are open boundary chains of the (welded) mesh: the chain Y (the shorter) is bridged to the chain X whose vertices are
+    nearest to it (gap between min_gap and max_gap) with a strip of triangles: for every edge of Y the two nearest X vertices (and the X vertices between them) form a fan.  The X-side
+    vertices are DUPLICATED with the UV of the matching Y vertex, so the strip is hair-coloured instead of smearing skin into hair across the atlas; positions / normals are unchanged
+    (skinfit gives the duplicates their weights).  Returns (P, N, UV, F, number of triangles added)."""
+    from collections import defaultdict
+    key = np.round(P * 1e4).astype(np.int64)
+    _, inv = np.unique(key, axis=0, return_inverse=True); inv = inv.ravel(); nv = inv.max() + 1
+    rep = np.zeros((nv, 3)); rep[inv] = P
+    ridx = np.zeros(nv, int); ridx[inv] = np.arange(len(P))
+    e = np.concatenate([F[:, [0, 1]], F[:, [1, 2]], F[:, [2, 0]]])
+    a = inv[e[:, 0]]; b = inv[e[:, 1]]
+    lo = np.minimum(a, b); hi = np.maximum(a, b); ek = lo.astype(np.int64) * nv + hi
+    u, c = np.unique(ek, return_counts=True)
+    be = [(int(k // nv), int(k % nv)) for k in u[c == 1]]
+    center = np.asarray(center, float)
+    near = [(x, y) for x, y in be if np.linalg.norm(rep[x] - center) < radius and np.linalg.norm(rep[y] - center) < radius]
+    adj = defaultdict(list)
+    for x, y in near: adj[x].append(y); adj[y].append(x)
+    seen = set(); chains = []
+    for s0 in adj:
+        if s0 in seen: continue
+        ends = None; comp = []; st = [s0]
+        while st:
+            v = st.pop()
+            if v in seen: continue
+            seen.add(v); comp.append(v); st += [w for w in adj[v] if w not in seen]
+        # order the chain as a path: start from a degree-1 vertex when there is one
+        deg1 = [v for v in comp if len(adj[v]) == 1]
+        cur = deg1[0] if deg1 else comp[0]; order = [cur]; prev = None
+        while True:
+            nxt = [w for w in adj[cur] if w != prev and w not in order]
+            if not nxt: break
+            prev, cur = cur, nxt[0]; order.append(cur)
+        chains.append(order)
+    best = None
+    for yi, Y in enumerate(chains):
+        for xi, X in enumerate(chains):
+            if xi == yi or len(Y) > len(X) or len(Y) < 3: continue
+            d = np.linalg.norm(rep[Y][:, None, :] - rep[X][None, :, :], axis=2)
+            m = d.min(1); ok = (m > min_gap) & (m < max_gap)
+            score = int(ok.sum())
+            if best is None or score > best[0]: best = (score, yi, xi)
+    if best is None or best[0] < 3: return P, N, UV, F, 0
+    _, yi, xi = best; Y, X = chains[yi], chains[xi]
+    pos = {v: i for i, v in enumerate(X)}
+    d = np.linalg.norm(rep[Y][:, None, :] - rep[X][None, :, :], axis=2); nn = d.argmin(1)
+    newP, newN, newUV, newF = [], [], [], []
+    base = len(P); dup = {}
+    uv_flat = np.median(UV[[int(ridx[v]) for v in Y]], axis=0)      # one hair texel for the whole strip (no skin-to-hair smear across the atlas)
+    if tex is not None:      # ... the darkest hair texel among the curtain's own vertices (the strip sits in the shadow between face and curtain)
+        t_ = np.asarray(tex.convert('RGB'), np.float32); H_, W_ = t_.shape[:2]
+        cand = UV[[int(ridx[v]) for v in Y]]
+        lum = []
+        for uvc in cand:
+            x_, y_ = int(np.clip(uvc[0] * W_, 3, W_ - 4)), int(np.clip(uvc[1] * H_, 3, H_ - 4))
+            lum.append(t_[y_ - 3:y_ + 4, x_ - 3:x_ + 4].mean())
+        uv_flat = cand[int(np.argmin(lum))]
+    def dupvertex(xv, uv):
+        k = (xv, round(float(uv[0]), 5), round(float(uv[1]), 5))
+        if k not in dup:
+            dup[k] = base + len(newP); newP.append(P[ridx[xv]]); newN.append(N[ridx[xv]]); newUV.append(uv)
+        return dup[k]
+    def tri(a_, b_, c_):
+        n_ = np.cross(P_[b_] - P_[a_], P_[c_] - P_[a_]); nn_ = N_[a_] + N_[b_] + N_[c_]
+        newF.append([a_, b_, c_] if n_ @ nn_ >= 0 else [a_, c_, b_])
+    P_ = lambda i: None
+    allP = lambda i: P[i] if i < base else newP[i - base]
+    allN = lambda i: N[i] if i < base else newN[i - base]
+    def tri(a_, b_, c_):
+        n_ = np.cross(allP(b_) - allP(a_), allP(c_) - allP(a_)); nn_ = allN(a_) + allN(b_) + allN(c_)
+        newF.append([a_, b_, c_] if n_ @ nn_ >= 0 else [a_, c_, b_])
+    for i in range(len(Y) - 1):
+        y0, y1 = Y[i], Y[i + 1]
+        if not (min_gap < d[i, nn[i]] < max_gap and min_gap < d[i + 1, nn[i + 1]] < max_gap): continue
+        iy0, iy1 = int(ridx[y0]), int(ridx[y1]); uv0 = uv1 = uv_flat
+        x0, x1 = X[nn[i]], X[nn[i + 1]]
+        iy0 = dupvertex(y0, uv_flat); iy1 = dupvertex(y1, uv_flat)
+        p0, p1 = pos[x0], pos[x1]
+        step = 1 if p1 >= p0 else -1
+        xs = [X[k] for k in range(p0, p1 + step, step)] if p0 != p1 else [x0]
+        # fan: Y0 .. X(p0..p1) .. Y1  (the X vertices take the UV of the closer Y end)
+        dv = [dupvertex(xv, uv0 if k < (len(xs) + 1) // 2 else uv1) for k, xv in enumerate(xs)]
+        tri(iy0, iy1, dv[0] if len(dv) == 1 else dv[len(dv) // 2])
+        for k in range(len(dv) - 1): tri(iy0 if k < len(dv) // 2 else iy1, dv[k], dv[k + 1])
+    if not newF: return P, N, UV, F, 0
+    P2 = np.concatenate([P, np.array(newP)]); N2 = np.concatenate([N, np.array(newN)]); UV2 = np.concatenate([UV, np.array(newUV)])
+    F2 = np.concatenate([F, np.array(newF, dtype=F.dtype)])
+    return P2, N2, UV2, F2, len(newF)

@@ -75,9 +75,13 @@ public:
 	// grazing angle (view 20-35 deg off the wall plane) so the wall converges to the roof edge; hero in the lower third
 	// (round 15, orchestrator: "wall-run camera c must not look 56 deg up" -- 2.2 m below / 2.2 m out / hero at 0.68 made the view
 	// ~57 deg up): 1.3 m below, 3.1 m out, hero at 0.60, look-up capped at WallMaxUpDeg)
-	double WallCamBelow = 1.3;     // m under the hero centre
-	double WallCamOut = 3.1;       // m out from the wall (min; more when the street floor pushes the camera up)
-	double WallCamDist = 3.4;      // m camera -> hero kept while the floor clamps the camera height
+	// round 26 (director after the r25 critic: w1 camera 3.4 m, hero box p90 .44 -> T15 4-7 m, T8 p90 .30-.38): 1.6 m below, 4.2 m out = 4.5 m
+	// (r25: 1.3 / 3.1 / 3.4); WallDistBlend 1 = the chase -> wall blend keeps the blended distance (r25 0)
+	double WallCamBelow = 1.6;     // m under the hero centre
+	double WallCamOut = 4.2;       // m out from the wall (min; more when the street floor pushes the camera up)
+	double WallCamDist = 4.5;      // m camera -> hero kept while the floor clamps the camera height
+	double WallDistBlend = 1.0;
+	double WallMinDist = 4.1;     // round 26: on the wall the lens is never nearer (m); 0 = off (r25)
 	double WallFrameS = 0.60;      // hero screen centre on the wall
 	double WallMaxUpDeg = 30.0;    // round 15: wall camera look-up cap (was 80)
 	double WallFovAdd = 4.0;       // deg vertical FOV added on the wall
@@ -129,6 +133,30 @@ public:
 	double SettleDownMin = 5.5, SettleDownMax = 11.5, SettleT0 = 0.25, SettleT1 = 0.5;
 	// round 13 (critic r12: one-frame cuts): no cut -- the camera OUTPUT is slew-limited per 1/60 s (position first, the view re-aimed at
 	// the hero by the same correction, then pitch / yaw). SlewFlags (telemetry): 1 = position limited, 2 = pitch, 4 = yaw this frame.
+	// round 20: hero visibility lift (m, spring) + telemetry: visible probe points (0-4) and the camera enclosed by geometry
+	double VisUp = 0.0, VisUpV = 0.0, VisUpGoal = 0.0, VisHold = 0.0;
+	int32 VisPts = 4;
+	// round 24 (critic r23 camera hard gate, c 7.7-8.5 s: a user camera turn on a roof swung the lens into a tower wall -- cam 1.6 m, hero out
+	// of frame, yaw -88 -> -46 -> -99): on foot / perched (Ground / Perch / Land) the blocked-spot orbit search only takes offsets in the
+	// direction the user is turning (LookYawDir, within GndLookHold s of the last look input), the found orbit offset is absorbed into the
+	// look yaw (GndAbsorb 1: no spring back = no reversal), and a lens pushed under GndMinDist m cranes up over the hero (GndCrane, spring
+	// GndCraneT s) until it is GndMinDist + 0.2 m away. GndMinDist 0 = r23.
+	double GndMinDist = 3.0, GndLookHold = 0.8, GndAbsorb = 1.0, GndCraneT = 0.10, GndCraneMax = 6.0;
+	double GndCrane = 0.0, GndCraneV = 0.0, GndCraneGoal = 0.0, GndClearT = 0.0;
+	int32 LookYawDir = 0;
+	double GndStop = 1.0, GndStopExtra = 2.4, GndStopR = 0.9, GndYawOk = 0.0;
+	bool bGndYawOk = false; int32 GndStopped = 0;
+	double GndFloorPull = 1.0, GndFloorPullMin = 0.6; // round 24: on foot / perched, pull the chase spot in rather than over a raised roof feature
+	double GndHoldLens = 1.0, GndLensRelease = 1.5; bool bGndLensHold = false; FVector GndStopPos = FVector::ZeroVector; // round 24: the lens is held where a ground orbit stop began
+	// round 25 (critic r24 owner bug 5, c 9.85-9.98 s: the perch recenter swung the chase spot over a 3 m rooftop box, the floor clamp popped the
+	// lens 2 m up in 2 frames and the slew-limited pitch left the hero under the bottom edge, then whipped -6 -> -45 deg): perched, the auto
+	// recenter does not turn the view onto a chase spot whose floor would lift the lens (or whose sweep from the chest is blocked) while the
+	// spot it leaves is clear -- the yaw is held there (PerchYawHeld). PerchHold 0 = r24.
+	// (c 8.65-8.85 s: the lens held where the ground orbit stopped stayed put through the zip's first 0.3 s while the hero flew 10 m away):
+	// a held lens follows the hero along its own line of sight once he is more than GndZipHoldMax m away (0 = r24).
+	double PerchHold = 1.0, GndZipHoldMax = 6.0;
+	int32 PerchYawHeld = 0;
+	bool bCamEnclosed = false;
 	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipMaxStepYawDeg = 2.4;
 	int32 SlewFlags = 0;
 	/** Round 16: pick the held trick view at the release frame (TC1/TC2). Sets FlipAz / FlipOffDeg / FlipDistSel / FlipTier. */
@@ -156,6 +184,8 @@ public:
 	void Impact(double Sev) { if (!bJolts) return; Trauma = FMath::Min(1.0, Trauma + 0.12 + 0.55 * Sev); PunchV -= 40.0 * Sev; DipV -= 5.0 * Sev; }
 	/** Camera-relative directions (browser cam.forward / forwardFlat / rightFlat). */
 	FVector Forward() const { const double CP = FMath::Cos(Pitch); return FVector(FMath::Cos(Yaw) * CP, FMath::Sin(Yaw) * CP, -FMath::Sin(Pitch)); }
+	/** Round 25: the chase spot behind the hero at heading InYaw would be lifted by its floor (or its sweep from the chest is blocked). */
+	bool PerchSpotBad(double InYaw, const FTravCamInput& P, const class FWebTravWorld& World) const;
 	FVector ForwardFlat() const { return FVector(FMath::Cos(Yaw), FMath::Sin(Yaw), 0.0); }
 	FVector RightFlat() const { return FVector(-FMath::Sin(Yaw), FMath::Cos(Yaw), 0.0); }
 

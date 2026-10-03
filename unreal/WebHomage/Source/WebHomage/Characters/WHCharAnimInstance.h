@@ -23,6 +23,24 @@ struct WEBHOMAGE_API FWHLocoSample
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Locomotion") float Speed = 150.f;
 };
 
+/** Round 09: one timed action of a choreography (a hit reaction, a strike, a get-up): the clip starts at stage time Start (WHCharStage.h), blends in
+ *  over BlendIn, plays at Rate from ClipStart, then holds its last pose for Hold seconds (< 0 = for ever) and blends out over BlendOut back to
+ *  whatever is underneath (guard idle / locomotion).  Weight caps the blend (a flinch that only half overrides the guard).  Overlapping beats
+ *  cross-fade (their weights are normalised when they sum past 1). */
+USTRUCT(BlueprintType)
+struct WEBHOMAGE_API FWHScriptBeat
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") TObjectPtr<UAnimSequence> Clip = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float Start = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float Rate = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float BlendIn = 0.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float BlendOut = 0.15f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float Hold = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float Weight = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") float ClipStart = 0.f;
+};
+
 struct FWHAnimLayer
 {
 	TObjectPtr<UAnimSequence> Seq = nullptr;
@@ -58,6 +76,8 @@ public:
 	 *  SequenceBlend seconds (a staged fight: guard -> punch -> guard ...).  One clip = that clip looped with a cross-faded seam. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Locomotion") TArray<TObjectPtr<UAnimSequence>> Sequence;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category="Locomotion") float SequenceBlend = 0.15f;
+	/** Round 09: choreographed beats (see FWHScriptBeat), copied from the owning walker; empty = none. */
+	UPROPERTY(BlueprintReadWrite, Category="Script") TArray<FWHScriptBeat> Script;
 	/** Seconds added to the idle / sequence clock (per actor, set by the owner) so a crowd of identical ABPs is not in lockstep. */
 	UPROPERTY(BlueprintReadWrite, Category="State") float IdleOffset = 0.f;
 	/** Round 05: alternate air clips: jump n plays JumpVariants[n % Num] (and Takeoff stays the same); empty = JumpUp every time. */
