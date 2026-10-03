@@ -1,3 +1,4 @@
 w1_wallrun_tall_zip split 4.0 s, A + B on build 3470d057 (sync PNG frames)
 c_wallrun_perch full run on build bb7107e6 (-WHMovieAsync)
 a_swing_chain split 7.0 s, A + B on build bb7107e6 (-WHMovieAsync)
+f4_chain_flips split 6.0 s, A + B on build bb7107e6 (-WHMovieAsync)
