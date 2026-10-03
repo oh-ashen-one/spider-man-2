@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 07:14",
+ "updated": "2026-10-03 09:04",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -135,9 +135,9 @@
    "name": "River water \u2014 blind A/B build (Sonnet xhigh vs Opus high)",
    "branch": "night1/water-ab-*",
    "state": "active",
-   "round": 3,
-   "verdict": "fails \u2014 lowest 2 (opus)",
-   "gap": "Animated contact foam at the seawall/piles/island edges (engine reads the contact map at >=4 m vs 0.6-1.9 m CPU); far-field structure at swing height"
+   "round": 5,
+   "verdict": "fails \u2014 lowest 3 (Sonnet 5.5 (resumed an Opus start))",
+   "gap": "keep sparkle/foam to the contact zone (distance-to-shore mask, fade <= 40 m): river_low near mean Y <= 80, river_sun flanks <= 85, sun path >= 2.2x flanks; gates a-e kept"
   }
  ],
  "comparisons": [
@@ -992,6 +992,14 @@
    "verdict": "fails",
    "gap": "crowns cast sun shadows on lawn + paving (prove leaf-card materials write the shadow-depth pass first); remove p10 hull ball",
    "notes": "Merged (Opus director): trees 4->5, no axis below r03, critic preferred new 5/5. r06 on Opus."
+  },
+  {
+   "t": "2026-10-03 09:04",
+   "piece": "water",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "keep sparkle/foam to the contact zone (distance-to-shore mask, fade <= 40 m): river_low near mean Y <= 80, river_sun flanks <= 85, sun path >= 2.2x flanks; gates a-e kept",
+   "notes": "NOT merged (Opus director): colour 3 < r03 5, believability 3 < r03 4; foam 2->3; WPos pre-WPO bug found + fixed (DistFix). r06 on Opus, last bounded round."
   }
  ],
  "perf": [

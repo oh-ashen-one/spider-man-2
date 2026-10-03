@@ -902,6 +902,19 @@
     5,
     3
    ]
+  },
+  {
+   "piece": "water",
+   "round": 5,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    3,
+    5,
+    3,
+    3
+   ]
   }
  ],
  "agents": [
