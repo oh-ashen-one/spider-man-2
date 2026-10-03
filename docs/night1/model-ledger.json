@@ -955,6 +955,19 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "water",
+   "round": 6,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    4,
+    5,
+    5,
+    3,
+    4
+   ]
   }
  ],
  "agents": [
