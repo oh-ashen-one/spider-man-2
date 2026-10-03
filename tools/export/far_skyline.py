@@ -308,6 +308,15 @@ def hinterland():
                 h2 = h * rg.uniform(0.3, 0.8)
                 n += stack(c2[0], c2[1], wd * rg.uniform(0.8, 1.3), dp * rg.uniform(0.8, 1.2), max(24.0, h2), HWALL[rg.integers(len(HWALL))], HROOF[rg.integers(len(HROOF))], 0.0)
             px += bw * rg.uniform(0.9, 1.5)
+    # (r11) backdrop row of the central cluster: a second, farther row of supertall towers (8-11 km, roofs on rows 98-120) behind the gaps of the first row, so the top rows of the critic's box (110-125)
+    # are towers instead of sky (the 43 'flat bright' blocks of the first r11 frame were the sky between the tower tops)
+    rb = np.random.default_rng(5151); px = 500.0
+    while px < 960:
+        bw = rb.uniform(11, 22); D = rb.uniform(8000, 11000); y_t = rb.uniform(98, 120)
+        h = float(np.clip(top_to_height(y_t, D), 28, 620)); d0 = s4_ray(px + bw / 2); c = S4_POS[[0, 2]] + d0[[0, 2]] * D
+        wd = max(24.0, bw * D / FP * rb.uniform(0.9, 1.15)); dp = wd * rb.uniform(0.8, 1.2)
+        n += stack(c[0], c[1], wd, dp, h, HWALL[rb.integers(len(HWALL))], HROOF[rb.integers(len(HROOF))], 0.0)
+        px += bw * rb.uniform(0.85, 1.25)
     stats['hinterland_boxes'] = n; stats['hinterland_landmarks'] = landmarks
 hinterland()
 
