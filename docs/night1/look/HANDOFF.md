@@ -1,3 +1,14 @@
+# P4 Look / Sky: handoff (round 09 IN PROGRESS, Claude Opus 5.5 high via Devin, 2026-10-03)
+
+> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
+
+## Round 09 (in progress) - state
+- Target: S4 perch on the integrated Manhattan map under the fixed golden preset (`Look_Rig_golden`), sky / aerial-perspective settings only (director brief after city r11).
+- Done: merged `origin/Opus-5.5-Loop-Night-1` (city r11, terrain r05, traversal r26, characters r17); C++ rebuilt; Manhattan maps rebuilt with `build_manhattan.py` (scratch `_scratch/look/manhattan`, export made on port 5205; water / life / combat steps not run).
+- Live-tuning sweeps on `/Game/Maps/Manhattan` (S4 tour pose): `round-09/diag/sweep*.txt` (variants `sweep*_variants.json`, generator `tools/perf_ue/sweeps/r09/gen_s4.py`, checker `quick_s4.py`, 8-shot checker `quick_all.py`).
+- Base (round-08 golden preset, new city): S4 sky 192.9, far box -27.0, critic box -22.4, C11 3.9, C15 0.09, T2 0.5 %, T4 0; golden S3 / S7 / S8 Y<25 52 / 44 / 19 %.
+- Next: pick the preset values, bake (`hold_a.sh`), ToD stills (`hold_b.sh`), perf, pack.
+
 # P4 Look / Sky: handoff (round 08, Claude Opus 5.5 high via Devin, 2026-10-03)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
