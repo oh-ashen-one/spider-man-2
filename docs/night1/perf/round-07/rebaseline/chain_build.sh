@@ -14,9 +14,13 @@ FROM=${FROM:-1}
 st() { echo "== $(date +%H:%M:%S) step $1 $2"; }
 if [ $FROM -le 1 ]; then st 1 preset_off; python3 tools/perf_ue2/build_map.py --preset-off; fi
 if [ $FROM -le 2 ]; then st 2 city_export,city_prep,city_extra; python3 tools/perf_ue2/build_map.py --steps city_export,city_prep,city_extra; fi
-if [ $FROM -le 3 ]; then st 3 city; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps city; fi
-if [ $FROM -le 4 ]; then st 4 traversal,characters; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps traversal,characters; fi
-if [ $FROM -le 5 ]; then st 5 look,map; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps look,map; fi
+# capture holds run at background QoS (taskpolicy -b) and are cut at 40 min: the one-pass city step needed > 40 min with a cold DDC (cut after
+# 'kit actors' on 2026-10-03 19:39), so the city rest (kit,fsky,map) runs as its own hold and the other steps one per hold.
+if [ $FROM -le 3 ]; then st 3 city_rest; $G capture --label perf --timeout 21600 -- python3 $S/r07b/city_rest.py ${CITY_REST:-kit,fsky,map}; fi
+if [ $FROM -le 4 ]; then st 4 traversal; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps traversal
+  st 4b characters; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps characters; fi
+if [ $FROM -le 5 ]; then st 5 look; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps look
+  st 5b map; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps map; fi
 if [ $FROM -le 6 ]; then st 6 water; $G capture --label perf --timeout 21600 -- python3 unreal/WebHomage/Scripts/build_water.py; fi
 if [ $FROM -le 7 ]; then st 7 life_prep; python3 unreal/WebHomage/Scripts/build_life.py --steps prep; fi
 if [ $FROM -le 8 ]; then st 8 life_content_map; $G capture --label perf --timeout 21600 -- python3 unreal/WebHomage/Scripts/build_life.py --steps content,map; fi

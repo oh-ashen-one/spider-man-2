@@ -45,7 +45,9 @@ def analyse(p):
             v = D[:, i]; st[k] = {'mean': round(float(v.mean()), 3), 'p95': round(float(np.percentile(v, 95)), 3), 'top5_mean': round(float(v[top].mean()), 3),
                                   'top5_prev_mean': round(float(v[ti1 - 1].mean()), 3)}
     out['stalls'] = st
+    out['frames_gt25'] = int((ft > 25).sum()); out['ft_max'] = round(float(ft.max()), 2)   # round 07 resume: the brief's "no hitch > 25 ms" = raw count
     out['pass_gap_le_1.2'] = out['gap_top5_samerow'] <= 1.2
+    out['pass_gap_aligned_le_1.2'] = out['gap_top5_aligned'] <= 1.2
     out['pass_p95_le_18.0'] = out['p95'] <= 18.0
     out['pass_p50_le_16.67'] = out['p50'] <= 16.67
     return out
