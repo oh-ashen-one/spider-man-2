@@ -8,7 +8,44 @@ first). No engine crashed. Two screening stills ended in a ~4 min hang at exit (
 long first-frame stall, no png written); both were cleared with `stop_ue.sh` (SIGTERM, "stopped cleanly"). The Studio was shared with the
 terrain / look / city / island sessions (1-2 other engines). Perf was not run (unattended rule; not this round's gate).
 
-FINAL_SECTION_PLACEHOLDER
+## Round 06 result (everything in this folder is ONE build: `build_water.py` blob dc84a75a5005, commit bfb35c5b)
+4K stills are native 3840x2160 (`r.ScreenPercentage 100`, internal = output resolution, t = 16 s, 8 fps cap); the dollies are 1920x1080 at
+100 % screen percentage, fixed 60 fps step, clip = t 6-16 s (600 frames), x264 CRF 23 (`river_low_dolly.mp4` 10.4 MB, `river_sun_dolly.mp4`
+14.5 MB; CRF 20 gave 16.0 / 22.4 MB). The five `*_1080.jpg` are 1920x1080 at 100 % from the same build. Final holds: 12:44-13:19 (build,
+4K stills, river_low dolly, four 1080p stills) and 13:23-13:44 (`SKIP_BUILD`: river_sun dolly, river_sun_1080). Numbers: `spec.json` /
+`spec.txt` (`python3 tools/water/water_spec.py all docs/night1/water/round-06`, block `-- r06 round targets`; the r06 crops reproduce the
+critic's r05 numbers exactly on the r05 frames: 94.1 / 20.9 / 111.5 / 1.49 / 53.5 %).
+
+| check | target | r03 (merged) | r05b | r06 |
+|---|---|---|---|---|
+| PASS river_low near crop x0-1800 y1200-2160 mean Y | <= 80 | 76.4 | 94.1 | **75.4 PASS** |
+| PASS river_sun flanks (x200-700, x2600-3100; y1000-2160) mean Y | <= 85 | 82.8 | 111.5 | **80.2 PASS** (94.3 / 66.0) |
+| PASS river_sun sun path / flanks (400 px band) | >= 2.2 | 2.41 | 1.49 | **2.60 PASS** (200 px band 2.65) |
+| GATE a seawall band >= 12 px on share of wall rows | >= 60 % | 0 | 80.5 | **70.1 % PASS** (18.6 px mean, band Y 192) |
+| GATE b dolly band present every 4 fps frame | 100 % | | 100 | **100 % PASS** |
+| GATE b dolly XOR / OR every pair (min / mean) | >= 0.20 | 0.03 | 0.483 / 0.677 | **0.477 / 0.664 PASS** |
+| GATE b river_low_dolly autocorr 80 px | <= 0.10 | 0.053 | 0.076 | **0.109 FAIL** (max 0.169; river_sun_dolly 0.034) |
+| GATE c harbour_high contact line >= 3 px, share of island columns | >= 50 % | 0.6 | 72.6 | **73.0 % PASS** |
+| GATE d under-island darker than open water | >= 15 Y | 32.0 | 28.0 | **27.9 PASS** |
+| GATE d far-shore reflection (far strip bright share guard <= 7.16 %) | visible | yes | 6.86 % | **visible; 4.71 % PASS** (reflection hp 13.5) |
+| GATE e river_low near hp sd (native crop / pack crop) | >= 12 | 10.1 | 20.9 / 21.4 | **18.25 / 19.03 PASS** |
+| GATE e river_sun sparkle width (native rule / pack rule) | >= 50 % | 31.6 / 37.8 | 53.5 / 65.1 | **36.9 / 42.5 % FAIL** |
+| harbour_sun_high p1 / R-B (R-B is the atmosphere's, not chased) | <= 55 | | 52.7 / 98.1 | 52.1 / 98.0 |
+| harbour_sun_high glints / path columns / median sparkle | | | 1.67 / 100 / 3 | 1.73 / 100 / 3 |
+| harbour_high crop hp sd | | 4.27 | 14.72 | 14.69 |
+| S4 C14 | 5..35 | 17.9 | 15.5 | 15.5 |
+| Perf | | | not measured | not measured (unattended; `gpu_slot perf` exits 75) |
+
+**Two pass lines fail: the river_low dolly autocorrelation (0.109 > 0.10) and the river_sun sparkle width (36.9 % < 50 %).** Both come with
+the rough open water that brings river_low / river_sun into range: a rough lobe removes the fine sky speckle that carried r05b's low
+autocorrelation and most of its Y >= 200 columns (r05b left flank mean 132). Static-still screening of the autocorrelation
+(`tools/water/r06/still_ac.py`, 0.046 on the final 4K still, 0.073 mean of four 1080p shots) did not predict the dolly value (0.109); the
+per-second dolly values are 0.04-0.15 and highest in the first 2 s at the river_low point (r05b there: 0.11). The harbour views and S4 are
+unchanged against r05b (openW = 0 beyond 400 m; numbers above).
+The critic guards (colour, believability, reflections, foam, motion, preference over r03 in >= 4 of 7 pairs) are for the blind critic; the
+pack is `/Users/midir/sm2-n1/_scratch/critic-W-r06/pack` (13 pairs: 6 ours vs reference, 7 r03-merged vs r06; both sides of every pair the
+same pixel size, <= 2048 px; key beside the pack, not for the critic).
+
 
 ## What changed in `build_water.py` (material parameters, defaults in PARAMS; ShoreMask 0 = r05b)
 - **Contact mask** (`cmask`, `openW`): inside the contact box the 0.9 m/px contact map (distance to geometry crossing the water line:
@@ -17,9 +54,10 @@ FINAL_SECTION_PLACEHOLDER
   (shore map). openW = (1 - cmask) within OpenD0..OpenD1 (250..400 m) of the camera: the swing-height views (harbour_high,
   harbour_sun_high: nearest water ~430 m) and the S4 perch keep r05b's shading (measured below). The contact-map fetch is shared with the far
   contact line (one fetch per pixel, as before).
-- On open water (openW = 1): the resolved chop is not shaded (OpenChop 0; it is kept as `slopeX` for the glint pick), the second
-  realization of the spectrum layers is off (OpenB 0), the whitecap flecks are off (OpenWC 0), and the GGX roughness has a floor
-  **OpenRgh 0.5**. Within 2-14 m of walls / piers the r05b near field is unchanged (chop, two realizations, sharp lobe, lace foam).
+- On open water (openW = 1) the final keeps the resolved chop and the second realization shaded (OpenChop 1, OpenB 1; both were 0 in final
+  attempt 1, see below), drops the whitecap flecks (OpenWC 0) and puts a GGX roughness floor **OpenRgh 0.4** under it: the sharp-lobe
+  sparkle (r05b's frost) is left only within 2-14 m of walls / piers, where the r05b near field (chop, two realizations, sharp lobe <= 0.08,
+  lace foam) is unchanged.
 - **Open-water sun glints** (OpenGlS, GlitPow, GlitSlK): a pixel whose full-detail normal (shaded slope + the unshaded open-water chop x
   GlitSlK) lies near the sun half-vector (pow(N.H, GlitPow)) is drawn as a sharp facet on the half-vector (roughness 0.06). Off on north-facing
   views (mirror direction more than 60 deg from the sun).

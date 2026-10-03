@@ -478,7 +478,11 @@ def checks_r06(res):
         add('PASS river_sun sun path >= 2.2 x flanks (400 px band = critic r05 1.49; 200 px reported)', [q['path400_ratio'], q['path_ratio']], q['path400_ratio'] >= 2.2)
         add('GATE e river_sun sparkle width >= 50 % (native rule = critic r05 53.5; pack rule reported)', [q['sparkle_width_native_pct'], r['sparkle_width_pct']], q['sparkle_width_native_pct'] >= 50)
     for c in res.get('_checks_r05', []):
-        if c[0].startswith(('GATE', 'BLOCKER')) and 'R-B' not in c[0]: out.append(('(r05) ' + c[0], c[1], c[2]))
+        if c[0].startswith(('GATE', 'BLOCKER', 'GUARD')) and 'R-B' not in c[0]: out.append(('(r05) ' + c[0], c[1], c[2]))
+    r = res.get('river_low_dolly.mp4')
+    if r: add('GATE b river_low_dolly autocorr 80 px <= 0.10 (max reported)', [r['autocorr_80px'], r['autocorr_80px_max']], r['autocorr_80px'] <= 0.10)
+    r = res.get('river_sun_dolly.mp4')
+    if r: add('(info) river_sun_dolly autocorr 80 px <= 0.10', r['autocorr_80px'], r['autocorr_80px'] <= 0.10)
     return out
 
 

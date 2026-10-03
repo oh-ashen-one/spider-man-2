@@ -1,0 +1,4 @@
+GA_rs      flanks  73.5 ( 85.1 /  62.0) path400 193.2 ratio 2.63 (200: 2.68) sparkle native 29.1 %
+GC_rs      flanks  76.6 ( 86.8 /  66.4) path400 195.4 ratio 2.55 (200: 2.63) sparkle native 31.3 %
+base_rl    near mean  75.3 hp 12.49 p1  31.2
+base_rs    flanks  75.1 ( 85.3 /  65.0) path400 193.0 ratio 2.57 (200: 2.65) sparkle native 29.6 %

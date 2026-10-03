@@ -66,3 +66,13 @@ Round 05b additions (Sonnet 5.5 xhigh; `tools/water/water_spec.py all <round-dir
   XOR / OR >= 0.2 between every pair of 4 fps dolly samples).
 - Not scored: harbour_sun_high R-B <= 70 (the atmosphere's forward in-scatter, look piece).
 
+
+Round 06 targets (Opus director, bounded last round; `tools/water/water_spec.py all <round-dir>` prints them under `-- r06 round targets`;
+native 3840x2160 frames, the crops reproduce the critic's r05 numbers on the r05 frames):
+- PASS: `river_low_4k` near crop x 0-1800, y 1200-2160 mean Y <= 80; `river_sun_4k` flanks (x 200-700 and 2600-3100, y 1000-2160) mean Y <= 85;
+  sun path (brightest 400 px column band, rows 1000-2160) >= 2.2 x the flanks.
+- Still pass: gate a (seawall band), gate b (dolly XOR / OR >= 0.20 every pair, `river_low_dolly` autocorr 80 px <= 0.10), gate c (harbour
+  contact line), gate d (under-island >= 15 Y darker, far-shore reflection + far-strip guard), gate e (river_low near hp sd >= 12 on the native
+  crop; river_sun sparkle width >= 50 % with the native rule: rows >= 1000, a column sparkles when >= 2 % of them have Y >= 200).
+- Screening helpers: `tools/water/r06/screen.py` (1080p stills), `tools/water/r06/still_ac.py` (dolly autocorr instrument on stills; it
+  under-read the final dolly: 0.046-0.073 vs 0.109).

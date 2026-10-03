@@ -1,0 +1,5 @@
+E20_rs     flanks  74.4 ( 83.9 /  64.9) path400 194.2 ratio 2.61 (200: 2.69) sparkle native 29.4 %
+E300_rs    flanks  73.9 ( 86.0 /  61.9) path400 198.5 ratio 2.69 (200: 2.75) sparkle native 30.8 %
+E80K_rs    flanks  76.2 ( 86.5 /  65.8) path400 191.2 ratio 2.51 (200: 2.56) sparkle native 28.0 %
+E80P_rs    flanks  76.4 ( 86.2 /  66.6) path400 199.1 ratio 2.61 (200: 2.69) sparkle native 32.8 %
+E80_rs     flanks  74.7 ( 84.1 /  65.3) path400 194.3 ratio 2.60 (200: 2.68) sparkle native 29.9 %

@@ -1,0 +1,75 @@
+{"file": "S4_golden_1080.jpg", "C14": 10.8, "far_shore_Y": 150.2, "river_Y": 139.4, "farfield_json": "S4_golden_1080.jpg.farfield.json"}
+{"file": "S4_golden_4k.jpg", "C14": 15.5, "far_shore_Y": 150.6, "river_Y": 135.1, "farfield_json": "S4_golden_4k.jpg.farfield.json"}
+{"file": "crop_river_low_4k_seawall_foam.jpg", "edge_line": [-0.0541, 464.8], "edge_line_perframe_fit": [-0.0693, 468.6], "rows_ge12px_pct_perframe_fit": 68.8, "band_px_mean": 18.6, "band_px_median": 18.0, "rows_ge12px_pct": 70.1, "band_Y_mean": 191.8, "dolly": "river_low_dolly.mp4", "dolly_samples_4fps": 40, "dolly_band_px_mean": 1613.4, "dolly_samples_with_band_pct": 100.0, "dolly_band_change_xor_over_or": 0.664, "dolly_band_change_min": 0.477, "dolly_rows_ge6px_pct_min": 2.6, "dolly_rows_ge6px_pct_mean": 24.0}
+{"file": "harbour_high_1080.jpg", "src_width": 1920, "mean_Y": 101.1, "rgb": [114.1, 99.1, 82.4], "p1": 60.0, "p99_5": 146.4, "highpass_sd": 12.01, "glint_pct_ge140": 2.19, "glint_pct_ge130": 9.12, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "harbour": {"file": "harbour_high_1080.jpg", "crop": "native 4K x0-2400 y1300-2160", "mean_Y": 95.2, "highpass_sd": 11.11, "glint_pct_ge140": 1.39, "pale_blobs_ge20px": 900, "p1": 54.0, "p99_5": 144.6}, "under_island": {"under_Y": 113.3, "open_Y": 147.1, "open_minus_under": 33.8, "streak_spread": 54.5}}
+{"file": "harbour_high_4k.jpg", "src_width": 3840, "mean_Y": 99.6, "rgb": [112.8, 97.6, 80.8], "p1": 56.8, "p99_5": 148.9, "highpass_sd": 16.32, "glint_pct_ge140": 3.18, "glint_pct_ge130": 10.98, "note": "", "harbour": {"file": "harbour_high_4k.jpg", "crop": "native 4K x0-2400 y1300-2160", "mean_Y": 93.7, "highpass_sd": 14.69, "glint_pct_ge140": 1.8, "pale_blobs_ge20px": 1311, "p1": 51.9, "p99_5": 146.8}, "under_island": {"under_Y": 113.8, "open_Y": 141.7, "open_minus_under": 27.9, "streak_spread": 42.5}, "contact_line": {"file": "harbour_high_4k.jpg", "edge_ref": "harbour_high_4k.jpg", "columns": 1050, "line_px_median": 4.0, "cols_ge3px_pct": 73.0}}
+{"file": "harbour_sun_high_1080.jpg", "src_width": 1920, "mean_Y": 129.8, "rgb": [171.4, 123.2, 73.2], "p1": 65.3, "p99_5": 214.3, "highpass_sd": 19.34, "glint_pct_ge140": 36.72, "glint_pct_ge130": 45.55, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "sunhigh": {"file": "harbour_sun_high_1080.jpg", "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360", "mean_Y": 141.1, "highpass_sd": 16.22, "glint_pct": 1.075, "path_cols_pct_ge2pct_rows": 100.0, "path_cols_pct_any": 100.0, "sparkles": 2753, "sparkle_px_median": 4.0, "sparkle_px_p90": 13.0, "p99_5": 246.8}, "sun_colour": {"crop": {"p1": 56.3, "R_minus_B": 98.4, "mean_RGB": [181, 136, 83]}, "upper": {"p1": 102.3, "R_minus_B": 108.7, "mean_RGB": [215, 170, 106]}}}
+{"file": "harbour_sun_high_4k.jpg", "src_width": 3840, "mean_Y": 126.8, "rgb": [167.5, 120.3, 71.5], "p1": 59.9, "p99_5": 218.5, "highpass_sd": 24.26, "glint_pct_ge140": 33.95, "glint_pct_ge130": 42.47, "note": "", "sunhigh": {"file": "harbour_sun_high_4k.jpg", "crop": "native 4K x0-3840 y700-2160, path columns x1480-2360", "mean_Y": 137.6, "highpass_sd": 20.06, "glint_pct": 1.73, "path_cols_pct_ge2pct_rows": 100.0, "path_cols_pct_any": 100.0, "sparkles": 7546, "sparkle_px_median": 3.0, "sparkle_px_p90": 10.0, "p99_5": 242.2}, "sun_colour": {"crop": {"p1": 52.1, "R_minus_B": 98.0, "mean_RGB": [178, 132, 80]}, "upper": {"p1": 98.2, "R_minus_B": 111.8, "mean_RGB": [212, 164, 100]}}}
+{"file": "river_low_1080.jpg", "src_width": 1920, "mean_Y": 81.1, "rgb": [88.3, 80.3, 67.4], "p1": 31.8, "p99_5": 158.6, "highpass_sd": 12.97, "glint_pct_ge140": 2.26, "glint_pct_ge130": 4.76, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "r06": {"crop": "native x0-1800 y1200-2160", "mean_Y": 77.7, "highpass_sd": 13.29, "p1": 30.1}}
+{"file": "river_low_4k.jpg", "src_width": 3840, "mean_Y": 78.7, "rgb": [85.8, 77.8, 65.8], "p1": 30.5, "p99_5": 167.6, "highpass_sd": 19.03, "glint_pct_ge140": 2.5, "glint_pct_ge130": 4.8, "note": "", "farshore": {"file": "river_low_4k.jpg", "bright_bar_pct": 4.71, "refl_hp": 13.5}, "r06": {"crop": "native x0-1800 y1200-2160", "mean_Y": 75.4, "highpass_sd": 18.25, "p1": 28.1}}
+{"file": "river_low_dolly.mp4", "frames": 600, "sampled": 100, "autocorr_80px": 0.109, "autocorr_80px_max": 0.169, "water_dT_per_sample": 4.46}
+{"file": "river_sun_1080.jpg", "src_width": 1920, "mean_Y": 149.4, "rgb": [182.7, 145.4, 91.6], "p1": 47.1, "p99_5": 251.3, "highpass_sd": 21.58, "glint_pct_ge140": 51.58, "glint_pct_ge130": 56.29, "note": "1080p frames are upscaled to 4K before the crop: high-pass / glint numbers read lower than on a native 4K frame", "sparkle_width_pct": 35.6, "r06": {"flank_L": 97.6, "flank_R": 68.4, "flank_mean": 83.0, "path200_x": 1400, "path200_Y": 205.4, "path_ratio": 2.48, "path400_x": 1300, "path400_Y": 198.9, "path400_ratio": 2.4, "sparkle_width_native_pct": 29.8}}
+{"file": "river_sun_4k.jpg", "src_width": 3840, "mean_Y": 153.8, "rgb": [186.2, 150.1, 96.2], "p1": 52.5, "p99_5": 253.8, "highpass_sd": 26.16, "glint_pct_ge140": 54.69, "glint_pct_ge130": 59.35, "note": "", "sparkle_width_pct": 42.5, "r06": {"flank_L": 94.3, "flank_R": 66.0, "flank_mean": 80.2, "path200_x": 1400, "path200_Y": 212.0, "path_ratio": 2.65, "path400_x": 1300, "path400_Y": 208.2, "path400_ratio": 2.6, "sparkle_width_native_pct": 36.9}}
+{"file": "river_sun_dolly.mp4", "frames": 600, "sampled": 100, "autocorr_80px": 0.034, "autocorr_80px_max": 0.106, "water_dT_per_sample": 7.1}
+-- r03 targets
+PASS river_low near hp sd >= 12                                 19.03
+PASS river_low near p99.5 >= 150                                167.6
+PASS river_low near glints >= 1 %                               2.5
+PASS river_low near mean Y <= 80                                78.7
+FAIL river_low near p1 <= 25                                    30.5
+FAIL river_sun sparkle width >= 50 %                            42.5
+FAIL river_sun near mean Y <= 90                                153.8
+FAIL river_sun near glints 3..15 %                              54.69
+PASS harbour crop hp sd >= 10                                   14.69
+FAIL harbour crop glints >= 2 %                                 1.8
+FAIL harbour crop pale blobs (>= 20 px) == 0                    1311
+FAIL river_low_dolly.mp4 autocorr at 80 px <= 0.10              0.109
+PASS river_sun_dolly.mp4 autocorr at 80 px <= 0.10              0.034
+PASS S4 C14 5..35                                               15.5
+-- r04 round targets
+PASS harbour_high crop hp sd >= 10                              14.69
+FAIL harbour_high crop pale blobs (>= 20 px) == 0               1311
+PASS harbour_sun_high glints (Y>=200, hp>=30) >= 0.5 %          1.73
+PASS harbour_sun_high path columns with Y>=200 >= 50 %          100.0
+PASS harbour_sun_high sparkle size median <= 6 px               3.0
+PASS seawall foam band mean >= 12 px (Y >= 180)                 18.6
+PASS seawall foam rows with >= 12 px band >= 30 %               70.1
+PASS seawall foam changes between 4 fps dolly samples (xor/or >= 0.3) 0.664
+PASS river_low near hp sd >= 9.9 (hold)                         19.03
+PASS river_low near mean Y <= 80 (hold)                         78.7
+FAIL river_low_dolly.mp4 autocorr at 80 px <= 0.10 (hold)       0.109
+PASS river_sun_dolly.mp4 autocorr at 80 px <= 0.10 (hold)       0.034
+PASS S4 C14 5..35 (hold)                                        15.5
+-- r05 round targets
+PASS GATE seawall band >= 12 px (Y >= 180) on >= 60 % of wall rows      70.1
+PASS GATE band present in every 4 fps dolly frame (>= 50 band px; min row share at 1080p reported) [100.0, 2.6]
+PASS GATE band change between consecutive 4 fps frames xor/or >= 0.2 (every pair: min; mean reported) [0.477, 0.664]
+PASS GATE harbour_high contact line >= 3 px on >= 50 % of island seawall columns 73.0
+PASS BLOCKER harbour_high water under the island >= 15 Y darker than open water 27.9
+PASS HOLD harbour_high crop hp sd >= 7.5                                14.69
+PASS BLOCKER harbour_sun_high p1 <= 55                                  52.1
+FAIL BLOCKER harbour_sun_high R-B <= 70                                 98.0
+PASS HOLD harbour_sun_high glints >= 0.5 %                              1.73
+PASS HOLD harbour_sun_high path columns Y>=200 >= 50 %                  100.0
+PASS HOLD harbour_sun_high median sparkle <= 6 px                       3.0
+PASS HOLD river_low near hp sd >= 12                                    19.03
+PASS HOLD river_low near mean Y <= 80                                   78.7
+PASS GUARD river_low far-water strip bright (Y >= 170) share <= r03 + 3 pp 4.71
+FAIL HOLD river_low_dolly autocorr 80 px <= 0.10                        0.109
+PASS HOLD S4 C14 5..35                                                  15.5
+FAIL HOLD river_sun sparkle width >= 50 %                               42.5
+-- r06 round targets
+PASS PASS river_low near crop (x0-1800 y1200-2160) mean Y <= 80         75.4
+PASS GATE e river_low near hp sd >= 12 (native crop; pack crop reported) [18.25, 19.03]
+PASS PASS river_sun flanks mean Y <= 85 [L, R, mean]                    [94.3, 66.0, 80.2]
+PASS PASS river_sun sun path >= 2.2 x flanks (400 px band = critic r05 1.49; 200 px reported) [2.6, 2.65]
+FAIL GATE e river_sun sparkle width >= 50 % (native rule = critic r05 53.5; pack rule reported) [36.9, 42.5]
+PASS (r05) GATE seawall band >= 12 px (Y >= 180) on >= 60 % of wall rows 70.1
+PASS (r05) GATE band present in every 4 fps dolly frame (>= 50 band px; min row share at 1080p reported) [100.0, 2.6]
+PASS (r05) GATE band change between consecutive 4 fps frames xor/or >= 0.2 (every pair: min; mean reported) [0.477, 0.664]
+PASS (r05) GATE harbour_high contact line >= 3 px on >= 50 % of island seawall columns 73.0
+PASS (r05) BLOCKER harbour_high water under the island >= 15 Y darker than open water 27.9
+PASS (r05) BLOCKER harbour_sun_high p1 <= 55                            52.1
+PASS (r05) GUARD river_low far-water strip bright (Y >= 170) share <= r03 + 3 pp 4.71
+FAIL GATE b river_low_dolly autocorr 80 px <= 0.10 (max reported)       [0.109, 0.169]
+PASS (info) river_sun_dolly autocorr 80 px <= 0.10                      0.034

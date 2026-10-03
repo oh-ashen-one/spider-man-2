@@ -7,7 +7,7 @@ Branch `night1/water` (pushed), worktree `~/sm2-n1/water`, scratch `/Users/midir
 copied. Integration (`Opus-5.5-Loop-Night-1`) carries water r03; r05 / r05b / r06 are not merged. Round 06 was the director's bounded last
 round: if it does not merge, water stops here.
 
-`round-06/` holds the final captures of ONE build (`build_water.py` blob 329f2d5fa61b), `round-06/NOTES.md` the full story (screening holds
+`round-06/` holds the final captures of ONE build (`build_water.py` blob dc84a75a5005, commit bfb35c5b), `round-06/NOTES.md` the full story (screening holds
 A-G with numbers), `round-06/spec.json|txt` the measured numbers (`python3 tools/water/water_spec.py all docs/night1/water/round-06`, block
 `-- r06 round targets`). The blind critic was NOT run by the builder; its pack is `/Users/midir/sm2-n1/_scratch/critic-W-r06/pack`
 (pairs.json beside it).
@@ -16,19 +16,40 @@ A-G with numbers), `round-06/spec.json|txt` the measured numbers (`python3 tools
 - Contact mask: `cmask` = 1 within ShoreA 2 m .. ShoreB 14 m of walls / piers / piles (0.9 m/px contact map; outside its box the layout shore
   map, 10..40 m); `openW` = 1 - cmask within OpenD0 250 .. OpenD1 400 m of the camera (river-level views only: the harbour views and S4 are
   unchanged, measured).
-- Open water (openW): chop not shaded (OpenChop 0), second realization off (OpenB 0), whitecaps off (OpenWC 0), GGX roughness floor
-  OpenRgh 0.5. Within 2-14 m of walls / piers the r05b near field (chop, two realizations, sharp lobe, lace foam) is unchanged.
+- Open water (openW): GGX roughness floor OpenRgh 0.4 under the (still shaded) chop and second realization (OpenChop 1, OpenB 1), whitecaps
+  off (OpenWC 0). Within 2-14 m of walls / piers the r05b near field (chop, two realizations, sharp lobe <= 0.08, lace foam) is unchanged, so
+  the sharp sparkle stays there. Final attempt 1 (OpenRgh 0.5, chop / B off on open water) is in `_scratch/water/r06g/attempt1/` (dolly
+  autocorr 0.115).
 - The finding: the r05b "frost" was the sharp (<= 0.08) near-field lobe mirroring the bright horizon haze, not the chop; removing chop / B /
-  whitecaps alone made river_low brighter. The legacy (DistFix 0) shader was darker only because its wrong distance put every pixel into the
+  whitecaps alone made river_low brighter (101 vs 98 at 1080p). The legacy (DistFix 0) shader was darker only because its wrong distance put every pixel into the
   far-field roughness. Roughness on open water is what moves river_low near mean and the river_sun flanks / path.
 - Open-water sun glints (OpenGlS, GlitPow, GlitSlK, GlitRgh, GlitE): picked from the full-detail normal; they stay sparse (~0.5 % of pixels)
   and did not move the sparkle width (all variants 26-35 %).
 - Debug: `Dbg 11` mask colours, `Dbg 12` glint pick. Instruments: `water_spec.py` r06 block (`r06_low`, `r06_sun`; they reproduce the critic's
   r05 numbers exactly: 94.1 / 20.9 / 111.5 / 1.49 / 53.5 %), `tools/water/r06/screen.py` (1080p screening).
 
-FINAL_TABLE_PLACEHOLDER
+## Round 06 result (spec.txt; 4K native 3840x2160 at 100 %, dollies 1920x1080 at 100 %)
+| check | target | r03 merged | r05b | r06 |
+|---|---|---|---|---|
+| river_low near crop mean Y | <= 80 | 76.4 | 94.1 | **75.4 PASS** |
+| river_sun flanks mean Y | <= 85 | 82.8 | 111.5 | **80.2 PASS** |
+| river_sun path / flanks (400 px) | >= 2.2 | 2.41 | 1.49 | **2.60 PASS** |
+| gate a seawall band rows | >= 60 % | 0 | 80.5 | **70.1 PASS** |
+| gate b dolly XOR / OR min (mean) | >= 0.20 | 0.03 | 0.483 | **0.477 (0.664) PASS** |
+| gate b river_low_dolly autocorr 80 px | <= 0.10 | 0.053 | 0.076 | **0.109 FAIL** |
+| gate c harbour contact line columns | >= 50 % | 0.6 | 72.6 | **73.0 PASS** |
+| gate d under-island darker / far-shore reflection | >= 15 / visible | 32.0 / yes | 28.0 / yes | **27.9 / yes (strip 4.71 %) PASS** |
+| gate e river_low near hp sd (native) | >= 12 | 10.1 | 20.9 | **18.25 PASS** |
+| gate e river_sun sparkle width (native; pack) | >= 50 % | 31.6; 37.8 | 53.5; 65.1 | **36.9; 42.5 FAIL** |
+| harbour_sun_high p1 / R-B | <= 55 / (atmosphere) | | 52.7 / 98.1 | 52.1 / 98.0 |
+| S4 C14 | 5..35 | 17.9 | 15.5 | 15.5 |
+Perf not measured (unattended). The critic guards are the blind critic's (pack above).
 
 ## Next steps (only if the owner / director reopens water)
+0. Dolly autocorrelation (gate b, 0.109): the rough open lobe leaves the long-wave / horizon-reflection bands as the dominant high-passed
+   structure. Single stills do not predict the dolly value (still 0.046-0.073 vs dolly 0.109); screen with short dolly variants (the build
+   makes variant maps for static views only: add the dolly to `view_map(..., mat=mi)` first). Untested levers: a lower open-water slope gain
+   on the Gerstner / 21 m bands (`sl2`, `lk`), or a smaller ShoreB so less of the 20-60 m crop is a sharp mirror.
 1. River_sun sparkle width (gate e, native rule >= 50 %): r05b's 53.5 % was mostly the sky frost the director asked to remove (its left flank
    mean was 132). At 6 m height and a 9-degree sun, glints 10-25 degrees off the sun azimuth need facet tilts >= 30-58 degrees; the pow(N.H)
    pick could not produce 2 % of the rows per column. Options: a reconciled rule (e.g. Y >= 200 on >= 0.5 % of the rows, or sparkle counted

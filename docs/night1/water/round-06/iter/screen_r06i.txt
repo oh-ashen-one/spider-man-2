@@ -1,0 +1,3 @@
+V5_rl      near mean  82.7 hp 13.93 p1  32.7
+V9_rl      near mean  80.0 hp 14.37 p1  30.8
+base_rl    near mean  73.7 hp 12.48 p1  30.7

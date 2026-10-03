@@ -1,0 +1,13 @@
+B0_rl      near mean 103.7 hp 15.23 p1  30.9
+B0_rs      flanks 117.7 (125.7 / 109.8) path400 162.7 ratio 1.38 (200: 1.39) sparkle native 56.6 %
+DF0_rl     near mean  92.0 hp  9.64 p1  36.4
+DF0_rs     flanks  88.8 ( 93.8 /  83.8) path400 190.9 ratio 2.15 (200: 2.23) sparkle native 34.3 %
+R3B0C_rl   near mean  87.5 hp 13.38 p1  30.9
+R3B0C_rs   flanks  91.8 (100.9 /  82.7) path400 184.9 ratio 2.01 (200: 2.07) sparkle native 36.8 %
+R3B0G_rs   flanks  93.8 (100.3 /  87.2) path400 190.0 ratio 2.03 (200: 2.11) sparkle native 35.6 %
+R3B0_rl    near mean  90.7 hp 14.48 p1  31.2
+R3B0_rs    flanks  94.0 (100.8 /  87.2) path400 187.1 ratio 1.99 (200: 2.04) sparkle native 34.3 %
+R3_rl      near mean  89.0 hp 15.15 p1  30.9
+R3_rs      flanks  94.1 (105.9 /  82.3) path400 195.3 ratio 2.07 (200: 2.17) sparkle native 34.3 %
+R4_rl      near mean  81.3 hp 13.96 p1  30.9
+R4_rs      flanks  82.3 ( 93.0 /  71.7) path400 195.4 ratio 2.37 (200: 2.44) sparkle native 29.5 %

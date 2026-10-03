@@ -1,0 +1,4 @@
+GP60_rs    flanks  75.9 ( 85.9 /  65.9) path400 199.5 ratio 2.63 (200: 2.71) sparkle native 31.7 %
+GR15_rs    flanks  75.2 ( 85.9 /  64.6) path400 191.5 ratio 2.55 (200: 2.60) sparkle native 28.1 %
+GR6_rs     flanks  74.5 ( 84.1 /  64.8) path400 193.8 ratio 2.60 (200: 2.67) sparkle native 29.6 %
+base_rs    flanks  75.0 ( 84.5 /  65.5) path400 193.6 ratio 2.58 (200: 2.67) sparkle native 30.5 %
