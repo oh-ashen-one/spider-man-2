@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 01:35",
+ "updated": "2026-10-03 01:22",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -47,7 +47,7 @@
    "state": "paused",
    "round": 17,
    "verdict": "fails \u2014 lowest 5 (Sonnet 5.5)",
-   "gap": "Paused by Opus director (flat 5 rounds r13-r17). Resume on Opus: lens curvature/gloss + angle-dependent cloth sheen (see HANDOFF 2026-10-03 01:55)."
+   "gap": "Paused by Opus director (flat 5 rounds r13-r17). Resume on Opus: lens curvature/gloss + angle-dependent cloth sheen (see HANDOFF 2026-10-03 01:25)."
   },
   {
    "id": "P3",
@@ -946,7 +946,7 @@
    "notes": "Merged. Altitude swing chain: apex 33-38 m, drops 21.6-27.7 m (T7 100/100), web_on 55->41.5 %, ground-orbit camera wall-snap fixed."
   },
   {
-   "t": "2026-10-03 01:35",
+   "t": "2026-10-03 01:22",
    "piece": "traversal",
    "round": 25,
    "verdict": "fails",
@@ -954,7 +954,7 @@
    "notes": "Merged (Opus director): rope readable 63/65, perch gate 113/113, cadence 3.61 Hz, web 6->7, no axis below r24. Critic flagged licensed-looking default suit in traversal captures (pre-existing since <= r24)."
   },
   {
-   "t": "2026-10-03 01:35",
+   "t": "2026-10-03 01:22",
    "piece": "characters",
    "round": 17,
    "verdict": "fails",
