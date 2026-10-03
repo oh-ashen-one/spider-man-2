@@ -45,8 +45,8 @@ float3 tfSummer(float3 c)
 {
     float L = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
     float gsel = saturate((c.g - c.r) / max(L, 0.0001f) * 3.0f + 0.5f);
-    float3 hy = float3(0.66f, 1.0f, 0.025f);   // test hold: 0.05 / 0.08 gave crown saturation 0.633 (the far crowns 0.55 through the haze)
-    float3 hg = float3(0.42f, 1.0f, 0.04f);
+    float3 hy = float3(0.52f, 1.0f, 0.03f);    // test holds: (0.66, 1, 0.05) / (0.42, 1, 0.08) gave saturation 0.633 and read yellow under the 4200 K sun: greener, bluer-free
+    float3 hg = float3(0.32f, 1.0f, 0.05f);
     float3 h = lerp(hy, hg, gsel);
     h /= dot(h, float3(0.2126f, 0.7152f, 0.0722f));
     return h * L;
@@ -56,7 +56,7 @@ float3 tfSummer(float3 c)
 float tfClumpShade(float3 cpw)
 {
     float q = tfVn(cpw * 0.9f + 4.7f) * 0.42f + tfVn(cpw * 2.6f + 1.1f) * 0.36f + tfVn(cpw * 6.5f + 8.3f) * 0.22f;
-    return lerp(0.45f, 1.5f, smoothstep(0.32f, 0.68f, q));
+    return lerp(0.32f, 1.7f, smoothstep(0.34f, 0.66f, q));   // test hold 2: 0.45-1.5 gave p1 crown sigma-3 median 9.9
 }
 
 // clump height field (trees.js crownMaterial): clumps (~1.6 m) of sub-clumps (~0.5 m); n3 = leaf speckle (~0.2 m), returned through the out parameter
@@ -108,7 +108,9 @@ float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float
     g -= N * dot(g, N);
     float k = clamp(0.0026f * dist, 0.09f, 0.62f) * bumpGain;
     nW = normalize(N - g * k);
-    return c * occ;
+    c *= occ;
+    float Lc = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+    return max(lerp(Lc.xxx, c, 1.3f), 0.0f);   // r05: the >= 520 m hull reads through the golden haze (crown saturation 0.55 there): +30 % albedo saturation
 }
 
 // The leaf-card canopy (trees.js leafMaterial), 44-165 m, from the city's leaf atlas (R value, G hue selector, >= 0.97 twig, B spray depth, A coverage); the solid core spheres carry
@@ -167,7 +169,7 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
     // r05: clump-scale light / shade (fades in beyond 25 m, where the leaf texture is mip-averaged), sunlit outer clumps a touch yellower
     float csh = tfClumpShade(wpos * 0.01f);
     occ *= lerp(1.0f, csh, smoothstep(25.0f, 70.0f, dist));
-    leaf = lerp(leaf, leaf * float3(1.18f, 1.08f, 0.6f), smoothstep(1.0f, 1.4f, csh) * saturate(expo));
+    leaf = lerp(leaf, leaf * float3(1.1f, 1.06f, 0.7f), smoothstep(1.0f, 1.5f, csh) * saturate(expo));
     if (core > 0.5f)
     {
         float3 cpw2 = wpos * 0.01f;
@@ -176,7 +178,11 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
     }
     float3 c = (twig > 0.5f ? float3(0.085f, 0.06f, 0.042f) : leaf) * occ;
     float nn = frac(tfIGN(pix + 17.0f) + frac(t * 37.0f) * 2.618034f);
+#if SHADOW_DEPTH_SHADER
+    op = tx.a < 0.22f ? 0.0f : 1.0f;   // r05: a fixed coverage threshold in the shadow pass (the stochastic 0.2-0.7 screen door thinned the crowns' cast shadow)
+#else
     op = (tx.a < lerp(0.2f, 0.7f, nn)) ? 0.0f : tfBand(dist, band, pix, t);
+#endif
     sub = c * 0.85f;
     return c;
 }

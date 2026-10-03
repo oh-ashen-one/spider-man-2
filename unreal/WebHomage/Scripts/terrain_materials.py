@@ -7,7 +7,7 @@
 # Frames: wpos is the UE world position in cm; the browser frame is (x, y up, z) metres = (X, Z, Y) / 100.
 
 PARK_INC = '/Project/Terrain/Park.ush'
-LAWN_GRADE = (1.0, 1.62, 0.12, 1.0)   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
+LAWN_GRADE = (0.8, 1.62, 0.12, 1.0)   # r05 test hold 2: R 1.0 with the sun-facing turf read R / G 1.11 on p4 (yellow); r04 0.86   # r04 lawn albedo grade (R, G, B): the r02 grade (0.54, 1.20, 0.46) kept the blue (display B / G 0.4-0.5 against 0.17 on the reference lawn): saturation 0.54-0.58 -> target 0.70
 LAWN_K = (1.0, 0.16, 1.0, 1.0)        # r04 Lawn.ush: (detail amplitude, mowing-stripe amplitude, grass saturation)
 LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand-written; Park.ush is generated)
 # r05 lawn sun share (target: tree shadows on the lawn <= 0.6 x the lit lawn luma). Under the golden rig (sun 9 deg, sky light x8, indirect x3.2) a horizontal lawn gets ~sin 9 = 0.16 of the
@@ -119,11 +119,11 @@ float wo = 6.2831 * (0.5 + 0.5 * sin(p.x * 0.35 + p.y * 0.27)) + vc.g * 5.0;
 float gust = 0.5 + 0.5 * sin(p.x * 0.1 - t * 0.5) * cos(p.y * 0.08);
 float sway = h * h * windamp * (0.4 + 0.9 * gust) * sin(t * 1.6 + wo);
 Wpo = float3(sway, sway * 0.7, -(wpos.z - rootz) * (1.0 - fade) - 1.5 * (1.0 - fade));
-float3 tip = float3(0.30, 0.35, 0.007);   // r05: R x1.75 (r04 critic: p10 R / G 0.77 = lime; meadow reference 0.88; test hold x1.35 -> 0.80)
-float3 mid = float3(0.185, 0.225, 0.0045);
-float3 root = float3(0.047, 0.06, 0.0025);
+float3 tip = float3(0.26, 0.35, 0.007);   // r05: R x1.53 (r04 critic: p10 R / G 0.77 = lime; meadow reference 0.88; test holds: x1.35 -> 0.80, x1.75 -> 1.00)
+float3 mid = float3(0.16, 0.225, 0.0045);
+float3 root = float3(0.041, 0.06, 0.0025);
 float3 g = lerp(lerp(root, mid, smoothstep(0.0, 0.45, h)), tip, smoothstep(0.35, 1.0, h));
-float3 yel = float3(0.33, 0.32, 0.014);
+float3 yel = float3(0.29, 0.32, 0.014);
 g = lerp(g, yel * lerp(0.35, 1.0, h), saturate((vc.b - 0.62) * 3.0) * 0.8);
 g *= lerp(0.72, 1.28, vc.g) * lerp(0.9, 1.1, rnd);
 g = lerp(g, float3(0.3, 0.23, 0.05) * lerp(0.4, 1.0, h), step(0.988, vc.g) * 0.85);
