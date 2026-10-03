@@ -13,6 +13,13 @@ BASE, OUT, WORK = sys.argv[1:4]
 WT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RUN = os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'run_game.sh')
 MAXN = int(os.environ.get('MAXPROBES', '5'))
+# a C++ change made while the hold's content build ran: compile it first (no engine of this worktree runs between the steps)
+FLAG = '/Users/midir/sm2-n1/_scratch/tricks/REBUILD_CPP'
+if os.path.exists(FLAG):
+    r = subprocess.run([os.path.join(WT, 'unreal', 'WebHomage', 'Scripts', 'build_editor.sh')], capture_output=True, text=True)
+    print('C++ rebuild rc %d: %s' % (r.returncode, (r.stdout.strip().splitlines() or [''])[-1]), flush=True)
+    if r.returncode == 0: os.remove(FLAG)
+    else: print(r.stdout[-2000:]); sys.exit(3)
 
 
 def probe(script, tag):

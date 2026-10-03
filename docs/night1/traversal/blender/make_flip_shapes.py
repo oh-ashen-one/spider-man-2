@@ -145,19 +145,35 @@ KEYED = {
     # the web arm (right) is already up out of the kick-out; the head SPOTS (chin down, eyes on the next anchor's swing line), then the
     # legs scissor through (left knee up, right leg long, then swapped) while the web arm climbs higher and forward, the free arm sweeps
     # down and out, and the head lifts to the web
+    # r01 resume (L: 0.1 s samples of slowly turning reaches moved < .10 m): a bigger scissor -- out of the kick-out the left knee DRIVES up
+    # while the right leg sweeps long behind and the free (left) arm swings down past the hip; then the legs swap (right knee up, left leg
+    # long) and the free arm swings forward and up. Every half moves a hand and a foot >= ~0.35 m in BOTH body forward and up, so some
+    # limb height changes whatever the body's pitch. (Past the program's end WebFlips::Sample plays the reach back and forth from u .45.)
     "flipReach": [
         (0.0, dict(_REACH, neck=(0.35, 1, 0), head=(0.7, 0.72, 0))),
-        (0.45, _pose((0.08, 0.05, 0.02), ((0.3, 0.2, 1.0), (0.4, 0.35, 1.0)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
-                     ((0.8, -0.6, 0.1), (-0.2, -1.0, 0.05)), ((0.0, -1.0, 0.08), (-0.25, -1.0, 0.04)), neck=(0.1, 1, 0), head=(0.22, 1, 0))),
-        (1.0, _pose((0.02, -0.02, -0.04), ((0.15, -0.6, 1.0), (0.25, -0.5, 0.9)), ((0.6, 1.0, 0.2), (0.7, 1.0, 0.12)),
-                    ((0.3, -0.95, 0.08), (-0.05, -1.0, 0.04)), ((0.65, -0.75, 0.1), (-0.35, -1.0, 0.05)), neck=(-0.05, 1, 0), head=(-0.22, 1, 0))),
+        (0.45, _pose((0.08, 0.05, 0.02), ((-0.15, -1.0, 0.4), (0.05, -1.0, 0.3)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
+                     ((1.0, -0.3, 0.1), (-0.05, -1.0, 0.05)), ((-0.35, -1.0, 0.08), (-0.45, -1.0, 0.04)), neck=(0.1, 1, 0), head=(0.22, 1, 0))),
+        (1.0, _pose((0.02, -0.02, -0.04), ((0.7, 0.45, 0.6), (0.8, 0.5, 0.45)), ((0.6, 1.0, 0.2), (0.7, 1.0, 0.12)),
+                    ((-0.3, -1.0, 0.08), (-0.4, -1.0, 0.04)), ((1.0, -0.35, 0.1), (-0.1, -1.0, 0.05)), neck=(-0.05, 1, 0), head=(-0.22, 1, 0))),
     ],
     # Tricks C r01 pencil (backSingle's inverted hold): straight and glued legs throughout, the arms travel from low diagonals through
     # level to a high V (the body stays a line; the arms keep the hold alive)
     "flipPencil": [
-        (0.0, dict(SHAPES["flipPencil"])),
-        (0.5, dict(SHAPES["flipPencil"], upperArm=(0.1, 0.12, 1.0), forearm=(0.1, 0.25, 1.0))),
-        (1.0, dict(SHAPES["flipPencil"], upperArm=(0.1, 0.9, 0.55), forearm=(0.05, 1.0, 0.42))),
+        # r01 resume (L: the low-diagonal start left 0.06 m per 0.1 s): the arms start by the thighs and sweep out through level to the V
+        (0.0, dict(SHAPES["flipPencil"], upperArm=(0.12, -0.95, 0.4), forearm=(0.15, -1.0, 0.25))),
+        # r01 resume (L: the arms' turn into the next tuck met still legs -> 0.03-0.06 m samples): the glued legs fold from the hips and
+        # knees through the hold (the tuck-up), so the feet travel while the arms turn back
+        (0.5, dict(SHAPES["flipPencil"], upperArm=(0.1, 0.12, 1.0), forearm=(0.1, 0.25, 1.0), thigh=(0.4, -0.92, 0.012), shin=(-0.2, -1.0, 0.0))),
+        (1.0, dict(SHAPES["flipPencil"], upperArm=(0.1, 0.9, 0.55), forearm=(0.05, 1.0, 0.42),
+                   thigh=(0.9, -0.45, 0.012), shin=(-0.5, -0.85, 0.0))),
+    ],
+    # r01 resume twist (L: a held chest wrap turning about the long axis moved no limb height -- fullTwist 0.07 m per 0.1 s): the legs stay
+    # straight and crossed; out of the chest wrap the LEFT arm drives straight up over the head (one arm in, one arm up: a real twisting
+    # entry), then the right arm follows it up so the twist ends long, both arms overhead, ready to fling out into the straddle / layout
+    "flipTwist": [
+        (0.0, dict(SHAPES["flipTwist"])),
+        (0.45, dict(SHAPES["flipTwist"], upperArm_L=(0.05, 1.0, 0.12), forearm_L=(0.02, 1.0, 0.05))),
+        (1.0, dict(SHAPES["flipTwist"], upperArm_L=(0.05, 1.0, 0.12), forearm_L=(0.02, 1.0, 0.05), upperArm_R=(0.05, 1.0, 0.1), forearm_R=(0.02, 1.0, 0.04))),
     ],
     # round 18 pike: it STARTS at the release (frontPikeSwan) with the arms raised and the body long, and folds through the hold -- the arms
     # reach forward and down while the straight legs lift -- into the r17 pike (left hand at the ankles, right arm swept wide and back)
@@ -198,8 +214,10 @@ KEYED = {
                      ((0.35, -1.0, 0.06), (0.25, -1.0, 0.03)), ((-0.25, -1.0, 0.08), (-0.5, -1.0, 0.04)), neck=(0.12, 1, 0), head=(0.42, 0.95, 0))),
         (0.62, _pose((-0.05, -0.1, -0.12), ((0.1, -0.1, 1.0), (0.15, 0.05, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
                      ((0.15, -1.0, 0.06), (-0.2, -1.0, 0.03)), ((0.05, -1.0, 0.08), (-0.6, -0.9, 0.04)), head=(0.28, 1, 0))),
+        # r01 resume (L): the late scissor is wider -- right knee drives high, left leg swept long behind -- so the swap into the reach (and
+        # the reach's own left-knee drive) moves both feet: right, left, right
         (0.82, _pose((0.05, 0.03, 0.0), ((0.2, -0.65, 0.8), (0.35, -0.45, 0.8)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
-                     ((0.45, -0.9, 0.08), (-0.2, -1.0, 0.05)), ((0.15, -1.0, 0.07), (-0.4, -1.0, 0.04)), head=(0.1, 1, 0))),
+                     ((-0.35, -1.0, 0.08), (-0.45, -1.0, 0.05)), ((0.95, -0.4, 0.07), (-0.1, -1.0, 0.04)), head=(0.1, 1, 0))),
         (1.0, _REACH),
     ],
     # round 18 swan (frontPikeSwan's inverted shape; critic r17: "replace the frozen inverted split with a continuous unwind -- arms sweep from

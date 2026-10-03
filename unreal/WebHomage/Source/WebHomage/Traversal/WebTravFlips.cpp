@@ -355,6 +355,15 @@ namespace WebFlips
 		ShapeAt(P, T + (P.Lead >= 0.f ? P.Lead : FlipLead), O.A, O.B, O.W, O.HoldA, O.HoldB);
 		O.AxisOffDeg = FMath::Lerp(ShapeAxisDeg(O.A), ShapeAxisDeg(O.B), O.W);
 		ShapeAt(P, T - (P.Lag >= 0.f ? P.Lag : FlipLag), O.LA, O.LB, O.LW, O.LHoldA, O.LHoldB);
+		// r01 resume (L: a program that runs out before the web catches held its final reach still -- backLayout 0.01-0.06 m per 0.1 s):
+		// past the end the reach plays back and forth between u 1 and .45 (its scissor / free-arm swing) until the traversal ends the flip
+		if (P.Segs.Num() && (P.Segs.Last().Shape == EWebFlipShape::Reach || P.Segs.Last().Shape == EWebFlipShape::Kickout))
+		{
+			auto Pong = [](float Ov) { const float X = FMath::Fmod(Ov / 0.25f, 2.f); return 1.f - 0.55f * (1.f - FMath::Abs(1.f - X)); };
+			const float OvU = T + (P.Lead >= 0.f ? P.Lead : FlipLead) - Dur, OvL = T - (P.Lag >= 0.f ? P.Lag : FlipLag) - Dur;
+			if (OvU > 0.f && O.W <= 0.f) O.HoldA = O.HoldB = Pong(OvU);
+			if (OvL > 0.f && O.LW <= 0.f) O.LHoldA = O.LHoldB = Pong(OvL);
+		}
 		return O;
 	}
 }

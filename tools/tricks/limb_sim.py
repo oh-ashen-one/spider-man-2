@@ -91,8 +91,37 @@ def lcheck(ser):
     return slow
 
 
+def validate(R, tel, margin=0.10):
+    """the keyed clips of report R replayed on a capture's MEASURED program pitch / twist (telemetry flip_pitch_deg / flip_twist_deg): the
+    L rule at every 0.1 s sampling phase (6 offsets), against the measured limb_z of the same capture"""
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import tricks_check as TC
+    progs = {p['name']: p for p in FS.parse(FS.SRC)}
+    T = list(csv.DictReader(open(tel)))
+    I = TC.instances(T)
+    slow_m, slow_p, n, worst = 0, 0, 0, []
+    for c in I:
+        if c['prog'] not in progs: continue
+        P = FS.Prog(progs[c['prog']], c['scale'])
+        Z = [[world_z(body_pos(R, P, ft, b), float(T[i]['flip_pitch_deg']), float(T[i]['flip_twist_deg'])) for b in ENDS] for i, ft in c['rows']]
+        M = [[float(x) for x in T[i]['limb_z'].split()] for i, _ in c['rows']]
+        for k in range(len(Z) - 6):
+            dp = max(abs(x - y) for x, y in zip(Z[k], Z[k + 6])); dm = max(abs(x - y) for x, y in zip(M[k], M[k + 6]))
+            n += 1; slow_p += dp < margin; slow_m += dm < margin
+            if dp < margin: worst.append((dp, c['prog'], round(c['rows'][k][1], 2), T[c['rows'][k][0]]['flip_shape']))
+            if dm < margin: print('   measured slow %-16s t0 %.2f flip_t %.2f / dur %.2f  %-8s %.3f (model %.3f)' % (c['prog'], c['t0'], c['rows'][k][1], P.dur, T[c['rows'][k][0]]['flip_shape'], dm, dp))
+    worst.sort()
+    print('validate %s: %d frame pairs 0.1 s apart (all phases); slow (< %.2f m): measured %d, model %d' % (os.path.basename(tel), n, margin, slow_m, slow_p))
+    agg = {}
+    for d, p, ft, sh in worst: agg.setdefault((p, sh), []).append((ft, d))
+    for (p, sh), v in sorted(agg.items(), key=lambda x: -len(x[1])):
+        print('   %-16s %-8s %3d pairs, t %.2f-%.2f, min %.3f' % (p, sh, len(v), min(x[0] for x in v), max(x[0] for x in v), min(x[1] for x in v)))
+
+
 def main():
     R = json.load(open(sys.argv[1]))
+    if '--validate' in sys.argv:
+        validate(R, sys.argv[sys.argv.index('--validate') + 1], float(os.environ.get('MARGIN', '0.10'))); return
     progs = FS.parse(FS.SRC)
     worst_all = 0
     for p in progs:
