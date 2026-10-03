@@ -34,6 +34,7 @@ R07 = {
     'tw_minev': None,      # {'dusk': [(h, EV100)], 'dawn': [...]}: pp.AutoExposureMinBrightness (hold B: the twilight exposure sat on its MIN clamp, so the sun-facing views blew out at the S4 bias)
     'bias_curve': None,    # {'dusk': [(h, bias)], 'dawn': [...]}: pp.AutoExposureBias on EVERY key inside the range (no zigzag between main keys and snapshot keys); --bias-overrides apply after it
     'tw_set': None,        # {param: {'dusk': [(h, number | [r, g, b, a])], 'dawn': [...]}}: explicit values of any param inside the listed hours (e.g. cloudv.Cloud_AlbedoColor)
+    'tw_mul': None,        # {param: {'dusk': [(h, mult | [mr, mg, mb])], 'dawn': [...]}}: multiplier of the base (v2) value of any param inside the listed hours (e.g. pp.ColorSaturation x0.6, fog.DirectionalInscatteringLuminance)
     'moon_vol': None,      # number: moonc.VolumetricScatteringIntensity on every key
     'golden_sky': None,    # {'hours': [..], 'factor': [r, g, b]} SkyLuminanceFactor on golden keys (golden S4 <= 100 with the fog on the sky)
     'v2': {},              # make_v2 knob overrides (tw_fac_pts, tw_cloud, twilight_overrides, ...)
@@ -119,6 +120,15 @@ def apply(K, R):
             if tab.get(ph):
                 vv = make_v2.sched(h, [(p0, p1) for p0, p1 in tab[ph]])
                 if vv is not None: s[pn] = [round(x, 5) for x in vv] if isinstance(vv, list) else round(vv, 5)
+        for pn, tab in (R.get('tw_mul') or {}).items():
+            if tab.get(ph):
+                mm = make_v2.sched(h, [(p0, p1) for p0, p1 in tab[ph]])
+                if mm is not None:
+                    bv = b[pn]
+                    if isinstance(bv, list):
+                        mv = mm if isinstance(mm, list) else [mm] * 3
+                        s[pn] = [round(bv[i] * mv[i], 6) for i in range(3)] + [bv[3] if len(bv) > 3 else 1.0]
+                    else: s[pn] = round(bv * (mm if not isinstance(mm, list) else mm[0]), 6)
         mx = sch('tw_maxev')
         if mx is not None: s['pp.AutoExposureMaxBrightness'] = round(mx, 3)
         if R.get('moon_vol') is not None: s['moonc.VolumetricScatteringIntensity'] = float(R['moon_vol'])
