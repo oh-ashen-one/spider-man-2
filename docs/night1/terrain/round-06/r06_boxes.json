@@ -1,0 +1,14 @@
+{
+ "note": "lit = open sunlit-looking lawn left of the p4 trees (median luma ~108 in s1, the critic quoted ~105); p6 = esplanade tree shadow box : paving lit box (name:x0,y0,x1,y1:lx0,ly0,lx1,ly1)",
+ "lit": [
+  2560,
+  1080,
+  2700,
+  1150
+ ],
+ "p6": [
+  "tree820_1298_predicted_crown_shadow:300,1225,500,1265:860,1270,1000,1300",
+  "tree1410_1210_predicted_crown_shadow:880,1140,1080,1180:1450,1190,1590,1220"
+ ],
+ "note_p6": "p6 boxes: the predicted crown-shadow band of two isolated esplanade trees (sun 9 deg az 238 projected with the p6 camera: 10 m of shadow = ~150-190 px to the left, crown 3-6 m up -> 19-38 m) vs the paving right of the trunk; trees and paving are the city piece assets"
+}
