@@ -381,7 +381,9 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
     // r05b: CovMax < 1 keeps the foam threshold above the noise floor (lace instead of a solid strip: the r05 band was one flat cream sheet
     //       and its XOR / OR between 4 fps dolly frames fell to 0.2 where the band was widest); FoamTK / LapW: foam drift + swell breathing
     float cov = saturate(foam) * CovMax;
-    float pat = NZG(p / 1.9 + float2(t * 0.004 * FoamTK, 0.0), 1.0 / 1.9).r * 0.62 + NZG(p / 0.63 + float2(0.0, t * 0.006 * FoamTK), 1.0 / 0.63).g * 0.5;
+    // PatFine: less 1.9 m clumping (gaps along the wall left 30 pct of the rows without 12 bright px) and a finer 0.4 m term (2.5-20 cm features)
+    float pat = NZG(p / 1.9 + float2(t * 0.004 * FoamTK, 0.0), 1.0 / 1.9).r * (0.62 - 0.32 * PatFine) + NZG(p / 0.63 + float2(0.0, t * 0.006 * FoamTK), 1.0 / 0.63).g * 0.5
+              + PatFine * (NZG(p / 0.4 + float2(-t * 0.005 * FoamTK, t * 0.003 * FoamTK), 1.0 / 0.4).r * 0.45 - 0.065);
     wf = saturate(smoothstep(1.05 - cov, 1.3 - cov, pat) * smoothstep(0.0, 0.25, cov)) * nearW;
 }
 // r05: far contact line (beyond the near field, out to FoamFar m): the same contact map, no sub-metre pattern (it would alias at 1 km); it
@@ -537,7 +539,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
           'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.68, 'FoamTK': 28.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
-          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2}
+          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 0.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

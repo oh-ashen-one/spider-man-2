@@ -1,0 +1,6 @@
+{
+ "P1": {"PatFine": 1.0, "_views": ["river_low"]},
+ "P2": {"PatFine": 1.0, "CovMax": 0.8, "_views": ["river_low"]},
+ "P3": {"PatFine": 1.0, "CovMax": 0.6, "CBias": 1.2, "_views": ["river_low"]},
+ "P4": {"PatFine": 0.6, "CovMax": 0.75, "_views": ["river_low"]}
+}
