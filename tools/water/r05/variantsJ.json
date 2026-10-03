@@ -1,0 +1,4 @@
+{
+ "V68": {"CovMax": 0.68, "_views": ["river_low_p3", "river_low_p7"]},
+ "V60": {"CovMax": 0.6, "CBias": 1.2, "_views": ["river_low_p3", "river_low_p7"]}
+}

@@ -538,8 +538,8 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # r05b: FarMaxM / FarLowK cap the far contact line (r05's FarPx footprints painted a 40 px white bar over the far quay at river
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
-          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.68, 'FoamTK': 28.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
-          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 0.0}
+          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.72, 'FoamTK': 28.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
+          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2, 'PatFine': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 
@@ -835,7 +835,14 @@ def build_in_unreal():
         ok = unreal.EditorLoadingAndSavingUtils.save_map(world, path)
         wlog('map', path, rig, 'water' if water else 'BASELINE', 'saved' if ok else 'SAVE FAILED')
     rl, s4 = views['river_low'], views['S4_perch_skyline']
+    # r05b: stills at fixed points of the river_low dolly (3 m / 7 m along the view yaw = clip t 1.5 / 3.5 s: where the seawall band saturated and
+    #       the 4 fps XOR / OR fell to 0.1), to screen the foam gate without a 16 min dolly
+    for tag, dm in (('p3', 3.0), ('p7', 7.0)):
+        yw = math.radians(rl['yaw'])
+        views['river_low_' + tag] = dict(rl, id='river_low_' + tag, ue_cm=[rl['ue_cm'][0] + math.cos(yw) * dm * 100, rl['ue_cm'][1] + math.sin(yw) * dm * 100, rl['ue_cm'][2]])
     view_map(ROOT + '/Maps/Water_View_RiverLow', 'golden', rl)
+    view_map(ROOT + '/Maps/Water_View_RiverLow_P3', 'golden', views['river_low_p3'])
+    view_map(ROOT + '/Maps/Water_View_RiverLow_P7', 'golden', views['river_low_p7'])
     view_map(ROOT + '/Maps/Water_View_RiverLow_Midday', 'midday', rl)
     view_map(ROOT + '/Maps/Water_View_S4_Midday', 'midday', s4)
     view_map(ROOT + '/Maps/Water_View_RiverLow_Dolly', 'golden', rl, dolly=views['river_low_dolly'])
