@@ -40,6 +40,8 @@
    "largest": null,
    "band_peak_Y": 121.02079010009766,
    "DISK": true,
+   "r07_box_peak_Y": 84.83460235595703,
+   "r07_box_peak_over_median": 22.840965270996094,
    "file": "tod_S4w_1920x1080_h19.5.jpg"
   },
   "S4w_19.8": {
@@ -47,6 +49,8 @@
    "largest": null,
    "band_peak_Y": 142.14260864257812,
    "DISK": true,
+   "r07_box_peak_Y": 82.10479736328125,
+   "r07_box_peak_over_median": 32.085140228271484,
    "file": "tod_S4w_1920x1080_h19.8.jpg"
   },
   "S4w_20": {
@@ -54,6 +58,8 @@
    "largest": null,
    "band_peak_Y": 204.07618713378906,
    "DISK": true,
+   "r07_box_peak_Y": 82.57360076904297,
+   "r07_box_peak_over_median": 55.960601806640625,
    "file": "tod_S4w_1920x1080_h20.jpg"
   },
   "S4w_20.5": {
@@ -61,6 +67,8 @@
    "largest": null,
    "band_peak_Y": 234.0681915283203,
    "DISK": true,
+   "r07_box_peak_Y": 138.98159790039062,
+   "r07_box_peak_over_median": 102.19216918945312,
    "file": "tod_S4w_1920x1080_h20.5.jpg"
   }
  },

@@ -5,7 +5,7 @@
   SAT (same stills): sky rows 0-89 mean HSV saturation (max-min)/max per pixel >= 0.40
   BH  S4 20:30: sky rows 0-89 B-R >= 0
   DISK S4w 19:30..20:30: sub-horizon disk = connected blob of pixels with Y >= 120 and Y - median(41x41) >= 30 in rows 200..700 (below the sky line of the perch pose),
-       area >= 200 px (a 16 px disk); reported: blob count, largest equivalent diameter, peak Y. Zero blobs passes.
+       area >= 200 px (a 16 px disk), compact (bbox aspect .5..2, ellipse fill >= .5) and not touching row 200; reported: blob count, largest equivalent diameter, peak Y. Zero blobs passes.
 usage: r08_check.py --dir <stills> [--out <base>] [--prefix <variant prefix>]"""
 import argparse, glob, json, os, re
 import numpy as np
@@ -47,9 +47,16 @@ def disk(im):
     for i in range(1, n + 1):
         ys, xs = np.nonzero(lab == i)
         if len(ys) < 200: continue
+        # a disk is compact and lies inside the band: blobs that touch the band's top row (sky patches between towers where the skyline dips to row 200),
+        # elongated ones (bbox aspect outside .5..2) or sparse ones (fill of the bbox ellipse < .5) are not disks
+        h, w = ys.max() - ys.min() + 1, xs.max() - xs.min() + 1
+        if ys.min() == 0 or not (0.5 <= w / h <= 2.0) or len(ys) / (np.pi / 4 * w * h) < 0.5: continue
         blobs.append({'area': int(len(ys)), 'diam': float(2 * np.sqrt(len(ys) / np.pi)), 'x': float(xs.mean()), 'y': float(ys.mean() + 200), 'peak': float(band[ys, xs].max())})
     blobs.sort(key=lambda b: -b['area'])
-    return {'blobs': len(blobs), 'largest': blobs[0] if blobs else None, 'band_peak_Y': float(band.max()), 'DISK': not blobs}
+    # the round-07 disk position (the fill.W glint on the river, centre ~(1404, 387)): peak luma and its excess over the local median in a 130x120 box
+    bx = y[330:450, 1340:1470]; bm = med[130:250, 1340:1470]
+    return {'blobs': len(blobs), 'largest': blobs[0] if blobs else None, 'band_peak_Y': float(band.max()), 'DISK': not blobs,
+            'r07_box_peak_Y': float(bx.max()), 'r07_box_peak_over_median': float((bx - bm).max())}
 
 
 def find(d, pose, hour, prefix):
@@ -77,10 +84,11 @@ def main():
     for k, r in res['L5'].items():
         L.append('| %s | %.1f | %.2f | %.3f | %s | %.3f | %s | %+.1f | %.1f |' % (k, r['mean'], r['y_lt10_pct'], r['clip_pct'], ok(r['L5']), r['sky_sat'], ok(r['SAT']), r['sky_BR'], r['sky_Y']))
     if res['BH']: L += ['', 'Blue hour S4 20:30 sky B-R %+.1f (>= 0: %s), sky Y %.1f, sky sat %.3f' % (res['BH']['sky_BR'], ok(res['BH']['BH']), res['BH']['sky_Y'], res['BH']['sky_sat'])]
-    L += ['', '| still | sub-horizon blobs | largest diam px | at (x, y) | peak Y | band peak Y | zero disk |', '|---|---|---|---|---|---|---|']
+    L += ['', '| still | sub-horizon blobs | largest diam px | at (x, y) | peak Y | band peak Y | round-07 disk box: peak Y / over local median | zero disk |', '|---|---|---|---|---|---|---|---|']
     for k, r in res['DISK'].items():
         b = r['largest']
-        L.append('| %s | %d | %s | %s | %s | %.0f | %s |' % (k, r['blobs'], '%.1f' % b['diam'] if b else '-', '(%.0f, %.0f)' % (b['x'], b['y']) if b else '-', '%.0f' % b['peak'] if b else '-', r['band_peak_Y'], ok(r['DISK'])))
+        L.append('| %s | %d | %s | %s | %s | %.0f | %.0f / %+.0f | %s |' % (k, r['blobs'], '%.1f' % b['diam'] if b else '-', '(%.0f, %.0f)' % (b['x'], b['y']) if b else '-', '%.0f' % b['peak'] if b else '-', r['band_peak_Y'],
+                                                        r['r07_box_peak_Y'], r['r07_box_peak_over_median'], ok(r['DISK'])))
     txt = '\n'.join(L); print(txt)
     if a.out:
         json.dump(res, open(a.out + '.json', 'w'), indent=1); open(a.out + '.md', 'w').write(txt + '\n')
