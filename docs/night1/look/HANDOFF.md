@@ -30,7 +30,7 @@ All captures: real game (`run_game.sh -game`, offscreen, `gpu_slot.sh capture`),
 | L25a moon (S4m 22:00) | | 78.2 px / 255 (the Y >= 200 blob includes the halo; r08 22.5 px) |
 | L27 dome (12 verdict stills, 42 lines) | | 9 / 12 stills, 39 / 42: S4 20:00 a +8.1, S4w 20:00 b 25.6, S4w 20:30 d -13.7 (r08 10 / 12) |
 | L23b lapse | | not re-run (key table unchanged, `tod_guard.py --check`: 71 / 71 keys equal; round-08 lapse 3.07 / 2.20) |
-| perf | | see `round-09/perf/PERF.md` |
+| perf (4K, TSR 67 %, S4 view) | | **not measured**: the exclusive lock was taken after ~830 s but the settle gate (< 15 % for 10 s) never passed (19-24 % with no Unreal running: a Codex process + WindowServer); the builder withdrew its waiting request after 1016 s (`round-09/perf/PERF.md`) |
 
 ### What changed (only `presets.golden` sky / atmosphere / fog keys; `round-09/NOTES.md` has the table)
 - aerial perspective distance scale 5 -> 2.5, sky-and-AP luminance factor 0.5 (new key, darker AP veil), sky luminance 0.925, height-fog contribution 0.8: the far shore gets its contrast back (C11 3.9 -> 9.0, C15 0.09 -> 0.26) and sits 27-32 Y under the sky.
@@ -46,7 +46,7 @@ All captures: real game (`run_game.sh -game`, offscreen, `gpu_slot.sh capture`),
 5. Every AP reduction removes the S7 street glow (S7 mean 60 -> 40-45) and raises S7 Y<25 by 4-12 points; the round-08 golden on this city already has S3 / S7 / S8 Y<25 52 / 44 / 19 % (round 03 on the round-03 city 12 / 10 / 14 %): the darkening comes with city r11.
 
 ### Not met / open
-T1 (A 0, C 0.7); critic box on the tour frame (-24.7); near-black guard (S3 / S7 / S8 51.9 / 53.2 / 17.9 % vs 13.2 / 1.4 / 7.8; S7 worse than before); far-box margin 0.3 Y; L27 9 / 12 (was 10 / 12) and the moon blob 78 px with the table unchanged (city / cloud draw); midday S7 mean, night S3 mean and S6 blobs (city since r03); lapse not re-run.
+T1 (A 0, C 0.7); critic box on the tour frame (-24.7); near-black guard (S3 / S7 / S8 51.9 / 53.2 / 17.9 % vs 13.2 / 1.4 / 7.8; S7 worse than before); far-box margin 0.3 Y; L27 9 / 12 (was 10 / 12) and the moon blob 78 px with the table unchanged (city / cloud draw); midday S7 mean, night S3 mean and S6 blobs (city since r03); lapse not re-run; perf not measured.
 
 ### Next (ranked)
 1. Run the critic on `/Users/midir/sm2-n1/_scratch/critic-P4-r09/pack` (fresh, blind).
@@ -59,7 +59,7 @@ T1 (A 0, C 0.7); critic box on the tour frame (-24.7); near-black guard (S3 / S7
 - Live sweep: `python3 tools/perf_ue/sweeps/r09/gen_s4.py <v.json> '{"name": {"ap": 2.5, ...}}'`, then `python3 tools/perf_ue/capture_tour.py --round <dir> --presets golden --res 1920x1080 [--shots S4] --map /Game/Maps/Manhattan --variants <v.json> --settle 5 --first-settle 14 --work <dir>` (capture_tour wraps itself in `gpu_slot.sh capture`); numbers `tools/perf_ue/sweeps/r09/quick_s4.py <dir>` / `quick_all.py <dir>`.
 - Apply + bake: `python3 tools/perf_ue/sweeps/r09/apply_golden.py '<knobs>'` (then re-run `tod_guard.py apply` ONLY if the golden_r08 block is missing; `--check` after every golden edit), `gpu_slot.sh capture --label P4 --timeout 7200 -- tools/perf_ue/sweeps/r09/hold_c.sh <out>` (golden rig + view S4 x2 + tour + 13 s movie; `NOMOVIE=1`), `hold_a.sh` (all rigs + golden + fixed presets), `hold_b.sh` (48 ToD stills + dome / r08 checks).
 - Report + pack: `python3 tools/perf_ue/round9_report.py --round docs/night1/look/round-09`; `python3 tools/perf_ue/sweeps/r09/make_pairs.py <pairs.json> <norm>` + `abpack.py`.
-- Perf: `gpu_slot.sh perf --label P4 --timeout 3600 --json <dir>/perf_gpu.json -- tools/perf_ue/sweeps/r09/perf_s4.sh <out>` (4K output, TSR 67 %).
+- Perf (needs an idle GPU; not run this round): `gpu_slot.sh perf --label P4 --timeout 3600 --json <dir>/perf_gpu.json -- tools/perf_ue/sweeps/r09/perf_s4.sh <out>` (4K output, TSR 67 %).
 GPU facts this round: queue waits 0-25 min per hold (island, tricks, water held 1-2 slots); one 9-min PAUSE (health monitor, WindowServer CPU 97 %) inside hold A; no engine crash.
 
 # P4 Look / Sky: handoff (round 08, Claude Opus 5.5 high via Devin, 2026-10-03)
