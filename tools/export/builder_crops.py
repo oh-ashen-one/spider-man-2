@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Builder evidence crops of a round (4K frames), written to <round>/builder_checks/: the areas of the round's target (round 08: parked cars, traffic, street trees), so a reader sees the same pixels
+"""Builder evidence crops of a round (4K frames), written to <round>/builder_checks/: the areas of the round's target (round 11: S4 far band / tower box, S8 upper glass, S3 board), so a reader sees the same pixels
 the builder looked at. Crops are plain pixel copies (no annotation).   usage: builder_crops.py <round_dir> [out_dir]"""
 import os, sys
 from PIL import Image
 R = sys.argv[1]; O = sys.argv[2] if len(sys.argv) > 2 else os.path.join(R, 'builder_checks'); os.makedirs(O, exist_ok=True)
-CROPS = [  # name, 4K frame, x0, y0, x1, y1   (round 08: the critic r07 gap: parked cars / traffic / street trees)
- ('S1_left_trees_x0-900', 'S1_avenue_street', 0, 0, 1800, 1500), ('S1_right_curb_cars', 'S1_avenue_street', 2100, 1000, 3840, 1450), ('S1_far_traffic', 'S1_avenue_street', 1500, 1050, 2600, 1350),
- ('S2_avenue_traffic', 'S2_avenue_swing', 1500, 1000, 2500, 2160), ('S2_far_traffic', 'S2_avenue_swing', 1700, 1000, 2200, 1500),
- ('S6_street_cars', 'S6_timessq_street', 500, 1200, 2700, 1700), ('S5_street_cars', 'S5_timessq_south', 0, 1300, 3840, 2160),
+CROPS = [  # name, 4K frame, x0, y0, x1, y1   (round 11: the critic r10 gap: the S4 far-shore towers; S8 upper glass; the S3 board caption)
+ ('S4_far_band_4k', 'S4_perch_skyline', 0, 300, 2600, 600), ('S4_tower_box_4k', 'S4_perch_skyline', 1080, 220, 1800, 520), ('S4_shore_strip_4k', 'S4_perch_skyline', 900, 384, 2700, 472),
+ ('S8_glass_upper_4k', 'S8_aerial_midtown', 2540, 0, 3280, 600),
+ ('S3_board_4k', 'S3_rooftop_watertower', 0, 700, 1900, 1700),
 ]
 for name, view, x0, y0, x1, y1 in CROPS:
     f = os.path.join(R, f'{view}_3840x2160.jpg')

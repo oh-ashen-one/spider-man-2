@@ -214,7 +214,7 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
                 ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.0))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -248,6 +248,11 @@ a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 // coated curtain glass (F0 0.2-0.6): metallic mirror = F0 x tint. Old sash glass (gSash): dielectric with F0 = 0.011 so
 // that UE's F90 = saturate(50 F0) = 0.55 matches the browser's specularF90 0.55 (no bright grazing mirrors on masonry)
 float gm = g * (1.0 - gSash);
+// (r11, critic r10: S8 upper glass 70 % above Y 204 for three rounds) at a grazing view angle Fresnel takes any mirror to ~1 and the pale vertical slits of a tower's side face reflect the clipped sky (+2 EV): beyond
+// N.V < 0.32 the coated glass turns into a low-F0 dielectric (UE: F90 = saturate(50 F0), Specular 0.12 -> F90 0.48) and its diffuse colour falls back to the dark glass body
+float nvG = saturate(dot(n, normalize(cam - wpos)));
+float graze = saturate((0.32 - nvG) / 0.17) * gm;
+gm = gm * (1.0 - graze);
 float ek = lerp(dayemis, 1.0, saturate(nightk));
 float3 col = lerp(a, f, gm); float3 em = e * escale * ek;
 // (r09) canyon shade fill: the wall's own albedo (before the sun cap) x a sky-bounce irradiance, glass gets a sky-gradient reflection instead (ShadeFill.ush)
@@ -268,7 +273,7 @@ if (dbgmode > 9.5 && dbgmode < 10.5) { col = float3(0, 0, 0); em = 0.3 * Texture
 if (dbgmode > 10.5 && dbgmode < 11.5) { col = float3(0, 0, 0); em = float3(0.05, 0, 0); }   // facade-only mask (CITY-SPEC C1 check)
 if (dbgmode > 3.5 && dbgmode < 4.5) { col = float3(0, 0, 0); em = 0.05 * float3(gLodI / 9.0, saturate(length(gDx) * 100.0), saturate(vF.y / 16.0)); }
 if (dbgmode > 11.5 && dbgmode < 12.5) { col = float3(0, 0, 0); em = 0.05 * float3(1.0 - litS, 0.0, litS); }   // (r09) shade-fill weight: blue = full fill (shaded canyon), red = none (sunlit or above the skyline)
-Rough = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 0.0 : lerp(0.5, glassspec, g * gSash);
+Rough = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 1.0 : r; Metal = lerp(m, 1.0, gm); NormalW = n; Emis = em; Spec = ((dbgmode > 2.5 && dbgmode < 3.5) || (dbgmode > 10.5 && dbgmode < 11.5)) ? 0.0 : lerp(lerp(0.5, glassspec, g * gSash), 0.12, graze);
 return col;''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
          ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise')), ('tSunH', 'tex', TEXA('sunmask_h'))]
@@ -479,15 +484,19 @@ if (fl > 0.25) {
 // shaded faces, windows and dark blocks are untouched, tints survive (the cap scales the colour)
 // (r11) our towers keep their authored mid-grey: the sun-facing faces are scaled by FarLitK (MPC, test-exposure compensation, ~0.3 = the near-field SunK / authored 0.3), then the old luma cap applies
 float sunfF = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
+float3 cU = c;
 c *= lerp(1.0, lerp(1.0, farlitk, ours), sunfF);
+// (r11) sky / ground bounce on our far towers (MPC FarFill, same idea as the near-field ShadeFill): from the S4 perch the sun is behind the far shore, so the faces we see are mostly SHADED and lit by the sky alone
+// (strip Y 177 against the 195-205 of CITY-SPEC C13; FarLitK only moves the few lit faces: +3 Y for +50 %); emissive = authored albedo x FarFill, weaker on sun-facing faces and by (1 - NightK)
+float fillF = farfill * ours * lerp(1.0, 0.25, sunfF) * (0.7 + 0.3 * saturate(wn.z + 0.5)) * (1.0 - saturate(nightk));
 float LaF = dot(c, float3(0.2126, 0.7152, 0.0722));
 float LcF = LaF > farsunk ? farsunk + (LaF - farsunk) * 0.12 : LaF;
 c *= lerp(1.0, LcF / max(LaF, 1e-4), sunfF);
-Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * 1.4 * escale;
+Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * 1.4 * escale + cU * fillF;
 if (dbgmode > 8.5 && dbgmode < 9.5) { Emis = float3(vca, 0, 1.0 - vca) * 0.05; c = float3(0, 0, 0); }
 if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0.05, 0); c = float3(0, 0, 0); Spec = 0.0; }   // window-test mask: far-shore blocks = green
 return c;""",
-        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK')],
+        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
     # (r06) coast (waterfront.js createCoastMaterial port): granite / riprap / planks / bulkhead atlas tiles, lawn, pavers, ribbed metal, picket cards;
     # UV0 = uv, UV1.x = aTile, vertex colour = tint (paint / solid tiles). Masked: picket cards discard between the bars.
@@ -798,19 +807,22 @@ float2 fwM = fwidth(float2(hp.z / 52.0, along / 14.0)); float subM = saturate(ma
 float mt = frac(sin(dot(floor(float2(along / 20.0, hp.z / 32.0)) + wall.xy * 13.0, float2(127.1, 311.7))) * 43758.5453);
 float pierL = 1.0 - step(0.22, frac(along / 14.0));
 float mechL = step(0.93, frac(hp.z / 52.0 + mt));
-float panel = (0.84 + 0.32 * mt) * (1.0 - 0.18 * pierL * (1.0 - subM)) * (1.0 - 0.30 * mechL * (1.0 - subM));
+float mt2 = frac(sin(dot(floor(float2(along / 64.0, hp.z / 110.0)) + wall.xy * 29.0, float2(269.5, 183.3))) * 43758.5453);   // coarse panels (64 m x 110 m = 6-10 px at 8-10 km): the lit flat faces of the 300-500 m backdrop towers were bright flat 8x8 blocks (critic r10 T4)
+float panel = (0.84 + 0.32 * mt) * (0.80 + 0.40 * mt2) * lerp(0.92, 1.06, saturate(hp.z / 320.0)) * (1.0 - 0.18 * pierL * (1.0 - subM)) * (1.0 - 0.30 * mechL * (1.0 - subM));
 float3 wc = lerp(wall * panel, float3(0.08, 0.09, 0.1), w * 0.85) * (0.65 + 0.35 * smoothstep(0.0, 12.0, hp.z));  // horizon.js windows + grime
 float3 hc = wn.z > 0.5 ? roof : wc;
 // (r10) same sun-facing luma cap as the far blocks (MPC FarSunK): the hinterland roofs / walls clip to white under the +2 EV test lighting
 // (r11) the authored albedo is mid-grey (0.22-0.36): sun-facing faces are scaled by FarLitK (test-exposure compensation) first, so the tonal differences between towers survive the cap
 float sunfH = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
+float3 hcU = hc;
 hc *= lerp(1.0, farlitk, sunfH);
+Emis = hcU * farfill * lerp(1.0, 0.25, sunfH) * (0.7 + 0.3 * saturate(wn.z + 0.5));   // (r11) sky / ground bounce on the shaded faces, see M_CityFarMass (MPC FarFill)
 float LaH = dot(hc, float3(0.2126, 0.7152, 0.0722));
 float LcH = LaH > farsunk ? farsunk + (LaH - farsunk) * 0.12 : LaH;
 hc *= lerp(1.0, LcH / max(LaH, 1e-4), sunfH);
 return hc;''',
-        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK')],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
+        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
     make_material('M_CityCrown', None, '''
 float3 p = wpos * 0.01;
 float n = Texture2DSample(tNoise, tNoiseSampler, p.xy / 7.0 + p.z / 5.0).g * 0.6 + Texture2DSample(tNoise, tNoiseSampler, p.xy / 1.3).r * 0.4;
@@ -1262,7 +1274,7 @@ def add_lighting(sun_pitch, sun_yaw, sunset=False, shot=None):
     sl.light_component.set_editor_property('intensity', 1.7)  # (r05) canyon shade: more sky fill (ground floors read as dark slabs at 1.0)
     fog = spawn(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0), label='HeightFog', folder='Lighting')
     fc = fog.component; fc.set_editor_property('fog_density', float(shot.get('fog', FOG_DENSITY)) if not sunset else 0.009); fc.set_editor_property('fog_height_falloff', 0.12)   # (r10) per-shot fog / exposure / aerial in city_shots.json (an earlier edit put the comment BEFORE the falloff statement and silently dropped it: hold-1 frames of the new maps have the UE default falloff 0.2)
-    fc.set_editor_property('start_distance', 40000.0)  # (r02) clear near field, aerial haze band toward the horizon
+    fc.set_editor_property('start_distance', float(shot.get('fogstart', 400.0)) * 100.0)  # (r02) clear near field, aerial haze band toward the horizon; (r11) per-shot 'fogstart' (metres): S4 starts the haze beyond the near shore
     fc.set_editor_property('fog_inscattering_luminance', unreal.LinearColor(*(shot.get('fogc') or FOG_COLOR), 1) if not sunset else unreal.LinearColor(0.9, 0.55, 0.35, 1))
     spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
     ppv = spawn(unreal.PostProcessVolume, unreal.Vector(0, 0, 0), label='PPV', folder='Lighting')
