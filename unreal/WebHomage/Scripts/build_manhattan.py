@@ -96,7 +96,7 @@ def wait_slot():
 
 GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'
 # (island r04) SM2_ISLAND_GPU_SLOT=1: every commandlet runs inside its own `gpu_slot.sh capture --label island` hold (RULES.md: every Unreal launch
-# goes through the lock; max hold 2,400 s). Resumable steps get SM2_ISLAND_BUDGET_S (default 1,650 s of script time) and stop at it.
+# goes through the lock; max hold 2,400 s). Resumable steps get SM2_ISLAND_BUDGET_S (default 1,950 s of script time; batches of 20 meshes / 8 kit tiles) and stop at it.
 USE_SLOT = os.environ.get('SM2_ISLAND_GPU_SLOT', '0') == '1'
 
 
@@ -244,7 +244,7 @@ def step_city_split():
     """(island r04) the city pass as separate commandlets, each one GPU-lock hold (<= 40 min): clean,tex,mat | mesh (resumable, repeated) | proto |
     kit (resumable, repeated) | fsky,map,coll | wp. Same build_city.py steps and order as the single pass."""
     bc = os.path.join(HERE, 'build_city.py')
-    base = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX, 'SM2_ISLAND_BUDGET_S': os.environ.get('SM2_ISLAND_BUDGET_S', '1650')}
+    base = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX, 'SM2_ISLAND_BUDGET_S': os.environ.get('SM2_ISLAND_BUDGET_S', '1950')}
     def run(name, steps, extra=None):
         return ue_python(name, exec_wrapper(bc, LOAD_SME + 'import time as _t, os as _o\n_o.environ["SM2_ISLAND_DEADLINE"] = str(_t.time() + float(_o.environ.get("SM2_ISLAND_BUDGET_S", "0") or 0)) if _o.environ.get("SM2_ISLAND_BUDGET_S") else ""\n'
                                        + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), {**base, **(extra or {})},
@@ -252,7 +252,7 @@ def step_city_split():
     first = os.environ.get('SM2_ISLAND_SPLIT_FROM', 'a')   # resume point: a | mesh | proto | kit | b | wp
     order = ['a', 'mesh', 'proto', 'kit', 'b', 'wp']
     todo = order[order.index(first):]
-    if 'a' in todo: run('city_a', 'clean,tex,mat')
+    if 'a' in todo: run('city_a', 'clean,tex'); run('city_a2', 'mat')   # two holds: the material step compiles shaders
     for part, step, key, env1 in (('mesh', 'mesh', 'MESH_REMAINING', {'SM2_ISLAND_MESH_ONLY': 'missing'}), ('proto', 'proto', None, {}),
                                   ('kit', 'kit', 'KIT_REMAINING', {'SM2_ISLAND_KIT_ONLY': 'missing'})):
         if part not in todo: continue

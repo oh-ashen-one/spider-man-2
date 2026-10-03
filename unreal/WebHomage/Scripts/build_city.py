@@ -25,7 +25,8 @@ mel = unreal.MaterialEditingLibrary
 T0 = time.time()
 def log(*a): print('[build_city %5.0fs]' % (time.time() - T0), *a)
 DEADLINE = float(os.environ.get('SM2_ISLAND_DEADLINE', '0') or 0)   # (island r04) unix time: resumable steps stop here (GPU-lock hold max)
-BATCH = int(os.environ.get('SM2_ISLAND_BATCH', '40'))
+BATCH = int(os.environ.get('SM2_ISLAND_BATCH', '20'))
+KIT_BATCH = int(os.environ.get('SM2_ISLAND_KIT_BATCH', '8'))   # kit tiles build ~20-40 s each: small batches keep the deadline overrun short
 def past_deadline(): return bool(DEADLINE) and time.time() > DEADLINE
 
 # ------------------------------------------------------------------------------------------------ helpers
@@ -1219,9 +1220,9 @@ def kit_import(only=None):
         elif EAL.does_directory_exist(kdir): EAL.delete_directory(kdir)
         if not recs: continue
         n = 0
-        for b0 in range(0, len(recs), BATCH):
+        for b0 in range(0, len(recs), KIT_BATCH):
             if past_deadline(): left += len(recs) - b0; break
-            batch = recs[b0:b0 + BATCH]
+            batch = recs[b0:b0 + KIT_BATCH]
             import_files([os.path.join(EXPORT, r['file']) for r in batch], kdir + '/_in', mesh_pipeline(True))
             for r in batch:
                 base = r['name']; src = f'{kdir}/_in/{base}/StaticMeshes/{base}'; dst = f'{kdir}/SM_{base}'
