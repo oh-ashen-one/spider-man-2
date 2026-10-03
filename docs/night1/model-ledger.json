@@ -848,6 +848,19 @@
     5,
     5
    ]
+  },
+  {
+   "piece": "terrain",
+   "round": 4,
+   "model": "Sonnet 5.5",
+   "effort": "xhigh",
+   "scores": [
+    4,
+    4,
+    4,
+    4,
+    3
+   ]
   }
  ],
  "agents": [

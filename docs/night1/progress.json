@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 01:22",
+ "updated": "2026-10-03 03:32",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -960,6 +960,14 @@
    "verdict": "fails",
    "gap": "pawn run cadence 3.2-3.8 Hz (P3-owned, fixed in traversal r25); P2 next target pending director",
    "notes": "Lineup corruption fixed (0.45 % vs 13.7 %): capture fired while assets compiled + animations ran. Verdant re-blocked copper/dark pine, IP 8/8 PASS. Director decision pending. Merged (Opus director, merge=true). Stream paused (stop=true)."
+  },
+  {
+   "t": "2026-10-03 03:32",
+   "piece": "terrain",
+   "round": 4,
+   "verdict": "fails",
+   "gap": "crowns as lit leaf volumes casting lawn shadows (p1 crowns sigma3 >= 9, median >= 12; sat >= 0.65; E9c <= 42 px; tree shadows <= 0.6x lawn); E1 >= 8 eye-level only, aerial p4 sigma6 <= 5",
+   "notes": "NOT merged (Opus director): ties r03 but critic preferred the old build 4/5, E9c 54.1 px regressed, perf evidence invalid. r05 on Opus (crowns repeated as biggest gap r01/r02/r04)."
   }
  ],
  "perf": [
