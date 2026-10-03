@@ -19,9 +19,12 @@ cut swing_1 $R/a_swing_chain.mp4 0.5 8.0
 cut swing_2 $R/a_swing_chain.mp4 7.5 8.0
 cut perch_c $R/c_wallrun_perch.mp4 7.4 3.4
 cut run_p1 $R/p1_pawn_run.mp4 2.0 7.0
-cut multi_flip $R/f1_flow_backDouble.mp4 0.9 6.0
+F1=$R/f1_flow_backDouble.mp4; [ -f $F1 ] || F1=$R24/f1_flow_backDouble.mp4   # control (unchanged path); r24 file when not re-captured
+cut multi_flip $F1 0.9 6.0
 cut swing_r24 $R24/a_swing_chain.mp4 7.5 8.0
 cut swing_r25 $R/a_swing_chain.mp4 7.5 8.0
+cut perch_r24 $R24/c_wallrun_perch.mp4 7.4 3.1
+cut perch_r25 $R/c_wallrun_perch.mp4 7.4 3.1
 cat > $C/pairs.json <<JSON
 [
  {"id":"swing-chain-1","x":"$X/swing_1.mp4","y":"$C/refcuts/swing_chase.mp4","note":"fast web-swinging down a street canyon: can you follow the web line from the hand to the frame edge on every frame, over sky, pale stone and dark glass; arc altitude and the poses between webs"},
@@ -29,7 +32,8 @@ cat > $C/pairs.json <<JSON
  {"id":"rooftop-perch","x":"$X/perch_c.mp4","y":"$C/refcuts/perch_golden.mp4","note":"on a rooftop: the camera framing while the hero stands, zips to a ledge and perches (is he always in frame, does the view jump)"},
  {"id":"street-run","x":"$X/run_p1.mp4","y":"$C/refcuts/run_chase.mp4","note":"the hero running down a street seen from behind: step rhythm, stride, body motion"},
  {"id":"multi-flip","x":"$X/multi_flip.mp4","y":"$C/refcuts/S3_multi.mp4","note":"web release into an airborne pass with several somersaults, then back onto a web"},
- {"id":"progress-swing","x":"$X/swing_r25.mp4","y":"$X/swing_r24.mp4","note":"two versions of our game: the same swing chain from the same start -- which web line reads better, which is the better swing"}
+ {"id":"progress-swing","x":"$X/swing_r25.mp4","y":"$X/swing_r24.mp4","note":"two versions of our game: the same swing chain from the same start -- which web line reads better, which is the better swing"},
+ {"id":"progress-perch","x":"$X/perch_r25.mp4","y":"$X/perch_r24.mp4","note":"two versions of our game: the same rooftop turn, zip and perch -- which keeps the hero framed, which view is steadier"}
 ]
 JSON
 cp $C/pairs.json $C/pairs.with_paths.json
