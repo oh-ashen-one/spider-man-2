@@ -27,9 +27,8 @@ def main():
          'Measured on the lossless PNG of each frame where it is kept (`diag/png/`), else on the committed JPEG (q90); JPEG numbers are listed too. Instruments: `tools/export/s4_far_check.py` (city), '
          '`tools/perf_ue/sweeps/r09/quick_s4.py` / `quick_all.py` (wrappers), `look_spec_check.py`, `tod_tests.py`, `twilight_check.py`, `dome_check.py`.', '']
     # ---- 1 S4
-    frames = [('Manhattan_View_S4 session 1 t=38 s (round frame)', R + '/diag/png/view_s4_1_t038.png'), ('Manhattan_View_S4 session 1 t=34 s', R + '/diag/png/view_s4_1_t034.png'),
-              ('Manhattan_View_S4 session 2 t=38 s', R + '/diag/png/view_s4_2_t038.png'), ('Manhattan_View_S4 session 2 t=34 s', R + '/diag/png/view_s4_2_t034.png'),
-              ('golden tour S4 on /Game/Maps/Manhattan', R + '/diag/png/tour_S4.png'),
+    frames = [('Manhattan_View_S4 session 1 t=38 s (round frame)', R + '/diag/png/view_s4_1_t038.png'), 
+                            ('golden tour S4 on /Game/Maps/Manhattan', R + '/diag/png/tour_S4.png'),
               ('Manhattan_View_S4 JPEG (committed still)', S + '/golden_S4_1920x1080_manhattan_view.jpg'), ('golden tour S4 JPEG (committed still)', S + '/golden_S4_1920x1080_manhattan.jpg'),
               ('BEFORE: round-08 golden preset, same city build (sweep 15 base, tour S4)', R + '/diag/png/before_tour_S4.png'),
               ('city round-11 frame (city test map + city S4 lighting; reference)', CITY + '/round-11/S4_perch_skyline_1920x1080.jpg')]
