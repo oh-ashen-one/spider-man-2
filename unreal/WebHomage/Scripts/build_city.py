@@ -957,7 +957,9 @@ def finish_mesh(sm, mat, collide, nanite=False):
     want = (('use_full_precision_u_vs', True), ('generate_lightmap_u_vs', False), ('recompute_normals', False), ('recompute_tangents', False))
     # (island r04) set_lod_build_settings rebuilds the render data (+ distance field): the import pipeline already sets these, so only call it
     # when a value differs (r03: ~10 s per tile mesh, two builds each). SM2_ISLAND_FORCE_LOD_SETTINGS=1 = the old always-set behaviour.
-    if os.environ.get('SM2_ISLAND_FORCE_LOD_SETTINGS') == '1' or any(bs.get_editor_property(k) != v for k, v in want):
+    diff = [k for k, v in want if bs.get_editor_property(k) != v]
+    if os.environ.get('SM2_ISLAND_FORCE_LOD_SETTINGS') == '1' or diff:
+        if FINISH_STATS['lod_set'] < 3: log('finish_mesh: LOD build settings differ after import:', sm.get_name(), diff)
         for k, v in want: bs.set_editor_property(k, v)
         sms.set_lod_build_settings(sm, 0, bs); FINISH_STATS['lod_set'] += 1
     else: FINISH_STATS['lod_skip'] += 1
