@@ -875,6 +875,20 @@
     5,
     4
    ]
+  },
+  {
+   "piece": "traversal",
+   "round": 26,
+   "model": "Opus 5.5",
+   "effort": "high",
+   "scores": [
+    7,
+    7,
+    7,
+    6,
+    7,
+    7
+   ]
   }
  ],
  "agents": [

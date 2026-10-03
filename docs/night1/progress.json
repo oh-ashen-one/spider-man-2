@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 03:58",
+ "updated": "2026-10-03 04:19",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -53,10 +53,10 @@
    "id": "P3",
    "name": "Traversal + camera",
    "branch": "night1/traversal",
-   "state": "active",
-   "round": 25,
+   "state": "paused",
+   "round": 26,
    "verdict": "fails \u2014 lowest 6 (Opus 5.5)",
-   "gap": "w1 vertical wall-run as a sprint (knee_gap_lat median <= 0.25 m, limb pose changes every 0.3 s, cam 4-7 m, hero box p90 .30-.38) + original suit in every capture and the playable default"
+   "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s"
   },
   {
    "id": "P4",
@@ -976,6 +976,14 @@
    "verdict": "fails",
    "gap": "light the city under the twilight sky with surface-only light (L5 on S4e 07:00/07:30 + S4w 19:00, sky sat >= 0.40, S4 20:30 B-R >= 0, no sub-horizon disk), keep L27 12/12 + lapse p99 <= 1.5",
    "notes": "NOT merged (Opus director): sun/sky 4 < r03 6, night 4 < r03 5. L27 twilight dome now passes 12/12. r08 on Opus; stop look if r08 misses sun/sky >= 6 and night >= 5 (slot -> island r3)."
+  },
+  {
+   "t": "2026-10-03 04:19",
+   "piece": "traversal",
+   "round": 26,
+   "verdict": "fails",
+   "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s",
+   "notes": "Merged (Opus director): camera 6->7, body 6->7, original Tessera suit everywhere incl. playable default. Traversal STOPPED (director gate: moves stayed 6 for 4 rounds). Slot -> water r5 (Sonnet)."
   }
  ],
  "perf": [
