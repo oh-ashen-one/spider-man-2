@@ -74,9 +74,9 @@ float2 q2 = p / 2.3 - float2(0.013, 0.009) * t;
 float3 a = Texture2DSample(tNrm, tNrmSampler, q1).rgb * 2.0 - 1.0;
 float3 b = Texture2DSample(tNrm, tNrmSampler, q2).rgb * 2.0 - 1.0;
 float2 d = (a.xy + b.xy) * 0.5 * 0.28;
-Rough = 0.05; NormalW = normalize(float3(d.x, d.y, 1.0));
+Rough = 0.05; NormalW = normalize(float3(d.x, d.y, 1.0)); Spec = 0.25;   // r05: water F0 0.02 (UE default Specular 0.5 = F0 0.04 mirrored the pale golden sky: the p3 Lake read as white blobs, luma > 190)
 return float3(0.045, 0.06, 0.05) * gain;''',
-        inputs=[('tNrm', 'tex', 'water_nrm'), ('wpos', 'wpos', None), ('t', 'time', None), ('gain', 'scalar', 1.0)], outputs=BASE))
+        inputs=[('tNrm', 'tex', 'water_nrm'), ('wpos', 'wpos', None), ('t', 'time', None), ('gain', 'scalar', 1.0)], outputs=BASE + [('Spec', 1, 'MP_SPECULAR')]))
     # vertex-coloured / flat-coloured furniture (benches, lamps, fences, posts, coping)
     for nm, two in (('M_TerrainVC', False), ('M_TerrainVC2', True)):
         M.append(dict(name=nm, include=None, code='''
@@ -96,7 +96,7 @@ float3 an = abs(wn); an = an / max(an.x + an.y + an.z, 0.001);
 float4 a1 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 1.9) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 1.9) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 1.9) * an.z;
 float4 a2 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 0.43) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 0.43) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 0.43) * an.z;
 float4 a3 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 7.0) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 7.0) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 7.0) * an.z;
-float3 c = vc.rgb * 0.27;   // hold W (0.5 x vc, albedo ~0.2): the sunlit blocks still read pale (display luma 160-210 at the p3 / t5 pond banks); schist is ~0.1-0.12
+float3 c = lerp(vc.rgb, dot(vc.rgb, float3(0.3, 0.59, 0.11)).xxx, 0.6) * 0.32;   // r05: greyer schist (r04 read dark brown), a touch lighter   // hold W (0.5 x vc, albedo ~0.2): the sunlit blocks still read pale (display luma 160-210 at the p3 / t5 pond banks); schist is ~0.1-0.12
 c *= (0.55 + 0.9 * a1.r) * (0.78 + 0.5 * a2.g) * (0.82 + 0.36 * a3.b);
 float jn = frac((pw.x * 0.8 + pw.y * 0.6 + pw.z * 1.3) / 1.7 + a1.g * 1.4);
 c *= 1.0 - 0.5 * smoothstep(0.55, 0.64, jn) * (1.0 - smoothstep(0.64, 0.72, jn));                       // foliation joints

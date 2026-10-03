@@ -20,7 +20,7 @@ HOLD_START="${HOLD_START:-$(date +%s)}"; HOLD_BUDGET="${HOLD_BUDGET:-2100}"   # 
 # (owner rules: one stop = resume the missing shots by hand, two = stop and report; never auto-relaunch after two crashes). The marker lives in $TMP/STOPPED (round4.sh clears it at the start of a hold).
 time_ok() { [ ! -e "$TMP/STOPPED" ] && [ $(( $(date +%s) - HOLD_START )) -lt "$HOLD_BUDGET" ]; }
 RUN() {
-  "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@"; local rc=$?
+  "$GPU" capture --label terrain -- "$UE_DIR/Scripts/run_game.sh" "$@" -notraceserver; local rc=$?   # r05: every call passes "--" first, so -notraceserver is an engine arg (UE auto-starts UnrealTraceServer, a listener on 1981 / 1989, otherwise)
   if [ $rc -ne 0 ]; then
     echo "rc=$rc $(date +%H:%M:%S) $*" >> "$TMP/FAILS"
     if [ $rc -eq 143 ] || [ $rc -eq 137 ] || [ $rc -eq 124 ] || [ "$(wc -l < "$TMP/FAILS")" -ge 2 ]; then echo "STOP rc=$rc $(date +%H:%M:%S) $*" >> "$TMP/STOPPED"; echo "== STOPPED (rc=$rc): not launching anything else; see $TMP/STOPPED"; fi

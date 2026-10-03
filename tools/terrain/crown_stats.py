@@ -34,7 +34,8 @@ def crop_stats(path, boxes):
     for x, y in boxes:
         c = im[y:y + CROP, x:x + CROP]
         r, g, b = c[..., 0].mean(), c[..., 1].mean(), c[..., 2].mean()
-        out.append({'box_xywh': [x, y, CROP, CROP], 'hp_sd': round(hp_sd(Y, x, y), 2), 'mean_luma': round(float(Y[y:y + CROP, x:x + CROP].mean()), 1), 'rgb_mean': [round(float(v), 1) for v in (r, g, b)]})
+        mx = c.max(axis=2); mn = c.min(axis=2); sat = float(np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0.0).mean())   # r05: mean HSV saturation of the crop (target median >= 0.65)
+        out.append({'box_xywh': [x, y, CROP, CROP], 'hp_sd': round(hp_sd(Y, x, y), 2), 'mean_luma': round(float(Y[y:y + CROP, x:x + CROP].mean()), 1), 'mean_hsv_sat': round(sat, 3), 'rgb_mean': [round(float(v), 1) for v in (r, g, b)]})
     return out
 
 def flat_faces(path, var_thr=1.4, min_w=40):
@@ -167,6 +168,8 @@ def main():
     p1 = [f for f in res['flat'] if f['image'] in ('p1_south.jpg', 'p10_lawn_eye.jpg')]
     res['summary'] = {'crown_crops': len(sds), 'min_hp_sd': min(sds) if sds else None, 'median_hp_sd': round(float(np.median(sds)), 2) if sds else None, 'max_hp_sd': max(sds) if sds else None,
                       'pass_crown_sd_ge_9': bool(sds) and min(sds) >= 9.0,
+                      'median_hsv_sat': round(float(np.median([c['mean_hsv_sat'] for c in res['crowns']])), 3) if sds else None,   # r05 targets: all >= 9, median sd >= 12, median sat >= 0.65
+                      'pass_r05_crowns': bool(sds) and min(sds) >= 9.0 and float(np.median(sds)) >= 12.0 and float(np.median([c['mean_hsv_sat'] for c in res['crowns']])) >= 0.65,
                       'reference_hp_sd': [c['hp_sd'] for c in res['reference']],
                       'max_flat_width_px': {f['image']: f['max_flat_width_px'] for f in res['flat']},
                       'pass_no_flat_hull_face_gt_40px': bool(p1) and all(f['max_flat_width_px'] <= 40 for f in p1),
@@ -175,7 +178,7 @@ def main():
                       'pass_no_straight_silhouette_gt_40px_p10': (lambda L: bool(L) and all(f['longest_straight_px'] <= 40 for f in L))([f for f in res['silhouette'] if f['image'] == 'p10_lawn_eye.jpg'])}   # p1 looks down 30 deg: converging building verticals are not axis-aligned there, so p1 is information only
     json.dump(res, open(out, 'w'), indent=1)
     print(json.dumps(res['summary']))
-    for c in res['crowns']: print('%-24s %-14s hp_sd %6.2f  luma %5.1f' % (c['image'], c['box_xywh'][:2], c['hp_sd'], c['mean_luma']))
+    for c in res['crowns']: print('%-24s %-14s hp_sd %6.2f  luma %5.1f  sat %.3f' % (c['image'], c['box_xywh'][:2], c['hp_sd'], c['mean_luma'], c['mean_hsv_sat']))
     for f in res['flat']: print('flat', f['image'], 'max_flat_width', f['max_flat_width_px'], 'patches>40:', f['patches_wider_than_40_px'], 'flat%% of foliage %.2f' % f['flat_pct_of_foliage'], 'dark pockets %.2f%%' % f['dark_pocket_pct'])
     for f in res['silhouette']: print('silhouette', f['image'], 'longest straight', f['longest_straight_px'], 'px; segments > 40 px:', f['segments_longer_than_40_px'], 'sky %.1f%% foliage %.1f%%' % (f['sky_pct'], f['foliage_pct']), f['longest'][:3])
     if preview and res['crowns']:
