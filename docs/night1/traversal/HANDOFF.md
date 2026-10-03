@@ -180,9 +180,9 @@ kill by PID.
 | r22 | 7/6/6/6/6, flips 7 -- FAILS TARGET, mergeable | vertical run frozen, legs together |
 | r23 | 7/6/6/6/6, flips 7 -- FAILS TARGET (`critic/round-23-CRITIC.md`), mergeable | swing chain altitude + rope time (T7 / T3); c camera snap 7.7-8.5 s |
 | r24 | 7/6/6/6/6, flips 7 -- FAILS TARGET (`critic/round-24-CRITIC.md`), merge held on owner bug 5 | rope readable on every web frame (T5/T6) |
-| r25 | not judged yet -- pack `_scratch/critic-P3-r25/pack` (swing chain x2 + perch + run at full 1080p, multi-flip, wall runs, r24 vs r25 swing and perch) | -- |
+| r25 | not judged yet -- pack `_scratch/critic-P3-r25/pack` (swing chain x2 + perch + run at 1080p pixel scale, multi-flip, wall runs, r24 vs r25 swing and perch) | -- |
 
 ## 8. Queue for the next session
 1. Blind critic on `/Users/midir/sm2-n1/_scratch/critic-P3-r25/pack` (orchestrator; key stays outside the pack); record `critic/round-25-CRITIC.md` + §7.
-2. The r25 pack cuts the swing / perch / run pairs at full 1920x1080 (r22-r24 packs were 512x466 after abpack: a 3 px line became ~1.3 px). Keep that for any rope judgement.
+2. The r25 pack cuts the swing / perch / run pairs at the full 1080p pixel scale (centre 1440x1080 of both clips -> 1210x906 after abpack's 84 % crop; r22-r24 packs were 512x466: a 3 px line became ~1.3 px). Keep that for any rope judgement. swing-chain-2's reference is now `swing-low-street-speed` (the r24 `S45_chain` / avenue clips carry HUD pop-ups).
 3. Teardown after the r25 critic: `_scratch/traversal/r25/` (probes, rprobe_*, dbg), `_scratch/critic-P3-r24/`, capture frame folders `_scratch/traversal/capture/*`.
