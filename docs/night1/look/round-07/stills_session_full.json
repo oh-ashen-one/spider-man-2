@@ -145,8 +145,8 @@
  },
  "res": "1920x1080",
  "internal": "100% of output",
- "gpu_util_before_pct": 76,
- "wall_s": 803,
+ "gpu_util_before_pct": 0,
+ "wall_s": 762,
  "stills": 40,
  "poses": 40,
  "settle_rule": "first pose of a group: settle_first s (default 8) after the hour / key change; next poses of the group: settle s (default 5); min 90 frames"
