@@ -35,6 +35,9 @@ def main():
     if os.path.isdir(st):
         L += ['## L28 twilight city light (r08_check.py: L5 on S4e 07:00 / 07:30 and S4w 19:00, sky saturation, blue hour, sub-horizon disk)', '', run(['tools/perf_ue/r08_check.py', '--dir', st, '--out', os.path.join(R, 'L28_r08')]).strip(), '']
         L += ['## L27 twilight dome continuity (dome_check.py; S4 / S4w at 19:30 19:48 20:00 20:30, S4 / S4e at 06:30 07:00 are the verdict stills)', '', run(['tools/perf_ue/dome_check.py', '--dir', st, '--out', os.path.join(R, 'DOME_r08')]).strip(), '']
+        if glob.glob(os.path.join(st, 'midday_S*_1920x1080.jpg')):
+            L += ['## Round-03 midday floor (L2 / L7) on the fixed midday preset map Look_Midtown (look_spec_check.py; the round-03 critic counted mean + B-R: 8 of 8)', '',
+                  run(['tools/perf_ue/look_spec_check.py', '--dir', st]).split('### Far field')[0].strip(), '']
         L += ['## L24 / L25 / L26 sky stills', '', '```', run(['tools/perf_ue/twilight_check.py', '--dir', st, '--out', os.path.join(R, 'TWILIGHT_r08')]).strip(), '```', '']
         L += ['## Golden 18.4 and night 22 spec numbers (tod_tests.py)', '', '```', run(['tools/perf_ue/tod_tests.py', '--dir', st, '--out', os.path.join(R, 'TESTS_tod'), '--map', 'h18.4=golden,h22=night,h7.6=golden,h13=midday,w1_h13=midday']).strip(), '```', '',
               'Per-still tables: `TESTS_tod.md`.', '']
