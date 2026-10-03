@@ -470,7 +470,7 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
     float gs = lerp(1.0, GlitFar, smoothstep(250.0, 600.0, dist));
     float2 pg = p / gs;
     float2 gn = (NZG(pg / 2.3 + float2(t * 0.05, t * 0.034) / gs, 1.0 / (2.3 * gs)).ga - 0.5) * 2.0 + 0.8 * (NZG(float2(-pg.y, pg.x) / 3.7 + float2(-t * 0.041, t * 0.02) / gs, 1.0 / (3.7 * gs)).ga - 0.5) * 2.0;
-    float3 nG = normalize(N + float3(gn * GSpread, 0.0));
+    float3 nG = normalize(N + float3(gn * GSpread * lerp(1.0, OpenGSp, openW), 0.0));   // r06: OpenGSp = facet spread on open water
     float gl = pow(saturate(dot(nG, Hh)), 700.0);
     float spark = smoothstep(0.62, 0.9, NZG(pg / 5.0 + float2(t * 0.02 / gs, 0.0), 1.0 / (5.0 * gs)).r);
     gw = saturate(gl * spark * (1.0 - smoothstep(GlitDist * 0.7, GlitDist, dist)) * smoothstep(20.0, 40.0, dist) * (1.0 - wf) * saturate(Ls.z * 8.0) * 3.0 * GlitterK
@@ -480,7 +480,8 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
 //      A pixel whose full-detail normal (the shaded slope + the open-water chop that is not shaded) lies within ~GlitPow of the sun
 //      half-vector is drawn as a sharp facet on the half-vector (roughness 0.06), i.e. r05b's sun glints without r05b's sky frost
 [branch] if (OpenGlS > 0.0 && openW > 0.0 && dist > 8.0 && dist < GlitDist && Ls.z > 0.0 && dot(Rm, Ls) > 0.5) {
-    float3 Nx = normalize(float3(-(slope.x + slopeX.x), -(slope.y + slopeX.y), 1.0));
+    // GlitSlK: the capillary facets that carry glints are steeper than the shaded (filtered) slope field: gain on the chop for the selection only
+    float3 Nx = normalize(float3(-(slope.x + slopeX.x * GlitSlK), -(slope.y + slopeX.y * GlitSlK), 1.0));
     float gx = pow(saturate(dot(Nx, Hh)), GlitPow);
     gw = max(gw, saturate(gx * OpenGlS * openW * (1.0 - wf) * saturate(Ls.z * 8.0)));
 }
@@ -583,7 +584,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # OpenBend (BendK share), OpenGlS / GlitPow (open-water sun glints picked from the full-detail normal) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
           # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
           'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
-          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.4, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 3000.0}
+          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.4, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 3000.0, 'OpenGSp': 1.0, 'GlitSlK': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

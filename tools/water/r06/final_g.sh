@@ -38,12 +38,13 @@ dolly() { # map-suffix name
     ffmpeg -loglevel error -y -framerate 60 -start_number 359 -i "$CAP/$n/dolly_frames/MovieFrame%05d.png" -frames:v 600 \
       -c:v libx264 -pix_fmt yuv420p -crf $crf -preset slow -movflags +faststart "$R/$n.mp4"; echo "$n re-encoded at CRF $crf: $(stat -f %z "$R/$n.mp4")"; done; }
 M=/Game/Water/Maps
+# r06 order: the five 4K stills first (the round's numbers), then the dollies, then the 1080p stills
 still $M/Water_View_RiverLow 3840x2160 river_low_4k 420
-dolly RiverLow river_low_dolly
+still $M/Water_View_RiverSun 3840x2160 river_sun_4k 420
 still $M/Water_View_HarbourHigh 3840x2160 harbour_high_4k 420
 still $M/Water_View_HarbourSunHigh 3840x2160 harbour_sun_high_4k 420
 still /Game/Maps/Manhattan_View_S4 3840x2160 S4_golden_4k 420
-still $M/Water_View_RiverSun 3840x2160 river_sun_4k 420
+dolly RiverLow river_low_dolly
 dolly RiverSun river_sun_dolly
 for v in "$M/Water_View_RiverLow|river_low" "$M/Water_View_HarbourHigh|harbour_high" "$M/Water_View_HarbourSunHigh|harbour_sun_high" \
          "/Game/Maps/Manhattan_View_S4|S4_golden" "$M/Water_View_RiverSun|river_sun"; do still "${v%%|*}" 1920x1080 "${v#*|}_1080" 300; done
