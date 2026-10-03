@@ -4,7 +4,8 @@
 # usage: gpu_slot.sh capture --label look --timeout 3600 -- tools/perf_ue/sweeps/r08/hold_build_stills.sh <knobs.json> <out dir> [set]
 WT="$(cd "$(dirname "$0")/../../../.." && pwd)"
 cd "$WT"; T0=$(date +%s)
-python3 tools/perf_ue/sweeps/r08/make_v4.py --knobs "$1" ${R07_BIAS:+--r07-bias "$R07_BIAS"} --in-place || exit 2   # R07_BIAS: lapse bias overrides (default: round-07/lapse_bias_overrides.json)
+BI=(); [ -n "$R07_BIAS" ] && BI=(--r07-bias "$R07_BIAS")   # R07_BIAS: lapse bias overrides (default: round-07/lapse_bias_overrides.json)
+python3 tools/perf_ue/sweeps/r08/make_v4.py --knobs "$1" "${BI[@]}" --in-place || exit 2
 if [ -z "$NOBUILD" ]; then
   tools/perf_ue/rebuild_look.sh rigs,maps midday,golden,night,tod
   grep -q "build_look.*DONE" "${SM2_LOOK_SCRATCH:-/Users/midir/sm2-n1/_scratch/look}/build_look_headless.log" || { echo "look rebuild not confirmed"; exit 1; }
