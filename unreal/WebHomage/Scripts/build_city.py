@@ -1311,32 +1311,11 @@ def spawn_boxes(wp=False):
         n += 1
     return n
 
-def populate(wp=False):
-    """spawn the whole city into the CURRENT level (classic geometry sublevel, or the WP world)"""
-    recs = [r for r in man['meshes'] if keep_mesh(r)]
-    _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
-    n_gnd = n_vis = n_sol = 0
-    for r in recs:
-        if _fb and r['name'] == 'palisadesCliff': continue
-        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
-        for suf in ('_r06', '_r04'):  # re-imported variants (frames / far steps) win over the original import
-            if EAL.does_asset_exist(sp + suf): sp += suf; break
-        if not EAL.does_asset_exist(sp): continue
-        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
-        smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
-        a.set_mobility(unreal.ComponentMobility.STATIC)
-        if r['kind'] in GROUND_KINDS:   # (island r01) the floor: collides, tagged, always loaded (indexed once by the traversal)
-            smc.set_collision_profile_name('BlockAll'); a.tags = [unreal.Name('WHGround')]; n_gnd += 1
-            set_spatial(a, False, wp)
-        else:
-            if solid_rec(r): solid_component(smc); n_sol += 1   # (island r02) a traversal solid (own triangles, QueryOnly)
-            else: no_collision(smc); n_vis += 1
-            set_spatial(a, not mesh_is_far(r), wp)
-    n_kit = kit_spawn(wp)
-    log('farsky instances', fsky_spawn(wp))   # (r10)
+def spawn_instances(wp=False):
+    """(island r03) the instanced props / trees / parked cars / stopped traffic of the city (per-tile HISM actors); returns the instance count"""
+    ni = 0
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
-    ni = 0
     EXTRA_PROPS = {}; REMOVE_AT = set()
     for _fn in ('streetprops.json', 'streettrees.json', 'streetcars.json'):   # (r05) street furniture, (r08) trees on every avenue sidewalk + parked cars (tools/export/street_props.py, street_trees.py, street_cars.py)
         _fp = os.path.join(EXPORT, _fn)
@@ -1350,7 +1329,13 @@ def populate(wp=False):
         by_tile = {}
         for it in items: by_tile.setdefault(tile_key(it['x'], it['z']), []).append(it)
         for tk, its in sorted(by_tile.items()):
-            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label + '__t' + tk, folder=folder)
+            # (island r03) the actor sits at its tile centre: a World Partition actor's cell comes from its saved bounds, and the HISM bounds were
+            # still empty when the actors were saved (the instance tree builds asynchronously in the commandlet), so every actor at the origin
+            # landed in the origin cell: all street trees / parked cars / traffic / furniture streamed with the cell at (0, 0) and were gone
+            # beyond ~1.2 km of it (the M2 tiles, y > 1.2 km: bare avenues). Instances are added in world space (below), the actor placement only
+            # decides the cell.
+            _tx, _tz = (int(v) for v in tk.split('_'))
+            a = spawn(unreal.Actor, U((_tx + 0.5) * WP_TILE, 0, (_tz + 0.5) * WP_TILE), label=label + '__t' + tk, folder=folder)
             c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
             c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
             if label in ['ISM_' + n for n in SOLID_PROTOS]: solid_component(c)   # (island r02) sheds / subway entrances: solids
@@ -1386,6 +1371,32 @@ def populate(wp=False):
             if items and EAL.does_asset_exist(sp): nt += make_ism('ISM_traffic_' + pool, 'City/Traffic', sp, items)
     log('stopped traffic cars', nt)
     ni += nt
+    return ni
+
+def populate(wp=False):
+    """spawn the whole city into the CURRENT level (classic geometry sublevel, or the WP world)"""
+    recs = [r for r in man['meshes'] if keep_mesh(r)]
+    _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
+    n_gnd = n_vis = n_sol = 0
+    for r in recs:
+        if _fb and r['name'] == 'palisadesCliff': continue
+        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        for suf in ('_r06', '_r04'):  # re-imported variants (frames / far steps) win over the original import
+            if EAL.does_asset_exist(sp + suf): sp += suf; break
+        if not EAL.does_asset_exist(sp): continue
+        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
+        smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
+        a.set_mobility(unreal.ComponentMobility.STATIC)
+        if r['kind'] in GROUND_KINDS:   # (island r01) the floor: collides, tagged, always loaded (indexed once by the traversal)
+            smc.set_collision_profile_name('BlockAll'); a.tags = [unreal.Name('WHGround')]; n_gnd += 1
+            set_spatial(a, False, wp)
+        else:
+            if solid_rec(r): solid_component(smc); n_sol += 1   # (island r02) a traversal solid (own triangles, QueryOnly)
+            else: no_collision(smc); n_vis += 1
+            set_spatial(a, not mesh_is_far(r), wp)
+    n_kit = kit_spawn(wp)
+    log('farsky instances', fsky_spawn(wp))   # (r10)
+    ni = spawn_instances(wp)
     # ground under everything (lot interiors / plazas never exported as geometry)
     # (r02) rivers / harbour: one water plane at the browser's G.WATER_Y (-1.6 m), 60 km wide (land meshes sit above it)
     g = spawn(unreal.StaticMeshActor, U(0, -1.6, 0), label='WaterPlane', folder='City')
@@ -1500,4 +1511,14 @@ if 'wp' in STEPS:
     nb = spawn_boxes(True)
     ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
     log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', nm, 'meshes', ni, 'instances', nb, 'WHBox cubes')
+# (island r03) step 'ism': respawn ONLY the per-tile instanced props / trees / parked cars / stopped traffic of the existing World Partition map
+# (spawn_instances: the actors now sit at their tile centre). build_manhattan.py step 'ism' deletes the old per-tile ISM external-actor
+# packages first (a commandlet cannot delete not-loaded WP actors); the map is loaded, not emptied, so the always-loaded actors stay.
+if 'ism' in STEPS:
+    WPM = ARGS.get('wp_map') or os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+    unreal.EditorLoadingAndSavingUtils.load_map(WPM)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    ni = spawn_instances(True)
+    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
+    log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', ni, 'instances (per-tile HISM actors at their tile centre)')
 log('DONE')

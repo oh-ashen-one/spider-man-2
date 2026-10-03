@@ -46,7 +46,7 @@ WP_MAP = os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')   # (isl
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
-STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'map']
+STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'ism', 'traversal', 'characters', 'look', 'map']
 # P1's tools default to THEIR scratch/export; every one honours these, so point them at this build's dirs.
 os.environ.setdefault('SM2_CITY_SCRATCH', SCR); os.environ.setdefault('SM2_CITY_EXPORT', EXPORT); os.environ.setdefault('SM2_CITY_TEX', TEX)
 PRESETS = ['golden', 'midday', 'night']
@@ -206,6 +206,31 @@ def step_city():
     # default timeout killed it at 07:24; SM2_ISLAND_UE_TIMEOUT (s, default 6 h) for this commandlet
     ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), env,
               timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+
+
+def step_ism():
+    """(island r03) respawn the per-tile instanced props / trees / cars / traffic actors of the WP map at their tile centres. Not part of the default
+    steps' flow (the 'city' step builds them that way now); this fixes an existing map: the old per-tile ISM external-actor packages are removed
+    from disk here, then build_city.py step 'ism' loads the map and spawns them again."""
+    import re, struct
+    root = os.path.join(PROJ, 'Content', '__ExternalActors__', 'Maps', WP_MAP.split('/')[-1])
+    if not root.startswith(WT + '/'): raise SystemExit('refusing outside the worktree: ' + root)
+    pat = re.compile(r'^ISM_[A-Za-z0-9_\-]+__t-?\d+_-?\d+$')
+    n = 0
+    for dp, _, fns in os.walk(root):
+        for fn in fns:
+            if not fn.endswith('.uasset') or fn.startswith('._'): continue
+            f = os.path.join(dp, fn)
+            b = open(f, 'rb').read()
+            i = b.rfind(b'ActorLabel\x00')
+            if i < 0: continue
+            L = struct.unpack('<I', b[i + 11:i + 15])[0]
+            if 0 < L < 200 and pat.match(b[i + 15:i + 15 + L - 1].decode('latin1')):
+                os.remove(f); n += 1
+    log('removed %d per-tile ISM actor packages from %s' % (n, root))
+    steps = os.environ.get('SM2_ISLAND_CITY_STEPS_ISM', 'ism')
+    ue_python('wp_ism', exec_wrapper(os.path.join(HERE, 'build_city.py'), LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)),
+              {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}, timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
 
 
 def step_traversal():
