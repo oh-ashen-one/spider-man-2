@@ -18,4 +18,6 @@ All frames (share Y<25 / share Y>204 / mean Y):
   S3_rooftop_watertower_3840x2160.jpg     19.1%   0.01%    59.4
   S4_perch_skyline_3840x2160.jpg           4.7%  16.61%   127.4
   S5_timessq_south_3840x2160.jpg           9.1%   6.35%    81.2
+  S6_timessq_street_3840x2160.jpg          4.3%   5.52%    81.3
+  S7_sunset_crosstown_3840x2160.jpg        4.0%   1.32%    64.8
   S8_aerial_midtown_3840x2160.jpg         15.4%   6.08%    84.8

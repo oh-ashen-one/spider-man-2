@@ -77,11 +77,25 @@
   "mean_luma_t28": 85.23
  },
  {
+  "view": "S6_timessq_street_3840x2160",
+  "mean_abs_luma_diff": 0.373,
+  "pct_gt8": 0.083,
+  "mean_luma_t24": 81.23,
+  "mean_luma_t28": 81.29
+ },
+ {
   "view": "S7_sunset_crosstown_1920x1080",
   "mean_abs_luma_diff": 0.202,
   "pct_gt8": 0.044,
   "mean_luma_t24": 63.97,
   "mean_luma_t28": 63.96
+ },
+ {
+  "view": "S7_sunset_crosstown_3840x2160",
+  "mean_abs_luma_diff": 0.208,
+  "pct_gt8": 0.038,
+  "mean_luma_t24": 64.76,
+  "mean_luma_t28": 64.75
  },
  {
   "view": "S8_aerial_midtown_1920x1080",

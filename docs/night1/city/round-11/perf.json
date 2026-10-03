@@ -231,7 +231,25 @@
   "gpu_util_before_pct": 18
  },
  "S6_timessq_street_3840x2160": {
-  "gpu_util_before_pct": null
+  "frames": 32,
+  "seconds": 15.069,
+  "avg_ms": 470.892,
+  "avg_fps": 2.12,
+  "p50_ms": 287.094,
+  "p95_ms": 322.726,
+  "p99_ms": 7163.109,
+  "max_ms": 7163.109,
+  "frames_over_16_67ms": 32,
+  "gpu_avg_ms": 53.015,
+  "gpu_p95_ms": 68.992,
+  "output_w": 3840,
+  "output_h": 2160,
+  "r_ScreenPercentage": 100.0,
+  "screen_percentage_mode": "manual",
+  "internal_w": 3840,
+  "internal_h": 2160,
+  "rhi": "Metal",
+  "gpu_util_before_pct": 24
  },
  "S7_sunset_crosstown_1920x1080": {
   "frames": 76,
@@ -255,7 +273,25 @@
   "gpu_util_before_pct": 26
  },
  "S7_sunset_crosstown_3840x2160": {
-  "gpu_util_before_pct": null
+  "frames": 34,
+  "seconds": 16.588,
+  "avg_ms": 487.876,
+  "avg_fps": 2.05,
+  "p50_ms": 268.165,
+  "p95_ms": 323.095,
+  "p99_ms": 8578.668,
+  "max_ms": 8578.668,
+  "frames_over_16_67ms": 34,
+  "gpu_avg_ms": 52.02,
+  "gpu_p95_ms": 77.013,
+  "output_w": 3840,
+  "output_h": 2160,
+  "r_ScreenPercentage": 100.0,
+  "screen_percentage_mode": "manual",
+  "internal_w": 3840,
+  "internal_h": 2160,
+  "rhi": "Metal",
+  "gpu_util_before_pct": 20
  },
  "S8_aerial_midtown_1920x1080": {
   "frames": 78,

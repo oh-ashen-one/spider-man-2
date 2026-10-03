@@ -30,9 +30,9 @@ Frame times: game seconds 26-38 of a capture run under the shared GPU lock (`gpu
 | S5_timessq_south | 1920x1080 | 1399x787 | 355.686 | 174.048 | 36.452 | 0 % |
 | S5_timessq_south | 3840x2160 | 3840x2160 | 450.51 | 323.349 | 53.551 | 24 % |
 | S6_timessq_street | 1920x1080 | 1399x787 | 168.709 | 147.18 | 20.639 | 18 % |
-| S6_timessq_street | 3840x2160 | NonexNone | None | None | None | None % |
+| S6_timessq_street | 3840x2160 | 3840x2160 | 470.892 | 322.726 | 53.015 | 24 % |
 | S7_sunset_crosstown | 1920x1080 | 1399x787 | 189.126 | 153.788 | 21.707 | 26 % |
-| S7_sunset_crosstown | 3840x2160 | NonexNone | None | None | None | None % |
+| S7_sunset_crosstown | 3840x2160 | 3840x2160 | 487.876 | 323.095 | 52.02 | 20 % |
 | S8_aerial_midtown | 1920x1080 | 1399x787 | 157.728 | 147.579 | 21.154 | 24 % |
 | S8_aerial_midtown | 3840x2160 | 3840x2160 | 308.584 | 222.496 | 47.596 | 20 % |
 
@@ -40,7 +40,7 @@ Frame times: game seconds 26-38 of a capture run under the shared GPU lock (`gpu
 
 Target (Opus director, after critic r10): give the S4 far-shore towers a far-LOD facade with a window grid, crown / setback variation and mid-grey albedo (0.25-0.35); pass lines measured at 1080p with `tools/export/s4_far_check.py` / `city_spec_check.py` (T2 <= 10 % above Y 204 in (0,150,1300,300); flat bright 8x8 blocks <= 10 % in (540,110,900,260); S8 glass (1270,0,1640,300) <= 1.5 % above 204; T1 >= 12 px and C11-C15 kept; the native-4K S3 board reads "MORE SHADE ON EVERY STREET" and no partial crop evokes a real brand).
 
-Capture protocol: `tools/export/r11_plan.sh` inside one `gpu_slot.sh capture` hold per batch; two screenshots per run (t = 34 s and t = 38 s of game time), the t = 38 s frame is the round frame; `tools/export/settle_check.py` (`settle_check.txt`): mean |dY| between the pair 0.18-0.34 and 0.01-0.15 % of the pixels differing by more than 8 levels in every view (a cold-start run with the older 24 / 28 s pair gave 4.5 and 14 %, see HANDOFF gotcha 36). 1080p frames: automatic screen percentage, internal 1399x787 (TSR upscale). 4K frames: `r.ScreenPercentage 100`, output and internal 3840x2160 (`perf.json`). The shot list has no movements, so no mp4 was produced.
+Capture protocol: `tools/export/r11_plan.sh` inside one `gpu_slot.sh capture` hold per batch; two screenshots per run (t = 34 s and t = 38 s of game time), the t = 38 s frame is the round frame; `tools/export/settle_check.py` (`settle_check.txt`): mean |dY| between the pair 0.18-0.37 and 0.01-0.15 % of the pixels differing by more than 8 levels in every view (16 frames) (a cold-start run with the older 24 / 28 s pair gave 4.5 and 14 %, see HANDOFF gotcha 36). 1080p frames: automatic screen percentage, internal 1399x787 (TSR upscale). 4K frames: `r.ScreenPercentage 100`, output and internal 3840x2160 (`perf.json`). The shot list has no movements, so no mp4 was produced.
 
 Final configuration: MPC_City `F0Scale` 0.25 (r10 0.8), `FarLitK` 0.30 (new), `FarFill` 0.12 (new), `FarSunK` 0.22, `FarGain` 4.0, `ShadeFill` 0.17, `GlassSky` 0.15, `SunK` 0.08 (others unchanged, `DebugMode` 0). S4 map: height fog 0.004 starting at 4 500 m, inscattering (0.60, 0.62, 0.66), aerial perspective scale 0.34, manual exposure +2 EV, SkyLight 1.7, sun 6 (the other seven maps are unchanged).
 
@@ -63,7 +63,8 @@ Final configuration: MPC_City `F0Scale` 0.25 (r10 0.8), `FarLitK` 0.30 (new), `F
 | S3 / S7 share of pixels below Y 25 (%) | 13.2 / 1.4 | 17.0 / 3.5 | - | <= 25 / <= 30 |
 | C4 / C6 vehicles at YOLO conf 0.30: S1 / S2 | 17 / 15 | 17 / 16 | - | 5-19 / 14-22 |
 
-The 1080p / 4K frame-time tables above and `s4_far_check.json`, `city_spec_check.{md,json}`, `shade_check.md`, `s8_glass_box.txt`, `ip_ocr_check.txt` are the measurements behind this table. Evidence images: `builder_checks/s4_mask_1080p.png` (red = Y > 204, green = T2 box, cyan = T4 box, yellow = bright flat blocks), `S4_far_band_4k.jpg`, `S4_tower_box_4k.jpg`, `S8_glass_upper_4k.jpg`, `S3_board_4k.jpg` (pixel copies of the native-4K frames).
+The 1080p / 4K frame-time tables above and `s4_far_check.json`, `city_spec_check.{md,json}`, `shade_check.md`, `s8_glass_box.txt`, `ip_ocr_check.txt` are the measurements behind this table. The health monitor stopped the first native-4K S6 / S7 runs (WindowServer CPU 97 %, SIGTERM, then an automatic pause); both were re-run after the auto-lift (hold 11) with the same configuration; no engine crashed.
+Evidence images: `builder_checks/s4_mask_1080p.png` (red = Y > 204, green = T2 box, cyan = T4 box, yellow = bright flat blocks), `S4_far_band_4k.jpg`, `S4_tower_box_4k.jpg`, `S8_glass_upper_4k.jpg`, `S3_board_4k.jpg` (pixel copies of the native-4K frames).
 
 Sweeps that led to the configuration (S4 1080p, settled pairs; scratch, not committed): FarLitK 0.30 -> 0.45 moved the far-shore strip by +3 Y (the faces visible from the perch are almost all shaded) and T2 7.9 -> 12.2 %; FarFill 0 / 0.12 / 0.24 gave far-shore Y 176.8 / 182.9 / 187.5 and T2 7.9 / 8.3 / 9.4 % with C15 0.22 / 0.18 / 0.16; uniform height fog 0.003 from 400 m gave far-shore Y 196.6 (C13 -32.6) but T2 29.2 % and C15 0.16; fog 0.004 / 0.008 / 0.004 starting at 4 500 / 4 500 / 3 500 m gave T2 7.0 / 12.4 / 10.1 %. S8 glass box F0Scale 0.8 / 0.5 / 0.35 / 0.25 / 0.18: 70.4 / 43.6 / 6.8 / 3.1 / 3.0 % (the last 3 % was one tower side seen at a grazing angle; the grazing-angle fix took it to 0.7 %).
 

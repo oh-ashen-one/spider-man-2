@@ -74,6 +74,8 @@ round folder: `/Users/midir/sm2-n1/city/docs/night1/city/round-11`
 - S3_rooftop_watertower_3840x2160.jpg: clean
 - S4_perch_skyline_3840x2160.jpg: clean
 - S5_timessq_south_3840x2160.jpg: clean
+- S6_timessq_street_3840x2160.jpg: clean
+- S7_sunset_crosstown_3840x2160.jpg: clean
 - S8_aerial_midtown_3840x2160.jpg: clean
 
 ## Lines not measurable by pixels (judged / hand count; see spec_regions.json manual_lines)

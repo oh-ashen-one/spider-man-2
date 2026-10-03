@@ -121,6 +121,18 @@
    "meanY": 81.2
   },
   {
+   "frame": "S6_timessq_street_3840x2160.jpg",
+   "share_lt25": 4.3,
+   "share_gt204": 5.52,
+   "meanY": 81.3
+  },
+  {
+   "frame": "S7_sunset_crosstown_3840x2160.jpg",
+   "share_lt25": 4.0,
+   "share_gt204": 1.32,
+   "meanY": 64.8
+  },
+  {
    "frame": "S8_aerial_midtown_3840x2160.jpg",
    "share_lt25": 15.4,
    "share_gt204": 6.08,
