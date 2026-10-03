@@ -479,14 +479,18 @@ float3 Rm = reflect(-V, float3(0, 0, 1));
 // r06 open-water sun glints (OpenGlS): the open water's base is rough (OpenRgh: no sky frost), but its sharp facets still mirror the sun.
 //      A pixel whose full-detail normal (the shaded slope + the open-water chop that is not shaded) lies within ~GlitPow of the sun
 //      half-vector is drawn as a sharp facet on the half-vector (roughness 0.06), i.e. r05b's sun glints without r05b's sky frost
+float gwO = 0.0;
 [branch] if (OpenGlS > 0.0 && openW > 0.0 && dist > 8.0 && dist < GlitDist && Ls.z > 0.0 && dot(Rm, Ls) > 0.5) {
     // GlitSlK: the capillary facets that carry glints are steeper than the shaded (filtered) slope field: gain on the chop for the selection only
     float3 Nx = normalize(float3(-(slope.x + slopeX.x * GlitSlK), -(slope.y + slopeX.y * GlitSlK), 1.0));
     float gx = pow(saturate(dot(Nx, Hh)), GlitPow);
-    gw = max(gw, saturate(gx * OpenGlS * openW * (1.0 - wf) * saturate(Ls.z * 8.0)));
+    gwO = saturate(gx * OpenGlS * openW * (1.0 - wf) * saturate(Ls.z * 8.0));
 }
-NormalW = normalize(lerp(NormalW, Hh, gw));
+NormalW = normalize(lerp(NormalW, Hh, max(gw, gwO)));
 Rough = lerp(Rough, 0.06, gw);
+// GlitRgh: the open-water glint's lobe. At 0.06 a sun facet tonemaps to saturated gold (luma ~180-205); r05b's near-field facets (0.03)
+//          clipped to near-white: the sparkle reads as white points only with the sharper lobe
+Rough = lerp(Rough, GlitRgh, gwO);
 Emis = FarEmisK * farF * float3(0.62, 0.6, 0.55);   // r05b candidate (default 0): the far line also as emission, independent of the Opacity path
 // r05 Dbg 10: far contact line diagnosis (harbour_high rendered no line). Base colour = a grey value in interleaved 24-px screen columns
 //   (column mod 8): 0 contact-map distance / 32 m (recomputed here, same UV as the far line); 1 footprint foot / 8 m; 2 far-line coverage
@@ -584,7 +588,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # OpenBend (BendK share), OpenGlS / GlitPow (open-water sun glints picked from the full-detail normal) take their open-water values beyond ShoreA..ShoreB m of walls / piers (contact map; layout shore map ShoreSA..ShoreSB outside its box),
           # within OpenD0..OpenD1 m of the camera. ShoreMask 0 = r05b.
           'ShoreMask': 1.0, 'ShoreA': 2.0, 'ShoreB': 14.0, 'ShoreSA': 10.0, 'ShoreSB': 40.0, 'OpenD0': 250.0, 'OpenD1': 400.0,
-          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.5, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 150.0, 'OpenGSp': 1.0, 'GlitSlK': 3.0}
+          'OpenChop': 0.0, 'OpenB': 0.0, 'OpenSl': 1.0, 'OpenWC': 0.0, 'OpenRgh': 0.5, 'OpenGlit': 1.0, 'OpenBend': 1.0, 'OpenGlS': 1.0, 'GlitPow': 150.0, 'OpenGSp': 1.0, 'GlitSlK': 3.0, 'GlitRgh': 0.025}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

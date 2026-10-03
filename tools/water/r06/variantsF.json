@@ -1,0 +1,8 @@
+{
+ "GR6": {"GlitRgh": 0.06, "_views": ["river_sun"]},
+ "GR15": {"GlitRgh": 0.015, "_views": ["river_sun"]},
+ "GR4": {"GlitRgh": 0.04, "_views": ["river_sun"]},
+ "GP3": {"GlitPow": 300.0, "_views": ["river_sun"]},
+ "GP60": {"GlitPow": 60.0, "_views": ["river_sun"]},
+ "NG": {"OpenGlS": 0.0, "_views": ["river_sun"]}
+}
