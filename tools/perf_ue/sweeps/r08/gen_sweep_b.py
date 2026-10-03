@@ -29,11 +29,22 @@ def variants(v):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('--out', required=True); ap.add_argument('--hours', default='6.5,7.0,7.5,19.0,19.5,19.8'); ap.add_argument('--variants', default='b0,m1,m2,m3,m4,m5')
+    ap.add_argument('--blue', type=int, default=1)
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True)
     t = look_tod.expand(look_tod.load_doc()); G = []
     for h in [float(x) for x in a.hours.split(',')]:
         v = look_tod.evaluate(t, h); V = variants(v)
         for n in a.variants.split(','): G.append({'name': '%s_h%g' % (n, h), 'hour': h, 'cmds': V[n], 'shots': ['S4e' if h < 12 else 'S4w', 'S4'], 'settle_first': 8})
+    # blue hour 20:30 (sweep A: SkyLuminanceFactor x[.4, .85, 1.6] took S4 sky B-R from -18.7 to -0.2 but S4w with it, -25.2 -> -1.1; a warm Mie lobe did not separate them):
+    # the fog's directional inscattering is a lobe around the sun direction (pow(cos, exponent)): ~20 deg from the sun on S4w (cos^12 = .48), ~64 deg on S4 (cos^12 < 1e-4)
+    if a.blue:
+        v = look_tod.evaluate(t, 20.5); D = variants(v)['b0']; f = v['atm.SkyLuminanceFactor']
+        fac = lambda kr, kg, kb: pin('atm.SkyLuminanceFactor', [f[0] * kr, f[1] * kg, f[2] * kb, 1])
+        lobe = lambda k, e: [pin('fog.DirectionalInscatteringLuminance', [k, k * 0.42, k * 0.12, 1]), pin('fog.DirectionalInscatteringExponent', e)]
+        B = {'b0': [], 'bf1': [fac(.4, .85, 1.6)] + lobe(0.003, 12), 'bf2': [fac(.4, .85, 1.6)] + lobe(0.01, 12), 'bf3': [fac(.4, .85, 1.6)] + lobe(0.03, 12)}
+        for n, c in B.items(): G.append({'name': '%s_h20.5' % n, 'hour': 20.5, 'cmds': D + c, 'shots': ['S4', 'S4w'], 'settle_first': 8})
+        v = look_tod.evaluate(t, 20.0); D = variants(v)['b0']
+        G.append({'name': 'diskfill0_h20', 'hour': 20.0, 'cmds': D + [pin('fill.' + d, 0.0) for d in 'NESW'], 'shots': ['S4w'], 'settle_first': 8})
     json.dump({'groups': G}, open(os.path.join(a.out, 'plan_b.json'), 'w'), indent=1)
     print('plan_b', sum(len(g['shots']) for g in G), 'poses', len(G), 'groups ->', a.out)
 

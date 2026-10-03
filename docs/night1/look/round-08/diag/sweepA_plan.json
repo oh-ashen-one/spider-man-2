@@ -1,0 +1,415 @@
+{
+ "groups": [
+  {
+   "name": "b0_h7",
+   "hour": 7.0,
+   "cmds": [],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sk3_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 2.15625",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sk6_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 4.3125",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.166667"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fl8_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet fill.W 17.5",
+    "exec wh.ToDSet fill.N 0.6",
+    "exec wh.ToDSet fill.S 0.6"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "le5_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.5"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "le4b_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.4",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "c1_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 2.15625",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333",
+    "exec wh.ToDSet fill.W 8.75",
+    "exec wh.ToDSet fill.N 0.3",
+    "exec wh.ToDSet fill.S 0.3",
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.6"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "c2_h7",
+   "hour": 7.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 2.15625",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333",
+    "exec wh.ToDSet fill.W 17.5",
+    "exec wh.ToDSet fill.N 0.6",
+    "exec wh.ToDSet fill.S 0.6",
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.5"
+   ],
+   "shots": [
+    "S4e",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "b0_h7.5",
+   "hour": 7.5,
+   "cmds": [],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sk3_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 3.74784",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sk6_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 7.49568",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.166667"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fl8_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet fill.W 20.9549",
+    "exec wh.ToDSet fill.N 2.75147",
+    "exec wh.ToDSet fill.S 2.75147"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "le5_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.5"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "le4b_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.4",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "c1_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 3.74784",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333",
+    "exec wh.ToDSet fill.W 10.4774",
+    "exec wh.ToDSet fill.N 1.37574",
+    "exec wh.ToDSet fill.S 1.37574",
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.6"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "c2_h7.5",
+   "hour": 7.5,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 3.74784",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333",
+    "exec wh.ToDSet fill.W 20.9549",
+    "exec wh.ToDSet fill.N 2.75147",
+    "exec wh.ToDSet fill.S 2.75147",
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.5"
+   ],
+   "shots": [
+    "S4e"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "b0_h19",
+   "hour": 19.0,
+   "cmds": [],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sk3_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 9.76978",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "sk6_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 19.5396",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.166667"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "fl8_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet fill.E 30.5097",
+    "exec wh.ToDSet fill.N 4.57344",
+    "exec wh.ToDSet fill.S 4.57344"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "le5_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.5"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "le4b_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.4",
+    "exec wh.ToDSet pp.LocalExposureBlurredLuminanceBlend 0.2"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "c1_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 9.76978",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333",
+    "exec wh.ToDSet fill.E 15.2548",
+    "exec wh.ToDSet fill.N 2.28672",
+    "exec wh.ToDSet fill.S 2.28672",
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.6"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "c2_h19",
+   "hour": 19.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 9.76978",
+    "exec wh.ToDSet skyc.VolumetricScatteringIntensity 0.333333",
+    "exec wh.ToDSet fill.E 30.5097",
+    "exec wh.ToDSet fill.N 4.57344",
+    "exec wh.ToDSet fill.S 4.57344",
+    "exec wh.ToDSet pp.LocalExposureShadowContrastScale 0.5"
+   ],
+   "shots": [
+    "S4w",
+    "S4"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "b0_h20.5",
+   "hour": 20.5,
+   "cmds": [],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "bh1_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet atm.SkyLuminanceFactor 61.6 40.3573 31 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "bh2_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet atm.SkyLuminanceFactor 61.6 40.3573 31 1",
+    "exec wh.ToDSet atm.MieScatteringScale 0.0376488",
+    "exec wh.ToDSet atm.MieScattering 1 0.6 0.3 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "bh3_h20.5",
+   "hour": 20.5,
+   "cmds": [
+    "exec wh.ToDSet atm.SkyLuminanceFactor 38.5 37.9833 38.75 1",
+    "exec wh.ToDSet atm.MieScatteringScale 0.0501984",
+    "exec wh.ToDSet atm.MieScattering 1 0.6 0.3 1"
+   ],
+   "shots": [
+    "S4",
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "diskb0_h20",
+   "hour": 20.0,
+   "cmds": [],
+   "shots": [
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "diskdsun_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sun.DiskScale 0"
+   ],
+   "shots": [
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "diskdsky_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec wh.ToDSet sky.Intensity 0.001"
+   ],
+   "shots": [
+    "S4w"
+   ],
+   "settle_first": 8
+  },
+  {
+   "name": "diskdlumr_h20",
+   "hour": 20.0,
+   "cmds": [
+    "exec r.Lumen.Reflections.Allow 0"
+   ],
+   "shots": [
+    "S4w"
+   ],
+   "settle_first": 8
+  }
+ ]
+}

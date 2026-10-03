@@ -6,6 +6,7 @@
   'set': {param: [[h, v], ...]}           explicit value inside the listed hours (the round-07 value outside)
   'extra_keys': [h, ...]                  keys added before the schedules (their round-07 values are interpolated by the make_v3 builder)
   'bias_add': [[h, dEV], ...]             added to pp.AutoExposureBias (lapse smoothing of the new light)
+  'r07_update': {knob: value}             a round-07 make_v3 knob replaced (e.g. surface_geo)
 The sky / far-band settings that pass L27 (fog, haze, sky luminance factor, tonemapper, cloud luminance) are NOT in the r08 schedules except where a knob file names them.
 usage: make_v4.py --knobs knobs_r08.json (--out <doc.json> | --in-place) [--r07-knobs ...] [--r07-bias ...]"""
 import argparse, copy, json, os, sys
@@ -24,9 +25,10 @@ def sched(h, pts):
     return make_v2.sched(h, [tuple(p) for p in pts])
 
 
-def r07_doc(knobs, bias, extra):
+def r07_doc(knobs, bias, extra, r07_update=None):
     K = copy.deepcopy(make_v2.KNOBS); K.update(json.load(open(make_v3.KNOBS_D)))
     R = copy.deepcopy(make_v3.R07); R.update(json.load(open(knobs)))
+    if r07_update: R.update(copy.deepcopy(r07_update))   # e.g. {"surface_geo": {...}}: a round-07 knob replaced (listed in the round-08 knob file)
     if extra:
         v2 = R.setdefault('v2', {}); v2['extra_keys'] = sorted(set(float(x) for x in (v2.get('extra_keys') or [])) | set(float(x) for x in extra))
     v2 = R.setdefault('v2', {}); ov = {k: dict(v) for k, v in (v2.get('twilight_overrides') or K.get('twilight_overrides') or {}).items()}
@@ -64,7 +66,7 @@ def main():
     ap.add_argument('--r07-knobs', default=os.path.join(R7, 'diag', 'knobs_v10.json')); ap.add_argument('--r07-bias', default=os.path.join(R7, 'lapse_bias_overrides.json'))
     a = ap.parse_args()
     S = json.load(open(a.knobs))
-    d = apply(r07_doc(a.r07_knobs, a.r07_bias, S.get('extra_keys')), S)
+    d = apply(r07_doc(a.r07_knobs, a.r07_bias, S.get('extra_keys'), S.get('r07_update')), S)
     txt = json.dumps(d, indent=1)
     if a.in_place: open(PRESETS, 'w').write(txt)
     elif a.out: open(a.out, 'w').write(txt)

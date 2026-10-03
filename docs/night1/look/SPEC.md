@@ -61,6 +61,17 @@ Settled stills (>= 8 s after the hour change) S4 and S4w at 19:30, 19:48, 20:00,
 | L27f | the L23b lapse (stitched x4 / x16): max frame-to-frame jump **<= 3 Y, p99 <= 1.5**; the sun's surface light decays **geometrically over >= 20 game minutes** (round 07: x3.3 per 6 min from 18:33 to 0.5 lux at 19:30, 0 from 19:33; dawn mirrored 06:30-07:27; `sun.SurfaceGain` keys every 3 game minutes, `tools/perf_ue/sweeps/r07/make_v3.py`) while the sky dome carries the exposure; L24c is then met by a lit dome, not a hard sun cut | the C++ applies the surface scale with a 1 % relative threshold (round 06: an absolute 1e-3 = 40 lux steps) and keeps the sun's shadows while it puts > 0.5 lux on the surfaces |
 Floors (no regression vs round-06 hold C): L25a moon >= 20.5 px / peak 255, night L3 / L8 8 of 8, L26 <= 0.6, golden L1 7 of 8 with S4 <= 100, L22a >= 1.99 %.
 Round-07 design that meets L27a-e (`diag/knobs_v8.json`, builder `tools/perf_ue/sweeps/r07/make_v3.py`, findings `round-07/diag/holdJ-P_findings.md`): (1) the fog's DIRECTIONAL inscattering (the fake sun glow in the haze, the only knob that moves the far band toward the sun) is cut hour by hour (x.005 at 19:30, x.07 at 19:48, x.03 at 20:00; dawn x.03 at 06:30, x.02 at 07:00) and the fog's haze colour is x.4-.55 from 19:48 to 21:00, so the city behind the skyline is darker than the sky above it; (2) the tonemapper is flattened over the twilight window (`pp.FilmShoulder` x.4, `pp.FilmSlope` x.88, `pp.FilmWhiteClip` 0, red highlights gain x.8, `pp.ColorSaturation` x.6): the lit cloud streaks no longer reach 250 and the sky B-R falls into -20..-90; (3) the sun's cloud luminance is 0 from 19:39 to 20:36 and from 06:06 to 06:48 (the Earth's shadow covers a 9 km cloud deck beyond ~3 deg of sun depression); (4) `fog.FogCutoffDistance` is 0 only from 05:36 to 20:42 and 7e5 (unfogged sky, the round-06 night) from 20:54 to 04:54, because a fogged night sky took S4 22:00 sky-far from +15.5 to -0.6; the twilight tonemapper ramps end on the last evening key (21:24) so 22:00 keeps the round-06 values.
+### L28 twilight city light (added round 08, from the round-07 critic verdict `critic/round-07-CRITIC.md`, "Biggest gap" and secondary 1)
+Settled stills (>= 8 s after the hour change), 1920x1080. Instrument: `tools/perf_ue/r08_check.py` (L28d disk detector: connected blob of Y >= 120 and Y - local median >= 30 in rows 200-700, area >= 200 px).
+| id | target | note |
+|---|---|---|
+| L28a | S4e 07:00, S4e 07:30, S4w 19:00: **L5** (frame mean 59..118, Y<10 <= 8.8 %, clipped <= 0.7 %) | round 07: 27.9 / 39.1 / 48.0 mean, S4e 07:00 54.5 % Y<10 |
+| L28b | the same stills: sky rows 0-89 mean HSV saturation **>= 0.40** | round-07 critic: S4w 19:48 0.25 |
+| L28c | S4 20:30: sky rows 0-89 **B-R >= 0** (blue hour) | round 07: -34.4 |
+| L28d | S4w 19:48 .. 20:30: **zero** disk pixels below the horizon | round 07: a 32-36 px disk at (1404, 387) |
+Keep: L27a-e on the 12 verdict stills, L23b max jump <= 3 and p99 <= 1.5, the round-03 floors (midday L2 / L7, night L3 / L8 / L13) and the round-06 hold-C floors.
+Design rule of the round (director): light the city with SURFACE-ONLY light (sky light / fill on the city, or local exposure); no lift of fog, haze or far band; no global saturation / tonemapper desaturation.
+
 ### L25 night sky (added round 06)
 | id | target | note |
 |---|---|---|

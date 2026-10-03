@@ -178,7 +178,9 @@ def build_rig(name):
         fc_ = fl.light_component; fc_.set_mobility(unreal.ComponentMobility.MOVABLE)
         if TOD: fl.tags = [unreal.Name('WHFill_' + fill_d['name'])]
         for k, v in (('intensity', fill_d['lux']), ('use_temperature', True), ('temperature', fill_d['temp']), ('atmosphere_sun_light', False), ('cast_shadows', False),
-                     ('cast_volumetric_shadow', False), ('volumetric_scattering_intensity', 0.0), ('light_source_angle', 2.0)):
+                     ('cast_volumetric_shadow', False), ('volumetric_scattering_intensity', 0.0), ('light_source_angle', 2.0),
+                     # (round 08) diffuse only: a fill's specular lobe on the glossy river (roughness .06) was a 32-36 px "sun disk" under the horizon on S4w 19:48-20:30 (fill.W, 10 deg up, az 270)
+                     ('specular_scale', 0.0)):
             setp(fc_, k, v, 'CityGlow' + fill_d['name'])
     # --- sky atmosphere (aerial perspective) + real-time captured sky light
     sa = spawn(unreal.SkyAtmosphere, unreal.Vector(0, 0, 0), label='SkyAtmosphere', folder='Lighting')
