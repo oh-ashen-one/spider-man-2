@@ -1,11 +1,84 @@
-# P2 Characters: handoff (round 16, first-pass piece G: hero skins)
+# P2 Characters: handoff (round 17, first-pass piece G: hero skins)
 
 > Fan homage project. Not an official Marvel, Sony or Insomniac game. No affiliation. See `DISCLAIMER.md`.
 
-Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 16 author: Opus 5.5 (2026-10-02 11:50 - 15:00 EDT); round 15: Sonnet 5.5. Everything described here is committed and pushed (`origin/night1/characters`, which carries the merge of `origin/Opus-5.5-Loop-Night-1` at 85683fa6);
-`/Content` is NOT committed (script-generated). No engine of mine is running; the C++ editor module was rebuilt after the merge (`Scripts/build_editor.sh`, 17 s).
+Branch `night1/characters`, worktree `~/sm2-n1/characters`, UE MCP port 8772, browser dev port 5203. Round 17 author: Sonnet 5.5 xhigh via Devin (2026-10-02 20:35 - 22:50 EDT), resuming the WIP of an interrupted Claude Code session (d2df6f7d, 9b71fc21, 65366270); round 16: Opus 5.5; round 15: Sonnet 5.5.
+Everything described here is committed and pushed (`origin/night1/characters`); `/Content` is NOT committed (script-generated). No engine of mine is running; the C++ editor module is built (`Scripts/build_editor.sh`, ~25 s). `origin/Opus-5.5-Loop-Night-1` was NOT merged this round (it only added docs since the r16 merge).
 
-## STATE AT THE END OF ROUND 16 (read this first)
+## STATE AT THE END OF ROUND 17 (read this first)
+
+Round target (director, after the r16 critic [hero 6, anim 5, enemies 4, civilians 5, IQ 4]): remove the enemy lineup corruption (blotches, halos, ghost weapons) with a settle-frames capture protocol and PROVE its cause; keep every r16 gain; sash / groove edges within 4 px; face seam through the chin, cord ends finished; crowd cut; Verdant away from a known green-and-yellow costume.
+**No blind critic verdict yet**: the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r17/pack` (key `pack.key.json` outside it, `round-17/critic_pairs.json`). Captures / holds / the cause measurement / honest limits: `round-17/CAPTURES.md`; every number: `round-17/SPEC_CHECK.md`.
+
+Results (real game, 4K PNG originals; every number in `round-17/SPEC_CHECK.md`, honest limits in `round-17/CAPTURES.md`):
+
+| line | r16 | **r17** (real game, 4K PNG originals) | verdict |
+|---|---|---|---|
+| (1) `enemy_lineup_4k.jpg` > 20 luma vs the previous clean lineup (gate <= 2 %) | 13.664 % / band 26.623 % | **0.453 % / band 1.497 %** (vs r15 0.436 % / band 1.441 %) | PASS |
+| (1) `enemy_lineup_34_4k.jpg` (3/4) | 3.027 % / band 9.313 % | **0.309 % / band 1.019 %** | PASS |
+| (2) back bleed: accent clusters >= 20 px in the back torso | 0 on 8 | **0 on 8** | PASS |
+| (2) yoke-seam cord jog under the arm, gate <= 4 px | 0.5 - 0.9 | **0.5 - 5.3** (max over 8: 5.3; under-arm run only: Ash 1.0) | **7 / 8** by the instrument (Ash: 5.3 px at x 1665 = the cord's end cap at the sash border, see below) |
+| (2) face centre seam dev100 <= 10 px | 5 / 8 measured (Cinder 10.9, Glacier 10.6, Verdant untracked) | tessera 4.3, verdant 4.3, plum 4.0, cinder 5.2, glacier 11.2, ash 5.8, saffron 2.6, sage 8.7 | **7 / 8** (Glacier: tracker reading, see below) |
+| (2) net-end dead ends in open fabric (paint, 4096 px) | 0 | **0** | PASS |
+| (2) IP guard (P1 - P7) / OCR hits | PASS (49.3) / 1 reviewed noise hit | **PASS** (min palette distance 43.5) / 1 reviewed noise hit (`evidence/ocr_review.txt`) | PASS |
+| (2) swap: presses visible / latency | 7 of 7, 33 ms | **6 of 7**, [33.3] ms | 6 of 7 by the histogram matcher; the 7th press (Tessera -> Verdant, engine set at 8.717 s frame 522, swap_done 4/4 textures resident) is visible between 8.55 s and 8.9 s (`evidence/measures/swap7_tessera_to_verdant.jpg`) but the matcher found no step |
+| (2) pawn luma pops 0 - 1.5 s | 0 | **0** (largest 5.183) | PASS |
+| (2) Q6 Verdant armpit piping pinch ratio (own gate >= 0.5) | 0.54 | **0.27** (min 3 px, median 11.0 px; the copper cord is intact and tapers into the crease like r16, `evidence/measures/q6_pair.jpg`) | FAIL by the instrument |
+| (2) R1 lens rim behind the brow (>= 1 pct of head height = 16 px) | 8 / 8 (33 - 48 px) | tes 33.0 px, ver 41.7 px, plu 50.0 px, cin 36.0 px, gla 22.0 px, ash 46.7 px, saf 42.7 px, sag 62.3 px | PASS 8 / 8 |
+| (2) G1 / G2 / G3 (head sculpt) | 8 / 8 each | G1 8 / G2 8 / G3 12 deg 8, 0 deg 8, 25 deg 8 of 8 | PASS |
+| (3) sash / groove edge steps > 4 px on long edges (both runs >= 100 px), 8 chests (`line_step_r17.py`) | 20 (largest per suit: tes 29.6, ver 13.7, plu 29.4, cin 5.3, gla 9.8, ash 26.9, saf 9.3, sag 14.8) | **13** | the named defects are gone (Ash shelf 26.9 px, Verdant step 13.7 px); 13 long-edge jogs of 4.5 - 10 px remain: NOT met |
+| (3) pawn clip step at 9.933 s | 15.49 vs neighbours 3.48 (a director shot end) | **5.1** vs neighbours 3.79; cuts in the clip: 0 | PASS |
+| (3) crowd clip step at 7.483 s | 55.6 vs neighbours 1.89 (a director shot end) | **2.27** vs neighbours 2.02; cuts in the clip: 0 | PASS |
+| (3) face seam through the chin / cheek-cord ends | Cinder seam broke and jogged at the chin; cheek cords cut square | seam continuous through the chin on all 8 (`evidence/measures/chin_crops.jpg`, r16 row over r17 row); the four cheek cords close in a rounded tip (`design.py`, EXPECT_R17) | by eye |
+| (4) Verdant | brass yellow accent, yellow forearm / shin blocks, yellow crown stripes | forest green + dark pine + copper, no yellow, plain crown; IP guard PASS, nearest suits tessera 43.5, ash 44.2 | `SWATCH_SHEET.jpg`, `VERDANT_BEFORE_AFTER.jpg` |
+
+### What changed (details in `round-17/CAPTURES.md`)
+- **THE KEY FINDING: the r16 lineup was captured while the engine was still compiling assets and while everything still moved.** The r16 command (`-shots 3.0`) fires at engine frame 12 on today's lock (the first frames of a 4K run take 0.15 - 6 s): 12 of 27 assets still compiling, 0 textures non-resident, the characters' idle animations and 31 lane walkers running. Dose-response (`-WHShotFrames`, one run): the > 20 luma share falls 7.1 % (27 compiling) -> 4.5 % (12) -> 1.5 % at 0 compiling; the residual at 0 compiling is the running animation (E1: frozen animations, 1 static frame, same compile state: 0.06 %). Not streaming (0 textures non-resident at every bad shot, `-NoTextureStreaming` changes nothing), not content (the same content renders clean the moment the capture waits). `evidence/lineup_cause.json` has the E0 / E1 / E2 / dose-response numbers; `lineup_cause_r17.py` reproduces them.
+- **Capture protocol** (`Source/WebHomage/Characters/WHCharShowDirector.*`): `-WHSettleFrames=N -WHSettleSeconds=S` (+ `-WHStageShotRel` for shots that start mid-sequence, the lineup): at a stage shot's time freeze the stage clock, every skeletal animation, every `AWHCharLoopWalker` Tick and the camera; wait for 0 compiling assets / shaders and every visible texture resident; count N RENDERED frames with no camera / frustum-pose movement; screenshot. `-WHPreload` (movies), `-WHProbeFrames=N` (per-frame residency probe), `-WHSettleDump=1,2,4,...` (convergence curve), `-WHShotFrames=3,5,...` (plain screenshots at engine frame numbers). Bugs found by the probe and fixed: the player pawn (falls from the off-stage PlayerStart) and the lane walkers kept resetting the count; the timeout is checked before the reset branch.
+- **Skin weights** (`tools/ue_char/suit8/hero_weights_r17.py`, from the interrupted session): the torso front's raw spine1 / spine2 weights jumped across the sternum strip |x| 0.03 - 0.05 (every sash edge / groove cord crossing it stepped sideways: Ash shelf 27 px, Verdant step 13.7 px); now a Gaussian 3D-neighbour average over the strip and a smooth head <-> neck blend over y 1.40 - 1.56 (the Cinder chin seam break). Long-edge jogs over the 8 chests 20 -> 13 (`line_step_r17.py`), Ash 4 -> 1, Plum 5 -> 0, Cinder / Glacier -> 0.
+- `design.py`: the four cheek panel seams close in a rounded tip (circular cap over the last 6 / 4.8 mm) instead of a square cut (`face.cord_tip`, EXPECT_R17).
+- `suits.json`: **Verdant re-blocked**: forest green + dark pine + copper accent (was brass yellow), no accent forearm / shin blocks (`arm.fore: deep`, `greave: none`), plain crown (the yellow racing stripes also hid the face seam from the tracker). The r16 pawn clip shows how close the old one came to the green-and-yellow wetsuit (frames in `evidence/measures/cuts/r16_director_cuts.jpg`).
+- `build_characters.py`: pawn map shot 0 = 16 s, crowd shot 0 = 12 s: **the r16 pawn 'yaw snap' at 9.933 s and the r15 / r16 crowd cut at 7.483 s were DIRECTOR SHOT ENDS** (the director cut to the next shot; frames in `evidence/measures/cuts/r16_director_cuts.jpg`), not animation blends: not a P2 animation bug.
+- Instruments (all CPU): `lineup_diff_r17.py`, `lineup_cause_r17.py`, `lineup_crops_r17.py`, `cut_check_r17.py`, `line_step_r17.py` (colour regions -> polygon edges -> run / connector / run jogs), `chin_crops_r17.py`, `seam_track_r16.py` (+ `step20`, `dev100_med31`), `cord_jog_r16.py` (+ `max_jump_under_arm_px`), `cord_jog_r17.py` (every cord, both sides; its crossing-step part is not calibrated), `post_r17.sh`, `spec_check_r17.py`, `fill_captures_r17.py`, `make_pairs_r17.py`, `combine_r17.sh`, `chain_r17.sh` / `hold_r17.sh`.
+
+### What to know before touching anything
+- **The lock**: cap 3, renders at background priority; with 2 other holders a 1080p fixed-step movie runs at 0.5 - 1.4 fps (the 756-frame orbit takes ~20 - 25 min, the crowd ~12 min). Plan one hold per movie group, keep every hold under the 40 min max hold (the lock SIGKILLs 10 s after its SIGTERM: stop your own run with `stop_ue.sh` first), and DO NOT run a CPU-heavy post script while a movie renders (it halves the frame rate).
+- The settle protocol is for stills and lineups; movies cannot wait (fixed 1/60 s steps) and use `-WHPreload`.
+- Hold inputs: `prep_hero_r17.sh` after any head / lens / shoulder / weights change; regenerate ALL maps after any `design.py` / `suits.json` change (`gen_suits.py --n 4096 --n-color 8192 --only <id> --out <scratch>` per suit in parallel + `hero_suit_r8.py --n 8192`, ~4 min on 8 cores), copy into `art/night1/characters/hero/{suits,tex}`, `test_regression.py` (EXPECT_R17).
+- My instruments have limits (headers): the seam tracker follows the BRIGHT centroid of the cord, so a pale cord on a pale hood (Glacier) reads a 12 px shift across the crown / face luma transition that a 1.6x crop shows is not there; the yoke-cord tracker reads the cord's end cap at a sash border as a 5 px step (Ash); the Q6 pinch ratio uses colour thresholds tuned on brass (Verdant copper reads 0.27 with the cord intact); `line_step_r17.py` counts design corners where a panel boundary legitimately steps.
+- LESSONS: (1) a corrupted render is first a capture-moment question: log what the engine is doing at the shot frame (assets compiling, textures resident) before touching content; (2) a settle gate needs a signature restricted to what the camera sees (the pawn fell for 30 frames off-stage); (3) `-shots t1,t2,...` are process-time seconds: at 4K the first frames take seconds, so several shots fire in one frame - use frame numbers; (4) the harness backgrounds a command after 10 s without output and `sleep N; cmd` chains: poll files; (5) the macOS bash is 3.2 (`${x^^}` is a fatal substitution error that aborts the whole command line).
+
+### Next steps (priority order)
+1. Read the round-17 critic verdict (`critic/round-17-CRITIC.md` once written) and fix its biggest gap.
+2. The remaining sash / groove jogs (13 long-edge jogs of 4.5 - 10 px, `evidence/line_step_*.json`; the yoke-seam cord steps ~8 px where it crosses the sash's top-left corner (Tessera (1765, 1300)), the ring-net line wobble at the image-right armpit (Verdant (2539, 854)), Saffron's collar line (y ~ 700)): the sternum strip is done; next the trapezius / collar band (y > 1.38) and the pec <-> arm boundary.
+3. The seam tracker (Glacier) and cord-jog tracker (Ash end cap) artefacts: centre the cord by its lit + shadow flank pair instead of the bright centroid, stop the yoke-cord track at the sash border.
+4. Re-shoot the stage-hero run / chase / fight clips when the lock is quiet (not re-shot in r17: content unchanged except r17 weights; the r15 / r16 files are in the pack).
+5. P3: the pawn's run cadence (WebTravAnimInstance) is theirs.
+
+### Commands (round 17)
+```
+export P2_SCRATCH=/Users/midir/sm2-n1/_scratch/characters UE_WAIT_SKIP=1
+unreal/WebHomage/Scripts/build_editor.sh                                                     # C++ (close your own editor first; 13 - 25 s)
+bash tools/ue_char/suits/prep_hero_r17.sh                                                    # hero GLB (CPU, ~10 s), r17 weights
+# maps: 7 x  python3 tools/ue_char/suits/gen_suits.py --n 4096 --n-color 8192 --only <id> --out $P2_SCRATCH/r17/tex_new/suits   +   python3 tools/ue_char/hero_suit_r8.py --n 8192 --out $P2_SCRATCH/r17/tex_new/hero   (parallel, ~4 min), then cp into art/night1/characters/hero/{suits,tex}
+python3 tools/ue_char/suits/test_regression.py                                              # legacy r8 texel for texel + EXPECT_R17
+python3 tools/ue_char/suits/ip_guard.py palette art/night1/characters/hero/suits OUT.json
+# stills hold (build + both lineups + 56 stills, ~23 min on the cap-3 lock); movies in separate holds (pawn + orbit ~25 min, crowd ~9 min): the lock SIGKILLs a hold at 40 min
+OUT=$P2_SCRATCH/r17/chainX; mkdir -p $OUT; cp tools/ue_char/suits/chain_r17.sh tools/ue_char/suits/.chain_r17x_run.sh; cp tools/ue_char/suits/hold_r17.sh tools/ue_char/suits/.hold_r17x_run.sh; touch $OUT/READY_R17
+CHAIN_SNAPSHOT=.chain_r17x_run.sh STEPS="build lineup stills" nohup /Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh capture --label characters --timeout 28800 -- bash tools/ue_char/suits/.hold_r17x_run.sh $OUT > $OUT/gpu_wrapper.log 2>&1 < /dev/null &
+#   other steps: STEPS="pawn orbit" | "crowd" | "hero chase fight" | "lineupx" (E0 / E1 / E2 experiment) | "lineupx0" (frame dose-response); EV=10.0 default; one engine of yours at a time
+bash tools/ue_char/suits/combine_r17.sh <stills hold>/run <pawn+orbit hold>/run <crowd hold>/run $P2_SCRATCH/r17/final
+bash tools/ue_char/suits/post_r17.sh $P2_SCRATCH/r17/final $P2_SCRATCH/r17/final               # CPU ~25 min with a quiet machine: round-17 dir + evidence + crop sheets (NOT while a movie renders)
+python3 tools/ue_char/suits/lineup_cause_r17.py --e0 <E0 dir> --e1 <E1 dir> --e2 <E2 dir> --x0 <lineupx0 dir> --ref docs/night1/characters/round-14/enemy_lineup_4k.jpg --out docs/night1/characters/round-17/evidence/lineup_cause.json --md docs/night1/characters/round-17/evidence/lineup_cause.md
+python3 tools/ue_char/suits/spec_check_r17.py docs/night1/characters/round-17 > docs/night1/characters/round-17/SPEC_CHECK.md
+python3 tools/ue_char/suits/fill_captures_r17.py docs/night1/characters/round-17                # fills the @@placeholders@@ of CAPTURES.md from the evidence
+STILLS_4K=$P2_SCRATCH/r17/final/stills LINEUP34=1 python3 tools/ue_char/suits/make_pairs_r17.py docs/night1/characters/round-17 /Users/midir/sm2-n1/_scratch/critic-P2-r17/pairs.json
+python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py /Users/midir/sm2-n1/_scratch/critic-P2-r17/pack /Users/midir/sm2-n1/_scratch/critic-P2-r17/pairs.json
+```
+Stop an engine only with `/Users/midir/sm2-n1/_scratch/gpu/bin/stop_ue.sh "/Users/midir/sm2-n1/characters"`.
+
+## Round 16 state (history)
+
 
 Round 16 author: Opus 5.5 (2026-10-02 11:50 - 15:00 EDT). Everything is committed and pushed (`origin/night1/characters`, which carries the merge of `origin/Opus-5.5-Loop-Night-1` at 85683fa6); `/Content` is NOT committed. **No engine of mine is running; nothing of mine is queued on the lock.**
 Round target (director, after the r15 critic [6,5,5,5,5]; owner approved the suits 11:31, r14 merged as the baseline): IQ >= 6 by closing the r15 critic's four 4K defects without a new one. No blind critic verdict yet: the pack is `/Users/midir/sm2-n1/_scratch/critic-P2-r16/pack` (56 pairs, key `pack.key.json` outside it, `round-16/critic_pairs.json`). Captures / holds / honest residual list: `round-16/CAPTURES.md`; every number: `round-16/SPEC_CHECK.md`.

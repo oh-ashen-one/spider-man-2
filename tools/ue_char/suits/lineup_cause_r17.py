@@ -74,7 +74,7 @@ def main():
             if not m: continue
             png = os.path.join(x0, os.path.basename(m.group(1)))
             if not os.path.exists(png): continue
-            rows.append(dict(shot=os.path.basename(png), frame=int(m.group(2)), probe=dict(frame=int(m.group(2)), world=float(m.group(4)), assets=int(m.group(5)), shaders=int(m.group(6)), tex_bad=int(m.group(7))), vs_ref=diff(png, ref)))
+            rows.append(dict(shot=os.path.basename(png), frame=int(m.group(2)), probe=dict(frame=int(m.group(2)), world=float(m.group(4)), assets=int(m.group(5)), shaders=int(m.group(6)), tex_bad=int(m.group(7))), valid=float(m.group(4)) < 5.9, vs_ref=diff(png, ref)))      # Char_Lineup shot 5 lasts 6 s of world time: later frames are the NEXT director shot (other camera), excluded
         res['X0_r16_protocol_shots'] = rows
     out = arg('--out')
     if out: json.dump(res, open(out, 'w'), indent=1)
@@ -83,7 +83,8 @@ def main():
     if r: md.append('| E0 r16 command (-shots 3.0) | %s | %s | %s | %.2f %% / %.2f %% | %.2f |' % (r['shot_frame'], (r['probe_at_shot'] or {}).get('assets'), (r['probe_at_shot'] or {}).get('tex_bad'), r['vs_ref']['pct_over'], r['vs_ref']['pct_over_in_band'], r['vs_ref']['mean_abs']))
     for k, v in res.items():
         if k.startswith('X0'):
-            for row in v: md.append('| X0 %s | %s | %s | %s | %.2f %% / %.2f %% | %.2f |' % (row['shot'], row['frame'], (row['probe'] or {}).get('assets'), (row['probe'] or {}).get('tex_bad'), row['vs_ref']['pct_over'], row['vs_ref']['pct_over_in_band'], row['vs_ref']['mean_abs']))
+            for row in v:
+                if row.get('valid', True): md.append('| X0 %s | %s | %s | %s | %.2f %% / %.2f %% | %.2f |' % (row['shot'], row['frame'], (row['probe'] or {}).get('assets'), (row['probe'] or {}).get('tex_bad'), row['vs_ref']['pct_over'], row['vs_ref']['pct_over_in_band'], row['vs_ref']['mean_abs']))
         if k.startswith('E1') or k.startswith('E2'):
             for c in v['curve']: md.append('| %s after %d static frames | | 0 | 0 | %.2f %% / %.2f %% | %.2f (vs final %.2f %%) |' % (k.split('_')[0], c['static_frames'], c['vs_ref']['pct_over'], c['vs_ref']['pct_over_in_band'], c['vs_ref']['mean_abs'], c['vs_final']['pct_over']))
             md.append('| %s final shot | | 0 | 0 | %.2f %% / %.2f %% | %.2f |' % (k.split('_')[0], v['final_vs_ref']['pct_over'], v['final_vs_ref']['pct_over_in_band'], v['final_vs_ref']['mean_abs']))

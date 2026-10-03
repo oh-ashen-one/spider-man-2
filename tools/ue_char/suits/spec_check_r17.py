@@ -22,7 +22,7 @@ e0 = lc.get('E0_r16_protocol')
 if e0:
     p = e0.get('probe_at_shot') or {}
     L += ['- **E0 = the r16 capture command** (`-shots 3.0 -perf 2:5 -quit 6`, no settle protocol) re-run today: the still is taken at engine frame **%s** (world %.2f s); at that frame **%s assets are still compiling** (%s at frame 1; the first frame with 0 is %s), shaders compiling %s, **textures not resident: %s** (max over the run %s). The still differs from the clean lineup by > 20 luma in **%.2f %%** of the pixels (%.2f %% inside the characters\' band): copper blotches, halos, ghost bats as in r16 (r16 itself, taken on a 4-holder lock: %s %%).' % (
-        e0['shot_frame'], p.get('world', 0), p.get('assets'), (e0.get('probe_frame1') or {}).get('assets'), e0.get('first_frame_with_zero_assets'), p.get('shaders'), p.get('tex_bad'), e0.get('max_tex_not_resident'), e0['vs_ref']['pct_over'], e0['vs_ref']['pct_over_in_band'], (J('lineup_diff_r16_vs_r14.json') or {}).get('pct_over', 'n/a'))]
+        e0['shot_frame'], p.get('world', 0), p.get('assets'), (e0.get('probe_frame1') or {}).get('assets'), (e0.get('first_frame_with_zero_assets') or 'after the shot (dose-response run: engine frame 17 - 20)'), p.get('shaders'), p.get('tex_bad'), e0.get('max_tex_not_resident'), e0['vs_ref']['pct_over'], e0['vs_ref']['pct_over_in_band'], (J('lineup_diff_r16_vs_r14.json') or {}).get('pct_over', 'n/a'))]
 for k, nm in (('E1_settle_streaming_on', 'E1 = settle protocol, texture streaming ON'), ('E2_settle_no_streaming', 'E2 = settle protocol, -NoTextureStreaming')):
     e = lc.get(k)
     if not e: continue
@@ -31,10 +31,10 @@ for k, nm in (('E1_settle_streaming_on', 'E1 = settle protocol, texture streamin
         nm, e['resident_after_s'] or 0, e['resident_after_frames'], c1 and c1['vs_ref']['pct_over'], c1 and c1['vs_ref']['pct_over_in_band'], (e['final'] or {}).get('settle_frames'), (e['final'] or {}).get('static_world_s'), (e['final'] or {}).get('resets'), e['final_vs_ref']['pct_over'], e['final_vs_ref']['pct_over_in_band'], c1 and c1['vs_ref']['mean_abs'], e['final_vs_ref']['mean_abs'])]
 x0 = lc.get('X0_r16_protocol_shots')
 if x0:
-    L += ['', '**Dose-response of the r16 protocol (one run, shots at 1 .. 10 world s, probe at the shot frame):**', '', '| still | frame | assets compiling | textures not resident | > 20 luma vs clean lineup (whole / band) |', '|---|---|---|---|---|']
-    for r in x0:
+    L += ['', '**Dose-response of the r16 protocol** (one run, plain screenshots at engine frame numbers 3 .. 72, no settle, probe at the shot frame; Char_Lineup shot 5 lasts 6 s of world time, so the frames after it - 24, 32, 48, 72 - show the next director shot and are excluded):', '', '| still | frame | assets compiling | textures not resident | > 20 luma vs clean lineup (whole / band) |', '|---|---|---|---|---|']
+    for r in [q for q in x0 if q.get('valid', True)]:
         L.append('| %s | %s | %s | %s | %.2f %% / %.2f %% |' % (r['shot'], r['frame'], (r['probe'] or {}).get('assets'), (r['probe'] or {}).get('tex_bad'), r['vs_ref']['pct_over'], r['vs_ref']['pct_over_in_band']))
-L += ['', '**Verdict on the cause:** see `CAPTURES.md` (measured: the r16 stills were taken while assets were still compiling and the camera / poses were not settled; textures were resident at the same frames, and the same content renders clean once the compile is finished: not streaming, not content).', '']
+L += ['', '**Verdict on the cause:** two capture-moment effects, each isolated: (a) assets still compiling (the corruption share drops 3x at the frame the count reaches 0), (b) animations / walkers still running (frame 20 with 0 compiling assets still has the residual above, E1 after 1 static frame at the same compile state does not). Textures were resident at every bad shot (0 not resident) and the content renders clean once the capture waits: not streaming, not content. See `CAPTURES.md`.', '']
 L += ['| lineup (committed) | > 20 luma vs r14 whole / character band | vs r15 | vs r16 (the corrupted one) | ghost / duplicate weapon |', '|---|---|---|---|---|']
 for nm, pre in (('enemy_lineup_4k.jpg (wide)', 'lineup_diff_vs_r'), ('enemy_lineup_34_4k.jpg (3/4)', 'lineup34_diff_vs_r')):
     r14, r15, r16 = J(pre + '14.json'), J(pre + '15.json'), J(pre + '16.json')
@@ -79,4 +79,5 @@ for a, b in (('round-16', '§R17D'), ('Round 16', '§R17T'), ('r16', '§r17'), (
     out = out.replace(a, b)
 for k, v in tools.items(): out = out.replace(k, v)
 out = out.replace('# Round 17 SPEC CHECK', '### (round-16 set) Round 17 SPEC CHECK', 1)
+out = out.replace('re-run on round 16 (baseline = round 15)', 're-run on round 17 (baseline = round 16)').replace('Round target (critic r16): the P2-owned lines', 'Round target (critic r16 / r17 lines): the P2-owned lines')
 print(out)
