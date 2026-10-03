@@ -18,7 +18,7 @@ for s in shots:
 json.dump(perf, open(f'{R}/perf.json', 'w'), indent=1)
 L = [f'# P1 City round {N} — captures and camera parameters', '', '> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.', '',
      'Running game: `Scripts/run_game.sh` (`-game`, offscreen, map `/Game/Tests/City/City_View_<id>`, auto-activated CameraActor), screenshots at t = 34 s and t = 38 s (settle pair; the t = 38 s frame is the round frame).',
-     'Frame times: game seconds 26-38, `t.MaxFPS 0`, no VSync, TSR with automatic screen percentage. GPU utilization read with ioreg before each run',
+     'Frame times: game seconds 26-38 of a capture run under the shared GPU lock (`gpu_slot.sh capture`: frame cap 20 fps at 1080p / 8 fps at 3840 px, background priority, other agents render at the same time), NOT a performance measurement (a perf run needs the exclusive lock on an attended Mac); the 1080p frames use the automatic screen percentage (internal 1399x787), the 4K frames r.ScreenPercentage 100 (internal 3840x2160). GPU utilization read with ioreg before each run',
      '(GPU shared with other sessions; the P1 editor was closed during the runs). Positions in browser metres (x east, y up, z south); UE = (100x, 100z, 100y) cm.', '',
      '| id | camera pos | target | fov | sun (pitch, yaw) |', '|---|---|---|---|---|']
 L += [f"| {s['id']} | {s['pos']} | {s['target']} | {s.get('fov', 70)} | {s.get('sun')} |" for s in shots]
