@@ -195,7 +195,7 @@ def rect_minus(r, h):
     return [q for q in out if q[1] - q[0] > 0.02 and q[3] - q[2] > 0.02]
 
 FE_SOLID = os.environ.get('SM2_FE_SOLID', '1') == '1'   # (island r04) 0 = diagnostic: the whole fire escape visual-only (in the street-kit tile)
-FE_GAP = float(os.environ.get('SM2_FE_GAP', '0.02'))   # (island r04) wall-side edge of the landing grating (m from the facade; r03: 0.02)
+FE_GAP = float(os.environ.get('SM2_FE_GAP', '0.40'))   # (island r04) wall-side edge of the landing grating = of its collision (m from the facade; r03: 0.02). The 0.38 m slot along the wall keeps the landings out of the wall-run's top-out probe (r3: 0 top-outs at the r03 loop spot; 0.02 gave 3)
 FE_WELL_LEN, FE_WELL_N = 1.5, (0.25, 0.95)   # (island r04) stair well: the arriving flight's last 1.5 m (head room ~2 m under the deck), over the flight's width
 FE_LADDER_HOLE = 0.30                          # (island r04) drop-ladder hatch: +-0.30 m along the wall around the ladder, n 0.10 .. 0.60
 
