@@ -968,6 +968,21 @@
     3,
     4
    ]
+  },
+  {
+   "piece": "island",
+   "round": 3,
+   "model": "Sonnet 5.5 (resumed an Opus start)",
+   "effort": "xhigh",
+   "scores": [
+    5,
+    4,
+    5,
+    5,
+    4,
+    6,
+    4
+   ]
   }
  ],
  "agents": [

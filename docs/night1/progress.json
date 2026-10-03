@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 14:08",
+ "updated": "2026-10-03 15:10",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -107,10 +107,10 @@
    "id": "C",
    "name": "Integrated Manhattan map",
    "branch": "night1/manhattan",
-   "state": "done",
-   "round": 1,
-   "verdict": "Map builds headless in ~10 min; route clean (0 fall-through/T-pose/stuck)",
-   "gap": "Integration bugs routed to owners; hero swap to /Game/Characters pending P3"
+   "state": "active",
+   "round": 3,
+   "verdict": "fails \u2014 lowest 4 (Sonnet 5.5 (resumed an Opus start))",
+   "gap": "fire-escape WHBox collision matching drawn platforms + top-out (r3 crosstown-east: 0 s stuck, <= 1 topOut loop, past x=-235.5 by 3.5 s) on a branch that has merged integration"
   },
   {
    "id": "F",
@@ -1032,6 +1032,14 @@
    "verdict": "fails",
    "gap": "world-anchored drifting seawall lace on dark water; river_sun sparkle >= 50 %; restore r03's harbour mirror",
    "notes": "NOT merged (Opus director): bounded-round guard failed (critic preferred new 3/7 vs r03), undisclosed loss of r03's harbour mirror. Water STOPPED. Slot -> tricks r01 (Opus)."
+  },
+  {
+   "t": "2026-10-03 15:10",
+   "piece": "island",
+   "round": 3,
+   "verdict": "fails",
+   "gap": "fire-escape WHBox collision matching drawn platforms + top-out (r3 crosstown-east: 0 s stuck, <= 1 topOut loop, past x=-235.5 by 3.5 s) on a branch that has merged integration",
+   "notes": "NOT merged (Opus director): no island round merged yet; full-island map untested with traversal r26 / city r11 / terrain r05. M2 avenue route r5 passes a-d. r04 on Opus (same gap 3 rounds)."
   }
  ],
  "perf": [
