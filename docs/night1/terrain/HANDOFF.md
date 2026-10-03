@@ -7,7 +7,16 @@ Owns `/Game/Terrain*`, `tools/export/{export_terrain.mjs,collect_terrain.js,gen_
 `unreal/WebHomage/Shaders/Terrain/`, `docs/night1/terrain/`. Spec / shot list / cameras: `SPEC.md` (E12 = r06 targets), `SHOTLIST.md`, `shots.json`. Nothing of the builder's is running.
 
 ## Round 06 (2026-10-03 07:14-, Claude Opus 5.5 high via Devin): tree crowns cast sun shadows (every number: `round-06/README.md`)
-STATUS_PLACEHOLDER
+Target (Opus director after the r05 critic [4,4,4,5,3]): the tree crowns cast sun shadows on the lawn and paving. Final content `/Game/TerrainR6` (full build 07:43 + incremental
+`tex,mat,treecopies` / `mat` builds, last `mat` build 08:41); stills (`round-06/stills`, 9 views, 3840x2160 out, internal 1920x1080) and movies (`t5_avenue_to_park.mp4`,
+`t4_lawn_sprint.mp4`, 1920x1080 native, hero hidden) from that same content. Measured (`tools/terrain/measure_r06.sh`, table in `round-06/README.md`):
+(1) shadow pass proven and fixed (see below); (2) p4 trees: darkest lawn box 0.537 / 0.481 / 0.470 of the critic's lit lawn 105 (r05 frame, same tool: 0.70 / 0.66 / 0.51) — but
+these three trees stand in the West Side skyline's shadow, so the darkening there is the baked canopy sky occlusion, not a cast sun shadow; a cast crown shadow in the p4 sunlit
+strip reads 0.47 of the sunlit lawn (r05 0.89); (3) p6 esplanade tree shadows 0.89 / 1.02 — not met (city trees on city paving); (4) p10: 2 smooth sky-bordered patches > 30 px
+remain (48 px SD 3.57, 32 px SD 3.37), the r05 ball and a second core ball are gone. Guards: crowns 20 / 24, median 12.53; E9c 46.3 px by the tool = a city building's stepped
+roof (no crown segment > 40 px); p10 sigma-6 19.48 / 17.00, R / G 0.884. GPU_HANDOFF
+Blind critic pack (not judged by the builder): `/Users/midir/sm2-n1/_scratch/critic-E-r06/pack` (PACK_COUNT pairs; both sides of every pair the same pixel size), `pairs.json` beside it, key outside (`pack.key.json`).
+One engine crash this round (the build commandlet on a re-run of the `map` step, 07:55); three stills holds were stopped on purpose with `stop_ue.sh` to fix the p10 patch.
 
 ## Shadow-pass finding (r06 target 1, `round-06/diag/NOTES.md`)
 - Debug maps `D_shadow` / `D_shadow2` (`build_terrain.py` step `diag`): the masked leaf-card material writes shadow depth as well as an opaque cube (lawn ratio 0.82 vs 0.80).
@@ -30,7 +39,18 @@ STATUS_PLACEHOLDER
 - `Foliage.ush`: near-card core only beyond 70-120 m; `band.z = 1` shadow-caster mode; `tfLeafDetail`; clump shade 0.26-1.9.
 
 ## Open items, in order
-OPEN_PLACEHOLDER
+1. **p10 smooth patches (r06 target 4)**: two remain — (172-219, 532-572) in the left tree line (luma 58) and a dark crown interior (1250-1275, 385-416, luma 35). Both are dark;
+   the core speckle (`Foliage.ush`, core branch) scales with luma. Next: identify them (a VB_p10 city-only still is in `round-06/diag/base_p10_lawn_eye.jpg` if the last hold ran),
+   then lift the core's shade or add speckle in absolute terms.
+2. **p4 lawn under the skyline shadow**: no sun shadow can form where the 9 deg sun does not reach (most of the Great Lawn / p1 lawn). The look piece owns the rig; a higher sun or
+   a different azimuth would put crown shadows on the open lawn. The terrain's levers left: canopy occlusion strength (`CANOPY_OCC`), lawn sky occlusion (`LAWN_SKYOCC`).
+3. **p6 esplanade shadows (r06 target 3)**: city street trees on city paving; the paving material decides the shadow depth (the terrain lawn needed sky occlusion 0.25 to
+   reach ~0.5): a city-piece item.
+4. **Pond-bank 'olive eggs' in p3**: the reed clumps (`parkReeds`, `M_TerrainVC2`, olive tint) read as smooth khaki ovoids at 100-200 m; they need a blade texture / alpha, not
+   the rock material (the rock material is grey and grained now).
+5. Crown saturation median 0.646 (target 0.65); p4 aerial lawn box sigma-6 6.24 (<= 5 wanted): the canopy pools' edges sit in that box.
+6. GPU: capture-run GPU ms rose (p1 189.6 / p10 101.5 / p4 123.6 against r05 163.5 / 92.9 / 105.5, contaminated runs): the Nanite shadow casters (4,771 card trees + L1 leaves) are
+   the likely cost; an exclusive `gpu_slot perf` run is needed (refused while the Mac is unattended).
 
 ## Next-session recipe (everything idempotent)
 - Offline first: `python3 tools/terrain/check_hlsl.py` (14 / 14). Prep chain (CPU): `export_terrain.mjs` -> `prep_terrain.py` -> `prep_lawn.py` -> `prep_canopy.py`.
