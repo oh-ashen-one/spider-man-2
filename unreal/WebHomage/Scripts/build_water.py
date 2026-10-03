@@ -519,10 +519,10 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 # r03 start (CPU emulation of the river_low near crop against the round-02 frame, see docs/night1/water/round-03/NOTES.md): dark body
 # (ScatK 0.06: the body radiance set the r02 trough floor p1 46), steeper resolved chop, F0 x1.6 (SpecK) for the sky / mist reflections
 # round-03 captures: autopick variant V3 (lowest penalty on the 1080p iteration stills, docs/night1/water/round-03/iter/autopick.json)
-PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
+PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
           'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.0, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
-          'CBias': 0.55, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
+          'CBias': 0.7, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
           # r05: GrazeRough 0 (r04's 0.42 grazing floor blurred the far-shore reflection at river level: merge-blocker; perf is not this
           # round's gate). CSel: which contact-map texture (0 = T_WaterContact as r04, 1 = B: half-res Interchange + NeverStream,
           # 2 = C: half-res legacy TextureFactory; Dbg 9 showed all three read correctly in-engine). ShoreCalm: the far-field long-wave
@@ -533,7 +533,7 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 2.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # r05b: FarMaxM / FarLowK cap the far contact line (r05's FarPx footprints painted a 40 px white bar over the far quay at river
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
-          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.8, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
+          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.9, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
           'GSpread': 0.22, 'DistFix': 1.0}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
