@@ -21,9 +21,9 @@ LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand
 LAWN_SKYOCC = float(__import__('os').environ.get('SM2_TERRAIN_LAWN_SKYOCC', '0.25'))     # r05: 1.0 (the r05 AO 0.12 test showed no crown shadow because nothing cast one)
 LAWN_SUNGAIN = 0.55 * (1.0 + 0.25) / (LAWN_SKYOCC + 0.25)   # r05: 0.55 (albedo scale with the sun-facing turf normal)
 LAWN_TILT = 0.85
-# r06 canopy sky occlusion: the ground under a crown sees ~0.4 of the open sky (baked per tree into the pathmask alpha by tools/terrain/prep_canopy.py; sky / Lumen indirect only,
+# r06 canopy sky occlusion: the ground under a crown sees ~0.15 of the open sky (baked per tree into the pathmask alpha by tools/terrain/prep_canopy.py; sky / Lumen indirect only,
 # the sun term is untouched). Most of the p4 Great Lawn lies in the West Side skyline's shadow at the 9 deg sun, where this, not a cast sun shadow, darkens the lawn under a tree.
-CANOPY_OCC = float(__import__('os').environ.get('SM2_TERRAIN_CANOPY_OCC', '0.4'))
+CANOPY_OCC = float(__import__('os').environ.get('SM2_TERRAIN_CANOPY_OCC', '0.15'))   # r06 test 2: 0.4 darkened the lawn by the trunks only ~25 % (p4 boxes 0.72 / 0.63 / 0.52)
 FILL = 650.0   # r05 (was 450): the shaded foreground crowns of p1 read luma 60-75   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
 
@@ -181,6 +181,11 @@ leaf *= 0.5 + 1.25 * lum;
 float expo = saturate(uv1.x);
 float occ = lerp(0.36, 1.05, pow(expo, 1.3));
 float3 c = lerp(leaf, float3(0.085, 0.06, 0.042), twig) * occ * gain;
+// r06: leaf-scale detail within ~30 m (r05 critic: a smooth olive 'ball' at a branch tip of a near tree in p10, hp3 SD 3.4: one magnified leaf of the spray texture):
+// the spray sampled at 4x its scale modulates the value by +-28 % where that sample is leaf, fading out between 15 and 35 m (beyond, the texture is minified anyway)
+float4 tdl = tfLeafDetail(tLeaf, tLeafSampler, float2(uv0.x, 1.0 - uv0.y) * 4.0 + float2(0.37, 0.61));   // Foliage.ush: frac + explicit gradients (the leaf textures clamp)
+float ldl = dot(tdl.rgb, float3(0.3, 0.59, 0.11));
+c *= lerp(1.0, 0.72 + 0.56 * saturate(ldl * 2.2), tdl.a * (1.0 - smoothstep(15.0, 35.0, length(wpos - cam) * 0.01)));
 float bnd = tfBand(length(wpos - cam) * 0.01f, band, Parameters.SvPosition.xy, t);   // r02: the ez-tree LOD band (L0 < 20 m, L1 20-44 m): UE drew L1 out to 520 m
 float eb = min(min(uv0.x, 1.0 - uv0.x), min(uv0.y, 1.0 - uv0.y));   // r03 pass 2: ragged quad borders (straight leaf-card edges against the sky in p10)
 Op = tx.a * bnd * smoothstep(0.0, 0.07, eb + 0.04 * (lum - 0.5)); Sub = c * 0.85; Rough = 0.78;

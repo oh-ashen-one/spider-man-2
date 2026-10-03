@@ -28,6 +28,16 @@ float tfBand(float d, float3 band, float2 pix, float t)
 #endif
 }
 
+// r06: a tiled sample of a clamped leaf texture (frac with the unwrapped gradients: no mip seam at the tile border); no derivatives in ray tracing hit shaders
+float4 tfLeafDetail(Texture2D t, SamplerState s, float2 uv)
+{
+#if RAYTRACINGSHADER || RAYHITGROUPSHADER
+    return Texture2DSampleLevel(t, s, frac(uv), 0.0f);
+#else
+    return Texture2DSampleGrad(t, s, frac(uv), ddx(uv), ddy(uv));
+#endif
+}
+
 // ---- value noise (a sin-free hash: the browser's sin(dot) hash loses precision at 1000+ m world coordinates on a GPU)
 float tfH3(float3 p) { p = frac(p * 0.1031f); p += dot(p, p.yzx + 33.33f); return frac((p.x + p.y) * p.z); }
 float tfVn(float3 p)

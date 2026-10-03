@@ -4,7 +4,7 @@
 Why: under the golden rig most of the Great Lawn in p4 lies in the West Side skyline's shadow (the 9 deg sun reaches only a strip of it; the city-only baseline VB_p4 shows the
 same strip), so a tree cannot cast a sun shadow there; what darkens the ground under a real tree in that light is the crown blocking the sky. Per tree of the browser's
 trees-<kind>-near pools (the same instances UE draws): crown footprint = the near-card mesh's horizontal extent (GLB accessor min / max, x instance scale), centred on the
-crown's own centre (rotated with the tree); coverage c(d) = 1 - smoothstep(0.55 R, 1.2 R, d); trees combine as 1 - prod(1 - c). alpha = 255 x (1 - coverage)
+crown's own centre (rotated with the tree); coverage c(d) = 1 - smoothstep(0.75 R, 1.3 R, d); trees combine as 1 - prod(1 - c). alpha = 255 x (1 - coverage)
 (255 = open sky, the r01-r05 value everywhere). M_TerrainPark multiplies its sky occlusion (material AO, sky / Lumen indirect only, never the sun) by lerp(1, CANOPY_OCC, 1 - alpha).
 usage: prep_canopy.py [prep dir] [export dir]"""
 import sys, os, json, struct, math
@@ -23,6 +23,7 @@ def extent(kind):
         for p in m['primitives']:
             a = j['accessors'][p['attributes']['POSITION']]; lo = np.minimum(lo, a['min']); hi = np.maximum(hi, a['max'])
     return (lo + hi) / 2, (hi - lo) / 2   # centre, half extent (browser x, y, z)
+CIN, COUT = float(os.environ.get('CANOPY_IN', '0.75')), float(os.environ.get('CANOPY_OUT', '1.3'))   # r06 test 2: 0.55 / 1.2 left the pool hidden under the crowns in p4
 keep = np.ones((H, W), np.float64); n = 0
 for kind in ('park', 'elm', 'conifer'):
     items = (TJ['instances'].get('trees-%s-near' % kind) or {}).get('items') or []
@@ -32,12 +33,12 @@ for kind in ('park', 'elm', 'conifer'):
         ox, oz = c[0] * s * s3[0], c[2] * s * s3[2]
         cx = it['x'] + ox * math.cos(ry) + oz * math.sin(ry); cz = it['z'] - ox * math.sin(ry) + oz * math.cos(ry)   # rotation about +y (right-handed, y up)
         R = R0 * s * 0.5 * (s3[0] + s3[2])
-        u, v = (cx - pm['x0']) / tx, (cz - pm['z0']) / tx; r = 1.2 * R / tx
+        u, v = (cx - pm["x0"]) / tx, (cz - pm["z0"]) / tx; r = COUT * R / tx
         if u < -r or v < -r or u > W + r or v > H + r: continue
         x0, x1 = max(0, int(u - r)), min(W, int(u + r) + 2); y0, y1 = max(0, int(v - r)), min(H, int(v + r) + 2)
         if x0 >= x1 or y0 >= y1: continue
         yy, xx = np.mgrid[y0:y1, x0:x1]; d = np.hypot((xx + 0.5 - u) * tx, (yy + 0.5 - v) * tx)
-        t = np.clip((d - 0.55 * R) / (0.65 * R), 0, 1); cov = 1 - t * t * (3 - 2 * t)
+        t = np.clip((d - CIN * R) / ((COUT - CIN) * R), 0, 1); cov = 1 - t * t * (3 - 2 * t)
         keep[y0:y1, x0:x1] *= 1 - cov; n += 1
 img[..., 3] = np.clip(np.round(255 * keep), 0, 255).astype(np.uint8)
 Image.fromarray(img, 'RGBA').save(os.path.join(PREP, 'pathmask.png'))
