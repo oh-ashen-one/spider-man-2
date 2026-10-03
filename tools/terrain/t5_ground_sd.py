@@ -27,7 +27,9 @@ for f in glob.glob(os.path.join(tmp, '*.jpg')): os.remove(f)
 os.rmdir(tmp)
 ov = [f for f in frames if f['hero_over_park'] and f['median_sd3'] is not None]
 lw = [f for f in frames if f['lawn_pct'] >= 10 and f['median_sd3'] is not None]   # frames where park lawn fills >= 10 % of the picture (park ground in view, hero over the park or not)
-res = {'frames_with_lawn_ge_10pct': len(lw), 'median_over_lawn_frames': round(float(np.median([f['median_sd3'] for f in lw])), 2) if lw else None, 'min_over_lawn_frames': min((f['median_sd3'] for f in lw), default=None),
+bd = [f for f in ov if 25.0 <= f['hero_haf_m'] <= 40.0]   # r04 SPEC E10(d) reads 'at 25-40 m': the frames of the window whose hero height above the floor is in that band
+res = {'frames_in_25_40m_band': len(bd), 'median_in_25_40m_band': round(float(np.median([f['median_sd3'] for f in bd])), 2) if bd else None, 'min_in_25_40m_band': min((f['median_sd3'] for f in bd), default=None), 'pass_band_ge_5': bool(bd) and min(f['median_sd3'] for f in bd) >= 5.0,
+       'frames_with_lawn_ge_10pct': len(lw), 'median_over_lawn_frames': round(float(np.median([f['median_sd3'] for f in lw])), 2) if lw else None, 'min_over_lawn_frames': min((f['median_sd3'] for f in lw), default=None),
        'window_s': [T0, T1], 'frames': len(frames), 'frames_over_park': sum(f['hero_over_park'] for f in frames), 'median_over_frames': round(float(np.median([f['median_sd3'] for f in ov])), 2) if ov else None,
        'min_over_frames': min((f['median_sd3'] for f in ov), default=None), 'pass_ge_5': bool(ov) and min(f['median_sd3'] for f in ov) >= 5.0, 'per_frame': frames}
 json.dump(res, open(out, 'w'), indent=1); print(json.dumps({k: v for k, v in res.items() if k != 'per_frame'})); [print(f) for f in frames]
