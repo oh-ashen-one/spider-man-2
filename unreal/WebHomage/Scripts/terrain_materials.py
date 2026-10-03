@@ -14,8 +14,12 @@ LAWN_INC = '/Project/Terrain/Lawn.ush'   # r04: lawn albedo detail + grade (hand
 # sun's irradiance and the sky / Lumen bounce dominates it, so the trees' shadows (near cards cast at every distance) read ~0.9 of the lit lawn (r05 diag: ShowFlag.DynamicShadows 0 vs on,
 # 1080p p4: lawn ratio 0.93-1.0 except a few spots). The turf's material AO (indirect diffuse / sky only, the sun is untouched) is LAWN_SKYOCC and the albedo is raised by LAWN_SUNGAIN so the
 # sunlit lawn keeps its r04 brightness (sky / sun ~3.8 on the lawn: gain = (1 + 3.8) / (1 + 3.8 x skyocc)); shade becomes the sky-lit share only.
-LAWN_SKYOCC = 1.0     # r05 test hold: AO 0.12 x gain 3.3 changed the lawn's look only through the exposure (no shadow appeared): AO off again, the turf normal does the work
-LAWN_SUNGAIN = 0.55   # albedo scale with the sun-facing turf normal (the sunlit lawn gets ~1.8 x its r04 irradiance)
+# r06 (round-06/diag, top-down lawn under the golden rig): an opaque 8 m cube's full shadow on this lawn read 0.79-0.80 of the sunlit lawn, i.e. the sun adds only S = 0.25 K to
+# the sky / bounce K even with the sun-facing turf normal, so no tree shadow could reach the 0.6 target (r05 had no crown casters either: see build_terrain.py shadow_cards).
+# The turf's sky occlusion (material AO, Lumen indirect / sky only) goes to 0.25 and the albedo gain up so the SUNLIT lawn keeps its r05 level: 0.55 x (1 + 0.25) / (0.25 + 0.25)
+# = 1.375; a full shadow then reads 0.25 / (0.25 + 0.25) = 0.5 of the sunlit lawn, and lawn that no sun reaches (e.g. in a building's shadow) ~0.63 x its r05 level.
+LAWN_SKYOCC = float(__import__('os').environ.get('SM2_TERRAIN_LAWN_SKYOCC', '0.25'))     # r05: 1.0 (the r05 AO 0.12 test showed no crown shadow because nothing cast one)
+LAWN_SUNGAIN = 0.55 * (1.0 + 0.25) / (LAWN_SKYOCC + 0.25)   # r05: 0.55 (albedo scale with the sun-facing turf normal)
 LAWN_TILT = 0.85
 FILL = 650.0   # r05 (was 450): the shaded foreground crowns of p1 read luma 60-75   # r03 residual shade fill scale (cd/m2 per unit albedo, x tfFillW): the r02 constant was 1800 x (0.4 .. 1.0) on every leaf pixel, sun or shade
 FOLI_INC = '/Project/Terrain/Foliage.ush'   # round 2: LOD bands + the browser's clump-crown / leaf-card shaders (hand-written, committed)
@@ -97,8 +101,11 @@ float3 an = abs(wn); an = an / max(an.x + an.y + an.z, 0.001);
 float4 a1 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 1.9) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 1.9) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 1.9) * an.z;
 float4 a2 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 0.43) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 0.43) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 0.43) * an.z;
 float4 a3 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 7.0) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 7.0) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 7.0) * an.z;
-float3 c = lerp(vc.rgb, dot(vc.rgb, float3(0.3, 0.59, 0.11)).xxx, 0.6) * 0.32;   // r05: greyer schist (r04 read dark brown), a touch lighter   // hold W (0.5 x vc, albedo ~0.2): the sunlit blocks still read pale (display luma 160-210 at the p3 / t5 pond banks); schist is ~0.1-0.12
+float3 c = lerp(vc.rgb, dot(vc.rgb, float3(0.3, 0.59, 0.11)).xxx, 0.9) * float3(0.31, 0.315, 0.33);   // r06: grey schist (r05 critic: p3 rocks read as smooth olive eggs; 0.6 desaturation kept the olive vertex colour)   // r05: greyer schist (r04 read dark brown), a touch lighter   // hold W (0.5 x vc, albedo ~0.2): the sunlit blocks still read pale (display luma 160-210 at the p3 / t5 pond banks); schist is ~0.1-0.12
 c *= (0.55 + 0.9 * a1.r) * (0.78 + 0.5 * a2.g) * (0.82 + 0.36 * a3.b);
+float4 a4 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 0.11) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 0.11) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 0.11) * an.z;
+float4 a5 = Texture2DSample(tNoise, tNoiseSampler, pw.yz / 0.037) * an.x + Texture2DSample(tNoise, tNoiseSampler, pw.xz / 0.037) * an.y + Texture2DSample(tNoise, tNoiseSampler, pw.xy / 0.037) * an.z;
+c *= (0.62 + 0.76 * a4.r) * (0.75 + 0.5 * a5.g);   // r06: grain at 11 / 3.7 cm (r05 critic: hp3 SD 0.75-0.90 inside the p3 rocks; target >= 5)
 float jn = frac((pw.x * 0.8 + pw.y * 0.6 + pw.z * 1.3) / 1.7 + a1.g * 1.4);
 c *= 1.0 - 0.5 * smoothstep(0.55, 0.64, jn) * (1.0 - smoothstep(0.64, 0.72, jn));                       // foliation joints
 c *= 1.0 - 0.4 * smoothstep(0.62, 0.8, a2.b) * (1.0 - saturate(wn.z));                                   // dark crevices on steep faces
@@ -212,7 +219,7 @@ return c * gain;''',
         inputs=[('tAtlas', 'tex', 'leaf_atlas'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0),
                 ('sun', 'sun', 0), ('fill', 'scalar', FILL)],
-        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Emis', 3, 'MP_EMISSIVE_COLOR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')], two_sided=True, blend='masked', foliage=True))
+        outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Emis', 3, 'MP_EMISSIVE_COLOR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')], two_sided=True, blend='masked', foliage=True, nanite=True))   # r06: nanite usage for the hidden Nanite shadow-caster copies (ISM_shadowcards_*)
     # lumpy clump crowns (browser pool `trees-*-crown`; r03: drawn only >= 520 m, the 165-520 m band is the leaf-card LOD1 `trees-*-lod1` on M_TerrainCards): procedural clumps of leaf speckle, ragged see-through silhouette, normal from the clump height field
     M.append(dict(name='M_TerrainClump', include=FOLI_INC, code='''
 float op; float3 nW;

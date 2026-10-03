@@ -337,6 +337,12 @@ def _step_trees():
         elif nm.endswith(('_near', '_lod1')): finish_mesh(sm, load(f'{MAT}/M_TerrainCards'), False)
         else: finish_mesh(sm, load(f'{MAT}/M_TerrainClump'), False)
         EAL.save_asset(dst)
+        # r06: a Nanite copy of every near-card canopy for the hidden shadow-caster pools (ISM_shadowcards_*, see _sec_trees): round-06/diag found that no non-Nanite
+        # instanced component with affect_distance_field_lighting off writes the sun's shadow (VSM or CSM), while Nanite HISMs do (also hidden, with cast_hidden_shadow)
+        if nm.endswith('_near') and nm.startswith('trees_'):
+            nn = dst + '_nanite'
+            if EAL.does_asset_exist(nn): EAL.delete_asset(nn)
+            EAL.duplicate_asset(dst, nn); finish_mesh(load(nn), load(f'{MAT}/M_TerrainCards'), False, nanite=True); EAL.save_asset(nn)
     if EAL.does_directory_exist(TREED + '/_in'): EAL.delete_directory(TREED + '/_in')
     log('tree prototypes', len(recs), '+ chain', len(chain))
 
@@ -484,6 +490,24 @@ def build_land(path):
             if pool.endswith(('-near', '-lod1')): return mi(nm, 'M_TerrainCards', {'gain': 1.0}, vec)
             if pool.endswith('-crownfar'): return mi(nm, 'M_TerrainCrown', {'gain': 1.0}, vec)
             return mi(nm, 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, vec)   # r03: only >= 520 m (CROWN_BAND), bump at the browser's 3.0 / 0.5 (Foliage.ush tfBumpH)
+        def shadow_cards(pool, xs):
+            """r06: the hidden shadow-caster copy of a near-card pool. round-06/diag (top-down lawn, golden rig): the visible near-card HISM (non-Nanite, affect_distance_field_lighting
+            off) cast no sun shadow at all (ratio 0.92-0.96 = no shadow), the same cards as a hidden Nanite HISM with cast_hidden_shadow cast 0.81 (opaque cube: 0.79). The caster
+            uses the real card material (leaf-card holes, band.z = 1: fixed coverage threshold, no LOD band) and stays out of Lumen / ray tracing / reflections."""
+            kind = pool.split('-')[1]; sp_ = f'{TREED}/SM_trees_{kind}_near_nanite'
+            if not EAL.does_asset_exist(sp_): log('no Nanite near cards for', kind); return
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_shadowcards_' + kind, folder='Terrain/Trees')
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(load(sp_)); c.set_editor_property('num_custom_data_floats', 6)
+            c.set_material(0, mi('ShadowCards_' + kind, 'M_TerrainCards', {'gain': 1.0}, {'band': (0.0, 100000.0, 1.0, 0.0)}))
+            c.set_cast_shadow(True); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c)
+            for k_, v_ in (('cast_hidden_shadow', True), ('visible_in_ray_tracing', False), ('affect_indirect_lighting_while_hidden', False),
+                           ('visible_in_reflection_captures', False), ('visible_in_real_time_sky_captures', False)):
+                try: c.set_editor_property(k_, v_)
+                except Exception as ex: log('WARN shadowcards', k_, str(ex)[:100])
+            c.add_instances(xs, False, True)
+            a.set_actor_hidden_in_game(True)
+            log('shadow cards', kind, len(xs), 'instances (Nanite, hidden, cast hidden shadow)')
         order = sorted(INS.keys(), key=lambda k: (0 if k.startswith('ez-') else 1, k))
         for pool in order:
             d = INS[pool]
@@ -516,6 +540,7 @@ def build_land(path):
                 try: c.set_editor_property('instance_end_cull_distance', int(cull))
                 except Exception as ex: log('WARN cull distance', str(ex)[:100])
             casts = not (pool.endswith(('-crown', '-crownfar', '-far', '-lod1')))       # browser: LOD1 cards, crown LODs and far trunks cast no shadows; near cards / ez / near + mid trunks do
+            if pool.startswith('trees-') and pool.endswith('-near'): casts = False      # r06: the hidden Nanite ISM_shadowcards_* pool casts for it (shadow_cards)
             c.set_cast_shadow(casts)
             c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
             # r03 (why r02 cards crushed to black): this project runs Lumen with HARDWARE ray tracing. UE 5.8 puts every drawn primitive into the ray-tracing scene as visible to
@@ -541,6 +566,7 @@ def build_land(path):
                     e = it.get('e') or {}; ta = e.get('aTintA') or [0.15, 0.2, 0.08]; tb = e.get('aTintB') or ta
                     for j, v in enumerate(list(ta) + list(tb)): c.set_custom_data_value(k, j, float(v), False)
             nt += len(xs); counts[pool] = len(xs)
+            if pool.startswith('trees-') and pool.endswith('-near'): soft('shadowcards ' + pool, shadow_cards, pool, xs)
         log('park woodland instances', nt, 'in', len(counts), 'pools')
         # r03 pass 2: Lumen-only shade proxy. With every leaf pool out of the ray-tracing scene nothing occluded the sky under the canopy (pass 1: the lawn under the trees was
         # fully sky-lit, the p1 foreground lost its shade). A lighter proxy: the crown hull of each tree at PROXY_K of its size about the crown centre, hidden in game but kept for
@@ -577,7 +603,8 @@ def build_land(path):
             # r05: crown SHADOW proxy. The round's stills show the trunks' shadows crisp on the lawn (a lattice in the sunlit strip of p4) and no crown shadow at all, with VSM and with CSM:
             # the leaf pools left the ray-tracing scene in r03, the trunks did not. A hidden shadow-only copy of the crown hull at SHADOW_K of the crown size (hidden in game, casts a hidden
             # shadow, in the ray-tracing scene for ray-traced shadow paths, NOT in Lumen's scene: affect_indirect_lighting_while_hidden False) gives every tree a crown shadow on either path.
-            SHADOW_K = float(os.environ.get('SM2_TERRAIN_SHADOW_PROXY', '0.85'))
+            # r06: off by default: a non-Nanite HISM with affect_distance_field_lighting off casts nothing (round-06/diag: hidden proxy ratio 0.94-0.96); ISM_shadowcards_* replaces it
+            SHADOW_K = float(os.environ.get('SM2_TERRAIN_SHADOW_PROXY', '0'))
             if SHADOW_K > 0:
                 a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_shadowproxy_' + kind, folder='Terrain/Trees')
                 c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
@@ -689,4 +716,114 @@ def _step_map():
     build_persistent(ROOT + '/Maps/Manhattan_Terrain')
 @step('views')
 def _step_views(): build_views()
+
+# r06 shadow-pass diagnostic (not in the default steps): ROOT/Maps/D_shadow = the golden rig + one lawn plane + a row of casters 35 m apart, perpendicular to the 9 deg sun's
+# shadow direction, seen top-down. Question: which caster writes the shadow-depth pass (docs/night1/terrain/round-06/diag/NOTES.md). Slots (k = -4 .. 3, row direction R):
+#   -4 opaque cube 8 m (engine BasicShapes) at 12 m      -3 near-card HISM, opaque two-sided M_DiagOpaque2S     -2 near-card HISM, masked two-sided M_DiagMasked2S (Op = 1)
+#   -1 near-card HISM, the real MI_Pool_trees_park_near, the real pool's flags (out of ray tracing)               0 same, default flags (in ray tracing)
+#    1 near cards as one StaticMeshActor, real material   2 ez park0 L1 leaves + bark (Nanite) HISM, real materials   3 hidden crown shadow proxy (cast hidden shadow, k 0.85)
+DIAG_SUN = (9.0, 238.0)
+@step('diag')
+def _step_diag():
+    RIG = '/Game/Look/Rigs/Look_Rig_golden'
+    path = ROOT + '/Maps/D_shadow'
+    EAL.make_directory(ROOT + '/Maps')
+    m_op = make_material('M_DiagOpaque2S', None, 'Rough = 0.8; return float3(0.06, 0.12, 0.03);', [], [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], two_sided=True)
+    m_mk = make_material('M_DiagMasked2S', None, 'Op = 1.0; Rough = 0.8; return float3(0.06, 0.12, 0.03);', [], [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Rough', 1, MP.MP_ROUGHNESS)], two_sided=True, blend='masked')
+    world = open_level(path)
+    have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
+    if not any('Look_Rig_golden' in h for h in have): unreal.EditorLevelUtils.add_level_to_world(world, RIG, unreal.LevelStreamingAlwaysLoaded)
+    les.set_current_level_by_name(str(world.get_name()))
+    e, a_ = math.radians(DIAG_SUN[0]), math.radians(DIAG_SUN[1])
+    sdir = (-math.sin(a_), math.cos(a_)); n_ = math.hypot(*sdir); sdir = (sdir[0] / n_, sdir[1] / n_)    # shadow direction on the ground (UE X east, Y south)
+    rdir = (-sdir[1], sdir[0]) if sdir[0] > 0 else (sdir[1], -sdir[0])
+    if rdir[1] < 0: rdir = (-rdir[0], -rdir[1])
+    SP = 3500.0
+    def P(k, z=0.0): return unreal.Vector(rdir[0] * SP * k, rdir[1] * SP * k, z)
+    g = spawn(unreal.StaticMeshActor, unreal.Vector(rdir[0] * SP * -0.5 + sdir[0] * 4500.0, rdir[1] * SP * -0.5 + sdir[1] * 4500.0, 0.0), label='D_lawn', folder='Diag')
+    g.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Plane')); g.set_actor_scale3d(unreal.Vector(900.0, 900.0, 1.0))
+    g.static_mesh_component.set_material(0, load(f'{MAT}/M_TerrainLawn')); g.static_mesh_component.set_cast_shadow(False); g.set_mobility(unreal.ComponentMobility.STATIC)
+    cube = spawn(unreal.StaticMeshActor, P(-4, 1200.0), label='D_cube', folder='Diag')
+    cube.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Cube')); cube.set_actor_scale3d(unreal.Vector(8.0, 8.0, 8.0)); cube.set_mobility(unreal.ComponentMobility.STATIC)
+    it = ((TJ.get('instances') or {}).get('trees-park-near') or {}).get('items', [{}])[0]
+    s_ = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]; scl = unreal.Vector(s_ * s3[0], s_ * s3[2], s_ * s3[1])
+    e0 = it.get('e') or {}; tint = list(e0.get('aTintA') or [0.15, 0.2, 0.08]) + list(e0.get('aTintB') or e0.get('aTintA') or [0.15, 0.2, 0.08])
+    near = f'{TREED}/SM_trees_park_near'
+    def pool(k, mesh, mat, rt=False, label='', custom=True):
+        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='D_' + label, folder='Diag')
+        c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+        c.set_static_mesh(load(mesh))
+        if custom: c.set_editor_property('num_custom_data_floats', 6)
+        if mat is not None: c.set_material(0, mat)
+        c.set_cast_shadow(True); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c, indirect=rt)
+        if not rt:
+            for k_, v_ in (('visible_in_ray_tracing', False), ('affect_indirect_lighting_while_hidden', False)): c.set_editor_property(k_, v_)
+        c.add_instances([unreal.Transform(P(k), unreal.Rotator(0, 0, 0), scl)], False, True)
+        if custom:
+            for j, v in enumerate(tint): c.set_custom_data_value(0, j, float(v), False)
+        return a, c
+    pool(-3, near, m_op, label='cards_opaque2s')
+    pool(-2, near, m_mk, label='cards_masked2s')
+    real = load(f'{MAT}/Inst/MI_Pool_trees_park_near')
+    pool(-1, near, real, label='cards_real_noRT')
+    pool(0, near, real, rt=True, label='cards_real_RT')
+    sma = spawn(unreal.StaticMeshActor, P(1), label='D_cards_real_SMA', folder='Diag')
+    sma.static_mesh_component.set_static_mesh(load(near)); sma.static_mesh_component.set_material(0, real); sma.set_actor_scale3d(scl); sma.set_mobility(unreal.ComponentMobility.STATIC)
+    for part in ('leaves', 'bark'):
+        mp_ = f'{MAT}/Inst/MI_Pool_ez_park0_l1_{part}'
+        pool(2, f'{TREED}/SM_ez_park0_l1_{part}', load(mp_) if EAL.does_asset_exist(mp_) else None, rt=(part == 'bark'), label='ez_l1_' + part, custom=(part == 'leaves'))
+    crown = f'{TREED}/SM_trees_park_crown'
+    if EAL.does_asset_exist(crown):
+        sm_ = load(crown); cz = sm_.get_bounds().origin.z; K = 0.85
+        a, c = pool(3, crown, mi('ShadowProxy_park', 'M_TerrainClump', {'gain': 1.0, 'bump': 1.0}, {'band': (0.0, 100000.0, 0.0, 0.0)}), rt=False, label='shadowproxy')
+        c.set_editor_property('cast_hidden_shadow', True)
+        c.update_instance_transform(0, unreal.Transform(P(3, (1.0 - K) * cz * scl.z), unreal.Rotator(0, 0, 0), unreal.Vector(K * scl.x, K * scl.y, K * scl.z)), True, True, True)
+        a.set_actor_hidden_in_game(True)
+    ctr = unreal.Vector(rdir[0] * SP * -0.5 + sdir[0] * 4500.0, rdir[1] * SP * -0.5 + sdir[1] * 4500.0, 45000.0)
+    ca = eas.spawn_actor_from_class(unreal.CameraActor, ctr, unreal.Rotator(roll=0.0, pitch=-89.9, yaw=math.degrees(math.atan2(rdir[1], rdir[0]))))
+    ca.set_actor_label('ShotCam_D_shadow'); ca.camera_component.set_editor_property('field_of_view', 70.0); ca.camera_component.set_editor_property('constrain_aspect_ratio', False)
+    ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
+    unreal.EditorLoadingAndSavingUtils.save_map(world, path)
+    log('diag map', path, 'sdir', sdir, 'rdir', rdir, 'tree scale', scl, 'saved')
+    # diag 2 (D_shadow2): diag 1 found that no non-Nanite HISM writes the sun's shadow depth (VSM and CSM), while the same mesh / material as a StaticMeshActor and the Nanite
+    # ez L1 HISM do. Variants: -4 cube | -3 HISM bare (no flags changed) | -2 ISM, pool flags | -1 HISM movable | 0 HISM static | 1 HISM Nanite copy of the near cards, pool flags |
+    # 2 the Nanite copy hidden in game + cast hidden shadow | 3 HISM of the engine cube (opaque default material, non-Nanite)
+    path2 = ROOT + '/Maps/D_shadow2'
+    nn_path = near + '_nanite'
+    if not EAL.does_asset_exist(nn_path): EAL.duplicate_asset(near, nn_path)
+    mcards = load(f'{MAT}/M_TerrainCards'); mel.set_material_usage(mcards, unreal.MaterialUsage.MATUSAGE_NANITE); mel.recompile_material(mcards); EAL.save_asset(f'{MAT}/M_TerrainCards')
+    finish_mesh(load(nn_path), mcards, False, nanite=True); EAL.save_asset(nn_path)
+    world = open_level(path2)
+    have = [l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)]
+    if not any('Look_Rig_golden' in h for h in have): unreal.EditorLevelUtils.add_level_to_world(world, RIG, unreal.LevelStreamingAlwaysLoaded)
+    les.set_current_level_by_name(str(world.get_name()))
+    g = spawn(unreal.StaticMeshActor, unreal.Vector(rdir[0] * SP * -0.5 + sdir[0] * 4500.0, rdir[1] * SP * -0.5 + sdir[1] * 4500.0, 0.0), label='D_lawn', folder='Diag')
+    g.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Plane')); g.set_actor_scale3d(unreal.Vector(900.0, 900.0, 1.0))
+    g.static_mesh_component.set_material(0, load(f'{MAT}/M_TerrainLawn')); g.static_mesh_component.set_cast_shadow(False); g.set_mobility(unreal.ComponentMobility.STATIC)
+    cube = spawn(unreal.StaticMeshActor, P(-4, 1200.0), label='D_cube', folder='Diag')
+    cube.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Cube')); cube.set_actor_scale3d(unreal.Vector(8.0, 8.0, 8.0)); cube.set_mobility(unreal.ComponentMobility.STATIC)
+    def inst(k, mesh, mat, cls=unreal.HierarchicalInstancedStaticMeshComponent, flags=True, mob=None, label='', z=0.0, s=None):
+        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='D_' + label, folder='Diag')
+        c = add_component(a, cls)
+        c.set_static_mesh(load(mesh)); c.set_editor_property('num_custom_data_floats', 6)
+        if mat is not None: c.set_material(0, mat)
+        if mob is not None: c.set_mobility(mob)
+        if flags:
+            c.set_cast_shadow(True); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION); lite(c)
+            for k_, v_ in (('visible_in_ray_tracing', False), ('affect_indirect_lighting_while_hidden', False)): c.set_editor_property(k_, v_)
+        c.add_instances([unreal.Transform(P(k, z), unreal.Rotator(0, 0, 0), s or scl)], False, True)
+        for j, v in enumerate(tint): c.set_custom_data_value(0, j, float(v), False)
+        return a, c
+    inst(-3, near, real, flags=False, label='hism_bare')
+    inst(-2, near, real, cls=unreal.InstancedStaticMeshComponent, label='ism_pool')
+    inst(-1, near, real, mob=unreal.ComponentMobility.MOVABLE, label='hism_movable')
+    inst(0, near, real, mob=unreal.ComponentMobility.STATIC, label='hism_static')
+    inst(1, nn_path, real, label='hism_nanite')
+    a, c = inst(2, nn_path, real, label='hism_nanite_hidden'); c.set_editor_property('cast_hidden_shadow', True); a.set_actor_hidden_in_game(True)
+    inst(3, '/Engine/BasicShapes/Cube', None, label='hism_cube', z=1200.0, s=unreal.Vector(8.0, 8.0, 8.0))
+    ca = eas.spawn_actor_from_class(unreal.CameraActor, ctr, unreal.Rotator(roll=0.0, pitch=-89.9, yaw=math.degrees(math.atan2(rdir[1], rdir[0]))))
+    ca.set_actor_label('ShotCam_D_shadow2'); ca.camera_component.set_editor_property('field_of_view', 70.0); ca.camera_component.set_editor_property('constrain_aspect_ratio', False)
+    ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
+    unreal.EditorLoadingAndSavingUtils.save_map(world, path2)
+    log('diag map', path2, 'saved')
 log('DONE')

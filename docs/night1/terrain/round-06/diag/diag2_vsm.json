@@ -1,0 +1,66 @@
+[
+ {
+  "slot": "cube_SMA",
+  "y": 920,
+  "shadow15": 122.2,
+  "lit": 154.7,
+  "ratio": 0.79,
+  "x": 854
+ },
+ {
+  "slot": "hism_cards_real_bare",
+  "y": 810,
+  "shadow15": 124.6,
+  "lit": 158.0,
+  "ratio": 0.789,
+  "x": 884
+ },
+ {
+  "slot": "ism_cards_real_poolflags",
+  "y": 700,
+  "shadow15": 151.1,
+  "lit": 160.9,
+  "ratio": 0.939,
+  "x": 800
+ },
+ {
+  "slot": "hism_cards_real_poolflags_movable",
+  "y": 590,
+  "shadow15": 153.5,
+  "lit": 160.7,
+  "ratio": 0.956,
+  "x": 837
+ },
+ {
+  "slot": "hism_cards_real_poolflags_static",
+  "y": 485,
+  "shadow15": 148.8,
+  "lit": 161.9,
+  "ratio": 0.919,
+  "x": 800
+ },
+ {
+  "slot": "hism_cards_real_nanite_poolflags",
+  "y": 380,
+  "shadow15": 132.3,
+  "lit": 161.0,
+  "ratio": 0.822,
+  "x": 990
+ },
+ {
+  "slot": "hism_cards_real_nanite_hidden_casthidden",
+  "y": 270,
+  "shadow15": 127.1,
+  "lit": 157.5,
+  "ratio": 0.807,
+  "x": 974
+ },
+ {
+  "slot": "hism_cube_poolflags",
+  "y": 160,
+  "shadow15": 143.9,
+  "lit": 155.7,
+  "ratio": 0.924,
+  "x": 983
+ }
+]

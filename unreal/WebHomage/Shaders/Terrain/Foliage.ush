@@ -144,6 +144,11 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
         float3 cpw = wpos * 0.01f;
         float holes = tfVn(cpw * 1.7f + 5.3f) * 0.65f + tfVn(cpw * 4.1f + 1.7f) * 0.35f;
         tx.a = (facing > 0.45f && holes > 0.36f) ? 1.0f : cov * step(0.30f, holes);   // grazing core surface (its silhouette) takes the leaf coverage: the solid mass never shows a faceted edge
+#if !(RAYTRACINGSHADER || RAYHITGROUPSHADER || SHADOW_DEPTH_SHADER || LUMEN_CARD_CAPTURE)
+        // r06: where a crown's cards thin out the solid core showed as a smooth olive ball (r05 critic: p10 (1125-1200, 235-295), hp3 SD 3.4 against 12.9 on the leaves):
+        // the core is only drawn beyond 70-120 m (dithered by the op threshold below); nearer, the card sprays carry the crown alone. Shadow passes keep it.
+        tx.a *= band.z > 0.5f ? 1.0f : smoothstep(70.0f, 120.0f, dist);
+#endif
     }
     else
     {
@@ -156,7 +161,7 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
         // fades with the geometric facing (face normal from the position derivatives; the vertex normals are the clump-outward normals, not the card plane)
         float3 fn = cross(ddx(wpos), ddy(wpos));
         float fc = abs(dot(fn, V)) / max(length(fn), 1e-6f);
-        tx.a *= smoothstep(0.08f, 0.3f, fc);
+        tx.a *= band.z > 0.5f ? 1.0f : smoothstep(0.08f, 0.3f, fc);
 #endif
     }
     float twig = tx.g >= 0.97f ? 1.0f : 0.0f;
@@ -183,7 +188,9 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
 #if SHADOW_DEPTH_SHADER
     op = tx.a < 0.22f ? 0.0f : 1.0f;   // r05: a fixed coverage threshold in the shadow pass (the stochastic 0.2-0.7 screen door thinned the crowns' cast shadow)
 #else
-    op = (tx.a < lerp(0.2f, 0.7f, nn)) ? 0.0f : tfBand(dist, band, pix, t);
+    // r06: band.z = 1 marks the hidden shadow-caster pools (build_terrain.py ISM_shadowcards_*: Nanite copies of the near cards; the Nanite shadow raster may not define
+    // SHADOW_DEPTH_SHADER): the same fixed threshold, no LOD band, no camera-distance terms
+    op = band.z > 0.5f ? (tx.a < 0.22f ? 0.0f : 1.0f) : ((tx.a < lerp(0.2f, 0.7f, nn)) ? 0.0f : tfBand(dist, band, pix, t));
 #endif
     sub = c * 0.85f;
     return c;
