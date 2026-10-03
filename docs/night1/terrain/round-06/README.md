@@ -35,8 +35,8 @@ city-only baseline, r05 `diag/cmp_vb.jpg`), so no sun shadow can form beside the
 and beside a crown sees ~0.15 of the sky), not a cast sun shadow. Where the sun does reach the lawn, the crowns now cast: inside the p4 sunlit strip, box (3030,1525)-(3075,1555)
 reads **0.47** of the strip's sunlit lawn (p90 160.2) in r06 against **0.89** in r05 (`strip_shadow.txt`).
 Note on target 3: the p6 esplanade trees are the city piece's street trees and the paving is the city's; the terrain owns neither (their crowns do shadow the facades).
-GPU ms: GPU_PLACEHOLDER
-Movies: MOVIES_PLACEHOLDER
+GPU ms: **not measured** under the exclusive perf lock (`gpu_slot.sh perf` exit 75 at 09:34: Mac unattended, no input for 29,127 s, `perf_refused.log`). The capture runs' own GPU frame time (contaminated: 1-2 other renders, frame-capped, 4K out / 1080p internal, `gpu_ms.txt`): p1 189.6 ms, p10 101.5 ms, p4 123.6 ms (r05 final hold 163.5 / 92.9 / 105.5): +16 / +9 / +17 % — the Nanite shadow casters (4,771 card trees + the L1 leaves into the virtual shadow map) are the likely cost.
+Movies: `t5_avenue_to_park.mp4` crf 30, 10.5 MB, 925 frames; `t4_lawn_sprint.mp4` crf 32, 13.7 MB, 805 frames (both 1920x1080 native). E10 guards of r05, for information: (c) t4 flat patches > 100 px at 4 fps: 3 (0.75 s dark-green lawn 111 px, 3.5 s / 4.25 s near-black woodland floor 192 / 121 px — the canopy-occluded ground reads smooth there; r05: 1); (d) t5: the merged traversal (r25 / r26) flies the committed script differently — 28 % of the run over the park, 1 % at 25-40 m (r05: the whole last 5 s), so the 25-40 m band has no frames; over-lawn frames median sigma-3 8.25, min 1.51 (`t5_ground_sd.json`, `t5_score.txt`). t5 at 11 s shows a city billboard ('BROADWAY BOUND') — city piece's art.
 
 
 ## What changed (committed scripts only; Content is generated, never committed)
@@ -52,3 +52,9 @@ Movies: MOVIES_PLACEHOLDER
 4. `tools/terrain/prep_canopy.py`: per-tree canopy coverage (crown footprint from the near-card GLB extent x instance scale, 0.75-1.3 R) baked into the alpha of `pathmask.png`.
 5. `Foliage.ush`: near-card core only beyond 70-120 m, with 11 / 29 cm leaf-mass speckle; `band.z = 1` shadow-caster mode; `tfLeafDetail`, `tfLeafGrain`; clump shade 0.26-1.9.
 6. Tools: `r06_checks.py` (p10 sky-bordered smooth patches, p4 tree lawn boxes, p6 ratios), `measure_r06.sh`, `diag_shadow_measure.py`, `make_pairs.py` pair-size normalisation, `round6.sh`.
+
+## Blind critic pack (built, not judged by the builder)
+`/Users/midir/sm2-n1/_scratch/critic-E-r06/pack` (16 pairs: 9 views vs the matching references, 5 progress pairs r05-merged vs r06 — south, reservoir, lawn-eye, great-lawn,
+panorama — and the 2 movies vs reference clips), `pairs.json` beside it (`x` = ours, `y` = reference / r05; `x_src` / `y_src` = the originals), key outside the pack
+(`pack.key.json`). Both sides of every still pair are normalised to 3840x2160 before `abpack.py` (so 3226x1814 after its 84 % crop on both sides; r05's pack leaked identity by
+1612 vs 3226 widths); both movies are 1920x1080 on both sides (1612x906 in the pack); every pack image also has a `_2048.jpg` copy.

@@ -1,0 +1,57 @@
+{
+ "movie": "t4_lawn_sprint.mp4",
+ "frames_at_4fps": 54,
+ "flat_sd_threshold": 0.9,
+ "pass": false,
+ "components_wider_than_100px": 3,
+ "hits": [
+  {
+   "t_s": 0.75,
+   "bbox_xywh": [
+    514,
+    998,
+    111,
+    80
+   ],
+   "area_px": 5828,
+   "fill": 0.66,
+   "mean_rgb": [
+    51.5,
+    68.1,
+    1.5
+   ]
+  },
+  {
+   "t_s": 3.5,
+   "bbox_xywh": [
+    634,
+    1024,
+    192,
+    54
+   ],
+   "area_px": 5932,
+   "fill": 0.57,
+   "mean_rgb": [
+    22.1,
+    23.2,
+    6.8
+   ]
+  },
+  {
+   "t_s": 4.25,
+   "bbox_xywh": [
+    2,
+    984,
+    121,
+    94
+   ],
+   "area_px": 7218,
+   "fill": 0.63,
+   "mean_rgb": [
+    23.1,
+    23.2,
+    6.5
+   ]
+  }
+ ]
+}

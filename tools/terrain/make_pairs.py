@@ -64,5 +64,6 @@ if os.environ.get('NORMALIZE', '1') != '0':
             sz = [subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height', '-of', 'csv=p=0', p[k]], capture_output=True, text=True).stdout.strip() for k in ('x', 'y')]
             if sz[0] != sz[1]: print('WARN movie sizes differ', p['id'], sz)
             continue
+        p['x_src'], p['y_src'] = p['x'], p['y']   # the originals (x = ours, y = the reference / the previous round)
         p['x'], p['y'] = norm(p['x'], p['id'] + '_x'), norm(p['y'], p['id'] + '_y')
 os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True); json.dump(pairs, open(out, 'w'), indent=1); print(len(pairs), 'pairs ->', out)

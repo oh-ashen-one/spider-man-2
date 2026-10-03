@@ -1,0 +1,2 @@
+gpu_slot[perf/terrain]: perf-deferred-unattended idle_s=29127
+gpu_slot: perf runs need an attended Mac (no input for 29127 s); deferred, exit 75

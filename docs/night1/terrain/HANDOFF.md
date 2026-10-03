@@ -14,8 +14,8 @@ Target (Opus director after the r05 critic [4,4,4,5,3]): the tree crowns cast su
 these three trees stand in the West Side skyline's shadow, so the darkening there is the baked canopy sky occlusion, not a cast sun shadow; a cast crown shadow in the p4 sunlit
 strip reads 0.47 of the sunlit lawn (r05 0.89); (3) p6 esplanade tree shadows 0.89 / 1.02 — not met (city trees on city paving); (4) p10: 2 smooth sky-bordered patches > 30 px
 remain (48 px SD 3.57, 32 px SD 3.37), the r05 ball and a second core ball are gone. Guards: crowns 20 / 24, median 12.53; E9c 46.3 px by the tool = a city building's stepped
-roof (no crown segment > 40 px); p10 sigma-6 19.48 / 17.00, R / G 0.884. GPU_HANDOFF
-Blind critic pack (not judged by the builder): `/Users/midir/sm2-n1/_scratch/critic-E-r06/pack` (PACK_COUNT pairs; both sides of every pair the same pixel size), `pairs.json` beside it, key outside (`pack.key.json`).
+roof (no crown segment > 40 px); p10 sigma-6 19.48 / 17.00, R / G 0.884. GPU ms: not measured (perf lock refused, exit 75, Mac unattended); capture-run GPU ms (contaminated) p1 189.6 / p10 101.5 / p4 123.6 (r05 163.5 / 92.9 / 105.5). Movies: t5 10.5 MB (crf 30), t4 13.7 MB (crf 32); the merged traversal flies t5 differently (28 % over the park). t4 shows 3 smooth dark ground patches > 100 px (canopy-occluded floor).
+Blind critic pack (not judged by the builder): `/Users/midir/sm2-n1/_scratch/critic-E-r06/pack` (16 pairs; both sides of every pair the same pixel size), `pairs.json` beside it, key outside (`pack.key.json`).
 One engine crash this round (the build commandlet on a re-run of the `map` step, 07:55); three stills holds were stopped on purpose with `stop_ue.sh` to fix the p10 patch.
 
 ## Shadow-pass finding (r06 target 1, `round-06/diag/NOTES.md`)
@@ -49,7 +49,9 @@ One engine crash this round (the build commandlet on a re-run of the `map` step,
 4. **Pond-bank 'olive eggs' in p3**: the reed clumps (`parkReeds`, `M_TerrainVC2`, olive tint) read as smooth khaki ovoids at 100-200 m; they need a blade texture / alpha, not
    the rock material (the rock material is grey and grained now).
 5. Crown saturation median 0.646 (target 0.65); p4 aerial lawn box sigma-6 6.24 (<= 5 wanted): the canopy pools' edges sit in that box.
-6. GPU: capture-run GPU ms rose (p1 189.6 / p10 101.5 / p4 123.6 against r05 163.5 / 92.9 / 105.5, contaminated runs): the Nanite shadow casters (4,771 card trees + L1 leaves) are
+6. t4: three smooth dark ground patches > 100 px (0.75 / 3.5 / 4.25 s): the canopy-occluded woodland floor under the near trees reads near-black and flat; lighten
+   `CANOPY_OCC` near the camera or give the woodland floor its own detail.
+7. GPU: capture-run GPU ms rose (p1 189.6 / p10 101.5 / p4 123.6 against r05 163.5 / 92.9 / 105.5, contaminated runs): the Nanite shadow casters (4,771 card trees + L1 leaves) are
    the likely cost; an exclusive `gpu_slot perf` run is needed (refused while the Mac is unattended).
 
 ## Next-session recipe (everything idempotent)
