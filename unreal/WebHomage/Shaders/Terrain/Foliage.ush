@@ -56,7 +56,7 @@ float3 tfSummer(float3 c)
 float tfClumpShade(float3 cpw)
 {
     float q = tfVn(cpw * 0.9f + 4.7f) * 0.42f + tfVn(cpw * 2.6f + 1.1f) * 0.36f + tfVn(cpw * 6.5f + 8.3f) * 0.22f;
-    return lerp(0.32f, 1.7f, smoothstep(0.34f, 0.66f, q));   // test hold 2: 0.45-1.5 gave p1 crown sigma-3 median 9.9
+    return lerp(0.28f, 1.8f, smoothstep(0.35f, 0.65f, q));   // test hold 2: 0.45-1.5 gave p1 crown sigma-3 median 9.9; S hold (0.32-1.7): 11.45
 }
 
 // clump height field (trees.js crownMaterial): clumps (~1.6 m) of sub-clumps (~0.5 m); n3 = leaf speckle (~0.2 m), returned through the out parameter
@@ -110,7 +110,7 @@ float3 TerrainClumpCrown(float3 wpos, float3 cam, float3 wn, float2 aLeaf, float
     nW = normalize(N - g * k);
     c *= occ;
     float Lc = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
-    return max(lerp(Lc.xxx, c, 1.3f), 0.0f);   // r05: the >= 520 m hull reads through the golden haze (crown saturation 0.55 there): +30 % albedo saturation
+    return max(lerp(Lc.xxx, c, 1.5f), 0.0f);   // r05: the >= 520 m hull reads through the golden haze (crown saturation 0.55 there): +50 % albedo saturation
 }
 
 // The leaf-card canopy (trees.js leafMaterial), 44-165 m, from the city's leaf atlas (R value, G hue selector, >= 0.97 twig, B spray depth, A coverage); the solid core spheres carry
@@ -177,6 +177,8 @@ float3 TerrainLeafCards(Texture2D tAtlas, SamplerState tAtlasSampler, float2 uv,
         occ = lerp(0.24f, 0.42f, saturate(expo)) * lerp(0.55f, 1.6f, smoothstep(0.3f, 0.7f, cl));
     }
     float3 c = (twig > 0.5f ? float3(0.085f, 0.06f, 0.042f) : leaf) * occ;
+    float Lq = dot(c, float3(0.2126f, 0.7152f, 0.0722f));
+    c = max(lerp(Lq.xxx, c, lerp(1.0f, 1.35f, smoothstep(120.0f, 450.0f, dist))), 0.0f);   // r05: distant cards read through the golden haze (S hold: crown saturation 0.54-0.64 beyond 300 m)
     float nn = frac(tfIGN(pix + 17.0f) + frac(t * 37.0f) * 2.618034f);
 #if SHADOW_DEPTH_SHADER
     op = tx.a < 0.22f ? 0.0f : 1.0f;   // r05: a fixed coverage threshold in the shadow pass (the stochastic 0.2-0.7 screen door thinned the crowns' cast shadow)
