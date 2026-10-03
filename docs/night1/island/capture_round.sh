@@ -4,7 +4,7 @@
 #   <round>/<route>.mp4              1920x1080 60 fps (run_game.sh -movie: fixed 1/60 s step), H.264, <= 15 MB
 #   <round>/<route>_telemetry.csv    per-frame traversal telemetry (WebTravScript)
 #   <round>/stills/<name>_*.jpg      3840x2160 stills (JPEG q90 from the PNG)
-# usage: docs/night1/island/capture_round.sh <round dir> [run ...]      runs: warmup r1 r2 r3 r4 ab a1 (default: all but ab)
+# usage: docs/night1/island/capture_round.sh <round dir> [run ...]      runs: warmup r1 r2 r3 r4 r5 ab a1 (default: all but ab; r5 = the M2 avenue route from y 1010)
 # Heavy frames go to the island scratch (/Users/midir/sm2-n1/_scratch/island/capture); nothing heavy stays in the repo.
 set -uo pipefail
 ROUND="$(mkdir -p "$1" && cd "$1" && pwd)"; shift
@@ -17,7 +17,7 @@ GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
 # ISLAND_IN_LOCK=1: the caller already holds the GPU slot for the whole batch (gpu_slot.sh capture --label island -- capture_round.sh ...):
 # several runs in one hold instead of one queue cycle each (max hold 2400 s: ~2 movie routes).
 RUN() { if [ -n "${ISLAND_IN_LOCK:-}" ]; then "$UE_DIR/Scripts/run_game.sh" "$@"; else "$GPU" capture --label island -- "$UE_DIR/Scripts/run_game.sh" "$@"; fi; }
-WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warmup r1 r2 r3 r4 a1)
+WANT=("$@"); [ ${#WANT[@]} -eq 0 ] && WANT=(warmup r1 r2 r3 r4 r5 a1)
 want() { [[ " ${WANT[*]} " =~ " $1 " ]]; }
 mkdir -p "$TMP" "$ROUND/stills"
 # (island r02) never capture while this worktree's content is being rebuilt (rebuild_r02b.sh holds this flag; it removes it on exit)
@@ -69,6 +69,8 @@ want r1 && route r1_north_avenue r1_north_avenue.json
 want r2 && route r2_south_avenue r2_south_avenue.json
 want r3 && route r3_crosstown_east r3_crosstown_east.json
 want r4 && route r4_wallrun_roofs r4_wallrun_roofs.json
+# (island r03) r5: swing-held avenue route over the M2 tiles, starting at y ~1010 (stills 12 / 20 / 26 / 28 s are the road-band test frames)
+want r5 && route r5_m2_avenue r5_m2_avenue.json
 # (island r02) A/B for traversal's default: r1 with the instanced props / trees solid (-WHTravIsmSolid=1), telemetry only (fixed 1/60 s step,
 # so the sim is the movie run's; 960x540, no frames kept)
 if want ab; then
