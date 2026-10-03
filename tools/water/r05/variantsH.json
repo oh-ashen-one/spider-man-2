@@ -1,0 +1,7 @@
+{
+ "FB": {"BreathK": 0.0, "_views": ["river_low"]},
+ "FC": {"CBias": 1.4, "CovMax": 0.6, "_views": ["river_low"]},
+ "FD": {"CBias": 0.8, "CovMax": 0.75, "BreathK": 0.45, "_views": ["river_low"]},
+ "FE": {"CovMax": 0.8, "_views": ["river_low"]},
+ "FF": {"FoamTK": 60.0, "BreathK": 0.45, "_views": ["river_low"]}
+}

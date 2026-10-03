@@ -371,8 +371,11 @@ float cf = 0.0, wf = 0.0, farF = 0.0, dbgC = 32.0, dbgL = 99.0;   // dbgC / dbgL
     float cdm = craw * %(cmax).1f;
     // r04: Dbg 4 showed no contact coverage at the river_low bulkhead (the depth test finds no geometry under the water there, and the
     //      0.9 m/px map reads 1.7 to 2.6 m at the built wall face: its contact line wanders +-3 m): the map term reaches CBias m further
-    float ce0 = 0.12 + CBias; dbgC = cdm;
-    cf = max(cf, 1.0 - smoothstep(ce0, max(0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap, ce0 + 0.3), cdm));
+    // r05b: the band breathes with the swell (BreathK): a solid band wider than the gate's 60 px window cannot change between frames; the
+    //       lace has to fill the window and move (dolly gate 2: XOR / OR of the band masks at 4 fps, r05 build 0.197 min, CovMax 0.9 build 0.106)
+    float brt = 1.0 + BreathK * sin(t * BreathW + dot(p, float2(1.3, -0.9)) + 6.0 * fn);
+    float ce0 = (0.12 + CBias) * brt; dbgC = cdm;
+    cf = max(cf, 1.0 - smoothstep(ce0, max((0.45 + CBias * 0.5 + 1.5 * fn + 0.9 * lap) * brt, ce0 + 0.3), cdm));
     float foam = cf * (0.4 + 0.45 * lap) * smoothstep(0.25, 0.6, NZG(p / 3.1 + float2(-t * 0.02, t * 0.013), 1.0 / 3.1).r + 0.25 * lap) * FoamK;
     foam = max(foam, smoothstep(0.8, 1.0, crest) * smoothstep(0.55, 0.9, gust) * 0.2);
     // r05b: CovMax < 1 keeps the foam threshold above the noise floor (lace instead of a solid strip: the r05 band was one flat cream sheet
@@ -522,7 +525,7 @@ WP_MAPS = ('/Game/Maps/Manhattan_WP',)   # island piece's World Partition map(s)
 PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1.8, 'BendK': 0.3, 'RoughN': 0.06, 'SpecK': 2.0,
           # r04 (far field from swing height, foam normal, perf): see docs/night1/water/round-04/NOTES.md
           'LongK': 3.0, 'FarRough': 0.2, 'TopVarK': 0.1, 'GrazeRough': 0.0, 'FoamNK': 3.0, 'GlitDist': 4000.0, 'GlitFar': 8.0,
-          'CBias': 0.7, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
+          'CBias': 1.0, 'SunClampK': 1.0, 'MidK': 2.0, 'ChopFar': 0.0,
           # r05: GrazeRough 0 (r04's 0.42 grazing floor blurred the far-shore reflection at river level: merge-blocker; perf is not this
           # round's gate). CSel: which contact-map texture (0 = T_WaterContact as r04, 1 = B: half-res Interchange + NeverStream,
           # 2 = C: half-res legacy TextureFactory; Dbg 9 showed all three read correctly in-engine). ShoreCalm: the far-field long-wave
@@ -533,8 +536,8 @@ PARAMS = {'ChopK': 2.6, 'MicroK': 1.0, 'ScatK': 0.04, 'FarVarK': 0.1, 'FoamK': 1
           # r05b: FarMaxM / FarLowK cap the far contact line (r05's FarPx footprints painted a 40 px white bar over the far quay at river
           # level); FarEmisK: the far line also as emission (candidate); CovMax / FoamTK / LapW: lacy, drifting near foam (gate 2: XOR / OR
           # fell to 0.2 where the solid band was widest); RCalm / LFa / LFb: river-level calm and the LongK ramp; GSpread: glitter facet spread
-          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.9, 'FoamTK': 14.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
-          'GSpread': 0.22, 'DistFix': 1.0}
+          'FarMaxM': 16.0, 'FarLowK': 0.7, 'FarEmisK': 0.0, 'CovMax': 0.68, 'FoamTK': 28.0, 'LapW': 2.4, 'RCalm': 1.0, 'LFa': 100.0, 'LFb': 300.0,
+          'GSpread': 0.22, 'DistFix': 1.0, 'BreathK': 0.3, 'BreathW': 2.2}
 if os.environ.get('SM2_WATER_PARAMS'): PARAMS.update(json.loads(os.environ['SM2_WATER_PARAMS']))
 
 

@@ -57,3 +57,12 @@ Round 05 targets (Fable target after r04; `tools/water/water_spec.py all <round-
 - HOLDS: river_low near hp >= 12, mean Y <= 80; dolly autocorr(80 px) <= 0.10; S4 C14 5..35; river_sun sparkle width >= 50 %; harbour_sun_high
   glints >= 0.5 %, path columns >= 50 %, median sparkle <= 6 px; harbour_high hp sd >= 7.5 (blob rule: isolated round decal blobs only).
 - Not this round: perf (re-measure only under an attended-Mac perf lock), river_low p99.5 / S4 haze (sky), the S4 billboard (island).
+
+Round 05b additions (Sonnet 5.5 xhigh; `tools/water/water_spec.py all <round-dir>` prints them in the r05 block; 4K native frames):
+- GATE, harbour_high contact line: unchanged definition (`tools/water/water_spec.py line`), edge from the foam-free round-04 frame.
+- GUARD, river_low far-water strip (x 0-2300, y 880-1200): share of pixels with Y >= 170 must stay <= r03 (4.2 %) + 3 pp (`tools/water/farshore.py`; the r05
+  first build's far contact line painted a flat white bar there: 13.3 %).
+- The seawall band (crop) is now lacy foam (CovMax / FoamTK / LapW), not a solid strip; the gate numbers are unchanged (>= 12 px on >= 60 % of rows,
+  XOR / OR >= 0.2 between every pair of 4 fps dolly samples).
+- Not scored: harbour_sun_high R-B <= 70 (the atmosphere's forward in-scatter, look piece).
+
