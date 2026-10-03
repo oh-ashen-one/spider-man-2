@@ -89,6 +89,11 @@ def preset_params(P):
     o['moonc.AtmosphereSunDiskColorScale'] = [1.0, 1.0, 1.0, 1.0]
     o['moonc.CloudScatteredLuminanceScale'] = [1.0, 1.0, 1.0, 1.0]
     o['moonc.VolumetricScatteringIntensity'] = 1.0   # (round 07) the moon's volumetric-fog light (with the fog on the sky pixels it lit a glowing veil around the moon)
+    # (round 08) surface-only light for the twilight city: the sky light's volumetric-fog scattering (keyed down where sky.Intensity is raised, so the fog keeps its light) and the
+    # bilateral local exposure (engine defaults = off; a shadow contrast < 1 lifts only the regions darker than the exposure's middle grey: the city under a bright twilight sky)
+    o['skyc.VolumetricScatteringIntensity'] = 1.0
+    o['pp.LocalExposureShadowContrastScale'] = 1.0; o['pp.LocalExposureHighlightContrastScale'] = 1.0; o['pp.LocalExposureBlurredLuminanceBlend'] = 0.6
+    o['pp.LocalExposureMiddleGreyBias'] = 0.0
     return {k: vec(v) for k, v in o.items()}
 
 

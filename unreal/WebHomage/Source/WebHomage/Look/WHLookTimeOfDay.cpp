@@ -355,6 +355,8 @@ void AWHLookTimeOfDay::Apply(const TMap<FName, FVector4f>& V, float SunElev, flo
 		}
 		else if (T == TEXT("moonc") && MoonL.IsValid()) { if (SetProp(MoonL.Get(), MoonL->GetClass(), MoonL.Get(), Pn, It.Value, N)) MoonL->MarkRenderStateDirty(); }   // (round 06) e.g. moonc.LightSourceAngle (disk size), moonc.AtmosphereSunDiskColorScale, moonc.CloudScatteredLuminanceScale
 		else if (T == TEXT("sunc") && SunL.IsValid()) { if (SetProp(SunL.Get(), SunL->GetClass(), SunL.Get(), Pn, It.Value, N)) SunL->MarkRenderStateDirty(); }
+		// (round 08) sky light component properties, e.g. skyc.VolumetricScatteringIntensity: the twilight city is lit by a stronger sky light while the volumetric fog keeps the light it had
+		else if (T == TEXT("skyc") && SkyL.IsValid()) { if (SetProp(SkyL.Get(), SkyL->GetClass(), SkyL.Get(), Pn, It.Value, N)) SkyL->MarkRenderStateDirty(); }
 		else if (T == TEXT("cloudc") && Cloud.IsValid()) bCloud |= SetProp(Cloud.Get(), Cloud->GetClass(), Cloud.Get(), Pn, It.Value, N);
 		else if (T == TEXT("cloud") && CloudMid) CloudMid->SetScalarParameterValue(Pn, It.Value.X);
 		else if (T == TEXT("cloudv") && CloudMid) CloudMid->SetVectorParameterValue(Pn, FLinearColor(It.Value.X, It.Value.Y, It.Value.Z, It.Value.W));
