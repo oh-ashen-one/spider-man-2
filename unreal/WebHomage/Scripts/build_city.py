@@ -199,7 +199,12 @@ float dst = length(wpos - cam) * 0.01;
 float boost = saturate((dst - 25.0) / 55.0) * 0.55;
 float far = boost / 0.55;
 c *= lerp(1.0, 0.55, far);
-Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
+// (island r04, critic r03: the chase camera inside street-tree crowns, 62-78 % of the frame foliage on r1 / r4 / r5) near-lens fade: leaf cards within
+// FOLIAGE_NEAR (3.5 m) of the camera are cut, 3.5 .. 8.5 m dithered (4 cm world-space hash, TSR resolves it), beyond that untouched. The shadow
+// passes use their own view origin, so the crowns keep their shadows.
+float nh = frac(sin(dot(floor(wpos * 0.25), float3(12.9898, 78.233, 37.719))) * 43758.5453);
+float keepN = saturate((dst - 3.5) / 5.0);
+Op = ((t.a + boost) > 0.5 && nh < keepN) ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
 // (r09) crowns inside the canyon shade: a share (0.35) of the wall fill, so the foliage keeps its own lit / shaded contrast
 Emis = CityShadeFill(c, float3(0.0, 0.0, 1.0), wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill * 0.35, nightk, CityShadeW(tSunH, tSunHSampler, wpos, float3(0.0, 0.0, 1.0), ResolvedView.DirectionalLightDirection.xyz));
 return c;''',
