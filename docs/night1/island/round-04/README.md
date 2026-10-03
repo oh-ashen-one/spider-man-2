@@ -41,3 +41,42 @@ on the round-03 map), checker `tools/export/island_fe_check.py` (from t = 2.4 s)
 | r04a: landings solid to the wall, railings / stairs visual-only | 3 (loops 2) | 2.4-4.4 s | x -235.01, z 34.0 | 4.9 s |
 | V1 diagnostic: whole escape visual-only | 2 (belt course 34.2 m, then cornice) | none | x -234.5, z 37.4 | 3.9 s |
 | **r04 final: landings solid from 0.40 m off the wall** | **0** | **none** | **x -218.1, z 46.1 (swinging east)** | **2.7 s (wall kick + release)** |
+
+## 2. WHBox rule 5: drawn building mass without a box (raw hollow guard)
+Round 03's raw (un-eroded) hollow went up from 16.72 % (M1) to 17.68 % (whole island). Of the 17.68 %, 13.26 % are 1-cell facade rims
+(a box within one cell reaches the drawn height: raster rounding of facade edges) and 0.77 % 2-cell rims; **3.64 %** were real: drawn
+mass with no box at all (1.27 %) or a box far below the drawn top (2.37 %) — the largest patches are the west-side pier sheds
+(11-15 m, 200 m x 40 m; collision kind `pier` is not a kept box kind), stepped crowns, buildings whose solid is not a kept kind.
+`tools/export/island_boxes.py` rule 5 (`fill_hollow`): those cells (not within 2 cells of a box that reaches their height), in 8-connected
+patches >= 16 m2, are covered by maximal rectangles (min 2 x 2 m) with top = the 10th percentile of the drawn top in the rectangle,
+bottom 0, up to 3 passes for stepped roofs: **+2,574 boxes (175,671 total), 51,353 m2**.
+
+| audit (`tools/export/island_coll_audit.py`, whole island x +-1024 / y +-3584 m, 4.07 M building cells) | r02 (M1) | r03 | **r04** |
+|---|---|---|---|
+| I5 phantom (interior) | 0.26 % | 0.25 % | **0.25 %** |
+| I5 hollow (interior) | 0.22 % | 0.37 % | **0.36 %** |
+| raw phantom | 1.16 % | 1.35 % | **1.35 %** |
+| raw hollow | 16.72 % | 17.68 % | **16.43 %** |
+`coll_audit.json`, `coll_audit_map.png`.
+
+## 3. Foliage: the lens out of street-tree crowns (guard: never > 40 % of the frame on r1 / r4 / r5)
+`M_CityLeaves` (build_city.py `make_leaves`): leaf cards within 3.5 m of the camera are cut and dithered out up to 8.5 m (4 cm world-space
+hash; shadow passes use their own view origin, so the crowns keep their shadows). Checker `tools/export/island_foliage_check.py`: share of
+green-dominant pixels per frame at 4 fps; on the round-03 movies it reads the critic's numbers (r1 t = 17.25 s 73.7 % vs critic 72 %,
+t = 23.25 s 72.3 % vs 75 %; r4 t = 15.5 s 79.9 % vs 62 %; r5 t = 6.75 s 79.4 % vs 78 %, t = 25.25 s 77.3 % vs 68 %): `foliage_r03_*.json`.
+
+## 4. Ropes through crowns
+`tools/export/island_rope_canopy.py`: rope segment (hand -> anchor) per frame against the 38,818 street-tree crowns of the build (ellipsoids
+from the ez_street leaf protos, inner 80 %). Round-03 captures: r1 8 frames (t 17.2, 23.2 s), r4 0, r5 63 frames (incl. 10.97 and 25.3 s, the
+critic's 10.2 / 26.8 s). The island cannot keep anchors off crowns without making crowns solids (they would become floors / web targets):
+`../REQUEST-traversal-r04.md` §1.
+
+## 5. The merged traversal on the island routes (telemetry sims, round-03 map + merged C++)
+| route | first deviation from the round-03 capture | note |
+|---|---|---|
+| r1 | t = 3.95 s (air release) | traversal r25 / r26 (release / camera changes) |
+| r3 | t = 10.8 s | before that identical (incl. the fire-escape loop) |
+| r4 | t = 2.57 s (wall run) | |
+| r5 | t = 1.68 s (air release) | **r24 altitude chain** (`AltChain = 1`, default since the merge): releases solved for a 33 m apex, ~1.5-5.5 s between webs. Swing pass lines on the merge-only map: max re-web gap **5.55 s**, 33 % of gaps <= 0.5 s, 744 m, ends y 1528 (FAIL). The same route with the script tune `AltChain=0` (`scripts/r5_m2_avenue_alt0.json`, the r23 chain) on the same map: **max gap 0.30 s, 100 % <= 0.5 s, 0 ground frames, 0 webs on nothing, 0 fall / stuck / mid-air / wall-air, 0 overlap, 1,481.6 m** (= round 03) |
+So r1 / r4 frames differ from round 03 from the first seconds because of the merge alone; round-04 r1 / r4 are compared with these
+merge-only sims (`sim_merge/*`, section 7) to separate the island's own changes. Ropes through crowns on the merge-only sims: r1 0, r4 0, r5 0 frames.

@@ -72,6 +72,8 @@ want r3 && route r3_crosstown_east r3_crosstown_east.json
 want r4 && route r4_wallrun_roofs r4_wallrun_roofs.json
 # (island r03) r5: swing-held avenue route over the M2 tiles, starting at y ~1010 (stills 12 / 20 / 26 / 28 s are the road-band test frames)
 want r5 && route r5_m2_avenue r5_m2_avenue.json
+# (island r04) r5b: the same route with the traversal tune AltChain=0 (the r23 swing chain without the r24 altitude releases), for the swing / re-web pass lines
+want r5b && route r5_m2_avenue_alt0 r5_m2_avenue_alt0.json
 # (island r02) A/B for traversal's default: r1 with the instanced props / trees solid (-WHTravIsmSolid=1), telemetry only (fixed 1/60 s step,
 # so the sim is the movie run's; 960x540, no frames kept)
 if want ab; then

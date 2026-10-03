@@ -8,7 +8,7 @@ R="$HERE/round-04"; GPU=/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh
 T0=${CAP_T0:-$(date +%s)}
 done_r() { local f="$R/$1.mp4"; [ -f "$f" ] && [ "$(stat -f %m "$f")" -ge "$T0" ]; }
 todo() { local out=(); [ -n "${WARM-1}" ] && [ ! -f "$R/.warm_done" ] && out+=(warmup)
-  for p in r1:r1_north_avenue r2:r2_south_avenue r3:r3_crosstown_east r4:r4_wallrun_roofs r5:r5_m2_avenue; do done_r "${p#*:}" || out+=("${p%%:*}"); done
+  for p in r1:r1_north_avenue r2:r2_south_avenue r3:r3_crosstown_east r4:r4_wallrun_roofs r5:r5_m2_avenue r5b:r5_m2_avenue_alt0; do done_r "${p#*:}" || out+=("${p%%:*}"); done
   echo "${out[@]:-}"; }
 for k in 1 2 3 4 5 6 7 8; do
   T=$(todo); [ -z "$T" ] && break
