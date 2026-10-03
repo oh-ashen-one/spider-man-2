@@ -15,7 +15,13 @@
 #      program ends / is caught is an open shape turning <= 300 deg/s)
 import csv, math, sys, os, collections
 
-OPEN = {'Layout', 'Swan', 'Pencil', 'Straddle', 'Throne', 'Reach', 'Kickout'}
+#   r02: C  catch rotation (critic r01): the rendered chest frame (pose log chest_f / chest_u) turns <= 250 deg/s in every 0.1 s window
+#      from the trick end to end + 0.4 s (windows start 3 frames before the last trick row, as the critic's r01 measure, up to +0.4 s)
+#      G1f layout knees / hips >= 170 deg in EVERY frame with layout legs; pencil knee median >= 170; pike hip median <= 90 with knee
+#      p10 >= 165; exit poses (shape at the last trick row) more than one
+# Catch* = the swing node's catch poses blended in over a program's last 0.3 s (WebTravFlips.cpp r02): an open, extended shape
+OPEN = {'Layout', 'Swan', 'Pencil', 'Straddle', 'Throne', 'Reach', 'Kickout', 'CatchLow', 'CatchLowL', 'CatchBank', 'CatchBankL'}
+CATCH_MAX = 250.0
 
 
 def f(x, d=float('nan')):
@@ -215,7 +221,87 @@ def main(tel, pose=None):
         for g in g4: P('   G4 %-16s %.2f s: last 0.15 s open %s, rate max %.0f deg/s' % g)
         if g4:
             P('G4 %s open-out: %d of %d instances end in an open shape at <= 300 deg/s' % ('PASS' if all(g[2] and g[3] <= 300 for g in g4) else 'FAIL', sum(1 for g in g4 if g[2] and g[3] <= 300), len(g4)))
+        out.extend(catch_lines(T, J, I, b))
     return '\n'.join(out)
+
+
+def chest_frame(j):
+    """rendered chest (spine2) orientation as 3 orthonormal rows (pose log chest_f = bone Z axis, chest_u = bone Y axis)"""
+    fw = [f(j['chest_fx']), f(j['chest_fy']), f(j['chest_fz'])]; up = [f(j['chest_ux']), f(j['chest_uy']), f(j['chest_uz'])]
+    n = math.sqrt(sum(x * x for x in fw)); fw = [x / n for x in fw]
+    d = sum(x * y for x, y in zip(up, fw)); up = [u - d * x for u, x in zip(up, fw)]
+    n = math.sqrt(sum(x * x for x in up)); up = [x / n for x in up]
+    sd = [fw[1] * up[2] - fw[2] * up[1], fw[2] * up[0] - fw[0] * up[2], fw[0] * up[1] - fw[1] * up[0]]
+    return (fw, up, sd)
+
+
+def rot_deg(A, B):
+    """angle (deg) of the rotation between two orthonormal frames"""
+    tr = sum(sum(a * b for a, b in zip(ra, rb)) for ra, rb in zip(A, B))
+    return math.degrees(math.acos(max(-1.0, min(1.0, (tr - 1) / 2))))
+
+
+def catch_lines(T, J, I, b):
+    out = []
+    P = out.append
+    t = [f(r['t']) for r in T]
+    # ---- C: chest rotation after every trick end (0.1 s = 6-frame windows, starting 3 frames before the last trick row up to +0.4 s)
+    res = []
+    for c in I:
+        e = c['rows'][-1][0]
+        ws, wpf = [], []
+        for k in range(e - 3, e + 25):
+            if k < 0 or k + 6 >= len(T) or not J[k] or not J[k + 6] or t[k + 6] <= t[k]: continue
+            ws.append((rot_deg(chest_frame(J[k]), chest_frame(J[k + 6])) / (t[k + 6] - t[k]), t[k]))
+        for k in range(e - 3, e + 30):
+            if k < 0 or k + 1 >= len(T) or not J[k] or not J[k + 1] or t[k + 1] <= t[k]: continue
+            wpf.append(rot_deg(chest_frame(J[k]), chest_frame(J[k + 1])) / (t[k + 1] - t[k]))
+        if not ws: continue
+        m = max(ws)
+        nxt = T[e + 1] if e + 1 < len(T) else {}
+        # the windows that start at / after the trick end (the brief's literal "end .. end + 0.4 s")
+        m0 = max((w for w in ws if w[1] >= t[e] - 1e-6), default=(0.0, 0.0))
+        res.append((c['prog'], t[e], m[0], m[1], m0[0], max(wpf) if wpf else 0.0, nxt.get('mode', ''), T[e].get('flip_shape', '')))
+    for r in res:
+        P('   C  %-16s end %6.2f s: max 0.1 s chest rate %4.0f deg/s at %6.2f (windows from the end: %4.0f), max per-frame %5.0f, next %s, exit shape %s' % r)
+    if res:
+        bad = [r for r in res if r[2] > CATCH_MAX]
+        P('C  %s catch rotation: %d of %d trick ends <= %.0f deg/s in every 0.1 s window (end - 3 frames .. end + 0.4 s); worst %.0f deg/s (%s %.2f s), median of maxima %.0f; per-frame max %.0f' % (
+            'PASS' if not bad else 'FAIL', len(res) - len(bad), len(res), CATCH_MAX, max(r[2] for r in res), max(res, key=lambda r: r[2])[0], max(res, key=lambda r: r[2])[1],
+            sorted(r[2] for r in res)[len(res) // 2], max(r[5] for r in res)))
+        ex = collections.Counter(r[7] for r in res)
+        P('X  exit poses (shape at the last trick row): %s -> %s' % (', '.join('%s %d' % kv for kv in ex.most_common()), 'PASS' if len(ex) > 1 else 'FAIL'))
+    # ---- G1f / pencil / pike, every frame (legs shape column)
+    def knee_hip(j):
+        H, S2 = b(j, 'hips'), b(j, 'spine2'); ks, hs = [], []
+        for sd in 'LR':
+            Th, Kn, Ft = b(j, 'thigh_' + sd), b(j, 'shin_' + sd), b(j, 'foot_' + sd)
+            hs.append(180 - ang(sub(S2, H), sub(Th, Kn))); ks.append(ang(sub(Th, Kn), sub(Ft, Kn)))
+        return ks, hs
+    def pct(v, q): v = sorted(v); return v[min(len(v) - 1, int(q * len(v)))] if v else float('nan')
+    lay_k, lay_h, pen_k, pik_h, pik_k = [], [], [], [], []
+    for c in I:
+        for i, ft in c['rows']:
+            r, j = T[i], J[i]
+            if not j: continue
+            legs, up = r.get('flip_shape_legs', ''), r.get('flip_shape', '')
+            if legs == 'Layout':
+                ks, hs = knee_hip(j); lay_k += ks
+                if up == 'Layout': lay_h += hs
+            elif legs == 'Pencil':
+                ks, hs = knee_hip(j); pen_k += ks
+            if legs == 'Pike' and up == 'Pike':
+                ks, hs = knee_hip(j); pik_k += ks; pik_h += hs
+    if lay_k:
+        bk = sum(1 for x in lay_k if x < 170); bh = sum(1 for x in lay_h if x < 170)
+        P('G1f %s layout every frame: knees < 170 deg in %d of %d leg samples (min %.1f), hips < 170 in %d of %d (min %.1f)' % (
+            'PASS' if bk == 0 and bh == 0 else 'FAIL', bk, len(lay_k), min(lay_k), bh, len(lay_h), min(lay_h) if lay_h else float('nan')))
+    if pen_k:
+        P('PEN %s pencil knee median %.1f deg (>= 170), p10 %.1f, %d leg samples' % ('PASS' if pct(pen_k, 0.5) >= 170 else 'FAIL', pct(pen_k, 0.5), pct(pen_k, 0.1), len(pen_k)))
+    if pik_h:
+        ok = pct(pik_h, 0.5) <= 90 and pct(pik_k, 0.1) >= 165
+        P('PIK %s pike hip median %.1f deg (<= 90), knee p10 %.1f (>= 165), %d samples' % ('PASS' if ok else 'FAIL', pct(pik_h, 0.5), pct(pik_k, 0.1), len(pik_h)))
+    return out
 
 
 if __name__ == '__main__':

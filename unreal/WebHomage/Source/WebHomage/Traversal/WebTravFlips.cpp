@@ -180,11 +180,23 @@ namespace WebFlips
 	const TCHAR* ShapeClip(EWebFlipShape S)
 	{
 		static const TCHAR* C[] = { TEXT("flipTuck"), TEXT("flipPike"), TEXT("flipLayout"), TEXT("flipSwan"), TEXT("flipPencil"),
-			TEXT("flipStraddle"), TEXT("flipThrone"), TEXT("flipTwist"), TEXT("flipReach"), TEXT("flipKickout") };
+			TEXT("flipStraddle"), TEXT("flipThrone"), TEXT("flipTwist"), TEXT("flipReach"), TEXT("flipKickout"),
+			// Tricks C r02: the swing node's catch poses (hero clips loaded from the same folder as the flip shapes)
+			TEXT("swingLow"), TEXT("swingLowL"), TEXT("swingCornerBank"), TEXT("swingCornerBankL") };
 		static_assert(UE_ARRAY_COUNT(C) == int32(EWebFlipShape::Num), "one clip per shape");
 		return C[FMath::Clamp(int32(S), 0, int32(EWebFlipShape::Num) - 1)];
 	}
-	const TCHAR* ShapeName(EWebFlipShape S) { return ShapeClip(S) + 4; }
+	const TCHAR* ShapeName(EWebFlipShape S)
+	{
+		switch (S)
+		{
+		case EWebFlipShape::CatchLow: return TEXT("CatchLow");
+		case EWebFlipShape::CatchLowL: return TEXT("CatchLowL");
+		case EWebFlipShape::CatchBank: return TEXT("CatchBank");
+		case EWebFlipShape::CatchBankL: return TEXT("CatchBankL");
+		default: return ShapeClip(S) + 4;
+		}
+	}
 
 	// round 14: rendered hips->head axis minus the program pitch while each shape is held (probe f4, 60 fps; + = head forward)
 	float ShapeAxisDeg(EWebFlipShape S)
@@ -325,7 +337,8 @@ namespace WebFlips
 		return N;
 	}
 
-	FWebFlipPose Sample(const FWebFlipProgram& P, float T)
+	// the program alone (round 11-r01 behaviour); Sample() adds the r02 catch lean on top
+	static FWebFlipPose SampleBase(const FWebFlipProgram& P, float T)
 	{
 		FWebFlipPose O;
 		const float Dur = P.Dur();
@@ -364,6 +377,253 @@ namespace WebFlips
 			if (OvU > 0.f && O.W <= 0.f) O.HoldA = O.HoldB = Pong(OvU);
 			if (OvL > 0.f && O.LW <= 0.f) O.LHoldA = O.LHoldB = Pong(OvL);
 		}
+		return O;
+	}
+
+	// ---- Tricks C round 2: catch lean ------------------------------------------------------------------------------------------------
+	// Critic r01 ("every catch snaps"): after a trick the chest turned 300-921 deg/s for 0.1-0.2 s, because the web catch swaps the upright
+	// air frame for the swing frame (body up along the rope, chest along the projected velocity: WebTraversalComponent::Orient, slerp 14/s),
+	// the flip offset springs back (0.07 s, WebTravCharacter::PoseFigure) and the anim swaps the reach for the swing pose (0.24 s). The catch
+	// lean starts that change inside the program. From 0.3-0.6 s before the program's catch time it predicts the catch (the traversal's own
+	// anchor search run from the predicted body position at the catch; the swing frame that anchor and StartSwing's velocity projection give)
+	// -- or, with no web in reach, the streamlined air frame the body takes after the program -- fits that frame relative to the current body
+	// frame as a pitch about the lateral axis + a twist about the long axis (the two channels PoseFigure applies), and lerps the program's
+	// rotation into it (smoothstep, peak <= ~250 deg/s). The shapes blend from the program's open shape into the swing node's starting pose
+	// (swingLow + its corner-bank share, hand of the predicted anchor) over the last 0.3 s. At the catch the body frame then springs to where
+	// the hero already is while the flip offset springs back by the same amount (14/s vs 14.3/s); only the rope's sideways lean (a roll,
+	// which neither channel can express) is left to the catch itself.
+	bool bCatchLean = true;
+	namespace
+	{
+		constexpr float CatchWinMin = 0.3f, CatchWinMax = 0.6f, CatchShapeWin = 0.3f, CatchRate = 250.f, CatchLook = 0.75f, CatchClipLen = 1.2f;
+		struct FCatchLean
+		{
+			uint64 Frame = ~0ull;
+			const FWebFlipProgram* P = nullptr; int32 Ver = -99; float Side = 1.f;
+			bool bTarget = false, bOn = false, bSwing = false, bRight = true, bShape = false, bShapeRight = true;
+			float Ts = 0.f, Te = 0.f;                  // root window [Ts, Te] (program time); the lean weight is 1 from Te on
+			float Beta = 0.f, Gamma = 0.f, Rho = 0.f;  // smoothed lean (deg): pitch about the lateral axis (+ head forward), twist about the long axis, sideways rest
+			float BankW = 0.f;
+			FVector Anchor = FVector::ZeroVector;
+			double LastWT = -1.0; FVector LastVel = FVector::ZeroVector;
+		};
+		FCatchLean GC;
+
+		const UWebTraversalComponent* HeroTrav(UWorld** OutW = nullptr)
+		{
+			if (OutW) *OutW = nullptr;
+			if (!GEngine) return nullptr;
+			UWorld* W = nullptr;
+			for (const FWorldContext& C : GEngine->GetWorldContexts())
+			{
+				if ((C.WorldType == EWorldType::Game || C.WorldType == EWorldType::PIE) && C.World()) { W = C.World(); break; }
+			}
+			if (OutW) *OutW = W;
+			APlayerController* PC = W ? W->GetFirstPlayerController() : nullptr;
+			ACharacter* Ch = PC ? Cast<ACharacter>(PC->GetPawn()) : nullptr;
+			return Ch ? Ch->FindComponentByClass<UWebTraversalComponent>() : nullptr;
+		}
+		FVector RotZv(const FVector& V, double A) { const double C = FMath::Cos(A), S = FMath::Sin(A); return FVector(V.X * C - V.Y * S, V.X * S + V.Y * C, V.Z); }
+
+		// the frame the body takes right after the program (world space): the swing start if a web will catch, else the air frame
+		bool PredictFrame(const UWebTraversalComponent* Tr, const FWebFlipProgram& P, float T, const FVector& Acc, FQuat& OutW, bool& bSwing, bool& bRight, FVector& OutAnchor)
+		{
+			using UT = UWebTraversalComponent;
+			const FWebTravAnim& A = Tr->Anim;
+			const FVector Pos = Tr->PosM(), Vel = Tr->VelM(), ZUp(0, 0, 1);
+			const float Tc = P.CatchT() - 0.02f;
+			const double Dt = FMath::Max(0.0, double(Tc - T));
+			const FVector Pc = Pos + Vel * Dt + 0.5 * Acc * Dt * Dt, Vc = Vel + Acc * Dt;
+			FVector HV(Vc.X, Vc.Y, 0.0);
+			if (HV.Size() < 1.0) return false;
+			HV.Normalize();
+			bSwing = false;
+			FVector AP = FVector::ZeroVector;
+			const FWebTravStrand& St = Tr->Strands[0];
+			if (St.bActive && St.ReleaseT < 0.f && T >= Tc - 0.05f) { AP = St.Anchor; bSwing = true; } // the web already shot (pending swing)
+			else if (Tr->Anchors.IsValid())
+			{
+				// the search TryStartSwing runs at the catch: the travel heading leaned AnchorAltDeg away from the previous web's side
+				const double SideW = A.Swing.bRightHand ? 1.0 : -1.0;
+				const FVector FwdS = RotZv(HV, -SideW * FMath::DegreesToRadians(double(Tr->AnchorAltDeg)));
+				const double Fl = Tr->TravWorld.GroundHeight(Pc.X, Pc.Y, Pc.Z - UT::H + 0.1 - 0.5);
+				FTravAnchor An;
+				if (Tr->Anchors->Find(Pc, FwdS, nullptr, Vc.Size(), Fl, An))
+				{
+					const bool bBehind = FVector(Vc.X, Vc.Y, 0.0).Size() > 6.0 && FVector::DotProduct(FVector(An.Point.X - Pc.X, An.Point.Y - Pc.Y, 0.0), HV) < 2.0;
+					if (An.Point.Z >= Pc.Z + double(Tr->AnchorMinAbove) && !bBehind) { AP = An.Point; bSwing = true; }
+				}
+			}
+			if (bSwing)
+			{
+				const FVector Rt(-HV.Y, HV.X, 0.0);
+				const double Lat = FVector::DotProduct(AP - Pc, Rt);
+				bRight = FMath::Abs(Lat) > 2.0 ? Lat > 0.0 : !A.Swing.bRightHand;
+				// StartSwing's virtual pivot at the expected arc depth (altitude band / sky band / shallow-deep middle; the per-swing jitter is unknown)
+				const double AheadA = FMath::Max(FVector::DotProduct(AP - Pc, HV), 10.0);
+				double FMaxD = -1e9;
+				for (const double K : { 0.0, 0.5, 1.0, 1.4 })
+				{
+					const FVector Q = Pc + HV * (AheadA * K);
+					FMaxD = FMath::Max(FMaxD, Tr->TravWorld.StreetHeight(Q.X, Q.Y, Pc.Z - 0.5));
+				}
+				const double HEntry = Pc.Z - UT::H - FMaxD;
+				const bool bSky = Tr->IsSkyLaunch();
+				double BottomFeet;
+				if (bSky) BottomFeet = double(Tr->ArcLowMin) + 0.5 * double(Tr->SkyArcExtra);
+				else if (Tr->AltChain > 0.f && Tr->bAltArcNext && HEntry >= double(Tr->AltEntryMin)) BottomFeet = 0.5 * double(Tr->AltLowLo + Tr->AltLowHi);
+				else BottomFeet = FMath::Max(double(Tr->ArcLowMin), HEntry - 0.5 * double(Tr->ArcDropShallow + Tr->ArcDropDeep) - 0.75);
+				double DZ = FMath::Max(AP.Z - Pc.Z, double(Tr->MinPivotRise));
+				const double BottomZ = FMaxD + BottomFeet + UT::H;
+				const double RopeCap = bSky ? double(Tr->SkyRopeMax) : double(Tr->MaxArcRope) * (1.0 - 0.5 * double(Tr->RopeCapJitter));
+				if (Pc.Z - BottomZ + DZ > RopeCap) DZ = FMath::Max(double(Tr->MinPivotRise), RopeCap - (Pc.Z - BottomZ));
+				const double L = FMath::Clamp(Pc.Z + DZ - BottomZ, DZ + 3.0, FMath::Max(RopeCap, DZ + 3.0));
+				const double DH = FMath::Min(FMath::Sqrt(FMath::Max(L * L - DZ * DZ, 16.0)), bSky ? double(Tr->SkyRopeMax) : double(Tr->MaxPivotAhead));
+				const FVector Piv = Tr->PivotLateralKeep >= 1.f ? AP : Pc + HV * DH + Rt * (Lat * double(Tr->PivotLateralKeep)) + ZUp * DZ;
+				const FVector RD = (Piv - Pc).GetSafeNormal();
+				FVector Tan = Vc - RD * FVector::DotProduct(Vc, RD);
+				if (Tan.SizeSquared() < 0.01) Tan = HV;
+				const FVector Up = ((AP - Pc).GetSafeNormal() + ZUp * 0.12).GetSafeNormal();
+				const FVector F2 = Tan - Up * FVector::DotProduct(Tan, Up);
+				if (F2.SizeSquared() < 1e-6) return false;
+				OutW = FRotationMatrix::MakeFromZX(Up, F2).ToQuat();
+				OutAnchor = AP;
+				return true;
+			}
+			// no web in reach: the air frame after the program (Orient, Air, non-trick sub: the streamlined lean along the flight path at speed)
+			const double De = FMath::Max(0.0, double(P.Dur() + Tr->FlipReachHold - T));
+			const FVector Ve = Vel + Acc * De;
+			const double Sp = Ve.Size(), HVl = FVector(Ve.X, Ve.Y, 0.0).Size();
+			double Pitch = FMath::Clamp(-Ve.Z * 0.008, -0.2, 0.25);
+			const double K = FMath::Clamp((-Ve.Z - 4.0) / 14.0, 0.0, 1.0) * FMath::Clamp((Sp - 14.0) / 16.0, 0.0, 1.0);
+			Pitch = FMath::Lerp(Pitch, 0.85, K);
+			const double KA = FMath::Clamp((Sp - double(Tr->AirAlignV0)) / FMath::Max(1.0, double(Tr->AirAlignV1 - Tr->AirAlignV0)), 0.0, 1.0);
+			if (KA > 0.0 && HVl > 1.5) Pitch = FMath::Lerp(Pitch, FMath::Min(FMath::Acos(FMath::Clamp(Ve.Z / FMath::Max(Sp, 1e-3), -1.0, 1.0)), 2.6), KA);
+			const FVector HVe = HVl > 0.1 ? FVector(Ve.X / HVl, Ve.Y / HVl, 0.0) : HV;
+			OutW = FRotationMatrix::MakeFromZX(ZUp, HVe).ToQuat() * FQuat(FVector(0, 1, 0), Pitch);
+			bRight = A.Swing.bRightHand;
+			OutAnchor = FVector::ZeroVector;
+			return true;
+		}
+
+		// once per engine frame: follow the program the hero plays, predict its catch, open the window
+		void UpdateCatch()
+		{
+			if (GC.Frame == GFrameCounter) return;
+			GC.Frame = GFrameCounter;
+			static const bool bParsed = []() { int32 V = 1; if (FParse::Value(FCommandLine::Get(), TEXT("-WHTrickCatch="), V)) bCatchLean = V != 0; return true; }();
+			(void)bParsed;
+			UWorld* W = nullptr;
+			const UWebTraversalComponent* Tr = bCatchLean ? HeroTrav(&W) : nullptr;
+			if (!Tr || !W) { GC.P = nullptr; GC.bOn = false; return; }
+			const FWebTravAnim& A = Tr->Anim;
+			// body acceleration (frame-to-frame velocity change): the flip's float gravity is the traversal's
+			const double WT = W->GetTimeSeconds();
+			FVector Acc(0, 0, -UWebTraversalComponent::G);
+			if (GC.LastWT >= 0.0 && WT - GC.LastWT > 1e-4 && WT - GC.LastWT < 0.1) Acc = (Tr->VelM() - GC.LastVel) / (WT - GC.LastWT);
+			const double DtF = GC.LastWT >= 0.0 ? FMath::Clamp(WT - GC.LastWT, 0.0, 0.1) : 1.0 / 60.0;
+			GC.LastWT = WT; GC.LastVel = Tr->VelM();
+			static const FName NTrick(TEXT("trick"));
+			const FWebFlipProgram* P = (A.Mode == EWebTravMode::Air && A.Sub == NTrick && !A.Trick.IsNone()) ? Find(A.Trick) : nullptr;
+			if (!P || P->Boost <= 0.f || !P->Segs.Num()) { GC.P = nullptr; GC.bOn = false; GC.bTarget = false; return; }
+			if (GC.P != P || GC.Ver != P->Ver)
+			{
+				const double LW = GC.LastWT; const FVector LV = GC.LastVel;
+				GC = FCatchLean();
+				GC.Frame = GFrameCounter; GC.LastWT = LW; GC.LastVel = LV; GC.P = P; GC.Ver = P->Ver;
+			}
+			GC.Side = A.TrickSide < 0.f ? -1.f : 1.f;
+			const float T = A.T, Tc = P->CatchT() - 0.02f;
+			if (T < Tc - CatchLook) return;
+			FQuat Wq; bool bSwing = false, bRight = true; FVector AP;
+			if (!PredictFrame(Tr, *P, T, Acc, Wq, bSwing, bRight, AP)) return;
+			// fit: D = body^-1 * target ~= Ry(Beta) * Rz(Gamma) [* Rx(Rho), the rest]
+			const FQuat D = (A.BodyQ.Inverse() * Wq).GetNormalized();
+			const FVector U = D.RotateVector(FVector(0, 0, 1));
+			const float Beta = FMath::RadiansToDegrees(FMath::Atan2(U.X, U.Z));
+			const FQuat R2 = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(Beta)).Inverse() * D;
+			const float Gamma = FMath::UnwindDegrees(FMath::RadiansToDegrees(2.f * FMath::Atan2(float(R2.Z), float(R2.W))));
+			const FQuat Tw = FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(Gamma));
+			const FQuat Sw = R2 * Tw.Inverse();
+			const float Rho = FMath::UnwindDegrees(FMath::RadiansToDegrees(2.f * FMath::Atan2(float(Sw.X), float(Sw.W))));
+			if (!GC.bTarget) { GC.Beta = Beta; GC.Gamma = Gamma; GC.Rho = Rho; GC.bTarget = true; }
+			else
+			{
+				const float K = 1.f - FMath::Exp(-float(DtF) * 14.f);
+				GC.Beta += K * FMath::UnwindDegrees(Beta - GC.Beta);
+				GC.Gamma = FMath::UnwindDegrees(GC.Gamma + K * FMath::UnwindDegrees(Gamma - GC.Gamma));
+				GC.Rho += K * FMath::UnwindDegrees(Rho - GC.Rho);
+			}
+			GC.bSwing = bSwing; GC.bRight = bRight; GC.Anchor = AP;
+			GC.BankW = bSwing ? 0.85f * Smooth(FMath::Abs(A.Swing.Bank)) : 0.f;
+			if (!GC.bOn)
+			{
+				// window length: the whole turn at <= CatchRate deg/s peak (smoothstep peaks at 1.5 x its mean rate)
+				const float Te = bSwing ? Tc : P->Dur() + Tr->FlipReachHold;
+				const float Rest = FMath::Abs(P->PitchDeg - SampleBase(*P, FMath::Min(Te, P->Dur())).PitchDeg);
+				const float Ang = FMath::RadiansToDegrees((FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(GC.Beta)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(GC.Gamma))).GetAngle()) + Rest;
+				const float Win = FMath::Clamp(1.5f * Ang / CatchRate + 0.04f, CatchWinMin, CatchWinMax);
+				if (T >= Te - Win)
+				{
+					GC.bOn = true; GC.Ts = T; GC.Te = FMath::Max(T + 0.05f, Te - 1.f / 60.f);
+					GC.bShape = bSwing; GC.bShapeRight = bRight;
+					UE_LOG(LogTemp, Display, TEXT("WH_TRICK_CATCH %s t %.3f window %.3f-%.3f %s lean pitch %.1f twist %.1f rest-roll %.1f hand %s bank %.2f anchor (%.1f, %.1f, %.1f)"),
+						*P->Name.ToString(), T, GC.Ts, GC.Te, bSwing ? TEXT("swing") : TEXT("air"), GC.Beta, GC.Gamma, GC.Rho, bRight ? TEXT("R") : TEXT("L"), GC.BankW, AP.X, AP.Y, AP.Z);
+				}
+			}
+		}
+
+		float CatchW(float T) { return Smooth((T - GC.Ts) / FMath::Max(0.05f, GC.Te - GC.Ts)); }
+
+		void ApplyCatch(const FWebFlipProgram& P, float T, FWebFlipPose& O)
+		{
+			float TwTot = 0.f;
+			for (const FWebFlipSeg& S : P.Segs) TwTot += S.TwistDeg;
+			const float PitchTgt = P.PitchDeg + GC.Beta, TwTgt = TwTot + GC.Gamma * GC.Side;
+			const float W = CatchW(T);
+			{
+				const float H = 1.f / 240.f;
+				const float P0 = FMath::Lerp(SampleBase(P, T - H).PitchDeg, PitchTgt, CatchW(T - H));
+				const float P1 = FMath::Lerp(SampleBase(P, T + H).PitchDeg, PitchTgt, CatchW(T + H));
+				O.PitchRate = (P1 - P0) / (2.f * H);
+			}
+			O.PitchDeg = FMath::Lerp(O.PitchDeg, PitchTgt, W);
+			O.TwistDeg = FMath::Lerp(O.TwistDeg, TwTgt, W);
+			O.AxisOffDeg *= 1.f - W;
+			if (!GC.bShape) return;
+			// shapes: the program's shape at the start of the last 0.3 s -> the swing node's starting pose (major clip, then its minor share)
+			const float Ts2 = FMath::Max(GC.Ts, GC.Te - CatchShapeWin), Span2 = FMath::Max(0.05f, GC.Te - Ts2);
+			const EWebFlipShape Low = GC.bShapeRight ? EWebFlipShape::CatchLow : EWebFlipShape::CatchLowL;
+			const EWebFlipShape Bank = GC.bShapeRight ? EWebFlipShape::CatchBank : EWebFlipShape::CatchBankL;
+			const bool bBankMajor = GC.BankW > 0.5f;
+			const EWebFlipShape Major = bBankMajor ? Bank : Low, Minor = bBankMajor ? Low : Bank;
+			const float WMinor = bBankMajor ? 1.f - GC.BankW : GC.BankW;
+			const float ClipH = FMath::Clamp((T - GC.Te) / CatchClipLen, 0.f, 1.f); // the catch clips start at frame 0 at the catch (the swing node's T 0)
+			const float Lead = P.Lead >= 0.f ? P.Lead : FlipLead, Lag = P.Lag >= 0.f ? P.Lag : FlipLag;
+			auto Blend = [&](float U, float Tf, EWebFlipShape& A, EWebFlipShape& B, float& Wt, float& HA, float& HB)
+			{
+				if (U <= 0.f) return;
+				EWebFlipShape FA, FB; float FW, FHA, FHB;
+				ShapeAt(P, Tf, FA, FB, FW, FHA, FHB);
+				const EWebFlipShape From = FW < 0.5f ? FA : FB;
+				float FromH = FW < 0.5f ? FHA : FHB;
+				if (Wt < 0.5f && A == From) FromH = HA; else if (Wt >= 0.5f && B == From) FromH = HB; // the shape keeps breathing / marching
+				constexpr float Split = 0.6f;
+				if (U < Split) { A = From; HA = FromH; B = Major; HB = ClipH; Wt = Smooth(U / Split); }
+				else { A = Major; HA = ClipH; B = Minor; HB = ClipH; Wt = WMinor * Smooth((U - Split) / (1.f - Split)); }
+			};
+			// upper body Lead ahead (reaches the pose Lead s before the catch), legs start Lag later and arrive at the catch
+			Blend(FMath::Clamp((T + Lead - Ts2) / Span2, 0.f, 1.f), Ts2 + Lead, O.A, O.B, O.W, O.HoldA, O.HoldB);
+			Blend(FMath::Clamp((T - Ts2 - Lag) / FMath::Max(0.05f, Span2 - Lag), 0.f, 1.f), Ts2 - Lag, O.LA, O.LB, O.LW, O.LHoldA, O.LHoldB);
+		}
+	}
+
+	FWebFlipPose Sample(const FWebFlipProgram& P, float T)
+	{
+		FWebFlipPose O = SampleBase(P, T);
+		if (!O.bValid) return O;
+		UpdateCatch();
+		if (bCatchLean && GC.bOn && GC.P == &P && GC.Ver == P.Ver) ApplyCatch(P, T, O);
 		return O;
 	}
 }
@@ -454,6 +714,7 @@ namespace WebFlips
 					FString H = TEXT("frame,wt,mode,sub,anim_t,trick,trick_side,x_m,y_m,z_m,vx,vy,vz");
 					for (const FName& B : Bones()) { const FString N = B.ToString(); H += FString::Printf(TEXT(",%s_x,%s_y,%s_z"), *N, *N, *N); }
 					H += TEXT(",head_fx,head_fy,head_fz,head_ux,head_uy,head_uz,chest_fx,chest_fy,chest_fz,chest_ux,chest_uy,chest_uz,pelvis_fx,pelvis_fy,pelvis_fz");
+					H += TEXT(",catch_on,catch_w,catch_beta,catch_gamma,catch_rho,catch_bank,catch_hand,catch_swing,catch_ax,catch_ay,catch_az"); // r02 catch lean
 					Rows.Add(H);
 				}
 				const FWebTravAnim& A = Tr->Anim;
@@ -479,6 +740,11 @@ namespace WebFlips
 					(void)Ax;
 				};
 				Axes(TEXT("head"), true); Axes(TEXT("spine2"), true); Axes(TEXT("hips"), false);
+				{ // r02: the catch lean of the program playing now (prediction made during this frame's Sample calls)
+					const bool bC = GC.bOn && GC.P && A.Trick == GC.P->Name && A.Sub == FName(TEXT("trick"));
+					R += FString::Printf(TEXT(",%d,%.3f,%.2f,%.2f,%.2f,%.3f,%d,%d,%.2f,%.2f,%.2f"), bC ? 1 : 0, bC ? CatchW(A.T) : 0.f, bC ? GC.Beta : 0.f, bC ? GC.Gamma : 0.f,
+						bC ? GC.Rho : 0.f, bC ? GC.BankW : 0.f, bC ? (GC.bShapeRight ? 1 : -1) : 0, bC ? int32(GC.bSwing) : 0, GC.Anchor.X, GC.Anchor.Y, GC.Anchor.Z);
+				}
 				Rows.Add(R);
 				if (Rows.Num() >= 240) Flush();
 			}

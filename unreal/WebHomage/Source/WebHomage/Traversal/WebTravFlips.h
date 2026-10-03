@@ -14,7 +14,9 @@
 
 // round 13: Kickout = the double's open finish (critic r12: "backDouble uses 5 shapes", "rigid identical plank"): a layout whose arms
 // sweep wide while the legs scissor a little behind them, ending with the web arm up (the catch reach) -- keyed motion, not a held plank
-enum class EWebFlipShape : uint8 { Tuck, Pike, Layout, Swan, Pencil, Straddle, Throne, Twist, Reach, Kickout, Num };
+// Tricks C r02: Catch* = the swing node's own catch poses (the hero's swingLow / swingCornerBank clips, right hand / L = left hand): the last
+// ~0.3 s of a program blends into the pose the swing will start with, so the catch does not swap poses (WebTravFlips.cpp, catch lean)
+enum class EWebFlipShape : uint8 { Tuck, Pike, Layout, Swan, Pencil, Straddle, Throne, Twist, Reach, Kickout, CatchLow, CatchLowL, CatchBank, CatchBankL, Num };
 
 struct FWebFlipSeg
 {
@@ -91,7 +93,10 @@ namespace WebFlips
 	 *  backDouble, backPike, backLayout, fullTwist, backTripleChain); sideways -> twisting family (barani, fullTwist, rudi, corkscrew);
 	 *  neutral -> every release program in turn. The longest programs only play when AirS covers 1.15 x their catch time. */
 	FName ChooseForInput(float StickFwd, float StickLat, int32 K, float AirS, FName Last);
-	/** Sample a program at T seconds (clamped to [0, Dur]). */
+	/** Sample a program at T seconds (clamped to [0, Dur]). Tricks C r02: inside the catch window of the program the hero plays now
+	 *  (the last ~0.3-0.6 s before its web catch), the pose turns toward the frame the swing will start in (see WebTravFlips.cpp). */
 	FWebFlipPose Sample(const FWebFlipProgram& P, float T);
 	extern float FlipLead, FlipLag;
+	/** Tricks C r02: -WHTrickCatch=0 turns the catch lean off (A/B against round 01). */
+	extern bool bCatchLean;
 }

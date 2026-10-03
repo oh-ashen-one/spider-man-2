@@ -2,7 +2,8 @@
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # Tricks C capture driver: replays docs/night1/tricks/scripts/<seq>.json in the REAL game (-game, offscreen, lit /Game/Maps/Manhattan) through
 # the GPU lock and writes per sequence:
-#   <round>/<seq>.mp4             1920x1080 60 fps (fixed 1/60 s step, every frame dumped, r.ScreenPercentage 100 = native internal), <= 15 MB
+#   <round>/<seq>_partN.mp4       1920x1080 60 fps (fixed 1/60 s step, every frame dumped, r.ScreenPercentage 100 = native internal), 13 Mbps,
+#                                 PART_S s per part (each <= 15 MB); the full-length 13 Mbps file stays in the scratch capture dir
 #   <round>/<seq>_telemetry.csv   per-frame traversal telemetry (WebTravCharacter)
 #   <round>/<seq>_pose.csv.gz     rendered-bone log of the same run (-WHTrickPose, WebTravFlips.cpp)
 # usage: tools/tricks/capture.sh <round dir> <seq> [<seq> ...]
@@ -82,10 +83,21 @@ PY
   echo "merged frames $N, telemetry rows $NT"
   ffmpeg -loglevel error -y -framerate 60 -i "$M/F%05d.png" -c:v libx264 -pix_fmt yuv420p -crf 16 -movflags +faststart "$TMP/$NAME/${NAME}_hq.mp4"
   DUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$TMP/$NAME/${NAME}_hq.mp4")
-  KBPS=$(python3 -c "print(min(12000, int(13.8e6*8/1000/float('$DUR'))))")
-  ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_hq.mp4" -c:v libx264 -preset slow -b:v ${KBPS}k -maxrate $((KBPS*3/2))k -bufsize $((KBPS*2))k \
-    -pix_fmt yuv420p -movflags +faststart "$ROUND/$NAME.mp4"
+  # r02 (critic r01: the 1.8 Mbps reel macroblocked at 27-33 s): >= 12 Mbps. One continuous clip; the committed copy is split into
+  # PART_S-second parts (13 Mbps, each <= 15 MB), the full-length 13 Mbps file stays local for the critic ($TMP/$NAME/${NAME}_full.mp4)
+  KB=${KBPS:-13000}; PS=${PART_S:-8}
+  ffmpeg -loglevel error -y -i "$TMP/$NAME/${NAME}_hq.mp4" -c:v libx264 -preset slow -b:v ${KB}k -maxrate $((KB*5/4))k -bufsize $((KB*2))k \
+    -pix_fmt yuv420p -movflags +faststart "$TMP/$NAME/${NAME}_full.mp4"
+  rm -f "$ROUND/${NAME}"_part*.mp4
+  NP=$(python3 -c "import math; print(math.ceil(float('$DUR') / $PS - 1e-6))")
+  for ((PI=0; PI<NP; PI++)); do
+    SS=$(python3 -c "print($PI * $PS)")
+    ffmpeg -loglevel error -y -ss "$SS" -i "$TMP/$NAME/${NAME}_hq.mp4" -t "$PS" -c:v libx264 -preset slow -b:v ${KB}k -maxrate $((KB*5/4))k -bufsize $((KB*2))k \
+      -pix_fmt yuv420p -movflags +faststart "$ROUND/${NAME}_part$((PI+1)).mp4"
+  done
   cp "$TMP/$NAME/seg$LAST/${NAME}_telemetry.csv" "$ROUND/"
   gzip -c "$TMP/$NAME/seg$LAST/${NAME}_pose.csv" > "$ROUND/${NAME}_pose.csv.gz"
-  echo "movie: $ROUND/$NAME.mp4 $(stat -f %z "$ROUND/$NAME.mp4") bytes, ${DUR}s"
+  for F in "$TMP/$NAME/${NAME}_full.mp4" "$ROUND/${NAME}"_part*.mp4; do
+    echo "movie: $F $(stat -f %z "$F") bytes, $(ffprobe -v error -show_entries format=duration,bit_rate -of csv=p=0 "$F") (s, bit/s)"
+  done
 done

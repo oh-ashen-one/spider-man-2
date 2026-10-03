@@ -28,9 +28,10 @@ def probe(script, tag):
     for p in (tel, pose):
         if os.path.exists(p): os.remove(p)
     t0 = time.time()
-    subprocess.run([RUN, d, '-map', '/Game/Maps/Manhattan', '-res', '1920x1080', '-quit', '61.5', '-name', 'probe', '-timeout', '900', '--',
+    # r02: PROBE_QUIT (world s incl. the 0.8 s pre-roll; 61.9 = the 61 s reel) and PROBE_ARGS (e.g. -WHTrickCatch=0 for an A/B)
+    subprocess.run([RUN, d, '-map', '/Game/Maps/Manhattan', '-res', '1920x1080', '-quit', os.environ.get('PROBE_QUIT', '61.9'), '-name', 'probe', '-timeout', '900', '--',
                     '-nullrhi', '-benchmark', '-fps=60', '-WHTravScript=' + script, '-WHTravPreroll=0.8', '-WHTravCsv=' + tel,
-                    '-WHTrickPose=' + pose], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    '-WHTrickPose=' + pose] + os.environ.get('PROBE_ARGS', '').split(), check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     R = list(csv.DictReader(open(tel))) if os.path.exists(tel) else []
     print('probe %s: %d rows in %.0f s' % (tag, len(R), time.time() - t0), flush=True)
     return R, tel, pose
@@ -88,7 +89,7 @@ print('BEST %s %s' % (tag, s))
 rep = TC.main(tel, pose)
 print(rep)
 ok = s['bad'] == 0 and s['t_end'] >= 60.4
-lines = {l.split()[0]: l for l in rep.splitlines() if l[:2].strip() in ('P', 'V1', 'V2', 'K', 'L', 'G1', 'G2', 'G3', 'G4') and not l.startswith('   ')}
+lines = {l.split()[0]: l for l in rep.splitlines() if l.split() and l.split()[0] in ('P', 'V1', 'V2', 'K', 'L', 'G1', 'G2', 'G3', 'G4', 'C', 'X', 'G1f', 'PEN', 'PIK') and not l.startswith('   ')}
 fails = [k for k, l in lines.items() if 'FAIL' in l]
 open(os.path.join(WORK, 'VERDICT'), 'w').write('route %s %s\nfails %s\n' % ('OK' if ok else 'BROKEN', tag, ' '.join(fails) or 'none'))
 print('VERDICT route %s (%s); failing lines: %s' % ('OK' if ok else 'BROKEN', tag, ' '.join(fails) or 'none'))
