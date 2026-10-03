@@ -214,7 +214,7 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
                 ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.8), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -424,19 +424,35 @@ if (P == 0) {
     make_material('M_CityFarMass', None, r"""
 #define HASH(q) frac(sin(dot((q), float2(127.1, 311.7))) * 43758.5453)
 float3 p = float3(wpos.x, wpos.z, wpos.y) * 0.01; float fl = vca;
+// (r11, critic r10: 'far towers are untextured two-tone extrusions with no windows') window codes in the vertex alpha (8 bit): the exporter's farCityMass keeps 0 plain / 0.5 punched / 1.0 glass;
+// the far-LOD towers of far_skyline.py use 0.40 punched / 0.62 ribbon / 0.90 curtain glass with fins and carry their AUTHORED mid-grey albedo (0.22-0.36) in the vertex colour (x FarGain 4 = vc * 4)
+float isP = step(0.25, fl) * (1.0 - step(0.475, fl));
+float isR = step(0.525, fl) * (1.0 - step(0.75, fl));
+float isG = step(0.75, fl) * (1.0 - step(0.975, fl));
+float ours = saturate(isP + isR + isG);
 // (r07) far-shore blocks read as flat dark grey once the haze veils them (critic r06: 'untextured box extrusions'): raise the albedo (FarGain, MPC) so the
-// aerial haze does not swallow the block-to-block contrast, and jitter the tone per ~24 m footprint cell (brick / buff / grey / dark glass blocks differ)
+// aerial haze does not swallow the block-to-block contrast, and jitter the tone per ~24 m footprint cell (brick / buff / grey / dark glass blocks differ); our towers jitter 30 % as much
 float2 bcell = floor(p.xz / 24.0); float hb = HASH(bcell), hb2 = HASH(bcell + 17.3);
-float3 base = min(vc.rgb * float3(1.02, 1.0, 0.95) * fargain * max(1.0 + (hb - 0.5) * 1.3 * farjit, 0.12), 0.85);   // FarJit (MPC) = spread of the per-cell tone (1.0 = 0.35..1.65); it sets the far band's luma coefficient of variation (CITY-SPEC C15)
-base = lerp(base, base * float3(1.08, 0.96, 0.88), step(0.7, hb2) * 0.5);   // some warmer brick blocks
+float3 base = min(vc.rgb * float3(1.02, 1.0, 0.95) * fargain * max(1.0 + (hb - 0.5) * 1.3 * farjit * lerp(1.0, 0.3, ours), 0.12), 0.85);   // FarJit (MPC) = spread of the per-cell tone (1.0 = 0.35..1.65); it sets the far band's luma coefficient of variation (CITY-SPEC C15)
+base = lerp(base, base * float3(1.08, 0.96, 0.88), step(0.7, hb2) * 0.5 * (1.0 - ours));   // some warmer brick blocks
 base *= 0.86 + 0.28 * step(0.5, frac(p.y / 26.0 + hb2 * 3.0));   // floor-group banding (setbacks / spandrel bands stay resolvable at 3 km)
-float hb3 = HASH(bcell + 41.7); base *= lerp(1.0, 0.22, step(hb3, 0.16));   // ~1 block in 6 is a dark glass / dark brick block (contrast against the pale stone and brick ones)
+float hb3 = HASH(bcell + 41.7); base *= lerp(1.0, 0.22, step(hb3, lerp(0.16, 0.0, ours)));   // ~1 block in 6 is a dark glass / dark brick block (contrast against the pale stone and brick ones)
 
 float3 c = base; float3 dnE = float3(0, 0, 0);
+float along = p.x + p.z;
+// derivatives outside the branches (uniform control flow)
+float2 fwA = fwidth(float2(p.y / 3.3, along / 2.4));
+float2 fwM = fwidth(float2(p.y / 52.0, along / 12.0));
+float subM = saturate(max(fwM.x * 2.0, fwM.y) * 1.1);
+// (r11) far-LOD panel structure of our towers, three scales: 18 m x 26 m tonal panels (flat cells: no aliasing, they survive TSR at 3-4 km), a dark pier line 2.4 m of every 12 m, a darker mechanical floor every 52 m;
+// the two line features fade out with the pixel footprint (subM)
+float mt = HASH(floor(float2(along / 18.0, p.y / 26.0)) + hb * 7.0);
+float pierL = 1.0 - step(0.2, frac(along / 12.0));
+float mechL = step(0.92, frac(p.y / 52.0 + hb2 * 4.0));
+base *= lerp(1.0, (0.86 + 0.28 * mt) * (1.0 - 0.18 * pierL * (1.0 - subM)) * (1.0 - 0.32 * mechL * (1.0 - subM)), ours);
+c = base;
 if (fl > 0.25) {
-  float along = p.x + p.z;
-  float2 fw = fwidth(float2(p.y / 3.3, along / 2.4));
-  float sub = min(saturate(max(fw.x, fw.y) * 0.85), 0.82);   // (r06) UE renders 50-73 % internal resolution + TSR: keep the grid readable one step further out; (r07) never fade fully to the mean: 18 % of the window / wall modulation stays (far-band texture, CITY-SPEC C11 / C15)
+  float sub = min(saturate(max(fwA.x, fwA.y) * 0.85), lerp(0.82, 0.62, ours));   // (r06) UE renders 50-73 % internal resolution + TSR: keep the grid readable one step further out; (r07) never fade fully to the mean: 18 % of the window / wall modulation stays (far-band texture, CITY-SPEC C11 / C15); (r11) our towers keep 38 %
   float2 gid = floor(float2(along / 1.6, p.y / 3.9));
   if (fl > 0.75) {
     float mul = frac(along / 1.6), fl2 = frac(p.y / 3.9);
@@ -444,21 +460,26 @@ if (fl > 0.25) {
     float3 gl = lerp(float3(0.1, 0.13, 0.16), float3(0.34, 0.4, 0.46), smoothstep(0.0, 180.0, p.y) * 0.6 + 0.25 * HASH(gid));
     float3 cc = lerp(gl, base * 0.9, frame * 0.8);
     c = lerp(cc, lerp(float3(0.14, 0.17, 0.2), float3(0.28, 0.33, 0.37), smoothstep(0.0, 200.0, p.y)), sub);
+    c = lerp(c, c * (0.7 + 0.6 * mt), ours);   // panel tone of the curtain wall (fins / tinted bays)
     dnE = lerp(float3(0.8, 0.88, 1.0) * (1.0 - frame) * step(0.62, HASH(gid + 5.3)), float3(0.02, 0.022, 0.026), sub);
   } else {
     float fl2 = frac((p.y - 1.2) / 3.3), u = frac(along / 2.4);
-    float w = step(0.3, fl2) * step(fl2, 0.82) * step(0.28, u) * step(u, 0.74);
+    float wPunch = step(0.3, fl2) * step(fl2, 0.82) * step(0.28, u) * step(u, 0.74);
+    float wRib = step(0.22, fl2) * step(fl2, 0.80) * (1.0 - pierL);   // continuous strip windows, interrupted by the piers
+    float w = lerp(wPunch, wRib, isR);
     float2 wid = floor(float2(along / 2.4, (p.y - 1.2) / 3.3));
     float3 wc = float3(0.07, 0.08, 0.095) * (0.7 + 0.9 * HASH(wid)) + float3(0.1, 0.09, 0.07) * step(0.93, HASH(wid + 3.1));
     float3 cc = lerp(base, wc, w);
-    c = lerp(cc, lerp(base, wc, 0.33), sub);
+    c = lerp(cc, lerp(base, wc, 0.33 + 0.1 * ours), sub);
     dnE = lerp(float3(1.0, 0.72, 0.42) * w * step(0.55, HASH(wid + 7.7)), float3(0.026, 0.018, 0.01), sub);
   }
   c *= 0.62 + 0.38 * smoothstep(0.0, 14.0, p.y - 1.2);
 }
 // (r10, critic r09: 'white box plateau', 38.8 % of the S4 band above Y 204) sun-facing far blocks are capped to a mid-grey luma (MPC FarSunK): under the test lighting (sun 6, +2 EV) any sunlit albedo above ~0.15 clips to white;
 // shaded faces, windows and dark blocks are untouched, tints survive (the cap scales the colour)
+// (r11) our towers keep their authored mid-grey: the sun-facing faces are scaled by FarLitK (MPC, test-exposure compensation, ~0.3 = the near-field SunK / authored 0.3), then the old luma cap applies
 float sunfF = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
+c *= lerp(1.0, lerp(1.0, farlitk, ours), sunfF);
 float LaF = dot(c, float3(0.2126, 0.7152, 0.0722));
 float LcF = LaF > farsunk ? farsunk + (LaF - farsunk) * 0.12 : LaF;
 c *= lerp(1.0, LcF / max(LaF, 1e-4), sunfF);
@@ -466,7 +487,7 @@ Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * 1.4 * escale;
 if (dbgmode > 8.5 && dbgmode < 9.5) { Emis = float3(vca, 0, 1.0 - vca) * 0.05; c = float3(0, 0, 0); }
 if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0.05, 0); c = float3(0, 0, 0); Spec = 0.0; }   // window-test mask: far-shore blocks = green
 return c;""",
-        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK')],
+        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
     # (r06) coast (waterfront.js createCoastMaterial port): granite / riprap / planks / bulkhead atlas tiles, lawn, pavers, ribbed metal, picket cards;
     # UV0 = uv, UV1.x = aTile, vertex colour = tint (paint / solid tiles). Masked: picket cards discard between the bars.
@@ -767,20 +788,28 @@ return float3(0.018, 0.028, 0.03);''',
     # (r02) hinterland boxes (horizon.js): wall / roof colour per instance (custom data 0-2 wall, 3-5 roof), floor bands
     make_material('M_CityHinter', None, '''
 float3 wall = float3(w0, w1, w2), roof = float3(r0, r1, r2);
-float band = 0.8 + 0.2 * step(0.5, frac(wpos.z * 0.01 / 3.4));
 Rough = 0.9;
-float3 hp = wpos * 0.01; float fl = frac(hp.z / 3.4), u = frac((hp.x + hp.y) / 2.6);
+float3 hp = wpos * 0.01; float along = hp.x + hp.y;
+float fl = frac(hp.z / 3.4), u = frac(along / 2.6);
 float w = step(0.35, fl) * step(fl, 0.85) * step(0.3, u) * step(u, 0.75);
-float2 fw = fwidth(float2(hp.z / 3.4, (hp.x + hp.y) / 2.6)); w = lerp(w, 0.3, saturate(max(fw.x, fw.y) * 1.5));
-float3 wc = lerp(wall, float3(0.08, 0.09, 0.1), w * 0.85) * (0.65 + 0.35 * smoothstep(0.0, 12.0, hp.z));  // horizon.js windows + grime
+float2 fw = fwidth(float2(hp.z / 3.4, along / 2.6)); w = lerp(w, 0.3, saturate(max(fw.x, fw.y) * 1.5));
+// (r11, critic r10: 'untextured two-tone extrusions') far-LOD panel structure: 20 m x 32 m tonal panels (flat cells survive TSR at 5-10 km), a dark pier line 3 m of every 14 m, a darker mechanical floor every 52 m
+float2 fwM = fwidth(float2(hp.z / 52.0, along / 14.0)); float subM = saturate(max(fwM.x * 2.0, fwM.y) * 1.1);
+float mt = frac(sin(dot(floor(float2(along / 20.0, hp.z / 32.0)) + wall.xy * 13.0, float2(127.1, 311.7))) * 43758.5453);
+float pierL = 1.0 - step(0.22, frac(along / 14.0));
+float mechL = step(0.93, frac(hp.z / 52.0 + mt));
+float panel = (0.84 + 0.32 * mt) * (1.0 - 0.18 * pierL * (1.0 - subM)) * (1.0 - 0.30 * mechL * (1.0 - subM));
+float3 wc = lerp(wall * panel, float3(0.08, 0.09, 0.1), w * 0.85) * (0.65 + 0.35 * smoothstep(0.0, 12.0, hp.z));  // horizon.js windows + grime
 float3 hc = wn.z > 0.5 ? roof : wc;
 // (r10) same sun-facing luma cap as the far blocks (MPC FarSunK): the hinterland roofs / walls clip to white under the +2 EV test lighting
+// (r11) the authored albedo is mid-grey (0.22-0.36): sun-facing faces are scaled by FarLitK (test-exposure compensation) first, so the tonal differences between towers survive the cap
 float sunfH = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
+hc *= lerp(1.0, farlitk, sunfH);
 float LaH = dot(hc, float3(0.2126, 0.7152, 0.0722));
 float LcH = LaH > farsunk ? farsunk + (LaH - farsunk) * 0.12 : LaH;
 hc *= lerp(1.0, LcH / max(LaH, 1e-4), sunfH);
 return hc;''',
-        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK')],
+        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS)], world_normal=False)
     make_material('M_CityCrown', None, '''
 float3 p = wpos * 0.01;

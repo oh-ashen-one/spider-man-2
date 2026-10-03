@@ -11,6 +11,10 @@ Pure Python on the exporter's data (no browser, no Unreal): writes the extra far
                        through vertex colour R) + tree clumps on its wooded parts and along the brow.
   4. Shoreline       : seawall + cap + promenade on the New-Jersey shore, extra piers with sheds where the browser's piers stop (z < -2600), tree row on the promenade.
   5. Lawn trees      : tree clumps on the green (lawn / park) pixels of the far-land ground map: the browser's far canopy is not exported, the far shores had no trees.
+(r11, critic r10: 'far towers are untextured two-tone extrusions with no windows') the plateau towers are now far-LOD facade towers: five archetypes (stepped deco, slab with setbacks, twin shafts,
+glass slab, brick block), 1-4 tiers each with crown boxes / mechanical penthouses / a 45-degree chamfer overlay on some, and vertex-alpha window codes the M_CityFarMass shader reads
+(0.40 punched, 0.62 ribbon, 0.90 glass-with-fins; the old 0 / 0.5 / 1.0 codes stay for the exporter's farCityMass); authored tones are mid-grey (albedo 0.22-0.36 after MPC FarGain).
+The hinterland boxes get 1-3 setback tiers, yaw variety and original-art tones in the same 0.22-0.36 range. Layout draws of the first RNG are unchanged (details use their own RNGs).
 Deterministic (seeded). Re-run after any change; then `build_city.py steps=fsky,map`.
 usage: python3 tools/export/far_skyline.py
 """
@@ -101,9 +105,14 @@ def flush(meshes, prefix, mat, cell=1500.0):
         m.write(path, name, (cx, 0, cz))
         files.append({'name': name, 'file': f'mesh/farsky/{name}.glb', 'center': [cx, 0.0, cz], 'mat': mat, 'verts': m.n, 'tris': int(sum(len(i) for i in m.I) // 3)})
 
-# ================================================================ 1. plateau towers
-# vertex colours in the farCityMass convention (linear, multiplied by MPC FarGain in M_CityFarMass): neutral mid-grey concrete / pale stone / warm brick / dark glass
-TONES = [(0.150, 0.150, 0.158), (0.135, 0.138, 0.145), (0.175, 0.170, 0.160), (0.120, 0.120, 0.125), (0.185, 0.160, 0.135), (0.150, 0.120, 0.100), (0.100, 0.110, 0.125), (0.205, 0.200, 0.190)]
+# ================================================================ 1. plateau towers (r11: far-LOD facade towers)
+# vertex colours in the farCityMass convention (linear, multiplied by MPC FarGain = 4 in M_CityFarMass): AUTHORED albedo 0.22-0.36 = mid-grey concrete / stone / brick / cool glass-grey.
+# (the sun-facing luma is scaled down by MPC FarLitK / capped by FarSunK in the material: the test lighting is sun 6 + 2 EV, any lit albedo above ~0.1 clips to white)
+GAIN = 4.0
+def A(r, g, b): return (r / GAIN, g / GAIN, b / GAIN)
+TONES = [A(.30, .30, .31), A(.27, .28, .30), A(.33, .31, .28), A(.31, .27, .23), A(.26, .30, .34), A(.35, .34, .32), A(.24, .25, .27), A(.34, .26, .21)]   # concrete, cool concrete, stone, tan brick, blue-grey, pale stone, graphite, red brick
+GLASS = [A(.13, .15, .18), A(.11, .13, .15), A(.16, .17, .19), A(.10, .12, .16)]                                                                           # curtain-wall towers (the shader draws the glass; this is the frame / spandrel tone)
+FL_PUNCHED, FL_RIBBON, FL_GLASS, FL_PLAIN = 0.40, 0.62, 0.90, 0.0                                                                                           # window codes read by M_CityFarMass (see its header)
 CLUSTERS = [  # name, z centre, z spread, count, h min, h max, supertall count, supertall h range
     ('Weehawken', -700, 260, 14, 60, 135, 0, (0, 0)),
     ('Union City', -1800, 330, 16, 70, 160, 1, (165, 205)),
@@ -111,19 +120,78 @@ CLUSTERS = [  # name, z centre, z spread, count, h min, h max, supertall count, 
     ('Fort Lee', -3800, 380, 24, 90, 220, 3, (215, 255)),
     ('Cliffside', -4700, 300, 14, 65, 140, 1, (150, 185)),
 ]
+def rbox(m, cx, cz, w, d, ang, y0, y1, col, flag, col_top=None):
+    """box turned by ang (rad) about its centre: sides + top (a chamfer overlay: the tower reads as an octagon from far away)"""
+    ca, sa = math.cos(ang), math.sin(ang)
+    def R(px, pz): dx, dz = px - cx, pz - cz; return (cx + dx * ca - dz * sa, cz + dx * sa + dz * ca)
+    c = [R(cx - w / 2, cz - d / 2), R(cx + w / 2, cz - d / 2), R(cx + w / 2, cz + d / 2), R(cx - w / 2, cz + d / 2)]
+    cs = list(col[:3]) + [flag]; ct = list((col_top or col)[:3]) + [0.0]
+    for i in range(4):
+        a, b = c[i], c[(i + 1) % 4]; n = np.array([b[1] - a[1], 0.0, -(b[0] - a[0])]); n /= np.linalg.norm(n)
+        mid = np.array([(a[0] + b[0]) / 2 - cx, 0.0, (a[1] + b[1]) / 2 - cz])
+        if np.dot(n, mid) < 0: n = -n
+        m.quad([[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y1, b[1]], [a[0], y1, a[1]]], n, cs)
+    m.quad([[p[0], y1, p[1]] for p in c], [0, 1, 0], ct)
+def tone(rg, glass=False):
+    t = (GLASS if glass else TONES)[rg.integers(len(GLASS) if glass else len(TONES))]
+    k = rg.uniform(0.92, 1.08); return (t[0] * k, t[1] * k, t[2] * k)
+def crown(m, x, z, w, d, y1, h, rg, t, fl):
+    """top of a tower: stepped pyramid / mechanical penthouse / spire; returns the final y"""
+    r = rg.random()
+    if r < 0.34:   # stepped deco crown: 2-3 shrinking tiers
+        cw, cd = w, d
+        for k in range(int(rg.integers(2, 4))):
+            cw *= rg.uniform(0.62, 0.78); cd *= rg.uniform(0.62, 0.78); ch = max(4.0, h * rg.uniform(0.045, 0.085))
+            m.box(x - cw / 2, z - cd / 2, x + cw / 2, z + cd / 2, y1, y1 + ch, t, t, FL_PUNCHED if fl != FL_GLASS else FL_GLASS); y1 += ch
+    elif r < 0.62:  # penthouse + mechanical box
+        pw, pd, ph = w * rg.uniform(0.5, 0.72), d * rg.uniform(0.5, 0.72), rg.uniform(5, 11)
+        m.box(x - pw / 2, z - pd / 2, x + pw / 2, z + pd / 2, y1, y1 + ph, t, t, FL_PLAIN); y1 += ph
+        bw, bd = pw * rg.uniform(0.3, 0.5), pd * rg.uniform(0.3, 0.5)
+        m.box(x - w * 0.12 - bw / 2, z + d * 0.08 - bd / 2, x - w * 0.12 + bw / 2, z + d * 0.08 + bd / 2, y1, y1 + rg.uniform(3, 6), A(.20, .20, .21), A(.20, .20, .21), FL_PLAIN)
+    elif r < 0.80:  # flat roof with a parapet band and a lift core
+        m.box(x - w * 0.18, z - d * 0.18, x + w * 0.18, z + d * 0.18, y1, y1 + rg.uniform(4, 8), A(.28, .28, .29), A(.24, .24, .25), FL_PLAIN); y1 += 5
+    if h > 95 and rg.random() < 0.34:   # spire / mast
+        s_ = rg.uniform(1.6, 3.0); sh = rg.uniform(22, 62); m.box(x - s_, z - s_, x + s_, z + s_, y1, y1 + sh, A(.2, .2, .21), A(.2, .2, .21), FL_PLAIN); y1 += sh
+    return y1
 def tower(m, x, z, w, d, h, rg):
-    t = TONES[rg.integers(len(TONES))]; glass = rg.random() < 0.5
-    tone = t if not glass else (0.085, 0.100, 0.118)
-    pod = rg.uniform(14, 26)
-    pt = TONES[rg.integers(len(TONES))]
-    m.box(x - w * 0.62, z - d * 0.62, x + w * 0.62, z + d * 0.62, PAL_Y, PAL_Y + pod, pt, pt, 0.5)
-    y1 = PAL_Y + h
-    m.box(x - w / 2, z - d / 2, x + w / 2, z + d / 2, PAL_Y + pod, y1, tone, tone, 1.0 if glass else 0.5)
-    if rg.random() < 0.5:   # setback crown
-        cw, cd, ch = w * rg.uniform(0.5, 0.7), d * rg.uniform(0.5, 0.7), h * rg.uniform(0.06, 0.12) + 5
-        m.box(x - cw / 2, z - cd / 2, x + cw / 2, z + cd / 2, y1, y1 + ch, tone, tone, 0.5 if not glass else 1.0); y1 += ch
-    if rg.random() < 0.18 and h > 100:  # spire / mast
-        s = rg.uniform(2.0, 3.2); m.box(x - s, z - s, x + s, z + s, y1, y1 + rg.uniform(25, 60), (0.1, 0.1, 0.105), (0.1, 0.1, 0.105), 0.0)
+    kind = rg.choice(['deco', 'slab', 'twin', 'glass', 'block'], p=[0.24, 0.30, 0.14, 0.20, 0.12])
+    if h < 75 and kind in ('twin', 'deco'): kind = 'block'
+    pod = rg.uniform(14, 26); pt = tone(rg)
+    m.box(x - w * 0.62, z - d * 0.62, x + w * 0.62, z + d * 0.62, PAL_Y, PAL_Y + pod, pt, pt, FL_PUNCHED if rg.random() < 0.7 else FL_RIBBON)
+    y0 = PAL_Y + pod
+    if kind == 'deco':        # three-tier stepped shaft (setbacks at ~55 % and ~80 % of the height)
+        t1 = tone(rg); t2 = tone(rg); fl = FL_PUNCHED if rg.random() < 0.75 else FL_RIBBON
+        yb = PAL_Y + h * 0.55; yc = PAL_Y + h * 0.80
+        m.box(x - w / 2, z - d / 2, x + w / 2, z + d / 2, y0, yb, t1, t1, fl)
+        m.box(x - w * 0.39, z - d * 0.39, x + w * 0.39, z + d * 0.39, yb, yc, t2, t2, fl)
+        m.box(x - w * 0.27, z - d * 0.27, x + w * 0.27, z + d * 0.27, yc, PAL_Y + h, t2, t2, fl)
+        crown(m, x, z, w * 0.54, d * 0.54, PAL_Y + h, h, rg, t2, fl)
+    elif kind == 'slab':      # one shaft, one setback tier, a crown; some get a 45-degree chamfer overlay (octagonal read)
+        t1 = tone(rg); fl = FL_RIBBON if rg.random() < 0.4 else FL_PUNCHED; ys = PAL_Y + h * rg.uniform(0.72, 0.86)
+        m.box(x - w / 2, z - d / 2, x + w / 2, z + d / 2, y0, ys, t1, t1, fl)
+        if rg.random() < 0.4: rbox(m, x, z, w * 0.82, d * 0.82, math.pi / 4, y0, ys + 2, t1, fl)
+        t2 = tone(rg)
+        m.box(x - w * 0.36, z - d * 0.36, x + w * 0.36, z + d * 0.36, ys, PAL_Y + h, t2, t2, fl)
+        crown(m, x, z, w * 0.72, d * 0.72, PAL_Y + h, h, rg, t2, fl)
+    elif kind == 'twin':      # two shafts side by side, different heights, a link band
+        t1 = tone(rg); t2 = tone(rg); fl = FL_PUNCHED if rg.random() < 0.6 else FL_RIBBON
+        ax = rg.random() < 0.5; off = (w if ax else d) * 0.27; ww, dd = (w * 0.46, d) if ax else (w, d * 0.46)
+        c1 = (x - off, z) if ax else (x, z - off); c2 = (x + off, z) if ax else (x, z + off)
+        h2 = h * rg.uniform(0.62, 0.84)
+        m.box(c1[0] - ww / 2, c1[1] - dd / 2, c1[0] + ww / 2, c1[1] + dd / 2, y0, PAL_Y + h, t1, t1, fl)
+        m.box(c2[0] - ww / 2, c2[1] - dd / 2, c2[0] + ww / 2, c2[1] + dd / 2, y0, PAL_Y + h2, t2, t2, fl)
+        m.box(x - w * 0.5, z - d * 0.5, x + w * 0.5, z + d * 0.5, y0 + (h2 - pod) * 0.55, y0 + (h2 - pod) * 0.7, A(.2, .2, .22), A(.2, .2, .22), FL_PLAIN)
+        crown(m, c1[0], c1[1], ww, dd, PAL_Y + h, h, rg, t1, fl)
+    elif kind == 'glass':     # wide curtain-wall slab with fins, flat mechanical top
+        tg = tone(rg, True); ww, dd = (w * 1.25, d * 0.62) if rg.random() < 0.5 else (w * 0.62, d * 1.25)
+        m.box(x - ww / 2, z - dd / 2, x + ww / 2, z + dd / 2, y0, PAL_Y + h * 0.92, tg, tg, FL_GLASS)
+        m.box(x - ww * 0.4, z - dd * 0.4, x + ww * 0.4, z + dd * 0.4, PAL_Y + h * 0.92, PAL_Y + h, tg, tg, FL_GLASS)
+        crown(m, x, z, ww * 0.8, dd * 0.8, PAL_Y + h, h, rg, A(.22, .22, .24), FL_PLAIN)
+    else:                      # brick / stone block with a flat top and a water-tank box
+        t1 = tone(rg); fl = FL_PUNCHED
+        hb = h * rg.uniform(0.55, 0.8)
+        m.box(x - w / 2, z - d / 2, x + w / 2, z + d / 2, y0, PAL_Y + hb, t1, t1, fl)
+        m.box(x - w * 0.2, z - d * 0.2, x + w * 0.2, z + d * 0.2, PAL_Y + hb, PAL_Y + hb + rg.uniform(5, 9), A(.26, .22, .19), A(.2, .2, .2), FL_PLAIN)
 def plateau_towers():
     meshes = {}; placed = []; rg = np.random.default_rng(2024)
     tot = 0
@@ -137,7 +205,7 @@ def plateau_towers():
                 x = cliff_x(z) - off - w / 2
                 if any(abs(x - px) < (w + pw) / 2 + 14 and abs(z - pz) < (d + pd) / 2 + 14 for px, pz, pw, pd in placed): continue
                 h = rg.uniform(a, b) if sup else h0 + (h1 - h0) * rg.random() ** 1.6
-                m = meshes.setdefault(tile_key(x, z), Mesh()); tower(m, x, z, w, d, h, rg); placed.append((x, z, w, d)); tot += 1; break
+                m = meshes.setdefault(tile_key(x, z), Mesh()); tower(m, x, z, w, d, h, np.random.default_rng(int(abs(x) * 7 + abs(z) * 13))); placed.append((x, z, w, d)); tot += 1; break
     flush(meshes, 'farsky_towers', 'towers')
     stats['plateau_towers'] = tot
 plateau_towers()
@@ -150,21 +218,36 @@ def s4_ray(px):
     a = (px - 960) / ((1920 / 2) / math.tan(math.radians(S4_FOV / 2)))
     d = f + a * r; d[1] = 0; return d / np.linalg.norm(d)
 HIN = []   # [x, y, z, sx, sy, sz, rot, wall rgb, roof rgb]
-def hin_box(x, z, w, d, h, wall, roof): HIN.append([x, 0.7, z, w, h, d, 0.0, *wall, *roof])
-HWALL = [(0.34, 0.34, 0.35), (0.30, 0.30, 0.32), (0.38, 0.36, 0.33), (0.26, 0.27, 0.30), (0.42, 0.38, 0.33), (0.30, 0.25, 0.22), (0.22, 0.25, 0.30), (0.46, 0.45, 0.43)]
-HROOF = [(0.30, 0.30, 0.30), (0.36, 0.35, 0.33), (0.25, 0.25, 0.27), (0.40, 0.39, 0.37)]
+def hin_box(x, z, w, d, h, wall, roof, rot=0.0): HIN.append([x, 0.7, z, w, h, d, rot, *wall, *roof])
+# (r11) authored albedo 0.22-0.36 (mid-grey stone / concrete / brick / cool glass-grey / graphite); 8 + 4 entries, the same counts as r10 so the layout RNG draws are unchanged
+HWALL = [(0.30, 0.30, 0.31), (0.26, 0.27, 0.29), (0.33, 0.31, 0.28), (0.22, 0.24, 0.28), (0.35, 0.33, 0.30), (0.31, 0.26, 0.22), (0.20, 0.23, 0.27), (0.36, 0.35, 0.34)]
+HROOF = [(0.27, 0.27, 0.28), (0.31, 0.30, 0.29), (0.23, 0.23, 0.25), (0.34, 0.33, 0.31)]
 FP = (1920 / 2) / math.tan(math.radians(S4_FOV / 2))
 def top_to_height(y_top, D):
     """height (m above the ground at y = 0.7) that puts a roof at screen row y_top of the S4 view at horizontal distance D (camera altitude 306 m, horizon row ~136)"""
     return 306.0 - (y_top - 136.0) * D / FP
 def hinterland():
-    """skyline by design: the S4 columns 0..1560 are cut into regimes (downtown / mid-rise / gap) and filled with buildings whose roofs land on a chosen screen row (the far sprawl keeps the rest)"""
-    rg = np.random.default_rng(777); n = 0
+    """skyline by design: the S4 columns 0..1560 are cut into regimes (downtown / mid-rise / gap) and filled with buildings whose roofs land on a chosen screen row (the far sprawl keeps the rest).
+    (r11) crown / setback variation: every building over 70 m gets 1-3 shrinking tiers (own RNG, the placement draws are the r10 ones), 22 % are turned 8-35 degrees so two faces catch different light,
+    tall ones get a stepped top or a slender mast."""
+    rg = np.random.default_rng(777); rc = np.random.default_rng(4141); n = 0
     x = -40.0; bands = []
     while x < 1580:
         kind = rg.choice(['down', 'mid', 'gap'], p=[0.42, 0.36, 0.22]); w = {'down': rg.uniform(110, 250), 'mid': rg.uniform(80, 190), 'gap': rg.uniform(40, 120)}[kind]
         bands.append((kind, x, x + w)); x += w
     landmarks = 0
+    def stack(cx, cz, wd, dp, h, wall, roof, rot):
+        """body + 1-3 setback tiers + optional top; returns the number of boxes added"""
+        k = 0; hin_box(cx, cz, wd, dp, h, wall, roof, rot); k += 1
+        if h < 70: return k
+        ntier = int(rc.choice([0, 1, 2, 3], p=[0.16, 0.38, 0.30, 0.16])); y = h; w_, d_ = wd, dp
+        for t in range(ntier):
+            w_ *= rc.uniform(0.58, 0.8); d_ *= rc.uniform(0.58, 0.8); th = h * rc.uniform(0.05, 0.14) * (1.0 if t == 0 else 0.8)
+            wall_t = tuple(float(np.clip(c * rc.uniform(0.85, 1.12), 0.12, 0.42)) for c in wall)
+            hin_box(cx, cz, w_, d_, th, wall_t, roof, rot); HIN[-1][1] = 0.7 + y; y += th; k += 1
+        if h > 150 and rc.random() < 0.55:   # slender mast / spire on the last tier
+            m_ = max(5.0, w_ * 0.12); hin_box(cx, cz, m_, m_, h * rc.uniform(0.09, 0.2), (0.2, 0.2, 0.22), (0.2, 0.2, 0.22), rot); HIN[-1][1] = 0.7 + y; k += 1
+        return k
     for kind, xa, xb in bands:
         if kind == 'gap': continue
         px = xa
@@ -177,15 +260,15 @@ def hinterland():
             d0 = s4_ray(px + bw / 2); c = S4_POS[[0, 2]] + d0[[0, 2]] * D
             wd = max(24.0, bw * D / FP * rg.uniform(0.8, 1.1)); dp = wd * rg.uniform(0.8, 1.3)
             wall = HWALL[rg.integers(len(HWALL))]; roof = HROOF[rg.integers(len(HROOF))]
-            hin_box(c[0], c[1], wd, dp, h, wall, roof); n += 1
-            if h > 120 and rg.random() < 0.6:   # setback crown
-                hin_box(c[0], c[1], wd * 0.62, dp * 0.62, h * rg.uniform(0.1, 0.2), wall, roof); HIN[-1][1] = 0.7 + h; n += 1
-            if h > 300 and rg.random() < 0.7:   # slender mast
-                hin_box(c[0], c[1], max(6.0, wd * 0.12), max(6.0, dp * 0.12), h * 0.14, (0.2, 0.2, 0.22), (0.2, 0.2, 0.22)); HIN[-1][1] = 0.7 + h * 1.1; n += 1; landmarks += 1
+            rot = float(rc.uniform(0.14, 0.6) * rc.choice([-1, 1])) if rc.random() < 0.22 else 0.0
+            n += stack(c[0], c[1], wd, dp, h, wall, roof, rot)
+            if h > 120 and rg.random() < 0.6: pass    # (the r10 crown draw is kept so the RNG sequence is unchanged; crowns come from stack())
+            if h > 300 and rg.random() < 0.7: landmarks += 1
             # neighbours of lower height behind / beside (cluster depth)
             for _ in range(rg.integers(0, 3)):
                 D2 = D * rg.uniform(0.9, 1.25); c2 = S4_POS[[0, 2]] + s4_ray(px + bw / 2 + rg.uniform(-0.6, 0.6) * bw)[[0, 2]] * D2
-                h2 = h * rg.uniform(0.3, 0.8); hin_box(c2[0], c2[1], wd * rg.uniform(0.8, 1.3), dp * rg.uniform(0.8, 1.2), max(24.0, h2), HWALL[rg.integers(len(HWALL))], HROOF[rg.integers(len(HROOF))]); n += 1
+                h2 = h * rg.uniform(0.3, 0.8)
+                n += stack(c2[0], c2[1], wd * rg.uniform(0.8, 1.3), dp * rg.uniform(0.8, 1.2), max(24.0, h2), HWALL[rg.integers(len(HWALL))], HROOF[rg.integers(len(HROOF))], 0.0)
             px += bw * rg.uniform(0.9, 1.5)
     stats['hinterland_boxes'] = n; stats['hinterland_landmarks'] = landmarks
 hinterland()
