@@ -193,7 +193,7 @@
    },
    "moon": null,
    "sky": {
-    "intensity": 2.5,
+    "intensity": 5.5,
     "tint": [
      0.88,
      0.94,
@@ -205,9 +205,9 @@
     "mie_scattering_scale": 0.03,
     "mie_absorption_scale": 0.003,
     "mie_anisotropy": 0.7,
-    "aerial_perspective_distance_scale": 5.0,
+    "aerial_perspective_distance_scale": 2.5,
     "aerial_perspective_start_depth": 0.02,
-    "height_fog_contribution": 1.0,
+    "height_fog_contribution": 0.8,
     "ground_albedo": [
      72,
      66,
@@ -215,15 +215,21 @@
      255
     ],
     "sky_luminance_factor": [
-     1.0,
-     1.0,
-     1.0,
+     0.96,
+     0.96,
+     0.96,
      1.0
     ],
     "mie_scattering": [
      1.0,
      0.72,
      0.45,
+     1.0
+    ],
+    "sky_and_aerial_perspective_luminance_factor": [
+     0.5,
+     0.5,
+     0.5,
      1.0
     ]
    },
@@ -254,7 +260,7 @@
      0.46,
      1.0
     ],
-    "volumetric_fog_extinction_scale": 0.5,
+    "volumetric_fog_extinction_scale": 2.0,
     "volumetric_fog_distance": 36000.0,
     "volumetric_fog_start_distance": 0.0,
     "haze": {
@@ -359,7 +365,21 @@
      "lux": 1.5,
      "temp": 5600.0
     }
-   ]
+   ],
+   "_r09": "round 09 (S4 far band / sky, director brief after city r11): S4 far band 25-32 Y under the sky with far-shore contrast (C11 / C15): aerial perspective 5 -> 2.5, AP + sky luminance factor .5 (darker AP veil), sky luminance x.96 on top, height-fog contribution .8, sky light 2.5 -> 5.5 (keeps the city ambient when the sky dims), volumetric fog extinction x4 (.5 -> 2: near-canyon haze inside 360 m that AP 2.5 no longer gives); sweeps round-09/diag/sweep*.txt",
+   "_r09_previous": {
+    "ap": 5.0,
+    "hfc": 1.0,
+    "skylum": [
+     1.0,
+     1.0,
+     1.0,
+     1.0
+    ],
+    "saplum": null,
+    "slint": 2.5,
+    "vfext": 0.5
+   }
   },
   "night": {
    "desc": "round 03 v2: night with dark facade masses, neutral B-R, wide sodium / LED lamp pools, denser far haze",
