@@ -12,6 +12,14 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "TextureResource.h"
 #include "Core/WebHomagePlayerController.h"
+#include "Characters/WHHeroSuit.h"
+#include "CoreGlobals.h"
+#include "ImageUtils.h"
+#include "Async/Async.h"
+#include "HAL/PlatformProcess.h"
+#include "HAL/FileManager.h"
+#include "Misc/CoreDelegates.h"
+#include <atomic>
 #include "WebHomage.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -341,15 +349,27 @@ bool AWebTravCharacter::SetupHeroMesh()
 	// of a studio suit layout/emblem. The playable hero must wear P2's ORIGINAL round-08 suit (Tessera, MI_Hero_Suit), which is authored on
 	// the same body UV atlas (tools/ue_char/hero_suit_r8.py evaluates the same spiderman.glb body). Override the 'SpiderSuit' slot whenever
 	// that material exists (build_characters.py ran); traversal keeps its own skeleton, clips and flip shapes untouched.
+	// round 26 (director hard line: no capture and no default launch may show the proxy's licensed-looking suit): the first entry of P2's
+	// suit set (/Game/Characters/Hero/Suits/DA_HeroSuits, characters r14: Tessera) wins, then MI_Hero_Suit; when neither exists the slot
+	// gets the engine's plain default material instead of the proxy texture. UWHHeroSuitSubsystem then applies the chosen / saved suit.
 	{
 		static const TCHAR* OriginalSuit = TEXT("/Game/Characters/Hero/Materials/MI_Hero_Suit.MI_Hero_Suit");
 		const int32 Slot = M->GetMaterialIndex(FName(TEXT("SpiderSuit")));
-		UMaterialInterface* Suit = Slot != INDEX_NONE ? LoadObject<UMaterialInterface>(nullptr, OriginalSuit) : nullptr;
-		if (Suit) M->SetMaterial(Slot, Suit);
-		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s"), Suit ? TEXT("ORIGINAL (MI_Hero_Suit, slot SpiderSuit)")
-			: Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : TEXT("MI_Hero_Suit MISSING - run build_characters.py; proxy suit shown"));
-		if (Slot != INDEX_NONE && !Suit)
-			UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: original suit material %s not found"), OriginalSuit);
+		UMaterialInterface* Suit = nullptr;
+		const TCHAR* Src = TEXT("none");
+		if (Slot != INDEX_NONE)
+		{
+			if (const UWHHeroSuitSet* Set = LoadObject<UWHHeroSuitSet>(nullptr, UWHHeroSuitSubsystem::SetPath))
+				for (const FWHHeroSuitEntry& E : Set->Suits) if (E.Material) { Suit = E.Material; Src = TEXT("DA_HeroSuits entry"); break; }
+			if (!Suit) { Suit = LoadObject<UMaterialInterface>(nullptr, OriginalSuit); Src = TEXT("MI_Hero_Suit"); }
+			if (!Suit)
+			{
+				Suit = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial")); Src = TEXT("NEUTRAL engine default (no original suit built)");
+				UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV hero suit: no original suit (DA_HeroSuits / %s) - run build_characters.py; neutral material, never the proxy suit"), OriginalSuit);
+			}
+			if (Suit) M->SetMaterial(Slot, Suit);
+		}
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hero suit: %s %s"), Slot == INDEX_NONE ? TEXT("mesh has no SpiderSuit slot, unchanged") : Src, Suit ? *Suit->GetName() : TEXT("-"));
 	}
 	M->SetCastShadow(true);
 	// round 06: the suit rendered white / unshaded for the first frames of a capture (textures streaming in late):
@@ -394,6 +414,46 @@ bool AWebTravCharacter::SetupHeroMesh()
 	for (USceneComponent* P : ArmPivot) { if (P) P->SetVisibility(false, true); }
 	for (USceneComponent* P : LegPivot) { if (P) P->SetVisibility(false, true); }
 	return true;
+}
+
+// round 26 (shared machine: 1080p movie frames at 0.25-0.9 /s; `sample` of the game thread: 77 % of it inside the synchronous PNG deflate of
+// -dumpmovie, 20 % in the read-back flush): -WHMovieAsync takes the movie frames through UGameViewportClient::OnScreenshotCaptured (the engine
+// then skips its own PNG write) and writes the SAME lossless PNG (zlib level 3, the engine default) on pool threads, in frame order by name
+// (Saved/Screenshots/<platform>/MovieFrameNNNNN.png, numbered from 0 like -dumpmovie). At most 24 frames in flight (the game thread waits);
+// EndPlay waits until every frame is on disk.
+namespace WHMovieAsync
+{
+	std::atomic<int32> InFlight{0};
+	int32 Next = 0;
+	FDelegateHandle Handle;
+	void OnShot(int32 W, int32 H, const TArray<FColor>& Bitmap)
+	{
+		if (!GIsDumpingMovie) return;
+		while (InFlight.load() >= 24) FPlatformProcess::Sleep(0.002f);
+		const FString Path = FPaths::ScreenShotDir() / FString::Printf(TEXT("MovieFrame%05d.png"), Next++);
+		TArray<FColor> Copy = Bitmap;
+		++InFlight;
+		Async(EAsyncExecution::ThreadPool, [Path, W, H, Copy = MoveTemp(Copy)]()
+		{
+			FImageView Img(Copy.GetData(), W, H);
+			if (!FImageUtils::SaveImageByExtension(*Path, Img, 0)) UE_LOG(LogWebHomage, Warning, TEXT("WH_TRAV movie async: write failed %s"), *Path);
+			--InFlight;
+		});
+	}
+	void Drain()
+	{
+		const double T0 = FPlatformTime::Seconds();
+		while (InFlight.load() > 0 && FPlatformTime::Seconds() - T0 < 300.0) FPlatformProcess::Sleep(0.01f);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie async: %d frames written, %d still in flight after %.1f s"), Next, InFlight.load(), FPlatformTime::Seconds() - T0);
+	}
+	void Arm()
+	{
+		if (Handle.IsValid()) return;
+		IFileManager::Get().MakeDirectory(*FPaths::ScreenShotDir(), true);
+		Handle = UGameViewportClient::OnScreenshotCaptured().AddStatic(&OnShot);
+		FCoreDelegates::OnEnginePreExit.AddStatic(&Drain);   // the quit path may skip EndPlay: every frame on disk before the process ends
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie async PNG writer armed (%s)"), *FPaths::ScreenShotDir());
+	}
 }
 
 void AWebTravCharacter::BeginPlay()
@@ -446,6 +506,15 @@ void AWebTravCharacter::BeginPlay()
 	}
 	float Pre = 0.f;
 	if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravPreroll="), Pre) && Pre > 0.f) { PrerollLeft = Pre; bHadPreroll = true; }
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHMovieAsync")) && GIsDumpingMovie != 0) WHMovieAsync::Arm(); // round 26
+	{ // round 26: split movie capture
+		double MF = 0.0;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHMovieFrom="), MF) && MF > 0.0 && GIsDumpingMovie != 0)
+		{
+			MovieFrom = MF; MovieDumpSaved = GIsDumpingMovie; GIsDumpingMovie = 0; bMovieGated = true;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie dump gated until sequence t=%.4f"), MovieFrom);
+		}
+	}
 	if (ProxyBody) ProxyBody->SetVisibility(false);
 	GetCharacterMovement()->SetMovementMode(MOVE_None);
 	GetCharacterMovement()->SetComponentTickEnabled(false);
@@ -599,6 +668,11 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	}
 	else TravTime += Dt;
 	if (bPre) ++PrerollFrames;
+	if (bMovieGated && bTravStarted && TravTime >= MovieFrom - 1e-6)
+	{
+		GIsDumpingMovie = MovieDumpSaved; bMovieGated = false;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV movie dump on at sequence t=%.4f frame=%llu"), TravTime, (unsigned long long)GFrameCounter);
+	}
 
 	ReadHeroMask(); // previous frame's hero pixel mask (telemetry)
 	// ---- input: live (keyboard / mouse / pad) or scripted playback
@@ -1758,6 +1832,7 @@ void AWebTravCharacter::RunDepthAudit(const FString& Path)
 void AWebTravCharacter::EndPlay(const EEndPlayReason::Type Reason)
 {
 	if (InputTestTicker.IsValid()) { FTSTicker::GetCoreTicker().RemoveTicker(InputTestTicker); InputTestTicker.Reset(); }
+	if (WHMovieAsync::Handle.IsValid()) { WHMovieAsync::Drain(); UGameViewportClient::OnScreenshotCaptured().Remove(WHMovieAsync::Handle); WHMovieAsync::Handle.Reset(); }
 	Super::EndPlay(Reason);
 }
 
