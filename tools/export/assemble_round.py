@@ -10,15 +10,15 @@ rows, perf = [], {}
 for s in shots:
     for res in ('1920x1080', '3840x2160'):
         import glob   # (r11) settle pair: shots at t = 24 and 28 s are numbered _00_t024.0 / _01_t028.0; the t = 28 s one is the round frame (the older single-shot runs had _00_t028.0)
-        pngs = sorted(glob.glob(f'{RAW}/{s["id"]}_{res}_*_t028.0.png'))
+        pngs = sorted(glob.glob(f'{RAW}/{s["id"]}_{res}_01_t*.png')) or sorted(glob.glob(f'{RAW}/{s["id"]}_{res}_00_t028.0.png'))
         if pngs: Image.open(pngs[-1]).convert('RGB').save(f'{R}/{s["id"]}_{res}.jpg', quality=88)
         p = json.load(open(f'{RAW}/{s["id"]}_{res}_perf.json')) if os.path.exists(f'{RAW}/{s["id"]}_{res}_perf.json') else {}
         g = json.load(open(f'{RAW}/{s["id"]}_{res}_gpu.json')) if os.path.exists(f'{RAW}/{s["id"]}_{res}_gpu.json') else {}
         p['gpu_util_before_pct'] = g.get('gpu_util_before_pct'); perf[f'{s["id"]}_{res}'] = p; rows.append((s['id'], res, p))
 json.dump(perf, open(f'{R}/perf.json', 'w'), indent=1)
 L = [f'# P1 City round {N} — captures and camera parameters', '', '> Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.', '',
-     'Running game: `Scripts/run_game.sh` (`-game`, offscreen, map `/Game/Tests/City/City_View_<id>`, auto-activated CameraActor), screenshots at t = 24 s and t = 28 s (settle pair; the t = 28 s frame is the round frame).',
-     'Frame times: game seconds 18-28, `t.MaxFPS 0`, no VSync, TSR with automatic screen percentage. GPU utilization read with ioreg before each run',
+     'Running game: `Scripts/run_game.sh` (`-game`, offscreen, map `/Game/Tests/City/City_View_<id>`, auto-activated CameraActor), screenshots at t = 34 s and t = 38 s (settle pair; the t = 38 s frame is the round frame).',
+     'Frame times: game seconds 26-38, `t.MaxFPS 0`, no VSync, TSR with automatic screen percentage. GPU utilization read with ioreg before each run',
      '(GPU shared with other sessions; the P1 editor was closed during the runs). Positions in browser metres (x east, y up, z south); UE = (100x, 100z, 100y) cm.', '',
      '| id | camera pos | target | fov | sun (pitch, yaw) |', '|---|---|---|---|---|']
 L += [f"| {s['id']} | {s['pos']} | {s['target']} | {s.get('fov', 70)} | {s.get('sun')} |" for s in shots]

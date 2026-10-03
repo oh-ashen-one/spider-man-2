@@ -1110,12 +1110,17 @@ def fsky_import():
         mel.set_material_instance_parent(mi, load(MAT + '/M_CityVC'))
         mel.set_material_instance_scalar_parameter_value(mi, 'RoughP', 0.85); mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(1, 1, 1, 1))
         EAL.save_asset(shore_mi)
-    mats = {'towers': load(MAT + '/M_CityFarMass'), 'bluff': load(MAT + '/M_CityFarBluff'), 'shore': load(shore_mi)}
+    mats = {'towers': load(MAT + '/M_CityFarMass'), 'fabric': load(MAT + '/M_CityFarMass'), 'bluff': load(MAT + '/M_CityFarBluff'), 'shore': load(shore_mi)}   # (r11) 'fabric' = the plateau block carpet (no shadow casting)
     for r in recs:
         base = r['name']; src = f'{FSKY_DIR}/_in/{base}/StaticMeshes/{base}'; dst = f'{FSKY_DIR}/SM_{base}'
         if not EAL.does_asset_exist(src): log('MISSING farsky mesh', src); continue
         EAL.rename_asset(src, dst); sm = load(dst)
-        finish_mesh(sm, mats[r['mat']], False, nanite=False); EAL.save_asset(dst)
+        finish_mesh(sm, mats[r['mat']], False, nanite=False)
+        if r['mat'] == 'fabric':   # (r11) the plateau block carpet is 2.5-8 km away, beyond every Lumen scene range: no mesh distance field (7 s of build per tile otherwise)
+            try:
+                bs = sms.get_lod_build_settings(sm, 0); bs.set_editor_property('distance_field_resolution_scale', 0.0); sms.set_lod_build_settings(sm, 0, bs)
+            except Exception as _ex: log('WARN fabric distance field', _ex)
+        EAL.save_asset(dst)
     EAL.delete_directory(FSKY_DIR + '/_in')
     cp = ROOT + '/Props/SM_farsky_clump'
     if EAL.does_asset_exist(cp): EAL.delete_asset(cp)

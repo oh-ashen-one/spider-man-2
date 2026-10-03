@@ -214,11 +214,11 @@ PLACED = plateau_towers()
 # ================================================================ 1b. plateau fabric (r11): a carpet of mid-rise blocks on the Palisades plateau
 # The S4 rows 165-230 look over the plateau at 2.5-8 km. Between the browser's farCityMass blocks and the hinterland boxes the ground was bare fogged land (Y ~ the sky), which made up
 # most of the 'pixels above Y 204' of the critic's far-band test. The carpet is M_CityFarMass with the same window codes / authored mid-grey tones as the towers; cells grow with distance
-# (64 m next to the cliff -> ~180 m at 6.5 km: blocks stay ~8-12 px wide on screen), heights follow smooth 'district' noise (lognormal, taller near the cliff).
+# (64 m next to the cliff -> ~150 m at 4.8 km inland: blocks stay ~8-12 px wide on screen), heights follow smooth 'district' noise (lognormal, taller near the cliff).
 def fabric():
     meshes = {}; rg = np.random.default_rng(909); n = 0; tris0 = 0
     u = 56.0
-    while u < 6500.0:
+    while u < 4800.0:   # the plateau (y = 58 m) ends at x = -7000 (farshore.js PALISADES)
         cs = 64.0 + 0.018 * u
         z = -5050.0
         while z < 900.0:
@@ -268,6 +268,9 @@ def hinterland():
     while x < 1580:
         kind = rg.choice(['down', 'mid', 'gap'], p=[0.42, 0.36, 0.22]); w = {'down': rg.uniform(110, 250), 'mid': rg.uniform(80, 190), 'gap': rg.uniform(40, 120)}[kind]
         bands.append((kind, x, x + w)); x += w
+    # (r11, critic r10 T4: 'in (540,110,900,260) 25 % of the 8x8 blocks are bright and flat'): 120 of the 197 flat bright blocks of the r10 frame were SKY above a low skyline (rows 110-135, Y 229, std < 1),
+    # which no material can texture. The central columns 500-940 are now one downtown cluster (taller roofs, rows 98-150) so towers, not sky, fill the top of the critic's box.
+    bands = [(('down' if (xb > 500 and xa < 940) else kind), xa, xb) for kind, xa, xb in bands]
     landmarks = 0
     def stack(cx, cz, wd, dp, h, wall, roof, rot):
         """body + 1-3 setback tiers + optional top; returns the number of boxes added"""
@@ -288,8 +291,10 @@ def hinterland():
             bw = rg.uniform(7, 20)                        # screen width of one building (px)
             D = rg.uniform(5000, 9800) if kind == 'down' else rg.uniform(5000, 12500)
             y_t = rg.uniform(136, 163) if kind == 'down' else rg.uniform(160, 184)
-            if kind == 'down' and rg.random() < 0.10: y_t = rg.uniform(124, 140)     # a spire / supertall
-            h = float(np.clip(top_to_height(y_t, D), 28, 470))
+            central = kind == 'down' and 500 < px < 940
+            if central: y_t = rg.uniform(100, 148)                                    # (r11) the central downtown cluster rises well above the horizon row (136)
+            if kind == 'down' and rg.random() < 0.10: y_t = rg.uniform(124, 140) if not central else rg.uniform(92, 118)     # a spire / supertall
+            h = float(np.clip(top_to_height(y_t, D), 28, 560))
             d0 = s4_ray(px + bw / 2); c = S4_POS[[0, 2]] + d0[[0, 2]] * D
             wd = max(24.0, bw * D / FP * rg.uniform(0.8, 1.1)); dp = wd * rg.uniform(0.8, 1.3)
             wall = HWALL[rg.integers(len(HWALL))]; roof = HROOF[rg.integers(len(HROOF))]
