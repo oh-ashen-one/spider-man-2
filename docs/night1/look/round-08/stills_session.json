@@ -1,0 +1,170 @@
+{
+ "plan": {
+  "groups": [
+   {
+    "name": "h18.4",
+    "hour": 18.4,
+    "cmds": [],
+    "shots": [
+     "S1",
+     "S2",
+     "S3",
+     "S4",
+     "S5",
+     "S6",
+     "S7",
+     "S8"
+    ],
+    "settle_first": 10
+   },
+   {
+    "name": "h22",
+    "hour": 22.0,
+    "cmds": [],
+    "shots": [
+     "S1",
+     "S2",
+     "S3",
+     "S4",
+     "S5",
+     "S6",
+     "S7",
+     "S8",
+     "S4m"
+    ],
+    "settle_first": 14
+   },
+   {
+    "name": "h6.5",
+    "hour": 6.5,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4e"
+    ]
+   },
+   {
+    "name": "h7",
+    "hour": 7.0,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4e"
+    ]
+   },
+   {
+    "name": "h7.5",
+    "hour": 7.5,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4e"
+    ]
+   },
+   {
+    "name": "h19",
+    "hour": 19.0,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4w"
+    ]
+   },
+   {
+    "name": "h19.5",
+    "hour": 19.5,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4w"
+    ]
+   },
+   {
+    "name": "h19.8",
+    "hour": 19.8,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4w"
+    ]
+   },
+   {
+    "name": "h20",
+    "hour": 20.0,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4w"
+    ]
+   },
+   {
+    "name": "h20.5",
+    "hour": 20.5,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S4w"
+    ]
+   },
+   {
+    "name": "h21",
+    "hour": 21.0,
+    "cmds": [],
+    "shots": [
+     "S4"
+    ]
+   },
+   {
+    "name": "h21.5",
+    "hour": 21.5,
+    "cmds": [],
+    "shots": [
+     "S4"
+    ]
+   },
+   {
+    "name": "mist_h7.6",
+    "hour": 7.6,
+    "cmds": [],
+    "shots": [
+     "S1",
+     "S4",
+     "S4e"
+    ]
+   },
+   {
+    "name": "h13",
+    "hour": 13.0,
+    "cmds": [],
+    "shots": [
+     "S4",
+     "S8"
+    ]
+   },
+   {
+    "name": "w1_h13",
+    "hour": 13.0,
+    "weather": 1,
+    "cmds": [],
+    "shots": [
+     "S1",
+     "S2",
+     "S3",
+     "S4",
+     "S5",
+     "S6",
+     "S7",
+     "S8"
+    ],
+    "settle_first": 10
+   }
+  ]
+ },
+ "res": "1920x1080",
+ "internal": "100% of output",
+ "gpu_util_before_pct": 13,
+ "wall_s": 867,
+ "stills": 48,
+ "poses": 48,
+ "settle_rule": "first pose of a group: settle_first s (default 8) after the hour / key change; next poses of the group: settle s (default 5); min 90 frames"
+}
