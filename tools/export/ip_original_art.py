@@ -119,7 +119,7 @@ def art_P27(W, H):  # PLANT A TREE
     d.rounded_rectangle([W * 0.06, H * 0.05, W * 0.94, H * 0.24], radius=W * 0.05, fill=(34, 92, 62))
     text_fit(d, 'PLANT', 'impact', (W * 0.1, H * 0.06, W * 0.9, H * 0.15), (250, 246, 226)); text_fit(d, 'A TREE', 'impact', (W * 0.1, H * 0.145, W * 0.9, H * 0.235), (250, 226, 120))
     d.rounded_rectangle([W * 0.06, H * 0.82, W * 0.94, H * 0.95], radius=W * 0.05, fill=(250, 246, 226))
-    text_fit(d, 'MORE SHADE ON EVERY STREET', 'futura', (W * 0.1, H * 0.835, W * 0.9, H * 0.945), (34, 92, 62))
+    text_fit(d, 'GREENER BLOCKS START HERE', 'futura', (W * 0.1, H * 0.835, W * 0.9, H * 0.945), (34, 92, 62))
     return im
 
 ART = {('L', 23): art_L23, ('L', 39): art_L39, ('L', 41): art_L41, ('L', 61): art_L61, ('P', 8): art_P8, ('P', 27): art_P27}
