@@ -915,7 +915,9 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0
     }
    },
    {
@@ -947,7 +949,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": -0.7964,
+     "pp.AutoExposureBias": -0.7517,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -994,7 +996,10 @@
      "pp.FilmShoulder": 0.2895,
      "pp.FilmSlope": 0.9021,
      "pp.AutoExposureMaxBrightness": 4.3,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0,
+     "pp.LocalExposureShadowContrastScale": 1.0
     },
     "mix": [
      "blue",
@@ -1143,7 +1148,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 10.8,
-     "pp.AutoExposureBias": 0.0614,
+     "pp.AutoExposureBias": -0.0074,
      "pp.BloomIntensity": 0.47324298285540894,
      "pp.BloomThreshold": 0.7605421028675465,
      "pp.VignetteIntensity": 0.43662149142770446,
@@ -1194,7 +1199,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.7,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0
     }
    },
    {
@@ -1227,7 +1237,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.1474,
+     "pp.AutoExposureBias": -0.1428,
      "sky.Intensity": 0.1655,
      "fill.N": 0.0785,
      "fill.S": 0.0785,
@@ -1290,7 +1300,10 @@
      "pp.FilmShoulder": 0.106,
      "pp.FilmSlope": 0.79816,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0,
+     "pp.LocalExposureShadowContrastScale": 0.55
     }
    },
    {
@@ -1435,7 +1448,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.3877,
+     "pp.AutoExposureBias": -0.3838,
      "pp.BloomIntensity": 0.45411636363636376,
      "pp.BloomThreshold": 0.8753018181818178,
      "pp.VignetteIntensity": 0.4270581818181819,
@@ -1486,7 +1499,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.45,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0
     }
    },
    {
@@ -1631,7 +1649,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.4645,
+     "pp.AutoExposureBias": -0.4664,
      "pp.BloomIntensity": 0.4466745454545454,
      "pp.BloomThreshold": 0.9199527272727276,
      "pp.VignetteIntensity": 0.42333727272727273,
@@ -1682,7 +1700,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.4,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0
     }
    },
    {
@@ -1827,7 +1850,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.4404,
+     "pp.AutoExposureBias": -0.4191,
      "pp.BloomIntensity": 0.4391551515151515,
      "pp.BloomThreshold": 0.965069090909091,
      "pp.VignetteIntensity": 0.41957757575757576,
@@ -1878,7 +1901,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.35,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0
     }
    },
    {
@@ -1911,7 +1939,7 @@
      ],
      "fog.FogCutoffDistance": 0.0,
      "sun.Intensity": 12866.6,
-     "pp.AutoExposureBias": -0.3817,
+     "pp.AutoExposureBias": -0.1791,
      "sky.Intensity": 0.3327,
      "fill.N": 0.1142,
      "fill.E": 0.0956,
@@ -1975,7 +2003,10 @@
      "pp.FilmShoulder": 0.093,
      "pp.FilmSlope": 0.80388,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -2.0,
+     "pp.LocalExposureShadowContrastScale": 0.3
     },
     "mix": [
      "dusk_am",
@@ -2124,7 +2155,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.3312,
+     "pp.AutoExposureBias": -0.0639,
      "pp.BloomIntensity": 0.4264404461279461,
      "pp.BloomThreshold": 1.041357323232323,
      "pp.VignetteIntensity": 0.41322022306397305,
@@ -2175,7 +2206,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.26,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.90625
     }
    },
    {
@@ -2320,7 +2356,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.1381,
+     "pp.AutoExposureBias": 0.0277,
      "pp.BloomIntensity": 0.4202659932659933,
      "pp.BloomThreshold": 1.07840404040404,
      "pp.VignetteIntensity": 0.4101329966329967,
@@ -2371,7 +2407,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.22,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.8125
     }
    },
    {
@@ -2516,7 +2557,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.0472,
+     "pp.AutoExposureBias": 0.038,
      "pp.BloomIntensity": 0.41425568181818173,
      "pp.BloomThreshold": 1.1144659090909093,
      "pp.VignetteIntensity": 0.4071278409090909,
@@ -2567,7 +2608,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.18,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.71875
     }
    },
    {
@@ -2712,7 +2758,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0227,
+     "pp.AutoExposureBias": 0.0022,
      "pp.BloomIntensity": 0.40868855218855216,
      "pp.BloomThreshold": 1.147868686868687,
      "pp.VignetteIntensity": 0.4043442760942761,
@@ -2763,7 +2809,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.14,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.625
     }
    },
    {
@@ -2908,7 +2959,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 1.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0796,
+     "pp.AutoExposureBias": -0.0504,
      "pp.BloomIntensity": 0.40384364478114476,
      "pp.BloomThreshold": 1.1769381313131313,
      "pp.VignetteIntensity": 0.4019218223905724,
@@ -2959,7 +3010,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.1,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.53125
     }
    },
    {
@@ -2990,7 +3046,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.1652,
+     "pp.AutoExposureBias": -0.0843,
      "sky.Intensity": 0.5,
      "fill.N": 0.15,
      "fill.E": 0.0,
@@ -3055,7 +3111,10 @@
      "pp.FilmShoulder": 0.08,
      "pp.FilmSlope": 0.8096,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.4375,
+     "pp.LocalExposureShadowContrastScale": 0.066667
     }
    },
    {
@@ -3200,7 +3259,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1343,
+     "pp.AutoExposureBias": -0.1306,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -3251,7 +3310,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.033333,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.34375
     }
    },
    {
@@ -3396,7 +3460,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1676,
+     "pp.AutoExposureBias": -0.2469,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -3447,7 +3511,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -3643,7 +3712,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -3749,7 +3823,10 @@
      "pp.FilmWhiteClip": 0.0,
      "pp.FilmShoulder": 0.08,
      "pp.FilmSlope": 0.8096,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 0.0
     },
     "mix": [
      "dawn",
@@ -3949,7 +4026,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -4094,7 +4176,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 5.733,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1522,
+     "pp.AutoExposureBias": -0.1515,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4145,7 +4227,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -4290,7 +4377,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 6.417,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0596,
+     "pp.AutoExposureBias": -0.0336,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4341,7 +4428,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -4399,7 +4491,7 @@
      ],
      "pp.AutoExposureMinBrightness": 7.1,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0005,
+     "pp.AutoExposureBias": -0.0037,
      "fill.N": 0.33,
      "fill.E": 0.0,
      "fill.S": 0.33,
@@ -4447,7 +4539,10 @@
      "pp.FilmWhiteClip": 0.0,
      "pp.FilmShoulder": 0.08,
      "pp.FilmSlope": 0.8096,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 0.0
     },
     "mix": [
      "golden_am",
@@ -4596,7 +4691,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.225,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.0114,
+     "pp.AutoExposureBias": -0.0124,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4647,7 +4742,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -4792,7 +4892,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.35,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0418,
+     "pp.AutoExposureBias": 0.0383,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -4843,7 +4943,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -4988,7 +5093,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.475,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.0473,
+     "pp.AutoExposureBias": 0.0434,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -5039,7 +5144,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -5096,7 +5206,7 @@
      ],
      "pp.AutoExposureMinBrightness": 7.6,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1185,
+     "pp.AutoExposureBias": 0.1126,
      "fill.N": 0.555,
      "fill.E": 0.0,
      "fill.S": 0.555,
@@ -5145,7 +5255,10 @@
      "pp.FilmWhiteClip": 0.0,
      "pp.FilmShoulder": 0.14,
      "pp.FilmSlope": 0.8648,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 0.0
     },
     "mix": [
      "dawn",
@@ -5345,7 +5458,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -5377,7 +5495,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.2671,
+     "pp.AutoExposureBias": 0.27,
      "sky.Intensity": 1.375,
      "fill.N": 0.825,
      "fill.E": 0.0,
@@ -5434,7 +5552,10 @@
      "pp.FilmWhiteClip": 0.0,
      "pp.FilmShoulder": 0.2,
      "pp.FilmSlope": 0.92,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 0.0
     }
    },
    {
@@ -5579,7 +5700,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 8.2,
      "pp.AutoExposureMaxBrightness": 13.145833333333332,
-     "pp.AutoExposureBias": 0.2224,
+     "pp.AutoExposureBias": 0.2235,
      "pp.BloomIntensity": 0.4093750000000001,
      "pp.BloomThreshold": 1.1874999999999998,
      "pp.VignetteIntensity": 0.395,
@@ -5630,7 +5751,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.15,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -5662,7 +5788,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.2735,
+     "pp.AutoExposureBias": 0.2686,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -5680,7 +5806,10 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 0.3
     },
     "mix": [
      "day",
@@ -5829,7 +5958,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 8.126333333333333,
      "pp.AutoExposureMaxBrightness": 13.736666666666666,
-     "pp.AutoExposureBias": 0.3771,
+     "pp.AutoExposureBias": 0.3537,
      "pp.BloomIntensity": 0.45525000000000004,
      "pp.BloomThreshold": 1.1263333333333334,
      "pp.VignetteIntensity": 0.3705333333333333,
@@ -5880,7 +6009,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.65,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25
     }
    },
    {
@@ -5912,7 +6046,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.1365,
+     "pp.AutoExposureBias": 0.1383,
      "cloudv.Layout_GlobalTexturePlacement": [
       0.0,
       30000.0,
@@ -5930,7 +6064,10 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 1.0
     },
     "mix": [
      "day",
@@ -5983,7 +6120,10 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.25,
+     "pp.LocalExposureShadowContrastScale": 1.0
     }
    },
    {
@@ -6031,7 +6171,10 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.125,
+     "pp.LocalExposureShadowContrastScale": 1.0
     }
    },
    {
@@ -6080,7 +6223,10 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "pp.LocalExposureShadowContrastScale": 1.0
     }
    },
    {
@@ -6160,7 +6306,10 @@
       1.0,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "pp.LocalExposureShadowContrastScale": 1.0
     }
    },
    {
@@ -6305,7 +6454,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 8.15279381793478,
      "pp.AutoExposureMaxBrightness": 12.943741508152172,
-     "pp.AutoExposureBias": 0.7983,
+     "pp.AutoExposureBias": 0.7742,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6356,7 +6505,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 1.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -6501,7 +6655,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 8.05767663043478,
      "pp.AutoExposureMaxBrightness": 12.884171195652174,
-     "pp.AutoExposureBias": 0.7466,
+     "pp.AutoExposureBias": 0.6997,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6552,7 +6706,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.925,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -6697,7 +6856,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.925704823369561,
      "pp.AutoExposureMaxBrightness": 12.822053328804346,
-     "pp.AutoExposureBias": 0.6949,
+     "pp.AutoExposureBias": 0.6463,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6748,7 +6907,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.85,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -6893,7 +7057,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.76793478260869,
      "pp.AutoExposureMaxBrightness": 12.75815217391304,
-     "pp.AutoExposureBias": 0.6432,
+     "pp.AutoExposureBias": 0.5985,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -6944,7 +7108,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.775,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -7089,7 +7258,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.595422894021743,
      "pp.AutoExposureMaxBrightness": 12.69323199728261,
-     "pp.AutoExposureBias": 0.5915,
+     "pp.AutoExposureBias": 0.5679,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7140,7 +7309,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.7,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -7285,7 +7459,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.419225543478265,
      "pp.AutoExposureMaxBrightness": 12.628057065217392,
-     "pp.AutoExposureBias": 0.5398,
+     "pp.AutoExposureBias": 0.5658,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7336,7 +7510,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.625,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -7481,7 +7660,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 7.250399116847827,
      "pp.AutoExposureMaxBrightness": 12.563391644021738,
-     "pp.AutoExposureBias": 0.4881,
+     "pp.AutoExposureBias": 0.5158,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7532,7 +7711,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.55,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -7564,7 +7748,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": 0.4406,
+     "pp.AutoExposureBias": 0.4212,
      "atm.SkyLuminanceFactor": [
       1.0,
       1.0,
@@ -7610,7 +7794,10 @@
      "pp.FilmShoulder": 0.133333,
      "pp.FilmSlope": 0.858667,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "pp.LocalExposureShadowContrastScale": 0.48
     },
     "mix": [
      "dusk",
@@ -7759,7 +7946,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 6.583,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.4111,
+     "pp.AutoExposureBias": 0.3848,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -7810,7 +7997,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.41,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -7955,7 +8147,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 6.067,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.4149,
+     "pp.AutoExposureBias": 0.3548,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -8006,7 +8198,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.34,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -8202,7 +8399,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.27,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -8398,7 +8600,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.2,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -8594,7 +8801,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.225,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -8739,7 +8951,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 4.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.5636,
+     "pp.AutoExposureBias": 0.3485,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -8790,7 +9002,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.25,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -8935,7 +9152,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.667,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.5659,
+     "pp.AutoExposureBias": 0.4484,
      "pp.BloomIntensity": 0.4,
      "pp.BloomThreshold": 1.2,
      "pp.VignetteIntensity": 0.4,
@@ -8986,7 +9203,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.275,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -9017,7 +9239,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": 0.5044,
+     "pp.AutoExposureBias": 0.395,
      "sky.Intensity": 2.3,
      "fill.N": 0.69,
      "fill.E": 2.3,
@@ -9075,7 +9297,10 @@
      "pp.FilmShoulder": 0.08,
      "pp.FilmSlope": 0.8096,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "pp.LocalExposureShadowContrastScale": 0.3
     }
    },
    {
@@ -9220,7 +9445,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 3.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.5268,
+     "pp.AutoExposureBias": 0.3951,
      "pp.BloomIntensity": 0.40326719576719583,
      "pp.BloomThreshold": 1.1803968253968251,
      "pp.VignetteIntensity": 0.40163359788359787,
@@ -9271,7 +9496,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.325,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -9416,7 +9646,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.667,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.4881,
+     "pp.AutoExposureBias": 0.3869,
      "pp.BloomIntensity": 0.4080820105820107,
      "pp.BloomThreshold": 1.1515079365079357,
      "pp.VignetteIntensity": 0.4040410052910054,
@@ -9433,9 +9663,9 @@
      "sun.SurfaceGain": 0.001017,
      "sunc.VolumetricScatteringIntensity": 0.0936,
      "sunc.CloudScatteredLuminanceScale": [
-      0.3067,
-      0.3067,
-      0.3067,
+      0.235137,
+      0.235137,
+      0.235137,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9467,7 +9697,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.35,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -9612,7 +9847,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.333,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.3866,
+     "pp.AutoExposureBias": 0.339,
      "pp.BloomIntensity": 0.4139285714285717,
      "pp.BloomThreshold": 1.11642857142857,
      "pp.VignetteIntensity": 0.40696428571428583,
@@ -9629,9 +9864,9 @@
      "sun.SurfaceGain": 0.000906,
      "sunc.VolumetricScatteringIntensity": 0.0164,
      "sunc.CloudScatteredLuminanceScale": [
-      0.26,
-      0.26,
-      0.26,
+      0.138667,
+      0.138667,
+      0.138667,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9663,7 +9898,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.3875,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -9808,7 +10048,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 2.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.3556,
+     "pp.AutoExposureBias": 0.33,
      "pp.BloomIntensity": 0.4202910052910051,
      "pp.BloomThreshold": 1.0782539682539691,
      "pp.VignetteIntensity": 0.4101455026455026,
@@ -9825,9 +10065,9 @@
      "sun.SurfaceGain": 0.000924,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.2133,
-      0.2133,
-      0.2133,
+      0.06399,
+      0.06399,
+      0.06399,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -9859,7 +10099,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.425,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -10004,7 +10249,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 1.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.2664,
+     "pp.AutoExposureBias": 0.2828,
      "pp.BloomIntensity": 0.42665343915343906,
      "pp.BloomThreshold": 1.0400793650793654,
      "pp.VignetteIntensity": 0.41332671957671957,
@@ -10021,9 +10266,9 @@
      "sun.SurfaceGain": 0.001172,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.1667,
-      0.1667,
-      0.1667,
+      0.05001,
+      0.05001,
+      0.05001,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10055,7 +10300,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.4625,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -10087,7 +10337,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": 0.3207,
+     "pp.AutoExposureBias": 0.2453,
      "sky.Intensity": 0.3327,
      "fill.N": 0.1142,
      "fill.E": 0.3456,
@@ -10134,9 +10384,9 @@
      "sun.SurfaceGain": 0.002359,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.12,
-      0.12,
-      0.12,
+      0.036,
+      0.036,
+      0.036,
       1.0
      ],
      "pp.AutoExposureMinBrightness": 1.0,
@@ -10150,7 +10400,10 @@
      "pp.FilmShoulder": 0.093,
      "pp.FilmSlope": 0.80388,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "pp.LocalExposureShadowContrastScale": 0.5
     },
     "mix": [
      "blue",
@@ -10299,7 +10552,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.3512,
+     "pp.AutoExposureBias": 0.1973,
      "pp.BloomIntensity": 0.43817294973544985,
      "pp.BloomThreshold": 0.970962301587301,
      "pp.VignetteIntensity": 0.4190864748677249,
@@ -10316,9 +10569,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.08,
-      0.08,
-      0.08,
+      0.024,
+      0.024,
+      0.024,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10350,7 +10603,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.55,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -10495,7 +10753,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": 0.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.2757,
+     "pp.AutoExposureBias": 0.1074,
      "pp.BloomIntensity": 0.4441534391534393,
      "pp.BloomThreshold": 0.9350793650793643,
      "pp.VignetteIntensity": 0.42207671957671966,
@@ -10512,9 +10770,9 @@
      "sun.SurfaceGain": 0.0,
      "sunc.VolumetricScatteringIntensity": 0.0,
      "sunc.CloudScatteredLuminanceScale": [
-      0.04,
-      0.04,
-      0.04,
+      0.021333,
+      0.021333,
+      0.021333,
       1.0
      ],
      "sun.RampLo": -4.0,
@@ -10546,7 +10804,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.6,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -10691,7 +10954,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.25,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": 0.1184,
+     "pp.AutoExposureBias": 0.008,
      "pp.BloomIntensity": 0.4501339285714283,
      "pp.BloomThreshold": 0.8991964285714297,
      "pp.VignetteIntensity": 0.42506696428571417,
@@ -10742,7 +11005,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.65,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -10887,7 +11155,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.5,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.1551,
+     "pp.AutoExposureBias": -0.1579,
      "pp.BloomIntensity": 0.45580687830687816,
      "pp.BloomThreshold": 0.865158730158731,
      "pp.VignetteIntensity": 0.4279034391534391,
@@ -10938,7 +11206,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.7,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -11083,7 +11356,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -0.75,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.2902,
+     "pp.AutoExposureBias": -0.2643,
      "pp.BloomIntensity": 0.46086474867724864,
      "pp.BloomThreshold": 0.8348115079365083,
      "pp.VignetteIntensity": 0.43043237433862436,
@@ -11134,7 +11407,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.75,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -11165,7 +11443,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.3377,
+     "pp.AutoExposureBias": -0.3117,
      "sky.Intensity": 0.1655,
      "fill.N": 0.0785,
      "fill.E": 0.1912,
@@ -11229,7 +11507,10 @@
      "pp.FilmShoulder": 0.106,
      "pp.FilmSlope": 0.79816,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "pp.LocalExposureShadowContrastScale": 0.8
     }
    },
    {
@@ -11374,7 +11655,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.4019,
+     "pp.AutoExposureBias": -0.4043,
      "pp.BloomIntensity": 0.46824707031250007,
      "pp.BloomThreshold": 0.7905175781249996,
      "pp.VignetteIntensity": 0.43412353515625,
@@ -11425,7 +11706,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.85,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -11570,7 +11856,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "pp.AutoExposureBias": -0.2302,
+     "pp.AutoExposureBias": -0.28,
      "pp.BloomIntensity": 0.4709319196428571,
      "pp.BloomThreshold": 0.7744084821428577,
      "pp.VignetteIntensity": 0.43546595982142855,
@@ -11621,7 +11907,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 0.9,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -11653,7 +11944,7 @@
       1
      ],
      "fog.FogCutoffDistance": 0.0,
-     "pp.AutoExposureBias": -0.3679,
+     "pp.AutoExposureBias": -0.42,
      "sky.Intensity": 0.1427,
      "fill.N": 0.0592,
      "fill.E": 0.1081,
@@ -11718,7 +12009,10 @@
      "pp.FilmShoulder": 0.113,
      "pp.FilmSlope": 0.79508,
      "pp.AutoExposureMaxBrightness": 15.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "fog.DirectionalInscatteringStartDistance": 400000.0
     },
     "mix": [
      "night",
@@ -11763,9 +12057,9 @@
       1.0
      ],
      "atm.SkyLuminanceFactor": [
-      141.96,
-      48.1,
-      20.8,
+      52.5252,
+      45.695,
+      38.48,
       1.0
      ],
      "atm.RayleighScatteringScale": 0.013378125000000015,
@@ -11792,13 +12086,13 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.00033,
-      0.000165,
-      6.6e-05,
+      0.008,
+      0.00336,
+      0.00096,
       1.0
      ],
-     "fog.DirectionalInscatteringExponent": 8.459375000000005,
-     "fog.DirectionalInscatteringStartDistance": 9846.875,
+     "fog.DirectionalInscatteringExponent": 12.0,
+     "fog.DirectionalInscatteringStartDistance": 400000.0,
      "fog.VolumetricFogScatteringDistribution": 0.5153125000000001,
      "fog.VolumetricFogAlbedo": [
       0.7,
@@ -11867,7 +12161,7 @@
      "pp.FilmBlackClip": 0.0,
      "pp.AutoExposureMinBrightness": -1.0,
      "pp.AutoExposureMaxBrightness": 10.5,
-     "pp.AutoExposureBias": -0.7306,
+     "pp.AutoExposureBias": -0.7628,
      "pp.BloomIntensity": 0.49234374999999997,
      "pp.BloomThreshold": 0.6459375000000004,
      "pp.VignetteIntensity": 0.44617187499999994,
@@ -11918,7 +12212,12 @@
       1.5,
       1.0
      ],
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "skyc.VolumetricScatteringIntensity": 1.0,
+     "pp.LocalExposureShadowContrastScale": 1.0,
+     "pp.LocalExposureHighlightContrastScale": 1.0,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    },
    {
@@ -11949,7 +12248,7 @@
       1,
       1
      ],
-     "pp.AutoExposureBias": -0.5842,
+     "pp.AutoExposureBias": -0.5806,
      "sky.Intensity": 0.12,
      "fill.N": 0.04,
      "fill.E": 0.025,
@@ -11962,9 +12261,9 @@
       1.0
      ],
      "atm.SkyLuminanceFactor": [
-      154.0,
-      44.0,
-      17.6,
+      56.98,
+      41.8,
+      32.56,
       1.0
      ],
      "fog.FogInscatteringLuminance": [
@@ -11974,9 +12273,9 @@
       1.0
      ],
      "fog.DirectionalInscatteringLuminance": [
-      0.0,
-      0.0,
-      0.0,
+      0.008,
+      0.00336,
+      0.00096,
       1.0
      ],
      "sun.Intensity": 3500.0,
@@ -12015,7 +12314,11 @@
      "pp.FilmShoulder": 0.12,
      "pp.FilmSlope": 0.792,
      "pp.AutoExposureMaxBrightness": 6.0,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "fog.DirectionalInscatteringExponent": 12.0,
+     "fog.DirectionalInscatteringStartDistance": 400000.0
     }
    },
    {
@@ -12047,7 +12350,7 @@
       1
      ],
      "fog.FogCutoffDistance": 700000.0,
-     "pp.AutoExposureBias": -0.8913,
+     "pp.AutoExposureBias": -0.8974,
      "sky.Intensity": 0.66,
      "fill.N": 0.22,
      "fill.E": 0.1375,
@@ -12111,7 +12414,10 @@
      "pp.FilmShoulder": 0.18,
      "pp.FilmSlope": 0.828,
      "pp.AutoExposureMaxBrightness": 4.3,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0,
+     "fog.DirectionalInscatteringStartDistance": 400000.0
     }
    },
    {
@@ -12200,7 +12506,9 @@
      ],
      "pp.FilmShoulder": 0.3,
      "pp.FilmSlope": 0.9,
-     "moonc.VolumetricScatteringIntensity": 0.1
+     "moonc.VolumetricScatteringIntensity": 0.1,
+     "pp.LocalExposureBlurredLuminanceBlend": 0.2,
+     "pp.LocalExposureMiddleGreyBias": -1.0
     }
    }
   ],
