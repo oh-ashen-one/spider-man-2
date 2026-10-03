@@ -85,5 +85,14 @@ chop and second realization are shaded (R3B0C, CB): hold H screens OpenRgh 0.4 /
 | OpenRgh 0.4 | 76.1 / 12.6 | 0.073 | 81.4 / 2.46 / 32.1 % |
 
 Shading the open-water chop / second realization does not lower the autocorrelation at OpenRgh 0.5; the roughness itself does (a uniform
-rough lobe smears the horizon reflection into row-coherent bands). Hold I tries patchy roughness (RghVar: the floor x 1 +- RghVar x 4-30 m
-noise) on OpenRgh 0.45.
+rough lobe smears the horizon reflection into row-coherent bands). Hold I tried patchy roughness (RghVar: the floor x 1 +- RghVar x 4-30 m
+noise) on OpenRgh 0.45: still ac80 0.196 (RghVar 0.5) / 0.197 (0.9) against 0.087 without, and river_low brighter (82.7 / 80.0 vs 73.7):
+the patches are themselves 80-px-coherent structure. Dropped (RghVar 0 stays in the shader as a parameter). Hold I was cut by an
+auto-PAUSE of the health monitor at 12:28 (WindowServer CPU 95 %, not this hold's engine: it was building headless); the stills were taken
+after the auto-lift (12:39) with SKIP_BUILD.
+
+**Final defaults** (build_water.py blob dc84a75a5005, commit bfb35c5b): OpenRgh 0.4 with OpenChop 1, OpenB 1 (the open water keeps its
+resolved chop and second realization under the rough floor), ShoreMask 1, ShoreA 2, ShoreB 14, ShoreSA 10, ShoreSB 40, OpenD0 250,
+OpenD1 400, OpenSl 1, OpenWC 0, OpenGlit 1, OpenBend 1, OpenGlS 1, GlitPow 150, OpenGSp 1, GlitSlK 3, GlitRgh 0.025, GlitE 0, GlitT 0.4,
+RghVar 0. Everything else as r05b. Chosen over 0.45 for the dolly autocorrelation margin (still ac80 0.073 vs 0.084), at the cost of the
+river_sun flank margin (81.4 vs 77.1 at 1080p, target <= 85).
