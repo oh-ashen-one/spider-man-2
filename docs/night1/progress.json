@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 16:53",
+ "updated": "2026-10-03 18:48",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -62,10 +62,10 @@
    "id": "P4",
    "name": "Look: lighting, post, 4K perf",
    "branch": "night1/look",
-   "state": "active",
-   "round": 8,
+   "state": "paused",
+   "round": 9,
    "verdict": "fails \u2014 lowest 4 (Opus 5.5)",
-   "gap": "light the city with a low directional sun, not a uniform lift (p5 <= 15, p95 >= 120, 32-px local contrast >= 0.17, sunlit/shaded facade ratio >= 3)"
+   "gap": "remove the dark horizon band so the far rank fades into haze (Otsu split rows 95-140 <= 12 Y; sky rows 100-130 >= far-band mean) on canonical, tour and 18:24 frames"
   },
   {
    "id": "P5",
@@ -1048,6 +1048,14 @@
    "verdict": "fails",
    "gap": "web-catch snap: chest <= 250 deg/s in 0.1 s windows from trick end to +0.4 s on all 22 tricks (r01 300-921, 1894 peak); G4 kept; reel >= 12 Mbps",
    "notes": "Merged (Opus director): no traversal axis below r26; 12 programs / 22 tricks. Flips vs owner clip 5. r02 on Opus, queued until a GPU slot frees."
+  },
+  {
+   "t": "2026-10-03 18:48",
+   "piece": "look",
+   "round": 9,
+   "verdict": "fails",
+   "gap": "remove the dark horizon band so the far rank fades into haze (Otsu split rows 95-140 <= 12 Y; sky rows 100-130 >= far-band mean) on canonical, tour and 18:24 frames",
+   "notes": "NOT merged (below r03 on sun/sky and post). Look STOPPED after five unmerged rounds (r05-r09); resume from the r03 tree with one controlled far-band/AP delta."
   }
  ],
  "perf": [
