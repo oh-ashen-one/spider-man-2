@@ -1,5 +1,5 @@
 {
- "updated": "2026-10-03 04:19",
+ "updated": "2026-10-03 07:14",
  "phase": "Day 2 \u2014 resumed under the new safety rules",
  "headline": "Owner played the integrated Manhattan build and approved it. All seven pieces resumed overnight: builders on Sonnet 5.5 xhigh (traversal flips on Opus 5.5 high), every round judged by a fresh blind Opus 5.5 critic.",
  "target": "Marvel's Spider-Man 2 quality at 3840\u00d72160 output, 60 fps, measured during real gameplay on the Mac Studio M3 Ultra.",
@@ -984,6 +984,14 @@
    "verdict": "fails",
    "gap": "a_swing_chain 12.4-13.1 s held fallCalm pose -> silhouette change every 0.1 s or web re-attach within 0.6 s (T4); w1 arms pump in antiphase; attach gaps <= 3.3 s",
    "notes": "Merged (Opus director): camera 6->7, body 6->7, original Tessera suit everywhere incl. playable default. Traversal STOPPED (director gate: moves stayed 6 for 4 rounds). Slot -> water r5 (Sonnet)."
+  },
+  {
+   "t": "2026-10-03 07:14",
+   "piece": "terrain",
+   "round": 5,
+   "verdict": "fails",
+   "gap": "crowns cast sun shadows on lawn + paving (prove leaf-card materials write the shadow-depth pass first); remove p10 hull ball",
+   "notes": "Merged (Opus director): trees 4->5, no axis below r03, critic preferred new 5/5. r06 on Opus."
   }
  ],
  "perf": [
