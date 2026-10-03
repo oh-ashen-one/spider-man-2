@@ -49,7 +49,9 @@ kw = [(f(r, "t"), max(f(r, "knee_wall_l"), f(r, "knee_wall_r"))) for r in run]
 wins, ok = 0, 0
 t = kw[0][0]
 while t + 0.4 <= kw[-1][0] + 1e-6:
-    m = max(v for tt, v in kw if t <= tt < t + 0.4); wins += 1; ok += m >= 0.25; t += 0.4
+    vs = [v for tt, v in kw if t <= tt < t + 0.4]
+    if vs: m = max(vs); wins += 1; ok += m >= 0.25
+    t += 0.4
 hz = [float(r["limb_z"].split()[0]) - float(r["limb_z"].split()[1]) for r in run]
 sc = sum(1 for a, b in zip(hz, hz[1:]) if (a > 0) != (b > 0))
 dur = f(run[-1], "t") - f(run[0], "t")

@@ -81,6 +81,7 @@ public:
 	double WallCamOut = 4.2;       // m out from the wall (min; more when the street floor pushes the camera up)
 	double WallCamDist = 4.5;      // m camera -> hero kept while the floor clamps the camera height
 	double WallDistBlend = 1.0;
+	double WallMinDist = 4.1;     // round 26: on the wall the lens is never nearer (m); 0 = off (r25)
 	double WallFrameS = 0.60;      // hero screen centre on the wall
 	double WallMaxUpDeg = 30.0;    // round 15: wall camera look-up cap (was 80)
 	double WallFovAdd = 4.0;       // deg vertical FOV added on the wall
