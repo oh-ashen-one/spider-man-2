@@ -1,1 +1,2 @@
-w1_wallrun_tall_zip split 4.0: B on build 238d6ff1 (sync PNG), A on build 238d6ff1 (sync PNG)
+w1_wallrun_tall_zip split 4.0 s, A + B on build 3470d057 (sync PNG frames)
+c_wallrun_perch full run on build bb7107e6 (-WHMovieAsync)

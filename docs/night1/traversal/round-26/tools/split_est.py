@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # hold.sh time-guard estimate (s, before est_scale) of a split capture item "splitA|splitB:<clip>:<tm>", a clip name (one full movie run), warm, default:
-#   90 s engine start + dumped frames x DUMP_S + rendered-only frames x RENDER_S (r26 measured; edit after a measurement)
+#   STARTUP_S engine start (r26: 2-4 min under load) + dumped frames x DUMP_S + rendered-only frames x RENDER_S (r26 measured; edit after a measurement)
 import sys
-DUMP_S, RENDER_S = 3.6, 1.0
+DUMP_S, RENDER_S, STARTUP_S = 3.6, 0.15, 240
 import os
 _f = '/Users/midir/sm2-n1/_scratch/traversal/r26/dump_s'   # measured s per dumped frame (overrides DUMP_S)
 if os.path.exists(_f): DUMP_S = float(open(_f).read().split()[0])
@@ -18,4 +18,4 @@ else:
     m, c, tm = it.split(':'); tm = float(tm)
     if m == 'splitA': dumped, rend = (tm + 0.5 + pre) * 60, 0
     else: dumped, rend = (Q[c] - tm) * 60, (tm + pre) * 60
-print(int((90 + dumped * DUMP_S + rend * RENDER_S) / 1.35))   # hold.sh multiplies by est_scale (1.35)
+print(int((STARTUP_S + dumped * DUMP_S + rend * RENDER_S) / 1.35))   # hold.sh multiplies by est_scale (1.35)
