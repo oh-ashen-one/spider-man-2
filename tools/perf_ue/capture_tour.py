@@ -54,6 +54,7 @@ def main():
     ap.add_argument('--min-frames', type=int, default=90); ap.add_argument('--sp', default='100'); ap.add_argument('--redo', action='store_true'); ap.add_argument('--no-jpeg', action='store_true')
     ap.add_argument('--tod', default='', help='time-of-day hours (e.g. 18.4,22,13w1): one session of Look_Midtown_tod per resolution'); ap.add_argument('--work', default=''); ap.add_argument('--jpeg-q', type=int, default=90); ap.add_argument('--start', type=float, default=8.0)
     ap.add_argument('--variants', default='', help='json {"variants": {name: [live tuning commands]}} : one session sweeps every variant over the selected shots'); ap.add_argument('--exec', default='', help='extra console commands, comma separated (debug variants)'); ap.add_argument('--timeout', type=int, default=1500); ap.add_argument('--suffix', default='', help='extra text appended to the file names (variants)')
+    ap.add_argument('--map', default='', help='(round 09) map to tour instead of /Game/Tests/Look/Look_Midtown[_preset] (e.g. /Game/Maps/Manhattan = the integrated map with the golden rig)')
     a = ap.parse_args()
     shots = json.load(open(os.path.join(UE, 'Scripts', 'city_shots.json')))
     want = [s for s in a.shots.split(',') if s]
@@ -76,7 +77,7 @@ def main():
             for res in a.res.split(','):
                 d = os.path.join(work, 'var_%s_%s' % (preset, res)); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
                 tf = os.path.join(d, 'tour.txt'); open(tf, 'w').write(tour_lines(shots, a.settle, a.first_settle, V))
-                mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
+                mp = a.map or ('/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset))
                 u = util()
                 cmd = [RUN_GAME, d, '-map', mp, '-res', res, '-quit', '3000', '-name', 'tour', '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp + ((',' + a.exec) if a.exec else ''),
                        '--', '-WHLookTour=' + tf, '-WHLookTourDir=' + d, '-WHLookTourStart=%s' % a.start, '-WHLookTourMinFrames=%d' % a.min_frames]
@@ -104,7 +105,7 @@ def main():
             if not todo: continue
             d = os.path.join(work, '%s_%s%s' % (preset, res, a.suffix)); shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
             tf = os.path.join(d, 'tour.txt'); open(tf, 'w').write(tour_lines(todo, a.settle, a.first_settle))
-            mp = '/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset)
+            mp = a.map or ('/Game/Tests/Look/Look_Midtown' + ('' if preset == 'midday' else '_' + preset))
             t0 = time.time()
             cmd = [RUN_GAME, d, '-map', mp, '-res', res, '-quit', '3000', '-name', 'tour', '-timeout', str(a.timeout), '-exec', 'r.ScreenPercentage %s' % a.sp + ((',' + a.exec) if a.exec else ''),
                    '--', '-WHLookTour=' + tf, '-WHLookTourDir=' + d, '-WHLookTourStart=%s' % a.start, '-WHLookTourMinFrames=%d' % a.min_frames]
