@@ -7,12 +7,23 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Characters/WHCharAnimInstance.h"
 #include "WHCharLoopWalker.generated.h"
 
 class USkeletalMeshComponent;
 
 UENUM(BlueprintType)
 enum class EWHWalkerMode : uint8 { Loop, Turntable, Stand, Line };
+
+/** Round 09: one key of a choreographed path (Stand mode): the actor's world location and yaw at stage time Time (WHCharStage.h). */
+USTRUCT(BlueprintType)
+struct WEBHOMAGE_API FWHPathKey
+{
+	GENERATED_BODY()
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Path") float Time = 0.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Path") FVector Loc = FVector::ZeroVector;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Path") float Yaw = 0.f;
+};
 
 UCLASS()
 class WEBHOMAGE_API AWHCharLoopWalker : public AActor
@@ -51,6 +62,12 @@ public:
 	/** Seconds added to this actor's idle / sequence clock (AnimInstance IdleOffset): identical AnimBPs are not in lockstep. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Walker") float AnimOffset = 0.f;
 
+	/** Round 09 (choreographed fight, Stand mode): when non-empty the actor's location / yaw are a pure function of the stage time (keys linearly
+	 *  interpolated, yaw along the shorter arc); the horizontal speed it implies drives the locomotion blend, so a walk-in plays the walk clip. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") TArray<FWHPathKey> StagePath;
+	/** Round 09: timed clips played over the guard idle (copied to the AnimInstance): hit reactions, strikes, get-ups (FWHScriptBeat). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Script") TArray<FWHScriptBeat> Script;
+
 	/** World-space centre of the loop (set from the actor location at BeginPlay). */
 	UPROPERTY(BlueprintReadOnly, Category="Walker") FVector Center = FVector::ZeroVector;
 
@@ -68,6 +85,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category="Avoid") float MinPairDistance = 1e9f;
 
 private:
+	bool SamplePath(float T, FVector& OutP, float& OutYaw) const;
+	TWeakObjectPtr<UAnimInstance> ScriptTarget;
+	bool bPathFirst = true;
 	float Theta = 0.f, HopT = 0.f, Z = 0.f, Vz = 0.f, Yaw = 0.f, LineD = 0.f, TakeoffT = -1.f;
 	bool bAir = false;
 	void TickHop(float Dt);

@@ -3,7 +3,7 @@
 Fan homage project; not official Marvel/Sony/Insomniac; no affiliation.
   python3 add_weapon.py FIT.glb WEAPON.glb OUT.glb
 Grip frame from the bind-pose joints: handle axis = index1.R - pinky1.R (a fist holds a stick parallel to its knuckle line; +Y of the
-weapon = thumb side; bat / pipe tilted 58 deg toward the fingers so they hang down-back), forward = hand.R -> middle1.R, grip centre between wrist and knuckles, pushed toward the palm. The weapon's
+weapon = thumb side; bat / pipe tilted -10 deg (round 10; was +58) so they rise from the fist instead of pointing at the opponent), forward = hand.R -> middle1.R, grip centre between wrist and knuckles, pushed toward the palm. The weapon's
 materials become solid tiles in the reserved right 512 columns of the atlas strip (prepare_person.py paints them): same one
 primitive / one material / one atlas; the weapon's vertices get JOINTS (hand.R) / WEIGHTS (1)."""
 import sys, os, json, struct
@@ -64,7 +64,9 @@ def main(fit, weapon, out):
     z = pos('middle1.R') - pos('hand.R'); z -= y * (z @ y); z /= np.linalg.norm(z)
     x = np.cross(y, z)
     # long weapons hang down-back: the wrist deviates, so the handle axis is tilted from the knuckle line toward the fingers
-    tilt = np.radians(0.0 if 'pistol' in os.path.basename(weapon) else 58.0)
+    # round 10: -10 deg (was +58): the old tilt pointed the bat / pipe across the guard of the wielder AT the hero: the Brute's pipe passed through the hero's back, its grey elbow fitting sticking out
+    # of his flank (critic r09 'untextured grey arm'; weapon_clip_check.py: 1.4 s of the 24 s fight for the pipe, 5.9 s for the bat, up to 16 cm deep).  Now the weapon rises beside the fist; swept 0 - 180 deg on the CPU: hero 0.05 s, own head / torso 0.1 - 0.15 s.
+    tilt = np.radians(0.0 if 'pistol' in os.path.basename(weapon) else -10.0)
     y, z = y * np.cos(tilt) - z * np.sin(tilt), z * np.cos(tilt) + y * np.sin(tilt)
     palm = np.sign((pos('thumb2.R') - pos('hand.R')) @ x) * x          # toward the thumb / palm side
     c = pos('hand.R') + 0.62 * (pos('middle1.R') - pos('hand.R')) + 0.018 * palm

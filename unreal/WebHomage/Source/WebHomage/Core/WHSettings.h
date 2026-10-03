@@ -33,6 +33,13 @@ struct WEBHOMAGE_API FWHSettings
 	int32 ResScale = 100;               // r.ScreenPercentage
 	int32 WindowMode = WinBorderless;
 	bool bVSync = true;
+	// ---- hero suit (round 11, piece G): index into /Game/Characters/Hero/Suits/DA_HeroSuits and the suit's id (the id wins when the set is re-ordered)
+	int32 SuitIndex = 0;
+	FString SuitId;
+	/** Read / write only the suit keys of GameUserSettings.ini (the in-play suit swap saves at once; -WHSuitPersist uses them in automated runs). */
+	void LoadSuit();
+	void SaveSuit() const;
+
 	/** True once Load() ran (interactive play). ApplyRender / ApplyWindow do nothing until then. */
 	bool bLive = false;
 	static FText QualityName(int32 Q);

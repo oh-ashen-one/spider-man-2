@@ -46,6 +46,8 @@ SEQS=(
   "x1_rmb_cancel_flip x1_rmb_cancel_flip.json ${X1Q:-4.0} 1.8,2.2"
   "x2_rmb_cancel_wall x2_rmb_cancel_wall.json ${X2Q:-5.0} 3.25,3.6"
   "m1_mouse_swing m1_mouse_swing.json ${M1Q:-6.0} 1.5,3.5"
+  # round 25 (director hard line: pawn run cadence 3.2-3.8 Hz head-top FFT over 1.5-11 s): a 12 s full-stick run up the avenue
+  "p1_pawn_run ${P1JSON:-p1_pawn_run.json} ${P1Q:-12.0} 2.0,6.0"
 )
 WANT=("$@")
 # RULES (owner 2026-09-29): never add a 4th Unreal instance — wait while 3 or more are running
