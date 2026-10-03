@@ -120,8 +120,15 @@ def _pose(sp, arm_l, arm_r, leg_l, leg_r, neck=(0.02, 1, 0), head=(0.05, 1, 0)):
 # the tuck grab (start of the kick-out, = flipTuck) and the catch reach (end of the kick-out, = flipReach) as keys
 _TUCK = _pose((0.35, 0.6, 0.8), ((1.0, -0.45, 0.32), (0.2, -1.0, 0.04)), ((1.0, -0.15, 0.5), (0.55, -0.85, -0.05)),
               ((1.0, 0.95, 0.08), (-0.4, -1.0, 0.04)), ((1.0, 0.8, 0.2), (-0.2, -1.0, 0.08)), neck=(1.0, 0.9, 0), head=(1.0, 0.55, 0))
+# r01 resume: marching leg phases (thigh, shin) -- A low and straight, B knee half up, C knee up (thigh ~horizontal), D lowering forward
+_LEG_A = ((0.05, -1.0, 0.08), (-0.05, -1.0, 0.04))
+_LEG_B = ((0.6, -0.8, 0.09), (-0.1, -1.0, 0.04))
+_LEG_C = ((1.0, -0.3, 0.1), (0.0, -1.0, 0.05))
+_LEG_D = ((0.45, -0.9, 0.09), (0.25, -1.0, 0.04))
+
+
 _REACH = _pose((0.05, 0.02, 0.0), ((0.25, 0.05, 1.0), (0.35, 0.15, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
-               ((0.55, -0.85, 0.1), (-0.25, -1.0, 0.05)), ((0.3, -0.95, 0.08), (-0.1, -1.0, 0.04)), head=(0.1, 1, 0))
+               _LEG_A, _LEG_B, head=(0.1, 1, 0))   # r01 resume: legs = the reach's first march phase (was a static lunge)
 
 def _tuck(th, sh, sp=(0.35, 0.6, 0.8)):
     """Tricks C r01: tuck key with the thighs / shins pulled in by th / sh (the r17 asymmetric grab otherwise)"""
@@ -150,11 +157,14 @@ KEYED = {
     # long) and the free arm swings forward and up. Every half moves a hand and a foot >= ~0.35 m in BOTH body forward and up, so some
     # limb height changes whatever the body's pitch. (Past the program's end WebFlips::Sample plays the reach back and forth from u .45.)
     "flipReach": [
-        (0.0, dict(_REACH, neck=(0.35, 1, 0), head=(0.7, 0.72, 0))),
-        (0.45, _pose((0.08, 0.05, 0.02), ((-0.15, -1.0, 0.4), (0.05, -1.0, 0.3)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
-                     ((1.0, -0.3, 0.1), (-0.05, -1.0, 0.05)), ((-0.35, -1.0, 0.08), (-0.45, -1.0, 0.04)), neck=(0.1, 1, 0), head=(0.22, 1, 0))),
-        (1.0, _pose((0.02, -0.02, -0.04), ((0.7, 0.45, 0.6), (0.8, 0.5, 0.45)), ((0.6, 1.0, 0.2), (0.7, 1.0, 0.12)),
-                    ((-0.3, -1.0, 0.08), (-0.4, -1.0, 0.04)), ((1.0, -0.35, 0.1), (-0.1, -1.0, 0.05)), neck=(-0.05, 1, 0), head=(-0.22, 1, 0))),
+        # r01 resume (L, critic pose.py rule: synchronous keys put every limb's turnaround at the same instant -> 0.03-0.09 m samples): the
+        # legs MARCH -- alternating knee drives, the two legs a quarter cycle apart (one foot is always mid-stroke) -- and the free (left) arm
+        # counter-swings; the web arm stays up; the head spots, then lifts to the web. Leg phases: A low, B knee half up, C knee up, D lowering.
+        (0.0, dict(_pose((0.05, 0.02, 0.0), ((0.25, 0.05, 1.0), (0.35, 0.15, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)), _LEG_A, _LEG_B), neck=(0.35, 1, 0), head=(0.7, 0.72, 0))),
+        (0.25, _pose((0.07, 0.04, 0.01), ((0.05, -0.6, 0.8), (0.15, -0.6, 0.7)), ((0.5, 1.0, 0.28), (0.5, 1.0, 0.2)), _LEG_B, _LEG_C, neck=(0.2, 1, 0), head=(0.42, 0.9, 0))),
+        (0.5, _pose((0.08, 0.05, 0.02), ((-0.15, -1.0, 0.4), (0.05, -1.0, 0.3)), ((0.55, 1.0, 0.25), (0.55, 1.0, 0.18)), _LEG_C, _LEG_D, neck=(0.1, 1, 0), head=(0.22, 1, 0))),
+        (0.75, _pose((0.05, 0.02, -0.01), ((0.45, -0.3, 0.8), (0.55, -0.15, 0.7)), ((0.6, 1.0, 0.22), (0.6, 1.0, 0.15)), _LEG_D, _LEG_A, neck=(0.02, 1, 0), head=(0.0, 1, 0))),
+        (1.0, _pose((0.02, -0.02, -0.04), ((0.7, 0.45, 0.6), (0.8, 0.5, 0.45)), ((0.6, 1.0, 0.2), (0.7, 1.0, 0.12)), _LEG_A, _LEG_B, neck=(-0.05, 1, 0), head=(-0.22, 1, 0))),
     ],
     # Tricks C r01 pencil (backSingle's inverted hold): straight and glued legs throughout, the arms travel from low diagonals through
     # level to a high V (the body stays a line; the arms keep the hold alive)
@@ -209,15 +219,15 @@ KEYED = {
         # Tricks C r01: the head SPOTS the catch -- out of the tuck's chin-down it stays forward-down (eyes on where he is going) while the
         # legs shoot out, then lifts through the open-out to the neutral reach (r18: neutral at 0.22, thrown back at 0.42)
         (0.22, _pose((0.12, 0.16, 0.2), ((0.9, 0.5, 0.3), (0.7, 0.8, 0.25)), ((0.5, -0.3, 1.0), (0.3, -0.2, 1.0)),
-                     ((0.6, -0.8, 0.06), (0.4, -1.0, 0.03)), ((0.15, -1.0, 0.1), (-0.3, -1.0, 0.05)), neck=(0.3, 1, 0), head=(0.6, 0.8, 0))),
+                     _LEG_A, _LEG_B, neck=(0.3, 1, 0), head=(0.6, 0.8, 0))),
         (0.42, _pose((-0.1, -0.2, -0.25), ((0.25, 1.0, 0.35), (0.1, 1.0, 0.3)), ((-0.1, 0.2, 1.0), (-0.2, 0.35, 1.0)),
-                     ((0.35, -1.0, 0.06), (0.25, -1.0, 0.03)), ((-0.25, -1.0, 0.08), (-0.5, -1.0, 0.04)), neck=(0.12, 1, 0), head=(0.42, 0.95, 0))),
+                     _LEG_B, _LEG_C, neck=(0.12, 1, 0), head=(0.42, 0.95, 0))),
         (0.62, _pose((-0.05, -0.1, -0.12), ((0.1, -0.1, 1.0), (0.15, 0.05, 1.0)), ((0.45, 1.0, 0.25), (0.45, 1.0, 0.18)),
-                     ((0.15, -1.0, 0.06), (-0.2, -1.0, 0.03)), ((0.05, -1.0, 0.08), (-0.6, -0.9, 0.04)), head=(0.28, 1, 0))),
-        # r01 resume (L): the late scissor is wider -- right knee drives high, left leg swept long behind -- so the swap into the reach (and
-        # the reach's own left-knee drive) moves both feet: right, left, right
+                     _LEG_C, _LEG_D, head=(0.28, 1, 0))),
+        # r01 resume (L): out of the tuck the legs shoot down into a MARCH, a quarter cycle per key (A / B, B / C, C / D, D / A, then the
+        # reach's A / B), so one foot is always mid-stroke while the arms sweep and turn
         (0.82, _pose((0.05, 0.03, 0.0), ((0.2, -0.65, 0.8), (0.35, -0.45, 0.8)), ((0.5, 1.0, 0.3), (0.5, 1.0, 0.2)),
-                     ((-0.35, -1.0, 0.08), (-0.45, -1.0, 0.05)), ((0.95, -0.4, 0.07), (-0.1, -1.0, 0.04)), head=(0.1, 1, 0))),
+                     _LEG_D, _LEG_A, head=(0.1, 1, 0))),
         (1.0, _REACH),
     ],
     # round 18 swan (frontPikeSwan's inverted shape; critic r17: "replace the frozen inverted split with a continuous unwind -- arms sweep from
@@ -225,14 +235,16 @@ KEYED = {
     # the LEFT arm sweeps out to the side first, the right follows 0.15 later while the back arches and the right knee folds (stag); then the
     # knee re-extends, the arms sweep on down past the hips and forward and the hips flex -- the body gathers into the tuck that follows.
     "flipSwan": [
+        # r01 resume (L: near inverted the r18 sweeps ran along constant height -> 0.02-0.07 m samples): the right arm windmills (forward,
+        # down and back, forward and up) while the left sweeps as before, so a hand height changes in every 0.1 s of the hold
         (0.0, _pose((0.0, -0.05, -0.08), ((0.3, 1.0, 0.2), (0.25, 1.0, 0.12)), ((0.35, 1.0, 0.25), (0.3, 1.0, 0.18)),
                     ((0.05, -1.0, 0.03), (0.0, -1.0, 0.02)), ((0.05, -1.0, 0.03), (0.0, -1.0, 0.02)))),
-        (0.3, _pose((-0.15, -0.28, -0.35), ((0.0, 0.25, 1.0), (-0.05, 0.3, 1.0)), ((0.2, 0.85, 0.6), (0.15, 0.9, 0.5)),
+        (0.3, _pose((-0.15, -0.28, -0.35), ((0.0, 0.25, 1.0), (-0.05, 0.3, 1.0)), ((0.55, -0.2, 0.8), (0.6, -0.1, 0.7)),
                     ((-0.2, -1.0, 0.04), (-0.25, -1.0, 0.02)), ((0.0, -1.0, 0.06), (-0.5, -1.0, 0.03)), head=(-0.15, 1, 0))),
-        (0.55, _pose((-0.2, -0.35, -0.42), ((-0.35, -0.3, 1.0), (-0.4, -0.2, 0.9)), ((-0.2, 0.0, 1.0), (-0.25, 0.1, 1.0)),
+        (0.55, _pose((-0.2, -0.35, -0.42), ((-0.35, -0.3, 1.0), (-0.4, -0.2, 0.9)), ((-0.3, -0.7, 0.6), (-0.35, -0.6, 0.5)),
                      ((-0.25, -1.0, 0.04), (-0.35, -1.0, 0.02)), ((0.05, -1.0, 0.08), (-0.95, -0.35, 0.04)), head=(-0.2, 1, 0))),
-        (0.8, _pose((-0.05, -0.08, -0.1), ((0.4, -0.6, 0.7), (0.55, -0.4, 0.6)), ((0.2, -0.45, 0.9), (0.3, -0.35, 0.85)),
-                    ((0.05, -1.0, 0.04), (-0.05, -1.0, 0.02)), ((0.1, -1.0, 0.06), (-0.4, -1.0, 0.03)))),
+        (0.8, _pose((-0.05, -0.08, -0.1), ((0.4, -0.6, 0.7), (0.55, -0.4, 0.6)), ((0.5, 0.3, 0.7), (0.5, 0.4, 0.6)),
+                    ((-0.1, -1.0, 0.04), (-0.9, -0.45, 0.02)), ((0.1, -1.0, 0.06), (-0.4, -1.0, 0.03)))),   # r01 resume: left stag follows the right (L)
         (1.0, _pose((0.15, 0.3, 0.4), ((0.85, -0.5, 0.3), (0.6, -0.7, 0.2)), ((0.8, -0.35, 0.45), (0.5, -0.75, 0.15)),
                     ((0.55, -0.8, 0.05), (-0.2, -1.0, 0.03)), ((0.45, -0.9, 0.1), (-0.35, -1.0, 0.05)), neck=(0.5, 1, 0), head=(0.5, 0.9, 0))),
     ],

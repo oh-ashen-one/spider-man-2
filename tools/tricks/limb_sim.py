@@ -100,13 +100,17 @@ def validate(R, tel, margin=0.10):
     T = list(csv.DictReader(open(tel)))
     I = TC.instances(T)
     slow_m, slow_p, n, worst = 0, 0, 0, []
+    LL = [(0.04, 0.07)] if not os.environ.get('SCAN') else [(a, b) for a in (0.02, 0.05, 0.08) for b in (0.05, 0.09, 0.13)]
     for c in I:
         if c['prog'] not in progs: continue
         P = FS.Prog(progs[c['prog']], c['scale'])
-        Z = [[world_z(body_pos(R, P, ft, b), float(T[i]['flip_pitch_deg']), float(T[i]['flip_twist_deg'])) for b in ENDS] for i, ft in c['rows']]
+        dur = P.dur
+        Zs = [[[world_z(body_pos(R, P, min(ft, dur), b, le, la), float(T[i]['flip_pitch_deg']), float(T[i]['flip_twist_deg'])) for b in ENDS]
+               for i, ft in c['rows']] for le, la in LL]
         M = [[float(x) for x in T[i]['limb_z'].split()] for i, _ in c['rows']]
-        for k in range(len(Z) - 6):
-            dp = max(abs(x - y) for x, y in zip(Z[k], Z[k + 6])); dm = max(abs(x - y) for x, y in zip(M[k], M[k + 6]))
+        for k in range(len(M) - 6):
+            if c['rows'][k + 6][1] > dur: continue   # past the program end (the ping-pong is not modelled)
+            dp = min(max(abs(x - y) for x, y in zip(Z[k], Z[k + 6])) for Z in Zs); dm = max(abs(x - y) for x, y in zip(M[k], M[k + 6]))
             n += 1; slow_p += dp < margin; slow_m += dm < margin
             if dp < margin: worst.append((dp, c['prog'], round(c['rows'][k][1], 2), T[c['rows'][k][0]]['flip_shape']))
             if dm < margin: print('   measured slow %-16s t0 %.2f flip_t %.2f / dur %.2f  %-8s %.3f (model %.3f)' % (c['prog'], c['t0'], c['rows'][k][1], P.dur, T[c['rows'][k][0]]['flip_shape'], dm, dp))

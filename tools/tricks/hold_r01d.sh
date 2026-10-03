@@ -1,7 +1,8 @@
 #!/bin/bash
 # Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 # tricks r01 resume, hold d (inside ONE gpu_slot capture hold, max 40 min): rebuild the merged content, probe the reel (-nullrhi), then
-# render reel windows while >= 22 min of the hold remain and the probe passed.  BUILD=0 skips the content build.
+# render reel windows while >= 22 min of the hold remain and the probe passed (RENDER_ANY=1: whenever the route is clean).
+# BUILD=0 skips the content build; PROBE=0 reuses the last VERDICT.
 cd /Users/midir/sm2-n1/tricks
 T0=$(date +%s); LEFT() { echo $(( 2400 - ( $(date +%s) - T0 ) )); }
 while pgrep -f "[/]Users/midir/sm2-n1/tricks/unreal/WebHomage/WebHomage.uproject" >/dev/null; do sleep 5; done
@@ -14,7 +15,7 @@ if [ "${PROBE:-1}" = 1 ]; then
   cp $W/best.json docs/night1/tricks/scripts/t60_trick_reel.json
 fi
 cat $W/VERDICT 2>/dev/null
-if [ "${RENDER:-1}" = 1 ] && grep -q "route OK" $W/VERDICT && ! grep -q -E "fails .*(V1|L|K|G)" $W/VERDICT; then
+if [ "${RENDER:-1}" = 1 ] && grep -q "route OK" $W/VERDICT && { [ "${RENDER_ANY:-0}" = 1 ] || ! grep -q -E "fails .*(V1|L|K|G)" $W/VERDICT; }; then
   C=/Users/midir/sm2-n1/_scratch/tricks/capture/t60_trick_reel
   for K in 0 1 2 3; do
     if [ -f "$C/seg$K/DONE" ]; then continue; fi
