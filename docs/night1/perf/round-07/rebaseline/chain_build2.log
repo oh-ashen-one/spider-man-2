@@ -1,0 +1,41 @@
+gpu_slot[capture/perf]: wait phase=queue waited_s=0.1 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=30.3 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=60.4 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=90.5 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=120.8 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=150.9 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=181.1 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=211.2 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=241.3 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:05 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=272.3 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=302.4 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:05 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=333.3 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=363.5 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:06 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=394.5 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=424.5 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:07 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=455.5 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=485.5 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:08 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=515.7 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=546.6 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:09 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=577.7 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=608.7 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:10 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=638.7 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=668.9 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:11 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=698.9 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=729.8 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:12 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=760.8 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=791.8 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:13 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: wait phase=queue waited_s=822.8 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=853.7 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 20:14 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)
+gpu_slot[capture/perf]: aborted signal=15

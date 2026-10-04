@@ -1,0 +1,11 @@
+[build_life 20:00:52] === step prep
+[build_life 20:00:52] $ python3 tools/life/prep_vehicles.py --out /Users/midir/sm2-n1/_scratch/perf/life/vehicles
+[build_life 20:00:52] $ node tools/life/export_lanes.mjs --layout /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3/layout.json
+[build_life 20:00:52] $ python3 tools/ue_char/eval/tiles.py /Users/midir/sm2-n1/_scratch/perf/life/citizens/tiles /Users/midir/sm2-n1/_scratch/perf/life/citizens/stats_tiles.json
+[build_life 20:00:55] $ /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P tools/life/citizens_fbx.py -- 01_retired_gent 02_leather_jacket 03_white_tee 04_blue_sweatshirt 05_black_tee 06_chrome_shades 07_black_graphic_tee 08_black_suit 09_kurta_waistcoat 10_silver_tie 11_graphic_tee_bonnet 12_sundress_mom 13_construction_worker 14_teen_skater 15_executive 16_lumberjack_hipster 17_hijabi_student 18_dapper_elder 19_marathon_runner 20_punk_artist
+[build_life 20:01:28] $ python3 tools/life/export_signals.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3/layout.json
+[build_life 20:01:29] $ /Applications/Blender.app/Contents/MacOS/Blender -b --factory-startup -P tools/life/citizen_headmask.py -- /Users/midir/sm2-n1/_scratch/perf/life/citizens/fbx
+[build_life 20:01:33] $ python3 tools/life/citizen_variants.py /Users/midir/sm2-n1/_scratch/perf/life/citizens/fbx
+[build_life 20:01:41] prep done: 45 vehicle GLBs, 20 citizen FBX
+[build_life 20:01:41] === step prep done in 49 s
+[build_life 20:01:41] all done in 49 s

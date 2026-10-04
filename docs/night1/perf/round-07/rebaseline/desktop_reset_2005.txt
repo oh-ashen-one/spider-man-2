@@ -1,0 +1,304 @@
+# evidence copied 2026-10-03 20:15:31 by the F builder (read-only copies)
+## _scratch/gpu/health.log 20:02-20:16
+20:02:11 gpu=99% ue=4 blender=0 ws_cpu=7 free_gb=170 slots=7
+20:02:26 gpu=99% ue=3 blender=0 ws_cpu=3 free_gb=171 slots=7
+20:02:41 gpu=99% ue=4 blender=0 ws_cpu=3 free_gb=170 slots=7
+20:02:56 gpu=0% ue=2 blender=0 ws_cpu=3 free_gb=189 slots=7
+20:03:12 gpu=35% ue=6 blender=0 ws_cpu=6 free_gb=172 slots=7
+20:03:27 gpu=100% ue=3 blender=0 ws_cpu=5 free_gb=169 slots=7
+20:03:42 gpu=0% ue=3 blender=0 ws_cpu=2 free_gb=171 slots=7
+20:03:57 gpu=0% ue=2 blender=0 ws_cpu=6 free_gb=185 slots=7
+20:04:12 gpu=39% ue=3 blender=0 ws_cpu=6 free_gb=168 slots=7
+20:04:28 gpu=100% ue=2 blender=0 ws_cpu=4 free_gb=171 slots=7
+20:04:43 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=172 slots=7
+20:04:58 gpu=100% ue=2 blender=0 ws_cpu=3 free_gb=171 slots=7
+20:05:13 gpu=6% ue=5 blender=0 ws_cpu=13 free_gb=187 slots=7
+20:05:29 gpu=0% ue=5 blender=0 ws_cpu=3 free_gb=177 slots=7
+20:05:44 gpu=100% ue=4 blender=0 ws_cpu=2 free_gb=133 slots=7
+20:05:59 gpu=100% ue=3 blender=0 ws_cpu=4 free_gb=149 slots=7
+20:06:14 gpu=0% ue=2 blender=0 ws_cpu=4 free_gb=182 slots=7
+20:06:29 gpu=0% ue=3 blender=0 ws_cpu=4 free_gb=174 slots=7
+20:06:44 gpu=99% ue=4 blender=0 ws_cpu=4 free_gb=153 slots=7
+20:07:00 gpu=99% ue=3 blender=0 ws_cpu=3 free_gb=159 slots=7
+20:07:15 gpu=99% ue=3 blender=0 ws_cpu=2 free_gb=155 slots=7
+20:07:30 gpu=99% ue=3 blender=0 ws_cpu=3 free_gb=160 slots=7
+20:07:45 gpu=0% ue=6 blender=0 ws_cpu=3 free_gb=169 slots=7
+20:08:00 gpu=100% ue=5 blender=0 ws_cpu=5 free_gb=143 slots=7
+20:08:15 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=165 slots=7
+20:08:30 gpu=0% ue=2 blender=0 ws_cpu=1 free_gb=179 slots=7
+20:08:46 gpu=2% ue=3 blender=0 ws_cpu=7 free_gb=168 slots=7
+20:09:01 gpu=100% ue=2 blender=0 ws_cpu=3 free_gb=158 slots=7
+20:09:16 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=155 slots=7
+20:09:31 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=159 slots=7
+20:09:46 gpu=3% ue=3 blender=0 ws_cpu=12 free_gb=180 slots=7
+20:10:01 gpu=61% ue=4 blender=0 ws_cpu=10 free_gb=142 slots=7
+20:10:16 gpu=100% ue=4 blender=0 ws_cpu=1 free_gb=131 slots=7
+20:10:32 gpu=0% ue=3 blender=0 ws_cpu=5 free_gb=147 slots=7
+20:10:47 gpu=0% ue=2 blender=0 ws_cpu=3 free_gb=174 slots=7
+20:11:02 gpu=100% ue=3 blender=0 ws_cpu=3 free_gb=167 slots=7
+20:11:17 gpu=100% ue=3 blender=0 ws_cpu=3 free_gb=167 slots=7
+20:11:32 gpu=0% ue=3 blender=0 ws_cpu=5 free_gb=180 slots=7
+20:11:47 gpu=0% ue=4 blender=0 ws_cpu=10 free_gb=168 slots=7
+20:12:02 gpu=100% ue=3 blender=0 ws_cpu=2 free_gb=165 slots=7
+20:12:18 gpu=100% ue=3 blender=0 ws_cpu=5 free_gb=165 slots=7
+20:12:33 gpu=100% ue=3 blender=0 ws_cpu=4 free_gb=165 slots=7
+20:12:48 gpu=0% ue=6 blender=0 ws_cpu=10 free_gb=181 slots=7
+20:13:03 gpu=100% ue=5 blender=1 ws_cpu=2 free_gb=145 slots=7
+20:13:18 gpu=100% ue=3 blender=0 ws_cpu=5 free_gb=147 slots=7
+20:13:33 gpu=0% ue=1 blender=0 ws_cpu=13 free_gb=181 slots=7
+20:13:48 gpu=0% ue=3 blender=0 ws_cpu=5 free_gb=177 slots=7
+20:14:03 gpu=98% ue=3 blender=0 ws_cpu=4 free_gb=158 slots=7
+20:14:19 gpu=100% ue=2 blender=0 ws_cpu=3 free_gb=163 slots=7
+20:14:34 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=163 slots=7
+20:14:49 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=163 slots=7
+20:15:04 gpu=0% ue=1 blender=0 ws_cpu=4 free_gb=180 slots=7
+20:15:19 gpu=51% ue=2 blender=0 ws_cpu=2 free_gb=171 slots=7
+20:15:34 gpu=0% ue=2 blender=0 ws_cpu=2 free_gb=160 slots=7
+20:15:49 gpu=100% ue=2 blender=0 ws_cpu=2 free_gb=160 slots=7
+20:16:05 gpu=0% ue=3 blender=0 ws_cpu=5 free_gb=180 slots=7
+20:16:20 gpu=0% ue=3 blender=0 ws_cpu=4 free_gb=156 slots=7
+20:16:35 gpu=100% ue=3 blender=0 ws_cpu=2 free_gb=148 slots=7
+20:16:50 gpu=36% ue=2 blender=0 ws_cpu=5 free_gb=165 slots=7
+20:02:00 gpu=100% ue=1 blender=0 ws_cpu=6 free_gb=152 slots=2
+20:02:15 gpu=100% ue=1 blender=0 ws_cpu=9 free_gb=151 slots=2
+20:02:30 gpu=100% ue=1 blender=0 ws_cpu=8 free_gb=152 slots=2
+20:02:45 gpu=4% ue=1 blender=0 ws_cpu=5 free_gb=175 slots=2
+20:03:00 gpu=100% ue=1 blender=0 ws_cpu=10 free_gb=152 slots=2
+20:03:16 gpu=100% ue=1 blender=0 ws_cpu=7 free_gb=151 slots=2
+20:03:31 gpu=99% ue=1 blender=0 ws_cpu=7 free_gb=152 slots=2
+20:03:46 gpu=0% ue=1 blender=0 ws_cpu=19 free_gb=175 slots=2
+20:04:01 gpu=33% ue=1 blender=0 ws_cpu=4 free_gb=149 slots=2
+20:04:16 gpu=100% ue=1 blender=0 ws_cpu=6 free_gb=150 slots=2
+20:04:32 gpu=100% ue=1 blender=0 ws_cpu=10 free_gb=151 slots=2
+20:04:47 gpu=100% ue=1 blender=0 ws_cpu=6 free_gb=150 slots=2
+20:05:02 gpu=0% ue=1 blender=0 ws_cpu=4 free_gb=173 slots=2
+20:05:17 gpu=100% ue=1 blender=0 ws_cpu=7 free_gb=151 slots=2
+20:05:32 gpu=100% ue=1 blender=0 ws_cpu=4 free_gb=151 slots=2
+20:05:47 gpu=100% ue=1 blender=0 ws_cpu=8 free_gb=151 slots=2
+20:06:03 gpu=0% ue=1 blender=0 ws_cpu=6 free_gb=172 slots=2
+20:06:18 gpu=100% ue=1 blender=0 ws_cpu=7 free_gb=151 slots=2
+20:06:33 gpu=100% ue=1 blender=0 ws_cpu=5 free_gb=152 slots=2
+20:06:48 gpu=100% ue=1 blender=0 ws_cpu=9 free_gb=151 slots=2
+20:07:03 gpu=3% ue=1 blender=0 ws_cpu=4 free_gb=172 slots=2
+20:07:19 gpu=15% ue=1 blender=0 ws_cpu=8 free_gb=164 slots=2
+20:07:34 gpu=9% ue=1 blender=0 ws_cpu=21 free_gb=165 slots=2
+20:07:49 gpu=46% ue=2 blender=0 ws_cpu=29 free_gb=163 slots=2
+20:08:04 gpu=100% ue=2 blender=0 ws_cpu=7 free_gb=141 slots=2
+20:08:19 gpu=6% ue=2 blender=0 ws_cpu=5 free_gb=142 slots=2
+20:08:34 gpu=7% ue=2 blender=0 ws_cpu=4 free_gb=150 slots=2
+20:08:50 gpu=100% ue=2 blender=0 ws_cpu=5 free_gb=139 slots=2
+20:09:05 gpu=7% ue=2 blender=0 ws_cpu=5 free_gb=164 slots=2
+20:09:20 gpu=100% ue=2 blender=0 ws_cpu=6 free_gb=144 slots=2
+20:09:35 gpu=37% ue=2 blender=0 ws_cpu=7 free_gb=167 slots=2
+20:09:50 gpu=100% ue=2 blender=0 ws_cpu=6 free_gb=143 slots=2
+20:10:06 gpu=100% ue=2 blender=0 ws_cpu=7 free_gb=143 slots=2
+20:10:21 gpu=100% ue=2 blender=0 ws_cpu=8 free_gb=142 slots=2
+20:10:36 gpu=0% ue=1 blender=0 ws_cpu=25 free_gb=167 slots=2
+20:10:51 gpu=9% ue=2 blender=0 ws_cpu=5 free_gb=153 slots=2
+20:11:06 gpu=100% ue=2 blender=0 ws_cpu=11 free_gb=143 slots=2
+20:11:21 gpu=100% ue=2 blender=0 ws_cpu=5 free_gb=141 slots=2
+20:11:37 gpu=6% ue=1 blender=0 ws_cpu=6 free_gb=166 slots=2
+20:11:52 gpu=9% ue=1 blender=0 ws_cpu=5 free_gb=165 slots=2
+20:12:07 gpu=23% ue=1 blender=0 ws_cpu=4 free_gb=166 slots=2
+20:12:22 gpu=22% ue=1 blender=0 ws_cpu=6 free_gb=165 slots=2
+20:12:37 gpu=0% ue=2 blender=0 ws_cpu=4 free_gb=163 slots=2
+20:12:52 gpu=43% ue=2 blender=0 ws_cpu=5 free_gb=142 slots=2
+20:13:08 gpu=0% ue=2 blender=0 ws_cpu=3 free_gb=142 slots=2
+20:13:23 gpu=10% ue=1 blender=0 ws_cpu=6 free_gb=149 slots=2
+20:13:38 gpu=52% ue=2 blender=0 ws_cpu=7 free_gb=146 slots=2
+20:13:53 gpu=100% ue=2 blender=0 ws_cpu=5 free_gb=144 slots=2
+20:14:08 gpu=46% ue=1 blender=0 ws_cpu=5 free_gb=157 slots=2
+20:14:24 gpu=48% ue=1 blender=0 ws_cpu=6 free_gb=153 slots=2
+20:14:39 gpu=42% ue=1 blender=0 ws_cpu=5 free_gb=153 slots=2
+20:14:54 gpu=0% ue=1 blender=0 ws_cpu=4 free_gb=153 slots=2
+20:15:09 gpu=10% ue=1 blender=0 ws_cpu=6 free_gb=155 slots=2
+20:15:24 gpu=33% ue=1 blender=0 ws_cpu=10 free_gb=154 slots=2
+20:15:39 gpu=44% ue=1 blender=0 ws_cpu=3 free_gb=155 slots=2
+20:15:55 gpu=44% ue=1 blender=0 ws_cpu=5 free_gb=154 slots=2
+20:16:10 gpu=45% ue=1 blender=0 ws_cpu=5 free_gb=154 slots=2
+20:16:25 gpu=0% ue=1 blender=0 ws_cpu=6 free_gb=158 slots=2
+20:16:40 gpu=54% ue=1 blender=0 ws_cpu=5 free_gb=153 slots=2
+20:16:55 gpu=63% ue=1 blender=0 ws_cpu=16 free_gb=157 slots=2
+20:02:02 gpu=64% ue=1 blender=0 ws_cpu=8 free_gb=164 slots=1
+20:02:17 gpu=0% ue=1 blender=0 ws_cpu=22 free_gb=163 slots=1
+20:02:32 gpu=63% ue=1 blender=0 ws_cpu=26 free_gb=163 slots=1
+20:02:48 gpu=64% ue=1 blender=0 ws_cpu=17 free_gb=163 slots=1
+20:03:03 gpu=69% ue=1 blender=0 ws_cpu=19 free_gb=161 slots=1
+20:03:18 gpu=70% ue=1 blender=0 ws_cpu=24 free_gb=161 slots=1
+20:03:33 gpu=58% ue=1 blender=0 ws_cpu=16 free_gb=161 slots=1
+20:03:48 gpu=67% ue=1 blender=0 ws_cpu=16 free_gb=161 slots=1
+20:04:03 gpu=67% ue=1 blender=0 ws_cpu=40 free_gb=161 slots=1
+20:04:19 gpu=46% ue=1 blender=0 ws_cpu=32 free_gb=160 slots=1
+20:04:34 gpu=6% ue=1 blender=0 ws_cpu=33 free_gb=160 slots=1
+20:04:49 gpu=56% ue=1 blender=0 ws_cpu=29 free_gb=160 slots=1
+20:05:04 gpu=0% ue=1 blender=0 ws_cpu=35 free_gb=160 slots=1
+20:05:19 gpu=32% ue=0 blender=0 ws_cpu=44 free_gb=174 slots=1
+20:05:35 gpu=0% ue=1 blender=0 ws_cpu=30 free_gb=170 slots=1
+20:05:50 gpu=69% ue=1 blender=0 ws_cpu=26 free_gb=163 slots=1
+20:06:05 gpu=72% ue=1 blender=0 ws_cpu=29 free_gb=162 slots=1
+20:06:20 gpu=65% ue=1 blender=0 ws_cpu=25 free_gb=161 slots=1
+20:06:35 gpu=60% ue=1 blender=0 ws_cpu=28 free_gb=160 slots=1
+20:06:50 gpu=69% ue=1 blender=0 ws_cpu=30 free_gb=162 slots=1
+20:07:06 gpu=0% ue=1 blender=0 ws_cpu=32 free_gb=162 slots=1
+20:07:21 gpu=81% ue=1 blender=0 ws_cpu=32 free_gb=161 slots=1
+20:07:36 gpu=0% ue=1 blender=0 ws_cpu=35 free_gb=161 slots=1
+20:07:51 gpu=64% ue=1 blender=0 ws_cpu=32 free_gb=161 slots=1
+20:08:06 gpu=0% ue=1 blender=0 ws_cpu=30 free_gb=160 slots=1
+20:08:21 gpu=57% ue=1 blender=0 ws_cpu=32 free_gb=159 slots=1
+20:08:37 gpu=61% ue=1 blender=0 ws_cpu=14 free_gb=159 slots=1
+20:08:52 gpu=0% ue=0 blender=0 ws_cpu=15 free_gb=176 slots=1
+20:09:07 gpu=0% ue=1 blender=0 ws_cpu=16 free_gb=175 slots=1
+20:09:22 gpu=0% ue=1 blender=0 ws_cpu=18 free_gb=173 slots=1
+20:09:37 gpu=0% ue=1 blender=0 ws_cpu=20 free_gb=159 slots=1
+20:09:52 gpu=0% ue=1 blender=0 ws_cpu=22 free_gb=159 slots=1
+20:10:08 gpu=54% ue=1 blender=0 ws_cpu=16 free_gb=159 slots=1
+20:10:23 gpu=63% ue=1 blender=0 ws_cpu=17 free_gb=158 slots=1
+20:10:38 gpu=59% ue=1 blender=0 ws_cpu=16 free_gb=158 slots=1
+20:10:53 gpu=0% ue=1 blender=0 ws_cpu=15 free_gb=158 slots=1
+20:11:08 gpu=66% ue=1 blender=0 ws_cpu=16 free_gb=158 slots=1
+20:11:24 gpu=8% ue=1 blender=0 ws_cpu=19 free_gb=158 slots=1
+20:11:39 gpu=63% ue=1 blender=0 ws_cpu=15 free_gb=158 slots=1
+20:11:54 gpu=54% ue=1 blender=0 ws_cpu=14 free_gb=159 slots=1
+20:12:09 gpu=69% ue=1 blender=0 ws_cpu=16 free_gb=159 slots=1
+20:12:24 gpu=62% ue=1 blender=0 ws_cpu=14 free_gb=158 slots=1
+20:12:39 gpu=54% ue=1 blender=0 ws_cpu=18 free_gb=158 slots=1
+20:12:55 gpu=63% ue=1 blender=0 ws_cpu=14 free_gb=159 slots=1
+20:13:10 gpu=73% ue=1 blender=0 ws_cpu=18 free_gb=159 slots=1
+20:13:25 gpu=63% ue=1 blender=0 ws_cpu=15 free_gb=158 slots=1
+20:13:40 gpu=0% ue=1 blender=0 ws_cpu=21 free_gb=158 slots=1
+20:13:55 gpu=63% ue=1 blender=0 ws_cpu=17 free_gb=158 slots=1
+20:14:11 gpu=63% ue=1 blender=0 ws_cpu=15 free_gb=158 slots=1
+20:14:26 gpu=60% ue=1 blender=0 ws_cpu=14 free_gb=158 slots=1
+20:14:41 gpu=57% ue=1 blender=0 ws_cpu=16 free_gb=158 slots=1
+20:14:56 gpu=100% ue=1 blender=0 ws_cpu=14 free_gb=158 slots=1
+20:15:11 gpu=54% ue=1 blender=0 ws_cpu=15 free_gb=158 slots=1
+20:15:26 gpu=63% ue=1 blender=0 ws_cpu=17 free_gb=157 slots=1
+20:15:42 gpu=65% ue=1 blender=0 ws_cpu=13 free_gb=157 slots=1
+20:15:57 gpu=60% ue=1 blender=0 ws_cpu=16 free_gb=157 slots=1
+20:16:12 gpu=55% ue=1 blender=0 ws_cpu=21 free_gb=157 slots=1
+20:16:27 gpu=63% ue=1 blender=0 ws_cpu=17 free_gb=156 slots=1
+20:16:42 gpu=69% ue=1 blender=0 ws_cpu=22 free_gb=156 slots=1
+20:16:57 gpu=0% ue=0 blender=0 ws_cpu=14 free_gb=176 slots=1
+20:02:07 gpu=31% ue=0 blender=0 ws_cpu=50 free_gb=169 slots=4
+20:02:22 gpu=30% ue=0 blender=0 ws_cpu=47 free_gb=168 slots=4
+20:02:37 gpu=31% ue=0 blender=0 ws_cpu=47 free_gb=167 slots=4
+20:02:52 gpu=31% ue=0 blender=0 ws_cpu=50 free_gb=169 slots=4
+20:03:07 gpu=31% ue=0 blender=0 ws_cpu=50 free_gb=168 slots=4
+20:03:23 gpu=30% ue=0 blender=0 ws_cpu=49 free_gb=168 slots=4
+20:03:38 gpu=29% ue=0 blender=0 ws_cpu=48 free_gb=168 slots=4
+20:03:53 gpu=30% ue=0 blender=0 ws_cpu=50 free_gb=169 slots=4
+20:04:08 gpu=31% ue=0 blender=0 ws_cpu=47 free_gb=168 slots=4
+20:04:23 gpu=31% ue=0 blender=0 ws_cpu=47 free_gb=167 slots=4
+20:04:38 gpu=31% ue=0 blender=0 ws_cpu=48 free_gb=167 slots=4
+20:04:54 gpu=30% ue=0 blender=0 ws_cpu=46 free_gb=168 slots=4
+20:05:09 gpu=27% ue=0 blender=0 ws_cpu=50 free_gb=168 slots=4
+20:05:24 gpu=32% ue=0 blender=0 ws_cpu=50 free_gb=167 slots=4
+20:05:39 gpu=31% ue=0 blender=0 ws_cpu=49 free_gb=167 slots=4
+20:05:54 gpu=30% ue=0 blender=0 ws_cpu=49 free_gb=168 slots=4
+20:06:10 gpu=31% ue=0 blender=0 ws_cpu=47 free_gb=168 slots=4
+20:06:25 gpu=32% ue=0 blender=0 ws_cpu=48 free_gb=167 slots=4
+20:06:40 gpu=31% ue=0 blender=0 ws_cpu=48 free_gb=167 slots=4
+20:06:55 gpu=31% ue=0 blender=0 ws_cpu=48 free_gb=168 slots=4
+20:07:10 gpu=30% ue=0 blender=0 ws_cpu=48 free_gb=168 slots=4
+20:07:25 gpu=29% ue=0 blender=0 ws_cpu=52 free_gb=167 slots=4
+20:07:41 gpu=31% ue=0 blender=0 ws_cpu=49 free_gb=166 slots=4
+20:07:56 gpu=28% ue=0 blender=0 ws_cpu=46 free_gb=168 slots=4
+20:08:11 gpu=29% ue=0 blender=0 ws_cpu=49 free_gb=166 slots=4
+20:08:26 gpu=28% ue=0 blender=0 ws_cpu=50 free_gb=166 slots=4
+20:08:41 gpu=28% ue=0 blender=0 ws_cpu=46 free_gb=167 slots=4
+20:08:57 gpu=28% ue=0 blender=0 ws_cpu=48 free_gb=167 slots=4
+20:09:12 gpu=29% ue=0 blender=0 ws_cpu=48 free_gb=167 slots=4
+20:09:27 gpu=35% ue=0 blender=0 ws_cpu=54 free_gb=166 slots=4
+20:09:42 gpu=36% ue=0 blender=0 ws_cpu=48 free_gb=165 slots=4
+20:09:57 gpu=25% ue=0 blender=0 ws_cpu=49 free_gb=164 slots=4
+20:10:12 gpu=24% ue=0 blender=0 ws_cpu=49 free_gb=165 slots=4
+20:10:28 gpu=0% ue=0 blender=0 ws_cpu=50 free_gb=164 slots=4
+20:10:43 gpu=27% ue=0 blender=0 ws_cpu=46 free_gb=164 slots=4
+20:10:58 gpu=39% ue=0 blender=0 ws_cpu=47 free_gb=164 slots=4
+20:11:13 gpu=26% ue=0 blender=0 ws_cpu=47 free_gb=165 slots=4
+20:11:28 gpu=26% ue=0 blender=0 ws_cpu=48 free_gb=165 slots=4
+20:11:44 gpu=35% ue=0 blender=0 ws_cpu=44 free_gb=166 slots=4
+20:11:59 gpu=30% ue=0 blender=0 ws_cpu=51 free_gb=165 slots=4
+20:12:14 gpu=32% ue=0 blender=0 ws_cpu=49 free_gb=167 slots=4
+20:12:29 gpu=34% ue=0 blender=0 ws_cpu=46 free_gb=162 slots=4
+20:12:44 gpu=30% ue=0 blender=0 ws_cpu=46 free_gb=166 slots=4
+20:12:59 gpu=31% ue=0 blender=0 ws_cpu=42 free_gb=166 slots=4
+20:13:15 gpu=29% ue=0 blender=0 ws_cpu=46 free_gb=166 slots=4
+20:13:30 gpu=31% ue=0 blender=0 ws_cpu=46 free_gb=164 slots=4
+20:13:45 gpu=25% ue=0 blender=0 ws_cpu=42 free_gb=163 slots=4
+20:14:00 gpu=29% ue=0 blender=0 ws_cpu=47 free_gb=163 slots=4
+20:14:15 gpu=26% ue=0 blender=0 ws_cpu=47 free_gb=166 slots=4
+20:14:31 gpu=31% ue=0 blender=0 ws_cpu=47 free_gb=163 slots=4
+20:14:46 gpu=27% ue=0 blender=0 ws_cpu=45 free_gb=163 slots=4
+20:15:01 gpu=27% ue=0 blender=0 ws_cpu=47 free_gb=163 slots=4
+20:15:16 gpu=34% ue=0 blender=0 ws_cpu=45 free_gb=164 slots=4
+20:15:31 gpu=27% ue=0 blender=0 ws_cpu=52 free_gb=164 slots=4
+20:15:46 gpu=28% ue=0 blender=0 ws_cpu=45 free_gb=164 slots=4
+20:16:02 gpu=29% ue=0 blender=0 ws_cpu=45 free_gb=164 slots=4
+20:16:17 gpu=24% ue=0 blender=0 ws_cpu=50 free_gb=165 slots=4
+20:16:32 gpu=26% ue=0 blender=0 ws_cpu=43 free_gb=165 slots=4
+20:16:47 gpu=26% ue=0 blender=0 ws_cpu=48 free_gb=164 slots=4
+20:02:02 gpu=12% ue=0 blender=0 ws_cpu=45 free_gb=161 slots=2
+20:02:17 gpu=0% ue=1 blender=0 ws_cpu=45 free_gb=162 slots=2
+20:02:32 gpu=12% ue=1 blender=0 ws_cpu=49 free_gb=160 slots=2
+20:02:47 gpu=0% ue=1 blender=0 ws_cpu=49 free_gb=157 slots=2
+20:03:03 gpu=0% ue=1 blender=0 ws_cpu=51 free_gb=157 slots=2
+20:03:18 gpu=13% ue=1 blender=0 ws_cpu=49 free_gb=155 slots=2
+20:03:33 gpu=0% ue=1 blender=0 ws_cpu=54 free_gb=152 slots=2
+20:03:48 gpu=100% ue=1 blender=0 ws_cpu=46 free_gb=150 slots=2
+20:04:03 gpu=100% ue=1 blender=0 ws_cpu=45 free_gb=146 slots=2
+20:04:38 gpu=100% ue=1 blender=0 ws_cpu=0 free_gb=145 slots=2 probe=FAIL
+20:05:00 gpu=100% ue=1 blender=0 ws_cpu=0 free_gb=150 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL STOP(TERM) newest -game pid=33556 WS-STARVED
+20:05:21 gpu=100% ue=1 blender=0 ws_cpu=0 free_gb=150 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:05:36 gpu=100% ue=1 blender=0 ws_cpu=0 free_gb=149 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL STOP(TERM) newest -game pid=33556 WS-STARVED
+20:05:51 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:06:07 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:06:22 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:06:37 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:06:52 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:07:08 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:07:23 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:07:38 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:07:53 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:08:09 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:08:24 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:08:39 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:08:54 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:09:09 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:09:25 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:09:40 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:09:55 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:10:10 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=154 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:10:26 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:10:41 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:10:56 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:11:11 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:11:27 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:11:42 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:11:57 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:12:12 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:12:28 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:12:43 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:12:58 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:13:13 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:13:28 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:13:44 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:13:59 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:14:14 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:14:29 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:14:45 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:15:00 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+20:15:15 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL WS-STARVED
+20:15:30 gpu=100% ue=0 blender=0 ws_cpu=0 free_gb=155 slots=2 WS-STARVE-WARN(gpu 100% ws 0%) probe=FAIL
+
+## ps WindowServer / loginwindow
+38262   0.0       10:02 /System/Library/PrivateFrameworks/SkyLight.framework/Resources/WindowServer
+38265   0.0       10:02 /System/Library/CoreServices/loginwindow.app/Contents/MacOS/loginwindow
+
+## ioreg IOAccelerator
+"Tiler Utilization %"=100
+"Renderer Utilization %"=100
+"Device Utilization %"=100
+
+## PAUSED
+20:15 auto-pause by health_monitor: WindowServer starved (gpu 100% ws_cpu 0)

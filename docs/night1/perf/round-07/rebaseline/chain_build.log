@@ -1,0 +1,80 @@
+== 18:52:53 step 1 preset_off
+[build_manhattan 18:52:53] preset removed from /Users/midir/sm2-n1/perf/unreal/WebHomage/Config/Mac/MacEngine.ini
+== 18:52:53 step 2 city_export,city_prep,city_extra
+[build_manhattan 18:52:53] === step city_export
+[build_manhattan 18:52:59] $ node tools/export/export_city.mjs --url http://127.0.0.1:5209/ --out /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3 --profile /Users/midir/sm2-n1/_scratch/perf/chrome-profile
+[build_manhattan 18:53:40] === step city_export done in 46 s
+[build_manhattan 18:53:40] === step city_prep
+[build_manhattan 18:53:40] $ python3 tools/export/patch_export.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3
+[build_manhattan 18:53:40] $ python3 tools/export/prep_textures.py /Users/midir/sm2-n1/_scratch/perf/tex /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3/manifest.json
+[build_manhattan 18:54:10] $ python3 tools/export/gen_street_signs.py /Users/midir/sm2-n1/_scratch/perf/tex/street_signs.png
+[build_manhattan 18:54:11] $ python3 tools/export/street_kit.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3/
+[build_manhattan 18:54:18] $ python3 tools/export/street_props.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3/
+[build_manhattan 18:54:19] $ node tools/export/gen_shaders.mjs
+[build_manhattan 18:54:19] === step city_prep done in 40 s
+[build_manhattan 18:54:19] === step city_extra
+[build_manhattan 18:54:19] $ python3 tools/export/export_vehicles.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3
+[build_manhattan 18:54:20] $ python3 tools/export/street_cars.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3
+[build_manhattan 18:54:20] $ python3 tools/export/street_trees.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3
+[build_manhattan 18:54:21] $ python3 tools/export/street_traffic.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3
+[build_manhattan 18:54:23] $ python3 tools/export/far_skyline.py
+[build_manhattan 18:54:24] $ python3 tools/export/bake_sunmask.py /Users/midir/sm2-n1/_scratch/perf/export/midtown3x3 /Users/midir/sm2-n1/_scratch/perf/tex
+[build_manhattan 18:54:29] === step city_extra done in 10 s
+[build_manhattan 18:54:29] all done in 96 s
+== 18:54:29 step 3 city
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 18:47 auto-pause by health_monitor: GPU pinned >=98% for 90 s with 2 engine(s)
+gpu_slot[capture/perf]: wait phase=queue waited_s=0.1 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: wait phase=queue waited_s=30.9 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 18:47 auto-pause by health_monitor: GPU pinned >=98% for 90 s with 2 engine(s)
+gpu_slot[capture/perf]: wait phase=queue waited_s=61.7 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: wait phase=queue waited_s=92.5 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 18:47 auto-pause by health_monitor: GPU pinned >=98% for 90 s with 2 engine(s)
+gpu_slot[capture/perf]: wait phase=queue waited_s=123.3 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: wait phase=queue waited_s=154.0 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: gpu-unhealthy-wait reason=orchestrator pause: 18:47 auto-pause by health_monitor: GPU pinned >=98% for 90 s with 2 engine(s)
+gpu_slot[capture/perf]: wait phase=queue waited_s=184.8 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: wait phase=queue waited_s=215.7 ahead=1 holders=capture:11328
+gpu_slot[capture/perf]: wait phase=queue waited_s=245.8 ahead=0 holders=capture:11328,capture:27943
+gpu_slot[capture/perf]: wait phase=queue waited_s=276.0 ahead=0 holders=capture:11328,capture:27943
+gpu_slot[capture/perf]: wait phase=queue waited_s=306.1 ahead=0 holders=capture:11328,capture:27943
+gpu_slot[capture/perf]: acquire slot=1 waited_s=308.3 phase=lock
+gpu_slot[capture/perf]: run child_pid=44680 max_hold_s=2400.0 cmd=python3 tools/perf_ue2/build_map.py --steps city
+[build_manhattan 18:59:38] === step city
+[build_manhattan 18:59:38] UE commandlet city_pass1 -> log /Users/midir/sm2-n1/_scratch/perf/logs/city_pass1.log
+gpu_slot[capture/perf]: max-hold-exceeded max_hold_s=2400.0
+gpu_slot[capture/perf]: release exit=124 hold_s=2400.48 wait_s=308.34 util_before=0 util_after=0 instances_before=1 instances_max=2 contaminated=true reasons=no-exclusive-lock
+== 19:41:25 step 3 city_rest
+gpu_slot[capture/perf]: wait phase=queue waited_s=0.1 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=30.3 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=60.5 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=90.6 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=120.8 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=150.9 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=181.2 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=211.2 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=241.4 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=271.5 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=301.7 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=331.8 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=361.9 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=392.1 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=422.3 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=452.4 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=482.6 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=512.8 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=542.9 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=573.1 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=603.1 ahead=0 holders=capture:51494,capture:97961
+gpu_slot[capture/perf]: acquire slot=0 waited_s=613.2 phase=lock
+gpu_slot[capture/perf]: run child_pid=19231 max_hold_s=2400.0 cmd=python3 /Users/midir/sm2-n1/_scratch/perf/r07b/city_rest.py kit,fsky,map
+[build_manhattan 19:51:39] UE commandlet city_rest -> log /Users/midir/sm2-n1/_scratch/perf/logs/city_rest.log
+[build_manhattan 19:58:08] UE commandlet city_rest: rc 0, 389 s, 0 python error lines
+gpu_slot[capture/perf]: release exit=0 hold_s=389.88 wait_s=613.2 util_before=0 util_after=13 instances_before=1 instances_max=2 contaminated=true reasons=no-exclusive-lock
+== 19:58:08 step 4 traversal
+gpu_slot[capture/perf]: wait phase=queue waited_s=0.1 ahead=1 holders=capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=30.3 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=60.6 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=90.8 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=120.9 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: wait phase=queue waited_s=151.1 ahead=0 holders=capture:19724,capture:97961
+gpu_slot[capture/perf]: aborted signal=15
