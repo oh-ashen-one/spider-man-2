@@ -22,7 +22,7 @@ if [ $FROM -le 4 ]; then st 4 traversal; $G capture --label perf --timeout 21600
 if [ $FROM -le 5 ]; then st 5 look; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps look
   st 5b map; $G capture --label perf --timeout 21600 -- python3 tools/perf_ue2/build_map.py --steps map; fi
 if [ $FROM -le 6 ]; then st 6 water; $G capture --label perf --timeout 21600 -- python3 unreal/WebHomage/Scripts/build_water.py; fi
-if [ $FROM -le 7 ]; then st 7 life_prep; python3 unreal/WebHomage/Scripts/build_life.py --steps prep; fi
+if [ $FROM -le 7 ] && [ -z "${SKIP_PREP:-}" ]; then st 7 life_prep; python3 unreal/WebHomage/Scripts/build_life.py --steps prep; fi
 if [ $FROM -le 8 ]; then st 8 life_content_map; $G capture --label perf --timeout 21600 -- python3 unreal/WebHomage/Scripts/build_life.py --steps content,map; fi
 if [ $FROM -le 9 ]; then st 9 add_life
   $G capture --label perf --timeout 21600 -- "$UE" "$UP" -run=pythonscript -script=$WT/tools/perf_ue2/add_life.py -unattended -nullrhi -nosplash -RenderOffScreen -NoSound -NoCrashReports -abslog=$S/logs/add_life.log > /dev/null 2>&1

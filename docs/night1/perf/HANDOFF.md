@@ -7,6 +7,14 @@ Branch `night1/perf`, worktree `~/sm2-n1/perf`, pushed to `origin/night1/perf`. 
 Spec `SPEC.md` (P1-P11), shot list `SHOTLIST.md` (round-06 update at the end), evidence `round-01` .. `round-06/` (`NOTES.md` = every fact of the round, `TABLE.md`, `CLIPS.md`, `s1_gate*.json`, `LOOK_GATE_raw.md`, `crops_r02.json`, `perf/<session>/`, `stills/`, `cmp/`, `route_30s.mp4`, `route_life_30s.mp4`).
 Critics: r01 FAILS, r02 APPROACHES, r03 FAILS, r04 APPROACHES, r05 APPROACHES (`critic/`). Round-06 blind pack: `/Users/midir/sm2-n1/_scratch/critic-F-r06/pack` (10 pairs incl. a traffic + crowd still and clip; key `pack.key.json` next to it, `pairs.json`), NOT scored yet.
 
+## ROUND 07 RESUMED 2026-10-03 18:49 (re-baseline on integration cd42c1f2) - read this first
+- Merged origin/Opus-5.5-Loop-Night-1 (cd42c1f2: traversal r25/r26, characters r17, terrain r05, city r11, tricks r01) as ac87bc4b; C++ rebuilt (build_editor.sh OK).
+- Content rebuild in this worktree with the morning-build order, F scratch, as-found (preset block OFF, no perf_apply): `docs/night1/perf/round-07/rebaseline/chain_build.sh`
+  (logs `_scratch/perf/r07b/logs/`). Capture holds run at background QoS and are cut at 40 min: the one-pass city step was cut after `kit actors` (19:39), finished by `city_rest.py kit,fsky,map` (rc 0, 19:58). Steps 4-11 (traversal, characters, look, map, water, life content/map, add_life, combat, views S7) run inside ONE outer capture hold (inner gpu_slot calls pass through).
+- `unreal/WebHomage/Config/Mac/MacEngine.ini` was committed by the orphaned r07 WIP (ccb13d2d); `--preset-off` deletes it in the working tree for the as-found runs. Not staged; the final round commit carries the shipped preset state.
+- 20:05 health_monitor PAUSED (WindowServer starved, GPU 100 % with no Unreal process of F running); F waits in the gpu_slot queue, nothing of F renders.
+- Next: `_scratch/perf/r07b/chain_s1.sh` (= `round-07/rebaseline/chain_s1.sh`): as-found perf session a1 (life ON, 3 runs at ini + SP50 + hwl4 per run) and as-found 3840 stills = new look_gate reference `_scratch/perf/r07b/asfound`.
+
 ## ROUND 07 IN PROGRESS (Opus 5.5; resumed 2026-09-30 23:30 after a usage-limit stop) - if you are a fresh session, resume from here
 - Committed first, unchanged for the round: `tools/perf_ue2/look_gate.py` (`python3 tools/perf_ue2/look_gate.py <stills dir>`; exit 0 = PASS).
 - Checkers: `frame_gap.py <csv>` (critic's same-row top-5 % FT-GPU gap), `frame_windows.py <csv>` (per-150-frame windows + per-pass top5-vs-mid), `gpu_procs.py` (other processes' GPU time; perf_route marks VOID).
