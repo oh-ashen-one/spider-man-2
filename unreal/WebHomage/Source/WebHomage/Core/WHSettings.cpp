@@ -5,6 +5,8 @@
 #include "GenericPlatform/GenericApplication.h"
 #include "HAL/IConsoleManager.h"
 #include "Misc/ConfigCacheIni.h"
+#include "Misc/CommandLine.h"
+#include "Misc/Parse.h"
 #include "Scalability.h"
 #include "UnrealEngine.h"
 
@@ -109,6 +111,16 @@ void FWHSettings::ApplyWindow() const
 		const int32 WW = FMath::Min(1920, int32(W * 0.8f));
 		W = WW; H = WW * 9 / 16;
 	}
+	// The prepared owner preview must not silently replace its requested 4K size with
+	// the desktop's ultrawide resolution. This affects only the explicit preview launch.
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHPreparedPlaytest")))
+	{
+		W = 3840; H = 2160;
+		FParse::Value(FCommandLine::Get(), TEXT("ResX="), W);
+		FParse::Value(FCommandLine::Get(), TEXT("ResY="), H);
+		W = FMath::Clamp(W, 640, 8192); H = FMath::Clamp(H, 360, 8192);
+		Mode = EWindowMode::Windowed;
+	}
 	FSystemResolution::RequestResolutionChange(W, H, Mode);
 	UE_LOG(LogWebHomage, Display, TEXT("WH_SETTINGS window %s %dx%d"), *WindowModeName(WindowMode).ToString(), W, H);
 }
@@ -158,6 +170,14 @@ void FWHSettings::Load()
 	GConfig->GetBool(GSection, TEXT("VSync"), bVSync, GGameUserSettingsIni);
 	GConfig->GetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
 	GConfig->GetString(GSection, TEXT("HeroSuitId"), SuitId, GGameUserSettingsIni);
+	if (FParse::Param(FCommandLine::Get(), TEXT("WHPreparedPlaytest")))
+	{
+		Quality = QualityMax;
+		ResScale = 100;
+		WindowMode = WinWindowed;
+		bVSync = false;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_PREVIEW quality=Cinematic internal=100%% (requested output follows ResX/ResY)"));
+	}
 	Clamp();
 	bLive = true;
 	ApplyCVars();
