@@ -5,7 +5,18 @@
 Builder: Claude Opus 5.5 high via Devin, 2026-10-03. Branch `night1/island` (pushed). All captures: REAL game (`-game`, offscreen,
 `Scripts/run_game.sh`), map `/Game/Maps/Manhattan_WP`, every Unreal process (commandlets included) inside `gpu_slot.sh capture --label island`.
 
-(sections below are filled in as the round's measurements land)
+**Status: STOPPED mid-rebuild (section 6).** Done: merge, C++, fire-escape collision, WHBox rule 5, leaf fade, checkers, telemetry sims.
+Not done: the rest of the fresh rebuild, the r1-r5 re-capture, frame / foliage / road-band measurements on renders, the critic pack.
+
+| round target | result |
+|---|---|
+| 0 merge + C++ + fresh rebuild time / Content size | merge clean, C++ 15.7 s; rebuild **partial** (11,262 s of holds for tex, mat, 1,642 meshes, protos, 128 / 272 kit tiles), total not measured (projection ~5.2 h vs I8 <= 90 min); Content 1.2 GB partial |
+| 1 fire escapes on r3 from 2.4 s (sim) | at the r03 spot: **0 top-outs** (r03 6), past x -235.5 at 2.7 s (x -218 at 3.5 s); route-wide "never stuck" **fails** on 5 short-rope stalls elsewhere (traversal, no fire escape near) |
+| 2 raw hollow <= 16.72 %, I5 <= 1 / 2 % | **16.43 %**, 0.25 % / 0.36 % (offline audit of the boxes the build spawns) |
+| 2 r5 checks a-d | default merged traversal (altitude chain): **a fails** (max gap 5.55 s); `AltChain=0`: a / b / d pass (0.30 s, 100 %, 0 ground, 0 webs on nothing, 0 overlap); c (road band) not measured (no render) |
+| 2 foliage <= 40 %, ropes through crowns | leaf fade built into `M_CityLeaves`, not measured on renders; ropes through crowns on merge-only sims: r1 / r4 / r5 **0 frames** |
+| 2 r1 / r4 frame differences | merge alone changes r1 from 3.95 s and r4 from 2.57 s (sims); island-side diffs not measured (no render) |
+| 3 r1-r5 from one build | **not done** |
 
 ## 0. Integration merge
 `git merge origin/Opus-5.5-Loop-Night-1` at 8b7a8301 (352 commits since aad3ac3: traversal r25 / r26 — new camera, rope material, original
@@ -80,3 +91,32 @@ critic's 10.2 / 26.8 s). The island cannot keep anchors off crowns without makin
 | r5 | t = 1.68 s (air release) | **r24 altitude chain** (`AltChain = 1`, default since the merge): releases solved for a 33 m apex, ~1.5-5.5 s between webs. Swing pass lines on the merge-only map: max re-web gap **5.55 s**, 33 % of gaps <= 0.5 s, 744 m, ends y 1528 (FAIL). The same route with the script tune `AltChain=0` (`scripts/r5_m2_avenue_alt0.json`, the r23 chain) on the same map: **max gap 0.30 s, 100 % <= 0.5 s, 0 ground frames, 0 webs on nothing, 0 fall / stuck / mid-air / wall-air, 0 overlap, 1,481.6 m** (= round 03) |
 So r1 / r4 frames differ from round 03 from the first seconds because of the merge alone; round-04 r1 / r4 are compared with these
 merge-only sims (`sim_merge/*`, section 7) to separate the island's own changes. Ropes through crowns on the merge-only sims: r1 0, r4 0, r5 0 frames.
+
+## 6. Fresh rebuild (SPEC I8) — STOPPED, partial, measured
+`docs/night1/island/build_r04.sh` (= `build_manhattan.py --steps cpp,city,traversal,characters,look,map` with `SM2_ISLAND_GPU_SLOT=1`: every
+commandlet its own `gpu_slot.sh capture --label island` hold, `-nullrhi`). Content/City, Content/Tests/City and the WP map were deleted on
+disk at 16:49 (build_city's own `clean` loads every asset to delete it: 346 meshes in 6 min, stopped; the on-disk delete takes < 1 s).
+Inputs: the island export (browser sources unchanged by the merge, so `city_export` / `city_prep` were not re-run: they need a vite
+listener; r03 timings 172 s + 885 s), `city_extra` re-run (188 s) and `street_kit.py` re-run (215 s).
+
+| commandlet | hold s | what |
+|---|---|---|
+| cpp (`build_editor.sh`) | 4 (15.7 s on the first, real rebuild after the merge) | |
+| city_a `clean,tex` | 92.6 | |
+| city_a2 `mat` | 54.2 | |
+| city_mesh_00 / 01 / 02 | 2,338.4 / 1,960.2 / 685.0 | all 1,642 tile meshes (640 / 802 / 200): ~1-2 s per mesh, ~15-35 s per `detail` (Nanite, full fallback) mesh |
+| city_proto_00 | 328.4 | |
+| city_kit_00 / 01 / 02 | 1,885.1 / 1,510.0 / 2,403.3 | 128 of 136 street-kit tiles, ~25-60 s per tile (Nanite + distance field, built twice: the import does not apply full-precision UVs / tangent settings, `finish_mesh` logs the difference) |
+| **sum so far** | **11,262 s (3.1 h)** of holds, 16:49 -> 20:17 wall | |
+city_kit_02 printed its `DONE` at 1,901 s of script time but the engine had not exited when gpu_slot's 2,400 s max hold terminated it
+(rc 124; a `-nullrhi` commandlet, every asset already saved). From 20:33 the GPU lock was paused by the health monitor
+(`WindowServer starved (gpu 100 % ws_cpu 0)`, screencapture probe failing, **no Unreal or Blender process running**); my next kit
+commandlet waited 60 min (gpu_slot exit 75), re-queued, and at 21:50 I stopped the build driver (no engine was running).
+**Not built yet:** 8 street-kit + 136 fire-escape tiles, `fsky,map,coll`, `wp` (WP map + 175,671 WHBoxes), traversal, characters, look,
+`manhattan_map`. Projection from the measured rates (NOT a measurement): ~4,300 s kit + ~600 s b + ~1,700 s wp + ~1,000 s rest = a fresh
+rebuild of ~18,900 s (~5.2 h) of commandlet time, against the SPEC I8 target of <= 90 min. Content now 1.2 GB (r03 complete: 1.5 GB).
+Resume: `SPLIT_FROM=kit docs/night1/island/build_r04.sh` (the kit step imports only missing tiles).
+
+## 7. Captures — NOT DONE
+There is no playable island map until the rebuild finishes (WP map deleted for the fresh build): r1-r5 were not re-captured this round;
+the critic pack was not built. Evidence this round is telemetry-only (sims on the round-03 map + merged C++, `sims/`).
