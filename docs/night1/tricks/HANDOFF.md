@@ -1,4 +1,4 @@
-# Tricks (C) — handoff (round 2 captured, awaiting the blind critic)
+# Tricks (C) — handoff (round 2: code + probe measured; reel NOT rendered, no critic pack)
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
@@ -9,11 +9,16 @@ WebTravCamera.*, WebTraversalComponent.*, WebTravCharacter.*, and (this round) t
 `git diff origin/Opus-5.5-Loop-Night-1 -- unreal/` touches only WebTravFlips.{h,cpp}.
 
 ## State
-- Round 02: see `docs/night1/tricks/round-02/NUMBERS.md` (measured lines) and `CHECK.txt`. Reel = ONE 61 s clip, committed as 8 s parts
-  (`t60_trick_reel_part1..8.mp4`, 13 Mbps); the full-length 13 Mbps file is local only:
-  `/Users/midir/sm2-n1/_scratch/tricks/capture/t60_trick_reel/t60_trick_reel_full.mp4` (+ `_hq.mp4` CRF 16).
-- Blind critic pack: `/Users/midir/sm2-n1/_scratch/critic-C-r02/pack` (key outside: `critic-C-r02/pack.key.json`, sources + `pairs.json` in
-  `critic-C-r02/`). Owner-clip pairs + r01-vs-r02 catch pairs. The critic has not run.
+- Round 02 is measured on the `-nullrhi` probe of the real game only: `docs/night1/tricks/round-02/NUMBERS.md`, `CHECK_probe.txt`,
+  `t60_trick_reel_probe_{telemetry.csv,pose.csv.gz}`. C (catch rotation) FAILS: 0 of 22 <= 250 deg/s, median of the per-trick maxima
+  435 deg/s (r01 603), worst 821. P V1 V2 K G2 G3 G4 pass; L 8 slow samples; G1f / PEN / PIK fail (clip work).
+- **The reel was not rendered.** 2026-10-03 20:05 the health monitor stopped the first window's engine (pid 33556, "WindowServer
+  starved, gpu 100 % ws_cpu 0") and that engine stayed in the exiting state (`ps` stat `?E`, still at 20:30) with the GPU at 100 %,
+  WindowServer at 0 % CPU, the lock PAUSED and DEMOTED. Nothing else of tricks was launched; the chained render holds were cancelled.
+  Next session: check `ps -o pid,stat -p 33556` and `_scratch/gpu/health.log` first; render only after the orchestrator lifts PAUSED.
+- To render this build: `TAG=f PROBE=0 RENDER=1 RENDER_ARGS="-WHHeroFill=16000,36000"` through `hold_r02.sh` (VERDICT of probe f is in
+  `_scratch/tricks/probe_r02/f/`; copy it to the TAG dir you use), 3 holds (windows 0:15 15:30 30:45 45:61), then `finish_r02.sh`,
+  then the critic pack (below; `PREV_REEL=_scratch/tricks/r02/r01_reel_hq.mp4`, the r01 CRF 16 master).
 - r02 code (WebTravFlips.cpp, "catch lean"): from 0.3-0.7 s before a program's catch time it predicts the catch with the traversal's own
   anchor search (public `Anchors->Find` from the predicted body position; exact anchor in 19 of 20 probe catches) and the swing frame it
   starts in (StartSwing's virtual pivot / velocity projection, approximated), or the streamlined air frame when no web is in reach; it
@@ -37,7 +42,8 @@ WebTravCamera.*, WebTraversalComponent.*, WebTravCharacter.*, and (this round) t
   frame layout, PEN pencil knee, PIK pike); `tools/tricks/catch_table.py` = C of two captures side by side.
 - Critic pack: `PREV_REEL=<r01 reel> PREV_TEL=<r01 telemetry> tools/tricks/make_pairs.py <reel> <telemetry> - <out dir>` then
   `python3 /Users/midir/spider-man-2-astra6/tools/night1/abpack.py <pack> <pairs.json>` and `tools/tricks/pack_sheets.sh <pack>`.
-- Hero light test: `tools/tricks/light_test.sh` (renders one short window per `-WHHeroFill` spec, inside a hold).
+- Hero light test: `tools/tricks/light_test.sh` (renders one short window per `-WHHeroFill` spec, inside a hold). Not yet run with a
+  valid script path (the 19:04 run used a relative path: hero at spawn, frames not comparable); `-WHHeroFill=16000,36000` is unverified.
 
 ## Gotchas
 - `stop_ue.sh` pgreps its pattern: never run it from a command line that contains the worktree path (it kills that shell) -- build the

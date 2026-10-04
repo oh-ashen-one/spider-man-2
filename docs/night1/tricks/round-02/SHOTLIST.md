@@ -6,7 +6,11 @@ Round target (director after the r01 critic): the web catch at the end of every 
 (pose log `chest_f` / `chest_u`) turns <= 250 deg/s in every 0.1 s window from the trick end to the end + 0.4 s, on all 22 tricks
 (`tools/tricks/tricks_check.py` line `C`).
 
-| Clip | What | How |
+**r02 status: the reel render was stopped by the GPU health monitor at 20:05 and its engine stuck exiting in the GPU driver (see
+NUMBERS.md); no part below exists yet except the probe CSVs.** Committed now: `t60_trick_reel_probe_telemetry.csv`,
+`t60_trick_reel_probe_pose.csv.gz` (the `-nullrhi` probe of the same build and script) and `CHECK_probe.txt`.
+
+| Clip (planned) | What | How |
 |---|---|---|
 | `t60_trick_reel_part1.mp4` .. `_part8.mp4` | ONE continuous 61 s web-swing chain in the lit city with a flip program on every release (the r01 route and script; the 12 release programs, twice), split into 8 s parts for the 15 MB file limit. Concatenated in order they are the whole clip (frame-exact cuts of one encode source) | script `docs/night1/tricks/scripts/t60_trick_reel.json`, `tools/tricks/capture.sh` (windows 0:15, 15:30, 30:45, 45:61 of one deterministic run), route verified by a `-nullrhi` probe of the same build (`tools/tricks/probe_reel.py`) |
 | local only: `_scratch/tricks/capture/t60_trick_reel/t60_trick_reel_full.mp4` | the same 61 s clip as one 13 Mbps file (and `_hq.mp4`, CRF 16) for the critic | capture.sh |

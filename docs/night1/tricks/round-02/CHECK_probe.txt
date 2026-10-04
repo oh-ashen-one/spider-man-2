@@ -1,0 +1,157 @@
+== t60_trick_reel_probe: 3665 rows, 61.1 s, 22 trick instances
+P  distinct programs: 12 (>= 10 -> PASS)
+     1.35 s  backSingle       len 1.28 s  scale 1.057  shapes Tuck>Pencil>Tuck>Reach>CatchLow
+     3.65 s  frontSingle      len 1.55 s  scale 1.039  shapes Tuck>Kickout>Reach
+     6.25 s  backPike         len 1.32 s  scale 0.852  shapes Pike>Kickout>CatchBank>Reach
+     8.67 s  barani           len 1.97 s  scale 1.072  shapes Pike>Twist>Straddle>Reach
+    11.98 s  backLayout       len 1.32 s  scale 0.850  shapes Layout>CatchBankL>Reach
+    14.40 s  frontDouble      len 2.05 s  scale 1.063  shapes Tuck>Kickout>CatchBank
+    17.53 s  fullTwist        len 1.42 s  scale 0.850  shapes Layout>Twist>Layout>CatchLow>Reach
+    19.92 s  frontPikeSwan    len 1.33 s  scale 0.850  shapes Pike>Swan>Tuck>CatchBank
+    22.27 s  backDouble       len 1.43 s  scale 0.850  shapes Tuck>Kickout
+    24.75 s  rudi             len 1.82 s  scale 1.049  shapes Pike>Twist>Straddle>Reach>CatchLowL
+    27.67 s  corkscrew        len 1.80 s  scale 1.108  shapes Layout>Twist>Straddle>Tuck>CatchLow
+    30.45 s  backTripleChain  len 3.12 s  scale 1.104  shapes Tuck>Layout>Tuck>Straddle>Tuck>Kickout>CatchBankL
+    34.60 s  backSingle       len 1.28 s  scale 0.857  shapes Tuck>Pencil>Tuck>CatchLow>Reach
+    36.97 s  frontSingle      len 1.33 s  scale 0.850  shapes Tuck>Kickout>CatchBankL>Reach
+    39.27 s  backPike         len 1.38 s  scale 1.131  shapes Pike>Kickout>CatchBank
+    41.67 s  barani           len 1.42 s  scale 0.850  shapes Pike>Twist>Straddle>CatchLowL>Reach
+    44.13 s  backLayout       len 1.60 s  scale 1.064  shapes Layout>Reach
+    47.38 s  frontDouble      len 2.02 s  scale 0.852  shapes Tuck>Kickout>Reach
+    50.67 s  fullTwist        len 1.53 s  scale 1.098  shapes Layout>Twist>Layout>Reach>CatchBank
+    53.23 s  frontPikeSwan    len 1.58 s  scale 1.039  shapes Pike>Swan>Tuck>Reach>CatchBankL
+    55.90 s  backDouble       len 2.02 s  scale 1.060  shapes Tuck>Kickout
+    58.88 s  rudi             len 1.55 s  scale 0.901  shapes Pike>Twist>Straddle>Reach>Straddle>CatchLow
+V1 same-type pairs: max |rate difference| over 0.1 s samples at the same flip time (program rate / rendered axis rate)
+   backSingle       1.35 s vs 34.60 s: program 646 deg/s, rendered 718 deg/s over 14 samples -> PASS
+   frontSingle      3.65 s vs 36.97 s: program 453 deg/s, rendered 762 deg/s over 14 samples -> PASS
+   backPike         6.25 s vs 39.27 s: program 340 deg/s, rendered 512 deg/s over 14 samples -> PASS
+   barani           8.67 s vs 41.67 s: program 353 deg/s, rendered 364 deg/s over 15 samples -> PASS
+   backLayout       11.98 s vs 44.13 s: program 319 deg/s, rendered 474 deg/s over 14 samples -> PASS
+   frontDouble      14.40 s vs 47.38 s: program 275 deg/s, rendered 486 deg/s over 21 samples -> PASS
+   fullTwist        17.53 s vs 50.67 s: program 333 deg/s, rendered 468 deg/s over 15 samples -> PASS
+   frontPikeSwan    19.92 s vs 53.23 s: program 1011 deg/s, rendered 1046 deg/s over 14 samples -> PASS
+   backDouble       22.27 s vs 55.90 s: program 497 deg/s, rendered 437 deg/s over 15 samples -> PASS
+   rudi             24.75 s vs 58.88 s: program 268 deg/s, rendered 396 deg/s over 17 samples -> PASS
+V1 PASS (10 same-type pairs, 10 >= 40 deg/s on both)
+V2 duration scale per instance: min 0.850 max 1.131 (spread -15 % .. +13 %); instances deviating >= 10 %: 12 of 22; all within 22 %: True
+   backSingle       scales 1.057 0.857 (same-type spread 23 %)
+   frontSingle      scales 1.039 0.850 (same-type spread 22 %)
+   backPike         scales 0.852 1.131 (same-type spread 33 %)
+   barani           scales 1.072 0.850 (same-type spread 26 %)
+   backLayout       scales 0.850 1.064 (same-type spread 25 %)
+   frontDouble      scales 1.063 0.852 (same-type spread 25 %)
+   fullTwist        scales 0.850 1.098 (same-type spread 29 %)
+   frontPikeSwan    scales 0.850 1.039 (same-type spread 22 %)
+   backDouble       scales 0.850 1.060 (same-type spread 25 %)
+   rudi             scales 1.049 0.901 (same-type spread 16 %)
+V2 PASS (needs instances below 0.90 and above 1.10, none beyond +-22 %)
+K  tuck holds (rows with flip_shape = Tuck on body and legs and tuck_w >= .99)
+   backSingle       1.43 s: tucked 0.18 s, tight 0.15 s, wrist-shin max 0.276 m, knees max 0.194 m
+   backSingle       2.18 s: tucked 0.13 s, tight 0.13 s, wrist-shin max 0.085 m, knees max 0.188 m
+   frontSingle      3.73 s: tucked 0.63 s, tight 0.60 s, wrist-shin max 0.294 m, knees max 0.186 m
+   frontDouble      14.48 s: tucked 1.32 s, tight 1.28 s, wrist-shin max 0.295 m, knees max 0.182 m
+   frontPikeSwan    20.85 s: tucked 0.12 s, tight 0.12 s, wrist-shin max 0.060 m, knees max 0.176 m
+   backDouble       22.35 s: tucked 0.83 s, tight 0.80 s, wrist-shin max 0.270 m, knees max 0.186 m
+   corkscrew        29.03 s: tucked 0.18 s, tight 0.18 s, wrist-shin max 0.083 m, knees max 0.185 m
+   backTripleChain  30.53 s: tucked 0.53 s, tight 0.50 s, wrist-shin max 0.288 m, knees max 0.190 m
+   backTripleChain  31.70 s: tucked 0.37 s, tight 0.37 s, wrist-shin max 0.048 m, knees max 0.167 m
+   backTripleChain  32.68 s: tucked 0.38 s, tight 0.38 s, wrist-shin max 0.051 m, knees max 0.166 m
+   backSingle       34.68 s: tucked 0.13 s, tight 0.12 s, wrist-shin max 0.178 m, knees max 0.192 m
+   backSingle       35.33 s: tucked 0.03 s, tight 0.03 s, wrist-shin max 0.055 m, knees max 0.169 m
+   frontSingle      37.05 s: tucked 0.50 s, tight 0.47 s, wrist-shin max 0.276 m, knees max 0.197 m
+   frontDouble      47.47 s: tucked 1.07 s, tight 1.03 s, wrist-shin max 0.278 m, knees max 0.186 m
+   frontPikeSwan    54.33 s: tucked 0.18 s, tight 0.18 s, wrist-shin max 0.070 m, knees max 0.184 m
+   backDouble       55.98 s: tucked 1.10 s, tight 1.07 s, wrist-shin max 0.286 m, knees max 0.184 m
+K  PASS (9 tuck holds >= .25 s, all tight >= .25 s: True; wrist-shin max 0.295 m, knee gap max 0.197 m)
+L  slow limb samples: 8 of 345 -> FAIL
+   slow t 7.20 dmax 0.070 CatchBank / backPike
+   slow t 23.40 dmax 0.077 Kickout / backDouble
+   slow t 23.60 dmax 0.045 Kickout / backDouble
+   slow t 28.50 dmax 0.094 Straddle / corkscrew
+   slow t 35.60 dmax 0.093 CatchLow / backSingle
+   slow t 42.90 dmax 0.073 CatchLowL / barani
+   slow t 45.00 dmax 0.092 Layout / backLayout
+   slow t 54.10 dmax 0.085 Swan / frontPikeSwan
+pose rows joined: 3665 of 3665 telemetry rows (2189 in tricks)
+   G1 backLayout       11.98 s: 34 held layout rows, hip median 177.8 min 161.6 deg, knee median 178.1 min 151.7 deg
+   G1 fullTwist        17.53 s: 5 held layout rows, hip median 177.6 min 160.0 deg, knee median 176.4 min 149.4 deg
+   G1 corkscrew        27.67 s: 7 held layout rows, hip median 177.9 min 160.7 deg, knee median 177.8 min 150.3 deg
+   G1 backTripleChain  30.45 s: 5 held layout rows, hip median 177.9 min 176.4 deg, knee median 178.2 min 177.9 deg
+   G1 backLayout       44.13 s: 46 held layout rows, hip median 177.7 min 156.9 deg, knee median 178.1 min 138.3 deg
+   G1 fullTwist        50.67 s: 11 held layout rows, hip median 178.0 min 160.8 deg, knee median 178.2 min 147.6 deg
+G1 PASS layout hips / knees >= 170 deg (median per held layout; minimum hip 156.9, knee 138.3)
+G2 PASS pointed toes: foot within 35 deg of the shin line in 96.7 % of 4378 trick foot samples (median 0.0, p95 32.2 deg)
+   G3 backSingle       1.35 s: head-vs-chest change in the open-out 18.5 deg (whole trick 32.7 deg)
+   G3 frontSingle      3.65 s: head-vs-chest change in the open-out 36.4 deg (whole trick 36.4 deg)
+   G3 backPike         6.25 s: head-vs-chest change in the open-out 35.4 deg (whole trick 36.4 deg)
+   G3 barani           8.67 s: head-vs-chest change in the open-out 28.4 deg (whole trick 28.5 deg)
+   G3 backLayout       11.98 s: head-vs-chest change in the open-out 29.7 deg (whole trick 29.7 deg)
+   G3 frontDouble      14.40 s: head-vs-chest change in the open-out 28.2 deg (whole trick 29.1 deg)
+   G3 fullTwist        17.53 s: head-vs-chest change in the open-out 20.3 deg (whole trick 27.1 deg)
+   G3 frontPikeSwan    19.92 s: head-vs-chest change in the open-out 18.5 deg (whole trick 25.4 deg)
+   G3 backDouble       22.27 s: head-vs-chest change in the open-out 31.1 deg (whole trick 31.1 deg)
+   G3 rudi             24.75 s: head-vs-chest change in the open-out 36.8 deg (whole trick 36.8 deg)
+   G3 corkscrew        27.67 s: head-vs-chest change in the open-out 25.1 deg (whole trick 27.1 deg)
+   G3 backTripleChain  30.45 s: head-vs-chest change in the open-out 36.7 deg (whole trick 36.7 deg)
+   G3 backSingle       34.60 s: head-vs-chest change in the open-out 21.2 deg (whole trick 26.8 deg)
+   G3 frontSingle      36.97 s: head-vs-chest change in the open-out 30.8 deg (whole trick 34.2 deg)
+   G3 backPike         39.27 s: head-vs-chest change in the open-out 29.7 deg (whole trick 33.6 deg)
+   G3 barani           41.67 s: head-vs-chest change in the open-out 17.7 deg (whole trick 27.8 deg)
+   G3 backLayout       44.13 s: head-vs-chest change in the open-out 27.6 deg (whole trick 27.6 deg)
+   G3 frontDouble      47.38 s: head-vs-chest change in the open-out 36.6 deg (whole trick 36.6 deg)
+   G3 fullTwist        50.67 s: head-vs-chest change in the open-out 28.3 deg (whole trick 30.5 deg)
+   G3 frontPikeSwan    53.23 s: head-vs-chest change in the open-out 22.8 deg (whole trick 28.4 deg)
+   G3 backDouble       55.90 s: head-vs-chest change in the open-out 31.0 deg (whole trick 32.0 deg)
+   G3 rudi             58.88 s: head-vs-chest change in the open-out 27.1 deg (whole trick 27.1 deg)
+G3 PASS head spot: 22 of 22 instances move the head >= 15 deg relative to the chest in the open-out
+   G4 backSingle       1.35 s: last 0.15 s open True, rate max 34 deg/s
+   G4 frontSingle      3.65 s: last 0.15 s open True, rate max 0 deg/s
+   G4 backPike         6.25 s: last 0.15 s open True, rate max 0 deg/s
+   G4 barani           8.67 s: last 0.15 s open True, rate max 0 deg/s
+   G4 backLayout       11.98 s: last 0.15 s open True, rate max 0 deg/s
+   G4 frontDouble      14.40 s: last 0.15 s open True, rate max 236 deg/s
+   G4 fullTwist        17.53 s: last 0.15 s open True, rate max 0 deg/s
+   G4 frontPikeSwan    19.92 s: last 0.15 s open True, rate max 196 deg/s
+   G4 backDouble       22.27 s: last 0.15 s open True, rate max 24 deg/s
+   G4 rudi             24.75 s: last 0.15 s open True, rate max 143 deg/s
+   G4 corkscrew        27.67 s: last 0.15 s open True, rate max 125 deg/s
+   G4 backTripleChain  30.45 s: last 0.15 s open True, rate max 57 deg/s
+   G4 backSingle       34.60 s: last 0.15 s open True, rate max 0 deg/s
+   G4 frontSingle      36.97 s: last 0.15 s open True, rate max 0 deg/s
+   G4 backPike         39.27 s: last 0.15 s open True, rate max 60 deg/s
+   G4 barani           41.67 s: last 0.15 s open True, rate max 0 deg/s
+   G4 backLayout       44.13 s: last 0.15 s open True, rate max 0 deg/s
+   G4 frontDouble      47.38 s: last 0.15 s open True, rate max 0 deg/s
+   G4 fullTwist        50.67 s: last 0.15 s open True, rate max 16 deg/s
+   G4 frontPikeSwan    53.23 s: last 0.15 s open True, rate max 256 deg/s
+   G4 backDouble       55.90 s: last 0.15 s open True, rate max 0 deg/s
+   G4 rudi             58.88 s: last 0.15 s open True, rate max 272 deg/s
+G4 PASS open-out: 22 of 22 instances end in an open shape at <= 300 deg/s
+   C  backSingle       end   2.63 s: max 0.1 s chest rate  275 deg/s at   2.67 (windows from the end:  275), max per-frame   348, next swing, exit shape CatchLow
+   C  frontSingle      end   5.20 s: max 0.1 s chest rate  547 deg/s at   5.20 (windows from the end:  547), max per-frame  1063, next swing, exit shape Reach
+   C  backPike         end   7.57 s: max 0.1 s chest rate  483 deg/s at   7.57 (windows from the end:  483), max per-frame  1240, next swing, exit shape Reach
+   C  barani           end  10.63 s: max 0.1 s chest rate  455 deg/s at  11.02 (windows from the end:  455), max per-frame  1298, next air, exit shape Reach
+   C  backLayout       end  13.30 s: max 0.1 s chest rate  670 deg/s at  13.37 (windows from the end:  670), max per-frame  1429, next air, exit shape Reach
+   C  frontDouble      end  16.45 s: max 0.1 s chest rate  821 deg/s at  16.45 (windows from the end:  821), max per-frame  1790, next swing, exit shape CatchBank
+   C  fullTwist        end  18.95 s: max 0.1 s chest rate  384 deg/s at  18.95 (windows from the end:  384), max per-frame   543, next swing, exit shape Reach
+   C  frontPikeSwan    end  21.25 s: max 0.1 s chest rate  520 deg/s at  21.28 (windows from the end:  520), max per-frame   885, next swing, exit shape CatchBank
+   C  backDouble       end  23.70 s: max 0.1 s chest rate  365 deg/s at  23.70 (windows from the end:  365), max per-frame   487, next swing, exit shape Kickout
+   C  rudi             end  26.57 s: max 0.1 s chest rate  365 deg/s at  26.57 (windows from the end:  365), max per-frame   468, next swing, exit shape CatchLowL
+   C  corkscrew        end  29.47 s: max 0.1 s chest rate  458 deg/s at  29.47 (windows from the end:  458), max per-frame   625, next swing, exit shape CatchLow
+   C  backTripleChain  end  33.57 s: max 0.1 s chest rate  324 deg/s at  33.53 (windows from the end:  284), max per-frame  1268, next swing, exit shape CatchBankL
+   C  backSingle       end  35.88 s: max 0.1 s chest rate  415 deg/s at  35.88 (windows from the end:  415), max per-frame   631, next swing, exit shape Reach
+   C  frontSingle      end  38.30 s: max 0.1 s chest rate  633 deg/s at  38.33 (windows from the end:  633), max per-frame   935, next swing, exit shape Reach
+   C  backPike         end  40.65 s: max 0.1 s chest rate  292 deg/s at  40.72 (windows from the end:  292), max per-frame  1247, next swing, exit shape CatchBank
+   C  barani           end  43.08 s: max 0.1 s chest rate  326 deg/s at  43.08 (windows from the end:  326), max per-frame   485, next swing, exit shape Reach
+   C  backLayout       end  45.73 s: max 0.1 s chest rate  364 deg/s at  46.02 (windows from the end:  364), max per-frame   387, next air, exit shape Reach
+   C  frontDouble      end  49.40 s: max 0.1 s chest rate  717 deg/s at  49.68 (windows from the end:  717), max per-frame   939, next air, exit shape Reach
+   C  fullTwist        end  52.20 s: max 0.1 s chest rate  277 deg/s at  52.20 (windows from the end:  277), max per-frame   816, next swing, exit shape CatchBank
+   C  frontPikeSwan    end  54.82 s: max 0.1 s chest rate  300 deg/s at  54.85 (windows from the end:  300), max per-frame   467, next swing, exit shape CatchBankL
+   C  backDouble       end  57.92 s: max 0.1 s chest rate  651 deg/s at  57.92 (windows from the end:  651), max per-frame   938, next swing, exit shape Kickout
+   C  rudi             end  60.43 s: max 0.1 s chest rate  565 deg/s at  60.40 (windows from the end:  554), max per-frame  2104, next swing, exit shape CatchLow
+C  FAIL catch rotation: 0 of 22 trick ends <= 250 deg/s in every 0.1 s window (end - 3 frames .. end + 0.4 s); worst 821 deg/s (frontDouble 16.45 s), median of maxima 455; per-frame max 2104
+X  exit poses (shape at the last trick row): Reach 10, CatchBank 4, CatchLow 3, Kickout 2, CatchBankL 2, CatchLowL 1 -> PASS
+G1f FAIL layout every frame: knees < 170 deg in 102 of 516 leg samples (min 73.8), hips < 170 in 71 of 402 (min 126.3)
+PEN FAIL pencil knee median 134.9 deg (>= 170), p10 82.9, 78 leg samples
+PIK FAIL pike hip median 125.4 deg (<= 90), knee p10 105.3 (>= 165), 444 samples
