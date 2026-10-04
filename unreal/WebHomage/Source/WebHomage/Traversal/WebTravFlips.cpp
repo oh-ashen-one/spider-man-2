@@ -621,7 +621,7 @@ namespace WebFlips
 				const float S0 = SegStart(P, K);
 				if (S0 + BPost + 0.1f <= GC.Te) { SLast = S0 + BPost; break; }
 			}
-			const float Ts2 = FMath::Max3(GC.Ts, GC.Te - CatchShapeWin, FMath::Min(SLast, GC.Te - CatchShapeWin)), Span2 = FMath::Max(0.05f, GC.Te - Ts2);
+			const float Ts2 = FMath::Max3(GC.Ts, GC.Te - CatchShapeWin, FMath::Min(SLast, GC.Te - 0.15f)), Span2 = FMath::Max(0.05f, GC.Te - Ts2);
 			const EWebFlipShape Low = GC.bShapeRight ? EWebFlipShape::CatchLow : EWebFlipShape::CatchLowL;
 			const EWebFlipShape Bank = GC.bShapeRight ? EWebFlipShape::CatchBank : EWebFlipShape::CatchBankL;
 			const bool bBankMajor = GC.BankW > 0.5f;
