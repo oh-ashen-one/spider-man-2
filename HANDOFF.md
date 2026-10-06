@@ -35,6 +35,13 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - `AWHCityLights::RegisterDynamicProvider`; `AWHLifeTraffic` emits the author's headlight/taillight pairs into the `cars` group (night_city.json `cars_provider`). Not exercised at runtime yet.
 - Island (worktree ~/sm2-n1/island, branch codex/m5-island-20261006): city content resumed on M5 (kit, fsky/map/coll, wp) in 681 s total; WP map saved (1642 meshes, 198,063 instances, 175,671 WHBox cubes). Traversal/characters/look/map steps of the island are not run.
 
+### Runtime fixes (first captures)
+- Night daylight: no lighting actor leaks into the composed maps (validated per map: exactly one atmosphere sun / SkyLight / SkyAtmosphere / height fog, the rig PPV the only unbound one, everything from the rig level). The cause was the night rig's auto-exposure range (min_ev 1.0, max_ev 4.3) against the 16 lux moon key: 16 lux x albedo / pi = 2-4 cd/m2 against a white point of 2.4 cd/m2 at EV 1 saturates the scene to a daytime-grey image. Night exposure is now [6.5, 8.5] (first pass, to be tuned by the owner's look judgement).
+- Custom-node texture samples use Texture2DSample() (never Tex.Sample): the ray-tracing hit shader (lib_6_6 closesthit) rejects the implicit-derivative Sample opcode. tools/night/hlsl_check.py compiles every body for ps_6_6 and as a closesthit lib; 98/98.
+- The terrain step runs tools/terrain/prep_terrain.py (Shaders/Terrain/ParkData.ush is generated and gitignored); check.py verifies every `#include "/Project/..."`. Pre-existing baseline defect: ~/sm2-baselines lacks ParkData.ush (baseline terrain materials fail to compile); play.py copies this checkout's file into Saved/Showcase/baseline-run only.
+- WH_RES logs 3 s after map start in every mode; -WHProfile also applies its render settings in captures (window untouched). Cold-DDC captures stall the game thread for seconds on BC7 texture builds (ts_ads, props atlas, TA_walls): warm the DDC before perf windows.
+- A handled DoubleFloat ensure (distance-field object matrix precision) appears in baseline, golden and night logs: pre-existing.
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 

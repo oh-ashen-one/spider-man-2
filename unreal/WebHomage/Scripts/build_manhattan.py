@@ -314,7 +314,10 @@ def step_terrain():
     if gone: raise SystemExit('terrain inputs missing (source tools/m5/env.sh; export/prep first): %s' % gone)
     if not os.path.isfile(os.path.join(PROJ, 'Content/Maps/Manhattan_Actors.umap')): raise SystemExit('terrain needs /Game/Maps/Manhattan_Actors: run the map step first')
     env = {'SM2_TERRAIN_ROOT': sm2_common.TERRAIN_ROOT, 'SM2_TERRAIN_WT': WT, 'SM2_TERRAIN_EXPORT': exp, 'SM2_TERRAIN_PREP': prep}
-    ue_python('terrain', exec_wrapper(os.path.join(HERE, 'build_terrain.py'), 'JOB_ARGS = %r' % {'steps': TERRAIN_STEPS}), env, sentinel='build_terrain.py')
+    # Shaders/Terrain/ParkData.ush (gitignored) is generated from the export by prep_terrain.py: M_TerrainPark / M_TerrainLawn include it
+    sh(['python3', os.path.join(WT, 'tools/terrain/prep_terrain.py'), exp, prep], env={'SM2_TERRAIN_SCRATCH': os.path.dirname(prep)}, log_name='terrain_prep.log')
+    if not os.path.isfile(os.path.join(PROJ, 'Shaders/Terrain/ParkData.ush')): raise SystemExit('terrain prep did not produce Shaders/Terrain/ParkData.ush')
+    ue_python('terrain', exec_wrapper(os.path.join(HERE, 'build_terrain.py'), 'JOB_ARGS = %r' % {'steps': os.environ.get('SM2_TERRAIN_ONLY') or TERRAIN_STEPS}), env, sentinel='build_terrain.py')
     for f in ('Terrain_Land.umap', 'City_Geo_T.umap'):
         if not os.path.isfile(os.path.join(PROJ, 'Content/Terrain', f)): raise SystemExit('terrain step did not produce /Game/Terrain/' + f)
 
@@ -329,6 +332,12 @@ def step_showcase():
     txt = ue_python('showcase_maps', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS), 'SM2_MANHATTAN_MODE': 'showcase'})
     for l in txt.splitlines():
         if '[manhattan' in l: print(l.split('LogPython: ')[-1])
+
+
+def step_lighting():
+    txt = ue_python('showcase_lighting', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_MODE': 'lighting'})
+    for l in txt.splitlines():
+        if '[manhattan lighting]' in l: print(l.split('LogPython: ')[-1])
 
 
 def step_validate():
@@ -347,11 +356,11 @@ def main():
     a = ap.parse_args()
     want = a.steps.split(',')
     WANT[:] = want
-    bad = [s for s in want if s not in STEPS_ALL]
+    bad = [s for s in want if s not in STEPS_ALL + ['lighting']]
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
     t0 = time.time()
-    for s in STEPS_ALL:
+    for s in STEPS_ALL + ['lighting']:
         if s in want:
             log('=== step', s); t = time.time()
             globals()['step_' + s]()
@@ -579,6 +588,58 @@ def build_showcase():
     _B.finish()
 
 
+LIGHT_CLASSES = ('DirectionalLight', 'SkyLight', 'SkyAtmosphere', 'ExponentialHeightFog', 'PostProcessVolume', 'VolumetricCloud', 'LevelSequenceActor')
+
+
+def lighting_inventory(eas):
+    """every sky / lighting / post actor of the loaded world, grouped by the level package that owns it, with the properties that decide the look"""
+    inv = {}
+    for a in eas.get_all_level_actors():
+        cn = a.get_class().get_name()
+        if cn not in LIGHT_CLASSES:
+            continue
+        d = {'class': cn, 'label': a.get_actor_label()}
+        try:
+            if cn == 'DirectionalLight':
+                c = a.get_component_by_class(unreal.DirectionalLightComponent)
+                d.update(intensity=c.get_editor_property('intensity'), atmosphere_sun=bool(c.get_editor_property('atmosphere_sun_light')),
+                         atmosphere_sun_index=int(c.get_editor_property('atmosphere_sun_light_index')), pitch=round(a.get_actor_rotation().pitch, 1), yaw=round(a.get_actor_rotation().yaw, 1))
+            elif cn == 'SkyLight':
+                c = a.get_component_by_class(unreal.SkyLightComponent)
+                d.update(intensity=c.get_editor_property('intensity'), real_time_capture=bool(c.get_editor_property('real_time_capture')))
+            elif cn == 'ExponentialHeightFog':
+                d.update(density=a.get_component_by_class(unreal.ExponentialHeightFogComponent).get_editor_property('fog_density'))
+            elif cn == 'PostProcessVolume':
+                st = a.get_editor_property('settings')
+                d.update(unbound=bool(a.get_editor_property('unbound')), priority=a.get_editor_property('priority'), blend_weight=a.get_editor_property('blend_weight'), enabled=bool(a.get_editor_property('enabled')),
+                         exposure_method=str(st.get_editor_property('auto_exposure_method')) if st.get_editor_property('override_auto_exposure_method') else 'not overridden',
+                         exposure_min=st.get_editor_property('auto_exposure_min_brightness') if st.get_editor_property('override_auto_exposure_min_brightness') else None,
+                         exposure_max=st.get_editor_property('auto_exposure_max_brightness') if st.get_editor_property('override_auto_exposure_max_brightness') else None,
+                         exposure_bias=st.get_editor_property('auto_exposure_bias') if st.get_editor_property('override_auto_exposure_bias') else None)
+            elif cn == 'LevelSequenceActor':
+                sq = a.get_editor_property('level_sequence_asset')
+                d.update(sequence=sq.get_name() if sq else None)
+        except Exception as e:
+            d['error'] = str(e)[:100]
+        inv.setdefault(package_of(a), []).append(d)
+    return inv
+
+
+def dump_lighting():
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    out = {}
+    for preset, path in sm2_common.SHOWCASE_MAPS.items():
+        unreal.EditorLoadingAndSavingUtils.load_map(path)
+        out[preset] = lighting_inventory(eas)
+        for pk, lst in out[preset].items():
+            for d in lst:
+                print('[manhattan lighting] %-8s %-44s %s' % (preset, pk, json.dumps(d)))
+    p = os.path.join(PROJ, 'Saved', 'Showcase', 'lighting_dump.json')
+    os.makedirs(os.path.dirname(p), exist_ok=True)
+    json.dump(out, open(p, 'w'), indent=1)
+    _B.finish()
+
+
 def night_self_tests(binp, count, night_dir, check, mlog):
     """AWHCityLights SelfTest (no component spawned) at three reference positions, cross-checked against an independent pass over CityLights.bin"""
     import struct
@@ -668,6 +729,16 @@ def validate_showcase():
         check(tag + 'Life_Actors has vehicle actors', len(veh) > 0, count=len(veh))
         check(tag + 'Life_Actors has citizen actors', len(cit) > 0, count=len(cit))
         check(tag + 'never composes the legacy Look_NightLights', sm2_common.LEGACY_NIGHT_LEVEL not in pkgs)
+        inv = lighting_inventory(eas)
+        rig = '/Game/Look/Rigs/Look_Rig_' + preset
+        flat = [(pk, d) for pk, lst in inv.items() for d in lst]
+        count = lambda cls, pred=lambda d: True: sum(1 for _, d in flat if d['class'] == cls and pred(d))
+        check(tag + 'exactly one atmosphere sun, one SkyLight, one SkyAtmosphere, one height fog',
+              count('DirectionalLight', lambda d: d.get('atmosphere_sun')) == 1 and count('SkyLight') == 1 and count('SkyAtmosphere') == 1 and count('ExponentialHeightFog') == 1,
+              sun=count('DirectionalLight', lambda d: d.get('atmosphere_sun')), skylight=count('SkyLight'), atmosphere=count('SkyAtmosphere'), fog=count('ExponentialHeightFog'))
+        check(tag + 'the rig PostProcessVolume is the only unbound one', count('PostProcessVolume') == 1 and count('PostProcessVolume', lambda d: d.get('unbound')) == 1, ppv=count('PostProcessVolume'))
+        leaks = sorted({pk for pk, d in flat if pk != rig})
+        check(tag + 'all sky / light / post actors come from the rig level only', not leaks, leaking_levels=leaks)
         n_cl = sum(1 for a in actors if isinstance(a, unreal.WHCityLights))
         if preset == 'night':
             check(tag + 'night level present', NIGHT in pkgs, level=NIGHT)
@@ -718,6 +789,6 @@ def validate_showcase():
 
 
 if IN_UE:
-    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
+    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase, 'lighting': dump_lighting}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
 elif __name__ == '__main__':
     main()

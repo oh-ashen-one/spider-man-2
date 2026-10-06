@@ -50,6 +50,11 @@ def main():
             missing.append('Content/Night/NightGeometry.json counts differ from CityLights.meta.json')
     except (OSError, KeyError, ValueError):
         pass
+    # every '#include "/Project/..."' of our shaders must exist on disk (some are generated and gitignored: Terrain/ParkData.ush)
+    shader_includes = sorted({m for f in (PROJECT / 'Shaders').rglob('*.ush') for m in re.findall(r'#include "(/Project/[^"]+)"', f.read_text())})
+    for inc in shader_includes:
+        if not (PROJECT / 'Shaders' / inc[len('/Project/'):]).is_file():
+            missing.append('Shaders/%s (generated shader include; Terrain/ParkData.ush: python3 tools/terrain/prep_terrain.py)' % inc[len('/Project/'):])
     module = None
     modules = PROJECT / 'Binaries/Mac/UnrealEditor.modules'
     try:

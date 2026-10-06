@@ -35,14 +35,21 @@ void AWebHomagePlayerController::BeginPlay()
 		// Saved settings (look, FOV, camera shake, graphics) apply to interactive play only. Automated runs keep the defaults and
 		// their command-line render settings, so captures / perf numbers are unchanged. Loaded once per process (BeginPlay runs per map).
 		static bool bLoadedOnce = false;
-		if (!bNeverCapture && !bLoadedOnce)
+		static bool bResLogged = false;
+		// automated captures keep their command-line render settings, except when -WHProfile is given explicitly: then the profile's render settings apply (the window stays as launched)
+		const bool bProfile = FWHSettings::ActiveProfile() != FWHSettings::EProfile::None;
+		if ((!bNeverCapture || bProfile) && !bLoadedOnce)
 		{
 			bLoadedOnce = true;
 			FWHSettings& S = WHSettings();
 			S.Load();
 			S.ApplyRender();
-			S.ApplyWindow();
-			FTimerHandle ResLogTimer;   // the window resize is asynchronous: log the real viewport / internal resolution a few seconds later
+			if (!bNeverCapture) S.ApplyWindow();
+		}
+		if (!bResLogged)
+		{
+			bResLogged = true;   // every mode (interactive, capture, perf): the window resize is asynchronous, so log the real viewport / internal resolution a few seconds after the map starts
+			FTimerHandle ResLogTimer;
 			GetWorldTimerManager().SetTimer(ResLogTimer, FTimerDelegate::CreateStatic(&FWHSettings::LogRes), 3.0f, false);
 		}
 		ReleaseMouse();

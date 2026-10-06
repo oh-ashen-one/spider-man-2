@@ -155,7 +155,7 @@ def build_rig(name):
         moon = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(moon_d['elev'], moon_d['az']), 'Moon', 'Lighting')
         mc = moon.light_component; mc.set_mobility(unreal.ComponentMobility.MOVABLE)
         for k, v in (('intensity', moon_d['lux']), ('use_temperature', True), ('temperature', moon_d['temp']), ('light_source_angle', moon_d['angle']),
-                     ('atmosphere_sun_light', True), ('atmosphere_sun_light_index', 1), ('cast_shadows', True), ('cast_volumetric_shadow', True),
+                     ('atmosphere_sun_light', bool(moon_d.get('atmosphere', True))), ('atmosphere_sun_light_index', 1), ('cast_shadows', True), ('cast_volumetric_shadow', True),   # preset key moon.atmosphere (default true): false = key light only, no sky scattering
                      ('cast_cloud_shadows', False), ('per_pixel_atmosphere_transmittance', True)):
             setp(mc, k, v, 'Moon')
     for fill_d in P.get('fills', []):   # unshadowed, non-atmosphere fill directional lights (night: horizon city glow, lights facades the moon does not reach)
@@ -757,12 +757,13 @@ def nc_material(name, code, inputs, em_k):
     mel.recompile_material(m); EAL.save_asset(path)
     return m
 
-# HLSL bodies of the night materials' Custom nodes and their input lists: the single source for build_night and tools/night/hlsl_check.py
+# HLSL bodies of the night materials' Custom nodes and their input lists: the single source for build_night and tools/night/hlsl_check.py.
+# Textures are sampled with UE's Texture2DSample() (never Tex.Sample): the material is also compiled for ray-tracing hit shaders (SF_METAL_SM6, lib_6_6 closesthit), where the implicit-derivative Sample opcode is invalid.
 NC_HLSL = {
     'M_NightColor': 'return float3(CD0, CD1, CD2) * NK * EK;',
-    'M_NightWord': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat cell = CD3, asp = CD4;\nfloat2 sz = asp > 2.3077 ? float2(0.9, 0.9 / asp * 2.0) : float2(0.78 * asp * 0.5, 0.78);\nif (cell > 23.5) sz = float2(0.5, 1.0) / 1.12;\nfloat2 cuv = 0.5 + (q - 0.5) * min(sz * 1.12, float2(0.995, 0.995));\nfloat2 uv = float2((fmod(cell, 4.0) + cuv.x) / 4.0, (floor(cell / 4.0) + 1.0 - cuv.y) / 8.0);\nfloat2 nt = max(Tex.Sample(TexSampler, uv).rg - 0.02, 0.0) / 0.98;\nfloat2 eq = min(q, 1.0 - q);\nnt.g *= smoothstep(0.0, 0.12, min(eq.x, eq.y * 2.0));\nfloat3 col = float3(CD0, CD1, CD2);\nfloat3 e = col * nt.r + lerp(col, max(max(col.r, col.g), col.b).xxx, 0.25) * nt.r * nt.r * 0.2 + col * nt.g * GL;\nreturn e * WG * NK * EK;',
-    'M_NightBoard': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat3 c = CD7 > 0.5 ? Tex.Sample(TexSampler, float2(lerp(CD3, CD5, q.x), 1.0 - lerp(CD4, CD6, q.y))).rgb : float3(CD0, CD1, CD2);\nfloat m = max(max(c.r, c.g), c.b) + 1e-4;\nif (m > KN) { float w = TP - KN; float y = KN + w * (1.0 - exp(-(m - KN) / w)); c *= y / m; }\nreturn c * BG * NK * EK;',
-    'M_NightBlade': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat2 uv = float2(CD0 + q.y * CD2, 1.0 - (CD1 + (1.0 - q.x) * CD3));\nfloat3 bt = Tex.Sample(TexSampler, uv).rgb;\nfloat bm = max(max(bt.r, bt.g), bt.b) + 1e-4;\nfloat3 bn = bt / bm * pow(bm, 0.45) * 2.0;\nfloat ex = min(q.x, 1.0 - q.x) * 2.0, ey = min(q.y, 1.0 - q.y) * 2.0 * 2.3;\nfloat lit = 0.55 + 0.45 * smoothstep(0.0, 0.8, min(ex, ey));\nreturn bn * lit * SK * NK * EK;',
+    'M_NightWord': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat cell = CD3, asp = CD4;\nfloat2 sz = asp > 2.3077 ? float2(0.9, 0.9 / asp * 2.0) : float2(0.78 * asp * 0.5, 0.78);\nif (cell > 23.5) sz = float2(0.5, 1.0) / 1.12;\nfloat2 cuv = 0.5 + (q - 0.5) * min(sz * 1.12, float2(0.995, 0.995));\nfloat2 uv = float2((fmod(cell, 4.0) + cuv.x) / 4.0, (floor(cell / 4.0) + 1.0 - cuv.y) / 8.0);\nfloat2 nt = max(Texture2DSample(Tex, TexSampler, uv).rg - 0.02, 0.0) / 0.98;\nfloat2 eq = min(q, 1.0 - q);\nnt.g *= smoothstep(0.0, 0.12, min(eq.x, eq.y * 2.0));\nfloat3 col = float3(CD0, CD1, CD2);\nfloat3 e = col * nt.r + lerp(col, max(max(col.r, col.g), col.b).xxx, 0.25) * nt.r * nt.r * 0.2 + col * nt.g * GL;\nreturn e * WG * NK * EK;',
+    'M_NightBoard': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat3 c = CD7 > 0.5 ? Texture2DSample(Tex, TexSampler, float2(lerp(CD3, CD5, q.x), 1.0 - lerp(CD4, CD6, q.y))).rgb : float3(CD0, CD1, CD2);\nfloat m = max(max(c.r, c.g), c.b) + 1e-4;\nif (m > KN) { float w = TP - KN; float y = KN + w * (1.0 - exp(-(m - KN) / w)); c *= y / m; }\nreturn c * BG * NK * EK;',
+    'M_NightBlade': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat2 uv = float2(CD0 + q.y * CD2, 1.0 - (CD1 + (1.0 - q.x) * CD3));\nfloat3 bt = Texture2DSample(Tex, TexSampler, uv).rgb;\nfloat bm = max(max(bt.r, bt.g), bt.b) + 1e-4;\nfloat3 bn = bt / bm * pow(bm, 0.45) * 2.0;\nfloat ex = min(q.x, 1.0 - q.x) * 2.0, ey = min(q.y, 1.0 - q.y) * 2.0 * 2.3;\nfloat lit = 0.55 + 0.45 * smoothstep(0.0, 0.8, min(ex, ey));\nreturn bn * lit * SK * NK * EK;',
 }
 NC_INPUTS = {   # (input name, kind): kind cd = PerInstanceCustomData (index from the name), lp = LocalPosition, tex = TextureObject, mpc = MPC_City NightK, param = scalar parameter
     'M_NightColor': [('CD0', 'cd'), ('CD1', 'cd'), ('CD2', 'cd'), ('NK', 'mpc'), ('EK', 'param')],

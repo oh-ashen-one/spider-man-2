@@ -457,8 +457,8 @@
     "EmissiveScale": 12.0
    },
    "exposure": {
-    "min_ev": 1.0,
-    "max_ev": 4.3,
+    "min_ev": 6.5,
+    "max_ev": 8.5,
     "bias": -0.25
    },
    "post": {
