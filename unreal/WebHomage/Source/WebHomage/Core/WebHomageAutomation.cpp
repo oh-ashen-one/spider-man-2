@@ -16,6 +16,12 @@
 #include "Misc/Paths.h"
 #include "RHI.h"
 #include "UnrealClient.h"
+#include "Camera/CameraActor.h"
+#include "Camera/CameraComponent.h"
+#include "Dom/JsonObject.h"
+#include "GameFramework/PlayerController.h"
+#include "Kismet/GameplayStatics.h"
+#include "Serialization/JsonSerializer.h"
 
 void UWebHomageAutomation::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -43,8 +49,28 @@ void UWebHomageAutomation::Initialize(FSubsystemCollectionBase& Collection)
 	FParse::Value(Cmd, TEXT("WHPerfTo="), PerfTo);
 	FParse::Value(Cmd, TEXT("WHQuitAt="), QuitAt);
 	bCsv = FParse::Param(Cmd, TEXT("WHCsv"));
+	FString CamFile;
+	if (FParse::Value(Cmd, TEXT("WHShotCam="), CamFile))
+	{
+		FParse::Value(Cmd, TEXT("WHShotCamWait="), CamWait);
+		FString Txt; TArray<TSharedPtr<FJsonValue>> Arr;
+		if (FFileHelper::LoadFileToString(Txt, *CamFile) && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Txt), Arr))
+		{
+			auto V3 = [](const TSharedPtr<FJsonObject>& O, const TCHAR* K) { const TArray<TSharedPtr<FJsonValue>>* A; FVector V = FVector::ZeroVector; if (O->TryGetArrayField(K, A) && A->Num() >= 3) V = FVector((*A)[0]->AsNumber(), (*A)[1]->AsNumber(), (*A)[2]->AsNumber()); return V; };
+			for (const TSharedPtr<FJsonValue>& E : Arr)
+			{
+				const TSharedPtr<FJsonObject> O = E->AsObject(); if (!O) continue;
+				FCamShot C; C.T = O->GetNumberField(TEXT("t")); C.Name = O->GetStringField(TEXT("name")); C.Pos = V3(O, TEXT("ue_pos_cm")); C.Target = V3(O, TEXT("ue_target_cm"));
+				C.Fov = float(O->GetNumberField(TEXT("fov"))); C.bHero = O->HasField(TEXT("hero_visible")) && O->GetBoolField(TEXT("hero_visible"));
+				CamShots.Add(C);
+			}
+			CamShots.Sort([](const FCamShot& A, const FCamShot& B) { return A.T < B.T; });
+		}
+		else UE_LOG(LogWebHomage, Error, TEXT("WH_SHOTCAM cannot read %s"), *CamFile);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_SHOTCAM %d shots from %s, wait %.2f s"), CamShots.Num(), *CamFile, CamWait);
+	}
 
-	bActive = ShotTimes.Num() > 0 || (PerfFrom >= 0.0 && PerfTo > PerfFrom) || QuitAt > 0.0;
+	bActive = ShotTimes.Num() > 0 || CamShots.Num() > 0 || (PerfFrom >= 0.0 && PerfTo > PerfFrom) || QuitAt > 0.0;
 	LastWall = FPlatformTime::Seconds();
 	if (bActive)
 	{
@@ -67,6 +93,39 @@ void UWebHomageAutomation::Deinitialize()
 TStatId UWebHomageAutomation::GetStatId() const
 {
 	RETURN_QUICK_DECLARE_CYCLE_STAT(UWebHomageAutomation, STATGROUP_Tickables);
+}
+
+void UWebHomageAutomation::TickCamShots(UWorld* World)
+{
+	for (int32 i = 0; i < CamShots.Num(); ++i)
+	{
+		FCamShot& C = CamShots[i];
+		if (!C.bPlaced && Elapsed >= C.T)
+		{
+			APlayerController* PC = UGameplayStatics::GetPlayerController(World, 0);
+			if (!PC) return;
+			if (!CamActor.IsValid())
+			{
+				FActorSpawnParameters SP; SP.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+				CamActor = World->SpawnActor<ACameraActor>(C.Pos, FRotator::ZeroRotator, SP);
+			}
+			ACameraActor* Cam = CamActor.Get(); if (!Cam) return;
+			Cam->SetActorLocationAndRotation(C.Pos, FRotationMatrix::MakeFromX((C.Target - C.Pos).GetSafeNormal()).Rotator());
+			UCameraComponent* CC = Cam->GetCameraComponent();
+			CC->SetFieldOfView(C.Fov); CC->bConstrainAspectRatio = false;
+			if (PC->GetViewTarget() != Cam) PC->SetViewTarget(Cam);
+			if (APawn* Pawn = PC->GetPawn()) { Pawn->SetActorHiddenInGame(!C.bHero); bHeroHidden = !C.bHero; }
+			C.bPlaced = true;
+			UE_LOG(LogWebHomage, Display, TEXT("WH_SHOTCAM place %s at t=%.2f pos (%.0f %.0f %.0f) fov %.1f hero %d"), *C.Name, Elapsed, C.Pos.X, C.Pos.Y, C.Pos.Z, C.Fov, C.bHero ? 1 : 0);
+		}
+		if (C.bPlaced && !C.bShot && Elapsed >= C.T + CamWait)
+		{
+			const FString File = ShotDir / FString::Printf(TEXT("%s_%02d_%s.png"), *ShotName, i, *C.Name);
+			FScreenshotRequest::RequestScreenshot(File, false, false);
+			UE_LOG(LogWebHomage, Display, TEXT("WH_SHOT %s"), *File);
+			C.bShot = true;
+		}
+	}
 }
 
 void UWebHomageAutomation::Tick(float DeltaTime)
@@ -111,6 +170,8 @@ void UWebHomageAutomation::Tick(float DeltaTime)
 			}
 		}
 	}
+
+	TickCamShots(GI->GetWorld());
 
 	while (NextShot < ShotTimes.Num() && Elapsed >= ShotTimes[NextShot])
 	{

@@ -116,6 +116,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="CityLights") FLinearColor AmbientUpper = FLinearColor::Black;
 
 private:
+	float MpcLogClock = 0.f;   // logs the MPC_City values once, 3 s after BeginPlay
 	struct FSlot { ULocalLightComponent* Comp = nullptr; int32 Rec = -1; float Fade = 0.f; bool bTarget = false; float AppliedIntensity = -1.f; bool bShadowOn = false; };
 	struct FPool { int32 Group = 0; int32 Type = 0; TArray<FSlot> Slots; };
 	struct FDynSlot { ULocalLightComponent* Comp = nullptr; int32 Key = -1; FWHCLRecord Rec; FVector Vel = FVector::ZeroVector; float Fade = 0.f; bool bTarget = false; float Applied = -1.f; };

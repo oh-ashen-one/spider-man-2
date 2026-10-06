@@ -31,6 +31,8 @@
 #include "Components/CapsuleComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Components/PointLightComponent.h"
+#include "Materials/MaterialParameterCollection.h"
+#include "Kismet/KismetMaterialLibrary.h"
 #include "Components/DirectionalLightComponent.h"
 #include "UObject/UObjectIterator.h"
 #include "Engine/Engine.h"
@@ -992,7 +994,11 @@ void AWebTravCharacter::UpdateHeroFill()
 		K *= B;
 		Scale = FMath::Lerp(double(HeroFillFrontK), 1.0, B);
 	}
-	HeroFill->SetIntensity(float(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K) * Scale));
+	// the fill is tuned for the 26-44 klux day sun: it fades out with the night factor (MPC_City NightK, as AWHCityLights reads it); at night the hero is lit by the world + AWHLookHeroLight
+	static TWeakObjectPtr<UMaterialParameterCollection> NightMpc;
+	if (!NightMpc.IsValid()) NightMpc = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/City/Materials/MPC_City.MPC_City"));
+	const double NightK = NightMpc.IsValid() && GetWorld() ? FMath::Clamp(double(UKismetMaterialLibrary::GetScalarParameterValue(GetWorld(), NightMpc.Get(), TEXT("NightK"))), 0.0, 1.0) : 0.0;
+	HeroFill->SetIntensity(float(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K) * Scale * (1.0 - NightK)));
 }
 
 const FWebFlipProgram* AWebTravCharacter::FlipProgramNow(float& OutT) const

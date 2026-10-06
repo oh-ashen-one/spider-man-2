@@ -356,24 +356,22 @@
   },
   "night": {
    "desc": "round 03 v2: night with dark facade masses, neutral B-R, wide sodium / LED lamp pools, denser far haze",
-   "sun": {
-    "elev": -9.0,
-    "az": 285.0,
-    "lux": 1200.0,
-    "temp": 4500.0,
-    "angle": 0.5357,
-    "disk": 0.0,
-    "cloud_shadows": false
-   },
+   "sun": null,
    "moon": {
-    "elev": 38.0,
-    "az": 118.0,
-    "lux": 16.0,
-    "temp": 5600.0,
-    "angle": 0.52
+    "elev": 36.0,
+    "az_browser": 15.0,
+    "atmosphere": true,
+    "atmosphere_index": 0,
+    "angle": 0.52,
+    "lux": 83.48,
+    "color_linear": [
+     0.4577,
+     0.6217,
+     1.0
+    ]
    },
    "sky": {
-    "intensity": 2.5,
+    "intensity": 3.0,
     "tint": [
      0.92,
      0.94,
@@ -381,7 +379,7 @@
     ]
    },
    "atmosphere": {
-    "rayleigh_scattering_scale": 0.012,
+    "rayleigh_scattering_scale": 1.0,
     "mie_scattering_scale": 0.012,
     "mie_absorption_scale": 0.0012,
     "mie_anisotropy": 0.8,
@@ -395,15 +393,15 @@
      255
     ],
     "sky_luminance_factor": [
-     1.0,
-     1.0,
-     1.0,
+     0.06,
+     0.06,
+     0.06,
      1.0
     ],
     "rayleigh_scattering": [
-     0.3,
-     0.4,
-     0.7,
+     0.0331,
+     0.0697,
+     0.1639,
      1.0
     ]
    },
@@ -438,7 +436,7 @@
     "volumetric_fog_distance": 26000.0,
     "volumetric_fog_start_distance": 0.0,
     "haze": {
-     "fog_density": 0.0012,
+     "fog_density": 0.0,
      "fog_height_offset": 8000.0,
      "fog_height_falloff": 0.03
     }
@@ -452,14 +450,14 @@
    "mpc": {
     "NightK": 1.0,
     "DnTime": 2400.0,
-    "InteriorGain": 1.3,
-    "ShopGain": 1.6,
-    "EmissiveScale": 12.0
+    "InteriorGain": 2.5,
+    "ShopGain": 1.05,
+    "EmissiveScale": 200.0
    },
    "exposure": {
-    "min_ev": 6.5,
-    "max_ev": 8.5,
-    "bias": -0.25
+    "min_ev": 4.8,
+    "max_ev": 6.3,
+    "bias": 0.0
    },
    "post": {
     "bloom_intensity": 0.85,
@@ -493,13 +491,7 @@
     "indirect_lighting_intensity": 1.6,
     "lumen_scene_lighting_quality": 1.0,
     "lumen_final_gather_quality": 1.0,
-    "lumen_reflection_quality": 1.0,
-    "color_offset": [
-     0.0064,
-     0.008,
-     0.0144,
-     0.0
-    ]
+    "lumen_reflection_quality": 1.0
    },
    "lights": {
     "_comment": "street lighting of the night rig (Scripts/build_look.py step 'night' -> /Game/Look/Look_NightLights). cd = candela, radius / distances in cm, angles in degrees. Lamp positions come from layout.json instances.lamp (the browser's own lamps).",
@@ -588,9 +580,9 @@
     },
     "hero": {
      "enabled": true,
-     "rim_cd": 2500,
+     "rim_cd": 300,
      "fill_cd": 1250,
-     "top_cd": 560
+     "top_cd": 0
     },
     "screens": {
      "enabled": true,
@@ -658,37 +650,37 @@
      }
     }
    },
-   "fills": [
-    {
-     "name": "West",
-     "elev": 8.0,
-     "az": 262.0,
-     "lux": 3.4,
-     "temp": 3000.0
-    },
-    {
-     "name": "North",
-     "elev": 8.0,
-     "az": 355.0,
-     "lux": 0.765,
-     "temp": 5200.0
-    },
-    {
-     "name": "South",
-     "elev": 8.0,
-     "az": 175.0,
-     "lux": 0.765,
-     "temp": 5200.0
-    },
-    {
-     "name": "East",
-     "elev": 8.0,
-     "az": 95.0,
-     "lux": 0.51,
-     "temp": 6500.0
+   "fills": [],
+   "fills_desc": "none: the author has no fill lights at night; city glow = local lights + Lumen GI + AWHCityLights ambient",
+   "units": {
+    "_comment": "The night rig in the author's units (~/sm2-n1/_scratch/night/export/night_lights.json constants.lighting_runtime_at_night): ONE constant K = UE cd/m2 (lux, nits) per browser unit, the same K as Scripts/night_city.json. Browser display = radiance x display_exposure (tod.exposure 4.5 x grade.exposure 0.8 = 3.6). UE: display = radiance x K / (1.2 x 2^EV100)  =>  EV100 = log2(K / (1.2 x display_exposure)) = log2(200 / 4.32) = 5.53; auto exposure (the author's partial aeStrength 0.42) = [EV100 - 0.73, EV100 + 0.77] = [4.8, 6.3], bias 0. Moon = moon_intensity x K lux (linear colour moon_color_linear). Fog in-scatter = nh_low x K. fog: derive_fog() in build_look.py (optical depth fit at 300 m / 2 km). EmissiveScale = K, so a facade's FS.emis (browser units) is emitted as FS.emis x K. build_look.derive_units() overwrites exposure / moon lux / mpc.EmissiveScale / fog from here.",
+    "K": 200.0,
+    "display_exposure": 3.6,
+    "exposure_min_offset": -0.73,
+    "exposure_max_offset": 0.77,
+    "exposure_bias": 0.0,
+    "moon_intensity": 0.4174,
+    "moon_color_linear": [
+     0.4577,
+     0.6217,
+     1.0
+    ],
+    "nh_low": [
+     0.0125,
+     0.0115,
+     0.0165
+    ],
+    "fog": {
+     "density_base": 0.00013,
+     "density_mult": 4.0,
+     "falloff_m": 300.0,
+     "start_m": 120.0,
+     "camera_h_m": 1.7,
+     "match_near_m": 300.0,
+     "match_far_m": 2000.0,
+     "max_opacity": 0.99
     }
-   ],
-   "fills_desc": "unshadowed low horizon 'city glow' directional fills (light pollution glow at the horizon from every side): they light the facades (cos of the incidence) but the streets only by sin(8 deg), so road pools stay distinct"
+   }
   }
  }
 }

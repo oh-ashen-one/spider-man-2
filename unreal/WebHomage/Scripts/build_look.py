@@ -137,25 +137,73 @@ def build_geo():
     log('geo: %d components -> WorldDynamic, %d ground actors tagged, %d traversal boxes in %s' % (n_dyn, n_gnd, n_box, BOXES))
 
 # ------------------------------------------------------------------------------------------------ step rigs
+def lin_to_srgb_color(rgb):
+    f = lambda x: 12.92 * x if x <= 0.0031308 else 1.055 * (x ** (1 / 2.4)) - 0.055
+    return unreal.Color(r=int(round(255 * f(max(0.0, min(1.0, rgb[0]))))), g=int(round(255 * f(max(0.0, min(1.0, rgb[1]))))), b=int(round(255 * f(max(0.0, min(1.0, rgb[2]))))), a=255)
+
+def browser_rotator(elev, az):
+    """light travel direction for the author's browser moon: direction TO the moon = (cos el cos az, sin el, cos el sin az) in browser (x east, y up, z south); UE X = x, Y = z, Z = y"""
+    e, a = math.radians(elev), math.radians(az)
+    d = (-math.cos(e) * math.cos(a), -math.cos(e) * math.sin(a), -math.sin(e))
+    return unreal.Rotator(roll=0.0, pitch=math.degrees(math.asin(max(-1.0, min(1.0, d[2])))), yaw=math.degrees(math.atan2(d[1], d[0])))
+
+def smoothstep(a, b, x):
+    t = max(0.0, min(1.0, (x - a) / (b - a))); return t * t * (3 - 2 * t)
+
+def derive_fog(F):
+    """UE ExponentialHeightFog from the author's night fog (pipeline.js composite: od = a * (dist - start) * mix(0.45, 1.3, smoothstep(150, 2600, dist)), od / (1 + 0.22 od), T = exp(-od), a = density * exp(-h0 / 300);
+    a = fogBase 0.00013 x NH.fog 4.0 per metre, start 120 m). UE (SceneCore.cpp): extinction = FogDensity / 1000 per cm, height falloff = FogHeightFalloff / 1000 per cm in base 2, od = d_cm * (dist_cm - s_cm).
+    Two equations match the optical depth at 300 m and 2 km: d = (od2 - od1) / (200000 - 30000), s = 30000 - od1 / d (cm). Height falloff: exp(-h / 300 m) = 2^(-f h_cm) -> f = 1 / (30000 ln 2)."""
+    a = F['density_base'] * F['density_mult'] * math.exp(-F['camera_h_m'] / F['falloff_m'])
+    def od(dist):
+        o = a * max(dist - F['start_m'], 0.0) * (0.45 + 0.85 * smoothstep(150.0, 2600.0, dist))
+        return o / (1.0 + 0.22 * o)
+    o1, o2 = od(F['match_near_m']), od(F['match_far_m'])
+    d = (o2 - o1) / ((F['match_far_m'] - F['match_near_m']) * 100.0)
+    s = F['match_near_m'] * 100.0 - o1 / d
+    return {'fog_density': d * 1000.0, 'fog_height_falloff': 1000.0 / (F['falloff_m'] * 100.0 * math.log(2.0)), 'start_distance': s, 'od_near': o1, 'od_far': o2, 'T_near_green': math.exp(-o1), 'T_far_green': math.exp(-o2)}
+
+def derive_units(P):
+    """night preset in the author's units: one constant K = UE cd/m2 (and lux, nits) per browser unit. Exposure, moon, fog in-scatter, emissive scale and the fog fit follow from `units`."""
+    U = P.get('units')
+    if not U: return None
+    K = float(U['K'])
+    ev = math.log2(K / (1.2 * U['display_exposure']))   # browser display = radiance x display_exposure; UE: radiance x K / (1.2 x 2^EV100)
+    P['exposure'] = {'min_ev': round(ev + U['exposure_min_offset'], 2), 'max_ev': round(ev + U['exposure_max_offset'], 2), 'bias': U.get('exposure_bias', 0.0)}
+    P['moon']['lux'] = U['moon_intensity'] * K
+    P['moon']['color_linear'] = U['moon_color_linear']
+    P['mpc']['EmissiveScale'] = K
+    P['fog']['fog_inscattering_luminance'] = [U['nh_low'][0] * K, U['nh_low'][1] * K, U['nh_low'][2] * K, 1.0]
+    fg = derive_fog(U['fog'])
+    P['fog'].update({k: fg[k] for k in ('fog_density', 'fog_height_falloff', 'start_distance')})
+    P['fog']['fog_max_opacity'] = U['fog']['max_opacity']
+    log('units: K %.0f, EV100 %.3f (min %.2f max %.2f), moon %.1f lux, fog density %.5f falloff %.4f start %.0f cm, T(300 m) %.4f T(2 km) %.4f (green)' %
+        (K, ev, P['exposure']['min_ev'], P['exposure']['max_ev'], P['moon']['lux'], fg['fog_density'], fg['fog_height_falloff'], fg['start_distance'], fg['T_near_green'], fg['T_far_green']))
+    return fg
+
 def build_rig(name):
     P = PRE[name]
+    derive_units(P)
     path = '%s/Look_Rig_%s' % (RIGS, name)
     world = open_level(path)
     sun_d, moon_d = P['sun'], P.get('moon')
-    # --- sun (atmosphere sun light 0). Physical units: illuminance in lux, exposure comes from the post volume.
-    sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(sun_d['elev'], sun_d['az']), 'Sun', 'Lighting')
-    lc = sun.light_component
-    lc.set_mobility(unreal.ComponentMobility.MOVABLE)
-    for k, v in (('intensity', sun_d['lux']), ('use_temperature', True), ('temperature', sun_d['temp']), ('light_source_angle', sun_d['angle']),
+    # --- sun (atmosphere sun light 0). Physical units: illuminance in lux, exposure comes from the post volume. (night: no sun, the moon is the one atmosphere light)
+    if sun_d:
+      sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(sun_d['elev'], sun_d['az']), 'Sun', 'Lighting')
+      lc = sun.light_component
+      lc.set_mobility(unreal.ComponentMobility.MOVABLE)
+      for k, v in (('intensity', sun_d['lux']), ('use_temperature', True), ('temperature', sun_d['temp']), ('light_source_angle', sun_d['angle']),
                  ('atmosphere_sun_light', True), ('atmosphere_sun_light_index', 0), ('cast_shadows', True), ('cast_volumetric_shadow', True),
                  ('cast_cloud_shadows', bool(sun_d.get('cloud_shadows', True))), ('cloud_shadow_strength', 0.8), ('per_pixel_atmosphere_transmittance', True),
                  ('atmosphere_sun_disk_color_scale', unreal.LinearColor(sun_d.get('disk', 1.0), sun_d.get('disk', 1.0), sun_d.get('disk', 1.0), 1.0))):
         setp(lc, k, v, 'Sun')
     if moon_d:
-        moon = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), sun_rotator(moon_d['elev'], moon_d['az']), 'Moon', 'Lighting')
+        rot = browser_rotator(moon_d['elev'], moon_d['az_browser']) if 'az_browser' in moon_d else sun_rotator(moon_d['elev'], moon_d['az'])
+        moon = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 50000), rot, 'Moon', 'Lighting')
         mc = moon.light_component; mc.set_mobility(unreal.ComponentMobility.MOVABLE)
-        for k, v in (('intensity', moon_d['lux']), ('use_temperature', True), ('temperature', moon_d['temp']), ('light_source_angle', moon_d['angle']),
-                     ('atmosphere_sun_light', bool(moon_d.get('atmosphere', True))), ('atmosphere_sun_light_index', 1), ('cast_shadows', True), ('cast_volumetric_shadow', True),   # preset key moon.atmosphere (default true): false = key light only, no sky scattering
+        colour = (('use_temperature', False), ('light_color', lin_to_srgb_color(moon_d['color_linear']))) if 'color_linear' in moon_d else (('use_temperature', True), ('temperature', moon_d['temp']))
+        for k, v in (('intensity', moon_d['lux']), *colour, ('light_source_angle', moon_d['angle']),
+                     ('atmosphere_sun_light', bool(moon_d.get('atmosphere', True))), ('atmosphere_sun_light_index', int(moon_d.get('atmosphere_index', 1))), ('cast_shadows', True), ('cast_volumetric_shadow', True),
                      ('cast_cloud_shadows', False), ('per_pixel_atmosphere_transmittance', True)):
             setp(mc, k, v, 'Moon')
     for fill_d in P.get('fills', []):   # unshadowed, non-atmosphere fill directional lights (night: horizon city glow, lights facades the moon does not reach)
@@ -255,7 +303,7 @@ float h2 = frac(h * 91.7 + 0.31);
 float star = step(0.9935, h) * smoothstep(0.42, 0.0, length(f));
 float3 tint = lerp(float3(0.75, 0.85, 1.0), float3(1.0, 0.85, 0.7), h2);
 float horizon = smoothstep(0.02, 0.35, d.z);
-return tint * star * (0.4 + 1.6 * h2) * horizon * 6.0;""")
+return tint * star * (0.4 + 1.6 * h2) * horizon * 135.0;""")   # 6.0 under the old EV 1 exposure; x22.5 for the night exposure (white point 54 cd/m2)
     wp = mel.create_material_expression(m, unreal.MaterialExpressionWorldPosition, -900, 0)
     cam = mel.create_material_expression(m, unreal.MaterialExpressionCameraPositionWS, -900, 120)
     sub = mel.create_material_expression(m, unreal.MaterialExpressionSubtract, -750, 0)

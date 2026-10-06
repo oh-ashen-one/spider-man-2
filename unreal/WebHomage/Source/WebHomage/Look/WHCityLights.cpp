@@ -644,6 +644,16 @@ void AWHCityLights::Tick(float Dt)
 	if (!bActive) return;
 	const bool bOn = CVarEnable.GetValueOnGameThread() != 0;
 	NightK = bOn ? ReadNightK() : 0.f;
+	if (MpcLogClock >= 0.f)
+	{
+		MpcLogClock += Dt;
+		if (MpcLogClock > 3.f && MPC)
+		{
+			MpcLogClock = -1.f;
+			auto G = [this](const TCHAR* N) { return UKismetMaterialLibrary::GetScalarParameterValue(GetWorld(), MPC, N); };
+			UE_LOG(LogWebHomage, Display, TEXT("WH_MPC NightK=%.3f InteriorGain=%.3f ShopGain=%.3f EmissiveScale=%.1f DnTime=%.0f DayEmisK=%.2f (facade material inputs; P.z = NightK)"), G(TEXT("NightK")), G(TEXT("InteriorGain")), G(TEXT("ShopGain")), G(TEXT("EmissiveScale")), G(TEXT("DnTime")), G(TEXT("DayEmisK")));
+		}
+	}
 	const float Gain = CVarGain.GetValueOnGameThread();
 	FWHCLView V;
 	const bool bView = GetView(V);

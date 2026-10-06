@@ -42,6 +42,11 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - WH_RES logs 3 s after map start in every mode; -WHProfile also applies its render settings in captures (window untouched). Cold-DDC captures stall the game thread for seconds on BC7 texture builds (ts_ads, props atlas, TA_walls): warm the DDC before perf windows.
 - A handled DoubleFloat ensure (distance-field object matrix precision) appears in baseline, golden and night logs: pre-existing.
 
+### Night rig in the author's units (K = 200)
+- look_presets.json night.units: K, display exposure 3.6, EV100 = log2(K / (1.2 x 3.6)) = 5.533 -> auto exposure [4.8, 6.3], bias 0; moon 83.5 lux (0.4577, 0.6217, 1.0) as the one atmosphere light (browser el 36 / az 15), no Sun, no fills, no colour_offset; fog from derive_fog() (density 0.00511, falloff 0.0481, start 217 m: T(300 m) 0.9585, T(2 km) 0.4021); fog in-scatter NH.low x K; MPC EmissiveScale = K, InteriorGain 2.5, ShopGain 1.05. Sky calibrated on view_skyline_high / view_waterfront: SkyAtmosphere default Rayleigh, sky_luminance_factor 0.06, SkyLight 3.0.
+- Matched cameras: `tools/showcase/gen_shot_cams.py` -> shot_cams.json; `play.py --capture DIR --shot-cams FILE --name night`; `tools/showcase/pairs.py DIR` writes pair_<shot>.png + pairs.json; `tools/showcase/skyprobe.py`; `cal_iter.sh` = one calibration iteration. `play.py --exec "cvar"` adds console commands to a capture.
+- Traversal hero fill fades with (1 - NightK). Open: the matched street shot's asphalt is still ~5x the reference (GI off: 2.6x, lamps off: not lower), see the lead report.
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 
