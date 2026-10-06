@@ -1,5 +1,6 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See DISCLAIMER.md.
 #include "Life/WHLifeCrowd.h"
+#include "Look/WHNightK.h"
 #include "Life/WHLifeTraffic.h"
 #include "Characters/WHCharAnimInstance.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -248,6 +249,7 @@ void AWHLifeCrowd::BeginPlay()
 		FillLight->SetMobility(EComponentMobility::Movable);
 		FillLight->SetIntensity(FillLux);
 		FillLight->SetUseTemperature(true); FillLight->SetTemperature(FillTemperature);
+		FillLight->SetAtmosphereSunLight(false);   // a NewObject directional light is an atmosphere sun (index 0) by default: this 1800 lux fill outranked the night rig's 83 lux moon and lit the whole sky
 		FillLight->SetCastShadows(false);
 		FillLight->SetIndirectLightingIntensity(0.f);
 		FillLight->SetVolumetricScatteringIntensity(0.f);
@@ -672,6 +674,7 @@ void AWHLifeCrowd::UpdateFill()
 	if (!FillLight) return;
 	float Lux = FillLux;
 	if (FillSteps.Num() && GetWorld()) { const float T = GetWorld()->GetTimeSeconds(); for (const TPair<float, float>& P : FillSteps) if (T >= P.Key) Lux = P.Value; }
+	Lux *= 1.f - WHReadNightK(GetWorld());   // the fill is tuned for the day sun: it fades out with the night factor (MPC_City NightK)
 	if (!FMath::IsNearlyEqual(FillLight->Intensity, Lux)) FillLight->SetIntensity(Lux);
 	FillLight->SetVisibility(Lux > 0.f);
 	FVector Eye, Fwd; float H = 0.f;

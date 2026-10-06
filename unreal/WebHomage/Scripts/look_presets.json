@@ -371,7 +371,7 @@
     ]
    },
    "sky": {
-    "intensity": 3.0,
+    "intensity": 12.5,
     "tint": [
      0.92,
      0.94,
@@ -393,9 +393,9 @@
      255
     ],
     "sky_luminance_factor": [
-     0.0342,
-     0.0432,
-     0.0962,
+     1.6,
+     1.4,
+     1.55,
      1.0
     ],
     "rayleigh_scattering": [
@@ -455,7 +455,14 @@
     "InteriorGain": 2.5,
     "ShopGain": 1.05,
     "EmissiveScale": 200.0,
-    "FarWinGain": 0.14
+    "FarWinGain": 1.4,
+    "ScreenK": 0.1,
+    "ScrBoost": 2.0,
+    "ScrKnee": 0.28,
+    "ScrTop": 0.46,
+    "LeafNightK": 0.35,
+    "ScrCal": 7.3,
+    "MarkNightK": 0.25
    },
    "exposure": {
     "min_ev": 5.53,
@@ -683,7 +690,13 @@
     },
     "auto_range": 0.0,
     "screen_k": 0.1,
-    "fog_inscatter_scale": 0.0971
+    "screen": {
+     "screen_k": 0.1,
+     "boost": 2.0,
+     "knee": 0.28,
+     "top": 0.46,
+     "source": "screenlights.js:190-202 (uScrBoost 2, uScrKnee 0.28, uScrTop 0.46), lighting.js:207 screenK = 0.9 x lerp(1, 0.5, windows) / exposure 4.5 = 0.1"
+    }
    }
   }
  }

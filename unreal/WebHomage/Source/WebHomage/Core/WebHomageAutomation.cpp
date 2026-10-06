@@ -21,6 +21,8 @@
 #include "Dom/JsonObject.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "Traversal/WebTravCharacter.h"
+#include "Traversal/WebTraversalComponent.h"
 #include "Serialization/JsonSerializer.h"
 
 void UWebHomageAutomation::Initialize(FSubsystemCollectionBase& Collection)
@@ -62,6 +64,7 @@ void UWebHomageAutomation::Initialize(FSubsystemCollectionBase& Collection)
 				const TSharedPtr<FJsonObject> O = E->AsObject(); if (!O) continue;
 				FCamShot C; C.T = O->GetNumberField(TEXT("t")); C.Name = O->GetStringField(TEXT("name")); C.Pos = V3(O, TEXT("ue_pos_cm")); C.Target = V3(O, TEXT("ue_target_cm"));
 				C.Fov = float(O->GetNumberField(TEXT("fov"))); C.bHero = O->HasField(TEXT("hero_visible")) && O->GetBoolField(TEXT("hero_visible"));
+				if (O->HasField(TEXT("hero_pos_m"))) { C.bHeroPos = true; C.HeroPosM = V3(O, TEXT("hero_pos_m")); C.HeroYawDeg = O->HasField(TEXT("hero_yaw_deg")) ? O->GetNumberField(TEXT("hero_yaw_deg")) : 0.0; }
 				CamShots.Add(C);
 			}
 			CamShots.Sort([](const FCamShot& A, const FCamShot& B) { return A.T < B.T; });
@@ -116,8 +119,15 @@ void UWebHomageAutomation::TickCamShots(UWorld* World)
 			if (PC->GetViewTarget() != Cam) PC->SetViewTarget(Cam);
 			if (APawn* Pawn = PC->GetPawn()) { Pawn->SetActorHiddenInGame(!C.bHero); bHeroHidden = !C.bHero; }
 			C.bPlaced = true;
+			if (C.bHeroPos) if (AWebTravCharacter* H = Cast<AWebTravCharacter>(PC->GetPawn())) if (UWebTraversalComponent* T = H->GetTraversal())
+			{ // the author's player position + yaw (Pos.Z = feet height; Teleport raises it to the floor when lower)
+				T->Teleport(FVector(C.HeroPosM.X, C.HeroPosM.Y, C.HeroPosM.Z + UWebTraversalComponent::H), FMath::DegreesToRadians(C.HeroYawDeg));
+			}
 			UE_LOG(LogWebHomage, Display, TEXT("WH_SHOTCAM place %s at t=%.2f pos (%.0f %.0f %.0f) fov %.1f hero %d"), *C.Name, Elapsed, C.Pos.X, C.Pos.Y, C.Pos.Z, C.Fov, C.bHero ? 1 : 0);
 		}
+		if (C.bPlaced && !C.bShot && C.bHeroPos)   // hold the pose (mid-air states would otherwise fall during the settle time)
+			if (APlayerController* PC = UGameplayStatics::GetPlayerController(World, 0)) if (AWebTravCharacter* H = Cast<AWebTravCharacter>(PC->GetPawn())) if (UWebTraversalComponent* T = H->GetTraversal())
+				T->Teleport(FVector(C.HeroPosM.X, C.HeroPosM.Y, C.HeroPosM.Z + UWebTraversalComponent::H), FMath::DegreesToRadians(C.HeroYawDeg));
 		if (C.bPlaced && !C.bShot && Elapsed >= C.T + CamWait)
 		{
 			const FString File = ShotDir / FString::Printf(TEXT("%s_%02d_%s.png"), *ShotName, i, *C.Name);

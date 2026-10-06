@@ -604,7 +604,10 @@ def lighting_inventory(eas):
             if cn == 'DirectionalLight':
                 c = a.get_component_by_class(unreal.DirectionalLightComponent)
                 d.update(intensity=c.get_editor_property('intensity'), atmosphere_sun=bool(c.get_editor_property('atmosphere_sun_light')),
-                         atmosphere_sun_index=int(c.get_editor_property('atmosphere_sun_light_index')), pitch=round(a.get_actor_rotation().pitch, 1), yaw=round(a.get_actor_rotation().yaw, 1))
+                         atmosphere_sun_index=int(c.get_editor_property('atmosphere_sun_light_index')), light_color=str(c.get_editor_property('light_color')), use_temperature=bool(c.get_editor_property('use_temperature')), source_angle=c.get_editor_property('light_source_angle'), pitch=round(a.get_actor_rotation().pitch, 1), yaw=round(a.get_actor_rotation().yaw, 1))
+            elif cn == 'SkyAtmosphere':
+                c = a.get_component_by_class(unreal.SkyAtmosphereComponent)
+                d.update({k: str(c.get_editor_property(k)) for k in ('rayleigh_scattering_scale', 'rayleigh_scattering', 'mie_scattering_scale', 'sky_luminance_factor', 'aerial_pespective_view_distance_scale', 'multi_scattering_factor', 'transform_mode')})
             elif cn == 'SkyLight':
                 c = a.get_component_by_class(unreal.SkyLightComponent)
                 d.update(intensity=c.get_editor_property('intensity'), real_time_capture=bool(c.get_editor_property('real_time_capture')))

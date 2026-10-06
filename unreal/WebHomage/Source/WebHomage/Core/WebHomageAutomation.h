@@ -16,7 +16,8 @@
  *   -WHShotName=<prefix>   file prefix (default "shot")
  *   -WHShotCam=<file.json>  matched-camera shots: a JSON list of {t, name, ue_pos_cm, ue_target_cm, fov (horizontal deg), hero_visible}. At each t a free camera is
  *                          placed there (view target override; the hero hidden unless hero_visible), -WHShotCamWait=<s> (default 1.0) later the shot
- *                          <dir>/<prefix>_<NN>_<name>.png is taken (exposure / TSR settle in between)
+ *                          <dir>/<prefix>_<NN>_<name>.png is taken (exposure / TSR settle in between). Optional per entry: hero_pos_m [X, Y, Z] (UE axes, metres, feet position) and
+ *                          hero_yaw_deg: the traversal hero is teleported there (and held there every tick until the shot)
  *   -WHPerfFrom=3 -WHPerfTo=13   frame-time window: writes <dir>/<prefix>_perf.json and logs
  *                          "WH_PERF ..." (avg/p50/p95/p99 frame ms, GPU ms, render size)
  *   -WHCsv                 also run CsvProfile Start/Stop over the perf window
@@ -47,7 +48,7 @@ private:
 	double Elapsed = 0.0;
 	double LastWall = 0.0;
 
-	struct FCamShot { double T = 0; FString Name; FVector Pos = FVector::ZeroVector, Target = FVector::ZeroVector; float Fov = 90.f; bool bHero = false; bool bPlaced = false, bShot = false; };
+	struct FCamShot { double T = 0; FString Name; FVector Pos = FVector::ZeroVector, Target = FVector::ZeroVector; float Fov = 90.f; bool bHero = false; bool bPlaced = false, bShot = false; bool bHeroPos = false; FVector HeroPosM = FVector::ZeroVector; double HeroYawDeg = 0.0; };
 	TArray<FCamShot> CamShots;
 	double CamWait = 1.0;
 	TWeakObjectPtr<class ACameraActor> CamActor;

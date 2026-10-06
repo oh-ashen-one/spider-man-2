@@ -173,8 +173,7 @@ def derive_units(P):
     P['moon']['lux'] = U['moon_intensity'] * K
     P['moon']['color_linear'] = U['moon_color_linear']
     P['mpc']['EmissiveScale'] = K
-    P['mpc']['ScreenNightGain'] = K * U['screen_k']   # screens / ads: browser emissiveIntensity x screenK (lighting.js: 0.9 x lerp(1, 0.5, windows) / exposure 4.5 = 0.1) x K
-    P['fog']['fog_inscattering_luminance'] = [U['nh_low'][i] * K * U.get('fog_inscatter_scale', 1.0) for i in range(3)] + [1.0]   # fog_inscatter_scale: measured UE-vs-author correction (round 3: far pixels of view_skyline_high read 10.3x the author's with the nominal NH.low x K)
+    P['fog']['fog_inscattering_luminance'] = [U['nh_low'][i] * K for i in range(3)] + [1.0]
     fg = derive_fog(U['fog'])
     P['fog'].update({k: fg[k] for k in ('fog_density', 'fog_height_falloff', 'start_distance')})
     P['fog']['fog_max_opacity'] = U['fog']['max_opacity']

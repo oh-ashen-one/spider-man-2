@@ -21,6 +21,8 @@ def main():
     a = ap.parse_args()
     shots = json.loads(Path(a.ref).read_text())['shots']
     ue = lambda v: [round(v[0] * 100, 2), round(v[2] * 100, 2), round(v[1] * 100, 2)]
+    players_f = Path(a.ref).with_name('ref_players.json')   # tools/night/ref_players.mjs
+    players = json.loads(players_f.read_text()) if players_f.is_file() else {}
     out = []
     for i, s in enumerate(shots):
         c = s['camera']
@@ -28,6 +30,11 @@ def main():
         hf = math.degrees(2 * math.atan(math.tan(math.radians(vf) / 2) * c.get('aspect', 16 / 9)))
         out.append({'t': a.t0 + i * a.step, 'name': s['name'], 'ue_pos_cm': ue(c['pos']), 'ue_target_cm': ue(c['target_fwd20']), 'fov': round(hf, 3), 'fov_v_browser': vf,
                     'hero_visible': s.get('kind') == 'shots.js composition', 'ref': s['file']})
+        p = players.get(s['name'])
+        if p:   # the author's player position (UE axes: X = x, Y = z, Z = feet height) and heading; the ref pose (wall / swing / climb) cannot be reproduced, the hero is held there falling / standing
+            out[-1]['hero_pos_m'] = [p['pos'][0], p['pos'][2], p['pos'][1]]
+            out[-1]['hero_yaw_deg'] = round(math.degrees(math.atan2(p['dir'][2], p['dir'][0])), 2)
+            out[-1]['hero_ref_mode'] = p.get('mode')
     Path(a.out).write_text(json.dumps(out, indent=1))
     print('wrote', a.out, len(out), 'shots')
 

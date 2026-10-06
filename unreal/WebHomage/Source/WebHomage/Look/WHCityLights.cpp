@@ -390,6 +390,7 @@ void AWHCityLights::ConfigureLight(ULocalLightComponent* L, const FWHCLRecord& R
 		Rc->SetSourceWidth(FMath::Max(R.W, 1.f)); Rc->SetSourceHeight(FMath::Max(R.H, 1.f));
 	}
 	L->SetCastShadows(false);
+	if (R.Type == 1) { L->ContactShadowLength = 0.1f; }   // unshadowed lamp spots: screen-space contact shadows (10 %) keep leaves / props from lighting each other through
 	L->SetIntensity(0.f);
 	L->SetVisibility(true);
 }

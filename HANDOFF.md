@@ -53,6 +53,11 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - Boards: `tools/night/board_check.py --write` (run by the look step) keeps only boards inside the detailed midtown region, projects floating / buried ones onto our facade planes within 3 m, drops the rest (2526 -> 458).
 - Tools: `tools/showcase/{cap_run.sh,table.py,skyprobe.py,pairs.py}`; `build_manhattan.py` accepts SM2_CITY_ONLY=mat and SM2_TERRAIN_ONLY=mat.
 
+### Night calibration round 3
+- Root cause of the "sky calibration" so far: AWHLifeCrowd's NewObject directional CrowdFill (1800 lux) was an atmosphere sun light (index 0) and outranked the 83 lux moon: it lit the sky, and the AP, of the night rig. It is now not an atmosphere light and fades with (1 - NightK) (Look/WHNightK.h). The night sky factor was recalibrated on the real moon (sky_luminance_factor 1.6/1.4/1.55).
+- Emissive screens: M_CityVC emits the three.js emissive (EmisColor x EmisI instance params, base colour is a dark 0.023) x map at night with the author's screen shading (ScreenK 0.1, ScrBoost 2, shoulder 0.28 -> 0.46) x K x ScrCal; M_CitySignage K3/K4 likewise. Painted markings use MarkNightK, canopies LeafNightK, far windows the author's farshore.js 1.4 + 0.15 albedo.
+- `-WHShotCam` entries may carry hero_pos_m / hero_yaw_deg (tools/night/ref_players.mjs -> gen_shot_cams.py): the hero is teleported there and held. `tools/showcase/with_holder.sh` waits for the approved Qwen resident to be the only holder (it re-registers under new pids); `regions.py` measures boards / leaves / lit windows on masks picked in the reference.
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 

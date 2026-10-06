@@ -204,12 +204,13 @@ float dst = length(wpos - cam) * 0.01;
 float boost = saturate((dst - 25.0) / 55.0) * 0.55;
 float far = boost / 0.55;
 c *= lerp(1.0, 0.55, far);
+c *= lerp(1.0, leafk, saturate(nightk));   // night: canopies read as a dark soft volume (MPC LeafNightK), albedo and transmission (Sub derives from c)
 Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
 // (r09) crowns inside the canyon shade: a share (0.35) of the wall fill, so the foliage keeps its own lit / shaded contrast
 Emis = CityShadeFill(c, float3(0.0, 0.0, 1.0), wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill * 0.35, nightk, CityShadeW(tSunH, tSunHSampler, wpos, float3(0.0, 0.0, 1.0), ResolvedView.DirectionalLightDirection.xyz));
 return c;''',
         [('Map', 'texparam', TEXA('leaves')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('Tint', 'vector', (1, 1, 1, 1)), ('wpos', 'wpos', None), ('cam', 'cam', None),
-         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
+         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('leafk', 'mpc', 'LeafNightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Op', 1, MP.MP_OPACITY_MASK), ('Sub', 3, MP.MP_SUBSURFACE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', two_sided=True, world_normal=False, shading=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE)
 if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material rebuilt')
@@ -222,7 +223,7 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
                 ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.25), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ScreenNightGain', 2.0), ('FarWinGain', 1.4), ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('LeafNightK', 1.0), ('MarkNightK', 1.0), ('ScrCal', 1.0), ('ScreenK', 0.1), ('ScrBoost', 2.0), ('ScrKnee', 0.28), ('ScrTop', 0.46), ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -347,7 +348,13 @@ Rough = r; NormalW = n; return a;''',
     make_material('M_CityVC', None, '''
 float4 t = UseMap > 0.5 ? Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y)) : float4(1, 1, 1, 1);
 float3 c = vc.rgb * Tint.rgb * t.rgb;
-Emis = c * EmisGain * lerp(1.0, screengain / 2.0, saturate(nightk));   // night: K x screenK (browser: screens' emissiveIntensity x screenK, lighting.js) instead of the day constant
+// author screen shading at night (screenlights.js:190-202, signage.js:227-233): uScreenK (0.1) x uScrBoost (2.0), highlight shoulder uScrKnee 0.28 -> uScrTop 0.46 on the max channel
+// the three.js material of these meshes is a DARK base colour (0.023) with emissive = white x emissiveIntensity (2.5) and the ad texture as emissiveMap: night emission = map x EmisColor x EmisI, NOT vc x Tint
+// EmisI defaults to 0: only the screen / sign instances (emis_params) emit at night
+float3 em0 = (UseMap > 0.5 ? t.rgb : float3(1, 1, 1)) * EmisColor.rgb; float vcw = scrtop - scrknee;
+float sM = max(max(em0.r, em0.g), em0.b) * EmisI + 1e-4;
+float sY = sM > scrknee ? scrknee + vcw * (1.0 - exp(-(sM - scrknee) / vcw)) : sM;
+Emis = lerp(c * EmisGain, em0 * EmisI * (sY / sM) * screenk * scrboost * escale * scrcal, saturate(nightk));   // day: the constant; night: screen radiance x K
 if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured solid surfaces (critic r06: 'untextured flat grey block'): large / medium / fine tonal variation + speckle, world space
   float3 pw = wpos * 0.01; float3 an = abs(normalize(wn)); float2 q = an.x > max(an.y, an.z) ? pw.yz : (an.y > an.z ? pw.xz : pw.xy);
   float nA = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 11.0, 0.0).g, nB = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 1.9, 0.0).r, nC = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 0.23, 0.0).b;
@@ -357,10 +364,11 @@ if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured 
   float3 nv = normalize(wn);
   Emis = FillK * CityShadeFill(c, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));   // (r10) FillK: per-instance scale of the shade fill (1.0 default; the red TKTS steps use 0.2: the fill's albedo^0.65 washes saturated colours out)
 }
+if (AlphaCut > 0.4 && UseMap > 0.5) c *= lerp(1.0, marknk, saturate(nightk));   // painted markings (crosswalks, lane lines) read dark at night (MPC MarkNightK)
 Rough = RoughP; Metal = MetalP; Op = t.a > AlphaCut ? 1.0 : 0.0;
 return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('vc', 'vc', None), ('Tint', 'vector', (1, 1, 1, 1)),
-         ('screengain', 'mpc', 'ScreenNightGain'), ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('FillK', 'scalar', 1.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
+         ('escale', 'mpc', 'EmissiveScale'), ('screenk', 'mpc', 'ScreenK'), ('scrboost', 'mpc', 'ScrBoost'), ('scrknee', 'mpc', 'ScrKnee'), ('scrtop', 'mpc', 'ScrTop'), ('scrcal', 'mpc', 'ScrCal'), ('marknk', 'mpc', 'MarkNightK'), ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('EmisColor', 'vector', (1, 1, 1, 1)), ('EmisI', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('FillK', 'scalar', 1.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
          ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
@@ -501,7 +509,8 @@ float fillF = farfill * ours * lerp(1.0, 0.25, sunfF) * (0.7 + 0.3 * saturate(wn
 float LaF = dot(c, float3(0.2126, 0.7152, 0.0722));
 float LcF = LaF > farsunk ? farsunk + (LaF - farsunk) * 0.12 : LaF;
 c *= lerp(1.0, LcF / max(LaF, 1e-4), sunfF);
-Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * farwin * escale + cU * fillF;   // farwin (MPC FarWinGain, night 0.14): the far LOD's lit windows are a mean of the author's nFlM / nBdM (~0.1-0.25), not 1.4 x full window radiance
+Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * farwin * escale + cU * fillF;   // author farshore.js:1228 'totalEmissiveRadiance += dnE * uNightK * 1.4' (MPC FarWinGain 1.4) x K
+c *= 1.0 - 0.85 * saturate(nightk);   // author farshore.js:1227 'diffuseColor.rgb *= 1.0 - 0.85 * uNightK' (dark silhouettes at night)
 if (dbgmode > 8.5 && dbgmode < 9.5) { Emis = float3(vca, 0, 1.0 - vca) * 0.05; c = float3(0, 0, 0); }
 if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0.05, 0); c = float3(0, 0, 0); Spec = 0.0; }   // window-test mask: far-shore blocks = green
 return c;""",
@@ -716,7 +725,6 @@ float3 nzB = Texture2DSampleLevel(tNoise, tNoiseSampler, (vWPs.xz * 0.6 + vWPs.y
 float4 tx = float4(1, 1, 1, 1);
 if (K == 3) tx = tLed; else if (K > 0 && K != 6 && K != 7) tx = vMapUv.x > 3.5 ? tR : (vMapUv.x > 1.5 ? tS : tA);
 float lum = dot(tx.rgb, float3(0.2126, 0.7152, 0.0722));
-float sgK = lerp(2.0, screengain, saturate(nightk));   // day 2.0; night K x screenK (screens: emissiveIntensity x screenK 0.1 in the browser)
 float3 dc = vc.rgb; float sgR = 0.55; float sgM = 0.0; float3 sgE = float3(0, 0, 0); float opv = 1.0;
 if (K == 0) { sgR = 0.5 + 0.3 * nzB.r; sgM = 0.35; dc *= 0.85 + 0.3 * nzA.g; }
 else if (K == 1) {
@@ -757,7 +765,7 @@ else if (K == 1) {
 } else if (K == 9) {
   if (smoothstep(0.28, 0.42, lum) < 0.5) opv = 0.0;
   dc = tx.rgb * (0.78 + 0.25 * nzB.r); sgM = tx.r > tx.b * 1.4 ? 0.6 : 0.0; sgR = 0.38 + 0.2 * nzA.g;
-  sgE = tx.rgb * 0.35 * nightk; sgK = lerp(2.0, escale, saturate(nightk));   // printed billboards lamp-lit at night: browser emissiveIntensity x windows, no screenK -> K
+  sgE = tx.rgb * 0.35 * nightk;   // printed billboards lamp-lit at night: no screenK -> K (escale)
 } else {
   float3 brd = vMapUv.x > 3.5 ? bR.rgb : bS.rgb;
   float lumL = smoothstep(0.1, 0.24, abs(lum - dot(brd, float3(0.2126, 0.7152, 0.0722))));
@@ -777,10 +785,15 @@ else if (K == 1) {
 }
 float fillW = (K == 3 || K == 4 || K == 6) ? 0.0 : 1.0;
 Rough = sgR; Metal = sgM; Op = opv; float3 nv = normalize(wn);
+// author screen shading at night (screenlights.js:190-202, signage.js:227-233): uScreenK (0.1) x uScrBoost (2.0), highlight shoulder uScrKnee 0.28 -> uScrTop 0.46 on the max channel; K 6 bulbs x 0.3; K 3 LED x boost, K 4 x 1.7
+float nm = 1.0;
+if (K == 3) nm = screenk * scrboost * scrcal; else if (K == 4) nm = screenk * 1.7 * scrcal; else if (K == 6) nm = 0.3;
+if (K == 3 || K == 4) { float scrM = max(max(tx.r, tx.g), tx.b); if (scrM > scrknee) { float scrW = scrtop - scrknee; float scrY = scrknee + scrW * (1.0 - exp(-(scrM - scrknee) / scrW)); sgE *= lerp(1.0, scrY / scrM, saturate(nightk)); } }
+float sgK = lerp(2.0, escale * nm, saturate(nightk));   // day constant 2.0
 Emis = sgE * sgK + fillW * CityShadeFill(dc, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
 return dc;""",
         [('tAds', 'tex', TEXA('Maps/assets_city_tex_ts_ads')), ('tSigns', 'tex', TEXA('Maps/assets_city_tex_ts_signs')), ('tArt', 'tex', TEXA('Maps/assets_city_tex_city_signart')), ('tNoise', 'tex', TEXA('noise')),
-         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'), ('screengain', 'mpc', 'ScreenNightGain'), ('escale', 'mpc', 'EmissiveScale'),
+         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'), ('screenk', 'mpc', 'ScreenK'), ('scrboost', 'mpc', 'ScrBoost'), ('scrknee', 'mpc', 'ScrKnee'), ('scrtop', 'mpc', 'ScrTop'), ('scrcal', 'mpc', 'ScrCal'), ('escale', 'mpc', 'EmissiveScale'),
          ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
@@ -830,6 +843,7 @@ Emis = hcU * farfill * lerp(1.0, 0.25, sunfH) * (0.7 + 0.3 * saturate(wn.z + 0.5
 float LaH = dot(hc, float3(0.2126, 0.7152, 0.0722));
 float LcH = LaH > farsunk ? farsunk + (LaH - farsunk) * 0.12 : LaH;
 hc *= lerp(1.0, LcH / max(LaH, 1e-4), sunfH);
+hc *= 1.0 - 0.85 * saturate(nightk);   // author horizon.js:137 (dark masses at night)
 return hc;''',
         [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill'), ('nightk', 'mpc', 'NightK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
@@ -855,6 +869,20 @@ def mesh_pipeline(nanite):
     p.material_pipeline.set_editor_property('import_materials', False)
     p.material_pipeline.texture_pipeline.set_editor_property('import_textures', False)
     return p
+def emis_params(mi_, mat):
+    """the three.js emissive colour x emissiveIntensity of a screen / sign mesh (its base colour is a dark 0.023): the night emission of M_CityVC"""
+    em = mat.get('emissive') or [1, 1, 1]
+    mel.set_material_instance_vector_parameter_value(mi_, 'EmisColor', unreal.LinearColor(em[0], em[1], em[2], 1))
+    mel.set_material_instance_scalar_parameter_value(mi_, 'EmisI', float(mat.get('emissiveIntensity') or 1.0))
+
+if 'mat' in STEPS:   # existing instances get the emissive parameters too (mi_for only fills in new ones)
+    _seen = set()
+    for _r in man['meshes']:
+        _k = _r['name']
+        if _k in _seen or _r.get('proto') or not any(_k.startswith(e) for e in EMIS): continue
+        _seen.add(_k); _p = f'{MAT}/Inst/MI_{_k}'
+        if EAL.does_asset_exist(_p): _m = load(_p); emis_params(_m, _r.get('mat') or {}); EAL.save_asset(_p); log('emissive params', _k, (_r.get('mat') or {}).get('emissiveIntensity'))
+
 def mi_for(rec):
     """material instance of M_CityVC for a generic mesh (colour / roughness / map from the three.js material)"""
     mat = rec.get('mat') or {}
@@ -870,7 +898,7 @@ def mi_for(rec):
         mel.set_material_instance_vector_parameter_value(mi, 'Tint', unreal.LinearColor(col[0], col[1], col[2], 1))
         mel.set_material_instance_scalar_parameter_value(mi, 'RoughP', float(mat.get('roughness') or 0.7))
         mel.set_material_instance_scalar_parameter_value(mi, 'MetalP', float(mat.get('metalness') or 0.0))
-        if key.startswith(EMIS) or any(key.startswith(e) for e in EMIS): mel.set_material_instance_scalar_parameter_value(mi, 'EmisGain', 2.0)
+        if key.startswith(EMIS) or any(key.startswith(e) for e in EMIS): mel.set_material_instance_scalar_parameter_value(mi, 'EmisGain', 2.0); emis_params(mi, mat)
         if mat.get('alphaTest') or key == 'markings': mel.set_material_instance_scalar_parameter_value(mi, 'AlphaCut', 0.5)
     u = mat.get('map')
     if u:
