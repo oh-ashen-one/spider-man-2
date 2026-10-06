@@ -24,6 +24,7 @@ public class WebHomage : ModuleRules
 			"GeometryCollectionEngine",
 			"Chaos",
 			"PhysicsCore",
+			"Json",
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]

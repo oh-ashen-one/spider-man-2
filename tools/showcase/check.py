@@ -37,6 +37,19 @@ def main():
                 missing.append(raw.decode())
         if len(suit_refs) < 2:
             missing.append('DA_HeroSuits references fewer than 2 suit assets')
+    night = PROJECT / 'Content/Night'
+    for n in ('CityLights.bin', 'CityLights.meta.json', 'CityLights.json', 'NightGeometry.json'):
+        if not (night / n).is_file():
+            missing.append('Content/Night/' + n + ' (python3 tools/night/prep_night.py; build look)')
+    try:
+        meta = json.loads((night / 'CityLights.meta.json').read_text())
+        size = (night / 'CityLights.bin').stat().st_size
+        if sum(meta['counts'].values()) != meta['count'] or size != 52 + meta['count'] * 84:
+            missing.append('Content/Night/CityLights.bin does not match CityLights.meta.json (%d bytes, %d records)' % (size, meta['count']))
+        if json.loads((night / 'NightGeometry.json').read_text())['counts'] != meta['geometry_counts']:
+            missing.append('Content/Night/NightGeometry.json counts differ from CityLights.meta.json')
+    except (OSError, KeyError, ValueError):
+        pass
     module = None
     modules = PROJECT / 'Binaries/Mac/UnrealEditor.modules'
     try:

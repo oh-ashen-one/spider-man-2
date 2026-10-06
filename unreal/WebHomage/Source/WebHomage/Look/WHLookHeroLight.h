@@ -36,7 +36,15 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float RimHeight = 260.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Look") float FillHeight = 90.f;
 
+	/** AWHCityLights drives the fill / top lights from the author's area ambient (never called when no AWHCityLights exists). */
+	void SetAmbientDrive(const FLinearColor& NewFillColor, float NewFillIntensity, float NewTopIntensity);
+	float GetBaseFillIntensity() const { return bBaseCaptured ? BaseFillIntensity : FillIntensity; }
+	FLinearColor GetBaseFillColor() const { return bBaseCaptured ? BaseFillColor : FillColor; }
+
 private:
+	bool bBaseCaptured = false;
+	float BaseFillIntensity = 0.f;
+	FLinearColor BaseFillColor = FLinearColor::White;
 	bool bLightsInit = false;
 	TWeakObjectPtr<APawn> LitPawn;
 	void SetPawnChannels(APawn* P);

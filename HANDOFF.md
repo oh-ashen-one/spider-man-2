@@ -23,6 +23,12 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
   - Volumetric fog scattering per light, Lumen for bounce, neon and word instanced meshes, a screen emissive night boost, and the facade window model regenerated from the author's facade.js.
   - This replaces the old Look_NightLights in the Night map, so the two systems never stack.
 
+### M2 part 1 (built, no runtime yet)
+- `tools/night/prep_night.py` packs `night_lights.json` into `Content/Night/CityLights.bin` (+ meta, `NightGeometry.json`); `Scripts/night_city.json` is the tuning copied to `Content/Night/CityLights.json` (`wh.CityLights.Reload`).
+- `AWHCityLights` (Source/WebHomage/Look/WHCityLights.*) streams a budgeted light pool around the camera, ports the author's area ambient into `AWHLookHeroLight`, and exposes `UWHCityLightsLibrary::SelfTest`.
+- `build_look.py` step `night` builds `/Game/Look/Look_NightCity` (replaces `Look_NightLights`, kept as `build_night_legacy`): `AWHCityLights`, hero lights, 6 emissive HISMs. `sm2_common.NIGHT_LIGHTS_LEVEL` points at it; the showcase night map composes it.
+- Verified headless: look/showcase/validate rc 0, validate.json 120/120 (SelfTest at 3 positions, HISM counts, one AWHCityLights). Shader compile, lights and emissive look are NOT verified (null RHI).
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 

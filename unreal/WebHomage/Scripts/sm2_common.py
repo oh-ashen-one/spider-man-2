@@ -6,7 +6,8 @@
 import os
 import traceback
 
-NIGHT_LIGHTS_LEVEL = '/Game/Look/Look_NightLights'   # the one night-lighting sublevel; every night map composes exactly this
+NIGHT_LIGHTS_LEVEL = '/Game/Look/Look_NightCity'   # the one night-lighting sublevel (the author's night mode port); every night map composes exactly this
+LEGACY_NIGHT_LEVEL = '/Game/Look/Look_NightLights'   # the old night lights: must never be composed together with NIGHT_LIGHTS_LEVEL
 TERRAIN_ROOT = '/Game/Terrain'   # build_terrain.py's root for the showcase; /Game/TerrainR5b is the preserved baseline and is never built
 SHOWCASE_MAPS = {'golden': '/Game/Showcase/Maps/Manhattan_Showcase', 'midday': '/Game/Showcase/Maps/Manhattan_Showcase_Midday',
                  'night': '/Game/Showcase/Maps/Manhattan_Showcase_Night'}

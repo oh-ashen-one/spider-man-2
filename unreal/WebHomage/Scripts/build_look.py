@@ -14,7 +14,7 @@
 #   /Game/Look/Look_NightLights          night street lighting (step night): lamps, storefront spill, stand-in traffic lights, wet-street decal, hero lights
 #   /Game/Tests/Look/Look_Midtown[_golden|_night]     playable maps (traversal game mode): city geometry + Look_Boxes + rig + PlayerStart
 #   /Game/Tests/Look/Look_View_<preset>_<S#>          the city shot views (Scripts/city_shots.json) under each preset
-import unreal, os, sys, json, math, time, random
+import unreal, os, sys, json, math, time, random, shutil
 sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or os.path.dirname(os.path.abspath(globals().get('__file__') or '.')))
 import sm2_common
 _B = sm2_common.Build('build_look.py')
@@ -522,7 +522,7 @@ def ism(label, mesh, mat, folder='NightLights', shadow=False):
     c.set_editor_property('cast_shadow', shadow)
     return c
 
-def build_night():
+def build_night_legacy():   # the old night-light system (Look_NightLights): unused, replaced by build_night below
     L = PRE['night']['lights']
     layout = json.load(open(os.path.join(EXPORT, 'layout.json')))
     world = open_level(NIGHT)
@@ -687,10 +687,205 @@ def build_night():
     unreal.EditorLoadingAndSavingUtils.save_map(world, NIGHT)
     log('night level saved', NIGHT)
 
+# ------------------------------------------------------------------------------------------------ step night (the author's night mode)
+# /Game/Look/Look_NightCity = ONE AWHCityLights (the budgeted light pool + ambient, Source/WebHomage/Look/WHCityLights.cpp) + the hero fill
+# lights + 6 emissive HISM components (NightEmissive actor) built from Content/Night/NightGeometry.json (tools/night/prep_night.py):
+# neon tube segments, neon words (neon_words atlas), screen boards (ts_ads atlas), blade-sign faces (ts_signs atlas), signal lenses, lamp heads.
+# Every emissive material multiplies MPC_City NightK, so it is dark by day. Emissive = browser pre-exposure radiance x K x EmissiveK.
+NC = LOOK + '/NightCity'
+NC_TEX = os.path.join(os.environ.get('SM2_NIGHT_TEX', os.path.join(os.path.expanduser('~'), 'sm2-n1/_scratch/night/tex')))
+
+def _nc_missing(what):
+    raise RuntimeError('night step: missing %s (run python3 tools/night/prep_night.py after tools/night/export_night.mjs)' % what)
+
+def nc_import_textures():
+    at = unreal.AssetToolsHelpers.get_asset_tools()
+    spec = [('neon_words', 'T_NeonWords', False), ('ts_ads', 'T_TsAds', True), ('ts_signs', 'T_TsSigns', True)]
+    for src, name, srgb in spec:
+        f = os.path.join(NC_TEX, src + '.png')
+        if not os.path.isfile(f): _nc_missing('texture ' + f + ' (sips -s format png <spiderbench>/public/assets/city/tex/%s.webp --out %s)' % (src, f))
+    EAL.make_directory(NC + '/Textures')
+    tasks = []
+    for src, name, srgb in spec:
+        t = unreal.AssetImportTask(); t.filename = os.path.join(NC_TEX, src + '.png'); t.destination_path = NC + '/Textures'; t.destination_name = name
+        t.automated = True; t.replace_existing = True; t.save = False; tasks.append(t)
+    at.import_asset_tasks(tasks)
+    out = {}
+    for src, name, srgb in spec:
+        tex = unreal.load_asset(NC + '/Textures/' + name)
+        if tex is None: _B.fail('texture import failed: ' + name); continue
+        tex.set_editor_property('srgb', srgb)
+        if not srgb: tex.set_editor_property('compression_settings', unreal.TextureCompressionSettings.TC_VECTOR_DISPLACEMENTMAP)
+        try: tex.set_editor_property('never_stream', True)
+        except Exception as e: _B.warn('never_stream ' + name, e)
+        EAL.save_asset(NC + '/Textures/' + name)
+        out[name] = tex
+    return out
+
+def nc_material(name, code, inputs, em_k):
+    """emissive-only unlit two-sided material for instanced meshes; code = HLSL body returning float3 emissive; inputs = [(name, kind, arg)]"""
+    path = NC + '/' + name
+    if EAL.does_asset_exist(path): EAL.delete_asset(path)
+    m = unreal.AssetToolsHelpers.get_asset_tools().create_asset(name, NC, unreal.Material, unreal.MaterialFactoryNew())
+    m.set_editor_property('shading_model', unreal.MaterialShadingModel.MSM_UNLIT)
+    m.set_editor_property('two_sided', True)
+    mel = unreal.MaterialEditingLibrary
+    def ex(cls, x, y, **props):
+        e = mel.create_material_expression(m, cls, x, y)
+        for k, v in props.items(): e.set_editor_property(k, v)
+        return e
+    ins, y = [], -600
+    for n, kind, arg in inputs:
+        if kind == 'cd': e = ex(unreal.MaterialExpressionPerInstanceCustomData, -900, y, data_index=int(arg), const_default_value=0.0)
+        elif kind == 'lp': e = ex(unreal.MaterialExpressionLocalPosition, -900, y)
+        elif kind == 'tex': e = ex(unreal.MaterialExpressionTextureObject, -900, y, texture=arg[0], sampler_type=arg[1])
+        elif kind == 'mpc': e = ex(unreal.MaterialExpressionCollectionParameter, -900, y, collection=unreal.load_asset(MPC), parameter_name=arg)
+        elif kind == 'param': e = ex(unreal.MaterialExpressionScalarParameter, -900, y, parameter_name=n, default_value=float(arg))
+        else: raise RuntimeError('input kind ' + kind)
+        ins.append((n, e)); y += 100
+    c = ex(unreal.MaterialExpressionCustom, -400, -300)
+    c.set_editor_property('code', code); c.set_editor_property('description', name)
+    c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
+    cis = []
+    for n, _ in ins:
+        ci = unreal.CustomInput(); ci.set_editor_property('input_name', n); cis.append(ci)
+    c.set_editor_property('inputs', cis)
+    for n, e in ins: mel.connect_material_expressions(e, '', c, n)
+    mel.connect_material_property(c, '', unreal.MaterialProperty.MP_EMISSIVE_COLOR)
+    try: mel.set_material_usage(m, unreal.MaterialUsage.MATUSAGE_INSTANCED_STATIC_MESHES)
+    except Exception as e: _B.fail(name + ' instanced usage', e)
+    mel.recompile_material(m); EAL.save_asset(path)
+    return m
+
+def build_night():
+    NJ = json.load(open(os.path.join(HERE, 'night_city.json')))
+    nd = os.path.join(unreal.Paths.project_content_dir(), 'Night')
+    for f in ('CityLights.bin', 'CityLights.meta.json', 'NightGeometry.json'):
+        if not os.path.isfile(os.path.join(nd, f)): _nc_missing(os.path.join(nd, f))
+    shutil.copyfile(os.path.join(HERE, 'night_city.json'), os.path.join(nd, 'CityLights.json'))
+    meta = json.load(open(os.path.join(nd, 'CityLights.meta.json')))
+    G = json.load(open(os.path.join(nd, 'NightGeometry.json')))
+    if G['counts'] != meta['geometry_counts'] or sum(meta['counts'].values()) != meta['count']: raise RuntimeError('night step: CityLights.meta.json is inconsistent with NightGeometry.json (re-run prep_night.py)')
+    if not unreal.load_asset(MPC): raise RuntimeError('night step: MPC_City missing (build the city first)')
+    EAL.make_directory(NC)
+    tex = nc_import_textures()
+    if len(tex) != 3: raise RuntimeError('night step: texture import failed')
+    EK = float(NJ['K']) * float(NJ['EmissiveK'])
+    P = G['params']
+    CD = lambda i: ('CD%d' % i, 'cd', i)
+    MPCN = ('NK', 'mpc', 'NightK')
+    colour = nc_material('M_NightColor', 'return float3(CD0, CD1, CD2) * NK * EK;', [CD(0), CD(1), CD(2), MPCN, ('EK', 'param', EK)], EK)
+    word = nc_material('M_NightWord', """float2 q = LP.xy * 0.01 + 0.5;
+float cell = CD3, asp = CD4;
+float2 sz = asp > 2.3077 ? float2(0.9, 0.9 / asp * 2.0) : float2(0.78 * asp * 0.5, 0.78);
+if (cell > 23.5) sz = float2(0.5, 1.0) / 1.12;
+float2 cuv = 0.5 + (q - 0.5) * min(sz * 1.12, float2(0.995, 0.995));
+float2 uv = float2((fmod(cell, 4.0) + cuv.x) / 4.0, (floor(cell / 4.0) + 1.0 - cuv.y) / 8.0);
+float2 nt = max(Tex.Sample(TexSampler, uv).rg - 0.02, 0.0) / 0.98;
+float2 eq = min(q, 1.0 - q);
+nt.g *= smoothstep(0.0, 0.12, min(eq.x, eq.y * 2.0));
+float3 col = float3(CD0, CD1, CD2);
+float3 e = col * nt.r + lerp(col, max(max(col.r, col.g), col.b).xxx, 0.25) * nt.r * nt.r * 0.2 + col * nt.g * GL;
+return e * WG * NK * EK;""", [CD(0), CD(1), CD(2), CD(3), CD(4), ('LP', 'lp', 0), ('Tex', 'tex', (tex['T_NeonWords'], unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)), MPCN, ('EK', 'param', EK),
+                                       ('WG', 'param', P['word_gain']), ('GL', 'param', P['neon_glow'])], EK)
+    board = nc_material('M_NightBoard', """float2 q = LP.xy * 0.01 + 0.5;
+float3 c = CD7 > 0.5 ? Tex.Sample(TexSampler, float2(lerp(CD3, CD5, q.x), 1.0 - lerp(CD4, CD6, q.y))).rgb : float3(CD0, CD1, CD2);
+float m = max(max(c.r, c.g), c.b) + 1e-4;
+if (m > KN) { float w = TP - KN; float y = KN + w * (1.0 - exp(-(m - KN) / w)); c *= y / m; }
+return c * BG * NK * EK;""", [CD(0), CD(1), CD(2), CD(3), CD(4), CD(5), CD(6), CD(7), ('LP', 'lp', 0), ('Tex', 'tex', (tex['T_TsAds'], unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)), MPCN,
+                                 ('EK', 'param', EK), ('BG', 'param', P['board_gain']), ('KN', 'param', P['knee']), ('TP', 'param', P['top'])], EK)
+    blade = nc_material('M_NightBlade', """float2 q = LP.xy * 0.01 + 0.5;
+float2 uv = float2(CD0 + q.y * CD2, 1.0 - (CD1 + (1.0 - q.x) * CD3));
+float3 bt = Tex.Sample(TexSampler, uv).rgb;
+float bm = max(max(bt.r, bt.g), bt.b) + 1e-4;
+float3 bn = bt / bm * pow(bm, 0.45) * 2.0;
+float ex = min(q.x, 1.0 - q.x) * 2.0, ey = min(q.y, 1.0 - q.y) * 2.0 * 2.3;
+float lit = 0.55 + 0.45 * smoothstep(0.0, 0.8, min(ex, ey));
+return bn * lit * SK * NK * EK;""", [CD(0), CD(1), CD(2), CD(3), ('LP', 'lp', 0), ('Tex', 'tex', (tex['T_TsSigns'], unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)), MPCN, ('EK', 'param', EK), ('SK', 'param', P['screen_k'])], EK)
+
+    world = open_level(NIGHT)
+    gm = spawn(unreal.WHCityLights, unreal.Vector(0, 0, 0), label='CityLights', folder='NightCity')
+    Hh = PRE['night']['lights']['hero']
+    cls = unreal.load_class(None, '/Script/WebHomage.WHLookHeroLight')
+    if cls:
+        h = spawn(cls, unreal.Vector(0, 0, 0), label='HeroLights', folder='NightCity')
+        cfg(h, {'rim_intensity': float(Hh['rim_cd']), 'fill_intensity': float(Hh['fill_cd']), 'top_intensity': float(Hh['top_cd'])}, 'HeroLight')
+    else: _B.fail('AWHLookHeroLight class missing (build the C++ module)')
+    em = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='NightEmissive', folder='NightCity')
+    up = unreal.Vector(0, 0, 1)
+    V3 = lambda a: unreal.Vector(a[0], a[1], a[2])
+    def norm(v):
+        l = math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2) or 1.0
+        return (v[0] / l, v[1] / l, v[2] / l)
+    def cross(a, b): return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+    def rot_xy(x, y):   # local X, Y given; Z = X x Y
+        z = cross(x, y)
+        return unreal.MathLibrary.make_rotation_from_axes(V3(x), V3(y), V3(z))
+    def rot_z(axis):    # local Z along `axis`
+        z = norm(axis); ref = (0.0, 0.0, 1.0) if abs(z[2]) < 0.9 else (1.0, 0.0, 0.0)
+        x = norm(cross(ref, z)); y = cross(z, x)
+        return unreal.MathLibrary.make_rotation_from_axes(V3(x), V3(y), V3(z))
+    def hism(tag, mesh_path, material, transforms, cdata, cull):
+        c = add_component(em, unreal.HierarchicalInstancedStaticMeshComponent)
+        c.set_static_mesh(unreal.load_asset(mesh_path)); c.set_material(0, material)
+        c.set_editor_property('component_tags', [unreal.Name(tag)])
+        nf = len(cdata[0]) if cdata else 0
+        if nf: c.set_editor_property('num_custom_data_floats', nf)
+        ids = []
+        for i in range(0, len(transforms), 20000): ids += list(c.add_instances(transforms[i:i + 20000], True, True))
+        for k, d in zip(ids, cdata or []):
+            for j, v in enumerate(d): c.set_custom_data_value(k, j, float(v), False)
+        c.set_cast_shadow(False); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        for k, v in (('can_ever_affect_navigation', False), ('affect_distance_field_lighting', False), ('affect_dynamic_indirect_lighting', False), ('instance_end_cull_distance', int(cull))):
+            try: c.set_editor_property(k, v)
+            except Exception as e: _B.warn('%s.%s' % (tag, k), e)
+        log('night: %s %d instances' % (tag, c.get_instance_count()))
+        return c
+    # tubes: cylinder segments (BasicShapes/Cylinder: 100 cm tall, radius 50)
+    T = G['tubes']; tr, cd = [], []
+    for i in range(0, len(T), 12):
+        cx, cy, cz, ax, ay, az, ln, rad, flat, r, g, b = T[i:i + 12]
+        tr.append(unreal.Transform(unreal.Vector(cx, cy, cz), rot_z((ax, ay, az)), unreal.Vector(rad * 2.0 / 100.0, rad * 2.0 / 100.0, ln / 100.0))); cd.append((r, g, b))
+    hism('nc_tubes', '/Engine/BasicShapes/Cylinder', colour, tr, cd, 9000)
+    W = G['words']; tr, cd = [], []
+    for i in range(0, len(W), 15):
+        cx, cy, cz, wx, wy, wz, nx, ny, nz, w, h, cell, r, g, b = W[i:i + 15]
+        tr.append(unreal.Transform(unreal.Vector(cx, cy, cz), rot_xy((wx, wy, 0.0), (0.0, 0.0, 1.0)), unreal.Vector(w / 100.0, h / 100.0, 1.0))); cd.append((r, g, b, cell, w / h))
+    hism('nc_words', '/Engine/BasicShapes/Plane', word, tr, cd, 14000)
+    B = G['boards']; tr, cd = [], []
+    for i in range(0, len(B), 20):
+        cx, cy, cz, nx, ny, nz, ux, uy, uz, w, h, u0, v0, u1, v1, hasuv, r, g, b, pr = B[i:i + 20]
+        tr.append(unreal.Transform(unreal.Vector(cx, cy, cz), rot_xy(norm((ux, uy, uz)), (0.0, 0.0, 1.0)), unreal.Vector(w / 100.0, h / 100.0, 1.0))); cd.append((r, g, b, u0, v0, u1, v1, hasuv))
+    hism('nc_boards', '/Engine/BasicShapes/Plane', board, tr, cd, 80000)
+    L = G['blades']; tr, cd = [], []
+    for i in range(0, len(L), 15):
+        cx, cy, cz, wx, wy, wz, nx, ny, nz, w, h, cu, cv, cdu, cdv = L[i:i + 15]
+        tr.append(unreal.Transform(unreal.Vector(cx, cy, cz), rot_xy((wx, wy, 0.0), (0.0, 0.0, 1.0)), unreal.Vector(w / 100.0, h / 100.0, 1.0))); cd.append((cu, cv, cdu, cdv))
+    hism('nc_blades', '/Engine/BasicShapes/Plane', blade, tr, cd, 9000)
+    S = G['signals']; tr, cd = [], []
+    for i in range(0, len(S), 6):
+        x, y, z, r, g, b = S[i:i + 6]
+        tr.append(unreal.Transform(unreal.Vector(x, y, z), unreal.Rotator(0, 0, 0), unreal.Vector(0.14, 0.14, 0.14))); cd.append((r * NJ['emissive']['signal_lens'], g * NJ['emissive']['signal_lens'], b * NJ['emissive']['signal_lens']))
+    hism('nc_signals', '/Engine/BasicShapes/Sphere', colour, tr, cd, 9000)
+    Hd = G['lamp_heads']; tr, cd = [], []
+    for i in range(0, len(Hd), 6):
+        x, y, z, r, g, b = Hd[i:i + 6]
+        tr.append(unreal.Transform(unreal.Vector(x, y, z - 12.0), unreal.Rotator(0, 0, 0), unreal.Vector(0.32, 0.32, 0.07))); cd.append((r * NJ['emissive']['lamp_head'], g * NJ['emissive']['lamp_head'], b * NJ['emissive']['lamp_head']))
+    hism('nc_lamp_heads', '/Engine/BasicShapes/Sphere', colour, tr, cd, 14000)
+    want = {'nc_tubes': G['counts']['tube_segments'], 'nc_words': G['counts']['words'], 'nc_boards': G['counts']['boards'], 'nc_blades': G['counts']['blade_faces'],
+            'nc_signals': G['counts']['signals'], 'nc_lamp_heads': G['counts']['lamp_heads']}
+    for c in em.get_components_by_class(unreal.HierarchicalInstancedStaticMeshComponent):
+        tag = str(c.get_editor_property('component_tags')[0]) if c.get_editor_property('component_tags') else '?'
+        if c.get_instance_count() != want.get(tag): _B.fail('%s instances %d != expected %s' % (tag, c.get_instance_count(), want.get(tag)))
+    if not unreal.EditorLoadingAndSavingUtils.save_map(world, NIGHT): _B.fail('save_map failed: ' + NIGHT)
+    log('night level saved', NIGHT)
+
 # ------------------------------------------------------------------------------------------------ step maps
 def rig_path(name): return '%s/Look_Rig_%s' % (RIGS, name)
 
 def add_sublevels(world, name, boxes=False):
+    for l in list(unreal.EditorLevelUtils.get_levels(world)):   # never stack the old night lights with the new ones
+        if l.get_path_name().split('.')[0] == sm2_common.LEGACY_NIGHT_LEVEL: unreal.EditorLevelUtils.remove_level_from_world(l)
     for lp in (CITY_GEO, BOXES, rig_path(name), NIGHT):
         if lp == BOXES and not (boxes and EAL.does_asset_exist(BOXES)): continue
         if lp == NIGHT and name != 'night': continue

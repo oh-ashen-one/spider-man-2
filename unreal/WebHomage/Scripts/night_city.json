@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "K": 200.0,
+  "EmissiveK": 1.0,
+  "note": "K = UE candela per browser intensity unit (rects: nits per radiance unit). Copied into Content/Night/CityLights.json by the build; wh.CityLights.Reload re-reads it at run time. emissive.* are browser radiance multipliers of the signal lens / lamp head solids (not exported by the author code; judgement).",
+  "fade_s": 0.35,
+  "rebuild_move_cm": 250.0,
+  "rebuild_interval_s": 0.2,
+  "volumetric_gain": 1.0,
+  "shadow_slots": 4,
+  "shadow_radius_cm": 2500.0,
+  "night_off_below": 0.01,
+  "pool_headroom": 1.25,
+  "ambient": {
+    "AMB_R": 70.0,
+    "AMB_SOFT": 6.0,
+    "AMB_GAIN": 0.16,
+    "layer_y_m": 14.0,
+    "hero_fill_base": 0.35,
+    "hero_irradiance_scale": 1.0
+  },
+  "groups": [
+    {
+      "name": "lamps",
+      "categories": [
+        0,
+        1,
+        2
+      ],
+      "budget": 160,
+      "radius_m": 120.0,
+      "gain": 1.0,
+      "shadow": true
+    },
+    {
+      "name": "shop_front",
+      "categories": [
+        3
+      ],
+      "budget": 96,
+      "radius_m": 80.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "window_run",
+      "categories": [
+        7
+      ],
+      "budget": 96,
+      "radius_m": 38.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "window_band",
+      "categories": [
+        8
+      ],
+      "budget": 64,
+      "radius_m": 170.0,
+      "min_radius_m": 38.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "neon",
+      "categories": [
+        4
+      ],
+      "budget": 96,
+      "radius_m": 60.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "screens",
+      "categories": [
+        5,
+        9,
+        10
+      ],
+      "budget": 64,
+      "radius_m": 150.0,
+      "tile_radius_m": 60.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "blade",
+      "categories": [
+        11
+      ],
+      "budget": 32,
+      "radius_m": 50.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "signal",
+      "categories": [
+        12
+      ],
+      "budget": 32,
+      "radius_m": 50.0,
+      "gain": 1.0,
+      "shadow": false
+    },
+    {
+      "name": "skyline_flood",
+      "categories": [
+        6
+      ],
+      "budget": 0,
+      "radius_m": 3000.0,
+      "gain": 1.0,
+      "shadow": false
+    }
+  ],
+  "emissive": {
+    "signal_lens": 10.0,
+    "lamp_head": 10.0
+  }
+}

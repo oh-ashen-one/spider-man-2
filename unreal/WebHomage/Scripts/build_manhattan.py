@@ -270,6 +270,8 @@ def step_characters():
 
 
 def step_look():
+    if 'night' in LOOK_STEPS.split(','):   # packs the author's night lights (fails clearly when the exporter output is missing)
+        sh(['python3', os.path.join(WT, 'tools/night/prep_night.py')], log_name='night_prep.log')
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': LOOK_STEPS, 'SM2_LOOK_PRESETS': 'midday,golden,night'}
     ue_python('look', exec_wrapper(os.path.join(HERE, 'build_look.py'), ''), env, sentinel='build_look.py')
 
@@ -577,6 +579,32 @@ def build_showcase():
     _B.finish()
 
 
+def night_self_tests(binp, count, night_dir, check, mlog):
+    """AWHCityLights SelfTest (no component spawned) at three reference positions, cross-checked against an independent pass over CityLights.bin"""
+    import struct
+    ref = json.load(open(os.environ.get('SM2_NIGHT_REF', os.path.expanduser('~/sm2-n1/_scratch/night/ref/ref_shots.json'))))['shots']
+    pos = {s['name']: s['ue_cm']['pos'] for s in ref}
+    spots = {'times_square': pos['view_times_square_street'], 'midtown_street': pos['shot_street'], 'skyline_high': pos['view_skyline_high']}
+    cfg = json.load(open(os.path.join(night_dir, 'CityLights.json')))
+    raw = open(binp, 'rb').read()
+    recs = [struct.unpack_from('<3f', raw, 52 + i * 68) + (raw[52 + i * 68 + 64],) for i in range(count)]
+    out = {}
+    for name, p in spots.items():
+        res = json.loads(unreal.WHCityLightsLibrary.self_test(unreal.Vector(p[0], p[1], p[2])))
+        check('SelfTest %s loads' % name, res.get('ok') is True, pos=p)
+        if not res.get('ok'): out[name] = res; continue
+        for g in cfg['groups']:
+            R, R0 = g['radius_m'] * 100.0, g.get('min_radius_m', 0.0) * 100.0
+            exp = sum(1 for x, y, z, cat in recs if cat in g['categories'] and R0 <= ((x - p[0]) ** 2 + (y - p[1]) ** 2 + (z - p[2]) ** 2) ** 0.5 <= R)
+            r = res['groups'][g['name']]
+            ok = (r['selected'] > 0 or exp == 0) and (abs(r['candidates'] - exp) <= 2 if 'tile_radius_m' not in g else r['candidates'] <= exp + 2 and (r['candidates'] > 0 or exp == 0))
+            check('SelfTest %s group %s selects what the export has near it' % (name, g['name']), ok, selected=r['selected'], candidates=r['candidates'], expected_near=exp)
+            r['expected_near'] = exp
+        out[name] = res
+        mlog('SelfTest', name, json.dumps({k: (v['candidates'], v['selected']) for k, v in res['groups'].items()}), 'total K intensity', res['total_intensity_k'])
+    return out
+
+
 def validate_showcase():
     EAL = unreal.EditorAssetLibrary
     eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -597,6 +625,16 @@ def validate_showcase():
 
     trav_gm = unreal.load_class(None, sm2_common.GAME_MODE_CLASS)
     check('WebTravGameMode class loads', trav_gm is not None)
+    night_dir = os.path.join(PROJ, 'Content', 'Night')
+    night_meta = json.load(open(os.path.join(night_dir, 'CityLights.meta.json')))
+    binp = os.path.join(night_dir, 'CityLights.bin')
+    with open(binp, 'rb') as f: head = f.read(52)
+    import struct
+    magic, ver, cnt = struct.unpack('<4sII', head[:12])
+    check('CityLights.bin header and size match the meta', magic == b'SM2L' and ver == 1 and cnt == night_meta['count'] == sum(night_meta['counts'].values()) and os.path.getsize(binp) == 52 + cnt * 84,
+          count=cnt, meta_count=night_meta['count'], bytes=os.path.getsize(binp))
+    check('CityLights.json tuning copy matches Scripts/night_city.json', open(os.path.join(night_dir, 'CityLights.json')).read() == open(os.path.join(HERE, 'night_city.json')).read())
+    self_tests = night_self_tests(binp, cnt, night_dir, check, mlog)
     for preset in showcase_presets():
         path = sm2_common.SHOWCASE_MAPS[preset]
         want = sm2_common.showcase_levels(preset)
@@ -629,11 +667,22 @@ def validate_showcase():
         cit = [a for a in life if isinstance(a, unreal.WHLifeCrowd) and len(a.get_editor_property('meshes')) > 0]
         check(tag + 'Life_Actors has vehicle actors', len(veh) > 0, count=len(veh))
         check(tag + 'Life_Actors has citizen actors', len(cit) > 0, count=len(cit))
+        check(tag + 'never composes the legacy Look_NightLights', sm2_common.LEGACY_NIGHT_LEVEL not in pkgs)
+        n_cl = sum(1 for a in actors if isinstance(a, unreal.WHCityLights))
         if preset == 'night':
-            lights = [a for a in in_pkg(NIGHT) if isinstance(a, unreal.Light)]
-            check(tag + 'night lights level has light actors', len(lights) > 0, count=len(lights), level=NIGHT)
+            check(tag + 'night level present', NIGHT in pkgs, level=NIGHT)
+            check(tag + 'exactly one AWHCityLights', n_cl == 1, count=n_cl)
+            em = [a for a in in_pkg(NIGHT) if a.get_actor_label() == 'NightEmissive']
+            check(tag + 'one NightEmissive actor', len(em) == 1, count=len(em))
+            got = {}
+            for c in (em[0].get_components_by_class(unreal.HierarchicalInstancedStaticMeshComponent) if em else []):
+                tags = c.get_editor_property('component_tags'); got[str(tags[0]) if tags else '?'] = c.get_instance_count()
+            gc = night_meta['geometry_counts']
+            want = {'nc_tubes': gc['tube_segments'], 'nc_words': gc['words'], 'nc_boards': gc['boards'], 'nc_blades': gc['blade_faces'], 'nc_signals': gc['signals'], 'nc_lamp_heads': gc['lamp_heads']}
+            check(tag + 'HISM instance counts equal the export counts', got == want, got=got, expected=want)
         else:
             check(tag + 'does not include the night lights level', NIGHT not in pkgs and not any(p.endswith('/Look_NightLights') for p in pkgs))
+            check(tag + 'has no AWHCityLights', n_cl == 0, count=n_cl)
 
     check('SK_Hero loads', loads('/Game/Characters/Hero/SK_Hero'))
     da = unreal.load_asset('/Game/Characters/Hero/Suits/DA_HeroSuits')
@@ -662,7 +711,7 @@ def validate_showcase():
     failed = [c['name'] for c in checks if not c['passed']]
     out = os.path.join(PROJ, 'Saved', 'Showcase', 'validate.json')
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    json.dump({'passed': not failed, 'failed': failed, 'checked': len(checks), 'checks': checks, 'time': time.strftime('%Y-%m-%d %H:%M:%S')}, open(out, 'w'), indent=1)
+    json.dump({'passed': not failed, 'failed': failed, 'checked': len(checks), 'self_tests': self_tests, 'checks': checks, 'time': time.strftime('%Y-%m-%d %H:%M:%S')}, open(out, 'w'), indent=1)
     mlog('validate.json', out, 'failed', len(failed), 'of', len(checks))
     if failed and not sm2_common.STRICT: raise RuntimeError('showcase validation failed: %s' % failed[:6])
     _B.finish()

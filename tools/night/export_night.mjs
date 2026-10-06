@@ -115,7 +115,8 @@ try {
   const boards = await run((_, h) => {
     const byRec = new Map(window.__sm2Screens.all.filter(e => e.rec).map(e => [e.rec, e]));
     const rec = (r) => { const e = byRec.get(r) || {}; return { pos: h.arr(r.pos), dir: h.arr(r.dir), u: h.arr(r.u), width: h.r4(r.width), height: h.r4(r.height), color_linear_premult: h.arr([r.color.r, r.color.g, r.color.b]),
-      range: h.r4(r.range), radius: h.r4(r.radius), volume: h.r4(r.volume), avg_linear: e.avg ? h.arr(e.avg) : null, printed: !!e.pr, tag: e.tag ?? null, gain: e.g ?? null }; };
+      range: h.r4(r.range), radius: h.r4(r.radius), volume: h.r4(r.volume), avg_linear: e.avg ? h.arr(e.avg) : null, printed: !!e.pr, tag: e.tag ?? null, gain: e.g ?? null,
+      panels: e.panels ? e.panels.map(q => ({ c: h.arr(q.c), n: h.arr(q.n), u: h.arr(q.u), w: h.r4(q.w), h: h.r4(q.h), uv: q.uv ? h.arr(q.uv) : null, avg: q.avg ? h.arr(q.avg) : null, printed: q.pr, k: q.k })) : null }; };
     return window.__sm2Screens.boards.map(b => ({ x: h.r4(b.x), z: h.r4(b.z), R: h.r4(b.R), lod_near: h.r4(b.lod), far: h.r4(b.far), whole: rec(b.whole), tiles: b.tiles ? b.tiles.map(rec) : [] }));
   });
   const screensExtra = await run((_, h) => { const S = window.__sm2Screens; return { SL: h.plain(S.SL), uScrBoost: S.uScrBoost.value, uScrDesat: S.uScrDesat.value, uScrKnee: S.uScrKnee.value, uScrTop: S.uScrTop.value }; });
@@ -124,7 +125,8 @@ try {
     const blades = items(Pr.P.blade).map((it, i) => {
       const bc = Pr.bladeSignCol[i] ?? null, sn = Math.sin(it.ry || 0), cs = Math.cos(it.ry || 0);
       const lc = bc ? [0.35 + 0.65 * bc[0], 0.35 + 0.65 * bc[1], 0.35 + 0.65 * bc[2]] : null;
-      return { i, x: h.r4(it.x), y: h.r4(it.y || 0), z: h.r4(it.z), ry: h.r4(it.ry || 0), hidden: !!it.hidden, board_linear: bc ? h.arr(bc) : null,
+      const hh = Math.abs(Math.floor(it.x * 3.7) * 73856093 ^ Math.floor(it.z * 5.3) * 19349663) >>> 0; // props.js bladeFaces atlas cell
+      return { i, cell: hh % 64, x: h.r4(it.x), y: h.r4(it.y || 0), z: h.r4(it.z), ry: h.r4(it.ry || 0), hidden: !!it.hidden, board_linear: bc ? h.arr(bc) : null,
         light: { type: 'point', pos: [h.r4(it.x + 0.7 * sn), h.r4((it.y || 0) + 4.3), h.r4(it.z + 0.7 * cs)], color_linear: lc ? h.arr(lc) : null, intensity: Pr.bladeBlock.rec.intensity, range: Pr.bladeBlock.rec.range, radius: Pr.bladeBlock.rec.radius, volume: Pr.bladeBlock.rec.volume } };
     });
     const SB = Pr.signalBlock;
@@ -159,6 +161,7 @@ try {
     out.cityLights = { gain: L.cityLights.gain, volume: L.cityLights.volume, ambient_gain: L.cityLights.ambient.gain, stats: h.plain({ lights: L.cityLights.stats.lights, cand: L.cityLights.stats.cand, maxCell: L.cityLights.stats.maxCell }) };
     return out;
   });
+  const gate_exposure = lighting.tod.exposure;
   const clAmb = await run((_, h) => h.plain(window.__sm2CL.amb));
   const wlConsts = winMeta.WL;
 
@@ -242,6 +245,7 @@ try {
       words: { fields: ['cx', 'cy', 'cz', 'tx', 'tz', 'w', 'h', 'atlasCell', 'cr', 'cg', 'cb', 'seed'], ...words },
       constants: { NEON: neonExtra.NEON, ASPECT: neonExtra.ASPECT, W_: neonExtra.W_, C_hex: neonExtra.C_hex, VENUES: neonExtra.VENUES, stats: neonExtra.stats }, atlas: 'public/assets/city/tex/neon_words.webp' },
     constants, counts,
+    screen_k: Math.min(1.2, 0.9 * 0.5 / Math.max(gate_exposure, 0.3)),
   };
   const summary = { source: result.source, counts, per_category: rnd(sum), notes: { total_intensity: 'sum of authored add() intensity (rects: radiance)', total_lum_flux: 'sum of record luminance (rects: radiance x area)' } };
   fs.writeFileSync(path.join(OUT, 'night_lights.json'), JSON.stringify(result));

@@ -35,6 +35,17 @@ AWHLookHeroLight::AWHLookHeroLight()
 	Rim->SetOuterConeAngle(50.f); Rim->SetInnerConeAngle(20.f);
 }
 
+void AWHLookHeroLight::SetAmbientDrive(const FLinearColor& NewFillColor, float NewFillIntensity, float NewTopIntensity)
+{
+	if (!bBaseCaptured) { bBaseCaptured = true; BaseFillIntensity = FillIntensity; BaseFillColor = FillColor; }
+	FillColor = NewFillColor; FillIntensity = NewFillIntensity; TopIntensity = NewTopIntensity;
+	if (bLightsInit)
+	{
+		Fill->SetLightColor(FillColor); Fill->SetIntensity(FillIntensity);
+		Top->SetIntensity(TopIntensity);
+	}
+}
+
 void AWHLookHeroLight::SetPawnChannels(APawn* P)
 {
 	TInlineComponentArray<UPrimitiveComponent*> Prims; P->GetComponents(Prims);

@@ -42,6 +42,8 @@ window.__sm2CL = { statics, providers, cityLights, amb: { AMB_R, AMB_SOFT, AMB_G
     code: ' window.__sm2Facade = { WF, WB, WFN, faceBands, WL, SHOP_FRONTS, SHOP_LIGHT, floodU, NFLOOD };' },
   { file: 'src/world/screenlights.js', mode: 'eof', anchor: 'export function screenNightMat(m, key) {',
     code: '\n;window.__sm2Screens = { boards, SL, all, uScrBoost, uScrDesat, uScrKnee, uScrTop };\n' },
+  { file: 'src/world/screenlights.js', mode: 'before', anchor: 'e.sync(); E.e = e; all.push(e);',
+    code: 'e.panels = (E.list || [E]).map(q => ({ c: q.c, n: q.n, u: q.u, w: q.w, h: q.h, uv: q.uv ?? null, avg: q.avg ?? null, pr: !!q.pr, k: q.k ?? 1 })); ' },
   { file: 'src/world/props.js', mode: 'after', anchor: 'const _bc = new THREE.Color();',
     code: ' (window.__sm2Props ??= {}).bladeBlock = { BL_R, BL_N, rec, WARM };' },
   { file: 'src/world/props.js', mode: 'after', anchor: 'const near = new Array(SIG_N).fill(null), nearD = new Float32Array(SIG_N);',
