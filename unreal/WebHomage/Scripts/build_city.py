@@ -222,7 +222,7 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
                 ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.25), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('ScreenNightGain', 2.0), ('FarWinGain', 1.4), ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -347,7 +347,7 @@ Rough = r; NormalW = n; return a;''',
     make_material('M_CityVC', None, '''
 float4 t = UseMap > 0.5 ? Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y)) : float4(1, 1, 1, 1);
 float3 c = vc.rgb * Tint.rgb * t.rgb;
-Emis = c * EmisGain;
+Emis = c * EmisGain * lerp(1.0, screengain / 2.0, saturate(nightk));   // night: K x screenK (browser: screens' emissiveIntensity x screenK, lighting.js) instead of the day constant
 if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured solid surfaces (critic r06: 'untextured flat grey block'): large / medium / fine tonal variation + speckle, world space
   float3 pw = wpos * 0.01; float3 an = abs(normalize(wn)); float2 q = an.x > max(an.y, an.z) ? pw.yz : (an.y > an.z ? pw.xz : pw.xy);
   float nA = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 11.0, 0.0).g, nB = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 1.9, 0.0).r, nC = Texture2DSampleLevel(tNoise, tNoiseSampler, q / 0.23, 0.0).b;
@@ -360,7 +360,7 @@ if (UseMap < 0.5 && EmisGain < 0.01 && AlphaCut < 0.01) {   // (r07) untextured 
 Rough = RoughP; Metal = MetalP; Op = t.a > AlphaCut ? 1.0 : 0.0;
 return c;''',
         [('Map', 'texparam', TEXA('markings')), ('UseMap', 'scalar', 0.0), ('uv0', 'uv', 0), ('vc', 'vc', None), ('Tint', 'vector', (1, 1, 1, 1)),
-         ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('FillK', 'scalar', 1.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
+         ('screengain', 'mpc', 'ScreenNightGain'), ('RoughP', 'scalar', 0.7), ('MetalP', 'scalar', 0.0), ('EmisGain', 'scalar', 0.0), ('AlphaCut', 'scalar', 0.0), ('FillK', 'scalar', 1.0), ('tNoise', 'tex', TEXA('noise')), ('wpos', 'wpos', None), ('wn', 'wn', None),
          ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
@@ -501,11 +501,11 @@ float fillF = farfill * ours * lerp(1.0, 0.25, sunfF) * (0.7 + 0.3 * saturate(wn
 float LaF = dot(c, float3(0.2126, 0.7152, 0.0722));
 float LcF = LaF > farsunk ? farsunk + (LaF - farsunk) * 0.12 : LaF;
 c *= lerp(1.0, LcF / max(LaF, 1e-4), sunfF);
-Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * 1.4 * escale + cU * fillF;
+Rough = 0.85; Spec = 0.5; Emis = dnE * nightk * farwin * escale + cU * fillF;   // farwin (MPC FarWinGain, night 0.14): the far LOD's lit windows are a mean of the author's nFlM / nBdM (~0.1-0.25), not 1.4 x full window radiance
 if (dbgmode > 8.5 && dbgmode < 9.5) { Emis = float3(vca, 0, 1.0 - vca) * 0.05; c = float3(0, 0, 0); }
 if (dbgmode > 2.5 && dbgmode < 3.5) { Emis = float3(0, 0.05, 0); c = float3(0, 0, 0); Spec = 0.0; }   // window-test mask: far-shore blocks = green
 return c;""",
-        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill')],
+        [('vc', 'vc', None), ('vca', 'vca', None), ('wpos', 'wpos', None), ('wn', 'wn', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('farwin', 'mpc', 'FarWinGain'), ('dbgmode', 'mpc', 'DebugMode'), ('fargain', 'mpc', 'FarGain'), ('farjit', 'mpc', 'FarJit'), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR), ('Spec', 1, MP.MP_SPECULAR)], world_normal=False)
     # (r06) coast (waterfront.js createCoastMaterial port): granite / riprap / planks / bulkhead atlas tiles, lawn, pavers, ribbed metal, picket cards;
     # UV0 = uv, UV1.x = aTile, vertex colour = tint (paint / solid tiles). Masked: picket cards discard between the bars.
@@ -716,6 +716,7 @@ float3 nzB = Texture2DSampleLevel(tNoise, tNoiseSampler, (vWPs.xz * 0.6 + vWPs.y
 float4 tx = float4(1, 1, 1, 1);
 if (K == 3) tx = tLed; else if (K > 0 && K != 6 && K != 7) tx = vMapUv.x > 3.5 ? tR : (vMapUv.x > 1.5 ? tS : tA);
 float lum = dot(tx.rgb, float3(0.2126, 0.7152, 0.0722));
+float sgK = lerp(2.0, screengain, saturate(nightk));   // day 2.0; night K x screenK (screens: emissiveIntensity x screenK 0.1 in the browser)
 float3 dc = vc.rgb; float sgR = 0.55; float sgM = 0.0; float3 sgE = float3(0, 0, 0); float opv = 1.0;
 if (K == 0) { sgR = 0.5 + 0.3 * nzB.r; sgM = 0.35; dc *= 0.85 + 0.3 * nzA.g; }
 else if (K == 1) {
@@ -756,7 +757,7 @@ else if (K == 1) {
 } else if (K == 9) {
   if (smoothstep(0.28, 0.42, lum) < 0.5) opv = 0.0;
   dc = tx.rgb * (0.78 + 0.25 * nzB.r); sgM = tx.r > tx.b * 1.4 ? 0.6 : 0.0; sgR = 0.38 + 0.2 * nzA.g;
-  sgE = tx.rgb * 0.35 * nightk;
+  sgE = tx.rgb * 0.35 * nightk; sgK = lerp(2.0, escale, saturate(nightk));   // printed billboards lamp-lit at night: browser emissiveIntensity x windows, no screenK -> K
 } else {
   float3 brd = vMapUv.x > 3.5 ? bR.rgb : bS.rgb;
   float lumL = smoothstep(0.1, 0.24, abs(lum - dot(brd, float3(0.2126, 0.7152, 0.0722))));
@@ -776,10 +777,10 @@ else if (K == 1) {
 }
 float fillW = (K == 3 || K == 4 || K == 6) ? 0.0 : 1.0;
 Rough = sgR; Metal = sgM; Op = opv; float3 nv = normalize(wn);
-Emis = sgE * 2.0 + fillW * CityShadeFill(dc, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
+Emis = sgE * sgK + fillW * CityShadeFill(dc, nv, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, nv, ResolvedView.DirectionalLightDirection.xyz));
 return dc;""",
         [('tAds', 'tex', TEXA('Maps/assets_city_tex_ts_ads')), ('tSigns', 'tex', TEXA('Maps/assets_city_tex_ts_signs')), ('tArt', 'tex', TEXA('Maps/assets_city_tex_city_signart')), ('tNoise', 'tex', TEXA('noise')),
-         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'),
+         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('uv2', 'uv', 2), ('vc', 'vc', None), ('wpos', 'wpos', None), ('nightk', 'mpc', 'NightK'), ('screengain', 'mpc', 'ScreenNightGain'), ('escale', 'mpc', 'EmissiveScale'),
          ('wn', 'wn', None), ('cam', 'cam', None), ('shadefill', 'mpc', 'ShadeFill'), ('tSunH', 'tex', TEXA('sunmask_h'))],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)],
         blend='masked', world_normal=False)
@@ -825,12 +826,12 @@ float3 hc = wn.z > 0.5 ? roof : wc;
 float sunfH = smoothstep(0.0, 0.4, dot(normalize(wn), ResolvedView.DirectionalLightDirection.xyz));
 float3 hcU = hc;
 hc *= lerp(1.0, farlitk * 0.7, sunfH);   // x 0.7: the sun-facing faces of the 5-12 km backdrop towers are haze + sun = bright flat 8x8 blocks (S4 critic box, T4); the near fabric keeps FarLitK
-Emis = hcU * farfill * lerp(1.0, 0.25, sunfH) * (0.7 + 0.3 * saturate(wn.z + 0.5));   // (r11) sky / ground bounce on the shaded faces, see M_CityFarMass (MPC FarFill)
+Emis = hcU * farfill * lerp(1.0, 0.25, sunfH) * (0.7 + 0.3 * saturate(wn.z + 0.5)) * (1.0 - saturate(nightk));   // (r11) sky / ground bounce on the shaded faces, see M_CityFarMass (MPC FarFill)
 float LaH = dot(hc, float3(0.2126, 0.7152, 0.0722));
 float LcH = LaH > farsunk ? farsunk + (LaH - farsunk) * 0.12 : LaH;
 hc *= lerp(1.0, LcH / max(LaH, 1e-4), sunfH);
 return hc;''',
-        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill')],
+        [('w0', 'pcd', (0, 0)), ('w1', 'pcd', (1, 0)), ('w2', 'pcd', (2, 0)), ('r0', 'pcd', (3, 0)), ('r1', 'pcd', (4, 0)), ('r2', 'pcd', (5, 0)), ('wpos', 'wpos', None), ('wn', 'wn', None), ('farsunk', 'mpc', 'FarSunK'), ('farlitk', 'mpc', 'FarLitK'), ('farfill', 'mpc', 'FarFill'), ('nightk', 'mpc', 'NightK')],
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], world_normal=False)
     make_material('M_CityCrown', None, '''
 float3 p = wpos * 0.01;

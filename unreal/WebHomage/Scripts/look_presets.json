@@ -383,7 +383,7 @@
     "mie_scattering_scale": 0.012,
     "mie_absorption_scale": 0.0012,
     "mie_anisotropy": 0.8,
-    "aerial_perspective_distance_scale": 5.0,
+    "aerial_perspective_distance_scale": 0.05,
     "aerial_perspective_start_depth": 0.02,
     "height_fog_contribution": 1.0,
     "ground_albedo": [
@@ -393,9 +393,9 @@
      255
     ],
     "sky_luminance_factor": [
-     0.06,
-     0.06,
-     0.06,
+     0.0342,
+     0.0432,
+     0.0962,
      1.0
     ],
     "rayleigh_scattering": [
@@ -445,18 +445,21 @@
     "layer_bottom_altitude": 3.5,
     "layer_height": 6.0,
     "coverage": 0.35,
-    "tracing_max_distance": 30.0
+    "tracing_max_distance": 30.0,
+    "enabled": false,
+    "_comment": "the author's night clouds are a featureless haze veil (clouds 0.14): no VolumetricCloud actor at night"
    },
    "mpc": {
     "NightK": 1.0,
     "DnTime": 2400.0,
     "InteriorGain": 2.5,
     "ShopGain": 1.05,
-    "EmissiveScale": 200.0
+    "EmissiveScale": 200.0,
+    "FarWinGain": 0.14
    },
    "exposure": {
-    "min_ev": 4.8,
-    "max_ev": 6.3,
+    "min_ev": 5.53,
+    "max_ev": 5.53,
     "bias": 0.0
    },
    "post": {
@@ -653,11 +656,9 @@
    "fills": [],
    "fills_desc": "none: the author has no fill lights at night; city glow = local lights + Lumen GI + AWHCityLights ambient",
    "units": {
-    "_comment": "The night rig in the author's units (~/sm2-n1/_scratch/night/export/night_lights.json constants.lighting_runtime_at_night): ONE constant K = UE cd/m2 (lux, nits) per browser unit, the same K as Scripts/night_city.json. Browser display = radiance x display_exposure (tod.exposure 4.5 x grade.exposure 0.8 = 3.6). UE: display = radiance x K / (1.2 x 2^EV100)  =>  EV100 = log2(K / (1.2 x display_exposure)) = log2(200 / 4.32) = 5.53; auto exposure (the author's partial aeStrength 0.42) = [EV100 - 0.73, EV100 + 0.77] = [4.8, 6.3], bias 0. Moon = moon_intensity x K lux (linear colour moon_color_linear). Fog in-scatter = nh_low x K. fog: derive_fog() in build_look.py (optical depth fit at 300 m / 2 km). EmissiveScale = K, so a facade's FS.emis (browser units) is emitted as FS.emis x K. build_look.derive_units() overwrites exposure / moon lux / mpc.EmissiveScale / fog from here.",
+    "_comment": "The night rig in the author's units (~/sm2-n1/_scratch/night/export/night_lights.json constants.lighting_runtime_at_night): ONE constant K = UE cd/m2 (lux, nits) per browser unit, the same K as Scripts/night_city.json. Browser display = radiance x display_exposure (tod.exposure 4.5 x grade.exposure 0.8 = 3.6). UE: display = radiance x K / (1.2 x 2^EV100)  =>  EV100 = log2(K / (1.2 x display_exposure)) = log2(200 / 4.32) = 5.53; auto exposure range = EV100 +- auto_range (0 = fixed exposure for calibration; the author's partial aeStrength 0.42 would be about +-0.75), bias 0. Moon = moon_intensity x K lux (linear colour moon_color_linear). Fog in-scatter = nh_low x K. fog: derive_fog() in build_look.py (optical depth fit at 300 m / 2 km). EmissiveScale = K, so a facade's FS.emis (browser units) is emitted as FS.emis x K. build_look.derive_units() overwrites exposure / moon lux / mpc.EmissiveScale / fog from here.",
     "K": 200.0,
     "display_exposure": 3.6,
-    "exposure_min_offset": -0.73,
-    "exposure_max_offset": 0.77,
     "exposure_bias": 0.0,
     "moon_intensity": 0.4174,
     "moon_color_linear": [
@@ -679,7 +680,10 @@
      "match_near_m": 300.0,
      "match_far_m": 2000.0,
      "max_opacity": 0.99
-    }
+    },
+    "auto_range": 0.0,
+    "screen_k": 0.1,
+    "fog_inscatter_scale": 0.0971
    }
   }
  }

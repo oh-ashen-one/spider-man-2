@@ -176,11 +176,11 @@ float eb = min(min(uv0.x, 1.0 - uv0.x), min(uv0.y, 1.0 - uv0.y));   // r03 pass 
 Op = tx.a * bnd * smoothstep(0.0, 0.07, eb + 0.04 * (lum - 0.5)); Sub = c * 0.85; Rough = 0.78;
 float dcam = length(wpos - cam) * 0.01;
 AO = lerp(0.7, 1.0, expo);   // r03: sky light through the leaf exposure (Lumen indirect / sky only; the sun is untouched)
-Emis = c * fill * tfFillW(expo, wn, sun, dcam);   // r03: the r02 constant fill (c * 1800 * (0.4 + 0.6 expo)) is gone; residual fill only in shade, 0 within 10 m (Foliage.ush tfFillW). Units: sunlit albedo A radiates ~10000 A cd/m2 under the golden rig
+Emis = c * fill * tfFillW(expo, wn, sun, dcam) * (1.0 - saturate(nightk));   // x (1 - NightK): this day fill (FILL cd/m2 per unit albedo) is 650 cd/m2 x albedo, ~12 display units at the night exposure (EV 5.5)   // r03: the r02 constant fill (c * 1800 * (0.4 + 0.6 expo)) is gone; residual fill only in shade, 0 within 10 m (Foliage.ush tfFillW). Units: sunlit albedo A radiates ~10000 A cd/m2 under the golden rig
 return c;''',
         inputs=[('tLeaf', 'texparam', 'leaf_oak'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0),
-                ('wn', 'wn', None), ('sun', 'sun', 0), ('fill', 'scalar', FILL)],
+                ('wn', 'wn', None), ('sun', 'sun', 0), ('fill', 'scalar', FILL), ('nightk', 'mpc', 'NightK')],
         outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Emis', 3, 'MP_EMISSIVE_COLOR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')], two_sided=True, blend='masked', foliage=True, nanite=True))
     # ez-tree bark / park trunks (vertex colour = ambient occlusion, flat bark tint) with the same LOD band clip
     M.append(dict(name='M_TerrainBark', include=FOLI_INC, code='''
@@ -207,11 +207,11 @@ float3 c = TerrainLeafCards(tAtlas, tAtlasSampler, uv0, uv1, float3(a0, a1, a2),
 Op = op; Sub = sub * gain; Rough = 0.78;
 float ex = saturate(uv1.x >= 1.5 ? uv1.x - 2.0 : uv1.x);
 AO = lerp(0.7, 1.0, ex);   // r03: sky light through the card exposure
-Emis = c * gain * fill * tfFillW(ex, wn, sun, length(wpos - cam) * 0.01);   // r03: shade- and distance-weighted residual fill (was the constant c * 1800 * (0.4 + 0.6 ex))
+Emis = c * gain * fill * tfFillW(ex, wn, sun, length(wpos - cam) * 0.01) * (1.0 - saturate(nightk));   // x (1 - NightK), see M_TerrainLeaves   // r03: shade- and distance-weighted residual fill (was the constant c * 1800 * (0.4 + 0.6 ex))
 return c * gain;''',
         inputs=[('tAtlas', 'tex', 'leaf_atlas'), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('a0', 'pcd', 0), ('a1', 'pcd', 1), ('a2', 'pcd', 2), ('b0', 'pcd', 3), ('b1', 'pcd', 4), ('b2', 'pcd', 5),
                 ('wn', 'wn', None), ('wpos', 'wpos', None), ('cam', 'cam', None), ('band', 'vector', (0, 0, 0, 0)), ('t', 'time', None), ('gain', 'scalar', 1.0),
-                ('sun', 'sun', 0), ('fill', 'scalar', FILL)],
+                ('sun', 'sun', 0), ('fill', 'scalar', FILL), ('nightk', 'mpc', 'NightK')],
         outputs=[('', 3, 'MP_BASE_COLOR'), ('Op', 1, 'MP_OPACITY_MASK'), ('Sub', 3, 'MP_SUBSURFACE_COLOR'), ('Rough', 1, 'MP_ROUGHNESS'), ('Emis', 3, 'MP_EMISSIVE_COLOR'), ('AO', 1, 'MP_AMBIENT_OCCLUSION')], two_sided=True, blend='masked', foliage=True))
     # lumpy clump crowns (browser pool `trees-*-crown`; r03: drawn only >= 520 m, the 165-520 m band is the leaf-card LOD1 `trees-*-lod1` on M_TerrainCards): procedural clumps of leaf speckle, ragged see-through silhouette, normal from the clump height field
     M.append(dict(name='M_TerrainClump', include=FOLI_INC, code='''

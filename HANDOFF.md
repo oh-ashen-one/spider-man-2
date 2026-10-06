@@ -47,6 +47,12 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - Matched cameras: `tools/showcase/gen_shot_cams.py` -> shot_cams.json; `play.py --capture DIR --shot-cams FILE --name night`; `tools/showcase/pairs.py DIR` writes pair_<shot>.png + pairs.json; `tools/showcase/skyprobe.py`; `cal_iter.sh` = one calibration iteration. `play.py --exec "cvar"` adds console commands to a capture.
 - Traversal hero fill fades with (1 - NightK). Open: the matched street shot's asphalt is still ~5x the reference (GI off: 2.6x, lamps off: not lower), see the lead report.
 
+### Night calibration round 2 (fixed exposure EV 5.53)
+- Cause of the flat bright night: the SkyAtmosphere aerial perspective (aerial_perspective_distance_scale 5.0 of the old rig) added ~0.5 display units to every far pixel, and day-tuned emissive fills ran at K units (terrain foliage fill 650 cd/m2 x albedo; city screens at the day constant 2.0 instead of K x screenK). AP scale is now 0.05, foliage fill x (1 - NightK), M_CityVC / M_CitySignage use MPC ScreenNightGain (= K x 0.1), M_CityFarMass windows use FarWinGain (0.14).
+- Night has no VolumetricCloud actor; sky hue via sky_luminance_factor (0.0342, 0.0432, 0.0962). units.auto_range = 0 (fixed exposure); +-0.75 tested: lifts dark views, over-brightens bright ones (see the report).
+- Boards: `tools/night/board_check.py --write` (run by the look step) keeps only boards inside the detailed midtown region, projects floating / buried ones onto our facade planes within 3 m, drops the rest (2526 -> 458).
+- Tools: `tools/showcase/{cap_run.sh,table.py,skyprobe.py,pairs.py}`; `build_manhattan.py` accepts SM2_CITY_ONLY=mat and SM2_TERRAIN_ONLY=mat.
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 

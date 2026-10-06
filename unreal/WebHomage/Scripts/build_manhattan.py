@@ -227,7 +227,7 @@ def step_city():
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}
     bc = os.path.join(HERE, 'build_city.py')
     # one pass in build_city.py's own default order (tools/export/build_city.sh): the map step spawns the kit + far-skyline actors
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map"}'), env, sentinel='build_city.py')
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = %r' % {'steps': os.environ.get('SM2_CITY_ONLY') or 'clean,tex,mat,mesh,proto,kit,fsky,map'}), env, sentinel='build_city.py')   # SM2_CITY_ONLY=mat rebuilds the materials only
 
 
 def step_traversal():
@@ -272,6 +272,7 @@ def step_characters():
 def step_look():
     if 'night' in LOOK_STEPS.split(','):   # packs the author's night lights (fails clearly when the exporter output is missing)
         sh(['python3', os.path.join(WT, 'tools/night/prep_night.py')], log_name='night_prep.log')
+        sh(['python3', os.path.join(WT, 'tools/night/board_check.py'), '--write'], log_name='night_boards.log')   # boards onto OUR facade planes (drops those with no building within 3 m / outside the detailed region)
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': LOOK_STEPS, 'SM2_LOOK_PRESETS': 'midday,golden,night'}
     ue_python('look', exec_wrapper(os.path.join(HERE, 'build_look.py'), ''), env, sentinel='build_look.py')
 

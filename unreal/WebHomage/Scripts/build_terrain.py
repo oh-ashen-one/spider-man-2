@@ -190,6 +190,9 @@ def make_material(name, include, code, inputs, outputs, two_sided=False, world_n
         elif kind == 'vector':
             e = mel.create_material_expression(m, unreal.MaterialExpressionVectorParameter, -900, y)
             e.set_editor_property('parameter_name', n); e.set_editor_property('default_value', unreal.LinearColor(*arg))
+        elif kind == 'mpc':   # MPC_City scalar (NightK gates the day fills)
+            e = mel.create_material_expression(m, unreal.MaterialExpressionCollectionParameter, -900, y)
+            e.set_editor_property('collection', load('/Game/City/Materials/MPC_City')); e.set_editor_property('parameter_name', arg)
         elif kind == 'time':
             e = mel.create_material_expression(m, unreal.MaterialExpressionTime, -900, y)
         elif kind == 'pir':

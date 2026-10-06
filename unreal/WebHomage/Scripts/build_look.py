@@ -169,11 +169,12 @@ def derive_units(P):
     if not U: return None
     K = float(U['K'])
     ev = math.log2(K / (1.2 * U['display_exposure']))   # browser display = radiance x display_exposure; UE: radiance x K / (1.2 x 2^EV100)
-    P['exposure'] = {'min_ev': round(ev + U['exposure_min_offset'], 2), 'max_ev': round(ev + U['exposure_max_offset'], 2), 'bias': U.get('exposure_bias', 0.0)}
+    P['exposure'] = {'min_ev': round(ev - U['auto_range'], 3), 'max_ev': round(ev + U['auto_range'], 3), 'bias': U.get('exposure_bias', 0.0)}
     P['moon']['lux'] = U['moon_intensity'] * K
     P['moon']['color_linear'] = U['moon_color_linear']
     P['mpc']['EmissiveScale'] = K
-    P['fog']['fog_inscattering_luminance'] = [U['nh_low'][0] * K, U['nh_low'][1] * K, U['nh_low'][2] * K, 1.0]
+    P['mpc']['ScreenNightGain'] = K * U['screen_k']   # screens / ads: browser emissiveIntensity x screenK (lighting.js: 0.9 x lerp(1, 0.5, windows) / exposure 4.5 = 0.1) x K
+    P['fog']['fog_inscattering_luminance'] = [U['nh_low'][i] * K * U.get('fog_inscatter_scale', 1.0) for i in range(3)] + [1.0]   # fog_inscatter_scale: measured UE-vs-author correction (round 3: far pixels of view_skyline_high read 10.3x the author's with the nominal NH.low x K)
     fg = derive_fog(U['fog'])
     P['fog'].update({k: fg[k] for k in ('fog_density', 'fog_height_falloff', 'start_distance')})
     P['fog']['fog_max_opacity'] = U['fog']['max_opacity']
@@ -225,16 +226,17 @@ def build_rig(name):
                  ('light_color', unreal.Color(r=int(255 * P['sky']['tint'][0]), g=int(255 * P['sky']['tint'][1]), b=int(255 * P['sky']['tint'][2]), a=255)), ('lower_hemisphere_is_black', False)):
         setp(slc, k, v, 'SkyLight')
     # --- volumetric clouds
-    vc = spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
-    vcc = vc.get_component_by_class(unreal.VolumetricCloudComponent)
-    cl = P['clouds']
-    mat = unreal.load_asset('/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst')
-    if cl.get('mi'): mat = make_cloud_mi(name, cl['mi']) or mat   # (round 03) overcast: own instance of the engine cloud material (coverage / density / albedo)
-    if mat: setp(vcc, 'material', mat, 'Clouds')
-    else: MISS.append('Clouds: m_SimpleVolumetricCloud_Inst missing')
-    for k in ('layer_bottom_altitude', 'layer_height', 'tracing_max_distance'): setp(vcc, k, float(cl[k]), 'Clouds')
-    setp(vcc, 'view_sample_count_scale', 0.6, 'Clouds'); setp(vcc, 'shadow_view_sample_count_scale', 0.3, 'Clouds')
-    setp(vcc, 'reflection_view_sample_count_scale_value', 0.5, 'Clouds')
+    if P['clouds'].get('enabled', True):
+        vc = spawn(unreal.VolumetricCloud, unreal.Vector(0, 0, 0), label='Clouds', folder='Lighting')
+        vcc = vc.get_component_by_class(unreal.VolumetricCloudComponent)
+        cl = P['clouds']
+        mat = unreal.load_asset('/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst')
+        if cl.get('mi'): mat = make_cloud_mi(name, cl['mi']) or mat   # (round 03) overcast: own instance of the engine cloud material (coverage / density / albedo)
+        if mat: setp(vcc, 'material', mat, 'Clouds')
+        else: MISS.append('Clouds: m_SimpleVolumetricCloud_Inst missing')
+        for k in ('layer_bottom_altitude', 'layer_height', 'tracing_max_distance'): setp(vcc, k, float(cl[k]), 'Clouds')
+        setp(vcc, 'view_sample_count_scale', 0.6, 'Clouds'); setp(vcc, 'shadow_view_sample_count_scale', 0.3, 'Clouds')
+        setp(vcc, 'reflection_view_sample_count_scale_value', 0.5, 'Clouds')
     # --- exponential height fog: near-clear canyon, aerial haze band, volumetric fog for light shafts, a second high haze layer
     fog = spawn(unreal.ExponentialHeightFog, unreal.Vector(0, 0, 0), label='HeightFog', folder='Lighting')
     fc = fog.get_component_by_class(unreal.ExponentialHeightFogComponent)
