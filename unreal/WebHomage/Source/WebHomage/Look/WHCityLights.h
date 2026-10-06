@@ -105,6 +105,8 @@ private:
 	float SinceRebuild = 1e9f;
 	float NightK = 0.f, LastNightK = -1.f, LastGain = -1.f;
 	FVector AmbLo = FVector::ZeroVector, AmbHi = FVector::ZeroVector;
+	FVector AmbTargetLo = FVector::ZeroVector, AmbTargetHi = FVector::ZeroVector;   // last ambient sum (recomputed every rebuild interval)
+	float AmbAcc = 0.f;
 	float DebugT = 0.f;
 	TObjectPtr<UMaterialParameterCollection> MPC;
 	TWeakObjectPtr<AWHLookHeroLight> HeroLight;

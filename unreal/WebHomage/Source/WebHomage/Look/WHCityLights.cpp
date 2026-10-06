@@ -422,13 +422,11 @@ void AWHCityLights::UpdateShadows(const FVector& HeroLoc)
 // player; split into a lower hemisphere (street bounce) and an upper one. Units: metres, irradiance-like browser units.
 void AWHCityLights::UpdateAmbient(const FWHCLView& V, float Dt)
 {
-	static FVector TargetLo = FVector::ZeroVector, TargetHi = FVector::ZeroVector;
-	static float Acc = 0.f;
-	Acc += Dt;
-	if (Acc >= Cfg.RebuildIntervalS || Dt <= 0.f)
+	AmbAcc += Dt;
+	if (AmbAcc >= Cfg.RebuildIntervalS || Dt <= 0.f)
 	{
-		Acc = 0.f;
-		TargetLo = TargetHi = FVector::ZeroVector;
+		AmbAcc = 0.f;
+		AmbTargetLo = AmbTargetHi = FVector::ZeroVector;
 		if (NightK >= 0.01f)
 		{
 			APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0);
@@ -460,15 +458,15 @@ void AWHCityLights::UpdateAmbient(const FWHCLView& V, float Dt)
 					const float Up = FMath::Clamp(D.Z / (d + 1.f), -1.f, 1.f);
 					const float Lo = 0.62f + 0.18f * FMath::Max(0.f, Up);
 					const FVector Cc(R.Col[0] * R.Intensity, R.Col[1] * R.Intensity, R.Col[2] * R.Intensity);
-					TargetLo += Cc * (F * Lo); TargetHi += Cc * (F * (1.f - Lo));
+					AmbTargetLo += Cc * (F * Lo); AmbTargetHi += Cc * (F * (1.f - Lo));
 				}
 			}
 			const float G = CVarGain.GetValueOnGameThread();
-			TargetLo *= G; TargetHi *= G;
+			AmbTargetLo *= G; AmbTargetHi *= G;
 		}
 	}
 	const float A = 1.f - FMath::Exp(-Dt / 0.5f);
-	AmbLo = FMath::Lerp(AmbLo, TargetLo, A); AmbHi = FMath::Lerp(AmbHi, TargetHi, A);
+	AmbLo = FMath::Lerp(AmbLo, AmbTargetLo, A); AmbHi = FMath::Lerp(AmbHi, AmbTargetHi, A);
 	AmbientLower = FLinearColor(AmbLo.X, AmbLo.Y, AmbLo.Z); AmbientUpper = FLinearColor(AmbHi.X, AmbHi.Y, AmbHi.Z);
 }
 
