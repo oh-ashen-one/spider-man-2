@@ -6,6 +6,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 import { translate, PRELUDE } from './glsl2hlsl.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -28,15 +30,52 @@ float3 CityU2B(float3 v) { return float3(v.x, v.z, v.y); }            // UE fram
 `;
 
 // ------------------------------------------------------------------ facade
+// Source of Facade.ush: the original author's night mode (~/spiderbench @ 64d957f9, pinned + clean tree, read-only) by default, since the owner chose
+// the author's night look; --facade-src=fork generates it from our fork's src/world/facade.js (the old night window model) instead.
+// Every other .ush stays generated from our fork.
+const AUTHOR = path.join(os.homedir(), 'spiderbench');
+const AUTHOR_COMMIT = '64d957f92f005a1c1870070079351e30b2395661';
+const facadeFork = process.argv.includes('--facade-src=fork');
+const NIGHT_JSON = process.env.SM2_NIGHT_JSON || path.join(os.homedir(), 'sm2-n1/_scratch/night/export/night_lights.json');
 {
-  const js = src('facade.js');
-  const glsl = between(js, 'const FRAG_DECL = /* glsl */`', '`;');
+  let js, srcLabel;
+  if (facadeFork) { js = src('facade.js'); srcLabel = 'src/world/facade.js (our fork)'; }
+  else {
+    const git = (...a) => execFileSync('git', ['-C', AUTHOR, ...a], { encoding: 'utf8' }).trim();
+    const head = git('rev-parse', 'HEAD');
+    if (head !== AUTHOR_COMMIT) throw new Error(`~/spiderbench is at ${head}, expected ${AUTHOR_COMMIT}`);
+    if (git('status', '--porcelain')) throw new Error('~/spiderbench tree is not clean');
+    js = fs.readFileSync(path.join(AUTHOR, 'src/world/facade.js'), 'utf8');
+    srcLabel = `~/spiderbench/src/world/facade.js @ ${AUTHOR_COMMIT.slice(0, 8)} (the original author's night mode)`;
+  }
+  let glsl = between(js, 'const FRAG_DECL = /* glsl */`', '`;');
+  let floodHlsl = '';
+  if (!facadeFork) {
+    // JS template placeholders of the author's chunk (NFLOOD = 12 crown-flood slots)
+    glsl = glsl.replace(/\$\{NFLOOD \* 3\}/g, '36').replace(/\$\{NFLOOD\}/g, '12');
+    const flood = 'uniform vec4 uFl[36]; uniform vec4 uFlBB; uniform vec2 uFlY;\n';
+    if (glsl.split(flood).length !== 2) throw new Error('author facade.js: crown-flood uniform declaration not found exactly once');
+    glsl = glsl.replace(flood, '');
+    // the crown floodlights are static: bake the export's addCrownFlood() data (tools/night/export_night.mjs) into const arrays (browser metres)
+    const NJ = JSON.parse(fs.readFileSync(NIGHT_JSON, 'utf8'));
+    if (NJ.source.commit !== AUTHOR_COMMIT) throw new Error('night_lights.json commit ' + NJ.source.commit + ' != pinned');
+    const cf = NJ.crown_floods, v4 = (a) => `float4(${a.map(x => Number(x).toFixed(5) + 'f').join(', ')})`;
+    const U = Array.from({ length: 36 }, () => [0, 0, 0, 0]);
+    cf.floods.forEach((f, i) => { U[i * 3] = [f.box.x0, f.box.z0, f.box.x1, f.box.z1]; U[i * 3 + 1] = [f.y0, f.y1, f.reach, f.pad]; U[i * 3 + 2] = [...f.rgb_gain, f.streak]; });
+    if (cf.NFLOOD !== 12) throw new Error('NFLOOD changed');
+    floodHlsl = `// (UE) crown floodlights baked from ${path.basename(NIGHT_JSON)} crown_floods (${cf.floods.length} floods; the browser sets them with addCrownFlood()): uFl = per flood (x0 z0 x1 z1),
+// (y0 y1 reach pad), (rgb * gain, streak pitch); uFlBB = union box, uFlY = (lowest y0, count). Browser metres.
+static const float4 uFl[36] = { ${U.map(v4).join(', ')} };
+static const float4 uFlBB = ${v4(cf.bb)};
+static const float2 uFlY = float2(${cf.y.map(x => Number(x).toFixed(5) + 'f').join(', ')});
+`;
+  }
   const TEX = [['tWallC', 1], ['tWallN', 1], ['tWallH', 1], ['tDetail', 0], ['tInterior', 0], ['tSigns', 0], ['tNoise', 0]];
   const { decl, pass } = texMacros(TEX);
   const body = translate(glsl, { arrays: new Set(TEX.filter(t => t[1]).map(t => t[0])), textures: TEX.map(t => t[0]) })
     .replace(/\bR \* (vFac|gDx|gDy)\b/g, 'mul($1, R)'); // GLSL mat2 * vec (column-major) == HLSL mul(vec, float2x2(same list)
   // ---- UE-only patches (the browser source stays untouched). Each patch must match exactly once or the generator fails.
-  const uePatch = (from, to) => { const n = body2.split(from).length - 1; if (n !== 1) throw new Error(`UE patch matched ${n}x: ${from}`); body2 = body2.replace(from, () => to); };
+  const uePatch = (from, to) => { const n = body2.split(from).length - 1; if (n !== 1) throw new Error(`UE patch matched ${n}x: ${from}\n  nearest lines: ${body2.split('\n').filter(l => l.includes(from.slice(0, 22))).slice(0, 3).join('\n  ')}`); body2 = body2.replace(from, () => to); };
   let body2 = body;
   // (r04) interior-mapping mip: the browser measures texel density on a native-resolution frame; UE renders at 50-73 % internal
   // resolution + TSR, so the derivative-based level came out 1-2 mips too high (rooms = flat beige average). Bias -3 mips: TSR resolves it.
@@ -48,7 +87,9 @@ float3 CityU2B(float3 v) { return float3(v.x, v.z, v.y); }            // UE fram
   // window shows the room photo (shelves, desks, curtains) instead of a flat tint.
   uePatch('static float2 gWob =', 'static float gRoomWrap = 0.0f; // (UE r04) >0: back-wall photo repeats every gRoomWrap m\nstatic float2 gWob =');
   uePatch('float2 q = float2(h.x / rw,h.y / rh);', 'float2 q = float2(gRoomWrap > 0.0f ? frac(h.x / gRoomWrap) : h.x / rw,h.y / rh);');
-  uePatch('float3 room = interior(TEXPASS, float2(gmod(gp.x, mw),gp.y - glassY0), dirIn, mw, signY0 - glassY0 + 0.6f, 5.0f,',
+  // (the author's night chunk already widens the shop room at night: bool wideR = uNightK > 0.35; UE keeps its own always-wide room, day and night alike)
+  uePatch(facadeFork ? 'float3 room = interior(TEXPASS, float2(gmod(gp.x, mw),gp.y - glassY0), dirIn, mw, signY0 - glassY0 + 0.6f, 5.0f,'
+                     : 'float3 room = interior(TEXPASS, wideR ? float2(gp.x,gp.y - glassY0) : float2(gmod(gp.x, mw),gp.y - glassY0), dirIn, wideR ? gw : mw, signY0 - glassY0 + 0.6f, 5.0f,',
           'gRoomWrap = gw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * mw,gp.y - glassY0), dirIn, gw + 24.0f * mw, signY0 - glassY0 + 0.6f, 5.0f,');
   uePatch('float3 room = interior(TEXPASS, float2(gp.x,gp.y), dirIn, bw, fh, curtain ? 6.0f : 4.0f, tile, lit, 0.0f);',
           'gRoomWrap = bw; float3 room = interior(TEXPASS, float2(gp.x + 12.0f * bw,gp.y), dirIn, 25.0f * bw, fh, curtain ? 6.0f : 4.0f, tile, lit, 0.0f); gRoomWrap = 0.0f;');
@@ -204,8 +245,18 @@ float3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, flo
   uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + q.x) / 4.0f,1.0f - (tileUV.y + 1.0f - q.y) / 4.0f)), gLodI).rgb;\n  } else if (t == ty) {',
           '    if (shop > 0.5f) { float wr = gRoomWrap > 0.0f ? gRoomWrap : rw; col = shopBack(float2(frac(h.x / wr) * wr, h.y), tile - 12.0f, floor(h.x / wr) * 3.7f + tile, gPixM * 1.6f); }\n    else col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + q.x) / 4.0f,1.0f - (tileUV.y + 1.0f - q.y) / 4.0f)), gLodI).rgb;\n  } else if (t == ty) {');
   uePatch('col = shop > 0.5f ? float3(0.55f,0.52f,0.48f) :', 'col = shop > 0.5f ? shopFloor(h) :');
-  uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));',
+  if (facadeFork) uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));',
           '    if (shop > 0.5f) col = shopWall(h, dir.x);\n    else { col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);\n    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f)); }');
+  else {
+    // (author's chunk) the same two UE changes around the author's night-only side-wall lines (those only touch uNightK > 0 paths): shops keep UE's crisp procedural
+    // side walls (day and night), the atlas side-wall block of the author's night (uNightK > 0.5) applies to non-shop rooms only, and the photo-wall depth shade skips shops.
+    uePatch('    col = Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);',
+            '    col = shop > 0.5f ? shopWall(h, dir.x) : Texture2DSampleLevel(tInterior, tInteriorSampler, fl2(float2((tileUV.x + 0.5f) / 4.0f,1.0f - (tileUV.y + 0.6f) / 4.0f)), 7.0f).rgb * (dir.x > 0.0f ? 0.8f : 0.7f);');
+    uePatch('    col *= lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));', '    col *= shop > 0.5f ? 1.0f : lerp(0.7f, 1.0f, clamp(h.y / rh, 0.0f, 1.0f));');
+    uePatch('if (uNightK > 0.5f) {', 'if (uNightK > 0.5f && shop < 0.5f) {');
+    // the author's wide-shop-room shelving tiling (q.x) is not gated by night: keep UE's own room wrap (gRoomWrap) by day
+    uePatch('if (shop > 0.5f && rw > 4.5f) {', 'if (uNightK > 0.5f && shop > 0.5f && rw > 4.5f) {');
+  }
   // (r06) far LOD window grid (critic r05: 'most blocks behind the front row have no window grid'): the box filter that fades the windows to their
   // mean is widened 1.8x for the browser's native-resolution frame; UE renders at 50-73 % internal resolution and TSR resolves the rest -> 1.15x.
   uePatch('float wf = 1.8f;', 'float wf = 1.15f;');
@@ -221,7 +272,8 @@ float3 interior(TEXDECL, float2 p, float3 dir, float rw, float rh, float rd, flo
           'col = float3(0.42f,0.42f,0.41f) * (0.6f + 0.4f * lit) + pe * lit * float3(0.45f,0.43f,0.38f) * (1.0f + shop) * (1.0f - 0.6f * c.y);');
 
 
-  const ush = `${HDR('facade.js (FRAG_DECL)')}
+  const ush = `${HDR('facade.js (FRAG_DECL)').replace(/from src\/world\/facade\.js \(FRAG_DECL\)/, '')}
+// SOURCE: ${srcLabel}, FRAG_DECL
 #define TEXDECL ${decl}
 #define TEXPASS ${pass}
 ${PRELUDE}${B2U}
@@ -229,7 +281,7 @@ ${PRELUDE}${B2U}
 static float2 vFac; static float4 vF; static float4 vS; static float4 vW; static float4 vX; static float3 vTint;
 static float3 vWPos; static float3 vWN; static float3 gCamPos; static float2 gFragCoord;
 static float uInteriorGain = 0.5; static float uShopGain = 0.7; static float uNightK = 0.0; static float uDnTime = 0.0;
-${body2}
+${floodHlsl}${body2}
 // ---- UE entry. fac = UV0; F = (UV1, UV2); S = (UV3, UV4); W = (UV5, UV6); X7 = UV7 (resid + 2 lintel + 16 glass, depth);
 // tint = vertex colour * 2. wpos / cam in UE cm, wn = UE world vertex normal. P = (InteriorGain, ShopGain, NightK, DnTime).
 // Returns the albedo; outputs roughness, metallic, UE world-space normal, emissive, glass weight + F0 colour.
@@ -248,7 +300,9 @@ float3 CityFacade(TEXDECL, float2 fac, float4 F, float4 S, float4 W, float2 X7, 
   float3 nb = normalize(Tw * FS.n.x + Bw * FS.n.y + Nw * FS.n.z);
   nU = CityB2U(nb);
   rough = FS.rough; metal = FS.metal; emis = FS.emis;
-  float cg = saturate(gGlass);
+${facadeFork ? '' : `  // (author's night, facade.js material patch outside FRAG_DECL) crown floodlights: the flood function runs unchanged, gain x NightK
+  if (uNightK > 0.0) emis += FS.alb / max(1.0 - gAoT, 0.4) * (1.0 - 0.6 * FS.metal) * crownFlood(TEXPASS, vWPos, normalize(vWN)) * uNightK;
+`}  float cg = saturate(gGlass);
   // browser: specularColor -> gF0 * gSpecTint on glass, old sash glass dimmer (x (1 - 0.4 gSash)) and per-window gSashV
   f0 = gF0 * gSpecTint * (1.0 - 0.4 * gSash) * lerp(1.0, gSashV, gSash);
   glass = cg;
