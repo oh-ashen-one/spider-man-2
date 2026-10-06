@@ -757,6 +757,32 @@ def nc_material(name, code, inputs, em_k):
     mel.recompile_material(m); EAL.save_asset(path)
     return m
 
+# HLSL bodies of the night materials' Custom nodes and their input lists: the single source for build_night and tools/night/hlsl_check.py
+NC_HLSL = {
+    'M_NightColor': 'return float3(CD0, CD1, CD2) * NK * EK;',
+    'M_NightWord': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat cell = CD3, asp = CD4;\nfloat2 sz = asp > 2.3077 ? float2(0.9, 0.9 / asp * 2.0) : float2(0.78 * asp * 0.5, 0.78);\nif (cell > 23.5) sz = float2(0.5, 1.0) / 1.12;\nfloat2 cuv = 0.5 + (q - 0.5) * min(sz * 1.12, float2(0.995, 0.995));\nfloat2 uv = float2((fmod(cell, 4.0) + cuv.x) / 4.0, (floor(cell / 4.0) + 1.0 - cuv.y) / 8.0);\nfloat2 nt = max(Tex.Sample(TexSampler, uv).rg - 0.02, 0.0) / 0.98;\nfloat2 eq = min(q, 1.0 - q);\nnt.g *= smoothstep(0.0, 0.12, min(eq.x, eq.y * 2.0));\nfloat3 col = float3(CD0, CD1, CD2);\nfloat3 e = col * nt.r + lerp(col, max(max(col.r, col.g), col.b).xxx, 0.25) * nt.r * nt.r * 0.2 + col * nt.g * GL;\nreturn e * WG * NK * EK;',
+    'M_NightBoard': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat3 c = CD7 > 0.5 ? Tex.Sample(TexSampler, float2(lerp(CD3, CD5, q.x), 1.0 - lerp(CD4, CD6, q.y))).rgb : float3(CD0, CD1, CD2);\nfloat m = max(max(c.r, c.g), c.b) + 1e-4;\nif (m > KN) { float w = TP - KN; float y = KN + w * (1.0 - exp(-(m - KN) / w)); c *= y / m; }\nreturn c * BG * NK * EK;',
+    'M_NightBlade': 'float2 q = LP.xy * 0.01 + 0.5;\nfloat2 uv = float2(CD0 + q.y * CD2, 1.0 - (CD1 + (1.0 - q.x) * CD3));\nfloat3 bt = Tex.Sample(TexSampler, uv).rgb;\nfloat bm = max(max(bt.r, bt.g), bt.b) + 1e-4;\nfloat3 bn = bt / bm * pow(bm, 0.45) * 2.0;\nfloat ex = min(q.x, 1.0 - q.x) * 2.0, ey = min(q.y, 1.0 - q.y) * 2.0 * 2.3;\nfloat lit = 0.55 + 0.45 * smoothstep(0.0, 0.8, min(ex, ey));\nreturn bn * lit * SK * NK * EK;',
+}
+NC_INPUTS = {   # (input name, kind): kind cd = PerInstanceCustomData (index from the name), lp = LocalPosition, tex = TextureObject, mpc = MPC_City NightK, param = scalar parameter
+    'M_NightColor': [('CD0', 'cd'), ('CD1', 'cd'), ('CD2', 'cd'), ('NK', 'mpc'), ('EK', 'param')],
+    'M_NightWord': [('CD0', 'cd'), ('CD1', 'cd'), ('CD2', 'cd'), ('CD3', 'cd'), ('CD4', 'cd'), ('LP', 'lp'), ('Tex', 'tex'), ('NK', 'mpc'), ('EK', 'param'), ('WG', 'param'), ('GL', 'param')],
+    'M_NightBoard': [('CD0', 'cd'), ('CD1', 'cd'), ('CD2', 'cd'), ('CD3', 'cd'), ('CD4', 'cd'), ('CD5', 'cd'), ('CD6', 'cd'), ('CD7', 'cd'), ('LP', 'lp'), ('Tex', 'tex'), ('NK', 'mpc'),
+                    ('EK', 'param'), ('BG', 'param'), ('KN', 'param'), ('TP', 'param')],
+    'M_NightBlade': [('CD0', 'cd'), ('CD1', 'cd'), ('CD2', 'cd'), ('CD3', 'cd'), ('LP', 'lp'), ('Tex', 'tex'), ('NK', 'mpc'), ('EK', 'param'), ('SK', 'param')],
+}
+NC_OUT = [('', 3)]
+
+def night_custom_nodes():
+    """(name, code, [(input name, kind)], outputs) of every Custom node the night step builds (read by tools/night/hlsl_check.py)"""
+    return [(n, NC_HLSL[n], NC_INPUTS[n], NC_OUT) for n in NC_HLSL]
+
+def nc_inputs(name, args):
+    out = []
+    for n, kind in NC_INPUTS[name]:
+        out.append((n, kind, int(n[2:]) if kind == 'cd' else (0 if kind == 'lp' else ('NightK' if kind == 'mpc' else args[n]))))
+    return out
+
 def build_night():
     NJ = json.load(open(os.path.join(HERE, 'night_city.json')))
     nd = os.path.join(unreal.Paths.project_content_dir(), 'Night')
@@ -774,34 +800,13 @@ def build_night():
     P = G['params']
     CD = lambda i: ('CD%d' % i, 'cd', i)
     MPCN = ('NK', 'mpc', 'NightK')
-    colour = nc_material('M_NightColor', 'return float3(CD0, CD1, CD2) * NK * EK;', [CD(0), CD(1), CD(2), MPCN, ('EK', 'param', EK)], EK)
-    word = nc_material('M_NightWord', """float2 q = LP.xy * 0.01 + 0.5;
-float cell = CD3, asp = CD4;
-float2 sz = asp > 2.3077 ? float2(0.9, 0.9 / asp * 2.0) : float2(0.78 * asp * 0.5, 0.78);
-if (cell > 23.5) sz = float2(0.5, 1.0) / 1.12;
-float2 cuv = 0.5 + (q - 0.5) * min(sz * 1.12, float2(0.995, 0.995));
-float2 uv = float2((fmod(cell, 4.0) + cuv.x) / 4.0, (floor(cell / 4.0) + 1.0 - cuv.y) / 8.0);
-float2 nt = max(Tex.Sample(TexSampler, uv).rg - 0.02, 0.0) / 0.98;
-float2 eq = min(q, 1.0 - q);
-nt.g *= smoothstep(0.0, 0.12, min(eq.x, eq.y * 2.0));
-float3 col = float3(CD0, CD1, CD2);
-float3 e = col * nt.r + lerp(col, max(max(col.r, col.g), col.b).xxx, 0.25) * nt.r * nt.r * 0.2 + col * nt.g * GL;
-return e * WG * NK * EK;""", [CD(0), CD(1), CD(2), CD(3), CD(4), ('LP', 'lp', 0), ('Tex', 'tex', (tex['T_NeonWords'], unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR)), MPCN, ('EK', 'param', EK),
-                                       ('WG', 'param', P['word_gain']), ('GL', 'param', P['neon_glow'])], EK)
-    board = nc_material('M_NightBoard', """float2 q = LP.xy * 0.01 + 0.5;
-float3 c = CD7 > 0.5 ? Tex.Sample(TexSampler, float2(lerp(CD3, CD5, q.x), 1.0 - lerp(CD4, CD6, q.y))).rgb : float3(CD0, CD1, CD2);
-float m = max(max(c.r, c.g), c.b) + 1e-4;
-if (m > KN) { float w = TP - KN; float y = KN + w * (1.0 - exp(-(m - KN) / w)); c *= y / m; }
-return c * BG * NK * EK;""", [CD(0), CD(1), CD(2), CD(3), CD(4), CD(5), CD(6), CD(7), ('LP', 'lp', 0), ('Tex', 'tex', (tex['T_TsAds'], unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)), MPCN,
-                                 ('EK', 'param', EK), ('BG', 'param', P['board_gain']), ('KN', 'param', P['knee']), ('TP', 'param', P['top'])], EK)
-    blade = nc_material('M_NightBlade', """float2 q = LP.xy * 0.01 + 0.5;
-float2 uv = float2(CD0 + q.y * CD2, 1.0 - (CD1 + (1.0 - q.x) * CD3));
-float3 bt = Tex.Sample(TexSampler, uv).rgb;
-float bm = max(max(bt.r, bt.g), bt.b) + 1e-4;
-float3 bn = bt / bm * pow(bm, 0.45) * 2.0;
-float ex = min(q.x, 1.0 - q.x) * 2.0, ey = min(q.y, 1.0 - q.y) * 2.0 * 2.3;
-float lit = 0.55 + 0.45 * smoothstep(0.0, 0.8, min(ex, ey));
-return bn * lit * SK * NK * EK;""", [CD(0), CD(1), CD(2), CD(3), ('LP', 'lp', 0), ('Tex', 'tex', (tex['T_TsSigns'], unreal.MaterialSamplerType.SAMPLERTYPE_COLOR)), MPCN, ('EK', 'param', EK), ('SK', 'param', P['screen_k'])], EK)
+    TEXS = lambda t, st: (tex[t], st)
+    colour = nc_material('M_NightColor', NC_HLSL['M_NightColor'], nc_inputs('M_NightColor', {'EK': EK}), EK)
+    word = nc_material('M_NightWord', NC_HLSL['M_NightWord'], nc_inputs('M_NightWord', {'Tex': TEXS('T_NeonWords', unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR), 'EK': EK,
+                                                                                       'WG': P['word_gain'], 'GL': P['neon_glow']}), EK)
+    board = nc_material('M_NightBoard', NC_HLSL['M_NightBoard'], nc_inputs('M_NightBoard', {'Tex': TEXS('T_TsAds', unreal.MaterialSamplerType.SAMPLERTYPE_COLOR), 'EK': EK, 'BG': P['board_gain'],
+                                                                                          'KN': P['knee'], 'TP': P['top']}), EK)
+    blade = nc_material('M_NightBlade', NC_HLSL['M_NightBlade'], nc_inputs('M_NightBlade', {'Tex': TEXS('T_TsSigns', unreal.MaterialSamplerType.SAMPLERTYPE_COLOR), 'EK': EK, 'SK': P['screen_k']}), EK)
 
     world = open_level(NIGHT)
     gm = spawn(unreal.WHCityLights, unreal.Vector(0, 0, 0), label='CityLights', folder='NightCity')

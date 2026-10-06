@@ -110,6 +110,9 @@ def sampler_for(t):
     if isinstance(t, unreal.Texture2DArray) or True:
         return unreal.MaterialSamplerType.SAMPLERTYPE_COLOR if t.get_editor_property('srgb') else unreal.MaterialSamplerType.SAMPLERTYPE_LINEAR_COLOR
 
+CUSTOM_NODES = []   # (name, code, [(input name, kind)], outputs [(name, size)], include files) of every Custom node make_material built (tools/night/hlsl_check.py reads it)
+def custom_nodes(): return list(CUSTOM_NODES)
+
 def make_material(name, include, code, inputs, outputs, blend='opaque', two_sided=False, world_normal=True, domain_hint=None, scalar_defaults=None, shading=None):
     """inputs: list of (name, kind, arg): kind in tex|uv|vc|wpos|wn|cam|scalar|mpc|pcd.  outputs: list of (name, n, property)."""
     path = f'{MAT}/{name}'
@@ -123,6 +126,8 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     if shading: m.set_editor_property('shading_model', shading)
     c = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -400, 0)
     c.set_editor_property('code', code)
+    CUSTOM_NODES.append((name, code, [(n, kind, arg if kind in ('tex', 'texparam') else None) for n, kind, arg in inputs], [(n, k) for n, k, _ in outputs],
+                         ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code) else [])))
     c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
     c.set_editor_property('description', name)
     incs = ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code) else [])   # (r09) shared canyon-shade fill header
