@@ -29,6 +29,12 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - `build_look.py` step `night` builds `/Game/Look/Look_NightCity` (replaces `Look_NightLights`, kept as `build_night_legacy`): `AWHCityLights`, hero lights, 6 emissive HISMs. `sm2_common.NIGHT_LIGHTS_LEVEL` points at it; the showcase night map composes it.
 - Verified headless: look/showcase/validate rc 0, validate.json 120/120 (SelfTest at 3 positions, HISM counts, one AWHCityLights). Shader compile, lights and emissive look are NOT verified (null RHI).
 
+### M2 part 2 / M3 kickoff
+- Offline shader check: `python3 tools/night/hlsl_check.py` (UE's libdxcompiler via ctypes) compiles the 6 City .ush files and every Custom-node body (build_city `custom_nodes()`, build_look `night_custom_nodes()`): 31/31 compile.
+- `Facade.ush` now comes from the author's facade.js (night windows, shop interiors, crown floods baked from the export); `--facade-src=fork` regenerates the old one. `node tools/export/facade_hash_parity.mjs`: nhu/nh3/nh01 JS vs HLSL, 0 mismatches. Day (NightK 0) paths are unchanged.
+- `AWHCityLights::RegisterDynamicProvider`; `AWHLifeTraffic` emits the author's headlight/taillight pairs into the `cars` group (night_city.json `cars_provider`). Not exercised at runtime yet.
+- Island (worktree ~/sm2-n1/island, branch codex/m5-island-20261006): city content resumed on M5 (kit, fsky/map/coll, wp) in 681 s total; WP map saved (1642 meshes, 198,063 instances, 175,671 WHBox cubes). Traversal/characters/look/map steps of the island are not run.
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 

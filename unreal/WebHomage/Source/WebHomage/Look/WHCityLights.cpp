@@ -1,5 +1,6 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Look/WHCityLights.h"
+#include "Life/WHLifeTraffic.h"
 #include "Look/WHLookHeroLight.h"
 #include "WebHomage.h"
 
@@ -53,6 +54,34 @@ bool FWHCLConfig::Load(const FString& Path, FString& Err)
 		auto A = [&](const TCHAR* Key, float& V) { double D; if ((*Amb)->TryGetNumberField(Key, D)) V = float(D); };
 		A(TEXT("AMB_R"), AmbR); A(TEXT("AMB_SOFT"), AmbSoft); A(TEXT("AMB_GAIN"), AmbGain); A(TEXT("layer_y_m"), LayerYm); A(TEXT("hero_fill_base"), HeroFillBase); A(TEXT("hero_irradiance_scale"), HeroIrradianceScale);
 	}
+	const TSharedPtr<FJsonObject>* CP;
+	if (J->TryGetObjectField(TEXT("cars_provider"), CP))
+	{
+		const TSharedPtr<FJsonObject>* H; const TSharedPtr<FJsonObject>* T; const TSharedPtr<FJsonObject>* B;
+		auto Hex = [](const TSharedPtr<FJsonObject>& O, const TCHAR* K, uint32& V) { FString S; if (O->TryGetStringField(K, S)) V = (uint32)FParse::HexNumber(*S.Replace(TEXT("0x"), TEXT(""))); };
+		auto Num = [](const TSharedPtr<FJsonObject>& O, const TCHAR* K, float& V) { double D; if (O->TryGetNumberField(K, D)) V = float(D); };
+		FWHCLCarsCfg& CC = CarsCfg;
+		if ((*CP)->TryGetObjectField(TEXT("headlight"), H))
+		{
+			Hex(*H, TEXT("color_hex"), CC.HeadHex); Num(*H, TEXT("intensity_per_lamp"), CC.HeadI); Num(*H, TEXT("intensity_times_square"), CC.HeadITimesSquare); Num(*H, TEXT("merged_factor"), CC.HeadMerged);
+			Num(*H, TEXT("range_m"), CC.HeadRangeM); Num(*H, TEXT("angle_rad"), CC.HeadAngle); Num(*H, TEXT("penumbra"), CC.HeadPenumbra); Num(*H, TEXT("radius_m"), CC.HeadRadiusM);
+			Num(*H, TEXT("volume"), CC.HeadVolume); Num(*H, TEXT("spec"), CC.HeadSpec); Num(*H, TEXT("tilt_down_rad"), CC.HeadTilt); Num(*H, TEXT("height_m"), CC.HeadHeightM);
+			Num(*H, TEXT("front_extra_m"), CC.HeadFrontExtraM); Num(*H, TEXT("lateral_inset_m"), CC.HeadInsetM); Num(*H, TEXT("min_lateral_m"), CC.MinLateralM);
+		}
+		if ((*CP)->TryGetObjectField(TEXT("taillight"), T))
+		{
+			Hex(*T, TEXT("color_hex"), CC.TailHex); Num(*T, TEXT("intensity"), CC.TailI); Num(*T, TEXT("intensity_braking"), CC.TailIBraking); Num(*T, TEXT("range_m"), CC.TailRangeM);
+			Num(*T, TEXT("radius_m"), CC.TailRadiusM); Num(*T, TEXT("volume"), CC.TailVolume); Num(*T, TEXT("height_m"), CC.TailHeightM); Num(*T, TEXT("back_extra_m"), CC.TailBackExtraM);
+			Num(*T, TEXT("lateral_inset_m"), CC.TailInsetM); Num(*T, TEXT("max_distance_m"), CC.TailMaxDistM);
+		}
+		double D; if ((*CP)->TryGetNumberField(TEXT("twin_cars"), D)) CC.TwinCars = int32(D);
+		if ((*CP)->TryGetObjectField(TEXT("times_square_box_m"), B))
+		{
+			const TArray<TSharedPtr<FJsonValue>>* X; const TArray<TSharedPtr<FJsonValue>>* Z;
+			if ((*B)->TryGetArrayField(TEXT("x"), X) && X->Num() == 2) { CC.TsX0 = float((*X)[0]->AsNumber()); CC.TsX1 = float((*X)[1]->AsNumber()); }
+			if ((*B)->TryGetArrayField(TEXT("z"), Z) && Z->Num() == 2) { CC.TsZ0 = float((*Z)[0]->AsNumber()); CC.TsZ1 = float((*Z)[1]->AsNumber()); }
+		}
+	}
 	const TArray<TSharedPtr<FJsonValue>>* Gs;
 	if (!J->TryGetArrayField(TEXT("groups"), Gs) || Gs->Num() == 0) { Err = TEXT("no groups in config"); return false; }
 	Groups.Reset();
@@ -70,6 +99,8 @@ bool FWHCLConfig::Load(const FString& Path, FString& Err)
 		O->TryGetBoolField(TEXT("shadow"), G.bShadow);
 		Groups.Add(G);
 	}
+	CarGroup = -1;
+	for (int32 g = 0; g < Groups.Num(); g++) if (Groups[g].Cats.Contains(13) || Groups[g].Cats.Contains(14)) { CarGroup = g; break; }
 	return true;
 }
 
@@ -244,11 +275,13 @@ void AWHCityLights::BeginPlay()
 	if (!MPC) UE_LOG(LogWebHomage, Warning, TEXT("WH_CITYLIGHTS MPC_City not found: NightK stays 0, lights stay off"));
 	BuildPools();
 	bActive = true;
+	for (TActorIterator<AWHLifeTraffic> It(GetWorld()); It; ++It) It->RegisterNightLights(this);   // (traffic registers itself too when it starts later)
 	UE_LOG(LogWebHomage, Display, TEXT("WH_CITYLIGHTS loaded %d records, cats=%s (commit %s, %d pooled lights)"), Data.Recs.Num(), *CountsString(), *Data.Commit.Left(8), Pools.Num());
 }
 
 void AWHCityLights::EndPlay(const EEndPlayReason::Type Reason)
 {
+	DynProviders.Reset();
 	DestroyPools();
 	Super::EndPlay(Reason);
 }
@@ -261,6 +294,21 @@ void AWHCityLights::BuildPools()
 	TArray<int32> TypeMask; TypeMask.SetNumZeroed(NG);
 	TArray<int32> GroupCount; GroupCount.SetNumZeroed(NG);
 	for (const FWHCLRecord& R : Data.Recs) if (R.Group >= 0) { TypeMask[R.Group] |= 1 << R.Type; GroupCount[R.Group]++; }
+	if (Cfg.CarGroup >= 0)
+	{
+		const int32 N = FMath::CeilToInt(FMath::Max(1, Cfg.Groups[Cfg.CarGroup].Budget) * FMath::Max(1.f, Cfg.PoolHeadroom));
+		for (int32 t = 0; t < 2; t++)
+		{
+			DynSlots[t].SetNum(N);
+			for (FDynSlot& S : DynSlots[t])
+			{
+				ULocalLightComponent* L = t == 0 ? static_cast<ULocalLightComponent*>(NewObject<UPointLightComponent>(this, NAME_None, RF_Transient)) : static_cast<ULocalLightComponent*>(NewObject<USpotLightComponent>(this, NAME_None, RF_Transient));
+				L->SetMobility(EComponentMobility::Movable); L->SetVisibility(false); L->SetCastShadows(false); L->SetIntensityUnits(ELightUnits::Candelas);
+				L->SetupAttachment(GetRootComponent()); L->RegisterComponent();
+				S.Comp = L;
+			}
+		}
+	}
 	for (int32 g = 0; g < NG; g++)
 	{
 		const int32 N = Cfg.Groups[g].Budget <= 0 ? GroupCount[g] : FMath::CeilToInt(Cfg.Groups[g].Budget * FMath::Max(1.f, Cfg.PoolHeadroom));
@@ -289,6 +337,8 @@ void AWHCityLights::BuildPools()
 void AWHCityLights::DestroyPools()
 {
 	for (FPool& P : Pools) for (FSlot& S : P.Slots) if (S.Comp) { S.Comp->DestroyComponent(); S.Comp = nullptr; }
+	for (int32 t = 0; t < 3; t++) { for (FDynSlot& S : DynSlots[t]) if (S.Comp) { S.Comp->DestroyComponent(); S.Comp = nullptr; } DynSlots[t].Reset(); }
+	DynKeyToSlot.Reset(); DynPrev.Reset();
 	Pools.Reset(); RecToSlot.Reset();
 	ActiveLights = 0;
 }
@@ -315,11 +365,8 @@ bool AWHCityLights::GetView(FWHCLView& V) const
 	return true;
 }
 
-void AWHCityLights::AssignSlot(FPool& P, int32 SlotIdx, int32 RecIdx)
+void AWHCityLights::ConfigureLight(ULocalLightComponent* L, const FWHCLRecord& R)
 {
-	FSlot& S = P.Slots[SlotIdx];
-	const FWHCLRecord& R = Data.Recs[RecIdx];
-	ULocalLightComponent* L = S.Comp;
 	const FVector Loc = R.Location(), Dir(R.Dir[0], R.Dir[1], R.Dir[2]);
 	FRotator Rot = Dir.Rotation();
 	if (R.Type == 2) Rot = FRotationMatrix::MakeFromXY(Dir.GetSafeNormal(), FVector(R.U[0], R.U[1], R.U[2])).Rotator();
@@ -342,10 +389,84 @@ void AWHCityLights::AssignSlot(FPool& P, int32 SlotIdx, int32 RecIdx)
 	{
 		Rc->SetSourceWidth(FMath::Max(R.W, 1.f)); Rc->SetSourceHeight(FMath::Max(R.H, 1.f));
 	}
-	S.Rec = RecIdx; S.Fade = 0.f; S.bTarget = true; S.AppliedIntensity = -1.f; S.bShadowOn = false;
 	L->SetCastShadows(false);
 	L->SetIntensity(0.f);
 	L->SetVisibility(true);
+}
+
+void AWHCityLights::AssignSlot(FPool& P, int32 SlotIdx, int32 RecIdx)
+{
+	FSlot& S = P.Slots[SlotIdx];
+	ConfigureLight(S.Comp, Data.Recs[RecIdx]);
+	S.Rec = RecIdx; S.Fade = 0.f; S.bTarget = true; S.AppliedIntensity = -1.f; S.bShadowOn = false;
+}
+
+int32 AWHCityLights::RegisterDynamicProvider(FWHCLDynProvider Fn)
+{
+	DynProviders.Add(TPair<int32, FWHCLDynProvider>(NextProviderId, MoveTemp(Fn)));
+	return NextProviderId++;
+}
+
+void AWHCityLights::UnregisterDynamicProvider(int32 Handle)
+{
+	DynProviders.RemoveAll([Handle](const TPair<int32, FWHCLDynProvider>& P) { return P.Key == Handle; });
+}
+
+// dynamic lights (cars): candidates from every provider, scored like the static ones (intensity / (d^2 + 36), view bonus, 1.25x hysteresis), top `budget` of the "cars" group
+void AWHCityLights::RebuildDynamic(const FWHCLView& V)
+{
+	if (Cfg.CarGroup < 0) return;
+	const FWHCLGroupCfg& G = Cfg.Groups[Cfg.CarGroup];
+	TArray<FWHCLRecord> Cand;
+	for (const TPair<int32, FWHCLDynProvider>& P : DynProviders) P.Value(V.Loc, Cand);
+	const double Now = FPlatformTime::Seconds();
+	TMap<int32, TPair<FVector, double>> NewPrev;
+	struct FC { float Score; int32 I; };
+	TArray<FC> Scored;
+	for (int32 i = 0; i < Cand.Num(); i++)
+	{
+		FWHCLRecord& R = Cand[i];
+		NewPrev.Add(R.Key, TPair<FVector, double>(R.Location(), Now));
+		const float Dist = FVector::Dist(R.Location(), V.Loc);
+		if (Dist > G.RadiusCm || Dist < G.MinRadiusCm) continue;
+		const float dM = Dist * 0.01f;
+		float Score = R.Intensity * R.AreaM2 / (dM * dM + 36.f);
+		if (V.bFrustum && V.SphereIn(R.Location(), R.Range)) Score *= 1.5f;
+		if (DynKeyToSlot.Contains(R.Key)) Score *= 1.25f;
+		Scored.Add({ Score, i });
+	}
+	Scored.Sort([](const FC& A, const FC& B) { return A.Score > B.Score; });
+	const int32 Budget = FMath::Min(Scored.Num(), FMath::CeilToInt(G.Budget * FMath::Max(0.f, CVarBudgetScale.GetValueOnGameThread())));
+	TSet<int32> Want;
+	for (int32 k = 0; k < Budget; k++) Want.Add(Cand[Scored[k].I].Key);
+	for (auto It = DynKeyToSlot.CreateIterator(); It; ++It)
+	{
+		if (Want.Contains(It.Key())) continue;
+		DynSlots[It.Value() >> 16][It.Value() & 0xffff].bTarget = false;   // fades out, then frees the slot
+		It.RemoveCurrent();
+	}
+	for (int32 k = 0; k < Budget; k++)
+	{
+		FWHCLRecord& R = Cand[Scored[k].I];
+		FVector Vel = FVector::ZeroVector;
+		if (const TPair<FVector, double>* Pr = DynPrev.Find(R.Key)) { const double Dt = Now - Pr->Value; if (Dt > 0.02 && Dt < 1.0) Vel = (R.Location() - Pr->Key) / float(Dt); }
+		if (const int32* Ex = DynKeyToSlot.Find(R.Key))
+		{
+			FDynSlot& S = DynSlots[*Ex >> 16][*Ex & 0xffff];
+			S.Rec = R; S.Vel = Vel;
+			S.Comp->SetWorldLocation(R.Location());
+			continue;
+		}
+		const int32 T = R.Type == 1 ? 1 : 0;
+		int32 Free = INDEX_NONE;
+		for (int32 s = 0; s < DynSlots[T].Num(); s++) if (DynSlots[T][s].Key < 0) { Free = s; break; }
+		if (Free == INDEX_NONE) continue;
+		FDynSlot& S = DynSlots[T][Free];
+		ConfigureLight(S.Comp, R);
+		S.Key = R.Key; S.Rec = R; S.Vel = Vel; S.Fade = 0.f; S.bTarget = true; S.Applied = -1.f;
+		DynKeyToSlot.Add(R.Key, (T << 16) | Free);
+	}
+	DynPrev = MoveTemp(NewPrev);
 }
 
 void AWHCityLights::ApplyIntensity(FSlot& S, float Gain)
@@ -461,6 +582,19 @@ void AWHCityLights::UpdateAmbient(const FWHCLView& V, float Dt)
 					AmbTargetLo += Cc * (F * Lo); AmbTargetHi += Cc * (F * (1.f - Lo));
 				}
 			}
+			for (int32 t = 0; t < 2; t++) for (const FDynSlot& S : DynSlots[t])
+			{
+				if (S.Key < 0 || !S.bTarget) continue;
+				const FWHCLRecord& R = S.Rec;
+				const FVector D = (R.Location() - P) * 0.01f;
+				const float D2 = D.SizeSquared(), Rw = Cfg.AmbR;
+				if (D2 > Rw * Rw) continue;
+				const float d = FMath::Sqrt(D2), T2 = FMath::Clamp((d - 0.55f * Rw) / (0.45f * Rw), 0.f, 1.f), Win = 1.f - T2 * T2 * (3.f - 2.f * T2);
+				const float F = NightK * Cfg.AmbGain * Win / (D2 + Cfg.AmbSoft * Cfg.AmbSoft);
+				const float Lo = 0.62f + 0.18f * FMath::Max(0.f, FMath::Clamp(D.Z / (d + 1.f), -1.f, 1.f));
+				const FVector Cc(R.Col[0] * R.Intensity, R.Col[1] * R.Intensity, R.Col[2] * R.Intensity);
+				AmbTargetLo += Cc * (F * Lo); AmbTargetHi += Cc * (F * (1.f - Lo));
+			}
 			const float G = CVarGain.GetValueOnGameThread();
 			AmbTargetLo *= G; AmbTargetHi *= G;
 		}
@@ -522,10 +656,13 @@ void AWHCityLights::Tick(float Dt)
 			for (const TPair<int32, int32>& KV : RecToSlot[g]) Pools[g * 3 + Data.Recs[KV.Key].Type].Slots[KV.Value].bTarget = false;
 			RecToSlot[g].Reset();
 		}
+		for (int32 t = 0; t < 2; t++) for (FDynSlot& S : DynSlots[t]) if (S.Key >= 0) S.bTarget = false;
+		DynKeyToSlot.Reset();
 	}
 	else if (bView && (SinceRebuild >= Cfg.RebuildIntervalS || FVector::Dist(V.Loc, LastRebuildPos) > Cfg.RebuildMoveCm))
 	{
 		Rebuild(V);
+		RebuildDynamic(V);
 		SinceRebuild = 0.f; LastRebuildPos = V.Loc;
 		APawn* Pawn = UGameplayStatics::GetPlayerPawn(this, 0);
 		UpdateShadows(Pawn ? Pawn->GetActorLocation() : V.Loc);
@@ -540,6 +677,21 @@ void AWHCityLights::Tick(float Dt)
 		S.Fade = FMath::Clamp(S.Fade + (S.bTarget ? Step : -Step), 0.f, 1.f);
 		if (S.Fade <= 0.f && !S.bTarget) { S.Comp->SetIntensity(0.f); S.Comp->SetVisibility(false); S.Rec = -1; S.AppliedIntensity = -1.f; S.bShadowOn = false; continue; }
 		if (S.Fade != Before || bIntensityDirty) ApplyIntensity(S, Gain);
+		Active++;
+	}
+	for (int32 t = 0; t < 2; t++) for (FDynSlot& S : DynSlots[t])
+	{
+		if (S.Key < 0) continue;
+		const float Step = Dt / FMath::Max(Cfg.FadeS, 1e-3f);
+		const float Before = S.Fade;
+		S.Fade = FMath::Clamp(S.Fade + (S.bTarget ? Step : -Step), 0.f, 1.f);
+		if (S.Fade <= 0.f && !S.bTarget) { S.Comp->SetIntensity(0.f); S.Comp->SetVisibility(false); S.Key = -1; S.Applied = -1.f; continue; }
+		if (!S.Vel.IsNearlyZero()) { S.Rec.Pos[0] += S.Vel.X * Dt; S.Rec.Pos[1] += S.Vel.Y * Dt; S.Rec.Pos[2] += S.Vel.Z * Dt; S.Comp->SetWorldLocation(S.Rec.Location()); }
+		if (S.Fade != Before || bIntensityDirty)
+		{
+			const float I = S.Rec.Intensity * Cfg.K * Gain * Cfg.Groups[Cfg.CarGroup].Gain * S.Fade * NightK;
+			if (FMath::Abs(I - S.Applied) > FMath::Max(0.002f * I, 1e-3f)) { S.Comp->SetIntensity(I); S.Applied = I; }
+		}
 		Active++;
 	}
 	LastNightK = NightK; LastGain = Gain; ActiveLights = Active;

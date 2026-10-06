@@ -1,5 +1,7 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation. See DISCLAIMER.md.
 #include "Life/WHLifeTraffic.h"
+#include "Look/WHCityLights.h"
+#include "EngineUtils.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Engine/StaticMesh.h"
@@ -66,8 +68,86 @@ AWHLifeTraffic::AWHLifeTraffic()
 
 void AWHLifeTraffic::EndPlay(const EEndPlayReason::Type Reason)
 {
+	if (NightLights.IsValid() && NightProviderId >= 0) NightLights->UnregisterDynamicProvider(NightProviderId);
+	NightProviderId = -1; NightLights.Reset();
 	Super::EndPlay(Reason);
 	bReady = false;
+}
+
+void AWHLifeTraffic::RegisterNightLights(AWHCityLights* Lights)
+{
+	if (!Lights || NightLights.Get() == Lights) return;
+	NightLights = Lights;
+	TWeakObjectPtr<AWHLifeTraffic> Self(this);
+	TWeakObjectPtr<AWHCityLights> WeakLights(Lights);
+	NightProviderId = Lights->RegisterDynamicProvider([Self, WeakLights](const FVector& Cam, TArray<FWHCLRecord>& Out)
+	{
+		AWHLifeTraffic* T = Self.Get(); AWHCityLights* L = WeakLights.Get();
+		if (T && L) T->EmitNightLights(Cam, L->GetConfig(), Out);
+	});
+}
+
+// the author's traffic.js provider (lines 161-199): moving cars near the camera get a headlight pair (a merged lamp for the farther ones) and a tail-light pair (nearer ones); the numbers come from
+// night_city.json cars_provider. Browser frame in, UE cm out: this actor's car positions are browser metres (x east, z south) = UE (X, Y) / 100.
+void AWHLifeTraffic::EmitNightLights(const FVector& Cam, const FWHCLConfig& C, TArray<FWHCLRecord>& Out) const
+{
+	if (!bReady) return;
+	const FWHCLCarsCfg& K = C.CarsCfg;
+	const float RadiusCm = C.CarGroup >= 0 ? C.Groups[C.CarGroup].RadiusCm : 9000.f;
+	struct FNear { float D2; int32 I; FVector2D Ctr, Dir; };
+	TArray<FNear> Near;
+	for (int32 I = 0; I < Cars.Num(); ++I)
+	{
+		const WHLife::FCar& Car = Cars[I];
+		if (!Car.bActive || Car.Inst < 0) continue;
+		const FVector2D PF = PathPoint(Car, 0.9f), PR = PathPoint(Car, Car.Len - 0.9f);
+		FVector2D Ctr = (PF + PR) * 0.5f, Dir = PF - PR;
+		if (Dir.SizeSquared() < 1e-6f) Dir = FVector2D(1, 0);
+		Dir.Normalize();
+		if (Car.Where == 0) Ctr += FVector2D(-Dir.Y, Dir.X) * Car.Lat;
+		const float D2 = FVector2D::DistSquared(Ctr * 100.f, FVector2D(Cam.X, Cam.Y));
+		if (D2 > RadiusCm * RadiusCm) continue;
+		Near.Add({ D2, I, Ctr, Dir });
+	}
+	Near.Sort([](const FNear& A, const FNear& B) { return A.D2 < B.D2; });
+	auto Lin = [](uint32 Hex) { return FLinearColor::FromSRGBColor(FColor((Hex >> 16) & 255, (Hex >> 8) & 255, Hex & 255)); };
+	const FLinearColor HC = Lin(K.HeadHex), TC = Lin(K.TailHex);
+	auto Make = [](const FVector& Pos, const FVector& Dir, const FLinearColor& Col, float Intensity, uint8 Cat, uint8 Type, float RangeM, float Angle, float Pen, float RadiusM, float Vol, float Spec, bool bNoShadow, int32 Key)
+	{
+		FWHCLRecord R;
+		FMemory::Memzero(R);
+		const float Mx = FMath::Max3(Col.R, Col.G, Col.B);
+		R.Pos[0] = Pos.X; R.Pos[1] = Pos.Y; R.Pos[2] = Pos.Z; R.Dir[0] = Dir.X; R.Dir[1] = Dir.Y; R.Dir[2] = Dir.Z; R.U[0] = 1.f;
+		R.Col[0] = Col.R / Mx; R.Col[1] = Col.G / Mx; R.Col[2] = Col.B / Mx; R.Intensity = Intensity * Mx;
+		R.Range = RangeM * 100.f; R.Cat = Cat; R.Type = Type; R.Flags = bNoShadow ? 2 : 0; R.Vol = uint8(FMath::Clamp(Vol, 0.f, 1.f) * 255.f + 0.5f);
+		R.CosO = FMath::Cos(Angle); R.CosI = FMath::Cos(Angle * (1.f - Pen)); R.Radius = RadiusM * 100.f; R.Spec = Spec; R.AreaM2 = 1.f; R.Key = Key; R.Group = -1;
+		return R;
+	};
+	const float Cq = FMath::Cos(-K.HeadTilt), Sq = FMath::Sin(-K.HeadTilt);
+	for (int32 n = 0; n < Near.Num(); ++n)
+	{
+		const WHLife::FCar& Car = Cars[Near[n].I];
+		const FVector2D Ctr = Near[n].Ctr, Dir = Near[n].Dir, Right(-Dir.Y, Dir.X);
+		const bool bTwin = n < K.TwinCars;
+		const bool bTs = Ctr.X > K.TsX0 && Ctr.X < K.TsX1 && Ctr.Y > K.TsZ0 && Ctr.Y < K.TsZ1;
+		const float I = bTs ? K.HeadITimesSquare : K.HeadI;
+		const float Fwd = Car.Len * 0.5f + K.HeadFrontExtraM, W = bTwin ? FMath::Max(K.MinLateralM, Car.Wid * 0.5f - K.HeadInsetM) : 0.f;
+		const FVector HDir(Dir.X * Cq, Dir.Y * Cq, Sq);
+		for (int32 k = bTwin ? -1 : 0; k <= (bTwin ? 1 : 0); k += bTwin ? 2 : 1)
+		{
+			const FVector2D P = Ctr + Dir * Fwd + Right * (W * k);
+			Out.Add(Make(FVector(P.X * 100.f, P.Y * 100.f, 1.f + K.HeadHeightM * 100.f), HDir, HC, bTwin ? I : I * K.HeadMerged, 13, 1, K.HeadRangeM, K.HeadAngle, K.HeadPenumbra, K.HeadRadiusM, K.HeadVolume, K.HeadSpec, false, Near[n].I * 4 + (k > 0 ? 1 : 0)));
+		}
+		if (Near[n].D2 < K.TailMaxDistM * K.TailMaxDistM * 1e4f)
+		{
+			const float Tw = FMath::Max(K.MinLateralM, Car.Wid * 0.5f - K.TailInsetM), Back = Car.Len * 0.5f + K.TailBackExtraM;
+			for (int32 k = -1; k <= 1; k += 2)
+			{
+				const FVector2D P = Ctr - Dir * Back + Right * (Tw * k);
+				Out.Add(Make(FVector(P.X * 100.f, P.Y * 100.f, 1.f + K.TailHeightM * 100.f), FVector(-Dir.X, -Dir.Y, 0.f), TC, Car.Brake ? K.TailIBraking : K.TailI, 14, 0, K.TailRangeM, 1.f, 0.f, K.TailRadiusM, K.TailVolume, 1.f, true, Near[n].I * 4 + 2 + (k > 0 ? 1 : 0)));
+			}
+		}
+	}
 }
 
 float AWHLifeTraffic::Frand(uint32& R) { return Ff(R); }
@@ -294,6 +374,7 @@ void AWHLifeTraffic::BeginPlay()
 		for (int32 I = 0; I < N; ++I) StepSim(Step);
 	}
 	bReady = true;
+	for (TActorIterator<AWHCityLights> It(GetWorld()); It; ++It) RegisterNightLights(*It);   // night: headlights / taillights (AWHCityLights registers with us too when it starts later)
 	PushInstances();
 	UE_LOG(LogWHLife, Log, TEXT("[life] BeginPlay: %d moving, %d parked (%d taxis) instances, pre-roll %.0f s"), NumMoving, NumParked, NumParkedTaxis, PreRollSeconds);
 }

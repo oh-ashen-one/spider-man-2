@@ -23,6 +23,7 @@ struct FWHCLRecord
 	int32 Parent = -1;                  // board tile -> its whole board
 	bool bHasTiles = false;             // board whole: has tiles
 	int32 Group = -1;
+	int32 Key = -1;                     // dynamic records: stable identity (car id * 4 + lamp)
 	FVector Location() const { return FVector(Pos[0], Pos[1], Pos[2]); }
 	bool bDay() const { return (Flags & 1) != 0; }
 };
@@ -36,12 +37,25 @@ struct FWHCLGroupCfg
 	bool bShadow = false;
 };
 
+/** Parameters of the traffic headlight / taillight provider (traffic.js, see night_city.json cars_provider). */
+struct FWHCLCarsCfg
+{
+	uint32 HeadHex = 0xffd8b0, TailHex = 0xff1c0c;
+	float HeadI = 38.f, HeadITimesSquare = 14.f, HeadMerged = 2.f, HeadRangeM = 20.f, HeadAngle = 0.5f, HeadPenumbra = 0.9f, HeadRadiusM = 3.5f, HeadVolume = 0.18f, HeadSpec = 0.f;
+	float HeadTilt = 0.1f, HeadHeightM = 0.72f, HeadFrontExtraM = 0.1f, HeadInsetM = 0.25f, MinLateralM = 0.5f;
+	float TailI = 0.75f, TailIBraking = 2.f, TailRangeM = 4.5f, TailRadiusM = 0.2f, TailVolume = 0.04f, TailHeightM = 0.85f, TailBackExtraM = 0.2f, TailInsetM = 0.2f, TailMaxDistM = 45.f;
+	int32 TwinCars = 30;
+	float TsX0 = -112.f, TsX1 = 112.f, TsZ0 = -352.f, TsZ1 = 22.f;
+};
+
 struct FWHCLConfig
 {
 	float K = 200.f, EmissiveK = 1.f, FadeS = 0.35f, RebuildMoveCm = 250.f, RebuildIntervalS = 0.2f, VolumetricGain = 1.f, ShadowRadiusCm = 2500.f, NightOffBelow = 0.01f, PoolHeadroom = 1.25f;
 	int32 ShadowSlots = 4;
 	float AmbR = 70.f, AmbSoft = 6.f, AmbGain = 0.16f, LayerYm = 14.f, HeroFillBase = 0.35f, HeroIrradianceScale = 1.f;
 	TArray<FWHCLGroupCfg> Groups;
+	FWHCLCarsCfg CarsCfg;
+	int32 CarGroup = -1;     // group holding the dynamic (provider) lights: categories 13 headlight / 14 taillight
 	bool Load(const FString& Path, FString& Err);
 };
 
@@ -57,6 +71,8 @@ struct FWHCLData
 	void Index(const FWHCLConfig& Cfg);
 	static int64 CellKey(int32 CX, int32 CY) { return (int64(CX) << 32) ^ int64(uint32(CY)); }
 };
+
+using FWHCLDynProvider = TFunction<void(const FVector& Cam, TArray<FWHCLRecord>& Out)>;
 
 struct FWHCLView
 {
@@ -88,6 +104,12 @@ public:
 	/** Re-reads Content/Night/CityLights.json (tuning without a rebuild). */
 	void ReloadConfig();
 
+	/** Dynamic lights (cars): the provider is called at every rebuild with the camera position and appends records (Cat 13 headlight spot / 14 taillight point, a stable Key).
+	 *  They go into the "cars" group and move with their last measured velocity between rebuilds. Returns a handle for UnregisterDynamicProvider. */
+	int32 RegisterDynamicProvider(FWHCLDynProvider Fn);
+	void UnregisterDynamicProvider(int32 Handle);
+	const FWHCLConfig& GetConfig() const { return Cfg; }
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="CityLights") bool bActive = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="CityLights") int32 ActiveLights = 0;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="CityLights") FLinearColor AmbientLower = FLinearColor::Black;
@@ -96,6 +118,14 @@ public:
 private:
 	struct FSlot { ULocalLightComponent* Comp = nullptr; int32 Rec = -1; float Fade = 0.f; bool bTarget = false; float AppliedIntensity = -1.f; bool bShadowOn = false; };
 	struct FPool { int32 Group = 0; int32 Type = 0; TArray<FSlot> Slots; };
+	struct FDynSlot { ULocalLightComponent* Comp = nullptr; int32 Key = -1; FWHCLRecord Rec; FVector Vel = FVector::ZeroVector; float Fade = 0.f; bool bTarget = false; float Applied = -1.f; };
+	TArray<FDynSlot> DynSlots[3];                   // by light type (0 point, 1 spot)
+	TMap<int32, int32> DynKeyToSlot;                // key -> (type << 16) | slot (target slots only)
+	TMap<int32, TPair<FVector, double>> DynPrev;    // key -> last position / time at the previous rebuild (velocity)
+	TArray<TPair<int32, FWHCLDynProvider>> DynProviders;
+	int32 NextProviderId = 1;
+	void RebuildDynamic(const FWHCLView& V);
+	void ConfigureLight(ULocalLightComponent* L, const FWHCLRecord& R);
 
 	FWHCLConfig Cfg;
 	FWHCLData Data;

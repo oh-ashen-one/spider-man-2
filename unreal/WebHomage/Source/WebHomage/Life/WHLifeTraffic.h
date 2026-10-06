@@ -14,6 +14,9 @@
 class UStaticMesh;
 class UMaterialInterface;
 class UInstancedStaticMeshComponent;
+class AWHCityLights;
+struct FWHCLRecord;
+struct FWHCLConfig;
 
 namespace WHLife
 {
@@ -153,9 +156,14 @@ public:
 	bool AnyCarNearSegment(const FVector2D& A, const FVector2D& B, float DistM) const;
 	int32 CurrentPhase(int32 Axis) const { return SigPhase(GetSignalClock(), Axis); }
 	/** Moving-car count whose centre is inside a world-space frustum-ish cone (camera location, forward, half-angle deg, range cm). */
+	/** Night: registers the headlight / taillight provider with the city-lights actor (idempotent; called from either side's BeginPlay). */
+	void RegisterNightLights(AWHCityLights* Lights);
 	UFUNCTION(BlueprintCallable, Category="Life") int32 CountInCone(FVector Eye, FVector Forward, float HalfAngleDeg, float Range) const;
 
 private:
+	TWeakObjectPtr<AWHCityLights> NightLights;
+	int32 NightProviderId = -1;
+	void EmitNightLights(const FVector& Cam, const FWHCLConfig& Cfg, TArray<FWHCLRecord>& Out) const;
 	// data
 	TArray<WHLife::FLink> Links;
 	TArray<WHLife::FConn> Conns;
