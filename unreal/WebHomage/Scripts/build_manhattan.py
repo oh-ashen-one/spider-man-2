@@ -27,7 +27,8 @@
 #   /Game/Maps/Manhattan_View_<S1|S2|S4>   golden map + the P1 shot camera (Scripts/city_shots.json), for stills
 import os, sys, json, subprocess, time, shutil
 
-HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/manhattan/unreal/WebHomage/Scripts'
+HOME = os.path.expanduser('~')   # (M5) paths follow $HOME (the M3 /Users/midir tree is gone)
+HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.path.join(HOME, 'sm2-n1/island/unreal/WebHomage/Scripts')
 PROJ = os.path.dirname(HERE)
 WT = os.path.dirname(os.path.dirname(PROJ))
 UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
@@ -37,7 +38,7 @@ UE = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Conte
 #   (default midtown; the old 3 x 3 = -1,-2,1,0 / midtown3x3), SM2_ISLAND_MIN_FREE_GB (default 150: the export refuses to start below it)
 # (island r03) M2: the default detailed region is the WHOLE island (ix -4..3, iz -14..13, export folder 'island'); M1 = SM2_ISLAND_TILES=-3,-5,3,3
 #   SM2_ISLAND_REGION=midtown
-SCR = os.environ.get('SM2_MANHATTAN_SCR', '/Users/midir/sm2-n1/_scratch/island')
+SCR = os.environ.get('SM2_MANHATTAN_SCR', os.path.join(HOME, 'sm2-n1/_scratch/island'))
 TILES = os.environ.get('SM2_ISLAND_TILES', '-4,-14,3,13')
 REGION = os.environ.get('SM2_ISLAND_REGION', 'island')
 MIN_FREE_GB = float(os.environ.get('SM2_ISLAND_MIN_FREE_GB', '150'))
@@ -86,15 +87,35 @@ def safe_rmtree(p):
     if os.path.isdir(p): shutil.rmtree(p)
 
 
+GPU_ROOT = os.path.join(HOME, '.cache', 'gpu-slot')   # (M5) the one shared coordinator root; gpu_slot.py's DEFAULT_DIR is the M3 path and is never used
+GPU_SLOT = os.environ.get('SM2_GPU_SLOT_SH', os.path.join(HOME, 'spider-man-2/tools/gpu/gpu_slot.sh'))
+GPU_WAIT_TIMEOUT = int(os.environ.get('SM2_GPU_WAIT_TIMEOUT', '10800'))
+MAX_HOLD = int(os.environ.get('SM2_ISLAND_MAX_HOLD', '2400'))
+
+
 def wait_slot():
-    while True:
-        # (island r01) count real engine processes only: `pgrep -f` also matched gpu_slot.py waiters whose argv holds the editor path
-        n = subprocess.run("pgrep -x UnrealEditor | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
-        if int(n or 0) < 3: return
-        log('3+ Unreal instances running, waiting 60 s'); time.sleep(60)
+    """(M5) admission refusals only (gpu_slot queues): wrong coordinator root, PAUSED, a stuck-exiting (E/Z) UnrealEditor"""
+    root = os.environ.get('GPU_SLOT_DIR') or GPU_ROOT
+    if os.path.realpath(root) != os.path.realpath(GPU_ROOT):
+        raise SystemExit('refusing GPU_SLOT_DIR=%s: the only shared coordinator root is %s' % (root, GPU_ROOT))
+    if os.path.exists(os.path.join(GPU_ROOT, 'PAUSED')):
+        raise SystemExit('shared GPU PAUSED; this build never clears it')
+    stuck = []
+    for line in subprocess.check_output(['ps', '-axo', 'pid=,stat=,comm='], text=True).splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3 and 'UnrealEditor' in parts[2] and ('E' in parts[1] or 'Z' in parts[1]): stuck.append(line.strip())
+    if stuck: raise SystemExit('an UnrealEditor is stuck exiting (stat E/Z):\n' + '\n'.join(stuck))
 
 
-GPU_SLOT = '/Users/midir/sm2-n1/_scratch/gpu/bin/gpu_slot.sh'
+def stop_ours(proc):
+    """our own child only: SIGTERM, wait up to 60 s, SIGKILL as the last resort"""
+    if proc.poll() is not None: return
+    proc.terminate()
+    t = time.monotonic()
+    while proc.poll() is None and time.monotonic() - t < 60: time.sleep(0.5)
+    if proc.poll() is None: proc.kill(); proc.wait()
+
+
 # (island r04) SM2_ISLAND_GPU_SLOT=1: every commandlet runs inside its own `gpu_slot.sh capture --label island` hold (RULES.md: every Unreal launch
 # goes through the lock; max hold 2,400 s). Resumable steps get SM2_ISLAND_BUDGET_S (default 1,950 s of script time; batches of 20 meshes / 8 kit tiles) and stop at it.
 USE_SLOT = os.environ.get('SM2_ISLAND_GPU_SLOT', '0') == '1'
@@ -111,22 +132,33 @@ def ue_python(name, code, env=None, timeout=7200):
     cmd = [UE, UPROJECT, '-run=pythonscript', '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen',
            '-NoSound', '-NoCrashReports', '-abslog=' + lg]
     if USE_SLOT:
-        cmd = [GPU_SLOT, 'capture', '--label', 'island', '--'] + cmd
-        timeout = max(timeout, 3 * 3600)   # queue wait (<= 60 min) + hold (<= 40 min)
-    st = os.statvfs('/Users/midir'); free = st.f_bavail * st.f_frsize / 1e9
+        cmd = [GPU_SLOT, 'capture', '--label', 'island', '--timeout', str(GPU_WAIT_TIMEOUT), '--'] + cmd
+        timeout = max(timeout, GPU_WAIT_TIMEOUT + MAX_HOLD + 600)   # queue wait + hold
+    st = os.statvfs(HOME); free = st.f_bavail * st.f_frsize / 1e9
     if free < MIN_FREE_GB:   # (island r04) RULES / SPEC I9: stop (and report) below the free-disk floor, before every commandlet
         raise SystemExit('ABORT %s: %.1f GB free < %.0f GB' % (name, free, MIN_FREE_GB))
-    for attempt in range(40):
-        wait_slot()
-        if os.path.exists(lg): os.remove(lg)
-        log('UE commandlet', name, '-> log', lg, '(gpu_slot hold)' if USE_SLOT else '')
-        t0 = time.time()
+    env_run = {**os.environ, **(env or {}), 'GPU_SLOT_DIR': GPU_ROOT, 'GPU_SLOT_CAPTURE_MAX_HOLD': str(MAX_HOLD)}
+    wait_slot()
+    if os.path.exists(lg): os.remove(lg)
+    log('UE commandlet', name, '-> log', lg, ('(gpu_slot hold, max %d s)' % MAX_HOLD) if USE_SLOT else '')
+    t0 = time.time()
+    proc = None
+    try:
         with open(lg + '.stdout', 'w') as so:
-            r = subprocess.run(cmd, env={**os.environ, **(env or {})}, stdout=so, stderr=subprocess.STDOUT, timeout=timeout)
-        if USE_SLOT and r.returncode == 75:   # gpu_slot: waited too long / paused, command NOT run
-            log('gpu_slot exit 75 (not run), retry in 60 s'); TIMINGS.append({'cmd': 'gpu_slot wait (not run) ' + name, 'seconds': round(time.time() - t0, 1), 'rc': 75})
-            time.sleep(60); continue
-        break
+            proc = subprocess.Popen(cmd, env=env_run, stdout=so, stderr=subprocess.STDOUT)
+            deadline = time.monotonic() + timeout
+            while proc.poll() is None:
+                if time.monotonic() > deadline:
+                    stop_ours(proc); raise SystemExit('commandlet %s exceeded its deadline and was stopped (log %s)' % (name, lg))
+                time.sleep(1)
+    except BaseException:
+        if proc is not None: stop_ours(proc)
+        raise
+    class _R: returncode = proc.returncode
+    r = _R
+    if USE_SLOT and r.returncode == 75:   # gpu_slot: GPU admission wait timed out, command NOT run: stop (no retry loop)
+        TIMINGS.append({'cmd': 'gpu_slot wait (not run) ' + name, 'seconds': round(time.time() - t0, 1), 'rc': 75})
+        raise SystemExit('GPU admission timed out after %d s (commandlet %s not run); not retrying' % (GPU_WAIT_TIMEOUT, name))
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
     run_s = None
     m = [l for l in open(lg + '.stdout', errors='replace').read().splitlines() if 'gpu_slot[' in l and 'release exit=' in l] if USE_SLOT else []
@@ -163,7 +195,7 @@ def step_city_export():
         if not os.path.isdir(os.path.join(WT, 'node_modules')): sh('npm ci', log_name='npm.log')
         subprocess.Popen('nohup npx vite --port %d --host 127.0.0.1 --strictPort > %s/logs/vite.log 2>&1 &' % (DEV_PORT, SCR), shell=True, cwd=WT)
         time.sleep(6)
-    st = os.statvfs('/Users/midir'); free = st.f_bavail * st.f_frsize / 1e9
+    st = os.statvfs(HOME); free = st.f_bavail * st.f_frsize / 1e9
     if free < MIN_FREE_GB:
         raise SystemExit('ABORT city_export: %.0f GB free < %.0f GB (PLAN-firstpass §5 disk rule)' % (free, MIN_FREE_GB))
     t0 = time.time()

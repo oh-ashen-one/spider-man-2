@@ -11,7 +11,7 @@ try: unreal.SystemLibrary.execute_console_command(None, 'Module Load StaticMeshE
 except Exception as _ex: print('WARN Module Load StaticMeshEditor:', _ex)
 
 # (r07) parameterised: SM2_CITY_SCRATCH (default = the P1 scratch), SM2_CITY_EXPORT, SM2_CITY_TEX; the browser dev port only matters for the exporter (manifest map URLs are reduced to their /assets/... path)
-SCRATCH = os.environ.get('SM2_CITY_SCRATCH', '/Users/midir/sm2-n1/_scratch/city')
+SCRATCH = os.environ.get('SM2_CITY_SCRATCH', os.path.expanduser('~/sm2-n1/_scratch/city'))
 EXPORT = os.environ.get('SM2_CITY_EXPORT', os.path.join(SCRATCH, 'export', 'midtown3x3'))
 TEX = os.environ.get('SM2_CITY_TEX', os.path.join(SCRATCH, 'tex'))
 def asset_rel(u): return re.sub(r'^https?://[^/]+/', '', u).split('?')[0]

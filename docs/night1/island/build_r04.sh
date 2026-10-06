@@ -7,11 +7,12 @@
 # Inputs: the island export (_scratch/island/export/island; the browser sources are unchanged by the merge, so city_export / city_prep are
 # not re-run: they need a vite listener), city_extra + street_kit re-run this round. Holds _scratch/island/BUILDING (capture_round.sh waits).
 set -u
-FLAG=/Users/midir/sm2-n1/_scratch/island/BUILDING
-WT=/Users/midir/sm2-n1/island
-LOG=/Users/midir/sm2-n1/_scratch/island/r04/logs
+export GPU_SLOT_DIR=$HOME/.cache/gpu-slot   # (M5) the one shared coordinator; build_manhattan.py refuses any other root
+FLAG=$HOME/sm2-n1/_scratch/island/BUILDING
+WT=$HOME/sm2-n1/island
+LOG=$HOME/sm2-n1/_scratch/island/r04/logs
 while pgrep -f "$WT/unreal/WebHomage/WebHomage.uproject" >/dev/null; do sleep 10; done
-FREE=$(df -k /Users/midir | awk 'NR==2 {printf "%d", $4 * 1024 / 1e9}'); echo "free GB (decimal) before: $FREE"
+FREE=$(df -k $HOME | awk 'NR==2 {printf "%d", $4 * 1024 / 1e9}'); echo "free GB (decimal) before: $FREE"
 [ "$FREE" -lt 150 ] && { echo "ABORT: $FREE GB free < 150 GB"; exit 1; }   # build_manhattan.py re-checks before every commandlet
 touch "$FLAG"; trap 'rm -f "$FLAG"' EXIT
 T0=$(date +%s)
@@ -21,5 +22,5 @@ T1=$(date +%s)
 echo "rebuild rc $RC wall $((T1 - T0)) s"
 du -sk "$WT/unreal/WebHomage/Content" | awk '{printf "Content %.2f GB\n", $1 / 1048576}'
 du -sh "$WT/unreal/WebHomage/Content"/* 2>/dev/null | sort -h | tail -8
-FREE=$(df -k /Users/midir | awk 'NR==2 {printf "%d", $4 * 1024 / 1e9}'); echo "free GB (decimal) after: $FREE"
+FREE=$(df -k $HOME | awk 'NR==2 {printf "%d", $4 * 1024 / 1e9}'); echo "free GB (decimal) after: $FREE"
 exit $RC
