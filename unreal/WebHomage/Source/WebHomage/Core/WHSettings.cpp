@@ -7,12 +7,62 @@
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Scalability.h"
+#include "UnrealClient.h"
 #include "UnrealEngine.h"
 
 namespace
 {
 	const TCHAR* GSection = TEXT("WebHomage.Settings");
+}
+
+FWHRenderRes WHComputeRenderRes()
+{
+	FWHRenderRes R;
+	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+	{
+		R.Output = GEngine->GameViewport->Viewport->GetSizeXY();
+	}
+	auto CVarF = [](const TCHAR* Name, float Default) -> float
+	{
+		IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(Name);
+		return V ? V->GetFloat() : Default;
+	};
+	R.ScreenPercentage = CVarF(TEXT("r.ScreenPercentage"), 0.f);
+	// Effective internal (pre-TSR) resolution. r.ScreenPercentage<=0 means the engine picks it from
+	// r.ScreenPercentage.Default.Desktop.Mode (1 = based on display resolution, table in
+	// [Rendering.AutoScreenPercentage]: 2160p display -> 1080p render). Mirrors LegacyScreenPercentageDriver.cpp.
+	if (R.ScreenPercentage > 0.f)
+	{
+		R.Frac = R.ScreenPercentage / 100.f;
+	}
+	else if (int32(CVarF(TEXT("r.ScreenPercentage.Default.Desktop.Mode"), 1.f)) == 1 && R.Output.X > 0)
+	{
+		R.Mode = TEXT("auto_display");
+		auto Px = [](float H) { return H * H * 16.f / 9.f; };
+		float MinD = 720, MinR = 720, MidD = 2160, MidR = 1080, MaxD = 4320, MaxR = 1440;
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinDisplayResolution"), MinD, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinRenderingResolution"), MinR, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidDisplayResolution"), MidD, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidRenderingResolution"), MidR, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxDisplayResolution"), MaxD, GEngineIni);
+		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxRenderingResolution"), MaxR, GEngineIni);
+		const float Disp = float(R.Output.X) * float(R.Output.Y);
+		float Render;
+		if (Disp < Px(MinD)) { Render = Disp * Px(MinR) / Px(MinD); }
+		else if (Disp > Px(MaxD)) { Render = Disp * Px(MaxR) / Px(MaxD); }
+		else if (Disp > Px(MidD)) { Render = FMath::Lerp(Px(MidR), Px(MaxR), (Disp - Px(MidD)) / (Px(MaxD) - Px(MidD))); }
+		else { Render = FMath::Lerp(Px(MinR), Px(MidR), FMath::Clamp((Disp - Px(MinD)) / (Px(MidD) - Px(MinD)), 0.f, 1.f)); }
+		R.Frac = FMath::Sqrt(CVarF(TEXT("r.ScreenPercentage.Auto.PixelCountMultiplier"), 1.f) * Render / Disp);
+	}
+	else
+	{
+		R.Frac = CVarF(TEXT("r.ScreenPercentage.Default"), 100.f) / 100.f;
+	}
+	R.Internal = FIntPoint(FMath::RoundToInt(R.Output.X * R.Frac), FMath::RoundToInt(R.Output.Y * R.Frac));
+	return R;
 }
 
 FWHSettings& WHSettings()
@@ -24,6 +74,59 @@ FWHSettings& WHSettings()
 float FWHSettings::FovDefault()
 {
 	return float(FMath::RadiansToDegrees(2.0 * FMath::Atan(FMath::Tan(FMath::DegreesToRadians(BaseVFovDefault * 0.5)) * 16.0 / 9.0)));
+}
+
+FWHSettings::EProfile FWHSettings::ActiveProfile()
+{
+	static const EProfile Cached = []()
+	{
+		FString Name;
+		if (FParse::Value(FCommandLine::Get(), TEXT("WHProfile="), Name))
+		{
+			if (Name.Equals(TEXT("fidelity"), ESearchCase::IgnoreCase)) return EProfile::Fidelity;
+			if (Name.Equals(TEXT("playable"), ESearchCase::IgnoreCase)) return EProfile::Playable;
+			UE_LOG(LogWebHomage, Error, TEXT("WH_PROFILE unknown -WHProfile=%s (expected fidelity|playable); ignored"), *Name);
+		}
+		return FParse::Param(FCommandLine::Get(), TEXT("WHPreparedPlaytest")) ? EProfile::Fidelity : EProfile::None;
+	}();
+	return Cached;
+}
+
+const TCHAR* FWHSettings::ProfileName(EProfile P)
+{
+	return P == EProfile::Fidelity ? TEXT("fidelity") : P == EProfile::Playable ? TEXT("playable") : TEXT("none");
+}
+
+int32 FWHSettings::ProfileResScale()
+{
+	if (ActiveProfile() != EProfile::Playable) return 100;
+	int32 Scale = PlayableResScaleDefault;
+	FParse::Value(FCommandLine::Get(), TEXT("WHResScale="), Scale);
+	return FMath::Clamp(Scale, 25, 100);
+}
+
+FIntPoint FWHSettings::ProfileOutputSize()
+{
+	int32 W = 3840, H = 2160;
+	FParse::Value(FCommandLine::Get(), TEXT("ResX="), W);
+	FParse::Value(FCommandLine::Get(), TEXT("ResY="), H);
+	return FIntPoint(FMath::Clamp(W, 640, 8192), FMath::Clamp(H, 360, 8192));
+}
+
+int32 FWHSettings::EffectiveQuality() const { return ActiveProfile() != EProfile::None ? QualityMax : Quality; }
+int32 FWHSettings::EffectiveResScale() const { return ActiveProfile() != EProfile::None ? ProfileResScale() : ResScale; }
+bool FWHSettings::EffectiveVSync() const { return ActiveProfile() != EProfile::None ? false : bVSync; }
+
+void FWHSettings::LogRes()
+{
+	const FWHRenderRes R = WHComputeRenderRes();
+	int32 AA = -1;
+	if (IConsoleVariable* CV = IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod"))) AA = CV->GetInt();
+	static const TCHAR* AANames[] = { TEXT("none"), TEXT("FXAA"), TEXT("TAA"), TEXT("MSAA"), TEXT("TSR") };
+	const FString AAName = AA >= 0 && AA < 5 ? FString(AANames[AA]) : FString::FromInt(AA);
+	UE_LOG(LogWebHomage, Display, TEXT("WH_RES profile=%s output=%dx%d r.ScreenPercentage=%.1f internal=%dx%d aa=%s quality=%s"),
+		ProfileName(ActiveProfile()), R.Output.X, R.Output.Y, R.ScreenPercentage, R.Internal.X, R.Internal.Y, *AAName,
+		*QualityName(WHSettings().EffectiveQuality()).ToString());
 }
 
 FWHSettings::FWHSettings()
@@ -78,16 +181,23 @@ void FWHSettings::ApplyRender() const
 	// Scalability::SetQualityLevels directly: the "scalability" console command would also SaveState() into GameUserSettings.ini
 	// [ScalabilityGroups], which the engine re-applies at startup -- that would leak into automated capture / perf runs.
 	Scalability::FQualityLevels Q;
-	Q.SetFromSingleQualityLevel(Quality);
-	Q.ResolutionQuality = float(ResScale);
+	Q.SetFromSingleQualityLevel(EffectiveQuality());
+	Q.ResolutionQuality = float(EffectiveResScale());
 	Scalability::SetQualityLevels(Q, /*bForce*/ true);
 	if (IConsoleVariable* CV = IConsoleManager::Get().FindConsoleVariable(TEXT("r.ScreenPercentage")))
 	{
-		CV->Set(float(ResScale), ECVF_SetByCode);
+		CV->Set(float(EffectiveResScale()), ECVF_SetByCode);
 	}
 	if (IConsoleVariable* CV = IConsoleManager::Get().FindConsoleVariable(TEXT("r.VSync")))
 	{
-		CV->Set(bVSync ? 1 : 0, ECVF_SetByCode);
+		CV->Set(EffectiveVSync() ? 1 : 0, ECVF_SetByCode);
+	}
+	if (ActiveProfile() == EProfile::Playable)
+	{
+		if (IConsoleVariable* CV = IConsoleManager::Get().FindConsoleVariable(TEXT("r.AntiAliasingMethod")))
+		{
+			CV->Set(4, ECVF_SetByCode);   // TSR
+		}
 	}
 }
 
@@ -111,14 +221,12 @@ void FWHSettings::ApplyWindow() const
 		const int32 WW = FMath::Min(1920, int32(W * 0.8f));
 		W = WW; H = WW * 9 / 16;
 	}
-	// The prepared owner preview must not silently replace its requested 4K size with
-	// the desktop's ultrawide resolution. This affects only the explicit preview launch.
-	if (FParse::Param(FCommandLine::Get(), TEXT("WHPreparedPlaytest")))
+	// A run profile (and -WHPreparedPlaytest, its fidelity alias) must not silently replace its requested size with
+	// the desktop's ultrawide resolution. This affects only explicit profile launches.
+	if (ActiveProfile() != EProfile::None)
 	{
-		W = 3840; H = 2160;
-		FParse::Value(FCommandLine::Get(), TEXT("ResX="), W);
-		FParse::Value(FCommandLine::Get(), TEXT("ResY="), H);
-		W = FMath::Clamp(W, 640, 8192); H = FMath::Clamp(H, 360, 8192);
+		const FIntPoint Out = ProfileOutputSize();
+		W = Out.X; H = Out.Y;
 		Mode = EWindowMode::Windowed;
 	}
 	FSystemResolution::RequestResolutionChange(W, H, Mode);
@@ -129,9 +237,11 @@ void FWHSettings::ResetToDefaults()
 {
 	const bool bWasLive = bLive;
 	const int32 KeepSuit = SuitIndex; const FString KeepSuitId = SuitId;   // 'Reset defaults' resets look / graphics, not the hero's suit
+	const int32 KeepQ = SavedQuality, KeepR = SavedResScale, KeepW = SavedWindowMode; const bool bKeepV = bSavedVSync;   // the ini values a profile run must still write back
 	*this = FWHSettings();
 	bLive = bWasLive;
 	SuitIndex = KeepSuit; SuitId = KeepSuitId;
+	SavedQuality = KeepQ; SavedResScale = KeepR; SavedWindowMode = KeepW; bSavedVSync = bKeepV;
 	ApplyCVars();
 	ApplyRender();
 	ApplyWindow();
@@ -170,13 +280,20 @@ void FWHSettings::Load()
 	GConfig->GetBool(GSection, TEXT("VSync"), bVSync, GGameUserSettingsIni);
 	GConfig->GetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
 	GConfig->GetString(GSection, TEXT("HeroSuitId"), SuitId, GGameUserSettingsIni);
-	if (FParse::Param(FCommandLine::Get(), TEXT("WHPreparedPlaytest")))
+	Clamp();
+	SavedQuality = Quality; SavedResScale = ResScale; SavedWindowMode = WindowMode; bSavedVSync = bVSync;
+	if (ActiveProfile() != EProfile::None)
 	{
 		Quality = QualityMax;
-		ResScale = 100;
+		ResScale = ProfileResScale();
 		WindowMode = WinWindowed;
 		bVSync = false;
-		UE_LOG(LogWebHomage, Display, TEXT("WH_PREVIEW quality=Cinematic internal=100%% (requested output follows ResX/ResY)"));
+		if (FParse::Param(FCommandLine::Get(), TEXT("WHPreparedPlaytest")))
+		{
+			UE_LOG(LogWebHomage, Display, TEXT("WH_PREVIEW quality=Cinematic internal=100%% (requested output follows ResX/ResY)"));
+		}
+		UE_LOG(LogWebHomage, Display, TEXT("WH_PROFILE %s: quality Cinematic, res scale %d%%, windowed, vsync off (this run only; saved render settings are kept)"),
+			ProfileName(ActiveProfile()), ResScale);
 	}
 	Clamp();
 	bLive = true;
@@ -198,10 +315,11 @@ void FWHSettings::Save()
 	GConfig->SetBool(GSection, TEXT("InvertY"), bInvertY, GGameUserSettingsIni);
 	GConfig->SetFloat(GSection, TEXT("FieldOfView"), FovH, GGameUserSettingsIni);
 	GConfig->SetBool(GSection, TEXT("CameraShake"), bCameraShake, GGameUserSettingsIni);
-	GConfig->SetInt(GSection, TEXT("QualityPreset"), Quality, GGameUserSettingsIni);
-	GConfig->SetInt(GSection, TEXT("ResolutionScale"), ResScale, GGameUserSettingsIni);
-	GConfig->SetInt(GSection, TEXT("WindowMode"), WindowMode, GGameUserSettingsIni);
-	GConfig->SetBool(GSection, TEXT("VSync"), bVSync, GGameUserSettingsIni);
+	const bool bProfile = ActiveProfile() != EProfile::None;
+	GConfig->SetInt(GSection, TEXT("QualityPreset"), bProfile ? SavedQuality : Quality, GGameUserSettingsIni);
+	GConfig->SetInt(GSection, TEXT("ResolutionScale"), bProfile ? SavedResScale : ResScale, GGameUserSettingsIni);
+	GConfig->SetInt(GSection, TEXT("WindowMode"), bProfile ? SavedWindowMode : WindowMode, GGameUserSettingsIni);
+	GConfig->SetBool(GSection, TEXT("VSync"), bProfile ? bSavedVSync : bVSync, GGameUserSettingsIni);
 	GConfig->SetInt(GSection, TEXT("HeroSuit"), SuitIndex, GGameUserSettingsIni);
 	GConfig->SetString(GSection, TEXT("HeroSuitId"), *SuitId, GGameUserSettingsIni);
 	GConfig->Flush(false, GGameUserSettingsIni);

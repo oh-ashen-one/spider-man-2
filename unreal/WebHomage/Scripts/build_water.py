@@ -38,6 +38,9 @@
 import os, sys, json, math, subprocess, time
 
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/water-ab-opus/unreal/WebHomage/Scripts'
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or HERE)
+import sm2_common
+_B = sm2_common.Build('build_water.py')
 PROJ = os.path.dirname(HERE)
 WT = os.path.dirname(os.path.dirname(PROJ))
 UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
@@ -566,7 +569,7 @@ def build_in_unreal():
         if a.get_actor_label() == 'WaterPlane':
             a.static_mesh_component.set_visibility(False, False); a.set_actor_hidden_in_game(True); n += 1
     unreal.EditorLoadingAndSavingUtils.save_map(unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world(), CITY_GEO)
-    if n != 1: WARN.append('WaterPlane actors hidden: %d (expected 1)' % n)
+    if n != 1: _B.fail('WaterPlane actors hidden in %s: %d (expected 1)' % (CITY_GEO, n))
     wlog('P1 WaterPlane hidden:', n)
 
     # ---------------------------------------------------------------- Manhattan maps get the water sublevel
@@ -672,16 +675,18 @@ def build_in_unreal():
                     a.static_mesh_component.set_visibility(False, False); a.set_actor_hidden_in_game(True); hid += 1
             wa = water_actor('RiverWater_WP')
             try: wa.set_editor_property('is_spatially_loaded', False)
-            except Exception as e: WARN.append('WP is_spatially_loaded: %s' % str(e)[:60])
+            except Exception as e: _B.fail('WP is_spatially_loaded', e)
             unreal.EditorLoadingAndSavingUtils.save_dirty_packages(True, True)
             wlog('water added to WP map', mp, '(flat WaterPlane actors hidden: %d)' % hid)
             if hid == 0: WARN.append('%s: no loaded WaterPlane actor hidden (hide or drop the flat plane in the city build when /Game/Water exists)' % mp)
         except Exception as e:
-            WARN.append('WP map %s: %s' % (mp, str(e)[:120]))
+            _B.fail('WP map ' + mp, e)
     if WARN:
         wlog('WARNINGS (%d):' % len(WARN))
         for w in WARN: print('    ', w)
     wlog('DONE')
+    if not EAL.does_asset_exist(LEVEL): _B.fail('missing ' + LEVEL)
+    _B.finish()
 
 
 try:

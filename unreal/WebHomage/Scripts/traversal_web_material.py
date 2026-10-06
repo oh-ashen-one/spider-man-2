@@ -15,6 +15,7 @@
 #
 # Run from build_traversal.py (materials section), or alone as a commandlet with your editor closed:
 #   UnrealEditor <abs uproject> -run=pythonscript -script=<abs path to this file> -unattended -nullrhi
+import os
 import unreal
 
 MAT_DIR = "/Game/Traversal/Materials"
@@ -57,12 +58,17 @@ return float4(lvl, lvl, lvl, alpha);
 PARAMS = [("CoreBright", 0.30), ("CoreDark", 0.86), ("Pivot", 0.20), ("CoreLvl", 1.6), ("RimLvl", 0.004), ("Solid", 1.0), ("Occ", 25.0)]
 
 
+FAILED = []   # strict mode (SM2_STRICT=1): properties that could not be set; the calling build reports them
+
+
 def _set(obj, prop, value):
     try:
         obj.set_editor_property(prop, value)
         return True
     except Exception as e:  # noqa: BLE001 -- report and go on (an engine-version property rename must not abort the content build)
         unreal.log_warning(f"TRAVWEB: could not set {prop} on {obj.get_name()}: {e}")
+        if os.environ.get('SM2_STRICT') == '1':
+            FAILED.append(f"TRAVWEB {prop} on {obj.get_name()}")
         return False
 
 

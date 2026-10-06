@@ -3,6 +3,7 @@
 #include "Combat/WHCombatHero.h"
 #include "Combat/WHCombatSpidey.h"
 #include "Combat/WHCombatUtil.h"
+#include "Core/WHSettings.h"
 #include "WebHomage.h"
 #include "Camera/CameraComponent.h"
 #include "Components/SkeletalMeshComponent.h"
@@ -1325,34 +1326,9 @@ void AWHCombatDirector::WriteTelemetry()
 // r04: disclose the render resolution of every capture (output size, r.ScreenPercentage, the internal pre-TSR size: same rule as WebHomageAutomation's perf json)
 void AWHCombatDirector::LogRenderRes() const
 {
-	FIntPoint Size(0, 0);
-	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport) Size = GEngine->GameViewport->Viewport->GetSizeXY();
-	auto CV = [](const TCHAR* N, float D) -> float { IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(N); return V ? V->GetFloat() : D; };
-	const float Sp = CV(TEXT("r.ScreenPercentage"), 0.f);
-	float Frac = 1.f; FString Mode = TEXT("manual");
-	if (Sp > 0.f) Frac = Sp / 100.f;
-	else if (int32(CV(TEXT("r.ScreenPercentage.Default.Desktop.Mode"), 1.f)) == 1 && Size.X > 0)
-	{
-		Mode = TEXT("auto_display");
-		auto Px = [](float H) { return H * H * 16.f / 9.f; };
-		float MinD = 720, MinR = 720, MidD = 2160, MidR = 1080, MaxD = 4320, MaxR = 1440;
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinDisplayResolution"), MinD, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinRenderingResolution"), MinR, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidDisplayResolution"), MidD, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidRenderingResolution"), MidR, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxDisplayResolution"), MaxD, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxRenderingResolution"), MaxR, GEngineIni);
-		const float Disp = float(Size.X) * float(Size.Y);
-		float Render;
-		if (Disp < Px(MinD)) Render = Disp * Px(MinR) / Px(MinD);
-		else if (Disp > Px(MaxD)) Render = Disp * Px(MaxR) / Px(MaxD);
-		else if (Disp > Px(MidD)) Render = FMath::Lerp(Px(MidR), Px(MaxR), (Disp - Px(MidD)) / (Px(MaxD) - Px(MidD)));
-		else Render = FMath::Lerp(Px(MinR), Px(MidR), FMath::Clamp((Disp - Px(MinD)) / (Px(MidD) - Px(MinD)), 0.f, 1.f));
-		Frac = FMath::Sqrt(CV(TEXT("r.ScreenPercentage.Auto.PixelCountMultiplier"), 1.f) * Render / Disp);
-	}
-	else Frac = CV(TEXT("r.ScreenPercentage.Default"), 100.f) / 100.f;
-	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_RES output %dx%d r.ScreenPercentage %.1f mode %s internal %dx%d (pre-TSR) TSR upscale %.2f"), Size.X, Size.Y, Sp, *Mode,
-		FMath::RoundToInt(Size.X * Frac), FMath::RoundToInt(Size.Y * Frac), Frac > 0.f ? 1.f / Frac : 0.f);
+	const FWHRenderRes R = WHComputeRenderRes();
+	UE_LOG(LogWebHomage, Display, TEXT("WH_CMB_RES output %dx%d r.ScreenPercentage %.1f mode %s internal %dx%d (pre-TSR) TSR upscale %.2f"), R.Output.X, R.Output.Y, R.ScreenPercentage, *R.Mode,
+		R.Internal.X, R.Internal.Y, R.Frac > 0.f ? 1.f / R.Frac : 0.f);
 }
 
 void AWHCombatDirector::WriteSummary()

@@ -13,10 +13,16 @@
 #         traversal    P3 Scripts/build_traversal.py headless (HeroDev hero + clips + Trav_Canyon)
 #         characters   P2 Scripts/build_characters.py headless WITHOUT its prep step, on a staged copy of P2's derived inputs
 #                      (see stage_characters: P2's build hard-codes its own worktree + scratch paths)
-#         look         P4 Scripts/build_look.py headless: geo (traversal boxes, city components WorldDynamic), rigs, maps
+#         look         P4 Scripts/build_look.py headless: geo (traversal boxes, city components WorldDynamic), rigs, night, maps
+#         water        Scripts/build_water.py: inputs (python3) + the in-Unreal build -> /Game/Water/Maps/Water_River
+#         life         Scripts/build_life.py: prep (python3), content + map in Unreal -> /Game/Tests/Life/Life_Actors
 #         map          this file inside Unreal (commandlet): /Game/Maps/Manhattan*
-#     Every Unreal process is a headless commandlet (-nullrhi -RenderOffScreen -NoSound) of THIS worktree's project and waits
-#     while 3+ Unreal instances run (RULES.md).
+#         terrain      Scripts/build_terrain.py in Unreal with SM2_TERRAIN_ROOT=/Game/Terrain (never /Game/TerrainR5b); needs the map step's Manhattan_Actors
+#         showcase     this file inside Unreal (SM2_MANHATTAN_MODE=showcase): /Game/Showcase/Maps/Manhattan_Showcase[_Midday|_Night]
+#         validate     tools/showcase/check.py (offline) + this file inside Unreal (SM2_MANHATTAN_MODE=validate) -> Saved/Showcase/validate.json
+#     Every Unreal process is a headless commandlet (-nullrhi -RenderOffScreen -NoSound) of THIS worktree's project, one at a time, launched
+#     through tools/gpu/gpu_slot.sh capture on the shared coordinator ~/.cache/gpu-slot. The orchestrator sets SM2_STRICT=1 for every child:
+#     a builder that could not produce a required asset prints SM2_BUILD_FAILED and raises; every builder prints 'SM2_BUILD_OK: <script>' last.
 #   * inside Unreal (-run=pythonscript -script=<this file>): builds the maps (step 'map'). Env SM2_MANHATTAN_PRESETS.
 #
 # What the map is (all sublevels always loaded; nothing here is committed as .umap, see unreal/WebHomage/CONTENT.md):
@@ -25,19 +31,31 @@
 #   /Game/Maps/Manhattan_Midday, Manhattan_Night    the same with the midday / night rig (switch = open the other map)
 #   /Game/Maps/Manhattan_Actors     PlayerStart on the avenue (x 249, y 178 m, facing north) + street people (P2 walkers)
 #   /Game/Maps/Manhattan_View_<S1|S2|S4>   golden map + the P1 shot camera (Scripts/city_shots.json), for stills
-import os, sys, json, subprocess, time, shutil
+import os, sys, json, subprocess, time, shutil, fcntl
 
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/manhattan/unreal/WebHomage/Scripts'
 PROJ = os.path.dirname(HERE)
 WT = os.path.dirname(os.path.dirname(PROJ))
 UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or HERE)
+import sm2_common  # noqa: E402
+_B = sm2_common.Build('build_manhattan.py')
 UE = '/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor'
 SCR = os.environ.get('SM2_MANHATTAN_SCR', '/Users/midir/sm2-n1/_scratch/manhattan')
+WATER_SCR = os.environ.get('SM2_WATER_SCR', os.path.expanduser('~/sm2-n1/_scratch/showcase/water'))
+LIFE_SCR = os.environ.get('SM2_LIFE_SCR', os.path.expanduser('~/sm2-n1/_scratch/showcase/life'))
+GPU_ROOT = os.path.join(os.path.expanduser('~'), '.cache', 'gpu-slot')
+GPU_SLOT = os.path.join(WT, 'tools', 'gpu', 'gpu_slot.sh')
+GPU_WAIT_TIMEOUT = int(os.environ.get('SM2_GPU_WAIT_TIMEOUT', '3600'))
 EXPORT = os.path.join(SCR, 'export', 'midtown3x3')
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
-STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'map']
+STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'water', 'life', 'map', 'terrain', 'showcase', 'validate']
+TERRAIN_STEPS = 'clean,tex,mat,mesh,foliage,trees,map'
+CHARACTER_STEPS = 'clean,tex,mat,mesh,citizens,rename,fightclips,abp,skins,map'
+LOOK_STEPS = 'geo,rigs,night,maps'
+WANT = []
 # P1's tools default to THEIR scratch/export; every one honours these, so point them at this build's dirs.
 os.environ.setdefault('SM2_CITY_SCRATCH', SCR); os.environ.setdefault('SM2_CITY_EXPORT', EXPORT); os.environ.setdefault('SM2_CITY_TEX', TEX)
 PRESETS = ['golden', 'midday', 'night']
@@ -48,6 +66,10 @@ try:
     IN_UE = hasattr(unreal, 'EditorAssetLibrary')  # (a bare 'unreal/' folder in the cwd imports as an empty namespace package)
 except ImportError:
     IN_UE = False
+
+if not IN_UE:
+    os.environ['SM2_STRICT'] = '1'
+    os.environ['SM2_SCRIPTS_DIR'] = HERE
 
 
 # ================================================================================================ orchestrator (plain python3)
@@ -72,34 +94,84 @@ def safe_rmtree(p):
     if os.path.isdir(p): shutil.rmtree(p)
 
 
+def gpu_root():
+    """the shared coordinator root; gpu_slot.py's own DEFAULT_DIR is a historical M3 path and is never used"""
+    root = os.environ.get('GPU_SLOT_DIR') or GPU_ROOT
+    if os.path.realpath(root) != os.path.realpath(GPU_ROOT):
+        raise SystemExit('refusing GPU_SLOT_DIR=%s: the only shared coordinator root is %s' % (root, GPU_ROOT))
+    return GPU_ROOT
+
+
 def wait_slot():
-    while True:
-        n = subprocess.run("pgrep -f 'MacOS/UnrealEditor( |$)' | wc -l", shell=True, capture_output=True, text=True).stdout.strip()
-        if int(n or 0) < 3: return
-        log('3+ Unreal instances running, waiting 60 s'); time.sleep(60)
+    """admission refusals (the queueing coordinator client does the waiting): PAUSED, a missing coordinator, a stuck-exiting Unreal"""
+    root = gpu_root()
+    if os.path.exists(os.path.join(root, 'PAUSED')):
+        raise SystemExit('shared GPU PAUSED (%s); this build never clears it' % os.path.join(root, 'PAUSED'))
+    if not all(os.path.isdir(os.path.join(root, d)) for d in ('locks', 'holders', 'queue')):
+        raise SystemExit('shared coordinator %s is unavailable; do not create a parallel namespace' % root)
+    stuck = []
+    for line in subprocess.check_output(['ps', '-axo', 'pid=,stat=,comm='], text=True).splitlines():
+        parts = line.split(None, 2)
+        if len(parts) == 3 and 'UnrealEditor' in parts[2] and ('E' in parts[1] or 'Z' in parts[1]): stuck.append(line.strip())
+    if stuck:
+        raise SystemExit('an UnrealEditor process is stuck exiting (stat E/Z); review ownership first:\n' + '\n'.join(stuck))
 
 
-def ue_python(name, code, env=None, timeout=7200):
-    """run python code in a headless commandlet of THIS worktree's project; fails on a Python error in the log"""
+def stop_ours(proc):
+    """our own child only: SIGTERM, wait up to 60 s, SIGKILL as the last resort"""
+    if proc.poll() is not None: return
+    proc.terminate()
+    t = time.monotonic()
+    while proc.poll() is None and time.monotonic() - t < 60: time.sleep(0.5)
+    if proc.poll() is None:
+        log('child ignored SIGTERM for 60 s: SIGKILL (last resort)'); proc.kill(); proc.wait()
+
+
+def ue_python(name, code, env=None, timeout=7200, sentinel='build_manhattan.py'):
+    """run python code in a headless commandlet of THIS worktree's project through tools/gpu/gpu_slot.sh capture (one at a time).
+    Fails on: nonzero rc (75 = GPU admission timed out, 124 = max hold exceeded), SM2_BUILD_FAILED, LogPython: Error, Traceback, or no 'SM2_BUILD_OK: <sentinel>'."""
     if subprocess.run(['pgrep', '-f', UPROJECT], capture_output=True).returncode == 0:
-        raise SystemExit('an Unreal process of this worktree is running; stop it first: pkill -9 -f "%s"' % UPROJECT)
+        raise SystemExit('an Unreal process of this worktree is running; stop your launch driver, then terminate it gracefully (SIGTERM, wait up to 60 s): ' + UPROJECT)
+    wait_slot()
+    lock = open(os.path.join(SCR, 'commandlet.lock'), 'a+')
+    try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError: raise SystemExit('another commandlet of this build is already running')
     jobs = os.path.join(SCR, 'jobs'); os.makedirs(jobs, exist_ok=True)
     job = os.path.join(jobs, name + '.py')
     open(job, 'w').write(code)
     lg = os.path.join(SCR, 'logs', name + '.log')
-    wait_slot()
-    log('UE commandlet', name, '-> log', lg)
+    if os.path.exists(lg): os.remove(lg)
+    cmd = [GPU_SLOT, 'capture', '--label', 'sm2-showcase-' + name, '--timeout', str(GPU_WAIT_TIMEOUT), '--', UE, UPROJECT, '-run=pythonscript',
+           '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen', '-NoSound', '-NoCrashReports', '-abslog=' + lg]
+    child_env = {**os.environ, **(env or {}), 'GPU_SLOT_DIR': gpu_root(), 'GPU_SLOT_CAPTURE_MAX_HOLD': str(int(timeout)),
+                 'SM2_STRICT': '1', 'SM2_SCRIPTS_DIR': HERE}
+    log('UE commandlet', name, '-> log', lg, '(gpu_slot capture, max hold %d s)' % timeout)
     t0 = time.time()
-    with open(lg + '.stdout', 'w') as so:
-        r = subprocess.run([UE, UPROJECT, '-run=pythonscript', '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen',
-                            '-NoSound', '-NoCrashReports', '-abslog=' + lg], env={**os.environ, **(env or {})}, stdout=so, stderr=subprocess.STDOUT,
-                           timeout=timeout)
+    proc = None
+    try:
+        with open(lg + '.stdout', 'w') as so:
+            proc = subprocess.Popen(cmd, env=child_env, stdout=so, stderr=subprocess.STDOUT)
+            deadline = time.monotonic() + GPU_WAIT_TIMEOUT + timeout + 120
+            while proc.poll() is None:
+                if time.monotonic() > deadline:
+                    stop_ours(proc); raise SystemExit('commandlet %s exceeded its deadline and was stopped (log %s)' % (name, lg))
+                time.sleep(1)
+    except BaseException:
+        if proc is not None: stop_ours(proc)
+        raise
+    finally:
+        lock.close()
+    rc = proc.returncode
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
-    bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l]
-    log('UE commandlet %s: rc %d, %.0f s, %d python error lines' % (name, r.returncode, time.time() - t0, len(bad)))
-    if bad:
-        print('\n'.join(bad[:30]))
-        raise SystemExit('python error in ' + name + ' (log ' + lg + ')')
+    bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l or 'SM2_BUILD_FAILED' in l]
+    ok = ('SM2_BUILD_OK: ' + sentinel) in txt
+    log('UE commandlet %s: rc %d, %.0f s, %d error lines, success sentinel %s' % (name, rc, time.time() - t0, len(bad), 'yes' if ok else 'NO'))
+    if rc == 75: raise SystemExit('GPU admission timed out after %d s (command %s not run; not a build failure). Not retrying.' % (GPU_WAIT_TIMEOUT, name))
+    if rc == 124: raise SystemExit('commandlet %s exceeded its max hold of %d s and was stopped by gpu_slot (log %s)' % (name, timeout, lg))
+    if bad: print('\n'.join(bad[:30]))
+    if rc != 0: raise SystemExit('commandlet %s failed: rc %d (log %s, stdout %s.stdout)' % (name, rc, lg, lg))
+    if bad: raise SystemExit('python error in %s (log %s)' % (name, lg))
+    if not ok: raise SystemExit('commandlet %s did not print its success sentinel "SM2_BUILD_OK: %s" (log %s)' % (name, sentinel, lg))
     return txt
 
 
@@ -155,11 +227,11 @@ def step_city():
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}
     bc = os.path.join(HERE, 'build_city.py')
     # one pass in build_city.py's own default order (tools/export/build_city.sh): the map step spawns the kit + far-skyline actors
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map"}'), env)
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": "clean,tex,mat,mesh,proto,kit,fsky,map"}'), env, sentinel='build_city.py')
 
 
 def step_traversal():
-    ue_python('traversal', exec_wrapper(os.path.join(HERE, 'build_traversal.py'), ''))
+    ue_python('traversal', exec_wrapper(os.path.join(HERE, 'build_traversal.py'), ''), sentinel='build_traversal.py')
 
 
 P2_WT = os.environ.get('P2_WT', WT)
@@ -194,18 +266,76 @@ def step_characters():
         src = src.replace(a, b)
     patched = os.path.join(SCR, 'jobs', 'build_characters_relocated.py')
     os.makedirs(os.path.dirname(patched), exist_ok=True); open(patched, 'w').write(src)
-    ue_python('characters', exec_wrapper(patched, 'ARGS = {"steps": "clean,tex,mat,mesh,citizens,rename,abp,map"}'))
+    ue_python('characters', exec_wrapper(patched, 'ARGS = %r' % {'steps': CHARACTER_STEPS}), sentinel='build_characters.py')
 
 
 def step_look():
-    env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': 'geo,rigs,maps', 'SM2_LOOK_PRESETS': 'midday,golden,night'}
-    ue_python('look', exec_wrapper(os.path.join(HERE, 'build_look.py'), ''), env)
+    env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': LOOK_STEPS, 'SM2_LOOK_PRESETS': 'midday,golden,night'}
+    ue_python('look', exec_wrapper(os.path.join(HERE, 'build_look.py'), ''), env, sentinel='build_look.py')
+
+
+def step_water():
+    """build_water.py's own 'ue' step (M3 gpu_slot path, no admission) is replaced by this file's guarded ue_python; its fresh-/Game/Water wipe is kept"""
+    env = {'SM2_WATER_SCR': WATER_SCR, 'SM2_WATER_EXPORT': EXPORT}
+    bw = os.path.join(HERE, 'build_water.py')
+    os.makedirs(os.path.join(WATER_SCR, 'logs'), exist_ok=True)
+    sh(['python3', bw, '--steps', 'inputs'], env=env, log_name='water_inputs.log')
+    safe_rmtree(os.path.join(PROJ, 'Content', 'Water'))
+    ue_python('water', exec_wrapper(bw, ''), env, timeout=5400, sentinel='build_water.py')
+    if not os.path.isfile(os.path.join(PROJ, 'Content/Water/Maps/Water_River.umap')): raise SystemExit('water step did not produce /Game/Water/Maps/Water_River')
+
+
+def step_life():
+    env = {'SM2_LIFE_SCR': LIFE_SCR, 'SM2_LIFE_EXPORT': os.environ.get('SM2_LIFE_EXPORT', EXPORT)}
+    bl = os.path.join(HERE, 'build_life.py')
+    os.makedirs(os.path.join(LIFE_SCR, 'logs'), exist_ok=True)
+    sh(['python3', bl, '--steps', 'prep'], env=env, log_name='life_prep.log')
+    if 'cpp' not in WANT: sh(['python3', bl, '--steps', 'cpp'], env=env, log_name='life_cpp.log')
+    ue_python('life_content', exec_wrapper(bl, ''), {**env, 'SM2_LIFE_STEPS': 'clean,vehicles,citizens,signals'}, sentinel='build_life.py')
+    ue_python('life_map', exec_wrapper(bl, ''), {**env, 'SM2_LIFE_STEPS': 'map'}, sentinel='build_life.py')
+    if not os.path.isfile(os.path.join(PROJ, 'Content/Tests/Life/Life_Actors.umap')): raise SystemExit('life step did not produce /Game/Tests/Life/Life_Actors')
+
+
+def guard_terrain_root(root):
+    r = '/' + root.strip('/').lower()
+    if r == '/game/terrainr5b' or r.startswith('/game/terrainr5b/'):
+        raise SystemExit('refusing terrain root %s: /Game/TerrainR5b is the preserved baseline' % root)
+    if r != sm2_common.TERRAIN_ROOT.lower(): raise SystemExit('terrain root must be %s, got %s' % (sm2_common.TERRAIN_ROOT, root))
+
+
+def step_terrain():
+    guard_terrain_root(os.environ.get('SM2_TERRAIN_ROOT') or sm2_common.TERRAIN_ROOT)
+    exp = os.environ.get('SM2_TERRAIN_EXPORT') or os.path.join(os.environ.get('SM2_TERRAIN_SCRATCH', ''), 'export')
+    prep = os.environ.get('SM2_TERRAIN_PREP') or os.path.join(os.environ.get('SM2_TERRAIN_SCRATCH', ''), 'prep')
+    need = [os.path.join(exp, 'manifest.json'), os.path.join(exp, 'terrain.json'), os.path.join(prep, 'pathmask.json')]
+    gone = [n for n in need if not os.path.isfile(n)]
+    if gone: raise SystemExit('terrain inputs missing (source tools/m5/env.sh; export/prep first): %s' % gone)
+    if not os.path.isfile(os.path.join(PROJ, 'Content/Maps/Manhattan_Actors.umap')): raise SystemExit('terrain needs /Game/Maps/Manhattan_Actors: run the map step first')
+    env = {'SM2_TERRAIN_ROOT': sm2_common.TERRAIN_ROOT, 'SM2_TERRAIN_WT': WT, 'SM2_TERRAIN_EXPORT': exp, 'SM2_TERRAIN_PREP': prep}
+    ue_python('terrain', exec_wrapper(os.path.join(HERE, 'build_terrain.py'), 'JOB_ARGS = %r' % {'steps': TERRAIN_STEPS}), env, sentinel='build_terrain.py')
+    for f in ('Terrain_Land.umap', 'City_Geo_T.umap'):
+        if not os.path.isfile(os.path.join(PROJ, 'Content/Terrain', f)): raise SystemExit('terrain step did not produce /Game/Terrain/' + f)
 
 
 def step_map():
-    txt = ue_python('manhattan_map', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS)})
+    txt = ue_python('manhattan_map', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS), 'SM2_MANHATTAN_MODE': 'map'})
     for l in txt.splitlines():
         if '[manhattan' in l: print(l.split('LogPython: ')[-1])
+
+
+def step_showcase():
+    txt = ue_python('showcase_maps', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS), 'SM2_MANHATTAN_MODE': 'showcase'})
+    for l in txt.splitlines():
+        if '[manhattan' in l: print(l.split('LogPython: ')[-1])
+
+
+def step_validate():
+    sh(['python3', os.path.join(WT, 'tools/showcase/check.py')], log_name='showcase_check.log')
+    txt = ue_python('showcase_validate', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS), 'SM2_MANHATTAN_MODE': 'validate'})
+    for l in txt.splitlines():
+        if '[manhattan' in l: print(l.split('LogPython: ')[-1])
+    rep = json.load(open(os.path.join(PROJ, 'Saved/Showcase/validate.json')))
+    if not rep.get('passed'): raise SystemExit('showcase validation failed: see Saved/Showcase/validate.json')
 
 
 def main():
@@ -214,6 +344,7 @@ def main():
     ap.add_argument('--steps', default=','.join(STEPS_ALL))
     a = ap.parse_args()
     want = a.steps.split(',')
+    WANT[:] = want
     bad = [s for s in want if s not in STEPS_ALL]
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
@@ -352,6 +483,7 @@ def build_maps():
             ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
         ok = unreal.EditorLoadingAndSavingUtils.save_map(world, path)
         mlog('map', path, 'rig', rig, 'saved' if ok else 'SAVE FAILED', 'levels', len(unreal.EditorLevelUtils.get_levels(world)))
+        if not ok: MISS.append('save_map failed: ' + path)
 
     for rig in presets:
         make_map(MAPS + ('/Manhattan' if rig == 'golden' else '/Manhattan_' + rig.capitalize()), rig)
@@ -381,10 +513,162 @@ def build_maps():
     if MISS:
         mlog('WARNINGS (%d):' % len(MISS))
         for m in MISS: print('    ', m)
+    for m in MISS: _B.fail(m)
     mlog('DONE')
+    _B.finish()
+
+
+# ================================================================================================ inside Unreal: the showcase maps
+def showcase_presets():
+    presets = [p for p in os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)).split(',') if p]
+    unknown = [p for p in presets if p not in sm2_common.SHOWCASE_MAPS]
+    if unknown: raise RuntimeError('unknown showcase presets %s' % unknown)
+    return presets
+
+
+def package_of(obj):
+    return obj.get_path_name().split('.')[0]
+
+
+def build_showcase():
+    EAL = unreal.EditorAssetLibrary
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    les = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+    T0 = time.time()
+    KEEP = ('WorldSettings', 'Brush', 'DefaultPhysicsVolume', 'GameplayDebuggerCategoryReplicator', 'WorldDataLayers', 'WorldPartitionMiniMap')
+
+    def mlog(*a): print('[manhattan %5.0fs]' % (time.time() - T0), *a)
+
+    def editor_world(): return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+
+    presets = showcase_presets()
+    missing = sorted({lp for p in presets for lp in sm2_common.showcase_levels(p) if not EAL.does_asset_exist(lp)})
+    if missing: raise RuntimeError('missing sublevels, run the earlier steps first: %s' % missing)
+    gm = unreal.load_class(None, sm2_common.GAME_MODE_CLASS)
+    if not gm: raise RuntimeError('WebTravGameMode class missing (build the C++ module)')
+    EAL.make_directory(os.path.dirname(sm2_common.SHOWCASE_MAPS['golden']))
+
+    for preset in presets:
+        path = sm2_common.SHOWCASE_MAPS[preset]
+        want = sm2_common.showcase_levels(preset)
+        if EAL.does_asset_exist(path):
+            unreal.EditorLoadingAndSavingUtils.load_map(path)
+            for a in eas.get_all_level_actors():
+                if a.get_class().get_name() not in KEEP and package_of(a) == path: eas.destroy_actor(a)
+        else:
+            les.new_level(path)
+        world = editor_world()
+        for lv in list(unreal.EditorLevelUtils.get_levels(world)):
+            pk = package_of(lv)
+            if pk != path and pk not in want:
+                unreal.EditorLevelUtils.remove_level_from_world(lv); mlog('removed stale sublevel', pk)
+        have = {package_of(lv) for lv in unreal.EditorLevelUtils.get_levels(world)}
+        for lp in want:
+            if lp not in have:
+                if unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded) is None:
+                    raise RuntimeError('could not add sublevel %s to %s' % (lp, path))
+        les.set_current_level_by_name(str(world.get_name()))
+        world.get_world_settings().set_editor_property('default_game_mode', gm)
+        if not unreal.EditorLoadingAndSavingUtils.save_map(world, path): raise RuntimeError('save_map failed: ' + path)
+        got = {package_of(lv) for lv in unreal.EditorLevelUtils.get_levels(editor_world())} - {path}
+        if got != set(want): raise RuntimeError('%s sublevels %s != expected %s' % (path, sorted(got), sorted(want)))
+        mlog('showcase map', path, 'preset', preset, 'sublevels', len(got))
+    mlog('DONE')
+    _B.finish()
+
+
+def validate_showcase():
+    EAL = unreal.EditorAssetLibrary
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    T0 = time.time()
+    checks = []
+    NIGHT = sm2_common.NIGHT_LIGHTS_LEVEL
+
+    def mlog(*a): print('[manhattan %5.0fs]' % (time.time() - T0), *a)
+
+    def check(name, ok, **detail):
+        checks.append(dict(name=name, passed=bool(ok), **detail))
+        mlog('CHECK', 'PASS' if ok else 'FAIL', name, detail if detail else '')
+        if not ok: _B.fail('validate: ' + name)
+
+    def loads(path):
+        try: return unreal.load_asset(path) is not None
+        except Exception: return False
+
+    trav_gm = unreal.load_class(None, sm2_common.GAME_MODE_CLASS)
+    check('WebTravGameMode class loads', trav_gm is not None)
+    for preset in showcase_presets():
+        path = sm2_common.SHOWCASE_MAPS[preset]
+        want = sm2_common.showcase_levels(preset)
+        tag = preset + ': '
+        check(tag + 'map exists', EAL.does_asset_exist(path), map=path)
+        try:
+            loaded = unreal.EditorLoadingAndSavingUtils.load_map(path) is not None
+        except Exception as e:
+            loaded = False
+        check(tag + 'map loads', loaded)
+        if not loaded: continue
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        pkgs = [package_of(lv) for lv in unreal.EditorLevelUtils.get_levels(world)]
+        subs = sorted(set(pkgs) - {path})
+        check(tag + 'streaming levels are exactly the composition', subs == sorted(want), levels=subs, expected=sorted(want))
+        for lp in want:
+            check(tag + 'level package exists and loads: ' + lp, EAL.does_asset_exist(lp) and loads(lp))
+        gm = world.get_world_settings().get_editor_property('default_game_mode')
+        check(tag + 'game mode is WebTravGameMode', gm is not None and trav_gm is not None and gm == trav_gm, game_mode=str(gm))
+        actors = eas.get_all_level_actors()
+        n_ps = sum(1 for a in actors if isinstance(a, unreal.PlayerStart))
+        check(tag + 'PlayerStart present', n_ps > 0, count=n_ps)
+        in_pkg = lambda pk: [a for a in actors if package_of(a) == pk]
+        ground = [a for a in in_pkg(sm2_common.TERRAIN_ROOT + '/Terrain_Land') if a.actor_has_tag('WHGround')]
+        check(tag + 'Terrain_Land has WHGround actors', len(ground) > 0, count=len(ground))
+        water = [a for a in in_pkg('/Game/Water/Maps/Water_River') if a.get_actor_label() == 'RiverWater']
+        check(tag + 'Water_River has the water actor', len(water) > 0, count=len(water))
+        life = in_pkg('/Game/Tests/Life/Life_Actors')
+        veh = [a for a in life if isinstance(a, unreal.WHLifeTraffic) and len(a.get_editor_property('vehicle_meshes')) > 0]
+        cit = [a for a in life if isinstance(a, unreal.WHLifeCrowd) and len(a.get_editor_property('meshes')) > 0]
+        check(tag + 'Life_Actors has vehicle actors', len(veh) > 0, count=len(veh))
+        check(tag + 'Life_Actors has citizen actors', len(cit) > 0, count=len(cit))
+        if preset == 'night':
+            lights = [a for a in in_pkg(NIGHT) if isinstance(a, unreal.Light)]
+            check(tag + 'night lights level has light actors', len(lights) > 0, count=len(lights), level=NIGHT)
+        else:
+            check(tag + 'does not include the night lights level', NIGHT not in pkgs and not any(p.endswith('/Look_NightLights') for p in pkgs))
+
+    check('SK_Hero loads', loads('/Game/Characters/Hero/SK_Hero'))
+    da = unreal.load_asset('/Game/Characters/Hero/Suits/DA_HeroSuits')
+    check('DA_HeroSuits loads', da is not None)
+    suits = list(da.get_editor_property('suits')) if da is not None else []
+    check('DA_HeroSuits has >= 2 suits', len(suits) >= 2, count=len(suits))
+    for en in suits:
+        sid = str(en.get_editor_property('id'))
+        for slot, req in (('material', True), ('lens_material', False), ('frame_material', False)):
+            m = en.get_editor_property(slot)
+            if m is None:
+                check('suit %s %s set' % (sid, slot), not req); continue
+            ok, n_tex, cur = True, 0, m
+            try:
+                while isinstance(cur, unreal.MaterialInstance):
+                    ok = ok and EAL.does_asset_exist(package_of(cur))
+                    for tp in cur.get_editor_property('texture_parameter_values'):
+                        t = tp.get_editor_property('parameter_value'); n_tex += 1
+                        ok = ok and t is not None and (not package_of(t).startswith('/Game/') or EAL.does_asset_exist(package_of(t)))
+                    cur = cur.get_editor_property('parent')
+                ok = ok and cur is not None
+            except Exception as e:
+                ok = False
+            check('suit %s %s and its parent chain / textures load' % (sid, slot), ok, textures=n_tex)
+
+    failed = [c['name'] for c in checks if not c['passed']]
+    out = os.path.join(PROJ, 'Saved', 'Showcase', 'validate.json')
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    json.dump({'passed': not failed, 'failed': failed, 'checked': len(checks), 'checks': checks, 'time': time.strftime('%Y-%m-%d %H:%M:%S')}, open(out, 'w'), indent=1)
+    mlog('validate.json', out, 'failed', len(failed), 'of', len(checks))
+    if failed and not sm2_common.STRICT: raise RuntimeError('showcase validation failed: %s' % failed[:6])
+    _B.finish()
 
 
 if IN_UE:
-    build_maps()
+    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
 elif __name__ == '__main__':
     main()

@@ -14,7 +14,10 @@
 #   /Game/Look/Look_NightLights          night street lighting (step night): lamps, storefront spill, stand-in traffic lights, wet-street decal, hero lights
 #   /Game/Tests/Look/Look_Midtown[_golden|_night]     playable maps (traversal game mode): city geometry + Look_Boxes + rig + PlayerStart
 #   /Game/Tests/Look/Look_View_<preset>_<S#>          the city shot views (Scripts/city_shots.json) under each preset
-import unreal, os, json, math, time, random
+import unreal, os, sys, json, math, time, random
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or os.path.dirname(os.path.abspath(globals().get('__file__') or '.')))
+import sm2_common
+_B = sm2_common.Build('build_look.py')
 
 EXPORT = os.environ.get('SM2_CITY_EXPORT', os.path.join(os.environ.get('SM2_LOOK_SCRATCH', '/Users/midir/sm2-n1/_scratch/look'), 'export', 'midtown3x3'))   # the city export (collision.json, layout.json)
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.path.join(os.environ.get('SM2_LOOK_WORKTREE', '/Users/midir/sm2-n1/look'), 'unreal/WebHomage/Scripts')
@@ -302,7 +305,7 @@ def build_mpc_sequence(name, values, world):
 #     (spot on the road, emissive) and tail lights (red point, emissive) so the roadway has light pools and moving-looking colour
 #   * a deferred decal over the whole city that makes street and sidewalk surfaces damp (lower roughness, darker) so pools read
 #   * AWHLookHeroLight (C++, Source/WebHomage/Look): rim + fill that follow the player's pawn on lighting channel 1
-NIGHT = LOOK + '/Look_NightLights'
+NIGHT = sm2_common.NIGHT_LIGHTS_LEVEL
 sds = unreal.get_engine_subsystem(unreal.SubobjectDataSubsystem)
 def add_component(actor, cls):
     root = sds.k2_gather_subobject_data_for_instance(actor)[0]
@@ -690,7 +693,8 @@ def rig_path(name): return '%s/Look_Rig_%s' % (RIGS, name)
 def add_sublevels(world, name, boxes=False):
     for lp in (CITY_GEO, BOXES, rig_path(name), NIGHT):
         if lp == BOXES and not (boxes and EAL.does_asset_exist(BOXES)): continue
-        if lp == NIGHT and not (name == 'night' and EAL.does_asset_exist(NIGHT)): continue
+        if lp == NIGHT and name != 'night': continue
+        if lp == NIGHT and not EAL.does_asset_exist(NIGHT): _B.fail('night map needs %s (step night)' % NIGHT); continue
         if not any(lp.split('/')[-1] in l.get_path_name() for l in unreal.EditorLevelUtils.get_levels(world)):
             unreal.EditorLevelUtils.add_level_to_world(world, lp, unreal.LevelStreamingAlwaysLoaded)
     les.set_current_level_by_name(str(world.get_name()))
@@ -730,4 +734,6 @@ if 'rigs' in STEPS:
 if 'night' in STEPS: build_night()
 if 'maps' in STEPS: build_maps()
 if MISS: log('WARNINGS (%d):' % len(MISS)); [print('   ', m) for m in MISS]
+for m_ in MISS: _B.fail(m_)
 log('DONE')
+_B.finish()

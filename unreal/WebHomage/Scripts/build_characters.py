@@ -7,7 +7,10 @@
 #   run in the P2 editor: tools/ue_char/uebox.py unreal/WebHomage/Scripts/build_characters.py [--args '{"steps":"..."}']
 #   or headless: UnrealEditor <uproject> -run=pythonscript -script=<this file> -unattended
 # Steps: prep,clean,tex,mat,mesh,citizens,rename,abp,map   (default all)
-import unreal, os, subprocess, time, glob
+import unreal, os, sys, subprocess, time, glob
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or os.path.dirname(os.path.abspath(globals().get('__file__') or '.')))
+import sm2_common
+_B = sm2_common.Build('build_characters.py')
 import json as _json0, math as _m
 
 # ---- paths (round 04: relocatable; nothing is tied to one worktree or scratch dir) ------------------------------------
@@ -288,7 +291,7 @@ return r;''')
         detail_out = sw_w
         log('M_Char_Suit weave from pre-skinned position: connections', okc)
     except Exception as e:
-        log('M_Char_Suit weave-from-position FAILED, UV weave kept:', str(e)[:200])
+        _B.fail('M_Char_Suit weave-from-position (UV weave kept)', e)
     MEL.connect_material_expressions(detail_out, '', blend, 'AdditionalNormal')
     MEL.connect_material_property(blend, '', unreal.MaterialProperty.MP_NORMAL)
     # cloth sheen
@@ -304,7 +307,10 @@ return r;''')
     spec = scalar(m, 'Specular', 0.5, -150, -330)
     MEL.connect_material_property(spec, '', unreal.MaterialProperty.MP_SPECULAR)
     MEL.recompile_material(m)
-    try: log('M_Char_Suit compile errors:', list(MEL.get_material_compile_errors(m)) if hasattr(MEL, 'get_material_compile_errors') else 'n/a')
+    try:
+        _errs = list(MEL.get_material_compile_errors(m)) if hasattr(MEL, 'get_material_compile_errors') else []
+        log('M_Char_Suit compile errors:', _errs if hasattr(MEL, 'get_material_compile_errors') else 'n/a')
+        if _errs: _B.fail('M_Char_Suit compile errors: %s' % _errs[:3])
     except Exception as e: log('compile error query failed', e)
     return m
 
@@ -412,7 +418,7 @@ if 'mat' in STEPS:
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', hlens, scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.50, 0.13, 0.01, 1)})   # round 08: amber lens conformed to the mask (hero_lens_r8.py), low emissive so the eyes read in shade; glossy so the sky / sun reflections read as highlights
         log('hero lens: glossy + fresnel falloff')
     except Exception as e:
-        log('hero lens: glossy lens failed, simple lens', str(e)[:160])
+        _B.fail('hero lens: glossy lens failed, simple lens used', e)
         mi('MI_Hero_Lens', ROOT + '/Hero/Materials', lens, scal={'Roughness': 0.12, 'Specular': 0.9, 'Emissive': 0.04}, vec={'Color': (0.82, 0.84, 0.86, 1)})
     # round 13: the rim of the sculpted eyes is polished gunmetal (base 0.30 / 0.30 / 0.33, metallic 0.9; r12: matte near-black 0.006 / 0.011 / 0.013, invisible on a dark mask = 'rimless'): the sky and the key light
     # run along its raised profile, so it reads on every suit's mask while staying a dark ring against the glossy lens
@@ -593,7 +599,7 @@ if 'fightclips' in STEPS:
         EAL.save_directory(ROOT + '/People', only_if_is_dirty=True, recursive=True)
         log('fight clips', sorted(p.split('.')[-1] for p in EAL.list_assets(ROOT + '/People/Anims', recursive=True) if 'A_Fight_' in p))
     else:
-        log('fightclips: SK_Street_Fight.glb missing (run tools/ue_char/fight/make_fight_clips.py)')
+        _B.fail('fightclips: SK_Street_Fight.glb missing (run tools/ue_char/fight/make_fight_clips.py)')
 
 # ------------------------------------------------------------------------------------------------ round 09: crowd walk clips with the swing-foot lift capped
 # tools/ue_char/crowd/lift_cap.py (hooked into eval/citizen_rig.load_people) caps the rear-foot lift at 10 % of stature; export_citizens.sh rewrote the FBX takes.  Only the clips
@@ -638,7 +644,7 @@ def make_abp(name, path, skel, idle, loco, jump=None, fall=None, land=None, take
     if takeoff_hold: cdo.set_editor_property('takeoff_hold_time', float(takeoff_hold))
     if hold_descent:
         try: cdo.set_editor_property('jump_holds_through_descent', True)
-        except Exception as e: log('hold_descent property:', str(e)[:100])
+        except Exception as e: _B.fail('hold_descent property (stale C++ module?)', e)
     EAL.save_asset(full)
     return bp
 
@@ -1244,7 +1250,7 @@ if 'skins' in STEPS:
         try:
             lens_ = mi('MI_HeroLens_' + sid, SUITS_DIR + '/Materials', load(ROOT + '/Shared/Materials/M_Char_HeroLens'),
                        scal={'Roughness': 0.06, 'Specular': 0.7, 'EdgeDarken': 0.7, 'Emissive': 0.30}, vec={'Color': (0.67 * lin[0], 0.67 * lin[1], 0.67 * lin[2], 1.0)})
-        except Exception as ex: log('lens instance failed', sid, str(ex)[:120])
+        except Exception as ex: _B.fail('lens instance failed for suit ' + sid, ex)
         # round 13: the rim of the eyes per suit (WHHeroSuitEntry.FrameMaterial): polished silver-gunmetal on a near-black mask, dark graphite on a mid / pale one (a rim that matches its mask is
         # invisible: the r12 'rimless' read; r13's first run with one silver rim for every suit: 3 of 8 suits had a closed rim >= 6 px, the mid / pale masks lost it)
         frame_ = None
@@ -1262,7 +1268,7 @@ if 'skins' in STEPS:
                         scal={'Roughness': 0.25 if dark_mask else 0.22, 'Specular': 0.6, 'Metallic': 0.9},
                         vec={'Color': (0.22, 0.22, 0.24, 1.0) if dark_mask else (0.06, 0.06, 0.065, 1.0)})
             log('skins: rim', sid, 'hood luma %.3f' % luma_, 'silver' if dark_mask else 'graphite')
-        except Exception as ex: log('frame instance failed', sid, str(ex)[:160])
+        except Exception as ex: _B.fail('frame instance failed for suit ' + sid, ex)
         return mat_, lens_, frame_
     entries = []
     for e_ in SUITS_CFG['suits']:
@@ -1279,12 +1285,14 @@ if 'skins' in STEPS:
         except Exception as ex_:
             import traceback
             log('skins: suit', sid, 'FAILED:', str(ex_)[:300]); traceback.print_exc()
+            _B.fail('skins: suit %s failed' % sid, ex_)
     if EAL.does_asset_exist(SUITS_DIR + '/DA_HeroSuits'): EAL.delete_asset(SUITS_DIR + '/DA_HeroSuits')
     da = AT.create_asset('DA_HeroSuits', SUITS_DIR, unreal.WHHeroSuitSet, unreal.DataAssetFactory())
     da.set_editor_property('suits', entries)
     EAL.save_directory(SUITS_DIR, only_if_is_dirty=False, recursive=True)
     EAL.save_directory(ROOT, only_if_is_dirty=True, recursive=True)      # everything the data asset references (MI_Hero_Suit, MI_Hero_Lens) is on disk
     log('skins ok:', len(entries), 'suits in', SUITS_DIR + '/DA_HeroSuits')
+    if len(entries) < 2: _B.fail('skins: only %d suits built (need >= 2)' % len(entries))
 
 if 'skinsmap' in STEPS:
     # ================= Char_Skins: the hero stands on a plain floor under a key sun + fills; four views of every suit (director shots switch the suit through the
@@ -1316,7 +1324,7 @@ if 'skinsmap' in STEPS:
             spawn(unreal.PlayerStart, (-4000, 0, 120), label='PlayerStart_Pawn')
             gm = unreal.load_class(None, '/Script/WebHomage.WebTravGameMode')
             if gm: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world().get_world_settings().set_editor_property('default_game_mode', gm)
-            else: log('WebTravGameMode missing: the playable pawn will not spawn')
+            else: _B.fail('WebTravGameMode missing: the playable pawn will not spawn')
             return None
         spawn(unreal.PlayerStart, (-130000, -130000, 120), label='PlayerStart_OffStage')   # round 11: 1.8 km away (at 60 m the default pawn showed as a dark post on the horizon in the orbit movie)
         only1 = unreal.LightingChannels(); only1.set_editor_property('channel0', False); only1.set_editor_property('channel1', True)
@@ -1379,3 +1387,4 @@ if 'skinsmap' in STEPS:
     log('skinsmap saved', ok1, ok2, 'stills', N_STILL, 'orbit', len(shots) - N_STILL)
 
 log('done')
+_B.finish()

@@ -1,5 +1,6 @@
 // Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 #include "Core/WebHomageAutomation.h"
+#include "Core/WHSettings.h"
 #include "WebHomage.h"
 
 #include "Engine/Engine.h"
@@ -162,51 +163,12 @@ void UWebHomageAutomation::WritePerf()
 	const double Avg = N ? Sum / N : 0.0;
 	const double GpuAvg = N ? GpuSum / N : 0.0;
 
-	FIntPoint Size(0, 0);
-	if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
-	{
-		Size = GEngine->GameViewport->Viewport->GetSizeXY();
-	}
-	auto CVarF = [](const TCHAR* Name, float Default) -> float
-	{
-		IConsoleVariable* V = IConsoleManager::Get().FindConsoleVariable(Name);
-		return V ? V->GetFloat() : Default;
-	};
-	const float ScreenPct = CVarF(TEXT("r.ScreenPercentage"), 0.f);
-	// Effective internal (pre-TSR) resolution. r.ScreenPercentage<=0 means the engine picks it from
-	// r.ScreenPercentage.Default.Desktop.Mode (1 = based on display resolution, table in
-	// [Rendering.AutoScreenPercentage]: 2160p display -> 1080p render). Mirrors LegacyScreenPercentageDriver.cpp.
-	float Frac = 1.f;
-	FString SPMode = TEXT("manual");
-	if (ScreenPct > 0.f)
-	{
-		Frac = ScreenPct / 100.f;
-	}
-	else if (int32(CVarF(TEXT("r.ScreenPercentage.Default.Desktop.Mode"), 1.f)) == 1 && Size.X > 0)
-	{
-		SPMode = TEXT("auto_display");
-		auto Px = [](float H) { return H * H * 16.f / 9.f; };
-		float MinD = 720, MinR = 720, MidD = 2160, MidR = 1080, MaxD = 4320, MaxR = 1440;
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinDisplayResolution"), MinD, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MinRenderingResolution"), MinR, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidDisplayResolution"), MidD, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MidRenderingResolution"), MidR, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxDisplayResolution"), MaxD, GEngineIni);
-		GConfig->GetFloat(TEXT("Rendering.AutoScreenPercentage"), TEXT("MaxRenderingResolution"), MaxR, GEngineIni);
-		const float Disp = float(Size.X) * float(Size.Y);
-		float Render;
-		if (Disp < Px(MinD)) { Render = Disp * Px(MinR) / Px(MinD); }
-		else if (Disp > Px(MaxD)) { Render = Disp * Px(MaxR) / Px(MaxD); }
-		else if (Disp > Px(MidD)) { Render = FMath::Lerp(Px(MidR), Px(MaxR), (Disp - Px(MidD)) / (Px(MaxD) - Px(MidD))); }
-		else { Render = FMath::Lerp(Px(MinR), Px(MidR), FMath::Clamp((Disp - Px(MinD)) / (Px(MidD) - Px(MinD)), 0.f, 1.f)); }
-		Frac = FMath::Sqrt(CVarF(TEXT("r.ScreenPercentage.Auto.PixelCountMultiplier"), 1.f) * Render / Disp);
-	}
-	else
-	{
-		Frac = CVarF(TEXT("r.ScreenPercentage.Default"), 100.f) / 100.f;
-	}
-	const int32 InternalW = FMath::RoundToInt(Size.X * Frac);
-	const int32 InternalH = FMath::RoundToInt(Size.Y * Frac);
+	const FWHRenderRes RenderRes = WHComputeRenderRes();
+	const FIntPoint Size = RenderRes.Output;
+	const float ScreenPct = RenderRes.ScreenPercentage;
+	const FString SPMode = RenderRes.Mode;
+	const int32 InternalW = RenderRes.Internal.X;
+	const int32 InternalH = RenderRes.Internal.Y;
 	int32 Under60 = 0;
 	for (float F : FrameMs) { if (F > 1000.f / 60.f + 0.5f) { ++Under60; } }
 

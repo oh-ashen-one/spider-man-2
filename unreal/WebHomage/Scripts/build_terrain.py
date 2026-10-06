@@ -13,7 +13,10 @@
 #     map       /Game/Terrain/Terrain_Land (always-loaded sublevel: ground actors tagged WHGround, 3 tuft HISMs, instanced props) and
 #               /Game/Terrain/Maps/Manhattan_Terrain = the integrated Manhattan sublevels + Terrain_Land; the city's own flat park paths / lawns are hidden
 # Frame: browser metres (x east, y up, z south) -> UE cm: X = 100 x, Y = 100 z, Z = 100 y (north = -Y).
-import unreal, os, json, math, time, re, struct
+import unreal, os, sys, json, math, time, re, struct
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or os.path.dirname(os.path.abspath(globals().get('__file__') or '.')))
+import sm2_common
+_B = sm2_common.Build('build_terrain.py')
 try: unreal.SystemLibrary.execute_console_command(None, 'Module Load StaticMeshEditor')
 except Exception as _ex: print('WARN Module Load StaticMeshEditor:', _ex)
 
@@ -26,6 +29,8 @@ try: ARGS = JOB_ARGS  # noqa: F821 (set by a job wrapper)
 except NameError: ARGS = {}
 STEPS = set((ARGS.get('steps') or os.environ.get('SM2_TERRAIN_STEPS') or 'clean,tex,mat,mesh,foliage,trees,map,views').split(','))
 ROOT = os.environ.get('SM2_TERRAIN_ROOT') or '/Game/Terrain'   # r04: a side-by-side build (e.g. /Game/TerrainR4) leaves the content a capture hold may be reading untouched
+if os.path.normpath('/' + ROOT.strip('/')).lower().rstrip('/') in ('/game/terrainr5b',) or os.path.normpath('/' + ROOT.strip('/')).lower().startswith('/game/terrainr5b/'):
+    raise RuntimeError('refusing SM2_TERRAIN_ROOT=%s: /Game/TerrainR5b is the preserved baseline' % ROOT)
 at = unreal.AssetToolsHelpers.get_asset_tools()
 EAL = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
@@ -40,12 +45,13 @@ def step(name):
             try: fn()
             except Exception:
                 log('STEP %s FAILED' % name); traceback.print_exc()
+                _B.fail('step %s failed' % name)
         return fn
     return deco
 def soft(label, fn, *a):
     try: return fn(*a)
     except Exception:
-        log('SECTION %s FAILED' % label); traceback.print_exc(); return None
+        log('SECTION %s FAILED' % label); traceback.print_exc(); _B.fail('section %s failed' % label); return None
 TJ = json.load(open(os.path.join(EXPORT, 'terrain.json')))
 MAN = json.load(open(os.path.join(EXPORT, 'manifest.json')))
 PM = json.load(open(os.path.join(PREP, 'pathmask.json')))
@@ -506,7 +512,7 @@ def build_land(path):
             c.set_static_mesh(load(sp))
             if tinted: c.set_editor_property('num_custom_data_floats', 6)
             try: c.set_material(0, pool_material(pool, d))
-            except Exception as ex: log('WARN material', pool, str(ex)[:160])
+            except Exception as ex: _B.fail('material for pool %s' % pool, ex)
             # per-instance cull distance: only a cost optimisation for pools that need no shadow / Lumen presence beyond their band (the band itself is the material clip)
             cull = None
             if pool.startswith('ez-') and not l1: cull = 2500       # ez L0 (heavy, non-Nanite); L1 is Nanite and keeps casting shadows at every distance (the band clip is skipped in shadow passes, Foliage.ush)
@@ -606,7 +612,8 @@ def water_levels():
     return [WATER_LEVEL] if EAL.does_asset_exist(WATER_LEVEL) else []
 def hide_flat_water(path):
     """build_water.py hides the city's flat WaterPlane in City_Midtown_Geo; City_Geo_T is a copy made before the water existed: hide it there too (collision kept: traversal floor)"""
-    if not water_levels(): return
+    if not water_levels():
+        _B.fail('%s missing: build the water step before terrain' % WATER_LEVEL); return
     unreal.EditorLoadingAndSavingUtils.load_map(path)
     n = 0
     for a in eas.get_all_level_actors():
@@ -614,13 +621,14 @@ def hide_flat_water(path):
             a.static_mesh_component.set_visibility(False, False); a.set_actor_hidden_in_game(True); n += 1
     les.save_current_level()
     log('flat WaterPlane hidden in', path, ':', n, '(expected 1)')
+    if n != 1: _B.fail('flat WaterPlane hidden in %s: %d (expected 1)' % (path, n))
 def city_geo_copy(src):
     """a private copy of the city geometry level in which the city's flat park ribbons / lawns and its ez-tree LOD1 park woodland are hidden in game (terrain supersedes them: tinted trees,
     LOD0, real ground); the original level (and the baseline maps VB_*) stay untouched"""
     dst = ROOT + '/City_Geo_T'
     if EAL.does_asset_exist(dst):
         try: hide_flat_water(dst)
-        except Exception: log('hide_flat_water FAILED'); traceback.print_exc()
+        except Exception as ex: log('hide_flat_water FAILED'); traceback.print_exc(); _B.fail('hide_flat_water', ex)
         return dst
     try:
         if not EAL.duplicate_asset(src, dst): raise RuntimeError('could not duplicate ' + src)
@@ -635,6 +643,7 @@ def city_geo_copy(src):
         return dst
     except Exception:
         log('city_geo_copy FAILED: falling back to the original city geometry level (the city park trees stay visible)'); traceback.print_exc()
+        _B.fail('city_geo_copy (fell back to the original city geometry)')
         return src
 
 def build_persistent(path):
@@ -651,9 +660,10 @@ def build_persistent(path):
     les.set_current_level_by_name(str(world.get_name()))
     gm = unreal.load_class(None, '/Script/WebHomage.WebTravGameMode')
     if gm: world.get_world_settings().set_editor_property('default_game_mode', gm)
-    else: log('WARN WebTravGameMode class missing')
+    else: _B.fail('WebTravGameMode class missing (build the C++ module)')
     ok = unreal.EditorLoadingAndSavingUtils.save_map(world, path)
     log('map', path, 'saved' if ok else 'SAVE FAILED', 'levels', len(unreal.EditorLevelUtils.get_levels(world)))
+    if not ok: _B.fail('save_map failed: ' + path)
 
 def build_views():
     """still maps for the shot list: golden Manhattan sublevels (+ Terrain_Land for V_*, without it for the baseline VB_*) + a shot camera (no game mode: the camera is the view)"""
@@ -690,3 +700,4 @@ def _step_map():
 @step('views')
 def _step_views(): build_views()
 log('DONE')
+_B.finish()

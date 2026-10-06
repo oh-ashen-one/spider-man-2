@@ -17,6 +17,10 @@
 import os, sys, json, subprocess, time, shutil, glob, math
 
 HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/life/unreal/WebHomage/Scripts'
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or HERE)
+import sm2_common
+_B = sm2_common.Build('build_life.py')
+COSMETIC_MISS = ('generate_mesh_distance_field', 'lod screen sizes', 'camera rig auto activate')   # perf / camera-default property sets; every other MISS is a required asset or setting
 PROJ = os.path.dirname(HERE)
 WT = os.path.dirname(os.path.dirname(PROJ))
 UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
@@ -557,6 +561,11 @@ return rgb * lerp(0.02, 0.15, on);''')
         L('WARNINGS (%d):' % len(MISS))
         for m_ in MISS: print('    ', m_)
     L('DONE steps', sorted(STEPS))
+    for m_ in MISS:
+        if m_.startswith(COSMETIC_MISS): _B.warn(m_)
+        else: _B.fail(m_)
+    if 'map' in STEPS and not EAL.does_asset_exist(TESTS + '/Life_Actors'): _B.fail('missing ' + TESTS + '/Life_Actors')
+    _B.finish()
 
 
 if IN_UE:

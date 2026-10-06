@@ -42,6 +42,8 @@ void AWebHomagePlayerController::BeginPlay()
 			S.Load();
 			S.ApplyRender();
 			S.ApplyWindow();
+			FTimerHandle ResLogTimer;   // the window resize is asynchronous: log the real viewport / internal resolution a few seconds later
+			GetWorldTimerManager().SetTimer(ResLogTimer, FTimerDelegate::CreateStatic(&FWHSettings::LogRes), 3.0f, false);
 		}
 		ReleaseMouse();
 		// interactive play starts with the mouse captured (owner: right-mouse swing must work immediately); Escape releases + opens settings

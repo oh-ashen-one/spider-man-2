@@ -7,6 +7,17 @@
 
 #include "CoreMinimal.h"
 
+/** Output size (actual viewport), r.ScreenPercentage and the effective internal (pre-TSR) resolution. One implementation for WH_PERF, WH_CMB_RES and WH_RES. */
+struct WEBHOMAGE_API FWHRenderRes
+{
+	FIntPoint Output = FIntPoint::ZeroValue;
+	float ScreenPercentage = 0.f;   // r.ScreenPercentage (<= 0: the engine picks it from the display resolution)
+	FString Mode = TEXT("manual");  // manual | auto_display
+	float Frac = 1.f;
+	FIntPoint Internal = FIntPoint::ZeroValue;
+};
+WEBHOMAGE_API FWHRenderRes WHComputeRenderRes();
+
 struct WEBHOMAGE_API FWHSettings
 {
 	// ---- ranges / defaults
@@ -33,6 +44,23 @@ struct WEBHOMAGE_API FWHSettings
 	int32 ResScale = 100;               // r.ScreenPercentage
 	int32 WindowMode = WinBorderless;
 	bool bVSync = true;
+	// ---- run profile (-WHProfile=fidelity|playable): overrides the render fields for this run only; Save() keeps the previously loaded values.
+	//   fidelity: Cinematic, 100 %, windowed at -ResX/-ResY (default 3840x2160), vsync off.   -WHPreparedPlaytest is an alias of fidelity.
+	//   playable: Cinematic, TSR (r.AntiAliasingMethod 4), r.ScreenPercentage = -WHResScale=<int> (default 67), windowed at -ResX/-ResY, vsync off.
+	enum class EProfile : uint8 { None, Fidelity, Playable };
+	static constexpr int32 PlayableResScaleDefault = 67;
+	static EProfile ActiveProfile();        // parsed once from the command line
+	static const TCHAR* ProfileName(EProfile P);
+	static int32 ProfileResScale();         // 100 (fidelity) / -WHResScale (playable), clamped 25..100
+	static FIntPoint ProfileOutputSize();   // -ResX / -ResY, default 3840x2160
+	int32 EffectiveQuality() const;
+	int32 EffectiveResScale() const;
+	bool EffectiveVSync() const;
+	int32 SavedQuality = QualityMax, SavedResScale = 100, SavedWindowMode = WinBorderless;  // values read from the ini before a profile overrode the fields
+	bool bSavedVSync = true;
+	/** One 'WH_RES profile=... output=... r.ScreenPercentage=... internal=... aa=... quality=...' line (call once the viewport exists). */
+	static void LogRes();
+
 	// ---- hero suit (round 11, piece G): index into /Game/Characters/Hero/Suits/DA_HeroSuits and the suit's id (the id wins when the set is re-ordered)
 	int32 SuitIndex = 0;
 	FString SuitId;

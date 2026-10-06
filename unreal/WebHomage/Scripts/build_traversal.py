@@ -11,7 +11,12 @@ import json
 import math
 import os
 import random
+import sys
 import unreal
+
+sys.path.insert(0, os.environ.get('SM2_SCRIPTS_DIR') or os.path.dirname(os.path.abspath(globals().get('__file__') or '.')))
+import sm2_common
+_B = sm2_common.Build('build_traversal.py')
 
 MAT_DIR = "/Game/Traversal/Materials"
 MAP_DIR = "/Game/Tests/Traversal"
@@ -144,6 +149,7 @@ _sys.path.insert(0, os.path.join(unreal.Paths.convert_relative_path_to_full(unre
 import traversal_web_material
 importlib.reload(traversal_web_material)
 traversal_web_material.build(eal, mel, tools)
+for _f in traversal_web_material.FAILED: _B.fail(_f)
 
 
 # ------------------------------------------------------------------ HeroDev: dev proxy of the real hero (round 04)
@@ -373,3 +379,4 @@ os.makedirs(os.path.dirname(_out), exist_ok=True)
 with open(_out, "w") as f:
     json.dump({"units": "m", "axes": "UE (X along the avenue, Z up)", "boxes": LAYOUT}, f, indent=0)
 unreal.log("TRAV_CANYON_OK actors=%d %s" % (len(eas.get_all_level_actors()), counts))
+_B.finish()
