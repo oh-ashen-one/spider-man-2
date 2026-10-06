@@ -10,12 +10,12 @@ PROJ_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 UPROJECT="$PROJ_DIR/WebHomage.uproject"
 if pgrep -f "$UPROJECT" >/dev/null; then
   echo "Your editor/game for $UPROJECT is running; stop it first:"
-  echo "  pkill -9 -f \"$UPROJECT\""
+  echo "Stop your launch driver, then terminate your editor gracefully and wait up to 60 seconds."
   exit 2
 fi
 rm -f "$PROJ_DIR"/Binaries/Mac/libUnrealEditor-WebHomage-*.dylib
 "/Users/Shared/Epic Games/UE_5.8/Engine/Build/BatchFiles/Mac/Build.sh" WebHomageEditor Mac Development \
-  -Project="$UPROJECT" -WaitMutex "$@"
+  -Project="$UPROJECT" -WaitMutex -NoHotReload "$@"
 DYLIB=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['Modules']['WebHomage'])" "$PROJ_DIR/Binaries/Mac/UnrealEditor.modules")
 if [ ! -f "$PROJ_DIR/Binaries/Mac/$DYLIB" ]; then
   echo "ERROR: UnrealEditor.modules points at missing $DYLIB"; exit 3

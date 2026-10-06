@@ -9,7 +9,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[2]
 PROJECT = ROOT / 'unreal/WebHomage'
 STATE = PROJECT / 'Saved/OwnerPreview'
-GPU = Path('/Users/midir/sm2-n1/_scratch/gpu')
+GPU = Path(os.environ.get('GPU_SLOT_DIR', str(Path.home() / '.cache/gpu-slot')))
 UE = Path('/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor')
 
 def main():
@@ -42,7 +42,7 @@ def main():
     user.mkdir(exist_ok=True)
     env = dict(os.environ, GPU_SLOT_DIR=str(GPU), GPU_SLOT_CAPTURE_SLOTS='1',
                GPU_SLOT_CAPTURE_MAX_HOLD='0', GPU_SLOT_FOREGROUND='1')
-    command = [str(GPU / 'bin/gpu_slot.sh'), 'capture', '--label', 'owner-preview', '--timeout', '30', '--',
+    command = [str(ROOT / 'tools/m5/guarded_preview.py'), '--',
                str(UE), str(PROJECT / 'WebHomage.uproject'), prepared['map'],
                '-game', '-windowed', f'-ResX={width}', f'-ResY={height}', '-ForceRes', '-WinX=0', '-WinY=0',
                '-WHPreparedPlaytest', f'-UserDir={user}/', '-NoCrashReports', '-notraceserver',

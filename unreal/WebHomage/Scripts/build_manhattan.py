@@ -162,8 +162,8 @@ def step_traversal():
     ue_python('traversal', exec_wrapper(os.path.join(HERE, 'build_traversal.py'), ''))
 
 
-P2_WT = '/Users/midir/sm2-n1/characters'
-P2_SCR = '/Users/midir/sm2-n1/_scratch/characters'
+P2_WT = os.environ.get('P2_WT', WT)
+P2_SCR = os.environ.get('P2_SCRATCH', os.path.expanduser('~/sm2-n1/_scratch/characters'))
 
 
 def stage_characters():
