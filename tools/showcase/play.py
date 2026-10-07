@@ -64,6 +64,7 @@ def main():
     cap.add_argument('--quit', type=float, help='exit time (default: perf end + 1, last shot + 2, else 20)')
     cap.add_argument('--shot-cams', metavar='FILE', help='matched-camera shots (tools/showcase/gen_shot_cams.py): a JSON list of {t, name, ue_pos_cm, ue_target_cm, fov, hero_visible}; replaces --shots')
     cap.add_argument('--exec', action='append', default=[], metavar='CMD', help='extra console command for -ExecCmds (capture mode), e.g. "wh.CityLights.Gain 0"; repeatable')
+    cap.add_argument('--script', metavar='FILE', help='traversal route script (-WHTravScript, docs/night1/manhattan/scripts/route_30s_warmup15.json); telemetry goes to <name>_telemetry.csv')
     cap.add_argument('--name', default='shot')
     cap.add_argument('--timeout', type=int, default=600, help='wall seconds before our own SIGTERM (capture mode)')
     args = ap.parse_args()
@@ -115,6 +116,8 @@ def main():
             game_args.append(f'-WHShotAt={args.shots}')
         if args.shot_cams:
             game_args.append(f'-WHShotCam={Path(args.shot_cams).resolve()}')
+        if args.script:
+            game_args.append(f'-WHTravScript={Path(args.script).resolve()}')
         if args.perf:
             game_args += [f'-WHPerfFrom={args.perf.split(":")[0]}', f'-WHPerfTo={args.perf.split(":")[1]}', '-WHCsv']
         if not baseline:   # the profile's render settings apply in captures too (the game applies them for an explicit -WHProfile even with -WHNoMouseCapture)

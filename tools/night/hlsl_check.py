@@ -171,6 +171,8 @@ def collect():
     env_city = {'SM2_CITY_EXPORT': os.environ.get('SM2_CITY_EXPORT', str(Path.home() / 'sm2-n1/_scratch/showcase/manhattan/export/midtown3x3')),
                 'SM2_CITY_TEX': os.environ.get('SM2_CITY_TEX', str(Path.home() / 'sm2-n1/_scratch/showcase/manhattan/tex')),
                 'SM2_CITY_SCRATCH': os.environ.get('SM2_CITY_SCRATCH', str(Path.home() / 'sm2-n1/_scratch/showcase/manhattan')), 'SM2_STRICT': '0'}
+    if not (Path(env_city['SM2_CITY_EXPORT']) / 'manifest.json').is_file() and (Path(env_city['SM2_CITY_EXPORT']) / 'midtown3x3/manifest.json').is_file():
+        env_city['SM2_CITY_EXPORT'] = str(Path(env_city['SM2_CITY_EXPORT']) / 'midtown3x3')   # build_city reads <export>/manifest.json at import (emissive instance refresh)
     ns = load_builder('build_city.py', env_city, {'steps': 'mat'})
     for name, code, inputs, outputs, incs in ns['custom_nodes']():
         items.append({'label': 'build_city/' + name, 'node': (name, code, inputs, outputs, incs)})

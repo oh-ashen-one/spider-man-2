@@ -58,6 +58,11 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - Emissive screens: M_CityVC emits the three.js emissive (EmisColor x EmisI instance params, base colour is a dark 0.023) x map at night with the author's screen shading (ScreenK 0.1, ScrBoost 2, shoulder 0.28 -> 0.46) x K x ScrCal; M_CitySignage K3/K4 likewise. Painted markings use MarkNightK, canopies LeafNightK, far windows the author's farshore.js 1.4 + 0.15 albedo.
 - `-WHShotCam` entries may carry hero_pos_m / hero_yaw_deg (tools/night/ref_players.mjs -> gen_shot_cams.py): the hero is teleported there and held. `tools/showcase/with_holder.sh` waits for the approved Qwen resident to be the only holder (it re-registers under new pids); `regions.py` measures boards / leaves / lit windows on masks picked in the reference.
 
+### Night calibration round 4 + route perf
+- Author's night city ambient (render/surface.js:171-193) ported as CityNightAmb in Shaders/City/ShadeFill.ush (Facade, Detail, Roof, Asphalt, Sidewalk): it is zero within ~220 m of the camera by the author's design (the local light grid replaces it), so it only changes far views; Times Square's screen-colour field is included. NightAmbK (MPC 0.04) adds the author's unoccluded night sky fill for canyon facades (Lumen's SkyLight is occluded there).
+- Route runs: `tools/showcase/route_run.sh <name> <map> <profile> [--res-scale N]` (warm-up route, shots every 3 s, perf 15:45), `perf_report.py` (frames.csv stats, telemetry summary, contact sheet). The 4K screenshot frames hitch ~1 s each: use the `excluding_screenshot_hitches` block.
+- `tools/showcase/with_holder.sh` waits for the approved Qwen resident; `build_manhattan.py --steps ray|probe` (SM2_RAYS / SM2_PROBE) trace the night map (only the invisible WHBox collision is hit).
+
 ## Blockers (live)
 - 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
 

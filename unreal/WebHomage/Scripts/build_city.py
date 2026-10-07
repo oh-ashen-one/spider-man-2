@@ -127,10 +127,10 @@ def make_material(name, include, code, inputs, outputs, blend='opaque', two_side
     c = mel.create_material_expression(m, unreal.MaterialExpressionCustom, -400, 0)
     c.set_editor_property('code', code)
     CUSTOM_NODES.append((name, code, [(n, kind, arg if kind in ('tex', 'texparam') else None) for n, kind, arg in inputs], [(n, k) for n, k, _ in outputs],
-                         ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code) else [])))
+                         ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code or 'CityNightAmb' in code) else [])))
     c.set_editor_property('output_type', unreal.CustomMaterialOutputType.CMOT_FLOAT3)
     c.set_editor_property('description', name)
-    incs = ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code) else [])   # (r09) shared canyon-shade fill header
+    incs = ([include] if include else []) + (['/Project/City/ShadeFill.ush'] if ('CityShadeFill' in code or 'CitySkyRefl' in code or 'CityShadeW' in code or 'CityNightAmb' in code) else [])   # (r09) shared canyon-shade fill header
     if incs: c.set_editor_property('include_file_paths', incs)
     ins = []
     for n, kind, arg in inputs:
@@ -223,7 +223,7 @@ if 'leaves' in STEPS and 'mat' not in STEPS: make_leaves(); log('leaves material
 MPC_DEFAULTS = (('NightK', 0.0), ('DnTime', 0.0), ('InteriorGain', 0.5), ('ShopGain', 0.7), ('EmissiveScale', 3.0),
                 ('DayEmisK', 0.22), ('GlassSpec', 0.5), ('DebugMode', 0.0),
                 ('AlbKnee', 0.30), ('AlbSlope', 0.48), ('F0Scale', 0.25), ('FarGain', 4.0), ('WaterSpec', 0.035), ('FarLandGain', 1.6), ('SunK', 0.08), ('FarJit', 1.3),
-                ('LeafNightK', 1.0), ('MarkNightK', 1.0), ('ScrCal', 1.0), ('ScreenK', 0.1), ('ScrBoost', 2.0), ('ScrKnee', 0.28), ('ScrTop', 0.46), ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
+                ('LeafNightK', 1.0), ('NightAmbK', 0.0), ('MarkNightK', 1.0), ('ScrCal', 1.0), ('ScreenK', 0.1), ('ScrBoost', 2.0), ('ScrKnee', 0.28), ('ScrTop', 0.46), ('ShadeFill', 0.17), ('GlassSky', 0.15), ('FarSunK', 0.22), ('FarLitK', 0.30), ('FarFill', 0.12))  # (r09) canyon shade fill (albedo x sky bounce) + glass sky reflection, ShadeFill.ush  # (r07, CITY-SPEC C1) facade albedo soft knee / mirror-tint scale
 if 'mat' in STEPS:
     # the editor caches shader source files: reload the regenerated /Project/City/*.ush includes
     unreal.SystemLibrary.execute_console_command(None, 'recompileshaders changed')
@@ -263,7 +263,7 @@ float nvG = saturate(dot(n, normalize(cam - wpos)));
 float graze = saturate((0.50 - nvG) / 0.25) * gm;
 gm = gm * (1.0 - graze);
 float ek = lerp(dayemis, 1.0, saturate(nightk));
-float3 col = lerp(a, f, gm); float3 em = e * escale * ek;
+float3 col = lerp(a, f, gm); float3 em = e * escale * ek + CityNightAmb(col, n, wpos, cam, nightk, escale, nightamb);   // + the author's night city ambient (ShadeFill.ush)
 // (r09) canyon shade fill: the wall's own albedo (before the sun cap) x a sky-bounce irradiance, glass gets a sky-gradient reflection instead (ShadeFill.ush)
 float litS = CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz);
 float3 fw = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, litS);
@@ -288,7 +288,7 @@ return col;''',
         [('tWallC', 'tex', TEXA('TA_walls_col')), ('tWallN', 'tex', TEXA('TA_walls_nrm')), ('tWallH', 'tex', TEXA('TA_walls_hao')), ('tDetail', 'tex', TEXA('detail_nrm')),
          ('tInterior', 'tex', TEXA('interiors')), ('tSigns', 'tex', TEXA('signs')), ('tNoise', 'tex', TEXA('noise')), ('tSunH', 'tex', TEXA('sunmask_h'))]
         + [(f'uv{i}', 'uv', i) for i in range(8)] + [('vc', 'vc', None)] + WORLD
-        + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale'),
+        + [('igain', 'mpc', 'InteriorGain'), ('sgain', 'mpc', 'ShopGain'), ('nightk', 'mpc', 'NightK'), ('dntime', 'mpc', 'DnTime'), ('escale', 'mpc', 'EmissiveScale'), ('nightamb', 'mpc', 'NightAmbK'),
            ('dayemis', 'mpc', 'DayEmisK'), ('glassspec', 'mpc', 'GlassSpec'), ('dbgmode', 'mpc', 'DebugMode'),
            ('albknee', 'mpc', 'AlbKnee'), ('albslope', 'mpc', 'AlbSlope'), ('f0scale', 'mpc', 'F0Scale'), ('sunk', 'mpc', 'SunK'),
            ('shadefill', 'mpc', 'ShadeFill'), ('glasssky', 'mpc', 'GlassSky')],
@@ -304,10 +304,10 @@ float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 // (r09) canyon shade fill (ShadeFill.ush)
-Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz));
+Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz)) + CityNightAmb(a0, n, wpos, cam, nightk, escale, nightamb);
 Rough = r; Metal = m; NormalW = n; Op = o; return a;''',
         [('tNoise', 'tex', TEXA('noise')), ('tDetail', 'tex', TEXA('detail_nrm')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('vc', 'vc', None), ('sunk', 'mpc', 'SunK'),
-         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + WORLD,
+         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('nightamb', 'mpc', 'NightAmbK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + WORLD,
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Op', 1, MP.MP_OPACITY_MASK), ('Emis', 3, MP.MP_EMISSIVE_COLOR)], blend='masked')
     make_material('M_CityRoof', '/Project/City/Roof.ush', '''
 float r, m; float3 n;
@@ -320,18 +320,19 @@ float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float Lc = La > sunk ? sunk + (La - sunk) * 0.06 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
 // (r09) canyon shade fill (ShadeFill.ush)
-Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz));
+Emis = CityShadeFill(a0, n, wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill, nightk, CityShadeW(tSunH, tSunHSampler, wpos, n, ResolvedView.DirectionalLightDirection.xyz)) + CityNightAmb(a0, n, wpos, cam, nightk, escale, nightamb);
 Rough = r; Metal = m; NormalW = n; return a;''',
         [('tRoofC', 'tex', TEXA('TA_roof_col')), ('tRoofN', 'tex', TEXA('TA_roof_nrm')), ('tNoiseR', 'tex', TEXA('noise')), ('sunk', 'mpc', 'SunK'),
-         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
+         ('shadefill', 'mpc', 'ShadeFill'), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('nightamb', 'mpc', 'NightAmbK'), ('tSunH', 'tex', TEXA('sunmask_h'))] + [(f'uv{i}', 'uv', i) for i in range(5)] + [('vc', 'vc', None)] + WORLD,
         [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('Metal', 1, MP.MP_METALLIC), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR)])
     make_material('M_CityAsphalt', '/Project/City/Asphalt.ush', '''
 float r; float3 n;
 float3 a = CityAsphalt(tCol, tColSampler, tNrm, tNrmSampler, tMacro, tMacroSampler, tNoise, tNoiseSampler, tDec, tDecSampler, float3(uv0, uv1.x), wpos, cam, r, n);
+Emis = CityNightAmb(a, float3(0.0, 0.0, 1.0), wpos, cam, nightk, escale, nightamb);   // the author's night city ambient (ShadeFill.ush)
 Rough = r; NormalW = n; return a;''',
         [('tCol', 'tex', TEXA('asphalt_col')), ('tNrm', 'tex', TEXA('asphalt_nrm')), ('tMacro', 'tex', TEXA('asphalt_macro')), ('tNoise', 'tex', TEXA('noise')), ('tDec', 'tex', TEXA('asphalt_decals')),
-         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('wpos', 'wpos', None), ('cam', 'cam', None)],
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
+         ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('wpos', 'wpos', None), ('cam', 'cam', None), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('nightamb', 'mpc', 'NightAmbK')],
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR)])
     make_material('M_CitySidewalk', '/Project/City/Sidewalk.ush', '''
 float r; float3 n;
 float3 a = CitySidewalk(tCol, tColSampler, tNrm, tNrmSampler, tNoise, tNoiseSampler, tCurb, tCurbSampler, float4(uv0, uv1), wpos, wn, cam, r, n);
@@ -341,9 +342,10 @@ float La = dot(a, float3(0.2126, 0.7152, 0.0722));
 float capk = sunk * 2.4;
 float Lc = La > capk ? capk + (La - capk) * 0.08 : La;
 a *= lerp(1.0, Lc / max(La, 1e-4), sunf);
+Emis = CityNightAmb(a, normalize(wn), wpos, cam, nightk, escale, nightamb);   // the author's night city ambient (ShadeFill.ush)
 Rough = r; NormalW = n; return a;''',
-        [('tCol', 'tex', TEXA('sidewalk_col')), ('tNrm', 'tex', TEXA('sidewalk_nrm')), ('tNoise', 'tex', TEXA('noise')), ('tCurb', 'tex', TEXA('curb_col')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('sunk', 'mpc', 'SunK')] + WORLD,
-        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL)])
+        [('tCol', 'tex', TEXA('sidewalk_col')), ('tNrm', 'tex', TEXA('sidewalk_nrm')), ('tNoise', 'tex', TEXA('noise')), ('tCurb', 'tex', TEXA('curb_col')), ('uv0', 'uv', 0), ('uv1', 'uv', 1), ('sunk', 'mpc', 'SunK'), ('nightk', 'mpc', 'NightK'), ('escale', 'mpc', 'EmissiveScale'), ('nightamb', 'mpc', 'NightAmbK')] + WORLD,
+        [('', 3, MP.MP_BASE_COLOR), ('Rough', 1, MP.MP_ROUGHNESS), ('NormalW', 3, MP.MP_NORMAL), ('Emis', 3, MP.MP_EMISSIVE_COLOR)])
     # generic vertex-colour / atlas material (Times Square dressing, signage, markings): masked by the map alpha
     make_material('M_CityVC', None, '''
 float4 t = UseMap > 0.5 ? Texture2DSample(Map, MapSampler, float2(uv0.x, 1.0 - uv0.y)) : float4(1, 1, 1, 1);

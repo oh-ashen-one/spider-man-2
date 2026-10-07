@@ -636,7 +636,7 @@ void AWHCityLights::DebugReport() const
 	FString S = FString::Printf(TEXT("WH_CITYLIGHTS night %.2f active %d ambLo (%.3f %.3f %.3f) ambHi (%.3f %.3f %.3f) cats:"), NightK, ActiveLights, AmbLo.X, AmbLo.Y, AmbLo.Z, AmbHi.X, AmbHi.Y, AmbHi.Z);
 	for (int32 c = 0; c < 13; c++) S += FString::Printf(TEXT(" %d"), PerCat[c]);
 	UE_LOG(LogWebHomage, Display, TEXT("%s"), *S);
-	if (GEngine) GEngine->AddOnScreenDebugMessage(0x5C17, 1.5f, FColor::Yellow, S);
+	if (GEngine && CVarDebug.GetValueOnGameThread() >= 2) GEngine->AddOnScreenDebugMessage(0x5C17, 1.5f, FColor::Yellow, S);   // 1: log only, 2: also on screen
 }
 
 void AWHCityLights::Tick(float Dt)

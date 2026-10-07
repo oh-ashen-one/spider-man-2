@@ -460,9 +460,10 @@
     "ScrBoost": 2.0,
     "ScrKnee": 0.28,
     "ScrTop": 0.46,
-    "LeafNightK": 0.35,
+    "LeafNightK": 0.2,
     "ScrCal": 7.3,
-    "MarkNightK": 0.25
+    "MarkNightK": 0.25,
+    "NightAmbK": 0.04
    },
    "exposure": {
     "min_ev": 5.53,

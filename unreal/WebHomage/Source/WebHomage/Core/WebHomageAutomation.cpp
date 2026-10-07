@@ -159,6 +159,7 @@ void UWebHomageAutomation::Tick(float DeltaTime)
 		{
 			bPerfRunning = true;
 			FrameMs.Reset();
+			FrameT.Reset();
 			GpuMs.Reset();
 			if (bCsv && GEngine)
 			{
@@ -168,6 +169,7 @@ void UWebHomageAutomation::Tick(float DeltaTime)
 		}
 		else if (bPerfRunning)
 		{
+			FrameT.Add(float(Elapsed));
 			FrameMs.Add(float(WallDelta * 1000.0));
 			GpuMs.Add(float(FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles(0))));
 			if (Elapsed >= PerfTo)
@@ -247,6 +249,11 @@ void UWebHomageAutomation::WritePerf()
 		N, Sum / 1000.0, Avg, Avg > 0 ? 1000.0 / Avg : 0.0,
 		Percentile(FrameMs, 0.50f), Percentile(FrameMs, 0.95f), Percentile(FrameMs, 0.99f), Percentile(FrameMs, 1.0f), Under60,
 		GpuAvg, Percentile(GpuMs, 0.95f), Size.X, Size.Y, ScreenPct, *SPMode, InternalW, InternalH, GDynamicRHI ? GDynamicRHI->GetName() : TEXT("?"));
+	{
+		FString Csv = TEXT("t_s,frame_ms,gpu_ms\n");
+		for (int32 i = 0; i < FrameMs.Num() && i < FrameT.Num() && i < GpuMs.Num(); ++i) Csv += FString::Printf(TEXT("%.4f,%.3f,%.3f\n"), FrameT[i], FrameMs[i], GpuMs[i]);
+		FFileHelper::SaveStringToFile(Csv, *(ShotDir / (ShotName + TEXT("_frames.csv"))));
+	}
 	const FString Path = ShotDir / (ShotName + TEXT("_perf.json"));
 	FFileHelper::SaveStringToFile(Json, *Path);
 	UE_LOG(LogWebHomage, Display, TEXT("WH_PERF frames=%d avg_ms=%.2f fps=%.1f p95_ms=%.2f p99_ms=%.2f gpu_avg_ms=%.2f out=%dx%d internal=%dx%d (%s) -> %s"),

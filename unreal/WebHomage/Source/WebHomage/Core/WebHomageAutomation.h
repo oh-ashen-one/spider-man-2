@@ -65,6 +65,7 @@ private:
 	bool bPerfRunning = false;
 	bool bPerfDone = false;
 	TArray<float> FrameMs;
+	TArray<float> FrameT;   // game seconds of each perf-window frame (<name>_frames.csv)
 	TArray<float> GpuMs;
 
 	double QuitAt = -1.0;

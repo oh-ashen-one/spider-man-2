@@ -341,6 +341,18 @@ def step_lighting():
         if '[manhattan lighting]' in l: print(l.split('LogPython: ')[-1])
 
 
+def step_probe():
+    txt = ue_python('showcase_probe', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_MODE': 'probe', 'SM2_PROBE': os.environ['SM2_PROBE']})
+    for l in txt.splitlines():
+        if '[manhattan probe]' in l: print(l.split('LogPython: ')[-1])
+
+
+def step_ray():
+    txt = ue_python('showcase_ray', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_MODE': 'ray', 'SM2_RAYS': open('/tmp/rays.txt').read()})
+    for l in txt.splitlines():
+        if '[manhattan ray]' in l: print(l.split('LogPython: ')[-1])
+
+
 def step_validate():
     sh(['python3', os.path.join(WT, 'tools/showcase/check.py')], log_name='showcase_check.log')
     txt = ue_python('showcase_validate', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS), 'SM2_MANHATTAN_MODE': 'validate'})
@@ -357,11 +369,11 @@ def main():
     a = ap.parse_args()
     want = a.steps.split(',')
     WANT[:] = want
-    bad = [s for s in want if s not in STEPS_ALL + ['lighting']]
+    bad = [s for s in want if s not in STEPS_ALL + ['lighting', 'probe', 'ray']]
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
     t0 = time.time()
-    for s in STEPS_ALL + ['lighting']:
+    for s in STEPS_ALL + ['lighting', 'probe', 'ray']:
         if s in want:
             log('=== step', s); t = time.time()
             globals()['step_' + s]()
@@ -629,6 +641,57 @@ def lighting_inventory(eas):
     return inv
 
 
+def probe_point():
+    """SM2_PROBE='x,y,z,r' (UE cm, r = radius): every primitive component of the night showcase map whose bounds contain / touch the point, with its actor, mesh and materials"""
+    x, y, z, r = [float(v) for v in os.environ['SM2_PROBE'].split(',')]
+    unreal.EditorLoadingAndSavingUtils.load_map(sm2_common.SHOWCASE_MAPS['night'])
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    P = unreal.Vector(x, y, z)
+    n = 0
+    for a in eas.get_all_level_actors():
+        for c in a.get_components_by_class(unreal.PrimitiveComponent):
+            try:
+                b = c.bounds
+                o, e = b.origin, b.box_extent
+            except Exception:
+                try:
+                    o, e = a.get_actor_bounds(False)
+                except Exception:
+                    continue
+            if abs(o.x - x) <= e.x + r and abs(o.y - y) <= e.y + r and abs(o.z - z) <= e.z + r:
+                mats = []
+                try: mats = [m.get_name() if m else None for m in c.get_materials()]
+                except Exception: pass
+                mesh = c.get_editor_property('static_mesh').get_name() if isinstance(c, unreal.StaticMeshComponent) and c.get_editor_property('static_mesh') else ''
+                print('[manhattan probe] %s | %s | %s | ext %.0f %.0f %.0f | mats %s' % (a.get_actor_label(), c.get_class().get_name(), mesh, e.x, e.y, e.z, mats[:3]))
+                n += 1
+    print('[manhattan probe] %d components' % n)
+    _B.finish()
+
+
+def probe_ray():
+    """SM2_RAYS='ox,oy,oz,dx,dy,dz,len;...' (UE cm): the first visible primitive on each ray of the night showcase map (complex line trace): actor, component, mesh, materials"""
+    unreal.EditorLoadingAndSavingUtils.load_map(sm2_common.SHOWCASE_MAPS['night'])
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    for spec in os.environ['SM2_RAYS'].split(';'):
+        v = [float(t) for t in spec.split(',')]
+        o = unreal.Vector(v[0], v[1], v[2]); d = unreal.Vector(v[3], v[4], v[5]); e = unreal.Vector(o.x + d.x * v[6], o.y + d.y * v[6], o.z + d.z * v[6])
+        hit = unreal.SystemLibrary.line_trace_single(world, o, e, unreal.TraceTypeQuery.TRACE_TYPE_QUERY1, True, [], unreal.DrawDebugTrace.NONE, True)
+        if not hit:
+            print('[manhattan ray] %s -> no hit' % spec[:40]); continue
+        try:
+            br = hit.to_tuple()
+            act, comp, loc = br[9], br[10], br[4]
+        except Exception as ex:
+            print('[manhattan ray] hit struct access failed: %s' % ex); continue
+        mats = []
+        try: mats = [m.get_name() if m else None for m in comp.get_materials()]
+        except Exception: pass
+        mesh = comp.get_editor_property('static_mesh').get_name() if isinstance(comp, unreal.StaticMeshComponent) and comp.get_editor_property('static_mesh') else ''
+        print('[manhattan ray] %s -> %s | %s | %s | mats %s | at (%.0f %.0f %.0f) dist %.0f m' % (spec[:30], act.get_actor_label() if act else None, comp.get_class().get_name(), mesh, mats[:3], loc.x, loc.y, loc.z, ((loc.x - o.x) ** 2 + (loc.y - o.y) ** 2 + (loc.z - o.z) ** 2) ** 0.5 / 100))
+    _B.finish()
+
+
 def dump_lighting():
     eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
     out = {}
@@ -793,6 +856,6 @@ def validate_showcase():
 
 
 if IN_UE:
-    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase, 'lighting': dump_lighting}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
+    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase, 'lighting': dump_lighting, 'probe': probe_point, 'ray': probe_ray}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
 elif __name__ == '__main__':
     main()
