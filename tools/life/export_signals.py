@@ -11,6 +11,6 @@ n = {'M': 0, 'P': 0}
 for pool, tag in (('mast', 'M'), ('post', 'P')):
     for it in (L.get(pool) or {}).get('items') or []:
         out.append('%s %.3f %.3f %.4f' % (tag, it['x'], it['z'], it['ry'])); n[tag] += 1
-dst = os.path.join(WT, 'unreal/WebHomage/Scripts/life_data/signals.txt')
+dst = os.path.join(os.environ.get('SM2_LIFE_DATA_DIR') or os.path.join(WT, 'unreal/WebHomage/Scripts/life_data'), 'signals.txt')
 open(dst, 'w').write('\n'.join(out) + '\n')
 print('signals: %d masts, %d posts -> %s' % (n['M'], n['P'], dst))

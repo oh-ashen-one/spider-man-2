@@ -446,6 +446,9 @@ def step_life():
     env = {'SM2_LIFE_SCR': LIFE_SCR, 'SM2_LIFE_EXPORT': os.environ.get('SM2_LIFE_EXPORT', EXPORT)}
     bl = os.path.join(HERE, 'build_life.py')
     os.makedirs(os.path.join(LIFE_SCR, 'logs'), exist_ok=True)
+    if os.environ.get('SM2_LIFE_ONLY') == 'map':   # re-place the life actors from SM2_LIFE_DATA_DIR (island lanes / sidewalks) on the existing life content
+        ue_python('life_map', exec_wrapper(bl, ''), {**env, 'SM2_LIFE_STEPS': 'map'}, sentinel='build_life.py')
+        return
     sh(['python3', bl, '--steps', 'prep'], env=env, log_name='life_prep.log')
     if 'cpp' not in WANT: sh(['python3', bl, '--steps', 'cpp'], env=env, log_name='life_cpp.log')
     ue_python('life_content', exec_wrapper(bl, ''), {**env, 'SM2_LIFE_STEPS': 'clean,vehicles,citizens,signals'}, sentinel='build_life.py')
@@ -511,6 +514,40 @@ def step_island():
     ue_python('island_maps', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)), 'SM2_MANHATTAN_MODE': 'island'}, timeout=MAX_HOLD)
 
 
+def ue_cmdlet(name, args, timeout=None):
+    """a native commandlet of this worktree (not python) through gpu_slot capture, one at a time; returns the log text. Fails on rc != 0 (75 = GPU admission timed out, 124 = hold exceeded)"""
+    if subprocess.run(['pgrep', '-f', 'UnrealEditor'], capture_output=True).returncode == 0:
+        raise SystemExit('an UnrealEditor process is running (the owner may be playing): not launching a commandlet')
+    wait_slot()
+    hold = int(min(timeout or MAX_HOLD, MAX_HOLD))
+    lg = os.path.join(SCR, 'logs', name + '.log')
+    if os.path.exists(lg): os.remove(lg)
+    cmd = [GPU_SLOT, 'capture', '--label', 'sm2-showcase-' + name, '--timeout', str(GPU_WAIT_TIMEOUT), '--', UE, UPROJECT] + args + ['-unattended', '-nullrhi', '-nosplash', '-NoSound', '-NoCrashReports', '-abslog=' + lg]
+    env_run = {**os.environ, 'GPU_SLOT_DIR': gpu_root(), 'GPU_SLOT_CAPTURE_MAX_HOLD': str(hold)}
+    log('UE cmdlet', name, ' '.join(args), '-> log', lg, '(max hold %d s)' % hold)
+    t0 = time.time()
+    with open(lg + '.stdout', 'w') as so:
+        proc = subprocess.Popen(cmd, env=env_run, stdout=so, stderr=subprocess.STDOUT)
+        try:
+            while proc.poll() is None:
+                if time.monotonic() > time.monotonic() + 1e9: break
+                time.sleep(2)
+        except BaseException:
+            stop_ours(proc); raise
+    txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
+    log('UE cmdlet %s: rc %d, %.0f s' % (name, proc.returncode, time.time() - t0))
+    if proc.returncode == 75: raise SystemExit('GPU admission timed out (cmdlet %s not run)' % name)
+    if proc.returncode != 0: raise SystemExit('cmdlet %s failed: rc %d (log %s)' % (name, proc.returncode, lg))
+    return txt
+
+
+def step_ddc():
+    """DerivedDataCache fill (the equivalent of loadpackage -all) of the island maps and the levels their instances stream: meshes, Nanite, distance fields, textures into the shared local DDC.
+    SM2_DDC_MAPS (default the night island map + the level instances), SM2_DDC_EXTRA (extra args, e.g. -SubsetMod=4 -SubsetTarget=0 to split a long fill across holds)"""
+    maps = os.environ.get('SM2_DDC_MAPS', 'Manhattan_Island_Night+Terrain_Land+Water_River+Life_Actors+Look_NightCity+Look_Rig_night')
+    ue_cmdlet('ddc_fill', ['-run=DerivedDataCache', '-fill', '-MAPSONLY', '-Map=' + maps] + os.environ.get('SM2_DDC_EXTRA', '').split())
+
+
 def step_islandvalidate():
     os.makedirs(os.path.join(PROJ, 'Saved/Showcase'), exist_ok=True)
     txt = ue_python('island_validate', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)), 'SM2_MANHATTAN_MODE': 'islandvalidate'}, timeout=MAX_HOLD)
@@ -540,14 +577,14 @@ def main():
     a = ap.parse_args()
     want = a.steps.split(',')
     WANT[:] = want
-    bad = [s for s in want if s not in STEPS_ALL + ['lighting', 'probe', 'ray', 'island', 'islandvalidate', 'wpinfo']]
+    bad = [s for s in want if s not in STEPS_ALL + ['lighting', 'probe', 'ray', 'island', 'islandvalidate', 'wpinfo', 'ddc']]
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
     t0 = time.time()
     tj = os.path.join(SCR, 'logs', 'build_timings_%s.json' % REGION)
     done = []
     try:
-        for s in STEPS_ALL + ['lighting', 'probe', 'ray', 'island', 'islandvalidate', 'wpinfo']:
+        for s in STEPS_ALL + ['lighting', 'probe', 'ray', 'island', 'islandvalidate', 'wpinfo', 'ddc']:
             if s in want:
                 log('=== step', s); t = time.time()
                 globals()['step_' + s]()

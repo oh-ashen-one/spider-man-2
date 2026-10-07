@@ -367,9 +367,11 @@ void AWHLifeTraffic::BeginPlay()
 		SimClock = Start + 80.0;
 	}
 	BuildSignals();
+	FParse::Value(FCommandLine::Get(), TEXT("WHLifeActiveRadius="), ActiveRadiusM);
 	if (bSimulate)
 	{
-		PopulateInitial();
+		if (ActiveRadiusM > 0.f) { LinkActive.Init(0, Links.Num()); UpdateActivity(true); }
+		else PopulateInitial();
 		const float Step = 0.1f; const int32 N = FMath::RoundToInt(PreRollSeconds / Step);
 		for (int32 I = 0; I < N; ++I) StepSim(Step);
 	}
@@ -387,6 +389,7 @@ void AWHLifeTraffic::Tick(float Dt)
 	Accum += FMath::Min(Dt, 0.1f);
 	const float Step = 1.f / 30.f;
 	int32 Guard = 0;
+	if (ActiveRadiusM > 0.f) { ActivityT += Dt; if (ActivityT >= 0.5f) { ActivityT = 0.f; UpdateActivity(false); } }
 	while (Accum >= Step && Guard++ < 4) { StepSim(Step); Accum -= Step; }
 	const double T1 = FPlatformTime::Seconds();
 	UpdateSignals();
@@ -485,7 +488,11 @@ void AWHLifeTraffic::DespawnCar(int32 CI)
 
 void AWHLifeTraffic::PopulateInitial()
 {
-	for (int32 LI = 0; LI < Links.Num(); ++LI)
+	for (int32 LI = 0; LI < Links.Num(); ++LI) PopulateLink(LI);
+}
+
+void AWHLifeTraffic::PopulateLink(int32 LI)
+{
 	{
 		FLink& L = Links[LI];
 		uint32 R = 0x51ED27u ^ (uint32)(L.Id * 2654435761u); if (!R) R = 1;
@@ -506,6 +513,33 @@ void AWHLifeTraffic::PopulateInitial()
 		}
 		L.NextSpawn = (float)SimClock + 0.5f + Ff(R) * 3.f;
 	}
+}
+
+void AWHLifeTraffic::UpdateActivity(bool bForce)
+{
+	if (ActiveRadiusM <= 0.f || !GetWorld()) return;
+	APlayerCameraManager* CM = UGameplayStatics::GetPlayerCameraManager(GetWorld(), 0);
+	if (!CM) return;
+	const FVector Cam = CM->GetCameraLocation();
+	const FVector2D P(Cam.X / 100.0, Cam.Y / 100.0);
+	if (LinkActive.Num() != Links.Num()) LinkActive.Init(0, Links.Num());
+	const float In2 = ActiveRadiusM * ActiveRadiusM, Out2 = (ActiveRadiusM * 1.3f) * (ActiveRadiusM * 1.3f);
+	TArray<uint8> Emptied; Emptied.Init(0, Links.Num()); bool bAny = false;
+	int32 NAct = 0, NDeact = 0;
+	for (int32 LI = 0; LI < Links.Num(); ++LI)
+	{
+		const FLink& L = Links[LI];
+		const float D2 = FVector2D::DistSquared(P, L.A + L.D * (L.Len * 0.5f));
+		if (!LinkActive[LI] && D2 < In2) { LinkActive[LI] = 1; PopulateLink(LI); ++NAct; }
+		else if (LinkActive[LI] && D2 > Out2) { LinkActive[LI] = 0; Emptied[LI] = 1; bAny = true; ++NDeact; }
+	}
+	if (bAny)
+		for (int32 CI = 0; CI < Cars.Num(); ++CI)
+		{
+			const FCar& C = Cars[CI]; if (!C.bActive) continue;
+			if ((C.L0 >= 0 && Emptied[C.L0]) || (C.Where == 2 && C.L1 >= 0 && Emptied[C.L1])) DespawnCar(CI);
+		}
+	if (bForce || NAct || NDeact) UE_LOG(LogWHLife, Verbose, TEXT("[life] activity: +%d -%d links"), NAct, NDeact);
 }
 
 int32 AWHLifeTraffic::ChooseNext(FCar& C, const FLink& L)
@@ -711,6 +745,7 @@ void AWHLifeTraffic::StepSim(float Dt)
 		{
 			Release(C, I);
 			C.L0 = C.L1; C.L1 = -1; C.K = -1; C.Where = 0;
+			if (ActiveRadiusM > 0.f && LinkActive.IsValidIndex(C.L0) && !LinkActive[C.L0]) { DespawnCar(I); continue; }   // rolled out of the active radius
 			C.K = ChooseNext(C, Links[C.L0]);
 		}
 		if (C.StuckT > 120.f) { DespawnCar(I); }
@@ -744,6 +779,7 @@ void AWHLifeTraffic::StepSim(float Dt)
 	{
 		FLink& L = Links[LI];
 		if (!L.bEntry || Clock < 0 || (float)SimClock < L.NextSpawn || Alive >= MaxCars) continue;
+		if (ActiveRadiusM > 0.f && LinkActive.IsValidIndex(LI) && !LinkActive[LI]) continue;
 		{ // inflow only tops the link up to the browser's steady-state density (traffic.js linkTarget), so cross streets do not fill with standing queues
 			const float Target = L.Len / 1000.f * KindDensity(L.Kind);
 			if ((float)L.Cars.Num() >= Target) { L.NextSpawn = (float)SimClock + 1.5f; continue; }

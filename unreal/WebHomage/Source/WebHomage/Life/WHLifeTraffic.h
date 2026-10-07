@@ -117,6 +117,8 @@ public:
 	/** Seconds simulated at BeginPlay so the first frame already shows platoons and queues at the lights. */
 	UPROPERTY(EditAnywhere, Category="Life") float PreRollSeconds = 75.f;
 	UPROPERTY(EditAnywhere, Category="Life") int32 MaxCars = 2000;
+	/** > 0 (island): cars exist only on links within this radius (m) of the camera (a link entering it is populated to the steady-state density, one leaving it by 1.3x is emptied; cars rolling onto an inactive link despawn): the simulation cost stays bounded on a city of any size. 0 = the whole lane graph is simulated (Midtown). -WHLifeActiveRadius=<m> overrides. */
+	UPROPERTY(EditAnywhere, Category="Life") float ActiveRadiusM = 0.f;
 	/** Cull moving and parked instances beyond this distance (cm). */
 	UPROPERTY(EditAnywhere, Category="Life") float CullDistance = 100000.f;
 	UPROPERTY(EditAnywhere, Category="Life") bool bCastShadows = true;
@@ -195,6 +197,10 @@ private:
 	void BuildSignals();
 	void UpdateSignals();
 	void PopulateInitial();
+	void PopulateLink(int32 LinkI);
+	void UpdateActivity(bool bForce);
+	TArray<uint8> LinkActive;
+	float ActivityT = 0.f;
 	void StepSim(float Dt);
 	void PushInstances();
 

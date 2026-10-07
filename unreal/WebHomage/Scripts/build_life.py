@@ -29,7 +29,7 @@ SCR = os.environ.get('SM2_LIFE_SCR', '/Users/midir/sm2-n1/_scratch/life')
 EXPORT = os.environ.get('SM2_LIFE_EXPORT', os.path.join(SCR, 'manhattan/export/midtown3x3'))
 VEH = os.path.join(SCR, 'vehicles')
 CIT = os.path.join(SCR, 'citizens')
-DATA = os.path.join(HERE, 'life_data')
+DATA = os.environ.get('SM2_LIFE_DATA_DIR') or os.path.join(HERE, 'life_data')
 STEPS_ALL = ['prep', 'cpp', 'content', 'map']
 TYPES = ['taxi', 'taxi_hy', 'taxi_mv', 'taxi_gr', 'sedan', 'hatch', 'sedan2', 'cross', 'suv', 'suv2', 'pickup', 'van', 'truck', 'bus', 'tour']
 ROOT, TESTS = '/Game/Life', '/Game/Tests/Life'
@@ -467,6 +467,8 @@ return rgb * lerp(0.02, 0.15, on);''')
         tr.set_editor_property('vehicle_meshes', [load('%s/Vehicles/SM_%s' % (ROOT, t)) for t in TYPES])
         tr.set_editor_property('vehicle_material', load(ROOT + '/Vehicles/M_LifeVehicle'))
         tr.set_editor_property('seed', 7)
+        tr.set_editor_property('max_cars', int(os.environ.get('SM2_LIFE_MAXCARS', '2000')))
+        tr.set_editor_property('active_radius_m', float(os.environ.get('SM2_LIFE_ACTIVE_RADIUS', '0')))   # island: cars only within this radius (m) of the camera   # island data: ~10x the lane length of Midtown, raise it with the data set
         tr.set_editor_property('stats_interval', 0.0)
         tr.set_editor_property('density_scale', DENSITY)
         tr.set_editor_property('street_density_factor', float(os.environ.get('SM2_LIFE_STREETF', '0.6')))

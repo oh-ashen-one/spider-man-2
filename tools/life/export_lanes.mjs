@@ -37,7 +37,7 @@ const ROOT = path.resolve(HERE, '../..');
 const arg = (k, d) => { const i = process.argv.indexOf('--' + k); return i > 0 ? process.argv[i + 1] : d; };
 const [rx0, rz0, rx1, rz1] = arg('region', '-262,-512,514,256').split(',').map(Number);
 const LAYOUT = arg('layout', '');
-const OUT = path.join(ROOT, 'unreal/WebHomage/Scripts/life_data');
+const OUT = process.env.SM2_LIFE_DATA_DIR || path.join(ROOT, 'unreal/WebHomage/Scripts/life_data');   // SM2_LIFE_DATA_DIR: an alternative data set (the island: life_data_island)
 fs.mkdirSync(OUT, { recursive: true });
 
 const { buildRoads, connector } = await import(path.join(ROOT, 'src/world/npc/roads.js'));
