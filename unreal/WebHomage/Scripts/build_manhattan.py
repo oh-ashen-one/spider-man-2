@@ -33,7 +33,8 @@
 #   /Game/Maps/Manhattan_View_<S1|S2|S4>   golden map + the P1 shot camera (Scripts/city_shots.json), for stills
 import os, sys, json, subprocess, time, shutil, fcntl
 
-HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else '/Users/midir/sm2-n1/manhattan/unreal/WebHomage/Scripts'
+HOME = os.path.expanduser('~')   # (M5) paths follow $HOME (the M3 /Users/midir tree is gone)
+HERE = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.path.join(HOME, 'sm2-n1/island/unreal/WebHomage/Scripts')
 PROJ = os.path.dirname(HERE)
 WT = os.path.dirname(os.path.dirname(PROJ))
 UPROJECT = os.path.join(PROJ, 'WebHomage.uproject')
@@ -47,15 +48,24 @@ LIFE_SCR = os.environ.get('SM2_LIFE_SCR', os.path.expanduser('~/sm2-n1/_scratch/
 GPU_ROOT = os.path.join(os.path.expanduser('~'), '.cache', 'gpu-slot')
 GPU_SLOT = os.path.join(WT, 'tools', 'gpu', 'gpu_slot.sh')
 GPU_WAIT_TIMEOUT = int(os.environ.get('SM2_GPU_WAIT_TIMEOUT', '3600'))
-EXPORT = os.path.join(SCR, 'export', 'midtown3x3')
 TEX = os.path.join(SCR, 'tex')
 CHAR_STAGE = os.path.join(SCR, 'chars')
 DEV_PORT = 5208
-STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'traversal', 'characters', 'look', 'water', 'life', 'map', 'terrain', 'showcase', 'validate']
+STEPS_ALL = ['cpp', 'city_export', 'city_prep', 'city_extra', 'city', 'ism', 'fepatch', 'traversal', 'characters', 'look', 'water', 'life', 'map', 'terrain', 'showcase', 'validate']
 TERRAIN_STEPS = 'clean,tex,mat,mesh,foliage,trees,map'
 CHARACTER_STEPS = 'clean,tex,mat,mesh,citizens,rename,fightclips,abp,skins,map'
 LOOK_STEPS = 'geo,rigs,night,maps'
 WANT = []
+# (island r01..r04, merged) the detailed region is a tile rectangle; the showcase default stays the Midtown 3 x 3 export, the island build selects the whole island:
+#   SM2_MANHATTAN_SCR=~/sm2-n1/_scratch/island SM2_ISLAND_REGION=island SM2_ISLAND_TILES=-4,-14,3,13 (SM2_ISLAND_* are honoured by every island step),
+#   SM2_ISLAND_MIN_FREE_GB (default 150: refuses to start a commandlet below it), SM2_ISLAND_WP_MAP (a test map name builds beside the real one)
+TILES = os.environ.get('SM2_ISLAND_TILES', '-1,-2,1,0')
+REGION = os.environ.get('SM2_ISLAND_REGION', 'midtown3x3')
+MIN_FREE_GB = float(os.environ.get('SM2_ISLAND_MIN_FREE_GB', '150'))
+EXPORT = os.path.join(SCR, 'export', REGION)
+WP_MAP = os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+MAX_HOLD = int(os.environ.get('SM2_ISLAND_MAX_HOLD', '2400'))   # gpu_slot capture hold of one island commandlet (resumable steps stop before it)
+USE_SLOT = True   # every commandlet goes through gpu_slot (the island's optional switch is always on here): the city pass is split into holds
 # P1's tools default to THEIR scratch/export; every one honours these, so point them at this build's dirs.
 os.environ.setdefault('SM2_CITY_SCRATCH', SCR); os.environ.setdefault('SM2_CITY_EXPORT', EXPORT); os.environ.setdefault('SM2_CITY_TEX', TEX)
 PRESETS = ['golden', 'midday', 'night']
@@ -77,11 +87,16 @@ def log(*a):
     print('[build_manhattan %s]' % time.strftime('%H:%M:%S'), *a, flush=True)
 
 
+TIMINGS = []   # (island r03) every build step / sub-command timed -> <SCR>/logs/build_timings_<region>.json
+
+
 def sh(cmd, cwd=WT, env=None, log_name=None):
     log('$', cmd if isinstance(cmd, str) else ' '.join(cmd))
+    t0 = time.time()
     out = open(os.path.join(SCR, 'logs', log_name), 'w') if log_name else None
     r = subprocess.run(cmd, cwd=cwd, env={**os.environ, **(env or {})}, shell=isinstance(cmd, str),
                        stdout=out or None, stderr=subprocess.STDOUT if out else None)
+    TIMINGS.append({'cmd': log_name or (cmd if isinstance(cmd, str) else ' '.join(cmd))[:120], 'seconds': round(time.time() - t0, 1), 'rc': r.returncode})
     if r.returncode != 0:
         raise SystemExit('command failed (%d): %s%s' % (r.returncode, cmd, ('  log: ' + out.name) if out else ''))
 
@@ -128,6 +143,9 @@ def stop_ours(proc):
 
 
 def ue_python(name, code, env=None, timeout=7200, sentinel='build_manhattan.py'):
+    if sentinel == 'build_manhattan.py':   # the exec'd script names its own success sentinel
+        for sc in ('build_city.py',):
+            if sc in code: sentinel = sc
     """run python code in a headless commandlet of THIS worktree's project through tools/gpu/gpu_slot.sh capture (one at a time).
     Fails on: nonzero rc (75 = GPU admission timed out, 124 = max hold exceeded), SM2_BUILD_FAILED, LogPython: Error, Traceback, or no 'SM2_BUILD_OK: <sentinel>'."""
     if subprocess.run(['pgrep', '-f', UPROJECT], capture_output=True).returncode == 0:
@@ -140,10 +158,13 @@ def ue_python(name, code, env=None, timeout=7200, sentinel='build_manhattan.py')
     job = os.path.join(jobs, name + '.py')
     open(job, 'w').write(code)
     lg = os.path.join(SCR, 'logs', name + '.log')
+    st = os.statvfs(HOME); free = st.f_bavail * st.f_frsize / 1e9
+    if free < MIN_FREE_GB:   # free-disk floor (island r04), before every commandlet
+        raise SystemExit('ABORT %s: %.1f GB free < %.0f GB' % (name, free, MIN_FREE_GB))
     if os.path.exists(lg): os.remove(lg)
     cmd = [GPU_SLOT, 'capture', '--label', 'sm2-showcase-' + name, '--timeout', str(GPU_WAIT_TIMEOUT), '--', UE, UPROJECT, '-run=pythonscript',
            '-script=' + job, '-unattended', '-nullrhi', '-nosplash', '-RenderOffScreen', '-NoSound', '-NoCrashReports', '-abslog=' + lg]
-    child_env = {**os.environ, **(env or {}), 'GPU_SLOT_DIR': gpu_root(), 'GPU_SLOT_CAPTURE_MAX_HOLD': str(int(timeout)),
+    child_env = {**os.environ, **(env or {}), 'GPU_SLOT_DIR': gpu_root(), 'GPU_SLOT_CAPTURE_MAX_HOLD': str(int(min(timeout, MAX_HOLD))),
                  'SM2_STRICT': '1', 'SM2_SCRIPTS_DIR': HERE}
     log('UE commandlet', name, '-> log', lg, '(gpu_slot capture, max hold %d s)' % timeout)
     t0 = time.time()
@@ -162,6 +183,7 @@ def ue_python(name, code, env=None, timeout=7200, sentinel='build_manhattan.py')
     finally:
         lock.close()
     rc = proc.returncode
+    TIMINGS.append({'cmd': 'UE ' + name, 'seconds': round(time.time() - t0, 1), 'rc': rc})
     txt = open(lg, errors='replace').read() if os.path.exists(lg) else ''
     bad = [l for l in txt.splitlines() if 'LogPython: Error' in l or 'Traceback' in l or 'SM2_BUILD_FAILED' in l]
     ok = ('SM2_BUILD_OK: ' + sentinel) in txt
@@ -192,8 +214,13 @@ def step_city_export():
         if not os.path.isdir(os.path.join(WT, 'node_modules')): sh('npm ci', log_name='npm.log')
         subprocess.Popen('nohup npx vite --port %d --host 127.0.0.1 --strictPort > %s/logs/vite.log 2>&1 &' % (DEV_PORT, SCR), shell=True, cwd=WT)
         time.sleep(6)
-    sh(['node', 'tools/export/export_city.mjs', '--url', 'http://127.0.0.1:%d/' % DEV_PORT, '--out', EXPORT,
+    st = os.statvfs(HOME); free = st.f_bavail * st.f_frsize / 1e9
+    if free < MIN_FREE_GB:
+        raise SystemExit('ABORT city_export: %.0f GB free < %.0f GB (PLAN-firstpass §5 disk rule)' % (free, MIN_FREE_GB))
+    t0 = time.time()
+    sh(['node', 'tools/export/export_city.mjs', '--tiles', TILES, '--url', 'http://127.0.0.1:%d/' % DEV_PORT, '--out', EXPORT,
         '--profile', os.path.join(SCR, 'chrome-profile')], log_name='city_export.log')
+    log('city_export: tiles %s -> %s in %.0f s (%.0f GB free before)' % (TILES, EXPORT, time.time() - t0, free))
 
 
 def step_city_prep():
@@ -201,12 +228,18 @@ def step_city_prep():
     s = open(man).read()
     open(man, 'w').write(s.replace('127.0.0.1:%d/' % DEV_PORT, '127.0.0.1:5202/'))  # P1 tools key texture paths on '5202/'
     e = EXPORT + '/'
-    sh(['python3', 'tools/export/patch_export.py', EXPORT], log_name='city_patch_export.log')
-    sh(['python3', 'tools/export/prep_textures.py', TEX, man], log_name='city_prep_textures.log')
-    sh(['python3', 'tools/export/gen_street_signs.py', os.path.join(TEX, 'street_signs.png')], log_name='city_street_signs.log')
-    sh(['python3', 'tools/export/street_kit.py', e], log_name='city_street_kit.log')
-    sh(['python3', 'tools/export/street_props.py', e], log_name='city_street_props.log')
-    sh(['node', 'tools/export/gen_shaders.mjs'], log_name='city_gen_shaders.log')  # regenerates the committed Shaders/City/*.ush
+    cmds = [('patch_export', ['python3', 'tools/export/patch_export.py', EXPORT], 'city_patch_export.log'),
+            ('split_giants', ['python3', 'tools/export/split_giants.py', EXPORT], 'city_split_giants.log'),   # (island r02) no r20 'giant' (de-collided) bridge / seawall
+            ('prep_textures', ['python3', 'tools/export/prep_textures.py', TEX, man], 'city_prep_textures.log'),
+            ('street_signs', ['python3', 'tools/export/gen_street_signs.py', os.path.join(TEX, 'street_signs.png')], 'city_street_signs.log'),
+            ('street_kit', ['python3', 'tools/export/street_kit.py', e], 'city_street_kit.log'),
+            ('street_props', ['python3', 'tools/export/street_props.py', e], 'city_street_props.log'),
+            ('gen_shaders', ['node', 'tools/export/gen_shaders.mjs'], 'city_gen_shaders.log')]  # regenerates the committed Shaders/City/*.ush
+    # (island r03 resume) SM2_ISLAND_PREP_FROM=<name>: start at that sub-command (the r03 builder died after patch_export + split_giants)
+    names = [c[0] for c in cmds]; frm = os.environ.get('SM2_ISLAND_PREP_FROM', names[0])
+    if frm not in names: raise SystemExit('SM2_ISLAND_PREP_FROM must be one of %s' % names)
+    for name, cmd, lg in cmds[names.index(frm):]:
+        sh(cmd, log_name=lg)
 
 
 def step_city_extra():
@@ -215,7 +248,8 @@ def step_city_extra():
     os.makedirs(os.path.join(SCR, 'r09'), exist_ok=True)   # bake_sunmask.py writes its preview PNG to <SM2_CITY_SCRATCH>/r09/
     for name, cmd in (('export_vehicles', ['python3', 'tools/export/export_vehicles.py', e]), ('street_cars', ['python3', 'tools/export/street_cars.py', e]),
                       ('street_trees', ['python3', 'tools/export/street_trees.py', e]), ('street_traffic', ['python3', 'tools/export/street_traffic.py', e]),
-                      ('far_skyline', ['python3', 'tools/export/far_skyline.py']), ('bake_sunmask', ['python3', 'tools/export/bake_sunmask.py', e, TEX])):
+                      ('far_skyline', ['python3', 'tools/export/far_skyline.py']), ('bake_sunmask', ['python3', 'tools/export/bake_sunmask.py', e, TEX]),
+                      ('island_boxes', ['python3', 'tools/export/island_boxes.py', e])):   # (island r01) WHBox cubes fitted to the drawn city
         sh(cmd, log_name='city_extra_%s.log' % name)
 
 
@@ -224,10 +258,134 @@ LOAD_SME = 'import unreal\nunreal.SystemLibrary.execute_console_command(None, "M
 
 
 def step_city():
+    if os.environ.get('SM2_ISLAND_CITY_SPLIT', '0' if os.environ.get('SM2_CITY_ONLY') else '1') == '1': return step_city_split()
     env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}
     bc = os.path.join(HERE, 'build_city.py')
     # one pass in build_city.py's own default order (tools/export/build_city.sh): the map step spawns the kit + far-skyline actors
-    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = %r' % {'steps': os.environ.get('SM2_CITY_ONLY') or 'clean,tex,mat,mesh,proto,kit,fsky,map'}), env, sentinel='build_city.py')   # SM2_CITY_ONLY=mat rebuilds the materials only
+    # (island r01) + 'coll' (WHBox level, replaces Look_Boxes) + 'wp' (the World Partition map); the WP map's files are deleted first (clean,
+    # idempotent: a commandlet cannot delete external-actor packages of a loaded WP world without a modal / source-control step)
+    content = os.path.join(PROJ, 'Content')
+    # (island r02) SM2_ISLAND_DROP_MAPS (comma list of /Game/Maps names, e.g. the r01 test map Manhattan_WP_ism): deleted too, so the kit step can
+    # delete + re-import /Game/City/Meshes/streetkit without a map still referencing it
+    names = [WP_MAP.split('/')[-1]] + [n for n in os.environ.get('SM2_ISLAND_DROP_MAPS', '').split(',') if n]
+    for name in names:
+        for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name, 'Maps/%s_HLODLayer_Merged.uasset' % name):
+            f = os.path.join(content, rel)
+            if os.path.exists(f): os.remove(f)
+        for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
+            safe_rmtree(os.path.join(content, rel))
+    # (island r01 resume) SM2_ISLAND_CITY_STEPS re-runs only some build_city.py steps on the existing /Game/City content, e.g. "wp" after the
+    # 2026-10-01 14:24 reboot killed the pass in the WP step (the 64 min import before it had saved everything else)
+    steps = os.environ.get('SM2_CITY_ONLY') or os.environ.get('SM2_ISLAND_CITY_STEPS', 'clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp')
+    # (island r03) the whole-island pass runs > 2 h (761 new meshes: import ~72 min + collision rebuild ~60 min, then kit / map / wp): the 7,200 s
+    # default timeout killed it at 07:24; SM2_ISLAND_UE_TIMEOUT (s, default 6 h) for this commandlet
+    ue_python('city_pass1', exec_wrapper(bc, LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), env,
+              timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+
+
+def drop_wp_map_files():
+    content = os.path.join(PROJ, 'Content')
+    names = [WP_MAP.split('/')[-1]] + [n for n in os.environ.get('SM2_ISLAND_DROP_MAPS', '').split(',') if n]
+    for name in names:
+        for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name, 'Maps/%s_HLODLayer_Merged.uasset' % name):
+            f = os.path.join(content, rel)
+            if os.path.exists(f): os.remove(f)
+        for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
+            safe_rmtree(os.path.join(content, rel))
+
+
+def step_city_split():
+    """(island r04) the city pass as separate commandlets, each one GPU-lock hold (<= 40 min): clean,tex,mat | mesh (resumable, repeated) | proto |
+    kit (resumable, repeated) | fsky,map,coll | wp. Same build_city.py steps and order as the single pass."""
+    bc = os.path.join(HERE, 'build_city.py')
+    base = {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX, 'SM2_ISLAND_BUDGET_S': os.environ.get('SM2_ISLAND_BUDGET_S', '1950')}
+    def run(name, steps, extra=None):
+        return ue_python(name, exec_wrapper(bc, LOAD_SME + 'import time as _t, os as _o\n_o.environ["SM2_ISLAND_DEADLINE"] = str(_t.time() + float(_o.environ.get("SM2_ISLAND_BUDGET_S", "0") or 0)) if _o.environ.get("SM2_ISLAND_BUDGET_S") else ""\n'
+                                       + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)), {**base, **(extra or {})},
+                         timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+    first = os.environ.get('SM2_ISLAND_SPLIT_FROM', 'a')   # resume point: a | mesh | proto | kit | b | wp
+    order = ['a', 'mesh', 'proto', 'kit', 'b', 'wp']
+    todo = order[order.index(first):]
+    if 'a' in todo:
+        # (island r04) fresh: delete /Game/City, /Game/Tests/City and the WP map ON DISK (no editor running). build_city.py's 'clean'
+        # (EditorAssetLibrary.delete_directory) loads every asset first and rebuilt ~1 mesh/s from the DDC: > 40 min for the island
+        t0 = time.time()
+        for rel in ('Content/City', 'Content/Tests/City'):
+            safe_rmtree(os.path.join(PROJ, rel))
+        drop_wp_map_files()
+        TIMINGS.append({'cmd': 'fresh: rm Content/City, Content/Tests/City, WP map files', 'seconds': round(time.time() - t0, 1), 'rc': 0})
+        run('city_a', 'clean,tex'); run('city_a2', 'mat')   # two holds: the material step compiles shaders
+    for part, step, key, env1 in (('mesh', 'mesh', 'MESH_REMAINING', {'SM2_ISLAND_MESH_ONLY': 'missing'}), ('proto', 'proto', None, {}),
+                                  ('kit', 'kit', 'KIT_REMAINING', {'SM2_ISLAND_KIT_ONLY': 'missing'})):
+        if part not in todo: continue
+        for k in range(30):
+            try: txt = run('city_%s_%02d' % (part, k), step, env1)
+            except SystemExit as ex:
+                if key and 'did not finish' in str(ex): log('resumable step %s stopped (%s), resuming' % (part, ex)); continue
+                raise
+            if not key: break
+            rem = [l.split(key)[-1].strip() for l in txt.splitlines() if key in l]
+            log('%s: %s' % (key, rem[-1:] or '?'))
+            if rem and rem[-1].split()[0] == '0': break
+        else: raise SystemExit('step %s did not converge in 30 commandlets' % part)
+    if 'b' in todo: run('city_b', 'fsky,map,coll')
+    if 'wp' in todo:
+        drop_wp_map_files()
+        run('city_wp', 'wp', {'SM2_ISLAND_BUDGET_S': ''})
+
+
+def step_ism():
+    """(island r03) respawn the per-tile instanced props / trees / cars / traffic actors of the WP map at their tile centres. Not part of the default
+    steps' flow (the 'city' step builds them that way now); this fixes an existing map: the old per-tile ISM external-actor packages are removed
+    from disk here, then build_city.py step 'ism' loads the map and spawns them again."""
+    import re, struct
+    root = os.path.join(PROJ, 'Content', '__ExternalActors__', 'Maps', WP_MAP.split('/')[-1])
+    if not root.startswith(WT + '/'): raise SystemExit('refusing outside the worktree: ' + root)
+    pat = re.compile(r'^ISM_[A-Za-z0-9_\-]+__t-?\d+_-?\d+$')
+    n = 0
+    for dp, _, fns in os.walk(root):
+        for fn in fns:
+            if not fn.endswith('.uasset') or fn.startswith('._'): continue
+            f = os.path.join(dp, fn)
+            b = open(f, 'rb').read()
+            i = b.rfind(b'ActorLabel\x00')
+            if i < 0: continue
+            L = struct.unpack('<I', b[i + 11:i + 15])[0]
+            if 0 < L < 200 and pat.match(b[i + 15:i + 15 + L - 1].decode('latin1')):
+                os.remove(f); n += 1
+    log('removed %d per-tile ISM actor packages from %s' % (n, root))
+    steps = os.environ.get('SM2_ISLAND_CITY_STEPS_ISM', 'ism')
+    ue_python('wp_ism', exec_wrapper(os.path.join(HERE, 'build_city.py'), LOAD_SME + 'JOB_ARGS = {"steps": %r, "wp_map": %r}' % (steps, WP_MAP)),
+              {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX}, timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
+
+
+def remove_wp_actor_packages(pat):
+    """(island r03/r04) delete the WP map's external-actor packages whose ActorLabel matches pat (a commandlet cannot delete not-loaded WP actors)"""
+    import re, struct
+    root = os.path.join(PROJ, 'Content', '__ExternalActors__', 'Maps', WP_MAP.split('/')[-1])
+    if not root.startswith(WT + '/'): raise SystemExit('refusing outside the worktree: ' + root)
+    rx = re.compile(pat); n = 0
+    for dp, _, fns in os.walk(root):
+        for fn in fns:
+            if not fn.endswith('.uasset') or fn.startswith('._'): continue
+            f = os.path.join(dp, fn)
+            b = open(f, 'rb').read()
+            i = b.rfind(b'ActorLabel\x00')
+            if i < 0: continue
+            L = struct.unpack('<I', b[i + 11:i + 15])[0]
+            if 0 < L < 200 and rx.match(b[i + 15:i + 15 + L - 1].decode('latin1')):
+                os.remove(f); n += 1
+    log('removed %d WP actor packages matching %s' % (n, pat))
+    return n
+
+
+def step_fepatch():
+    """(island r04) re-import the street-kit / fire-escape tiles SM2_ISLAND_FE_TILES ('<ix>_<iz>,...' or 'all', default all) and respawn their WP actors"""
+    want = os.environ.get('SM2_ISLAND_FE_TILES', 'all')
+    tiles = r'-?\d+_-?\d+' if want == 'all' else '(%s)' % '|'.join(t.replace('-', '\\-') for t in want.split(','))
+    remove_wp_actor_packages(r'^(streetkit|fireescape)__t%s$' % tiles)
+    ue_python('wp_fepatch', exec_wrapper(os.path.join(HERE, 'build_city.py'), LOAD_SME + 'JOB_ARGS = {"steps": "fepatch", "wp_map": %r}' % WP_MAP),
+              {'SM2_CITY_EXPORT': EXPORT, 'SM2_CITY_TEX': TEX, 'SM2_ISLAND_FE_TILES': want}, timeout=int(os.environ.get('SM2_ISLAND_UE_TIMEOUT', '21600')))
 
 
 def step_traversal():
@@ -373,12 +531,24 @@ def main():
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
     t0 = time.time()
-    for s in STEPS_ALL + ['lighting', 'probe', 'ray']:
-        if s in want:
-            log('=== step', s); t = time.time()
-            globals()['step_' + s]()
-            log('=== step %s done in %.0f s' % (s, time.time() - t))
-    log('all done in %.0f s' % (time.time() - t0))
+    tj = os.path.join(SCR, 'logs', 'build_timings_%s.json' % REGION)
+    done = []
+    try:
+        for s in STEPS_ALL + ['lighting', 'probe', 'ray']:
+            if s in want:
+                log('=== step', s); t = time.time()
+                globals()['step_' + s]()
+                done.append({'step': s, 'seconds': round(time.time() - t, 1)})
+                log('=== step %s done in %.0f s' % (s, time.time() - t))
+    finally:
+        run = {'region': REGION, 'tiles': TILES, 'steps_wanted': want, 'steps_done': done, 'commands': TIMINGS,
+               'env': {k: v for k, v in os.environ.items() if k.startswith('SM2_ISLAND_')},
+               'total_seconds': round(time.time() - t0, 1), 'finished': time.strftime('%Y-%m-%d %H:%M:%S')}
+        try:   # every invocation appended (resumed / partial builds keep their history)
+            old = json.load(open(tj)); runs = old['runs'] if 'runs' in old else [old]
+        except Exception: runs = []
+        json.dump({'runs': runs + [run]}, open(tj, 'w'), indent=1)
+    log('all done in %.0f s (timings %s)' % (time.time() - t0, tj))
 
 
 # ================================================================================================ inside Unreal: the maps
@@ -395,7 +565,7 @@ def build_maps():
     MAPS = '/Game/Maps'
     ACTORS = MAPS + '/Manhattan_Actors'
     CITY_GEO = '/Game/Tests/City/City_Midtown_Geo'
-    BOXES = '/Game/Look/Look_Boxes'
+    BOXES = '/Game/Tests/City/City_Midtown_Collision'   # (island r01) was P4's /Game/Look/Look_Boxes
     RIG = '/Game/Look/Rigs/Look_Rig_%s'
     CH = '/Game/Characters'
     SHOTS = {s['id'].split('_')[0]: s for s in json.load(open(os.path.join(HERE, 'city_shots.json')))}
@@ -513,6 +683,32 @@ def build_maps():
         make_map(MAPS + ('/Manhattan' if rig == 'golden' else '/Manhattan_' + rig.capitalize()), rig)
     for v in VIEWS:
         make_map(MAPS + '/Manhattan_View_' + v, 'golden', game_mode=False, cam=SHOTS[v])
+
+    # ---------------------------------------------------------------- (island r01) the World Partition map (city actors placed by build_city.py step 'wp')
+    if EAL.does_asset_exist(WP_MAP):
+        unreal.EditorLoadingAndSavingUtils.load_map(WP_MAP)
+        world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+        for a in eas.get_all_level_actors():
+            if a.get_actor_label().startswith(('PlayerStart', 'WP_Rig_')): eas.destroy_actor(a)
+        ps = SHOTS['S1']['player']
+        st = spawn(unreal.PlayerStart, U(ps[0], ps[2], ps[1] + 1.0), -90.0, 'PlayerStart', 'Manhattan')
+        st.set_editor_property('is_spatially_loaded', False)
+        # (island r03) extra streaming sources: the traversal indexes only the cells loaded at BeginPlay (see island_wp_sources.py); a PlayerStart per
+        # test route is not an option (ChoosePlayerStart picks one of several at random), an always-loaded streaming source actor is.
+        ns = {'__name__': 'island_wp_sources_lib', '__file__': os.path.join(HERE, 'island_wp_sources.py')}
+        exec(compile(open(ns['__file__']).read(), ns['__file__'], 'exec'), ns)
+        ns['apply_sources'](world, ns['SOURCES_DEFAULT'], mlog)
+        rig = presets[0] if 'golden' not in presets else 'golden'
+        li = spawn(unreal.LevelInstance, U(0, 0, 0), 0.0, 'WP_Rig_' + rig, 'Manhattan')
+        li.set_world_asset(unreal.load_asset(RIG % rig))
+        li.set_editor_property('is_spatially_loaded', False)
+        beh = getattr(unreal.LevelInstanceRuntimeBehavior, 'LEVEL_STREAMING', None)
+        if beh is not None: li.set_editor_property('desired_runtime_behavior', beh)
+        if trav_gm: world.get_world_settings().set_editor_property('default_game_mode', trav_gm)
+        ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WP_MAP)
+        mlog('WP map', WP_MAP, 'player start + rig level instance', rig, 'behaviour', li.get_editor_property('desired_runtime_behavior'), 'saved' if ok else 'SAVE FAILED')
+    else:
+        MISS.append('WP map %s missing (build_city.py step wp)' % WP_MAP)
 
     # ---------------------------------------------------------------- hero swap check (P2 /Game/Characters hero vs P3 HeroDev)
     dev = unreal.load_asset('/Game/Traversal/HeroDev/HeroDev/SkeletalMeshes/SpiderMan')

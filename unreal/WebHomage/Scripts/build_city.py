@@ -14,7 +14,7 @@ try: unreal.SystemLibrary.execute_console_command(None, 'Module Load StaticMeshE
 except Exception as _ex: print('WARN Module Load StaticMeshEditor:', _ex)
 
 # (r07) parameterised: SM2_CITY_SCRATCH (default = the P1 scratch), SM2_CITY_EXPORT, SM2_CITY_TEX; the browser dev port only matters for the exporter (manifest map URLs are reduced to their /assets/... path)
-SCRATCH = os.environ.get('SM2_CITY_SCRATCH', '/Users/midir/sm2-n1/_scratch/city')
+SCRATCH = os.environ.get('SM2_CITY_SCRATCH', os.path.expanduser('~/sm2-n1/_scratch/city'))
 EXPORT = os.environ.get('SM2_CITY_EXPORT', os.path.join(SCRATCH, 'export', 'midtown3x3'))
 TEX = os.environ.get('SM2_CITY_TEX', os.path.join(SCRATCH, 'tex'))
 def asset_rel(u): return re.sub(r'^https?://[^/]+/', '', u).split('?')[0]
@@ -27,6 +27,11 @@ EAL = unreal.EditorAssetLibrary
 mel = unreal.MaterialEditingLibrary
 T0 = time.time()
 def log(*a): print('[build_city %5.0fs]' % (time.time() - T0), *a)
+DEADLINE = float(os.environ.get('SM2_ISLAND_DEADLINE', '0') or 0)   # (island r04) unix time: resumable steps stop here (GPU-lock hold max)
+BATCH = int(os.environ.get('SM2_ISLAND_BATCH', '10'))
+KIT_BATCH = int(os.environ.get('SM2_ISLAND_KIT_BATCH', '8'))   # kit tiles build ~20-40 s each: small batches keep the deadline overrun short
+LAST_BATCH_S = [0.0]   # (island r04) duration of the previous batch: a batch only starts if it is projected to end before the deadline
+def past_deadline(): return bool(DEADLINE) and time.time() + 1.25 * LAST_BATCH_S[0] > DEADLINE
 
 # ------------------------------------------------------------------------------------------------ helpers
 def import_files(files, dest, pipeline=None):
@@ -67,7 +72,7 @@ if 'tex' in STEPS:
                      wrap=k not in ('interiors', 'signs', 'markings', 'leaves', 'street_signs', 'coast_atlas', 'farland_map'))
         if k in NEVER_STREAM: t.set_editor_property('never_stream', True)
 
-    maps = sorted(f for f in os.listdir(os.path.join(TEX, 'maps')) if f.endswith('.png'))
+    maps = sorted(f for f in os.listdir(os.path.join(TEX, 'maps')) if f.endswith('.png') and not f.startswith('._'))   # (island r01) exFAT scratch: skip AppleDouble ._ files
     import_files([os.path.join(TEX, 'maps', f) for f in maps], ROOT + '/Textures/Maps')
     for f in maps:
         t = load(f'{ROOT}/Textures/Maps/{f[:-4]}'); tex_settings(t, 'noise' not in f)
@@ -205,7 +210,12 @@ float boost = saturate((dst - 25.0) / 55.0) * 0.55;
 float far = boost / 0.55;
 c *= lerp(1.0, 0.55, far);
 c *= lerp(1.0, leafk, saturate(nightk));   // night: canopies read as a dark soft volume (MPC LeafNightK), albedo and transmission (Sub derives from c)
-Op = (t.a + boost) > 0.5 ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
+// (island r04, critic r03: the chase camera inside street-tree crowns, 62-78 % of the frame foliage on r1 / r4 / r5) near-lens fade: leaf cards within
+// FOLIAGE_NEAR (3.5 m) of the camera are cut, 3.5 .. 8.5 m dithered (4 cm world-space hash, TSR resolves it), beyond that untouched. The shadow
+// passes use their own view origin, so the crowns keep their shadows.
+float nh = frac(sin(dot(floor(wpos * 0.25), float3(12.9898, 78.233, 37.719))) * 43758.5453);
+float keepN = saturate((dst - 3.5) / 5.0);
+Op = ((t.a + boost) > 0.5 && nh < keepN) ? 1.0 : 0.0; Sub = saturate(c * float3(1.1, 1.3, 0.6) * 1.2) * lerp(1.0, 0.3, far); Rough = 0.7;
 // (r09) crowns inside the canyon shade: a share (0.35) of the wall fill, so the foliage keeps its own lit / shaded contrast
 Emis = CityShadeFill(c, float3(0.0, 0.0, 1.0), wpos, cam, ResolvedView.DirectionalLightDirection.xyz, shadefill * 0.35, nightk, CityShadeW(tSunH, tSunHSampler, wpos, float3(0.0, 0.0, 1.0), ResolvedView.DirectionalLightDirection.xyz));
 return c;''',
@@ -926,37 +936,121 @@ def keep_mesh(rec):
     return not m.get('transparent')  # additive / multiply overlays (spill, halos, AO, grime) are left out for now
 
 sms = ueditor = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
+# (island r02) collision policy = traversal round 20 (WebTravWorld.cpp SolidMode 2, "collision = visual triangles"): every visible city mesh that
+# the traversal treats as a solid carries its OWN cooked triangles (CTF_UseComplexAsSimple, no simple shapes) and a QueryOnly BlockAll component:
+# facade (incl. parapets + copings, drawn in the facade mesh) / roofs / detail (incl. the browser fire escapes) / landmarks / plazas / podiums /
+# bridges / seawalls / facadeLod masses, the fire-escape kit tiles (tools/export/street_kit.py) and the sidewalk sheds / subway entrances.
+# Visual-only (no collision): names on r20's exclusion list (signs, screens, neon, glow, streetkit = awnings / boards / storefronts, props, trees,
+# traffic, decals, wear, dust, markings ...), the far skyline (SM_far*: r20 de-collides them anyway) and every other instanced prop.
+# The ground (asphalt / sidewalks / land) collides as before (BlockAll, tagged WHGround). The WHBox cubes stay index-only (r20 de-collides them).
+# (island r01 had stripped collision from every non-ground mesh: merged with r20 the hero had no solids.)
+GROUND_KINDS = ('asphalt', 'sidewalk', 'land')
+TRAV_EXCLUDED = ('sign', 'screen', 'tsframes', 'tsticker', 'tsneon', 'tslights', 'tsvinyl', 'tshalo', 'tsbands', 'tstkts', 'billboard', 'neon', 'glow',
+                 'streetkit', 'streetprop', '_prop', 'prop_', 'trees', 'tree_', '_tree', 'crown', 'clump', 'leaf', 'leaves', 'foliage', 'canopy', 'bush',
+                 'traffic', 'crowd', 'vehicle', 'hydrant', 'lamp', 'decal', 'halo', 'spill', 'grime', 'wear', 'dust', 'markings')   # = FWebTravWorld::IsExcludedName
+SOLID_PROTOS = ('shed', 'shedtop', 'subway')   # r20 keeps exactly SM_shed / SM_shedtop / SM_subway instanced meshes solid
+def trav_excluded(name): n = name.lower(); return any(k in n for k in TRAV_EXCLUDED)
+def solid_rec(r):
+    """(island r02) does this exported mesh get cooked triangle collision (a traversal solid)?"""
+    if r['kind'] in GROUND_KINDS: return True
+    if r['kind'] in ('signage', 'markings') or r['name'].startswith('far'): return False
+    return not trav_excluded('SM_' + os.path.basename(r['file'])[:-4])
+def solid_component(c):
+    """(island r02) a traversal solid component: blocks every trace / sweep, no physics simulation"""
+    c.set_collision_profile_name('BlockAll'); c.set_collision_enabled(unreal.CollisionEnabled.QUERY_ONLY)
+WP_TILE = 256.0
+def tile_key(x, z): return '%d_%d' % (math.floor(x / WP_TILE), math.floor(z / WP_TILE))
+def set_spatial(a, on, wp):
+    if wp: a.set_editor_property('is_spatially_loaded', bool(on))
+def no_collision(c):
+    c.set_collision_profile_name('NoCollision'); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+def full_fallback(sm):
+    """(island r02) a Nanite mesh's complex collision is cooked from its fallback (LOD0 render data): keep every triangle in it (fire-escape bars,
+    railings and copings would be simplified away by the default fallback error)"""
+    ns = sm.get_editor_property('nanite_settings')
+    if not ns.enabled: return
+    changed = False
+    for k, v in (('fallback_target', getattr(getattr(unreal, 'NaniteFallbackTarget', None), 'PERCENT_TRIANGLES', None)), ('fallback_percent_triangles', 1.0), ('fallback_relative_error', 0.0)):
+        if v is None: continue
+        try:
+            if ns.get_editor_property(k) != v: ns.set_editor_property(k, v); changed = True
+        except Exception as ex: log('WARN nanite', k, ex)
+    if changed: sm.set_editor_property('nanite_settings', ns)   # (island r04) a setter rebuilds the mesh: only when a value differs
+def make_solid(sm):
+    """(island r02) cooked triangle collision: no simple shapes, complex (render triangles) used for every query"""
+    try: sms.remove_collisions(sm)   # no simple hull / boxes (a merged tile's hull is a giant invisible block)
+    except Exception: pass
+    bsetup = sm.get_editor_property('body_setup')
+    if not bsetup:
+        try: sm.create_body_setup() if hasattr(sm, 'create_body_setup') else None
+        except Exception as ex: log('WARN body setup', sm.get_name(), ex)
+        bsetup = sm.get_editor_property('body_setup')
+    if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
+    else: log('WARN no body setup', sm.get_name())
+    full_fallback(sm)
+    return bool(bsetup)
+FINISH_STATS = {'lod_set': 0, 'lod_skip': 0}
 def finish_mesh(sm, mat, collide, nanite=False):
     sm.set_material(0, mat)
     ns = sm.get_editor_property('nanite_settings')  # Nanite quantises UVs: the facade / roof data channels need full precision
     if ns.enabled != nanite: ns.enabled = nanite; sm.set_editor_property('nanite_settings', ns)
     bs = sms.get_lod_build_settings(sm, 0)
-    bs.set_editor_property('use_full_precision_u_vs', True); bs.set_editor_property('generate_lightmap_u_vs', False)
-    bs.set_editor_property('recompute_normals', False); bs.set_editor_property('recompute_tangents', False)
-    sms.set_lod_build_settings(sm, 0, bs)
+    want = (('use_full_precision_u_vs', True), ('generate_lightmap_u_vs', False), ('recompute_normals', False), ('recompute_tangents', False))
+    # (island r04) set_lod_build_settings rebuilds the render data (+ distance field): the import pipeline already sets these, so only call it
+    # when a value differs (r03: ~10 s per tile mesh, two builds each). SM2_ISLAND_FORCE_LOD_SETTINGS=1 = the old always-set behaviour.
+    diff = [k for k, v in want if bs.get_editor_property(k) != v]
+    if os.environ.get('SM2_ISLAND_FORCE_LOD_SETTINGS') == '1' or diff:
+        if FINISH_STATS['lod_set'] < 3: log('finish_mesh: LOD build settings differ after import:', sm.get_name(), diff)
+        for k, v in want: bs.set_editor_property(k, v)
+        sms.set_lod_build_settings(sm, 0, bs); FINISH_STATS['lod_set'] += 1
+    else: FINISH_STATS['lod_skip'] += 1
+    bsetup = sm.get_editor_property('body_setup')
     if collide:
-        bsetup = sm.get_editor_property('body_setup')
-        if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_COMPLEX_AS_SIMPLE)
+        make_solid(sm)   # (island r02) remove_collisions + complex-as-simple + full Nanite fallback
+    else:
+        # (island r01) visual-only mesh: no simple shapes and no cooked render-mesh (complex) collision. The traversal's solids are the per-building
+        # WHBox cubes (step 'coll' / 'wp'); a merged 256 m tile with collision was one giant invisible block (owner: landing / running in mid-air).
+        try: sms.remove_collisions(sm)
+        except Exception as ex: log('WARN remove_collisions', sm.get_name(), ex)
+        if bsetup: bsetup.set_editor_property('collision_trace_flag', unreal.CollisionTraceFlag.CTF_USE_SIMPLE_AS_COMPLEX)
 
 if 'mesh' in STEPS:
     recs = [r for r in man['meshes'] if keep_mesh(r)]
-    for nan in (False, True):
-        group = [r for r in recs if (r['kind'] == 'detail') == nan]
-        dest = ROOT + '/Meshes'
-        import_files([os.path.join(EXPORT, r['file']) for r in group], dest + '/_in', mesh_pipeline(nan))
-    n = 0
-    for r in recs:
-        base = os.path.basename(r['file'])[:-4]
-        src = f'{ROOT}/Meshes/_in/{base}/StaticMeshes/{base}'
-        dst = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
-        if not EAL.does_asset_exist(src): _B.fail('MISSING import ' + src); continue
-        EAL.rename_asset(src, dst)
-        sm = load(dst)
-        mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
-        finish_mesh(sm, mat, r['kind'] in ('facade', 'roofs', 'asphalt', 'sidewalk', 'detail') and not r.get('lod'), nanite=r['kind'] == 'detail')
-        EAL.save_asset(dst); n += 1
-    EAL.delete_directory(ROOT + '/Meshes/_in')
+    if ARGS.get('mesh_only') == 'split' or os.environ.get('SM2_ISLAND_MESH_ONLY') == 'split':   # (island r02) import only the split_giants.py pieces
+        recs = [r for r in recs if r.get('split_from') and not EAL.does_asset_exist(f'{ROOT}/Meshes/{r["kind"]}/SM_' + os.path.basename(r['file'])[:-4])]
+        log('mesh step: %d split pieces to import' % len(recs))
+    elif os.environ.get('SM2_ISLAND_MESH_ONLY') == 'missing':
+        # (island r03) M1 -> M2 without re-importing M1: every GLB the M1 export shares with the island export is byte-identical (1,032 / 1,032,
+        # md5, 2026-10-02), so only the meshes without an asset yet are imported (a clean build imports everything)
+        recs = [r for r in recs if not EAL.does_asset_exist(f'{ROOT}/Meshes/{r["kind"]}/SM_' + os.path.basename(r['file'])[:-4])]
+        log('mesh step: %d missing meshes to import' % len(recs))
+    # (island r04) batches of SM2_ISLAND_BATCH meshes (default 40), stopping at SM2_ISLAND_DEADLINE (unix time; 0 = none) so that one commandlet
+    # fits a GPU-lock hold (40 min max); with SM2_ISLAND_MESH_ONLY=missing the next commandlet resumes. Logs 'MESH_REMAINING <n>'.
+    if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')   # leftovers of a stopped run
+    n = 0; left = len(recs)
+    for b0 in range(0, len(recs), BATCH):
+        if past_deadline(): break
+        tb = time.time()
+        batch = recs[b0:b0 + BATCH]
+        for nan in (False, True):
+            group = [r for r in batch if (r['kind'] == 'detail') == nan]
+            if group: import_files([os.path.join(EXPORT, r['file']) for r in group], ROOT + '/Meshes/_in', mesh_pipeline(nan))
+        for r in batch:
+            base = os.path.basename(r['file'])[:-4]
+            src = f'{ROOT}/Meshes/_in/{base}/StaticMeshes/{base}'
+            dst = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+            if not EAL.does_asset_exist(src): _B.fail('MISSING import ' + src); continue
+            EAL.rename_asset(src, dst)
+            sm = load(dst)
+            mat = load(f'{MAT}/{KIND_MAT[r["kind"]]}') if r['kind'] in KIND_MAT else (load(MAT + '/M_CityFrame') if r['name'].startswith('tsFrames') else (load(MAT + '/' + far_material(r)) if far_material(r) else mi_for(r)))
+            finish_mesh(sm, mat, solid_rec(r), nanite=r['kind'] == 'detail')   # (island r02) traversal solids collide with their own triangles (solid_rec)
+            EAL.save_asset(dst); n += 1
+        left = len(recs) - (b0 + len(batch))
+        if EAL.does_directory_exist(ROOT + '/Meshes/_in'): EAL.delete_directory(ROOT + '/Meshes/_in')
+        LAST_BATCH_S[0] = time.time() - tb
+        log('mesh batch: %d imported, %d left, %.0f s, finish %s' % (n, left, LAST_BATCH_S[0], FINISH_STATS))
     log('meshes', n)
+    log('MESH_REMAINING %d' % left)
 
 # (r04) 'frames' step: re-import the patched tsFrames meshes (tools/export/patch_export.py) into an already built project WITHOUT deleting the
 # referenced old assets (a delete pops a modal dialog): the new mesh gets the suffix _r04 and the geo level actors are pointed at it.
@@ -1020,6 +1114,10 @@ SKIP_POOL = ('Far', '_mid', '_xfar', 'lampPool', 'propContactAO', 'trees_', 'tru
 CROWN = ('trees_park_crownfar', 'trees_elm_crownfar', 'trees_conifer_crownfar')  # (r03) opaque canopy mass inside the park LOD1 trees
 protos = [p for p in man['protos'] if p['name'] in CROWN or (not any(s in p['name'] for s in SKIP_POOL) and not p['name'].endswith('_far'))]
 LEAFY = lambda n: 'leaves' in n
+def proto_ab(n):
+    """(island r02) instanced props with cooked triangles but collision OFF in the map: r20's default (instanced props / trees are not solids) is
+    unchanged; with -WHTravIsmSolid=1 the traversal re-enables them (BlockAll responses kept) for the trunk / prop A/B"""
+    return n not in SOLID_PROTOS and not LEAFY(n) and n != 'hinterland' and n not in CROWN and not trav_excluded('ISM_' + n)
 def next_version(base):
     v = 2
     while EAL.does_asset_exist(f'{base}_v{v}'): v += 1
@@ -1058,10 +1156,27 @@ if _todo:
             EAL.save_asset(mi.get_path_name())
         else:
             mi = load(MAT + '/M_CityHinter') if p['name'] == 'hinterland' else (load(MAT + '/M_CityCrown') if p['name'] in CROWN else mi_for({**p, 'proto': True}))
-        finish_mesh(sm, mi, False, nanite=True)
+        finish_mesh(sm, mi, p['name'] in SOLID_PROTOS or proto_ab(p['name']), nanite=True)   # (island r02) sheds / subway entrances are solids; proto_ab
         EAL.save_asset(dst)
     EAL.delete_directory(ROOT + '/Props/_in')
     log('protos', len(_todo))
+
+# (island r02) 'collide' step: the r02 collision policy applied IN PLACE to an already imported /Game/City (no 40 min mesh re-import): every
+# solid_rec() mesh + the SOLID_PROTOS props get cooked triangle collision (make_solid). A clean build gets the same from the mesh / proto steps.
+if 'collide' in STEPS:
+    n = nf = 0
+    for r in man['meshes']:
+        if not keep_mesh(r) or not solid_rec(r) or r['kind'] in GROUND_KINDS: continue
+        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        for suf in ('', '_r04', '_r06'):
+            if not EAL.does_asset_exist(sp + suf): continue
+            sm = load(sp + suf)
+            if not make_solid(sm): nf += 1
+            EAL.save_asset(sp + suf); n += 1
+    for pn in list(SOLID_PROTOS) + [p['name'] for p in protos if proto_ab(p['name'])]:
+        sp = sm_path(pn)
+        if EAL.does_asset_exist(sp): sm = load(sp); make_solid(sm); EAL.save_asset(sp); n += 1
+    log('collide: %d meshes now cooked-triangle solids (%d without a body setup)' % (n, nf))
 
 # ------------------------------------------------------------------------------------------------ maps
 def U(x, y, z): return unreal.Vector(x * 100.0, z * 100.0, y * 100.0)
@@ -1100,41 +1215,79 @@ def open_level(path):
     return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
 
 KIT_DIR = ROOT + '/Meshes/streetkit'
-def kit_spawn():
-    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level"""
+FE_DIR = ROOT + '/Meshes/fireescape'   # (island r02) fire-escape kit tiles: traversal solids
+def kit_spawn(wp=False, only=None):
+    """(r05) spawn one static-mesh actor per streetkit tile (tools/export/street_kit.py) into the current level (island r01: visual-only)
+    (island r02) + one per fire-escape tile (label fireescape__t<ix>_<iz>, folder City/fireescape): a QueryOnly solid with its own triangles"""
     kp = os.path.join(EXPORT, 'streetkit.json')
     if not os.path.exists(kp): return 0
     n = 0
-    for r in json.load(open(kp))['files']:
+    K = json.load(open(kp))
+    for r in K['files']:
+        if only is not None and r['name'] not in only: continue   # (island r04) step 'fepatch'
         sp = f'{KIT_DIR}/SM_{r["name"]}'
         if not EAL.does_asset_exist(sp): continue
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/streetkit')
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC); n += 1
-    return n
+        no_collision(a.static_mesh_component); set_spatial(a, True, wp)
+    nf = 0
+    for r in K.get('fireescape_files', []):
+        if only is not None and r['name'] not in only: continue
+        sp = f'{FE_DIR}/SM_{r["name"]}'
+        if not EAL.does_asset_exist(sp): _B.fail('MISSING fire-escape mesh ' + sp); continue
+        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=r['name'], folder='City/fireescape')
+        a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC); nf += 1
+        solid_component(a.static_mesh_component); set_spatial(a, True, wp)
+    log('kit actors: %d streetkit (visual-only), %d fire-escape (solid)' % (n, nf))
+    return n + nf
 
-def kit_import():
-    """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them"""
+def kit_import(only=None):
+    """(r05) import the kit GLBs (Nanite, M_CityKit); assets are deleted + re-imported, so the geometry level must not reference them.
+    (island r04) only = set of tile names ('streetkit__t-1_2', 'fireescape__t-1_2', ...): delete + re-import just those assets (step 'fepatch');
+    SM2_ISLAND_KIT_ONLY=missing: import only tiles without an asset, in batches, stopping at SM2_ISLAND_DEADLINE (logs 'KIT_REMAINING <n>')"""
     kp = os.path.join(EXPORT, 'streetkit.json')
-    recs = json.load(open(kp))['files']
-    if EAL.does_directory_exist(KIT_DIR): EAL.delete_directory(KIT_DIR)
-    import_files([os.path.join(EXPORT, r['file']) for r in recs], KIT_DIR + '/_in', mesh_pipeline(True))
+    K = json.load(open(kp))
     mat = load(MAT + '/M_CityKit')
-    for r in recs:
-        base = r['name']; src = f'{KIT_DIR}/_in/{base}/StaticMeshes/{base}'; dst = f'{KIT_DIR}/SM_{base}'
-        if not EAL.does_asset_exist(src): _B.fail('MISSING kit mesh ' + src); continue
-        EAL.rename_asset(src, dst); sm = load(dst)
-        finish_mesh(sm, mat, False, nanite=True); EAL.save_asset(dst)
-    EAL.delete_directory(KIT_DIR + '/_in')
-    log('kit meshes', len(recs))
+    missing = os.environ.get('SM2_ISLAND_KIT_ONLY') == 'missing'
+    left = 0
+    for recs, kdir, solid in ((K['files'], KIT_DIR, False), (K.get('fireescape_files', []), FE_DIR, True)):   # (island r02) fire escapes: solids
+        if only is not None:
+            recs = [r for r in recs if r['name'] in only]
+            for r in recs:
+                if EAL.does_asset_exist(f'{kdir}/SM_{r["name"]}'): EAL.delete_asset(f'{kdir}/SM_{r["name"]}')
+            if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
+        elif missing:
+            recs = [r for r in recs if not EAL.does_asset_exist(f'{kdir}/SM_{r["name"]}')]
+            if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
+        elif EAL.does_directory_exist(kdir): EAL.delete_directory(kdir)
+        if not recs: continue
+        n = 0
+        for b0 in range(0, len(recs), KIT_BATCH):
+            if past_deadline(): left += len(recs) - b0; break
+            tb = time.time()
+            batch = recs[b0:b0 + KIT_BATCH]
+            import_files([os.path.join(EXPORT, r['file']) for r in batch], kdir + '/_in', mesh_pipeline(True))
+            for r in batch:
+                base = r['name']; src = f'{kdir}/_in/{base}/StaticMeshes/{base}'; dst = f'{kdir}/SM_{base}'
+                if not EAL.does_asset_exist(src): _B.fail('MISSING kit mesh ' + src); continue
+                EAL.rename_asset(src, dst); sm = load(dst)
+                finish_mesh(sm, mat, solid, nanite=True); EAL.save_asset(dst); n += 1
+            if EAL.does_directory_exist(kdir + '/_in'): EAL.delete_directory(kdir + '/_in')
+            LAST_BATCH_S[0] = time.time() - tb
+            log('kit batch', kdir, n, '/', len(recs), '%.0f s' % LAST_BATCH_S[0], FINISH_STATS)
+        log('kit meshes', kdir, n, 'solid' if solid else 'visual-only')
+    log('KIT_REMAINING %d' % left)
 
-if 'kit' in STEPS:
+if 'kit' in STEPS and os.environ.get('SM2_ISLAND_KIT_ONLY') == 'missing':
+    kit_import()   # (island r04) resumable import only: the map step rebuilds the geometry level (and its kit actors) from scratch
+elif 'kit' in STEPS:
     # (r07) clean build: no geometry level yet -> only import the kit meshes (the map step spawns them). Existing project: remove the kit actors from the geometry level
     # first (deleting referenced assets pops a modal dialog), re-import, respawn.
     if EAL.does_asset_exist(TESTS + '/City_Midtown_Geo'):
         unreal.EditorLoadingAndSavingUtils.load_map(TESTS + '/City_Midtown_Geo')
         eas_ = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
         for a in eas_.get_all_level_actors():
-            if a.get_actor_label().startswith('streetkit__'): eas_.destroy_actor(a)
+            if a.get_actor_label().startswith(('streetkit__', 'fireescape__')): eas_.destroy_actor(a)
         unreal.get_editor_subsystem(unreal.LevelEditorSubsystem).save_current_level()
         kit_import()
         log('kit actors', kit_spawn())
@@ -1183,7 +1336,7 @@ def fsky_import():
     else: _B.fail('MISSING farsky clump proto')
     if EAL.does_directory_exist(ROOT + '/Props/_in'): EAL.delete_directory(ROOT + '/Props/_in')
     log('farsky meshes', len(recs))
-def fsky_spawn():
+def fsky_spawn(wp=False):
     D = fsky_data(); n = 0
     if not D: return 0
     for r in D['files']:
@@ -1192,13 +1345,14 @@ def fsky_spawn():
         a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label='farsky__' + r['name'], folder='City/Far')
         a.static_mesh_component.set_static_mesh(load(sp)); a.set_mobility(unreal.ComponentMobility.STATIC)
         a.static_mesh_component.set_editor_property('cast_shadow', r['mat'] == 'towers'); n += 1
+        no_collision(a.static_mesh_component); set_spatial(a, False, wp)
     cp = ROOT + '/Props/SM_farsky_clump'
     if D['clumps'] and EAL.does_asset_exist(cp):
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_farsky_clumps', folder='City/Far')
         c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-        c.set_static_mesh(load(cp)); c.set_editor_property('cast_shadow', False)
+        c.set_static_mesh(load(cp)); c.set_editor_property('cast_shadow', False); no_collision(c)
         xs = [unreal.Transform(U(q[0], q[1], q[2]), unreal.Rotator(0, 0, (q[5] * 997.0) % 360.0), unreal.Vector(q[3], q[3], q[3] * q[4])) for q in D['clumps']]
-        c.add_instances(xs, False, True); n += len(xs)
+        c.add_instances(xs, False, True); n += len(xs); set_spatial(a, False, wp)
     return n
 
 if 'fsky' in STEPS:
@@ -1213,24 +1367,94 @@ if 'fsky' in STEPS:
     else:
         fsky_import()
 
-def build_geo_level(path):
-    open_level(path)
-    recs = [r for r in man['meshes'] if keep_mesh(r)]
-    _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
-    for r in recs:
-        if _fb and r['name'] == 'palisadesCliff': continue
-        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
-        for suf in ('_r06', '_r04'):  # re-imported variants (frames / far steps) win over the original import
-            if EAL.does_asset_exist(sp + suf): sp += suf; break
-        if not EAL.does_asset_exist(sp): continue
-        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
-        smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
-        a.set_mobility(unreal.ComponentMobility.STATIC)
-    kit_spawn()
-    log('farsky instances', fsky_spawn())   # (r10)
+# (island r01) one populate() for both map kinds: the classic always-loaded geometry level (City_Midtown_Geo, a sublevel of /Game/Maps/Manhattan) and the
+# World Partition map (step 'wp'): there every actor goes into the WP world itself, with
+#   spatially loaded (256 m cells, ~1.2 km loading range): the detailed per-tile meshes, street kit, per-tile prop / tree / car HISMs;
+#   always loaded (is_spatially_loaded = False): the far layer (facadeLod masses outside the detailed region, far shores / land, far skyline,
+#   hinterland, water plane), the ground (asphalt / sidewalks / land: WHGround, the traversal indexes it once at start) and the WHBox cubes.
+def mesh_is_far(r): return bool(r.get('lod')) or r['kind'] in ('far', 'land') or r['name'].startswith(('facadeLod', 'farsky'))
+
+BOX_KINDS = {0: 'wall', 7: 'bulkhead', 8: 'watertower', 13: 'spire', 14: 'hero', 17: 'glass'}
+def spawn_boxes(wp=False):
+    """the browser's own collision boxes (collision.json: wall / glass / hero / spire / bulkhead / watertower; >= 3 m tall, >= 1.2 m wide) as invisible
+    /Engine/BasicShapes/Cube actors "WHBox_<n>" = the traversal's building boxes (anchors, wall-run, perch, capsule push-out, web targets).
+    Same selection as P4's build_look.py geo step (Look_Boxes), which this replaces."""
+    # (island r01) <EXPORT>/whboxes.json (tools/export/island_boxes.py: + roof tiers < 3 m, round towers as 3 crossed boxes, boxes fitted to the
+    # drawn geometry -- phantom AABBs of angled / undrawn buildings dropped or split) when present, else the browser boxes 1:1 (P4 rule)
+    wp_ = os.path.join(EXPORT, 'whboxes.json')
+    if os.path.exists(wp_): rows = [b[:6] for b in json.load(open(wp_))['boxes']]
+    else:
+        rows = []
+        for sd in json.load(open(os.path.join(EXPORT, 'collision.json')))['solids']:
+            if sd['t'] != 0 or sd['k'] not in BOX_KINDS: continue
+            x0, y0, z0, x1, y1, z1 = sd['bb']  # browser metres: x east, y up, z south
+            if (y1 - y0) < 3.0 or ((x1 - x0) < 1.2 and (z1 - z0) < 1.2): continue
+            rows.append(sd['bb'])
+    log('WHBox source', 'whboxes.json' if os.path.exists(wp_) else 'collision.json', len(rows))
+    cube = load('/Engine/BasicShapes/Cube')
+    n = 0
+    # (island r01) SM2_WHBOX_MODE=ism: one always-loaded actor per 256 m tile holding an invisible, BlockAll InstancedStaticMeshComponent of
+    # /Engine/BasicShapes/Cube (one instance per box). WebTravWorld.cpp needs no change: IsTravCube() accepts any invisible Cube static-mesh
+    # component and its ISM branch indexes one box per instance. One actor per box ('actor', the default) spawned at ~51 -> ~19 actors/s
+    # (53 k boxes 1,077 s, 57 k boxes 2,203 s): it cannot scale to the whole island (~140 k boxes).
+    # (island r03) SM2_WHBOX_MODE=comp (default): one always-loaded actor per 256 m tile ("WHBoxes__t<ix>_<iz>") holding one PLAIN (non-instanced)
+    # invisible BlockAll /Engine/BasicShapes/Cube StaticMeshComponent per box ("WHBox_<n>", relative = world transform under a static scene root).
+    # WebTravWorld.cpp (SolidMode 2) indexes IsTravCube() per component from P->Bounds, so the index is identical to one actor per box; the
+    # actor mode's cost was UEditorEngine::AddActor -> FCachedActorLabels::Populate(World) per spawn (every label of the world hashed: quadratic,
+    # ~3 h for the island's ~140 k boxes; docs/night1/island/probe_spawn_r03.py). 'actor' stays available (SM2_WHBOX_MODE=actor).
+    mode = os.environ.get('SM2_WHBOX_MODE', 'comp')
+    if mode == 'comp':
+        by_tile = {}
+        for b in rows: by_tile.setdefault(tile_key((b[0] + b[3]) / 2, (b[2] + b[5]) / 2), []).append(b)
+        tb = time.time()
+        for tk, bs in sorted(by_tile.items()):
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='WHBoxes__t' + tk, folder='City/TraversalBoxes')
+            root_h = sds.k2_gather_subobject_data_for_instance(a)[0]
+            rh, fail = sds.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=root_h, new_class=unreal.SceneComponent, blueprint_context=None))
+            root = unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(rh))
+            root.set_mobility(unreal.ComponentMobility.STATIC)
+            for x0, y0, z0, x1, y1, z1 in bs:
+                h, fail = sds.add_new_subobject(unreal.AddNewSubobjectParams(parent_handle=rh, new_class=unreal.StaticMeshComponent, blueprint_context=None))
+                c = unreal.SubobjectDataBlueprintFunctionLibrary.get_object(unreal.SubobjectDataBlueprintFunctionLibrary.get_data(h))
+                c.set_static_mesh(cube)
+                c.set_relative_location(U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), False, False)
+                c.set_relative_scale3d(unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))   # the cube is 100 cm: scale = size in metres
+                c.set_collision_profile_name('BlockAll'); c.set_visibility(False); c.set_cast_shadow(False)
+                c.set_mobility(unreal.ComponentMobility.STATIC)
+                n += 1
+            set_spatial(a, False, wp)
+            if len(by_tile) > 20 and n and (sorted(by_tile).index(tk) % 20 == 19): log('WHBox comp tiles %d / %d, %d boxes, %.0f s' % (sorted(by_tile).index(tk) + 1, len(by_tile), n, time.time() - tb))
+        log('WHBox comp tiles', len(by_tile), 'cube components', n, '%.0f s' % (time.time() - tb))
+        return n
+    if mode == 'ism':
+        by_tile = {}
+        for b in rows: by_tile.setdefault(tile_key((b[0] + b[3]) / 2, (b[2] + b[5]) / 2), []).append(b)
+        for tk, bs in sorted(by_tile.items()):
+            a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='WHBoxes__t' + tk, folder='City/TraversalBoxes')
+            c = add_component(a, unreal.InstancedStaticMeshComponent)
+            c.set_static_mesh(cube)
+            xs = [unreal.Transform(U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), unreal.Rotator(0, 0, 0), unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))
+                  for x0, y0, z0, x1, y1, z1 in bs]
+            c.add_instances(xs, False, True)
+            c.set_collision_profile_name('BlockAll'); c.set_visibility(False); c.set_cast_shadow(False)
+            c.set_mobility(unreal.ComponentMobility.STATIC); set_spatial(a, False, wp)
+            n += len(bs)
+        log('WHBox ISM tiles', len(by_tile), 'instances', n)
+        return n
+    for x0, y0, z0, x1, y1, z1 in rows:
+        a = spawn(unreal.StaticMeshActor, U((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), label='WHBox_%d' % n, folder='City/TraversalBoxes')
+        c = a.static_mesh_component; c.set_static_mesh(cube)
+        a.set_actor_scale3d(unreal.Vector((x1 - x0), (z1 - z0), (y1 - y0)))  # the cube is 100 cm: scale = size in metres
+        c.set_collision_profile_name('BlockAll'); c.set_visibility(False); c.set_cast_shadow(False)
+        a.set_mobility(unreal.ComponentMobility.STATIC); set_spatial(a, False, wp)
+        n += 1
+    return n
+
+def spawn_instances(wp=False):
+    """(island r03) the instanced props / trees / parked cars / stopped traffic of the city (per-tile HISM actors); returns the instance count"""
+    ni = 0
     # instanced props / trees from layout.json pool items
     L = json.load(open(os.path.join(EXPORT, 'layout.json')))
-    ni = 0
     EXTRA_PROPS = {}; REMOVE_AT = set()
     for _fn in ('streetprops.json', 'streettrees.json', 'streetcars.json'):   # (r05) street furniture, (r08) trees on every avenue sidewalk + parked cars (tools/export/street_props.py, street_trees.py, street_cars.py)
         _fp = os.path.join(EXPORT, _fn)
@@ -1239,20 +1463,35 @@ def build_geo_level(path):
                 if _pool == '_remove': REMOVE_AT.update((round(q[0], 1), round(q[1], 1)) for q in _its)   # (r08) existing trees / pits within 16 m of a street-level shot camera
                 else: EXTRA_PROPS.setdefault(_pool, []).extend(_its)
     def make_ism(label, folder, sm_path, items, cast_shadow=True):
-        """one HISM actor with per-instance custom data 0..2 = tint, 3 = state (M_CityProp / M_CityLeaves); items in the layout.json pool-item format"""
-        a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label=label, folder=folder)
-        c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
-        c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
-        xs = []
-        for it in items:
-            s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
-            # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
-            rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
-            xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
-        ids = c.add_instances(xs, True, True)
-        for k, it in enumerate(items):
-            tint = ((it.get('e') or {}).get('aTint')) or [1, 1, 1]; st = (it.get('e') or {}).get('aState', 0)
-            for j, v in enumerate((tint[0], tint[1], tint[2], st if isinstance(st, (int, float)) else 0)): c.set_custom_data_value(k, j, float(v), False)
+        """HISM actors (one per 256 m tile: streams with its cell, culls per tile) with per-instance custom data 0..2 = tint, 3 = state (M_CityProp /
+        M_CityLeaves); items in the layout.json pool-item format. (island r01) visual-only: NoCollision (a region-wide HISM was de-collided at runtime anyway)."""
+        by_tile = {}
+        for it in items: by_tile.setdefault(tile_key(it['x'], it['z']), []).append(it)
+        for tk, its in sorted(by_tile.items()):
+            # (island r03) the actor sits at its tile centre: a World Partition actor's cell comes from its saved bounds, and the HISM bounds were
+            # still empty when the actors were saved (the instance tree builds asynchronously in the commandlet), so every actor at the origin
+            # landed in the origin cell: all street trees / parked cars / traffic / furniture streamed with the cell at (0, 0) and were gone
+            # beyond ~1.2 km of it (the M2 tiles, y > 1.2 km: bare avenues). Instances are added in world space (below), the actor placement only
+            # decides the cell.
+            _tx, _tz = (int(v) for v in tk.split('_'))
+            a = spawn(unreal.Actor, U((_tx + 0.5) * WP_TILE, 0, (_tz + 0.5) * WP_TILE), label=label + '__t' + tk, folder=folder)
+            c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
+            c.set_static_mesh(load(sm_path)); c.set_editor_property('num_custom_data_floats', 4)
+            if label in ['ISM_' + n for n in SOLID_PROTOS]: solid_component(c)   # (island r02) sheds / subway entrances: solids
+            elif label.startswith('ISM_') and proto_ab(label[4:]):   # (island r02) A/B-ready: BlockAll responses, collision off (r20 default)
+                c.set_collision_profile_name('BlockAll'); c.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+            else: no_collision(c)
+            xs = []
+            for it in its:
+                s = it.get('s', 1.0); s3 = it.get('s3') or [1, 1, 1]
+                # browser: rotation about +y by ry (right-handed, y up). UE: yaw about Z with Y = z mirrored handedness -> yaw = -ry
+                rot = unreal.Rotator(roll=math.degrees(it.get('rz', 0.0)), pitch=-math.degrees(it.get('rx', 0.0)), yaw=-math.degrees(it.get('ry', 0.0)))
+                xs.append(unreal.Transform(U(it['x'], it['y'], it['z']), rot, unreal.Vector(s * s3[0], s * s3[2], s * s3[1])))
+            c.add_instances(xs, True, True)
+            for k, it in enumerate(its):
+                tint = ((it.get('e') or {}).get('aTint')) or [1, 1, 1]; st = (it.get('e') or {}).get('aState', 0)
+                for j, v in enumerate((tint[0], tint[1], tint[2], st if isinstance(st, (int, float)) else 0)): c.set_custom_data_value(k, j, float(v), False)
+            set_spatial(a, True, wp)
         return len(items)
     for p in protos:
         pool = p['src']; items = (L['instances'].get(pool) or {}).get('items') or []
@@ -1271,11 +1510,38 @@ def build_geo_level(path):
             if items and EAL.does_asset_exist(sp): nt += make_ism('ISM_traffic_' + pool, 'City/Traffic', sp, items)
     log('stopped traffic cars', nt)
     ni += nt
+    return ni
+
+def populate(wp=False):
+    """spawn the whole city into the CURRENT level (classic geometry sublevel, or the WP world)"""
+    recs = [r for r in man['meshes'] if keep_mesh(r)]
+    _fb = fsky_has_bluff()   # (r10) the displaced, wooded bluff replaces the flat palisadesCliff face
+    n_gnd = n_vis = n_sol = 0
+    for r in recs:
+        if _fb and r['name'] == 'palisadesCliff': continue
+        base = os.path.basename(r['file'])[:-4]; sp = f'{ROOT}/Meshes/{r["kind"]}/SM_{base}'
+        for suf in ('_r06', '_r04'):  # re-imported variants (frames / far steps) win over the original import
+            if EAL.does_asset_exist(sp + suf): sp += suf; break
+        if not EAL.does_asset_exist(sp): continue
+        a = spawn(unreal.StaticMeshActor, U(r['center'][0], 0, r['center'][2]), label=base, folder='City/' + r['kind'])
+        smc = a.static_mesh_component; smc.set_static_mesh(load(sp))
+        a.set_mobility(unreal.ComponentMobility.STATIC)
+        if r['kind'] in GROUND_KINDS:   # (island r01) the floor: collides, tagged, always loaded (indexed once by the traversal)
+            smc.set_collision_profile_name('BlockAll'); a.tags = [unreal.Name('WHGround')]; n_gnd += 1
+            set_spatial(a, False, wp)
+        else:
+            if solid_rec(r): solid_component(smc); n_sol += 1   # (island r02) a traversal solid (own triangles, QueryOnly)
+            else: no_collision(smc); n_vis += 1
+            set_spatial(a, not mesh_is_far(r), wp)
+    n_kit = kit_spawn(wp)
+    log('farsky instances', fsky_spawn(wp))   # (r10)
+    ni = spawn_instances(wp)
     # ground under everything (lot interiors / plazas never exported as geometry)
     # (r02) rivers / harbour: one water plane at the browser's G.WATER_Y (-1.6 m), 60 km wide (land meshes sit above it)
     g = spawn(unreal.StaticMeshActor, U(0, -1.6, 0), label='WaterPlane', folder='City')
     g.static_mesh_component.set_static_mesh(load('/Engine/BasicShapes/Plane')); g.set_actor_scale3d(unreal.Vector(60000, 60000, 1))
     g.static_mesh_component.set_material(0, load(MAT + '/M_CityWater'))
+    g.tags = [unreal.Name('WHGround')]; set_spatial(g, False, wp)   # (island r01) was tagged by build_look.py's geo step
     # (r02) hinterland (horizon.js): 5-sided boxes to the horizon, per-instance colours
     hp = os.path.join(EXPORT, 'hinterland.json')
     if os.path.exists(hp) and EAL.does_asset_exist(ROOT + '/Props/SM_hinterland'):
@@ -1285,13 +1551,20 @@ def build_geo_level(path):
         a = spawn(unreal.Actor, unreal.Vector(0, 0, 0), label='ISM_hinterland', folder='City/Far')
         c = add_component(a, unreal.HierarchicalInstancedStaticMeshComponent)
         c.set_static_mesh(load(ROOT + '/Props/SM_hinterland')); c.set_editor_property('num_custom_data_floats', 6)
-        c.set_editor_property('cast_shadow', False)
+        c.set_editor_property('cast_shadow', False); no_collision(c)
         c.add_instances([unreal.Transform(U(h[0], h[1], h[2]), unreal.Rotator(0, 0, -math.degrees(h[6])), unreal.Vector(h[3], h[5], h[4])) for h in H], False, True)
         for k, h in enumerate(H):
             for j in range(6): c.set_custom_data_value(k, j, float(h[7 + j]), False)
+        set_spatial(a, False, wp)
         log('hinterland', len(H))
+    log('populate%s: %d meshes (%d ground, %d solid, %d visual-only), %d kit, %d instances' % (' (WP)' if wp else '', len(recs), n_gnd, n_sol, n_vis, n_kit, ni))
+    return len(recs), ni
+
+def build_geo_level(path):
+    open_level(path)
+    nm, ni = populate(False)
     les.save_current_level()
-    log('geo level', path, len(recs), 'meshes', ni, 'instances')
+    log('geo level', path, nm, 'meshes', ni, 'instances')
 
 # (r06) view-map atmosphere, tuned against CITY-SPEC C11-C15 (far shore takes the sky's tint, sits 25-35 luma below the sky band, river darker than the far shore).
 # The sky is blown out (Y ~ 229) because the test maps use manual exposure +2 EV: P4 owns exposure; the far-shore / sky RATIO is what these values fix.
@@ -1345,5 +1618,66 @@ if 'map' in STEPS:
             ca.set_editor_property('auto_activate_for_player', unreal.AutoReceiveInput.PLAYER0)
         unreal.EditorLoadingAndSavingUtils.save_map(world, f'{TESTS}/{mp}')
         log('map', mp)
+# (island r01) step 'coll': the traversal's building boxes for the classic map, its own always-loaded level (replaces P4's /Game/Look/Look_Boxes)
+COLL_LEVEL = TESTS + '/City_Midtown_Collision'
+if 'coll' in STEPS:
+    open_level(COLL_LEVEL)
+    # (island r03) the island's game map is the WP map (step 'wp' spawns its own boxes); the classic level stays an (empty) placeholder so
+    # build_manhattan.py's classic maps still load, unless SM2_ISLAND_COLL_BOXES=1
+    nb = spawn_boxes(False) if os.environ.get('SM2_ISLAND_COLL_BOXES', '0') == '1' else 0
+    les.save_current_level()
+    log('collision level', COLL_LEVEL, nb, 'WHBox cubes')
+
+# (island r01) step 'wp': the World Partition skeleton of the island map. One WP world (runtime hash set, main partition = 2D grid of 256 m cells,
+# loading range ARGS wp_range cm, default 120000 = 1.2 km, block on slow streaming) holding the whole city: detailed tiles stream per cell, the far
+# layer + ground + WHBox cubes are always loaded (populate(True)). build_manhattan.py's map step adds the player start, game mode and look rig.
+# A clean rebuild deletes the map files first (build_manhattan.py does: WP external-actor packages); here an existing map is emptied.
+if 'wp' in STEPS:
+    WPM = ARGS.get('wp_map') or os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+    rng = int(float(ARGS.get('wp_range') or os.environ.get('SM2_ISLAND_WP_RANGE', '120000')))
+    cell = int(float(ARGS.get('wp_cell') or os.environ.get('SM2_ISLAND_WP_CELL', '25600')))
+    if EAL.does_asset_exist(WPM): open_level(WPM)
+    elif not les.new_level(WPM, True): raise RuntimeError('could not create the WP map ' + WPM)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    wpo = world.get_world_settings().get_editor_property('world_partition')
+    if not wpo: raise RuntimeError(WPM + ' is not a World Partition map')
+    rh = unreal.find_object(None, wpo.get_path_name() + '.WorldPartitionRuntimeHashSet_0')
+    grid = unreal.find_object(None, rh.get_path_name() + '.RuntimePartitionLHGrid_0') if rh else None
+    if not grid: raise RuntimeError('runtime hash set / main LH grid not found under ' + wpo.get_path_name())
+    grid.set_editor_property('CellSize', cell); grid.set_editor_property('LoadingRange', rng); grid.set_editor_property('bBlockOnSlowStreaming', True)
+    log('WP main grid: cell %d cm, loading range %d cm, block on slow streaming' % (grid.get_editor_property('CellSize'), grid.get_editor_property('LoadingRange')))
+    nm, ni = populate(True)
+    nb = spawn_boxes(True)
+    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
+    log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', nm, 'meshes', ni, 'instances', nb, 'WHBox cubes')
+# (island r03) step 'ism': respawn ONLY the per-tile instanced props / trees / parked cars / stopped traffic of the existing World Partition map
+# (spawn_instances: the actors now sit at their tile centre). build_manhattan.py step 'ism' deletes the old per-tile ISM external-actor
+# packages first (a commandlet cannot delete not-loaded WP actors); the map is loaded, not emptied, so the always-loaded actors stay.
+if 'ism' in STEPS:
+    WPM = ARGS.get('wp_map') or os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+    unreal.EditorLoadingAndSavingUtils.load_map(WPM)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    ni = spawn_instances(True)
+    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
+    log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', ni, 'instances (per-tile HISM actors at their tile centre)')
+# (island r04) step 'fepatch': re-import the street-kit + fire-escape tiles named in SM2_ISLAND_FE_TILES (comma list of '<ix>_<iz>', or 'all') and
+# respawn their actors in the existing World Partition map. build_manhattan.py step 'fepatch' deletes the old kit actor packages of those tiles
+# first (like 'ism'). Used to iterate the fire-escape collision without the full kit + wp steps; a clean build does not need it.
+if 'fepatch' in STEPS:
+    WPM = ARGS.get('wp_map') or os.environ.get('SM2_ISLAND_WP_MAP', '/Game/Maps/Manhattan_WP')
+    K = json.load(open(os.path.join(EXPORT, 'streetkit.json')))
+    want = os.environ.get('SM2_ISLAND_FE_TILES', 'all')
+    names = [r['name'] for r in K['files'] + K.get('fireescape_files', [])]
+    if want != 'all':
+        tl = set('t' + t for t in want.split(','))
+        names = [n for n in names if n.split('__')[-1] in tl]
+    only = set(names)
+    log('fepatch: %d kit tiles to re-import' % len(only))
+    kit_import(only)
+    unreal.EditorLoadingAndSavingUtils.load_map(WPM)
+    world = unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    nk = kit_spawn(True, only)
+    ok = unreal.EditorLoadingAndSavingUtils.save_map(world, WPM)
+    log('WP map', WPM, 'saved' if ok else 'SAVE FAILED', nk, 'kit actors respawned')
 log('DONE')
 _B.finish()

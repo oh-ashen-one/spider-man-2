@@ -142,6 +142,7 @@
         continue;
       }
       const lm = /^facadeLod (\d+)$/.exec(name);
+      if (lm && !opts.lodRegion) continue; // (island r01) --nofar district export: the far ring comes from another pass
       if (lm && opts.lodRegion) { // far ring: bare-mass facade LOD tiles outside the full-detail region (same facade material)
         const g = m.geometry, bb = g.boundingBox ?? (g.computeBoundingBox(), g.boundingBox), cx = (bb.min.x + bb.max.x) / 2, cz = (bb.min.z + bb.max.z) / 2, L = opts.lodRegion;
         if (cx < L.x0 || cx >= L.x1 || cz < L.z0 || cz >= L.z1) continue;

@@ -11,6 +11,8 @@ Cell layout (from src/world/timessq.js):
   ts_ads.webp     top half: 64 landscape cells 512x256 (8 x 8, index = row * 8 + col);
                   bottom half: 64 portrait cells 256x512 (16 x 4, index = row * 16 + col, y offset 2048)
   ts_signs.webp   64 signs 512x128 (4 cols x 16 rows, index = row * 4 + col)
+  signs.png       (island r03) facade shop-fascia atlas 1024x2048: 16 one-row signs 1024x128 (src/world/facade.js tSigns: row = floor(h * 16),
+                  the whole row is one fascia; the billboard path samples a quarter of it)
 """
 import os, sys
 from PIL import Image
@@ -54,6 +56,36 @@ SIGNS = [
     (41, 55, 'BOREAL OUTDOOR (critic read "...REAL OUTDOOR": evokes L\'Oreal / an outdoor brand)'),
 ]
 
+# (island r03) signs.png rows (row, replacement text, text colour, why): the row is repainted from its own left-edge vertical profile (keeps the
+# board colour, bevel and border, removes the lettering) and new original lettering is drawn on it (system font, supersampled)
+SIGN_ROWS = [
+    (4, 'HARBOR SAVINGS', (250, 250, 255), "CHASE BANK (a real bank's name; round-02 critic, r2 t=25.0 s)"),
+    (2, 'CORNER PHARMACY', (180, 20, 40), 'DUANE PHARMACY (evokes the real Duane Reade chain; conservative)'),
+    (8, 'HERO SUBS', (250, 220, 0), "SUBWAY EATS (a real sandwich chain's name in its yellow-on-green colours; conservative)"),
+]
+
+def _sign_row(im, row, text, colour):
+    from PIL import ImageDraw, ImageFont
+    W, H, SS = im.size[0], 128, 3
+    cell = im.crop((0, row * H, W, row * H + H))
+    prof = [cell.getpixel((8, y)) for y in range(H)]
+    out = Image.new('RGB', (W, H))
+    for y in range(H):
+        for x in range(W): out.putpixel((x, y), prof[y])
+    for x in range(W):   # keep the left / right border columns as they were (bevel)
+        if x < 12 or x >= W - 12:
+            for y in range(H): out.putpixel((x, y), cell.getpixel((x, y)))
+    big = out.resize((W * SS, H * SS), Image.BICUBIC); d = ImageDraw.Draw(big)
+    size = int(H * SS * 0.62)
+    while size > 10:
+        f = ImageFont.truetype('/System/Library/Fonts/Supplemental/Arial Black.ttf', size)
+        b = d.textbbox((0, 0), text, font=f)
+        if b[2] - b[0] <= W * SS * 0.86: break
+        size -= 6
+    d.text((W * SS / 2 + 4 * SS, H * SS / 2 + 4 * SS), text, font=f, fill=(0, 0, 0), anchor='mm')
+    d.text((W * SS / 2, H * SS / 2), text, font=f, fill=colour, anchor='mm')
+    return big.resize((W, H), Image.LANCZOS)
+
 def _box(kind, i):
     if kind == 'L': return ((i % 8) * 512, (i // 8) * 256, (i % 8) * 512 + 512, (i // 8) * 256 + 256)
     if kind == 'P': return ((i % 16) * 256, 2048 + (i // 16) * 512, (i % 16) * 256 + 256, 2048 + (i // 16) * 512 + 512)
@@ -74,6 +106,10 @@ def sanitize(basename, im):
         out = im.copy()
         for ex, do, _ in SIGNS: out.paste(im.crop(_box('S', do)), _box('S', ex)[:2])
         return out
+    if stem == 'signs':   # (island r03) facade fascia atlas
+        out = im.convert('RGB').copy()
+        for row, text, colour, _ in SIGN_ROWS: out.paste(_sign_row(out, row, text, colour), (0, row * 128))
+        return out
     return im
 
 if __name__ == '__main__':
@@ -81,6 +117,6 @@ if __name__ == '__main__':
     src = sys.argv[1] if len(sys.argv) > 1 else os.path.join(os.path.dirname(__file__), '../../public/assets/city/tex')
     dst = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.environ.get('SM2_CITY_SCRATCH', '/Users/midir/sm2-n1/_scratch/city'), 'r04', 'atlas')
     os.makedirs(dst, exist_ok=True)
-    for f in ('ts_ads.webp', 'ts_signs.webp'):
+    for f in ('ts_ads.webp', 'ts_signs.webp', 'signs.png'):
         im = Image.open(os.path.join(src, f)).convert('RGB'); s = sanitize(f, im)
         s.thumbnail((2000, 2000)); s.save(os.path.join(dst, f.split('.')[0] + '_clean.jpg'), quality=88); print(f, 'sanitised ->', dst)
