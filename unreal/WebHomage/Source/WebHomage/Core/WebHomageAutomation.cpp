@@ -51,6 +51,15 @@ void UWebHomageAutomation::Initialize(FSubsystemCollectionBase& Collection)
 	FParse::Value(Cmd, TEXT("WHPerfTo="), PerfTo);
 	FParse::Value(Cmd, TEXT("WHQuitAt="), QuitAt);
 	bCsv = FParse::Param(Cmd, TEXT("WHCsv"));
+	{
+		FString EA;
+		if (FParse::Value(Cmd, TEXT("WHExecAt="), EA, false))
+		{
+			TArray<FString> Items; EA.ParseIntoArray(Items, TEXT(";"), true);
+			for (const FString& It : Items) { FString T, C; if (It.Split(TEXT(":"), &T, &C)) ExecAt.Add(TPair<double, FString>(FCString::Atod(*T), C)); }
+			ExecAt.Sort([](const TPair<double, FString>& A, const TPair<double, FString>& B) { return A.Key < B.Key; });
+		}
+	}
 	FString CamFile;
 	if (FParse::Value(Cmd, TEXT("WHShotCam="), CamFile))
 	{
@@ -184,6 +193,12 @@ void UWebHomageAutomation::Tick(float DeltaTime)
 	}
 
 	TickCamShots(GI->GetWorld());
+	while (NextExec < ExecAt.Num() && Elapsed >= ExecAt[NextExec].Key)
+	{
+		UE_LOG(LogWebHomage, Display, TEXT("WH_EXEC t=%.2f %s"), Elapsed, *ExecAt[NextExec].Value);
+		if (GEngine) GEngine->Exec(GI->GetWorld(), *ExecAt[NextExec].Value);
+		++NextExec;
+	}
 
 	while (NextShot < ShotTimes.Num() && Elapsed >= ShotTimes[NextShot])
 	{

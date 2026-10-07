@@ -7,6 +7,8 @@
 #include "Misc/ConfigCacheIni.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Engine/Engine.h"
 #include "Engine/GameViewportClient.h"
 #include "Scalability.h"
@@ -175,6 +177,30 @@ FText FWHSettings::WindowModeName(int32 M)
 	}
 }
 
+// Playable profile only: Config/PerfPlayable.cvars (tools/perf_ue2/overrides/perf60_hwl2.cvars, flattened) -- hardware-RT Lumen, Nanite error 8, cheaper VSM / cloud / fog, TSR history 100 %.
+// -WHPerfPreset=0 skips it, -WHPerfPreset=<file> reads another cvar list (A/B runs); fidelity never reads it.
+static void ApplyPerfPresetFile()
+{
+	FString Path = FPaths::Combine(FPaths::ProjectConfigDir(), TEXT("PerfPlayable.cvars"));
+	FString Arg;
+	if (FParse::Value(FCommandLine::Get(), TEXT("WHPerfPreset="), Arg))
+	{
+		if (Arg == TEXT("0")) { UE_LOG(LogWebHomage, Display, TEXT("WH_PERFPRESET off (-WHPerfPreset=0)")); return; }
+		Path = Arg;
+	}
+	TArray<FString> Lines;
+	if (!FFileHelper::LoadFileToStringArray(Lines, *Path)) { UE_LOG(LogWebHomage, Warning, TEXT("WH_PERFPRESET %s not found"), *Path); return; }
+	int32 N = 0, Missing = 0;
+	for (const FString& L : Lines)
+	{
+		FString K, V;
+		if (L.TrimStartAndEnd().IsEmpty() || L.StartsWith(TEXT("#")) || !L.Split(TEXT("="), &K, &V)) continue;
+		if (IConsoleVariable* CV = IConsoleManager::Get().FindConsoleVariable(*K.TrimStartAndEnd())) { CV->Set(*V.TrimStartAndEnd(), ECVF_SetByCode); ++N; }
+		else { ++Missing; UE_LOG(LogWebHomage, Warning, TEXT("WH_PERFPRESET unknown cvar %s"), *K); }
+	}
+	UE_LOG(LogWebHomage, Display, TEXT("WH_PERFPRESET applied %d cvars from %s (%d unknown)"), N, *Path, Missing);
+}
+
 void FWHSettings::ApplyRender() const
 {
 	if (!bLive) return; // automated runs keep their command-line render settings
@@ -198,6 +224,7 @@ void FWHSettings::ApplyRender() const
 		{
 			CV->Set(4, ECVF_SetByCode);   // TSR
 		}
+		ApplyPerfPresetFile();
 	}
 }
 

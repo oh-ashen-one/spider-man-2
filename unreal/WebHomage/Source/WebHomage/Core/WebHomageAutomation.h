@@ -56,6 +56,8 @@ private:
 	void TickCamShots(class UWorld* World);
 	TArray<double> ShotTimes;
 	int32 NextShot = 0;
+	TArray<TPair<double, FString>> ExecAt;   // -WHExecAt=<t>:<command>[;<t>:<command>...] console commands at game seconds (ProfileGPU in a perf window)
+	int32 NextExec = 0;
 	FString ShotDir;
 	FString ShotName = TEXT("shot");
 
