@@ -8,6 +8,8 @@
 #include "Traversal/WebTravFlips.h"
 #include "Traversal/WebTravCamera.h"
 #include "WebHomage.h"
+#include "Engine/World.h"
+#include "Engine/Level.h"
 
 namespace
 {
@@ -69,6 +71,12 @@ UWebTraversalComponent::UWebTraversalComponent()
 void UWebTraversalComponent::InitWorld(UWorld* World, const AActor* InOwner)
 {
 	TravWorld.Init(World, InOwner);
+	StreamWorld = World;
+	if (!LevelAddedHandle.IsValid())
+	{
+		LevelAddedHandle = FWorldDelegates::LevelAddedToWorld.AddUObject(this, &UWebTraversalComponent::OnLevelAddedToWorld);
+		LevelRemovedHandle = FWorldDelegates::LevelRemovedFromWorld.AddUObject(this, &UWebTraversalComponent::OnLevelRemovedFromWorld);
+	}
 	Anchors = MakeUnique<FWebTravAnchors>(TravWorld);
 	Rng.Initialize(RandomSeed);
 	FlipRng.Initialize(RandomSeed * 31 + 7);
@@ -99,6 +107,35 @@ void UWebTraversalComponent::WebAttach(bool bRight, const FVector& Anchor, doubl
 	FWebTravStrand& St = Strands[bSecond ? 1 : 0];
 	St.bActive = true; St.bRightHand = bRight; St.Anchor = Anchor; St.Age = 0.f; St.ShootDur = float(ShootDur);
 	St.Taut = 0.f; St.ReleaseT = -1.f; St.bSnap = false;
+}
+
+void UWebTraversalComponent::OnLevelAddedToWorld(ULevel* Level, UWorld* InWorld)
+{
+	if (InWorld == StreamWorld.Get() && Level && !Level->IsPersistentLevel()) TravWorld.AddLevel(Level);
+}
+
+void UWebTraversalComponent::OnLevelRemovedFromWorld(ULevel* Level, UWorld* InWorld)
+{
+	FBox B(ForceInit);
+	if (InWorld != StreamWorld.Get() || !Level || !TravWorld.RemoveLevel(Level, B)) return;
+	// an anchor held on a removed solid is released: a swing falls (as when its anchor is lost), strands let go
+	const FBox Pad = B.ExpandBy(1.0);
+	if (S.Mode == EWebTravMode::Swing && Pad.IsInside(S.Sw.Anchor))
+	{
+		Emit(N_anchorLost, 0.f);
+		bLeaveSwingOK = true;
+		WebRelease(); SetMode(EWebTravMode::Air, N_fall); S.AirT = 0; S.ApexZ = FeetZ(); S.SwingCooldown = 0.3;
+		bLeaveSwingOK = false;
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV stream: swing anchor released (its level was removed)"));
+	}
+	for (FWebTravStrand& St : Strands) if (St.bActive && St.ReleaseT < 0.f && Pad.IsInside(St.Anchor)) { St.ReleaseT = 0.f; }
+}
+
+void UWebTraversalComponent::EndPlay(const EEndPlayReason::Type Reason)
+{
+	if (LevelAddedHandle.IsValid()) { FWorldDelegates::LevelAddedToWorld.Remove(LevelAddedHandle); LevelAddedHandle.Reset(); }
+	if (LevelRemovedHandle.IsValid()) { FWorldDelegates::LevelRemovedFromWorld.Remove(LevelRemovedHandle); LevelRemovedHandle.Reset(); }
+	Super::EndPlay(Reason);
 }
 
 void UWebTraversalComponent::WebRelease(bool bSnap)

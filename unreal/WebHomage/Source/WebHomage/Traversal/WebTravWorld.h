@@ -7,6 +7,7 @@
 #include "CollisionQueryParams.h"
 
 class UWorld;
+class ULevel;
 class AActor;
 class UPrimitiveComponent;
 
@@ -58,6 +59,15 @@ public:
 	/** Box indices whose XY footprint intersects the square around (X,Y) with half-size R. */
 	void Near(double X, double Y, double R, TArray<int32>& Out) const;
 
+	/** Incremental indexing (World Partition cells / streamed levels): AddLevel indexes the solids, boxes and ground of one level exactly as Init does for the levels loaded at BeginPlay;
+	 *  RemoveLevel removes exactly what that level added (entries are owned per level; box indices stay valid as tombstones so a held index never dangles) and returns the level's
+	 *  bounds (m) so the caller can release anchors inside it. */
+	void AddLevel(ULevel* L);
+	bool RemoveLevel(ULevel* L, FBox& OutBoundsM);
+	/** Is the box index a live solid (not a tombstone of a removed level)? */
+	bool BoxLive(int32 I) const { return Boxes.IsValidIndex(I) && Boxes[I].Min.X < 1e6; }
+	int32 RemovedSerial = 0;
+
 	bool Ok() const { return Boxes.Num() > 0; }
 	/** Round 20: is the hit point on / inside a building box (index, margin m)? -1 if none. Used to tag visual-mesh hits with their building. */
 	int32 BoxAt(const FVector& P, double Margin = 1.0) const;
@@ -91,6 +101,27 @@ public:
 	mutable int32 TraceCount = 0;
 
 private:
+	struct FLevelOwn
+	{
+		TArray<int32> BoxIdx, GroundIdx;
+		TArray<const UPrimitiveComponent*> Allowed, Excluded, CompBox, Inst;
+		FBox Bounds = FBox(ForceInit);
+	};
+	struct FIndexStats { int32 NInstComps = 0, NInstBoxes = 0, NInstSkipped = 0, NFarSkipped = 0, NVisualOnly = 0, NVisSolid = 0, NExcluded = 0, NReEnabled = 0, NCubesOff = 0; };
+	void AddLevelInternal(ULevel* L, bool bLog);
+	void IndexLevelActors(ULevel* L);
+	int32 AddBoxOwned(const FBox& B);
+	void AddGroundOwned(const FTravBox& G);
+	void AllowOwned(const UPrimitiveComponent* P);
+	void ExcludeOwned(UPrimitiveComponent* P);
+	void CompToBoxOwned(const UPrimitiveComponent* P, int32 Idx);
+	TArray<int32>& InstOwned(const UPrimitiveComponent* P);
+	TMap<const ULevel*, FLevelOwn> LevelOwn;
+	FLevelOwn* CurOwn = nullptr;
+	FIndexStats Stats;
+	const AActor* IgnoreActorPtr = nullptr;
+	bool bDumpPrims = false;
+	FString DumpPath, DumpText;
 	int64 Key(int32 CX, int32 CY) const { return (int64(CX) << 32) ^ int64(uint32(CY)); }
 	TMap<int64, TArray<int32>> Grid;
 	TMap<const UPrimitiveComponent*, int32> CompToBox;

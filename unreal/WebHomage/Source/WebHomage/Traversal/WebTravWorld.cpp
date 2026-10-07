@@ -33,85 +33,100 @@ bool FWebTravWorld::IsExcludedName(const FString& L) const
 	return false;
 }
 
-void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
-{
-	World = InWorld;
-	// round 20: complex traces -- a mesh's own triangles, not a simple hull (a merged tile's convex hull was a 256 m invisible block)
-	Params = FCollisionQueryParams(SCENE_QUERY_STAT(WebTrav), /*bTraceComplex*/ true);
-	if (IgnoreActor)
-	{
-		Params.AddIgnoredActor(IgnoreActor);
-	}
-	ObjParams = FCollisionObjectQueryParams();
-	ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
-	ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
 
-	Boxes.Reset();
-	GroundBoxes.Reset();
-	Grid.Reset();
-	CompToBox.Reset();
-	InstToBox.Reset();
-	AllowedComps.Reset();
-	ExcludedComps.Reset();
-	bBoxesOnly = false;
-	LastGroundSrc = 0; SkippedHits = 0;
-	int32 NInstComps = 0, NInstBoxes = 0, NInstSkipped = 0, NFarSkipped = 0;
-	if (!InWorld)
+static bool IsTravCube(const UPrimitiveComponent* P)
+{
+	const UStaticMeshComponent* C = Cast<UStaticMeshComponent>(P);
+	const UStaticMesh* M = C ? C->GetStaticMesh() : nullptr;
+	return M && !C->IsVisible() && M->GetName() == TEXT("Cube") && M->GetPathName().StartsWith(TEXT("/Engine/BasicShapes/"));
+}
+
+int32 FWebTravWorld::AddBoxOwned(const FBox& B)
+{
+	FTravBox TB{ B.Min / 100.0, B.Max / 100.0 };
+	const FVector S = TB.Max - TB.Min;
+	if (S.Z < 1.0 || (S.X < 0.8 && S.Y < 0.8))
 	{
-		return;
+		return -1;
 	}
-	auto IsTravCube = [](const UPrimitiveComponent* P)
+	const int32 Idx = Boxes.Add(TB);
+	const int32 X0 = FMath::FloorToInt(TB.Min.X / Cell), X1 = FMath::FloorToInt(TB.Max.X / Cell);
+	const int32 Y0 = FMath::FloorToInt(TB.Min.Y / Cell), Y1 = FMath::FloorToInt(TB.Max.Y / Cell);
+	for (int32 X = X0; X <= X1; ++X)
 	{
-		const UStaticMeshComponent* C = Cast<UStaticMeshComponent>(P);
-		const UStaticMesh* M = C ? C->GetStaticMesh() : nullptr;
-		return M && !C->IsVisible() && M->GetName() == TEXT("Cube") && M->GetPathName().StartsWith(TEXT("/Engine/BasicShapes/"));
-	};
-	bool bHasBoxes = false;
-	for (TActorIterator<AActor> It(InWorld); It && !bHasBoxes; ++It)
-	{
-		TInlineComponentArray<UPrimitiveComponent*> Ps(*It);
-		for (UPrimitiveComponent* P : Ps) { if (P && IsTravCube(P) && P->IsCollisionEnabled()) { bHasBoxes = true; break; } }
-	}
-	// round 20 (critic r19 camera 4 / swing 6, root cause: since 690dfa7 the wide merged visual meshes carried no collision and the r19 boxes-only
-	// filter made every building without a WHBox cube pass-through for the hero, the web search and the camera): collision = visual triangles.
-	//   -WHTravCollide=visual (default with WHBox boxes) | boxes (round 19) | all (every collision primitive, 690dfa7 floor-audit A/B)
-	SolidMode = bHasBoxes ? 2 : 0;
-	{ int32 V = 0; bIsmSolid = FParse::Value(FCommandLine::Get(), TEXT("-WHTravIsmSolid="), V) && V != 0; } // round 20 A/B: instanced props / trees solid again
-	{
-		FString CM;
-		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravCollide="), CM)) SolidMode = CM == TEXT("boxes") ? (bHasBoxes ? 1 : 0) : CM == TEXT("all") ? 0 : (bHasBoxes ? 2 : 0);
-		int32 V = 1;
-		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravSolidFilter="), V) && V == 0) SolidMode = 0;
-	}
-	bBoxesOnly = SolidMode != 0;
-	FString DumpPath;
-	const bool bDump = FParse::Value(FCommandLine::Get(), TEXT("-WHTravDumpPrims="), DumpPath);
-	FString Dump = TEXT("actor,comp,mesh,class,visible,coll_before,coll_after,objtype,ctf,minx,miny,minz,maxx,maxy,maxz,role\n");
-	int32 NVisualOnly = 0, NVisSolid = 0, NExcluded = 0, NReEnabled = 0, NCubesOff = 0;
-	auto AddBox = [this](const FBox& B) -> int32
-	{
-		FTravBox TB{ B.Min / 100.0, B.Max / 100.0 };
-		const FVector S = TB.Max - TB.Min;
-		if (S.Z < 1.0 || (S.X < 0.8 && S.Y < 0.8))
+		for (int32 Y = Y0; Y <= Y1; ++Y)
 		{
-			return -1;
+			Grid.FindOrAdd(Key(X, Y)).Add(Idx);
 		}
-		const int32 Idx = Boxes.Add(TB);
+	}
+	if (CurOwn) CurOwn->BoxIdx.Add(Idx);
+	return Idx;
+}
+
+void FWebTravWorld::AddGroundOwned(const FTravBox& G)
+{
+	const int32 Idx = GroundBoxes.Add(G);
+	if (CurOwn) CurOwn->GroundIdx.Add(Idx);
+}
+
+void FWebTravWorld::AllowOwned(const UPrimitiveComponent* P) { AllowedComps.Add(P); if (CurOwn) CurOwn->Allowed.Add(P); }
+void FWebTravWorld::ExcludeOwned(UPrimitiveComponent* P) { ExcludedComps.Add(P); if (CurOwn) CurOwn->Excluded.Add(P); }
+void FWebTravWorld::CompToBoxOwned(const UPrimitiveComponent* P, int32 Idx) { CompToBox.Add(P, Idx); if (CurOwn) CurOwn->CompBox.Add(P); }
+TArray<int32>& FWebTravWorld::InstOwned(const UPrimitiveComponent* P) { if (CurOwn) CurOwn->Inst.Add(P); return InstToBox.FindOrAdd(P); }
+
+void FWebTravWorld::AddLevelInternal(ULevel* L, bool bLog)
+{
+	if (!L || LevelOwn.Contains(L)) return;
+	FLevelOwn& Own = LevelOwn.Add(L);
+	CurOwn = &Own;
+	const int32 Before = Boxes.Num();
+	IndexLevelActors(L);
+	CurOwn = nullptr;
+	Own.Bounds = FBox(ForceInit);
+	for (int32 I : Own.BoxIdx) { Own.Bounds += Boxes[I].Min; Own.Bounds += Boxes[I].Max; }
+	for (int32 I : Own.GroundIdx) { Own.Bounds += GroundBoxes[I].Min; Own.Bounds += GroundBoxes[I].Max; }
+	if (bLog)
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV stream +level %s %d solids (%d boxes, %d ground boxes, %d solid comps)"), *L->GetOuter()->GetName(), Own.BoxIdx.Num() + Own.GroundIdx.Num(), Own.BoxIdx.Num(), Own.GroundIdx.Num(), Own.Allowed.Num());
+	(void)Before;
+}
+
+void FWebTravWorld::AddLevel(ULevel* L) { AddLevelInternal(L, true); }
+
+bool FWebTravWorld::RemoveLevel(ULevel* L, FBox& OutBoundsM)
+{
+	FLevelOwn* Own = LevelOwn.Find(L);
+	if (!Own) return false;
+	OutBoundsM = Own->Bounds;
+	for (int32 Idx : Own->BoxIdx)
+	{
+		const FTravBox TB = Boxes[Idx];
 		const int32 X0 = FMath::FloorToInt(TB.Min.X / Cell), X1 = FMath::FloorToInt(TB.Max.X / Cell);
 		const int32 Y0 = FMath::FloorToInt(TB.Min.Y / Cell), Y1 = FMath::FloorToInt(TB.Max.Y / Cell);
 		for (int32 X = X0; X <= X1; ++X)
-		{
 			for (int32 Y = Y0; Y <= Y1; ++Y)
-			{
-				Grid.FindOrAdd(Key(X, Y)).Add(Idx);
-			}
-		}
-		return Idx;
-	};
-	for (TActorIterator<AActor> It(InWorld); It; ++It)
+				if (TArray<int32>* Cl = Grid.Find(Key(X, Y))) { Cl->RemoveSingleSwap(Idx); if (Cl->Num() == 0) Grid.Remove(Key(X, Y)); }
+		Boxes[Idx] = FTravBox{ FVector(1e7), FVector(1e7) };   // tombstone: the index stays valid (anchors / hits holding it) but matches nothing
+	}
+	for (int32 Idx : Own->GroundIdx) GroundBoxes[Idx] = FTravBox{ FVector(1e7), FVector(1e7) };
+	for (const UPrimitiveComponent* P : Own->Allowed) AllowedComps.Remove(P);
+	for (const UPrimitiveComponent* P : Own->CompBox) CompToBox.Remove(P);
+	for (const UPrimitiveComponent* P : Own->Inst) InstToBox.Remove(P);
+	ExcludedComps.RemoveAll([&](const TWeakObjectPtr<UPrimitiveComponent>& W) { return !W.IsValid() || Own->Excluded.Contains(W.Get()); });
+	const int32 N = Own->BoxIdx.Num() + Own->GroundIdx.Num();
+	LevelOwn.Remove(L);
+	++RemovedSerial;
+	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV stream -level %s %d solids"), L && L->GetOuter() ? *L->GetOuter()->GetName() : TEXT("?"), N);
+	return true;
+}
+
+void FWebTravWorld::IndexLevelActors(ULevel* L)
+{
+	const AActor* IgnoreActor = IgnoreActorPtr;
+	const AActor* const IgnoreActorPtr_ = IgnoreActor; (void)IgnoreActorPtr_;
+	auto& DumpTextRef = DumpText; (void)DumpTextRef;
+	for (AActor* A : L->Actors)
 	{
-		AActor* A = *It;
-		if (!A || A == IgnoreActor || A->IsA<APawn>())
+		if (!A || A == IgnoreActorPtr || A->IsA<APawn>())
 		{
 			continue;
 		}
@@ -121,15 +136,15 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 			A->GetActorBounds(false, Origin, Extent);
 			// round 19: in the boxes-only city a ground actor is a floor box only when it is a thin slab (a tile whose bounds span a
 			// ramp / curb stack / anything taller would put an invisible floor over its whole footprint); its mesh is still hit by rays
-			if (!bBoxesOnly || Extent.Z * 2.0 <= 100.0) GroundBoxes.Add({ (Origin - Extent) / 100.0, (Origin + Extent) / 100.0 });
+			if (!bBoxesOnly || Extent.Z * 2.0 <= 100.0) AddGroundOwned({ (Origin - Extent) / 100.0, (Origin + Extent) / 100.0 });
 			TInlineComponentArray<UPrimitiveComponent*> GPs(A);
 			for (UPrimitiveComponent* GP : GPs)
 			{
 				if (!GP) continue;
-				AllowedComps.Add(GP);
-				if (SolidMode == 2 && GP->IsVisible() && !GP->IsCollisionEnabled() && Cast<UStaticMeshComponent>(GP)) { GP->SetCollisionEnabled(ECollisionEnabled::QueryOnly); ++NReEnabled; }
-				if (bDump) { const FBox B = GP->Bounds.GetBox(); const UStaticMeshComponent* SC = Cast<UStaticMeshComponent>(GP);
-					Dump += FString::Printf(TEXT("%s,%s,%s,%s,%d,%d,%d,%d,-,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,ground\n"), *A->GetName(), *GP->GetName(), SC && SC->GetStaticMesh() ? *SC->GetStaticMesh()->GetName() : TEXT("-"),
+				AllowOwned(GP);
+				if (SolidMode == 2 && GP->IsVisible() && !GP->IsCollisionEnabled() && Cast<UStaticMeshComponent>(GP)) { GP->SetCollisionEnabled(ECollisionEnabled::QueryOnly); ++Stats.NReEnabled; }
+				if (bDumpPrims) { const FBox B = GP->Bounds.GetBox(); const UStaticMeshComponent* SC = Cast<UStaticMeshComponent>(GP);
+					DumpText += FString::Printf(TEXT("%s,%s,%s,%s,%d,%d,%d,%d,-,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,ground\n"), *A->GetName(), *GP->GetName(), SC && SC->GetStaticMesh() ? *SC->GetStaticMesh()->GetName() : TEXT("-"),
 						*GP->GetClass()->GetName(), GP->IsVisible() ? 1 : 0, -1, int32(GP->GetCollisionEnabled()), int32(GP->GetCollisionObjectType()), B.Min.X / 100, B.Min.Y / 100, B.Min.Z / 100, B.Max.X / 100, B.Max.Y / 100, B.Max.Z / 100); }
 			}
 			continue;
@@ -153,52 +168,52 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 			{
 				if (IsTravCube(P))
 				{ // the browser's per-building box: indexed for the canyon / anchor / zip-point logic, never a collider (invisible)
-					const int32 Idx = AddBox(PB);
-					if (Idx >= 0) CompToBox.Add(P, Idx);
-					if (P->IsCollisionEnabled()) { P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++NCubesOff; }
+					const int32 Idx = AddBoxOwned(PB);
+					if (Idx >= 0) CompToBoxOwned(P, Idx);
+					if (P->IsCollisionEnabled()) { P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++Stats.NCubesOff; }
 					Role = TEXT("box-index");
 				}
 				else if (!SMC || !SMesh || !P->IsVisible() || A->IsHidden())
 				{
 					if (P->IsCollisionEnabled() && P->GetCollisionObjectType() == ECC_WorldStatic && !Cast<UInstancedStaticMeshComponent>(P) && SMesh && !P->IsVisible())
 					{ // an invisible static mesh is never a floor ("nothing invisible is a floor"): hidden helper planes etc.
-						P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++NVisualOnly; Role = TEXT("hidden-off");
+						P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++Stats.NVisualOnly; Role = TEXT("hidden-off");
 					}
 					else Role = TEXT("other");
 				}
 				else if (!bIsmSolid && Cast<UInstancedStaticMeshComponent>(P) && !(MeshName == TEXT("SM_shed") || MeshName == TEXT("SM_shedtop") || MeshName == TEXT("SM_subway")))
 				{ // instanced street / roof props and trees (benches, carts, posts, hvac, antennas, trunks, hedges): visible, not solids.
 				  // Sidewalk sheds and subway entrances are structures and stay solid.
-					++NExcluded; Role = TEXT("excluded-ism"); ExcludedComps.Add(P);
+					++Stats.NExcluded; Role = TEXT("excluded-ism"); ExcludeOwned(P);
 				}
 				else if (MeshName.StartsWith(TEXT("SM_far")) || (FMath::Max(PB.GetSize().X, PB.GetSize().Y) > 40000.0 && PB.Max.Z > 2000.0))
 				{ // far skyline (2 km tiles beyond the playable city): scenery only
-					P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++NFarSkipped; Role = TEXT("far-off"); ExcludedComps.Add(P);
+					P->SetCollisionEnabled(ECollisionEnabled::NoCollision); ++Stats.NFarSkipped; Role = TEXT("far-off"); ExcludeOwned(P);
 				}
 				else if (IsExcludedName(LName))
 				{
-					++NExcluded; Role = TEXT("excluded"); ExcludedComps.Add(P);
+					++Stats.NExcluded; Role = TEXT("excluded"); ExcludeOwned(P);
 				}
 				else
 				{ // a visible building / roof / ground / landmark surface: a traversal solid with its own triangles
-					if (!P->IsCollisionEnabled()) { P->SetCollisionEnabled(ECollisionEnabled::QueryOnly); ++NReEnabled; }
+					if (!P->IsCollisionEnabled()) { P->SetCollisionEnabled(ECollisionEnabled::QueryOnly); ++Stats.NReEnabled; }
 					if (P->GetCollisionObjectType() != ECC_WorldStatic && P->GetCollisionObjectType() != ECC_WorldDynamic) P->SetCollisionObjectType(ECC_WorldStatic);
-					AllowedComps.Add(P); ++NVisSolid; Role = TEXT("solid");
+					AllowOwned(P); ++Stats.NVisSolid; Role = TEXT("solid");
 				}
-				if (bDump) Dump += FString::Printf(TEXT("%s,%s,%s,%s,%d,%d,%d,%d,%d,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%s\n"), *A->GetName(), *P->GetName(), MeshName.IsEmpty() ? TEXT("-") : *MeshName,
+				if (bDumpPrims) DumpText += FString::Printf(TEXT("%s,%s,%s,%s,%d,%d,%d,%d,%d,%.0f,%.0f,%.0f,%.0f,%.0f,%.0f,%s\n"), *A->GetName(), *P->GetName(), MeshName.IsEmpty() ? TEXT("-") : *MeshName,
 					*P->GetClass()->GetName(), P->IsVisible() ? 1 : 0, CollBefore, int32(P->GetCollisionEnabled()), int32(P->GetCollisionObjectType()),
 					SMesh && SMesh->GetBodySetup() ? int32(SMesh->GetBodySetup()->CollisionTraceFlag.GetValue()) : -1,
 					PB.Min.X / 100, PB.Min.Y / 100, PB.Min.Z / 100, PB.Max.X / 100, PB.Max.Y / 100, PB.Max.Z / 100, *Role);
 				continue;
 			}
-			if (bBoxesOnly && IsTravCube(P)) AllowedComps.Add(P);
+			if (bBoxesOnly && IsTravCube(P)) AllowOwned(P);
 			if (bBoxesOnly && P->IsCollisionEnabled() && !IsTravCube(P))
 			{
 				const FBox VB = P->Bounds.GetBox();
 				if (FMath::Max(VB.GetSize().X, VB.GetSize().Y) > 6000.0)
 				{
 					P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					++NVisualOnly;
+					++Stats.NVisualOnly;
 				}
 				continue;   // only the per-building boxes are traversal boxes
 			}
@@ -215,7 +230,7 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 				if (bFarMesh || bGiant)
 				{
 					P->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-					++NFarSkipped;
+					++Stats.NFarSkipped;
 					continue;
 				}
 			}
@@ -228,34 +243,84 @@ void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
 				static const TCHAR* Skip[] = { TEXT("tree"), TEXT("crown"), TEXT("clump"), TEXT("leaf"), TEXT("leaves"), TEXT("foliage"), TEXT("canopy"), TEXT("bush"), TEXT("traffic") };
 				bool bSkip = !SM;
 				for (const TCHAR* K : Skip) { if (IMeshName.Contains(K) || CompName.Contains(K)) { bSkip = true; break; } }
-				++NInstComps;
-				TArray<int32>& Map = InstToBox.FindOrAdd(P);
+				++Stats.NInstComps;
+				TArray<int32>& Map = InstOwned(P);
 				const int32 N = ISM->GetInstanceCount();
 				Map.Init(-1, N);
-				if (bSkip) { NInstSkipped += N; continue; }
+				if (bSkip) { Stats.NInstSkipped += N; continue; }
 				const FBox MB = SM->GetBoundingBox();
 				for (int32 I = 0; I < N; ++I)
 				{
 					FTransform T;
 					if (!ISM->GetInstanceTransform(I, T, /*bWorldSpace*/ true)) continue;
-					const int32 Idx = AddBox(MB.TransformBy(T));
+					const int32 Idx = AddBoxOwned(MB.TransformBy(T));
 					Map[I] = Idx;
-					if (Idx >= 0) ++NInstBoxes;
+					if (Idx >= 0) ++Stats.NInstBoxes;
 				}
 				continue;
 			}
-			const int32 Idx = AddBox(PB);
+			const int32 Idx = AddBoxOwned(PB);
 			if (Idx >= 0)
 			{
-				CompToBox.Add(P, Idx);
+				CompToBoxOwned(P, Idx);
 			}
 		}
 	}
-	if (bDump) { FFileHelper::SaveStringToFile(Dump, *DumpPath); UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: primitive dump written: %s"), *DumpPath); }
+}
+
+void FWebTravWorld::Init(UWorld* InWorld, const AActor* IgnoreActor)
+{
+	World = InWorld;
+	// round 20: complex traces -- a mesh's own triangles, not a simple hull (a merged tile's convex hull was a 256 m invisible block)
+	Params = FCollisionQueryParams(SCENE_QUERY_STAT(WebTrav), /*bTraceComplex*/ true);
+	if (IgnoreActor)
+	{
+		Params.AddIgnoredActor(IgnoreActor);
+	}
+	ObjParams = FCollisionObjectQueryParams();
+	ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
+	ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+
+	Boxes.Reset();
+	GroundBoxes.Reset();
+	Grid.Reset();
+	CompToBox.Reset();
+	InstToBox.Reset();
+	AllowedComps.Reset();
+	ExcludedComps.Reset();
+	bBoxesOnly = false;
+	LastGroundSrc = 0; SkippedHits = 0;
+	Stats = FIndexStats(); LevelOwn.Reset(); RemovedSerial = 0; IgnoreActorPtr = IgnoreActor; CurOwn = nullptr;
+	if (!InWorld)
+	{
+		return;
+	}
+	bool bHasBoxes = InWorld->IsPartitionedWorld();   // World Partition (island): the WHBox cubes stream in with their cells, none may be loaded yet
+	for (TActorIterator<AActor> It(InWorld); It && !bHasBoxes; ++It)
+	{
+		TInlineComponentArray<UPrimitiveComponent*> Ps(*It);
+		for (UPrimitiveComponent* P : Ps) { if (P && IsTravCube(P) && P->IsCollisionEnabled()) { bHasBoxes = true; break; } }
+	}
+	// round 20 (critic r19 camera 4 / swing 6, root cause: since 690dfa7 the wide merged visual meshes carried no collision and the r19 boxes-only
+	// filter made every building without a WHBox cube pass-through for the hero, the web search and the camera): collision = visual triangles.
+	//   -WHTravCollide=visual (default with WHBox boxes) | boxes (round 19) | all (every collision primitive, 690dfa7 floor-audit A/B)
+	SolidMode = bHasBoxes ? 2 : 0;
+	{ int32 V = 0; bIsmSolid = FParse::Value(FCommandLine::Get(), TEXT("-WHTravIsmSolid="), V) && V != 0; } // round 20 A/B: instanced props / trees solid again
+	{
+		FString CM;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravCollide="), CM)) SolidMode = CM == TEXT("boxes") ? (bHasBoxes ? 1 : 0) : CM == TEXT("all") ? 0 : (bHasBoxes ? 2 : 0);
+		int32 V = 1;
+		if (FParse::Value(FCommandLine::Get(), TEXT("-WHTravSolidFilter="), V) && V == 0) SolidMode = 0;
+	}
+	bBoxesOnly = SolidMode != 0;
+	bDumpPrims = FParse::Value(FCommandLine::Get(), TEXT("-WHTravDumpPrims="), DumpPath);
+	DumpText = TEXT("actor,comp,mesh,class,visible,coll_before,coll_after,objtype,ctf,minx,miny,minz,maxx,maxy,maxz,role\n");
+	for (ULevel* L : InWorld->GetLevels()) { if (L) AddLevelInternal(L, /*bLog*/ false); }
+	if (bDumpPrims) { FFileHelper::SaveStringToFile(DumpText, *DumpPath); UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: primitive dump written: %s"), *DumpPath); }
 	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: solid mode %d (%s; per-building boxes found %d)"), SolidMode,
 		SolidMode == 2 ? TEXT("visual triangles: every visible building / roof / ground mesh, traced complex; WHBox cubes index only") : SolidMode == 1 ? TEXT("round-19 boxes-only") : TEXT("every collision primitive"), bHasBoxes ? 1 : 0);
 	UE_LOG(LogWebHomage, Display, TEXT("WebTravWorld: %d building boxes indexed (%d instanced components -> %d instance boxes, %d foliage/traffic instances skipped, %d far-skyline/giant components de-collided; %d visible solids, %d with collision re-enabled (QueryOnly), %d excluded by name, %d hidden de-collided, %d WHBox cubes de-collided, %d traversal solids total, %d ground boxes)"),
-		Boxes.Num(), NInstComps, NInstBoxes, NInstSkipped, NFarSkipped, NVisSolid, NReEnabled, NExcluded, NVisualOnly, NCubesOff, AllowedComps.Num(), GroundBoxes.Num());
+		Boxes.Num(), Stats.NInstComps, Stats.NInstBoxes, Stats.NInstSkipped, Stats.NFarSkipped, Stats.NVisSolid, Stats.NReEnabled, Stats.NExcluded, Stats.NVisualOnly, Stats.NCubesOff, AllowedComps.Num(), GroundBoxes.Num());
 }
 
 int32 FWebTravWorld::BoxAt(const FVector& P, double M) const

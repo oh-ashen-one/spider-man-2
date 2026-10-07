@@ -32,6 +32,10 @@ public:
 
 	/** World setup (building index) — call once the level is loaded. */
 	void InitWorld(UWorld* World, const AActor* Owner);
+	/** World Partition / streamed levels: the traversal solids of a level are added when it becomes visible and removed when it goes (FWebTravWorld::AddLevel / RemoveLevel). */
+	void OnLevelAddedToWorld(ULevel* Level, UWorld* InWorld);
+	void OnLevelRemovedFromWorld(ULevel* Level, UWorld* InWorld);
+	virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 	/** One frame: substeps at 120 Hz. `I` is consumed (edge flags cleared). Writes Anim + Events. */
 	void UpdateTraversal(double Dt, FWebTravInput I);
 	/** Place the body (metres; feet snapped to the floor if below). */
@@ -288,6 +292,8 @@ public:
 
 	FWebTravCamera* Cam = nullptr;
 	FWebTravWorld TravWorld;
+	FDelegateHandle LevelAddedHandle, LevelRemovedHandle;
+	TWeakObjectPtr<UWorld> StreamWorld;
 	TUniquePtr<FWebTravAnchors> Anchors;
 	TArray<FWebTravEvent> Events;
 	FWebTravStrand Strands[2];
