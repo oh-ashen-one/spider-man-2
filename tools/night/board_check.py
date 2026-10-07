@@ -15,7 +15,7 @@ from pathlib import Path
 
 PROJ_M = 3.0
 OFFSET_M = 0.08
-EXPORT = Path(os.environ.get('SM2_CITY_EXPORT', Path.home() / 'sm2-n1/_scratch/showcase/manhattan/export')) / 'midtown3x3'
+EXPORT = Path(os.environ.get('SM2_BOARD_EXPORT') or (Path(os.environ.get('SM2_CITY_EXPORT', Path.home() / 'sm2-n1/_scratch/showcase/manhattan/export')) / 'midtown3x3'))   # SM2_BOARD_EXPORT: the export folder holding layout.json (island: ~/sm2-n1/_scratch/island/export/island)
 GEO = Path(__file__).resolve().parents[2] / 'unreal/WebHomage/Content/Night/NightGeometry.json'
 
 

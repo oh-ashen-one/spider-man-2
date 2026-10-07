@@ -13,8 +13,16 @@ SHOWCASE_MAPS = {'golden': '/Game/Showcase/Maps/Manhattan_Showcase', 'midday': '
                  'night': '/Game/Showcase/Maps/Manhattan_Showcase_Night'}
 SHOWCASE_COMMON_LEVELS = [TERRAIN_ROOT + '/City_Geo_T', '/Game/Look/Look_Boxes', '/Game/Maps/Manhattan_Actors', TERRAIN_ROOT + '/Terrain_Land',
                           '/Game/Water/Maps/Water_River', '/Game/Tests/Life/Life_Actors']
+ISLAND_MAPS = {'golden': '/Game/Showcase/Maps/Manhattan_Island', 'midday': '/Game/Showcase/Maps/Manhattan_Island_Midday', 'night': '/Game/Showcase/Maps/Manhattan_Island_Night'}
+ISLAND_WP_MAP = '/Game/Maps/Manhattan_WP'
+ISLAND_COMMON_LEVELS = [TERRAIN_ROOT + '/Terrain_Land', '/Game/Water/Maps/Water_River', '/Game/Tests/Life/Life_Actors']   # level instances of the island maps (the WP map brings the city, its WHBox collision and the actors)
 GAME_MODE_CLASS = '/Script/WebHomage.WebTravGameMode'
 STRICT = os.environ.get('SM2_STRICT') == '1'
+
+
+def island_levels(preset):
+    """the level instances of an island showcase map (exactly these, no others)"""
+    return ISLAND_COMMON_LEVELS + ['/Game/Look/Rigs/Look_Rig_' + preset] + ([NIGHT_LIGHTS_LEVEL] if preset == 'night' else [])
 
 
 def showcase_levels(preset):

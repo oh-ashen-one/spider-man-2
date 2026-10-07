@@ -17,7 +17,8 @@ UE = Path('/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/
 BASELINE = Path.home() / 'sm2-baselines/r5b-preview-4e768e78'
 BASELINE_MAP = '/Game/TerrainR5b/Maps/Manhattan_Terrain'
 MAPS = {'showcase': '/Game/Showcase/Maps/Manhattan_Showcase', 'showcase-midday': '/Game/Showcase/Maps/Manhattan_Showcase_Midday',
-        'showcase-night': '/Game/Showcase/Maps/Manhattan_Showcase_Night'}
+        'showcase-night': '/Game/Showcase/Maps/Manhattan_Showcase_Night', 'island': '/Game/Showcase/Maps/Manhattan_Island', 'island-midday': '/Game/Showcase/Maps/Manhattan_Island_Midday',
+        'island-night': '/Game/Showcase/Maps/Manhattan_Island_Night'}
 PLAYABLE_RES_SCALE = 67
 
 
@@ -65,6 +66,7 @@ def main():
     cap.add_argument('--shot-cams', metavar='FILE', help='matched-camera shots (tools/showcase/gen_shot_cams.py): a JSON list of {t, name, ue_pos_cm, ue_target_cm, fov, hero_visible}; replaces --shots')
     cap.add_argument('--exec', action='append', default=[], metavar='CMD', help='extra console command for -ExecCmds (capture mode), e.g. "wh.CityLights.Gain 0"; repeatable')
     cap.add_argument('--script', metavar='FILE', help='traversal route script (-WHTravScript, docs/night1/manhattan/scripts/route_30s_warmup15.json); telemetry goes to <name>_telemetry.csv')
+    cap.add_argument('--game-arg', action='append', default=[], metavar='ARG', help='extra game command-line argument (capture mode), e.g. -benchmark -fps=60 for the fixed-step route sims; repeatable')
     cap.add_argument('--name', default='shot')
     cap.add_argument('--timeout', type=int, default=600, help='wall seconds before our own SIGTERM (capture mode)')
     args = ap.parse_args()
@@ -122,6 +124,7 @@ def main():
             game_args += [f'-WHPerfFrom={args.perf.split(":")[0]}', f'-WHPerfTo={args.perf.split(":")[1]}', '-WHCsv']
         if not baseline:   # the profile's render settings apply in captures too (the game applies them for an explicit -WHProfile even with -WHNoMouseCapture)
             game_args += [f'-WHProfile={profile}'] + ([f'-WHResScale={res_scale}'] if res_scale else [])
+        game_args += args.game_arg
         game_args += [f'-WHQuitAt={quit_at}', '-ExecCmds=' + ','.join(execs)]
     else:
         log_path = STATE / 'logs' / f'{stamp}.log'

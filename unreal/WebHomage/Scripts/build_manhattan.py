@@ -267,13 +267,9 @@ def step_city():
     content = os.path.join(PROJ, 'Content')
     # (island r02) SM2_ISLAND_DROP_MAPS (comma list of /Game/Maps names, e.g. the r01 test map Manhattan_WP_ism): deleted too, so the kit step can
     # delete + re-import /Game/City/Meshes/streetkit without a map still referencing it
-    names = [WP_MAP.split('/')[-1]] + [n for n in os.environ.get('SM2_ISLAND_DROP_MAPS', '').split(',') if n]
-    for name in names:
-        for rel in ('Maps/%s.umap' % name, 'Maps/%s_HLODLayer_Instanced.uasset' % name, 'Maps/%s_HLODLayer_Merged.uasset' % name):
-            f = os.path.join(content, rel)
-            if os.path.exists(f): os.remove(f)
-        for rel in ('__ExternalActors__/Maps/' + name, '__ExternalObjects__/Maps/' + name):
-            safe_rmtree(os.path.join(content, rel))
+    steps = os.environ.get('SM2_CITY_ONLY') or os.environ.get('SM2_ISLAND_CITY_STEPS', 'clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp')
+    if {'wp', 'clean', 'kit', 'mesh'} & set(steps.split(',')):   # only passes that rebuild / reference the map drop its files (a 'mat'-only pass must not delete the WP map)
+        drop_wp_map_files()
     # (island r01 resume) SM2_ISLAND_CITY_STEPS re-runs only some build_city.py steps on the existing /Game/City content, e.g. "wp" after the
     # 2026-10-01 14:24 reboot killed the pass in the WP step (the 64 min import before it had saved everything else)
     steps = os.environ.get('SM2_CITY_ONLY') or os.environ.get('SM2_ISLAND_CITY_STEPS', 'clean,tex,mat,mesh,proto,kit,fsky,map,coll,wp')
@@ -428,10 +424,10 @@ def step_characters():
 
 
 def step_look():
-    if 'night' in LOOK_STEPS.split(','):   # packs the author's night lights (fails clearly when the exporter output is missing)
+    if 'night' in (os.environ.get('SM2_LOOK_ONLY') or LOOK_STEPS).split(','):   # packs the author's night lights (fails clearly when the exporter output is missing)
         sh(['python3', os.path.join(WT, 'tools/night/prep_night.py')], log_name='night_prep.log')
-        sh(['python3', os.path.join(WT, 'tools/night/board_check.py'), '--write'], log_name='night_boards.log')   # boards onto OUR facade planes (drops those with no building within 3 m / outside the detailed region)
-    env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': LOOK_STEPS, 'SM2_LOOK_PRESETS': 'midday,golden,night'}
+        sh(['python3', os.path.join(WT, 'tools/night/board_check.py'), '--write'], env={'SM2_BOARD_EXPORT': EXPORT}, log_name='night_boards.log')   # boards onto OUR facade planes (drops those with no building within 3 m / outside the detailed region)
+    env = {'SM2_CITY_EXPORT': EXPORT, 'SM2_LOOK_STEPS': os.environ.get('SM2_LOOK_ONLY') or LOOK_STEPS, 'SM2_LOOK_PRESETS': 'midday,golden,night'}   # SM2_LOOK_ONLY=rigs,night: the island build skips the midtown geo / test maps
     ue_python('look', exec_wrapper(os.path.join(HERE, 'build_look.py'), ''), env, sentinel='build_look.py')
 
 
@@ -511,6 +507,23 @@ def step_ray():
         if '[manhattan ray]' in l: print(l.split('LogPython: ')[-1])
 
 
+def step_island():
+    ue_python('island_maps', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)), 'SM2_MANHATTAN_MODE': 'island'}, timeout=MAX_HOLD)
+
+
+def step_islandvalidate():
+    os.makedirs(os.path.join(PROJ, 'Saved/Showcase'), exist_ok=True)
+    txt = ue_python('island_validate', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)), 'SM2_MANHATTAN_MODE': 'islandvalidate'}, timeout=MAX_HOLD)
+    for l in txt.splitlines():
+        if '[manhattan island]' in l: print(l.split('LogPython: ')[-1])
+
+
+def step_wpinfo():
+    txt = ue_python('wp_info', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_MODE': 'wpinfo'})
+    for l in txt.splitlines():
+        if '[manhattan wpinfo]' in l: print(l.split('LogPython: ')[-1])
+
+
 def step_validate():
     sh(['python3', os.path.join(WT, 'tools/showcase/check.py')], log_name='showcase_check.log')
     txt = ue_python('showcase_validate', exec_wrapper(os.path.abspath(__file__), ''), {'SM2_MANHATTAN_PRESETS': ','.join(PRESETS), 'SM2_MANHATTAN_MODE': 'validate'})
@@ -527,14 +540,14 @@ def main():
     a = ap.parse_args()
     want = a.steps.split(',')
     WANT[:] = want
-    bad = [s for s in want if s not in STEPS_ALL + ['lighting', 'probe', 'ray']]
+    bad = [s for s in want if s not in STEPS_ALL + ['lighting', 'probe', 'ray', 'island', 'islandvalidate', 'wpinfo']]
     if bad: raise SystemExit('unknown steps %s (known: %s)' % (bad, STEPS_ALL))
     os.makedirs(os.path.join(SCR, 'logs'), exist_ok=True)
     t0 = time.time()
     tj = os.path.join(SCR, 'logs', 'build_timings_%s.json' % REGION)
     done = []
     try:
-        for s in STEPS_ALL + ['lighting', 'probe', 'ray']:
+        for s in STEPS_ALL + ['lighting', 'probe', 'ray', 'island', 'islandvalidate', 'wpinfo']:
             if s in want:
                 log('=== step', s); t = time.time()
                 globals()['step_' + s]()
@@ -797,6 +810,118 @@ def build_showcase():
     _B.finish()
 
 
+def build_island_showcase():
+    """the island showcase maps: a duplicate of the World Partition map /Game/Maps/Manhattan_WP (PlayerStart, game mode kept) + one non-spatially-loaded ALevelInstance (runtime behaviour
+    LevelStreaming) per level of sm2_common.island_levels(preset)"""
+    EAL = unreal.EditorAssetLibrary
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    T0 = time.time()
+    def mlog(*a): print('[manhattan %5.0fs]' % (time.time() - T0), *a)
+    def editor_world(): return unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world()
+    presets = [p for p in os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)).split(',') if p]
+    missing = sorted({lp for p in presets for lp in sm2_common.island_levels(p) if not EAL.does_asset_exist(lp)})
+    if missing: raise RuntimeError('missing content, run the earlier steps first: %s' % missing)
+    gm = unreal.load_class(None, sm2_common.GAME_MODE_CLASS)
+    if not os.path.isfile(os.path.join(PROJ, 'Content/Maps/Manhattan_WP.umap')): raise RuntimeError('Content/Maps/Manhattan_WP.umap missing')
+    for preset in presets:
+        path = sm2_common.ISLAND_MAPS[preset]
+        if not EAL.does_asset_exist(path):
+            unreal.EditorLoadingAndSavingUtils.load_map(sm2_common.ISLAND_WP_MAP)
+            mlog('loaded', sm2_common.ISLAND_WP_MAP, 'actors', len(eas.get_all_level_actors()))
+            if not unreal.EditorLoadingAndSavingUtils.save_map(editor_world(), path): raise RuntimeError('save-as failed: ' + path)
+            mlog('saved as', path)
+        unreal.EditorLoadingAndSavingUtils.load_map(path)
+        world = editor_world()
+        for a in list(eas.get_all_level_actors()):
+            if a.get_class().get_name() == 'LevelInstance': eas.destroy_actor(a)
+        for lp in sm2_common.island_levels(preset):
+            li = eas.spawn_actor_from_class(unreal.LevelInstance, unreal.Vector(0, 0, 0))
+            li.set_actor_label('LI_' + lp.split('/')[-1])
+            li.set_editor_property('desired_runtime_behavior', unreal.LevelInstanceRuntimeBehavior.LEVEL_STREAMING)
+            li.set_world_asset(unreal.load_asset(lp))   # soft world asset
+            try: li.set_editor_property('is_spatially_loaded', False)
+            except Exception as ex: mlog('is_spatially_loaded:', ex)
+            mlog('level instance', li.get_actor_label(), li.get_editor_property('desired_runtime_behavior'))
+        for a in list(eas.get_all_level_actors()):
+            if a.get_actor_label().startswith('PlayerStart'): eas.destroy_actor(a)
+        ps = [s for s in json.load(open(os.path.join(HERE, 'city_shots.json'))) if s['id'].split('_')[0] == 'S1'][0]['player']   # the avenue start of every other map (x 249, y 178 m, north)
+        st = eas.spawn_actor_from_class(unreal.PlayerStart, unreal.Vector(ps[0] * 100.0, ps[2] * 100.0, (ps[1] + 1.0) * 100.0), unreal.Rotator(0, 0, -90.0))
+        st.set_actor_label('PlayerStart')
+        st.set_editor_property('is_spatially_loaded', False)
+        if gm: world.get_world_settings().set_editor_property('default_game_mode', gm)
+        if not unreal.EditorLoadingAndSavingUtils.save_map(world, path): raise RuntimeError('save_map failed: ' + path)
+        mlog('island map', path, 'preset', preset)
+    mlog('DONE')
+    _B.finish()
+
+
+def wp_info():
+    """spawn-relevant actors of the WP map and the island maps (PlayerStart, streaming sources), their spatial-loading flag and game mode"""
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    for mp in [sm2_common.ISLAND_WP_MAP, sm2_common.ISLAND_MAPS['night']]:
+        unreal.EditorLoadingAndSavingUtils.load_map(mp)
+        for a in eas.get_all_level_actors():
+            cn = a.get_class().get_name()
+            if cn in ('PlayerStart', 'TargetPoint') or a.get_actor_label().startswith(('WH_Stream', 'PlayerStart')):
+                try: sp = a.get_editor_property('is_spatially_loaded')
+                except Exception: sp = 'n/a'
+                l = a.get_actor_location(); print('[manhattan wpinfo] %s | %s | %s | spatial %s | (%.0f %.0f %.0f)' % (mp.split('/')[-1], cn, a.get_actor_label(), sp, l.x, l.y, l.z))
+        print('[manhattan wpinfo] %s game mode %s' % (mp.split('/')[-1], unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_editor_world().get_world_settings().get_editor_property('default_game_mode')))
+    _B.finish()
+
+
+def validate_island():
+    """strict validation of the island showcase maps: level instances (assets, runtime behaviour, not spatially loaded), the WP map content (external actor packages = WP + the instances,
+    no lighting actors in it), lighting ownership of every instanced level (rig: exactly one atmosphere sun / SkyLight / SkyAtmosphere / height fog, the PPV the only unbound one),
+    exactly one AWHCityLights on Night (in Look_NightCity) and none elsewhere"""
+    EAL = unreal.EditorAssetLibrary
+    eas = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+    out = {'checks': []}
+    def chk(name, ok, detail=''):
+        out['checks'].append({'name': name, 'ok': bool(ok), 'detail': str(detail)[:300]})
+        print('[manhattan island] %s %s %s' % ('CHECK PASS' if ok else 'CHECK FAIL', name, detail))
+        if not ok: _B.fail('island validate: %s %s' % (name, detail))
+    wp_dir = os.path.join(PROJ, 'Content/__ExternalActors__/Maps/Manhattan_WP')
+    n_wp = sum(len([f for f in fs if f.endswith('.uasset') and not f.startswith('._')]) for _, _, fs in os.walk(wp_dir))
+    presets = [p for p in os.environ.get('SM2_MANHATTAN_PRESETS', ','.join(PRESETS)).split(',') if p]
+    for preset in presets:
+        path = sm2_common.ISLAND_MAPS[preset]; name = path.split('/')[-1]
+        want = sm2_common.island_levels(preset)
+        unreal.EditorLoadingAndSavingUtils.load_map(path)
+        lis = [a for a in eas.get_all_level_actors() if a.get_class().get_name() == 'LevelInstance']
+        got = sorted(str(a.get_editor_property('world_asset').get_asset_name()) if hasattr(a.get_editor_property('world_asset'), 'get_asset_name') else str(a.get_editor_property('world_asset')) for a in lis)
+        chk('%s level instances' % name, sorted(l.split('/')[-1] for l in want) == sorted(g.split('.')[0].split('/')[-1] for g in got), got)
+        chk('%s runtime behaviour LevelStreaming' % name, all(a.get_editor_property('desired_runtime_behavior') == unreal.LevelInstanceRuntimeBehavior.LEVEL_STREAMING for a in lis))
+        try: spatial = [bool(a.get_editor_property('is_spatially_loaded')) for a in lis]
+        except Exception as ex: spatial = ['n/a %s' % ex]
+        chk('%s level instances not spatially loaded' % name, not any(x is True for x in spatial), spatial)
+        ext = os.path.join(PROJ, 'Content/__ExternalActors__/Showcase/Maps/' + name)
+        n_ext = sum(len([f for f in fs if f.endswith('.uasset') and not f.startswith('._')]) for _, _, fs in os.walk(ext))
+        chk('%s WP content (external actor packages = WP map %d + %d level instances + 0..2 helpers)' % (name, n_wp, len(lis)), 0 <= n_ext - n_wp - len(lis) <= 2, 'ext %d wp %d' % (n_ext, n_wp))
+        inv = lighting_inventory(eas)
+        chk('%s: no lighting actors in the WP map itself' % name, not inv, list(inv.keys()))
+        chk('%s: no AWHCityLights in the WP map itself' % name, not [a for a in eas.get_all_level_actors() if a.get_class().get_name() == 'WHCityLights'])
+    seen = {}
+    for preset in presets:
+        for lp in sm2_common.island_levels(preset):
+            if lp in seen: continue
+            unreal.EditorLoadingAndSavingUtils.load_map(lp)
+            seen[lp] = lighting_inventory(eas)
+            cl = [a for a in eas.get_all_level_actors() if a.get_class().get_name() == 'WHCityLights']
+            is_night = lp == sm2_common.NIGHT_LIGHTS_LEVEL
+            chk('%s AWHCityLights count' % lp.split('/')[-1], len(cl) == (1 if is_night else 0), len(cl))
+            if '/Look/Rigs/' in lp:
+                flat = [d for v in seen[lp].values() for d in v]
+                cnt = lambda c, f=lambda d: True: len([d for d in flat if d['class'] == c and f(d)])
+                chk('%s one atmosphere sun / SkyLight / SkyAtmosphere / height fog' % lp.split('/')[-1], cnt('DirectionalLight', lambda d: d.get('atmosphere_sun') and d.get('atmosphere_sun_index') == 0) == 1 and cnt('SkyLight') == 1 and cnt('SkyAtmosphere') == 1 and cnt('ExponentialHeightFog') == 1)
+                chk('%s the rig PPV is the only unbound one' % lp.split('/')[-1], cnt('PostProcessVolume') == 1 and cnt('PostProcessVolume', lambda d: d.get('unbound')) == 1)
+            else:
+                chk('%s owns no sky / light / post actors' % lp.split('/')[-1], not flat if False else not [d for v in seen[lp].values() for d in v if d['class'] != 'LevelSequenceActor' or '/Look/' not in lp])
+    json.dump(out, open(os.path.join(PROJ, 'Saved/Showcase/island_validate.json'), 'w'), indent=1)
+    print('[manhattan island] island_validate.json failed %d of %d' % (len([c for c in out['checks'] if not c['ok']]), len(out['checks'])))
+    _B.finish()
+
+
 LIGHT_CLASSES = ('DirectionalLight', 'SkyLight', 'SkyAtmosphere', 'ExponentialHeightFog', 'PostProcessVolume', 'VolumetricCloud', 'LevelSequenceActor')
 
 
@@ -1052,6 +1177,6 @@ def validate_showcase():
 
 
 if IN_UE:
-    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase, 'lighting': dump_lighting, 'probe': probe_point, 'ray': probe_ray}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
+    {'map': build_maps, 'showcase': build_showcase, 'validate': validate_showcase, 'lighting': dump_lighting, 'probe': probe_point, 'ray': probe_ray, 'island': build_island_showcase, 'islandvalidate': validate_island, 'wpinfo': wp_info}[os.environ.get('SM2_MANHATTAN_MODE', 'map')]()
 elif __name__ == '__main__':
     main()
