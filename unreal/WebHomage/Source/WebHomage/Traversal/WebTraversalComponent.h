@@ -303,6 +303,8 @@ public:
 	FName Sub() const { return S.Sub; }
 	double ModeT() const { return S.ModeT; }
 	const FVector& PosM() const { return S.Pos; }
+	/** final loop telemetry: fraction (0..1) of the segment A->B (metres) that is clear of building / world geometry (1 = clear); read-only query */
+	double StrandClearFraction(const FVector& A, const FVector& B) const;
 	const FVector& VelM() const { return S.Vel; }
 	FVector RootPosM() const { return RootPos; }
 	double Facing() const { return S.Facing; }

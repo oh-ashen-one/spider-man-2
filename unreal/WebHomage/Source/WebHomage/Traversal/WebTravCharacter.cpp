@@ -1347,6 +1347,54 @@ void AWebTravCharacter::ReadHeroMask()
 	if (Y1 >= 0) { PxTop = Y0 * 4.f; PxBottom = (Y1 + 1) * 4.f; PxLeft = X0 * 4.f; PxRight = (X1 + 1) * 4.f; } // 1920x1080 pixels
 }
 
+// final loop round 00 (W / A checkers): strand state, the strand as drawn this frame (start = the hand read in UpdateWebs, tip), the hand and shoulder bones as the
+// mesh holds them at telemetry time (= the pose of the previous frame: the anim instance evaluates after the actor tick), and the chest angular rate. Read-only.
+FString AWebTravCharacter::FinalSwingCols(double T)
+{
+	USkeletalMeshComponent* M = bHeroMesh ? GetMesh() : nullptr;
+	if (M && !bFwBones)
+	{
+		bFwBones = true;
+		FString All;
+		auto Find = [&](std::initializer_list<const TCHAR*> Needles) -> FName
+		{
+			for (const TCHAR* N : Needles) for (int32 B = 0; B < M->GetNumBones(); ++B) { const FString Nm = M->GetBoneName(B).ToString().ToLower(); if (Nm == N) return M->GetBoneName(B); }
+			return NAME_None;
+		};
+		for (int32 B = 0; B < M->GetNumBones(); ++B) All += M->GetBoneName(B).ToString() + TEXT(" ");
+		FwShoulder[0] = Find({ TEXT("upperarm_l"), TEXT("arm_l"), TEXT("shoulder_l") }); FwShoulder[1] = Find({ TEXT("upperarm_r"), TEXT("arm_r"), TEXT("shoulder_r") });
+		FwChest = Find({ TEXT("spine2"), TEXT("spine_03"), TEXT("spine03"), TEXT("chest") });
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV final bones: shoulder L=%s R=%s chest=%s; all: %s"), *FwShoulder[0].ToString(), *FwShoulder[1].ToString(), *FwChest.ToString(), *All);
+	}
+	auto V3 = [](const FVector& Cm) { return FString::Printf(TEXT("%.4f,%.4f,%.4f"), Cm.X / 100.0, Cm.Y / 100.0, Cm.Z / 100.0); };
+	FString O;
+	for (int32 SI = 0; SI < 2; ++SI)
+	{
+		const FWebTravStrand& St = Traversal->Strands[SI];
+		const double U = St.bActive ? FMath::Clamp(double(St.Age) / FMath::Max(double(St.ShootDur), 0.01), 0.0, 1.0) : 0.0;
+		const double Wave0 = St.bActive ? 30.0 * FMath::Exp(-9.0 * St.Age) * (1.0 - St.Taut) : 0.0;
+		const double Clear = bRopeDrawn[SI] ? Traversal->StrandClearFraction(RopeDrawA[SI] / 100.0, St.Anchor) : 1.0;
+		O += FString::Printf(TEXT(",%d,%d,%.4f,%.4f,%.4f,%d,%s,%s,%s,%.3f,%.2f,%.3f"), St.bActive ? 1 : 0, St.bRightHand ? 1 : 0, St.Age, St.ShootDur, St.ReleaseT, bRopeDrawn[SI] ? 1 : 0,
+			*V3(St.Anchor * 100.0), bRopeDrawn[SI] ? *V3(RopeDrawA[SI]) : TEXT("0,0,0"), bRopeDrawn[SI] ? *V3(RopeDrawB[SI]) : TEXT("0,0,0"), St.Taut, Wave0, Clear);
+		(void)U;
+	}
+	if (M)
+	{
+		O += TEXT(",") + V3(M->GetBoneLocation(FName(TEXT("hand_L")))) + TEXT(",") + V3(M->GetBoneLocation(FName(TEXT("hand_R"))));
+		O += TEXT(",") + V3(FwShoulder[0].IsNone() ? FVector::ZeroVector : M->GetBoneLocation(FwShoulder[0])) + TEXT(",") + V3(FwShoulder[1].IsNone() ? FVector::ZeroVector : M->GetBoneLocation(FwShoulder[1]));
+		double Rate = 0.0;
+		if (!FwChest.IsNone())
+		{
+			const FQuat Q = M->GetBoneQuaternion(FwChest, EBoneSpaces::WorldSpace);
+			if (FwChestHas && T > FwChestPrevT + 1e-6) Rate = FMath::RadiansToDegrees(FwChestPrev.AngularDistance(Q)) / (T - FwChestPrevT);
+			FwChestPrev = Q; FwChestPrevT = T; FwChestHas = true;
+		}
+		O += FString::Printf(TEXT(",%.1f"), Rate);
+	}
+	else O += TEXT(",0,0,0,0,0,0,0,0,0,0,0,0,0");
+	return O;
+}
+
 void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 {
 	UWebTravScript* Script = GetGameInstance()->GetSubsystem<UWebTravScript>();
@@ -1361,7 +1409,10 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("flip_cancels,air_fast_w,air_track_k,hero_vis_top,hero_vis_bottom,hero_vis_px,")
 		TEXT("foot_sep_run_m,knee_gap_lat_m,knee_wall_l,knee_wall_r,limb_wall_max_m,body_run_elev_deg,")
 		TEXT("torso_wallup_deg,chest_run_deg,side_up_k,ankle_sep_plane_m,hip_wall_m,ankle_sep_3d_m,alt_apex_want_m,cam_look_dir,cam_gnd_crane_m,cam_gnd_stop,")
-		TEXT("rope_drawn,rope_ax,rope_ay,rope_bx,rope_by,rope_wpx_a,rope_wpx_b,rope_look,cam_perch_hold"));
+		TEXT("rope_drawn,rope_ax,rope_ay,rope_bx,rope_by,rope_wpx_a,rope_wpx_b,rope_look,cam_perch_hold,")
+		TEXT("fw_s0_on,fw_s0_hand,fw_s0_age,fw_s0_shoot,fw_s0_rel,fw_s0_drawn,fw_s0_ax,fw_s0_ay,fw_s0_az,fw_s0_sx,fw_s0_sy,fw_s0_sz,fw_s0_tx,fw_s0_ty,fw_s0_tz,fw_s0_taut,fw_s0_wave_cm,fw_s0_clear,")
+		TEXT("fw_s1_on,fw_s1_hand,fw_s1_age,fw_s1_shoot,fw_s1_rel,fw_s1_drawn,fw_s1_ax,fw_s1_ay,fw_s1_az,fw_s1_sx,fw_s1_sy,fw_s1_sz,fw_s1_tx,fw_s1_ty,fw_s1_tz,fw_s1_taut,fw_s1_wave_cm,fw_s1_clear,")
+		TEXT("fw_hl_x,fw_hl_y,fw_hl_z,fw_hr_x,fw_hr_y,fw_hr_z,fw_shl_x,fw_shl_y,fw_shl_z,fw_shr_x,fw_shr_y,fw_shr_z,fw_chest_rate_dps"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1652,7 +1703,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		}
 	}
 	Cols25 += FString::Printf(TEXT(",%d,%d"), WebLookNow, Cam.PerchYawHeld);
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24 + Cols25);
+	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24 + Cols25 + FinalSwingCols(T));
 }
 
 // ------------------------------------------------------------------ live input (round 19)

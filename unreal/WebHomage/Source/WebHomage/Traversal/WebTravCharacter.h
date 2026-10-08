@@ -199,6 +199,9 @@ private:
 	FVector RopeDrawA[2], RopeDrawB[2];
 	double RopeDrawWA[2] = { 0.0, 0.0 }, RopeDrawWB[2] = { 0.0, 0.0 };
 	bool bRopeDrawn[2] = { false, false };
+	// final loop round 00: telemetry-only state (read-only bone samples; never feeds back into the sim, the camera or the pose)
+	bool bFwBones = false; FName FwShoulder[2], FwChest; FQuat FwChestPrev = FQuat::Identity; double FwChestPrevT = -1.0; bool FwChestHas = false;
+	FString FinalSwingCols(double T);
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
 	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
 	void UpdateHeroFill();

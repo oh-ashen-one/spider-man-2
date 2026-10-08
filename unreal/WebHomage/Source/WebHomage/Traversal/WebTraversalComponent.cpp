@@ -1299,6 +1299,14 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 }
 
 // ---- release / air tricks. Selection follows the release trajectory; never the same trick twice in a row.
+double UWebTraversalComponent::StrandClearFraction(const FVector& A, const FVector& B) const
+{
+	const FVector D = B - A; const double L = D.Size();
+	if (L < 0.5) return 1.0;
+	FTravHit Hit;
+	return TravWorld.Raycast(A, D / L, L - 0.4, Hit) ? Hit.Distance / L : 1.0;
+}
+
 FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 {
 	// round 11 (owner brief FLIPS_BRIEF.md): gymnast flip programs; a script / caller may request programs (comma list, cycled); owner r27: F picks from the 12-program cycle by stick direction via ChooseForInput
