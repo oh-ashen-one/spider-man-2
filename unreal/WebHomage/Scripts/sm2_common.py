@@ -15,7 +15,8 @@ SHOWCASE_COMMON_LEVELS = [TERRAIN_ROOT + '/City_Geo_T', '/Game/Look/Look_Boxes',
                           '/Game/Water/Maps/Water_River', '/Game/Tests/Life/Life_Actors']
 ISLAND_MAPS = {'golden': '/Game/Showcase/Maps/Manhattan_Island', 'midday': '/Game/Showcase/Maps/Manhattan_Island_Midday', 'night': '/Game/Showcase/Maps/Manhattan_Island_Night'}
 ISLAND_WP_MAP = '/Game/Maps/Manhattan_WP'
-ISLAND_COMMON_LEVELS = [TERRAIN_ROOT + '/Terrain_Land', '/Game/Water/Maps/Water_River', '/Game/Tests/Life/Life_Actors']   # level instances of the island maps (the WP map brings the city, its WHBox collision and the actors)
+PROPS_M3_LEVEL = '/Game/PropsM3/Maps/PropsM3_Island'   # the owner's supplied GLB props / animals (Scripts/build_props_m3.py; no collision HISMs)
+ISLAND_COMMON_LEVELS = [TERRAIN_ROOT + '/Terrain_Land', '/Game/Water/Maps/Water_River', '/Game/Tests/Life/Life_Actors', PROPS_M3_LEVEL]   # level instances of the island maps (the WP map brings the city, its WHBox collision and the actors)
 GAME_MODE_CLASS = '/Script/WebHomage.WebTravGameMode'
 STRICT = os.environ.get('SM2_STRICT') == '1'
 
