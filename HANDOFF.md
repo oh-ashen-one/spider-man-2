@@ -69,8 +69,18 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - Island maps: `--steps island` (duplicates /Game/Maps/Manhattan_WP ~4 min first, ~1.5 min each next + one non-spatial ALevelInstance per level, LevelStreaming, + a non-spatial PlayerStart), `--steps islandvalidate` (35 checks), play.py `--map island|island-midday|island-night`. WHIslandRules (C++) hides the city actors the terrain supersedes as WP cells stream in. FWebTravWorld::AddLevel / RemoveLevel index and drop the solids of streamed levels (per-level ownership, tombstoned box indices, anchors inside a removed level are released).
 - `SM2_BOARD_EXPORT` selects the layout board_check projects against; `SM2_LOOK_ONLY=rigs,night` builds the night level without the midtown geo.
 
-## Blockers (live)
-- 14:33: both shared capture slots are held by a foreign task: pid 17065 `m5-flash-next-resident`, reserved_slots [0,1]. Earlier, pid 34549 `chicago-loop-unity-play` held them. A foreign UnrealEditor (pid 9864) and Blender (3196) are also running, which is 2 renderer-bearing engines, the global cap. No game/renderer launch is possible without exceeding the cap. Our M1 commandlets are queued FIFO in gpu_slot (wait timeout 3 h). Foreign processes are not touched.
+### Perf milestone A (2026-10-08, commits 64cfe7f4 / 6521a1e6 / 458836db)
+- `build_manhattan.py --steps ddc` fills the DDC for the island maps (one-time, 337 s): island night route frames > 500 ms 9 -> 0.
+- Playable profile applies `Config/PerfPlayable.cvars` (17 cvars); opt-in `Config/PerfPlayableFast.cvars` (+ Lumen screen-probe downsample 24) via `-WHPerfPreset=<path>`. Fixed-step island night at 4K output: preset off 58 % p50 34.3 ms; preset on 27.0 ms; Fast + island life 17.5 ms (58 %), 15.9 ms (50 %). Fixed-step only; no real-time route measured. Owner played 1080x608 window with Fast at 100 %: ~64-67 fps standing (log frame counts).
+- Island-wide life data (Scripts/life_data_island), traffic `ActiveRadiusM` 900 m.
+- Max (fidelity) in the owner window ran ~20 fps standing, ~10 fps swinging: game-thread "waiting on static mesh being ready" stalls when WP cells stream in remain (open).
+- 16d24911: F in the air picks from 12 flip programs by stick direction (`WebFlips::ChooseForInput`).
 
-## Not yet verified
-No runtime, visual, suit-switch, traversal, resolution or FPS result is claimed yet. The baseline has not been opened, because of the GPU blocker.
+## Final refinement loop (owner brief 2026-10-08, ACTIVE)
+- Scope: swing / air / flips / web deployment only, plus the supplied-GLB integration exception. Contract `docs/night1/final/OWNERSHIP.md`, spec `docs/night1/final/SPEC_FINAL.md` (W1-W10, A1-A7 + carried traversal/flip specs). Loop = the claude-code-game-builder Gauntlet Loop (policy copy: `~/Documents/Documents - Midir’s Mac Studio/Codex/m5-unreal-setup-20261006/policy/claude-code-game-builder/`): builder captures scripted native `-game` clips → orchestrator packs blind A/B (`tools/night1/abpack.py`) → fresh blind critic (prompt `~/sm2-n1/_scratch/final/CRITIC_PROMPT_SW.md`) → 2-3 gaps → builder fixes.
+- BEFORE checkpoint: tag `final-before` = 16d24911. Round folders `docs/night1/final/swing/round-NN/`; critic scratch `~/sm2-n1/_scratch/final/critic-rNN/`.
+- Supplied GLBs (read-only): `~/Documents/SpiderMan_Asset_Import_M3_2026-10-08_task-4/GLBs/` (56, hashes verified by the owner's transfer). Orchestrator inspection: the 11 human GLBs are unrigged A-pose civilians in everyday clothing; none is a Spider-Man suit, so no supplied suit is integrated (blocker reported to the owner). Previews `~/sm2-n1/_scratch/assets_m3/humans_{front,side}.jpg`. Props plan: `docs/night1/final/assets/PLAN.md` (builder PA).
+
+## Blockers (live)
+- No supplied Spider-Man suit exists among the 56 GLBs (see above).
+- Island streaming stalls in live play (see Perf milestone A).
