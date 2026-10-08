@@ -1301,9 +1301,7 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 // ---- release / air tricks. Selection follows the release trajectory; never the same trick twice in a row.
 FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 {
-	// round 11 (owner brief FLIPS_BRIEF.md): gymnast flip programs. A script / caller may request programs (comma list, cycled);
-	// otherwise: a sky launch (long air) cycles backDouble / frontPikeSwan / corkscrew; a plain trick release picks by the air
-	// time it has (height over the floor): backSingle when low, else frontPikeSwan / corkscrew / backSingle in turn.
+	// round 11 (owner brief FLIPS_BRIEF.md): gymnast flip programs; a script / caller may request programs (comma list, cycled); owner r27: F picks from the 12-program cycle by stick direction via ChooseForInput
 	if (!bLegacyTricks)
 	{
 		FVector HV0;
@@ -1322,12 +1320,15 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 				if (WebFlips::Find(N)) return FitFlip(N);
 			}
 		}
-		static const FName SkyP[] = { FName(TEXT("backDouble")), FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")) };
-		// (callers pass the choice through FitFlip: a program that cannot finish before the floor is swapped for one that can)
-		static const FName LowP[] = { FName(TEXT("frontPikeSwan")), FName(TEXT("corkscrew")), FName(TEXT("backSingle")) };
 		const int32 K = S.AutoFlipK++;
-		if (S.bSky || bFlowChoose) return FitFlip(SkyP[K % 3]); // round 13: flow flips have the air for every program
-		return FitFlip(HeightAboveFloor() < 30.0 ? FName(TEXT("backSingle")) : LowP[K % 3]);
+		const double StickFwd = InD0.X * HV0.X + InD0.Y * HV0.Y, StickLat = S.TrickLat;   // stick relative to travel (2D)
+		float AirS;
+		if (S.bSky) AirS = 0.f;   // sky launches are solved for their own air
+		else if (bFlowChoose) { if (HeightAboveFloor() < FlipFloorClear) return NAME_None; AirS = 0.f; }
+		else { AirS = float(AirTimeToClear() - double(FlipCatchRoom)); if (AirS <= 0.05f) return NAME_None; }
+		const FName Pick = WebFlips::ChooseForInput(float(StickFwd), float(StickLat), K, AirS, S.LastTrickName);
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flip choice: stick fwd %.2f lat %.2f (in %.2f %.2f, travel %.2f %.2f), air %.2f s, K %d -> %s"), StickFwd, StickLat, InD0.X, InD0.Y, HV0.X, HV0.Y, AirS, K, *Pick.ToString());
+		return Pick;
 	}
 	const double Sp = S.Vel.Size(), HS = HLen(S.Vel), VY = S.Vel.Z, Steep = Sp > 1 ? VY / Sp : 0;
 	FVector HV;
