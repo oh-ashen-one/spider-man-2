@@ -13,7 +13,15 @@ print(fs[0].stem if len(fs) == 1 and 'm5-flash' in json.loads(fs[0].read_text())
 PY
 )
   N=$(ls "$HOME/.cache/gpu-slot/holders" 2>/dev/null | wc -l | tr -d ' ')
-  if [ "$N" = "0" ]; then "$@"; exit $?; fi   # nobody holds the GPU: the normal exclusive guarded_preview admission applies
+  if [ "$N" = "0" ]; then   # nobody holds the GPU: the normal exclusive guarded_preview admission applies
+    # the resident takes the perf lock a moment before its holder file appears: a launch the LAUNCHER refused (its admission text) is retried, at most 10 times, 5 s apart;
+    # any other failure (a crash, a bad argument) is final: no automatic relaunch
+    LOG=$(mktemp); "$@" 2>&1 | tee "$LOG"; rc=${PIPESTATUS[0]}
+    if [ "$rc" != "0" ] && grep -qE "Shared GPU capacity is occupied|Other renderer processes exist|A renderer-bearing engine already exists" "$LOG" && [ "${RETRIES:-0}" -lt 10 ]; then
+      RETRIES=$(( ${RETRIES:-0} + 1 )); rm -f "$LOG"; sleep 5; continue
+    fi
+    rm -f "$LOG"; exit $rc
+  fi
   if [ -n "$H" ]; then
     SM2_COEXIST_HOLDER=$H "$@"; rc=$?
     exit $rc
