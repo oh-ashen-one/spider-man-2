@@ -157,7 +157,7 @@ public:
 	double PerchHold = 1.0, GndZipHoldMax = 6.0;
 	int32 PerchYawHeld = 0;
 	bool bCamEnclosed = false;
-	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.7, MaxStepYawDeg = 3.6, FlipMaxStepYawDeg = 2.4;
+	double MaxStepPosM = 1.1, MaxStepPitchDeg = 2.2, MaxStepYawDeg = 2.0, FlipMaxStepYawDeg = 1.6;   // round 02: yaw <= 120 deg/s (was 216; the 144 deg/s catch turn blurred the frame)
 	int32 SlewFlags = 0;
 	/** Round 16: pick the held trick view at the release frame (TC1/TC2). Sets FlipAz / FlipOffDeg / FlipDistSel / FlipTier. */
 	void ChooseFlipView(const FTravCamInput& P, const FWebTravWorld& World);

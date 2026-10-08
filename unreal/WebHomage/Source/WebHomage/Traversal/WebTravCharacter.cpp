@@ -1173,8 +1173,8 @@ void AWebTravCharacter::PoseFigure(float Dt)
 				// round 20: at speed the body holds the streamlined line (sway down to 20 % from 22 to 32 m/s)
 				const double FastK = UWebTravAnimInstance::bAirSpeedPose ? Smooth01((A.Speed - 22.0) / 10.0) : 0.0;
 				const double SwayAmp = 1.0 - 0.8 * FastK;
-				const double RollA = 0.6 * Ramp * SwayAmp * FMath::Sin(2 * PI * 1.05 * Tc + Ph) * (AI->AirCycleCount() % 2 ? 1.0 : -1.0);
-				const double PitchA = 0.35 * Ramp * SwayAmp * FMath::Sin(2 * PI * 0.8 * Tc + Ph * 0.5);
+				const double RollA = 0.3 * Ramp * SwayAmp * FMath::Sin(2 * PI * 1.05 * Tc + Ph) * (AI->AirCycleCount() % 2 ? 1.0 : -1.0);
+				const double PitchA = 0.2 * Ramp * SwayAmp * FMath::Sin(2 * PI * 0.8 * Tc + Ph * 0.5);
 				SwayDeltaQ = FQuat(FVector(1, 0, 0), RollA) * FQuat(FVector(0, 1, 0), PitchA);   // round 01: remembered so it can decay when the swing starts
 				const FQuat Q2 = Q * SwayDeltaQ;
 				const FVector Centre = Traversal->PosM() * 100.0;
@@ -1324,13 +1324,13 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 		const FVector Hand = PalmWorldCm(St.bRightHand);
 		if (bReleased && !bWasReleased[SI]) ReleaseHandCm[SI] = Hand;
 		bWasReleased[SI] = bReleased;
-		FVector A = Hand, B = St.Anchor * 100.0;
+		FVector A = Hand, B = St.AnchorNow() * 100.0;
 		double Fade = 1.0, Wave = 0.0, Droop = 0.0, Curl = 0.0;
 		if (St.bActive)
 		{
 			// shot: cubic ease-out extension, a decaying sine wave along the strand while it flies (web.js)
 			const double U = FMath::Clamp(St.Age / FMath::Max(St.ShootDur, 0.01f), 0.0, 1.0);
-			const double Ext = 1 - FMath::Pow(1 - U, 3);
+			const double Ext = 1 - FMath::Pow(1 - U, 1.25);   // round 02: near-constant tip speed with a short ease at the end (the cubic put 27 % of the length in the first frame)
 			B = A + (B - A) * Ext;
 			Wave = 30.0 * FMath::Exp(-9.0 * St.Age) * (1 - St.Taut);
 			if (St.Age > St.ShootDur) Wave *= FMath::Clamp(1.0 - (St.Age - St.ShootDur) / 0.08, 0.0, 1.0);   // round 01 (W6): straight within 0.10 s of the tip landing (0.08 s fade)
@@ -1383,7 +1383,7 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			if (bTwoTone)
 			{ // round 25: 1.6 cm world width, clamped to RopePxMin..RopePxMax px on screen (at the segment's distance); a released strand
 				// thins out by the fade as before
-				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax))) * FMath::Lerp(1.0, 0.7, 0.5 * (U0 + U1));   // round 01 (W5): taper toward the anchor
+				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax))) * FMath::Lerp(1.0, 0.62, 0.5 * (U0 + U1));   // round 01 (W5): taper toward the anchor
 				W = Px * CamD / PxK * Fade;
 			}
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());

@@ -217,7 +217,7 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 	if (Sub == TEXT("pointLaunch")) return NA_pointLaunch;
 	if (Sub == TEXT("wallJump")) return NA_wallJump;
 	if (Sub == TEXT("zipPull")) return FName(TEXT("air_zipPull"));
-	if (A.bDive) return FName(TEXT("air_dive"));
+	if (A.bDive && !A.bGlide) return FName(TEXT("air_dive"));   // round 02: a glide / long fall stays a calm float (authored fallCalm), only the explicit dive plays the dive clip
 	// air cycle after a web release: per-cycle flavor timeline (never the previous cycle's flavor)
 	if (bInAirCycle)
 	{
@@ -231,15 +231,15 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 				: (FlavorIdx % 2 ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall")));
 		switch (FlavorIdx)
 		{ // short segments of moving clips (no held static pose)
-		case 0: return T < 0.55f ? FName(TEXT("air_spread")) : T < 1.0f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));
-		case 1: return T < 0.45f ? FName(TEXT("air_tuck")) : T < 0.9f ? FName(TEXT("air_rise")) : FName(TEXT("air_fallCalm"));
-		case 2: return T < 0.4f ? FName(TEXT("air_rise")) : T < 0.9f ? FName(TEXT("air_spread")) : FName(TEXT("air_fall"));
-		default: return T < 0.4f ? FName(TEXT("air_fallCalm")) : T < 0.8f ? FName(TEXT("air_tuck")) : FName(TEXT("air_fall"));
+		case 0: return T < 0.55f ? FName(TEXT("air_rise")) : T < 1.0f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));   // round 02: authored float poses only (no spread / tuck splay)
+		case 1: return T < 0.45f ? FName(TEXT("air_rise")) : T < 0.9f ? FName(TEXT("air_apex")) : FName(TEXT("air_fallCalm"));
+		case 2: return T < 0.4f ? FName(TEXT("air_rise")) : T < 0.9f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));
+		default: return T < 0.4f ? FName(TEXT("air_fallCalm")) : T < 0.8f ? FName(TEXT("air_apex")) : FName(TEXT("air_fall"));
 		}
 	}
 	if (Sub == TEXT("rise")) return FName(TEXT("air_rise"));
 	if (Sub == TEXT("apex")) return FName(TEXT("air_apex"));
-	if (Sub == TEXT("dive")) return FName(TEXT("air_dive"));
+	if (Sub == TEXT("dive")) return FName(TEXT("air_fallCalm"));   // round 02: an explicit dive (A.bDive) returned above; a fast free fall stays a calm float
 	return FName(TEXT("air_fall"));
 }
 
@@ -519,7 +519,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	else
 	{
 	// round 01 (W2): the firing arm is on its way to the anchor from the press frame and fully aimed within 0.04 s (was a 0.15 s ramp: the arm was ~half-way when the tip landed)
-	Frame.ArmAimWeight = bAim ? FMath::Clamp(Frame.ArmAimWeight + Dt / 0.04f, 0.f, 1.f) : FMath::Clamp(Frame.ArmAimWeight - Dt / 0.2f, 0.f, 1.f);
+	Frame.ArmAimWeight = bAim ? FMath::Clamp(Frame.ArmAimWeight + Dt / 0.025f, 0.f, 1.f) : FMath::Clamp(Frame.ArmAimWeight - Dt / 0.2f, 0.f, 1.f);
 	Frame.ArmAimAge = bAim ? Frame.ArmAimAge + Dt : 0.f;
 	if (Mesh) Frame.ArmTargetCS = Mesh->GetComponentTransform().InverseTransformPosition(WebAnchorWorld);
 	}
@@ -530,8 +530,9 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	// round 07 (critic r06: "a plank about 45 deg off the rope at the arc bottom"): while the web is held the body hangs along
 	// it — full at the bottom of the arc, 60 % at the ends (the swing clips' reach / tuck still read there); 0.2 s ramps
 	{
-		const float Want = bAim && A.Mode == EWebTravMode::Swing ? 1.f - 0.4f * FMath::Clamp(FMath::Abs(A.Swing.Phase), 0.f, 1.f) : 0.f;
-		const float Step = Dt / (Want > Frame.BodyAlignW ? 0.7f : 0.2f);   // round 01 (W4): the hips-to-head alignment onto the rope eases in over 0.7 s (was 0.2 s)
+		float Want = bAim && A.Mode == EWebTravMode::Swing ? 1.f - 0.25f * FMath::Clamp(FMath::Abs(A.Swing.Phase), 0.f, 1.f) : 0.f;
+		if (A.Mode == EWebTravMode::Air && A.WebShotK >= 0.f) Want = 0.6f * Smooth01(A.WebShotK * 1.5f);   // round 02: the hips start turning under the anchor while the tip flies
+		const float Step = Dt / (Want > Frame.BodyAlignW ? 0.3f : 0.2f);   // round 01 (W4): the hips-to-head alignment onto the rope eases in over 0.7 s (was 0.2 s)
 		Frame.BodyAlignW = Want > Frame.BodyAlignW ? FMath::Min(Want, Frame.BodyAlignW + Step) : FMath::Max(Want, Frame.BodyAlignW - Step);
 	}
 	// round 01 (Gap 4): swing life targets and springs (see FWebTravAnimFrame::SwLifeK)
@@ -556,20 +557,20 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 			auto Bump = [](double X, double C, double Sg) { return FMath::Exp(-FMath::Square((X - C) / Sg)); };
 			auto Sm = [](double X) { X = FMath::Clamp(X, 0.0, 1.0); return X * X * (3.0 - 2.0 * X); };
 			const int32 Lead = A.Swing.bRightHand ? 0 : 1, Trail = 1 - Lead;   // the lead leg is opposite the web hand
-			const double Sweep = 0.12 * Sm((-Ph - 0.15) / 0.6) - 0.5 * Bump(Ph, 0.3, 0.5) - 0.2 * Sm((Ph - 0.55) / 0.4);
-			const double Kb = 0.18 + 0.35 * Bump(Ph, 0.15, 0.42);
+			const double Sweep = 0.12 * Sm((-Ph - 0.15) / 0.6) - 0.8 * Bump(Ph, 0.35, 0.5) - 0.3 * Sm((Ph - 0.55) / 0.4);   // round 02: legs extend forward on the upswing
+			const double Kb = 0.12 + 0.75 * Bump(Ph, -0.02, 0.28);   // round 02: knees tuck at the bottom, straight on the drop and the upswing
 			double Th[2] = { Sweep, Sweep }, Kn[2] = { Kb, Kb };
 			const double Mid = Bump(Ph, 0.08, 0.55), Drop = Sm((-Ph - 0.1) / 0.5);
 			switch (Frame.SwStyle)
 			{
-			case 0: Th[Lead] += -0.6 * (0.2 + 0.8 * Mid); Kn[Lead] += 1.1 * (0.12 + 0.88 * Mid); Th[Trail] += 0.22 * Mid; Kn[Trail] += -0.04; break;   // split: lead knee up, trail leg long
-			case 1: for (int32 K = 0; K < 2; ++K) { Th[K] += -0.5 * Mid; Kn[K] += 1.05 * (0.1 + 0.9 * Mid); } Th[Lead] -= 0.08 * Mid; break;               // tuck: both knees drawn up
-			case 2: for (int32 K = 0; K < 2; ++K) Kn[K] = 0.06 + 0.12 * Mid; break;                                                                         // long: legs together, extended
+			case 0: Th[Lead] += -1.0 * (0.2 + 0.8 * Mid); Kn[Lead] += 1.7 * (0.12 + 0.88 * Mid); Th[Trail] += 0.45 * Mid; Kn[Trail] += -0.04; break;   // split: lead knee up, trail leg long
+			case 1: for (int32 K = 0; K < 2; ++K) { Th[K] += -0.9 * Mid; Kn[K] += 1.7 * (0.1 + 0.9 * Mid); } Th[Lead] -= 0.08 * Mid; break;               // tuck: both knees drawn up
+			case 2: for (int32 K = 0; K < 2; ++K) { Kn[K] = 0.04; Th[K] += -0.25 + 0.5 * Drop; } break;                                                                         // long: legs together, extended
 			default:
 			{ // stride: a slow run in the air, legs long on the drop
 				const double P = SwStp + 2.0 * PI * 0.85 * (SwTime - SwT0), C = FMath::Sin(P), Aa = 1.0 - 0.7 * Drop;
-				Th[0] += (-0.38 * C - 0.1) * Aa; Th[1] += (0.38 * C - 0.1) * Aa;
-				Kn[0] += (0.3 + 0.6 * FMath::Max(0.0, -FMath::Cos(P))) * Aa; Kn[1] += (0.3 + 0.6 * FMath::Max(0.0, FMath::Cos(P))) * Aa;
+				Th[0] += (-0.65 * C - 0.1) * Aa; Th[1] += (0.65 * C - 0.1) * Aa;
+				Kn[0] += (0.3 + 1.1 * FMath::Max(0.0, -FMath::Cos(P))) * Aa; Kn[1] += (0.3 + 1.1 * FMath::Max(0.0, FMath::Cos(P))) * Aa;
 			}
 			}
 			for (int32 K = 0; K < 2; ++K) { SwThS[K].Step(Th[K], 2.1, 0.5, Dt); SwKnS[K].Step(Kn[K], 2.8, 0.55, Dt); Frame.SwTh[K] = float(SwThS[K].X); Frame.SwKn[K] = float(SwKnS[K].X); }
@@ -1277,11 +1278,11 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			{
 				const FCompactPoseBoneIndex BT = Sd == 0 ? BTL : BTR, BS = Idx(Sd == 0 ? TEXT("shin_L") : TEXT("shin_R")), BFt = Idx(Sd == 0 ? TEXT("foot_L") : TEXT("foot_R"));
 				if (!BT.IsValid() || !BS.IsValid() || !BFt.IsValid()) continue;
-				const double Thx = FMath::Clamp(double(Frame.SwTh[Sd]), -1.1, 0.7) * (Frame.SwTh[Sd] < 0.f ? 1.0 - 0.65 * Frame.TuckW : 1.0);
+				const double Thx = FMath::Clamp(double(Frame.SwTh[Sd]), -1.6, 0.9) * (Frame.SwTh[Sd] < 0.f ? 1.0 - 0.65 * Frame.TuckW : 1.0);
 				RotateCS(BT, FQuat(Lat, Thx * Kk * CSn));
 				const FVector Hp = CS(BT).GetLocation(), Kp = CS(BS).GetLocation(), Ap = CS(BFt).GetLocation();
 				const double Cur = FMath::Acos(FMath::Clamp(FVector::DotProduct((Kp - Hp).GetSafeNormal(), (Ap - Kp).GetSafeNormal()), -1.0, 1.0));
-				const double Want = FMath::Clamp(double(Frame.SwKn[Sd]), 0.05, 2.0);
+				const double Want = FMath::Clamp(double(Frame.SwKn[Sd]), 0.04, 2.4);
 				RotateCS(BS, FQuat(Lat, (FMath::Lerp(Want, FMath::Max(Want, Cur), double(Frame.TuckW)) - Cur) * Kk * CSn));
 				RotateCS(BFt, FQuat(Lat, (Frame.SwStyle == 2 ? 0.3 : 0.15) * Kk * CSn));
 			}

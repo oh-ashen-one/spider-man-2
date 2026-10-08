@@ -113,11 +113,18 @@ for i, s in strand_on:
     prog = nrm(sub(v3(R[i], 'fw_s%d_t' % s), A)) / L
     land = t[i] + max(0.0, shoot - f(R[i], 'fw_s%d_age' % s))
     ten = next((t[j] for j in range(i, min(N, i + 40)) if f(R[j], 'tension') > 0.05), None)
-    trav.append((shoot, L / max(shoot, 1e-3), prog, (ten - land) if ten is not None else None, L))
+    mstep, mono, prev = 0.0, True, 0.0
+    for j in range(i, min(N, i + 16)):
+        if f(R[j], 'fw_s%d_on' % s) < 0.5 or case[j] != case[i]: break
+        Lj = nrm(sub(v3(R[j], 'fw_s%d_t' % s), v3(R[j], 'fw_s%d_s' % s))); Lf = max(nrm(sub(v3(R[j], 'fw_s%d_a' % s), v3(R[j], 'fw_s%d_s' % s))), 1.0)
+        if Lj < prev - 0.02 * Lf: mono = False
+        mstep = max(mstep, (Lj - prev) / Lf); prev = Lj
+        if Lj >= 0.97 * Lf: break
+    trav.append((shoot, L / max(shoot, 1e-3), prog, (ten - land) if ten is not None else None, L, mstep, mono))
 if trav:
-    okc = [1 for sh, sp, pr, tl, L in trav if 0.06 <= sh <= 0.20 and 150 <= sp <= 400 and pr < 0.8 and (tl is not None and tl >= -DT * 1.5)]
-    line('W3', 'tip travels visibly 0.06-0.20 s at 150-400 m/s, not full length in frame 1, tension after landing', '%d/%d shots pass; shoot s median %.3f (%.3f-%.3f); tip speed median %.0f m/s; first-frame progress median %.2f; tension starts %.2f s relative to tip landing (median; negative = before)' % (
-        len(okc), len(trav), pct([x[0] for x in trav], 50), min(x[0] for x in trav), max(x[0] for x in trav), pct([x[1] for x in trav], 50), pct([x[2] for x in trav], 50), pct([x[3] for x in trav if x[3] is not None], 50)), len(okc) == len(trav))
+    okc = [1 for sh, sp, pr, tl, L, ms, mo in trav if 0.08 - 1e-3 <= sh <= 0.20 + 1e-3 and 150 <= sp <= 400 and pr < 0.8 and ms <= 0.26 and mo and (tl is not None and tl >= -DT * 1.5)]
+    line('W3', 'tip travels visibly 0.06-0.20 s at 150-400 m/s, not full length in frame 1, tension after landing', '%d/%d shots pass (0.08-0.20 s, growth <= 25 %%/frame, monotone); max per-frame growth %.0f %%; shoot s median %.3f (%.3f-%.3f); tip speed median %.0f m/s; first-frame progress median %.2f; tension starts %.2f s relative to tip landing (median; negative = before)' % (
+        len(okc), len(trav), 100 * max(x[5] for x in trav), pct([x[0] for x in trav], 50), min(x[0] for x in trav), max(x[0] for x in trav), pct([x[1] for x in trav], 50), pct([x[2] for x in trav], 50), pct([x[3] for x in trav if x[3] is not None], 50)), len(okc) == len(trav))
 else: line('W3', 'shot travel', 'no shots', False)
 
 # ---- W4 attach transition

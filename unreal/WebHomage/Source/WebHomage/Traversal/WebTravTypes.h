@@ -175,6 +175,7 @@ struct WEBHOMAGE_API FWebTravAnim
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") float NoAnchorT = -1.f;
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") bool bNoAnchorRight = true;
 	FVector NoAnchorAim = FVector::ForwardVector;
+	float WebShotK = -1.f;   // round 02: progress of a web in flight while the body is still ballistic (0..1, < 0 = none)
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") bool bQuickRightHand = true;
 };
 
@@ -199,4 +200,6 @@ struct FWebTravStrand
 	float Taut = 0.f;
 	float ReleaseT = -1.f;   // >= 0: released, fading (s since release)
 	bool bSnap = false;      // released with an elastic snap
+	FVector AnchorFrom = FVector::ZeroVector; float BlendT = 1.f;   // round 02: a re-anchored strand slides from AnchorFrom to Anchor
+	FVector AnchorNow() const { const float K = BlendT * BlendT * (3.f - 2.f * BlendT); return FMath::Lerp(AnchorFrom, Anchor, K); }
 };

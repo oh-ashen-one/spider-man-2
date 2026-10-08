@@ -144,6 +144,8 @@ public:
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingVz = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
+	/** round 02: the largest lean (rad from world up) of a free fall that is not a dive / glide: 1.45 = nearly horizontal, head leading; never head-down */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirPitchMax = 1.45f;
 	/** Round 07: upward speed kept by a plain web release (m/s); the rest turns into forward speed. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReleaseVzMax = 8.f;
 	/** Round 08: facade clearance kept by the canyon spring (m) and the spring rate (1/s). */
@@ -532,7 +534,7 @@ private:
 	FName FitFlip(FName Want) const;
 	double AirTimeToClear() const;
 	bool PickHandRight(const FVector& AnchorPt, const FVector& Fwd) const;   // round 01 (W9): the anchor's side relative to the travel line at the press
-	static double ShootDurFor(double Dist) { return FMath::Clamp(Dist / 250.0, 0.06, 0.20); }   // round 01 (W3): tip speed 250 m/s inside 0.06-0.20 s
+	static double ShootDurFor(double Dist) { return FMath::Clamp(Dist / 225.0, 0.08, 0.20); }   // round 01 (W3): tip speed 250 m/s inside 0.06-0.20 s
 	bool AnchorStrandClear(const FTravAnchor& A) const;   // round 01 (W7): hand->anchor line free of building geometry and tree crowns
 	void StartTrick(FName Name);
 	void TrickBoost(const FWebTravInput& I);

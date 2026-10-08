@@ -106,7 +106,7 @@ void UWebTraversalComponent::WebAttach(bool bRight, const FVector& Anchor, doubl
 {
 	FWebTravStrand& St = Strands[bSecond ? 1 : 0];
 	St.bActive = true; St.bRightHand = bRight; St.Anchor = Anchor; St.Age = 0.f; St.ShootDur = float(ShootDur);
-	St.Taut = 0.f; St.ReleaseT = -1.f; St.bSnap = false;
+	St.Taut = 0.f; St.ReleaseT = -1.f; St.bSnap = false; St.BlendT = 1.f; St.AnchorFrom = Anchor;
 }
 
 void UWebTraversalComponent::OnLevelAddedToWorld(ULevel* Level, UWorld* InWorld)
@@ -802,7 +802,7 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	// right after a wall cancel the web goes up the facade ahead of the kick
 	bool bFacade = false;
 	if (!bFound && bFacadeWeb && S.bWallCancel && S.Mode == EWebTravMode::Air && S.AirT < 0.8)
-		bFound = bFacade = FacadeAnchor(A);
+		bFound = bFacade = FacadeAnchor(A) && Anchors->Attached(A.Point, A.Normal);   // round 02: an unsupported facade anchor was dropped at the swing start and re-shot (the tip jumped)
 	if (!bFound)
 	{
 		if (S.NoAnchorReach < 0 && (S.NoAnchorT < 0.07 || I.bSwingPressed))
@@ -1270,7 +1270,12 @@ void UWebTraversalComponent::Reanchor(const FTravAnchor& A)
 	ProjectPerpendicular(S.Vel, (Sw.Pivot - S.Pos) / FMath::Max(LN, 1e-3));
 	const double Sp1 = S.Vel.Size();
 	if (Sp1 > 1e-3) S.Vel *= Sp / Sp1;
-	WebAttach(Sw.bRightHand, Sw.Anchor, 0.06);
+	FWebTravStrand& St = Strands[0];
+	if (St.bActive && St.ReleaseT < 0.f && St.Age >= St.ShootDur)
+	{ // round 02: the landed strand slides to the new anchor over 0.15 s (it was re-shot: a full-length strand popping in a new direction)
+		St.AnchorFrom = St.AnchorNow(); St.Anchor = Sw.Anchor; St.BlendT = 0.f;
+	}
+	else WebAttach(Sw.bRightHand, Sw.Anchor, FMath::Max(0.08, St.ShootDur));
 }
 
 // Rope wrap: a building now between body and anchor -> re-anchor ahead if possible, else wrap on that edge
@@ -3025,7 +3030,7 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 			if (KA > 0.0 && HV > 1.5)
 			{
 				const double Ang = FMath::Acos(FMath::Clamp(S.Vel.Z / Sp, -1.0, 1.0));
-				S.Pitch = FMath::Lerp(S.Pitch, FMath::Min(Ang, 2.6), KA);
+				S.Pitch = FMath::Lerp(S.Pitch, FMath::Min(Ang, S.bDive || S.bGliding ? double(AirPitchMax) - 0.45 : double(AirPitchMax)), KA);   // round 02: a free fall never turns head-down (the 177 deg tumble of the s4 float)
 			}
 		}
 		Rate = 8;
@@ -3202,6 +3207,7 @@ void UWebTraversalComponent::WriteAnim(const FQuat& Q)
 	A.FacingDeg = float(FMath::RadiansToDegrees(S.Facing));
 	A.BodyQ = Q; A.RootPos = RootPos * 100.0; A.StepOffset = float(S.StepOff * 100.0);
 	A.bQuickActive = S.Q.bActive; A.QuickT = float(S.Q.T); A.bQuickRightHand = S.Q.bRightHand;
+	A.WebShotK = S.bWebPending && S.PendingShoot > 0.0 ? float(FMath::Clamp(S.PendingT / S.PendingShoot, 0.0, 1.0)) : -1.f;
 	A.NoAnchorT = float(S.NoAnchorReach); A.bNoAnchorRight = S.bNoAnchorRight; A.NoAnchorAim = S.NoAnchorAim;
 }
 
@@ -3358,7 +3364,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 	for (FWebTravStrand& St : Strands)
 	{
 		if (!St.bActive) continue;
-		St.Age += float(Dt);
+		St.Age += float(Dt); St.BlendT = FMath::Min(1.f, St.BlendT + float(Dt) / 0.15f);
 		if (St.ReleaseT >= 0.f) { St.ReleaseT += float(Dt); if (St.ReleaseT > 0.35f) St.bActive = false; }
 	}
 }
