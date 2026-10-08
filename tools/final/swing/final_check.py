@@ -98,7 +98,7 @@ else:
         a0 = ang(sub(hand(max(0, i - 1), right), shoulder(max(0, i - 1), right)), sub(anc, shoulder(max(0, i - 1), right)))
         sd = next((tt for tt, g in angs if g <= a0 - 5.0), None)
         if sd is not None: start_dt.append(sd)
-        arr.append(arrival if arrival is not None else angs[-1][1]); mx.append(max(g for tt, g in angs if tt >= shoot))
+        arr.append(arrival if arrival is not None else angs[-1][1]); mx.append(max([g for tt, g in angs if tt >= shoot] or [angs[-1][1]]))
     if arr:
         line('W2', 'firing arm: starts <= 0.05 s, <= 20 deg at tip arrival, <= 30 deg for the swing', 'arrival median %.0f deg (%d/%d <= 20); max over swing median %.0f deg (%d/%d <= 30); motion start (angle -5 deg) median %s s (%d of %d strands started)' % (
             pct(arr, 50), sum(1 for x in arr if x <= 20), len(arr), pct(mx, 50), sum(1 for x in mx if x <= 30), len(mx), '%.3f' % pct(start_dt, 50) if start_dt else 'never', len(start_dt), len(arr)),
