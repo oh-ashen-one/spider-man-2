@@ -376,7 +376,7 @@ void UWebTraversalComponent::LaunchJump(bool bParkour)
 	}
 	S.bCharging = false; S.ChargeT = 0; S.bGrounded = false;
 	const double Charge = S.JumpCharge;
-	SetMode(EWebTravMode::Air, N_jumpLaunch); S.AirT = 0; S.ApexZ = FeetZ(); S.JumpCharge = Charge; S.SwingCooldown = 0.12;
+	SetMode(EWebTravMode::Air, N_jumpLaunch); S.AirT = 0; S.ApexZ = FeetZ(); S.JumpCharge = Charge; S.SwingCooldown = 0.04;   // round 01 (W10): a swing pressed right after the jump answers within 0.05 s (was 0.12 s)
 	Emit(N_jump, float(Charge));
 }
 
@@ -415,7 +415,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	{ // round 07: web stuck on the rise; the swing starts at the top of the hop (see TryStartSwing)
 		S.PendingT += Hs;
 		if (!I.bSwing) { S.bWebPending = false; WebRelease(); }
-		else if (S.Vel.Z <= PendingVz || S.PendingT >= PendingMax)
+		else if (S.PendingT >= S.PendingShoot && (S.Vel.Z <= PendingVz || S.PendingT >= PendingMax))   // round 01: never before the tip has landed
 		{
 			StartSwing(S.PendingA, S.PendingFwd, S.bPendingTurn ? &S.PendingTurn : nullptr, HLen(S.Vel));
 			S.bGroundSwing = false;
@@ -785,7 +785,9 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	const double HS = HLen(S.Vel);
 	const double Fl = FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
 	FTravAnchor A;
+	Anchors->Filter = [this](const FTravAnchor& C) { return AnchorStrandClear(C); };   // round 01 (W7)
 	bool bFound = Anchors->Find(S.Pos, FwdSearch, Turn, S.Vel.Size(), Fl, A);
+	Anchors->Filter = nullptr;
 	// round 10 (critic r09 b 2.0 s: rope anchored below and behind the hero): a web never pulls from below / behind the body
 	// round 19 (owner: "swing eventually breaks"): the behind-the-body rule only applies at speed (a slow fall / a hop off a wall or perch
 	// has no meaningful travel direction; it refused every web behind the drift)
@@ -803,7 +805,14 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 		bFound = bFacade = FacadeAnchor(A);
 	if (!bFound)
 	{
+		if (S.NoAnchorReach < 0 && (S.NoAnchorT < 0.07 || I.bSwingPressed))
+		{ // round 01 (W10): a readable reach-and-miss -- the arm thrusts up and forward along the camera aim for ~0.25 s, no strand
+			S.NoAnchorReach = 0; S.bNoAnchorRight = !S.bNoAnchorRight;
+			const FVector CF = Cam ? Cam->Forward() : Flat(Fwd);
+			S.NoAnchorAim = (CF + FVector(0, 0, 0.35)).GetSafeNormal();
+		}
 		Emit(N_noAnchor); S.NoAnchorT += 0.06;
+		Anchors->Filter = nullptr;
 		return false;
 	}
 	S.NoAnchorT = 0;
@@ -820,10 +829,9 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 	{
 		S.bWebPending = true; S.PendingT = 0; S.PendingA = A; S.PendingFwd = Fwd; S.bPendingTurn = Turn != nullptr;
 		if (Turn) S.PendingTurn = *Turn;
-		const FVector Dir = Turn ? FMath::Lerp(Fwd, *Turn, 0.6).GetSafeNormal() : Fwd;
-		const double Lat = (A.Point.X - S.Pos.X) * -Dir.Y + (A.Point.Y - S.Pos.Y) * Dir.X;
-		S.bPendingRight = FMath::Abs(Lat) > 2 ? Lat > 0 : !S.Sw.bRightHand;
-		WebAttach(S.bPendingRight, A.Point, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
+		S.bPendingRight = PickHandRight(A.Point, Fwd);
+		S.PendingShoot = ShootDurFor(FVector::Dist(S.Pos, A.Point));
+		WebAttach(S.bPendingRight, A.Point, S.PendingShoot);
 		return true;
 	}
 	if (bFacade)
@@ -833,6 +841,15 @@ bool UWebTraversalComponent::TryStartSwing(const FWebTravInput& I)
 			A.Point.Z - S.Pos.Z, FVector::DotProduct(Flat(A.Point - S.Pos), S.WallCancelDir));
 	}
 	S.bWallCancel = false;
+	if (S.Mode == EWebTravMode::Air)
+	{ // round 01 (W3): the body stays ballistic while the strand is in flight; the pendulum starts when the tip lands (StepAir resolves the pending web)
+		S.bWebPending = true; S.PendingT = 0; S.PendingA = A; S.PendingFwd = Fwd; S.bPendingTurn = Turn != nullptr;
+		if (Turn) S.PendingTurn = *Turn;
+		S.bPendingRight = PickHandRight(A.Point, Fwd);
+		S.PendingShoot = ShootDurFor(FVector::Dist(S.Pos, A.Point));
+		WebAttach(S.bPendingRight, A.Point, S.PendingShoot);
+		return true;
+	}
 	StartSwing(A, Fwd, Turn, HS);
 	S.bGroundSwing = false;
 	return true;
@@ -902,6 +919,13 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 			}
 			// round 10: the first web after a sky launch dives back into the canyon: low point 1-3 storeys over the street
 			if (S.bSky) BottomFeet = double(ArcLowMin) + double(SkyArcExtra) * Rng.FRand();
+			// round 01 (Gap 2): the arc bottom clears the tree crowns on the way (the lowest point lies 0.4-1.4 x the anchor distance ahead): feet >= crown top + 1.5 m over the street
+			for (double K : { 0.35, 0.7, 1.0, 1.4 })
+			{
+				const FVector Q = S.Pos + Fl * (AheadA * K);
+				const double CT = TravWorld.CrownTopAt(Q.X, Q.Y, 5.0);
+				if (CT > -1e8) BottomFeet = FMath::Max(BottomFeet, CT + 1.5 - FMaxD);
+			}
 		}
 		double DZ = FMath::Max(A.Point.Z - S.Pos.Z, double(MinPivotRise));
 		const double BottomZ = FMaxD + BottomFeet + H;
@@ -956,8 +980,8 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 	if (S.bWebPending) Sw.bRightHand = S.bPendingRight; // the strand already shot on the rise (round 07)
 	else
 	{
-		Sw.bRightHand = FMath::Abs(Lat) > 2 ? Lat > 0 : !Sw.bRightHand;
-		WebAttach(Sw.bRightHand, Sw.Anchor, FMath::Clamp(FVector::Dist(S.Pos, A.Point) / 380.0, 0.05, 0.16));
+		Sw.bRightHand = PickHandRight(A.Point, Fwd);
+		WebAttach(Sw.bRightHand, Sw.Anchor, ShootDurFor(FVector::Dist(S.Pos, A.Point)));
 	}
 	S.bWebPending = false;
 	SetMode(EWebTravMode::Swing, N_swingLow); S.Trick = NAME_None; S.bDive = false; S.bAirTrickUsed = false; S.AirTapT = -9;
@@ -1299,12 +1323,35 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 }
 
 // ---- release / air tricks. Selection follows the release trajectory; never the same trick twice in a row.
-double UWebTraversalComponent::StrandClearFraction(const FVector& A, const FVector& B) const
-{
-	const FVector D = B - A; const double L = D.Size();
-	if (L < 0.5) return 1.0;
+bool UWebTraversalComponent::AnchorStrandClear(const FTravAnchor& A) const
+{ // the strand runs from the firing hand (shoulder height, to the anchor's side) to the anchor
+	FVector HV;
+	if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
+	const FVector Right(-HV.Y, HV.X, 0.0);
+	const double Lat = FVector::DotProduct(A.Point - S.Pos, Right);
+	const FVector Hand = S.Pos + FVector(0, 0, 0.5) + Right * (Lat > 0 ? 0.3 : -0.3);
+	const FVector D = A.Point - Hand; const double L = D.Size();
+	if (L < 1.0) return true;
+	if (FVector::DotProduct((Hand - A.Point).GetSafeNormal(), A.Normal) < 0.3 && A.Normal.Z < 0.7) return false;   // a strand that skims the facade grazes its cornices / fire escapes
 	FTravHit Hit;
-	return TravWorld.Raycast(A, D / L, L - 0.4, Hit) ? Hit.Distance / L : 1.0;
+	if (TravWorld.Raycast(Hand, D / L, L - 1.0, Hit) && !Hit.bGround) return false;
+	return !TravWorld.SegmentHitsCrown(Hand, A.Point);
+}
+
+bool UWebTraversalComponent::PickHandRight(const FVector& AnchorPt, const FVector& Fwd) const
+{ // round 01 (W9): the anchor's side relative to the body's travel line (velocity heading; the steering blend of the anchor search is not the travel frame)
+	FVector HV;
+	if (!HDir(S.Vel, HV) || HLen(S.Vel) < 3.0) HV = Fwd;
+	const double Lat = (AnchorPt.X - S.Pos.X) * -HV.Y + (AnchorPt.Y - S.Pos.Y) * HV.X;
+	return FMath::Abs(Lat) > 0.2 ? Lat > 0 : !S.Sw.bRightHand;
+}
+
+double UWebTraversalComponent::StrandClearFraction(const FVector& A, const FVector& B) const
+{ // the last 2.5 m before the anchor are not counted: the anchor sits ON the facade, its cornices / fire escapes are right there
+	const FVector D = B - A; const double L = D.Size();
+	if (L < 3.0) return 1.0;
+	FTravHit Hit;
+	return TravWorld.Raycast(A, D / L, L - 2.5, Hit) ? Hit.Distance / L : 1.0;
 }
 
 FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
@@ -1328,7 +1375,7 @@ FName UWebTraversalComponent::ChooseTrick(const FWebTravInput& I)
 				if (WebFlips::Find(N)) return FitFlip(N);
 			}
 		}
-		const int32 K = S.AutoFlipK++;
+		const int32 K = S.AutoFlipK++ + int32(FlipKStart);
 		const double StickFwd = InD0.X * HV0.X + InD0.Y * HV0.Y, StickLat = S.TrickLat;   // stick relative to travel (2D)
 		float AirS;
 		if (S.bSky) AirS = 0.f;   // sky launches are solved for their own air
@@ -2982,6 +3029,15 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 			}
 		}
 		Rate = 8;
+		if (S.bWebPending && S.PendingShoot > 0.0)
+		{ // round 01 (W4): while the strand is in flight the body turns onto the rope frame (hips under the coming anchor), so the attach finds it already there
+			const double Wp = FMath::SmoothStep(0.0, 1.0, S.PendingT / FMath::Max(S.PendingShoot, 0.05));
+			const FVector ADp = (S.PendingA.Point - S.Pos).GetSafeNormal();
+			Up = FMath::Lerp(Up, (ADp + ZUP * 0.12).GetSafeNormal(), Wp).GetSafeNormal();
+			if (S.Vel.SizeSquared() > 1) Fwd = FMath::Lerp(Fwd, S.Vel.GetSafeNormal(), Wp).GetSafeNormal();
+			S.Pitch *= (1.0 - Wp);
+			Rate = FMath::Lerp(8.0, 14.0, Wp);
+		}
 		break;
 	case EWebTravMode::Swing:
 	{
@@ -3146,6 +3202,7 @@ void UWebTraversalComponent::WriteAnim(const FQuat& Q)
 	A.FacingDeg = float(FMath::RadiansToDegrees(S.Facing));
 	A.BodyQ = Q; A.RootPos = RootPos * 100.0; A.StepOffset = float(S.StepOff * 100.0);
 	A.bQuickActive = S.Q.bActive; A.QuickT = float(S.Q.T); A.bQuickRightHand = S.Q.bRightHand;
+	A.NoAnchorT = float(S.NoAnchorReach); A.bNoAnchorRight = S.bNoAnchorRight; A.NoAnchorAim = S.NoAnchorAim;
 }
 
 // ------------------------------------------------------------------ main update
@@ -3172,6 +3229,7 @@ void UWebTraversalComponent::UpdateTraversal(double Dt, FWebTravInput I)
 		if (S.SinceSwing > CHAIN_BUF && S.Chain) { S.Chain = 0; Emit(N_swingChain, 0.f, 0.f, 0.f); }
 	}
 	S.SwingCooldown -= Dt; S.WallCooldown -= Dt; S.ZipCooldown -= Dt; S.Clock += Dt;
+	if (S.NoAnchorReach >= 0) { S.NoAnchorReach += Dt; if (S.NoAnchorReach > 0.30) S.NoAnchorReach = -1; }
 	if (S.DashWebT > 0) { S.DashWebT -= Dt; if (S.DashWebT <= 0 && S.Mode == EWebTravMode::Air) WebRelease(); }
 	// zip targeting (reticle) — suppressed while swinging fast / zipping
 	if (Cam)

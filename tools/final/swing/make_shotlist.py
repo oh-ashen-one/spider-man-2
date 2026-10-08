@@ -11,7 +11,8 @@ L = ['# Final swing loop: shot list (builder SW)', '', '> Homage fan game. Not a
      '## Settings (every clip)', '- real `-game` (`tools/final/swing/run_clip.py` -> `tools/showcase/play.py --capture`), `-WHProfile=playable -WHResScale=100`, `-WHPerfPreset=unreal/WebHomage/Config/PerfPlayableFast.cvars`, TSR (r.AntiAliasingMethod 4)',
      '- output 1920x1080, internal 1920x1080 (r.ScreenPercentage 100), fixed 1/60 s (`-benchmark -fps=60`), `-dumpmovie` through `-WHMovieAsync`, `-WHTravPreroll=1.5` (the 1.5 s of pre-roll frames are cut: frames - telemetry rows)',
      '- default suit (DA_HeroSuits entry 0, Tessera); maps `/Game/Showcase/Maps/Manhattan_Island` (golden: s1-s4) and `Manhattan_Island_Night` (s5); H.264 mp4 <= 15 MB (crf raised until it fits)',
-     '- evidence = offline visual evidence of scripted input routes, never perf', '', '## Clips']
+     '- evidence = offline visual evidence of scripted input routes, never perf', '',
+     '- scene difference against round 00: from round 01 on the island maps also compose /Game/PropsM3/Maps/PropsM3_Island (supplied props, mostly on lawns and plazas, tiny from swing height) -- not a swing change', '', '## Clips']
 for clip, cases in [(k, v) for k, v in clips.items() if k != '_q']:
     rj = D / rnd / (clip + '_render.json')
     r = json.loads(rj.read_text()) if rj.exists() else None

@@ -104,17 +104,17 @@ public:
 	// two-tone core/rim averaged back to the background's level in the resolved 3-4 px line: 18/65 frames passed), drawn after motion
 	// blur with a manual scene-depth test (M_TravWeb); width clamp 2.8-3.4 px (the build-1 3.2-4.0 px clamp measured up to 4.5 px).
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeLook = 1.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeSolid = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeSolid = 0.f;
 	// r25 build 3: unused strand segments stay registered as visible at a 1e-4 scale (no render-proxy re-creation on the attach frame)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeKeepProxy = 1.f;
 	// r25 build 4: the shot strand's travelling wave (30 cm world, decays in ~0.3 s) bounded to RopeWavePx on screen (< 0 = unbounded, r24)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeWavePx = 1.5f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 2.8f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 3.4f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.30f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.86f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 0.20f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 1.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 3.6f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 4.0f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.7f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.7f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 100.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 1.0f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.004f;
 	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
 	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
@@ -137,6 +137,8 @@ public:
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
+	/** round 01: offset of the program cycle index (K) used by ChooseForInput; scripts set it (tune) so each case of a clip starts at a different program of its stick pool */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipKStart = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipFloorClear = 6.f;  // round 11: a flip must be done this high over the floor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipCatchRoom = 0.35f; // round 11: s left after the program's reach for the catch // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
@@ -471,7 +473,8 @@ private:
 		int32 LastAnchorSide = 0; // round 09: side of the last web anchor (+1 right of travel, -1 left)
 		// round 07: web stuck on the rise, swing pending until the top of the hop
 		bool bWebPending = false, bPendingTurn = false, bPendingRight = true;
-		double PendingT = 0;
+		double NoAnchorReach = -1; bool bNoAnchorRight = true; FVector NoAnchorAim = FVector::ForwardVector;   // round 01 (W10)
+		double PendingT = 0, PendingShoot = 0;   // PendingShoot: the strand's shot time; the pendulum starts when the tip has landed (round 01, W3)
 		FTravAnchor PendingA;
 		FVector PendingFwd = FVector::ForwardVector, PendingTurn = FVector::ForwardVector;
 		FQuick Q;
@@ -528,6 +531,9 @@ private:
 	FName ChooseTrick(const FWebTravInput& I);
 	FName FitFlip(FName Want) const;
 	double AirTimeToClear() const;
+	bool PickHandRight(const FVector& AnchorPt, const FVector& Fwd) const;   // round 01 (W9): the anchor's side relative to the travel line at the press
+	static double ShootDurFor(double Dist) { return FMath::Clamp(Dist / 250.0, 0.06, 0.20); }   // round 01 (W3): tip speed 250 m/s inside 0.06-0.20 s
+	bool AnchorStrandClear(const FTravAnchor& A) const;   // round 01 (W7): hand->anchor line free of building geometry and tree crowns
 	void StartTrick(FName Name);
 	void TrickBoost(const FWebTravInput& I);
 	void ReleaseSwing(bool bJump, const FWebTravInput& I);

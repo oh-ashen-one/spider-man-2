@@ -176,6 +176,7 @@ bool FWebTravAnchors::Find(const FVector& Pos, const FVector& Fwd, const FVector
 			if (++Tries > 7) break;
 			FTravAnchor A;
 			if (!Confirm(Pos, C, Turn != nullptr, A) || !Verify(A)) continue;
+			if (Filter && !Filter(A)) continue;
 			const double PivotZ = A.Point.Z, Rope = FMath::Max(5.0, FMath::Min(A.L, PivotZ - FloorZ - 3.2));
 			if (!ArcClear(Pos, PivotZ, A.Point, Rope) && Tries < 6) continue;
 			Out = A;
@@ -208,11 +209,11 @@ bool FWebTravAnchors::Find(const FVector& Pos, const FVector& Fwd, const FVector
 	if (Best)
 	{
 		Out = { Best->Pos + FVector(0, 0, 0.1), Best->Normal, FVector::Dist(Best->Pos, Pos), 0.0, N_low };
-		if (Verify(Out)) return true;
+		if (Verify(Out) && (!Filter || Filter(Out))) return true;
 	}
 	if (HAbove > 3.0)
 	{
-		return ConeRays(Pos, Want, Out) && Verify(Out);
+		return ConeRays(Pos, Want, Out) && Verify(Out) && (!Filter || Filter(Out));
 	}
 	return false;
 }

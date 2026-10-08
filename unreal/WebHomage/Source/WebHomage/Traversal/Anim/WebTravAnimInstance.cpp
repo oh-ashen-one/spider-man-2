@@ -506,17 +506,82 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	const USkeletalMeshComponent* Mesh = GetSkelMeshComponent();
 	// (round 07: also in the air — a web stuck on the rise before its swing starts, dash / boost webs)
 	const bool bAim = bWebActive && (A.Mode == EWebTravMode::Swing || A.Mode == EWebTravMode::Zip || A.Mode == EWebTravMode::Air) && Mesh;
-	Frame.bArmAim = bAim;
-	Frame.bArmRight = bWebRight;
-	Frame.ArmAimWeight = bAim ? FMath::Clamp(Frame.ArmAimWeight + Dt / 0.15f, 0.f, 1.f) : FMath::Clamp(Frame.ArmAimWeight - Dt / 0.2f, 0.f, 1.f);
+	const bool bReach = !bAim && A.NoAnchorT >= 0.f && Mesh;   // round 01 (W10): reach-and-miss gesture of a press with no anchor
+	Frame.bArmAim = bAim || bReach;
+	Frame.bArmRight = bReach ? A.bNoAnchorRight : bWebRight;
+	if (bReach)
+	{
+		const float Tt = A.NoAnchorT;
+		Frame.ArmAimWeight = Smooth01(Tt / 0.07f) * (1.f - Smooth01((Tt - 0.16f) / 0.12f));
+		Frame.ArmAimAge = Tt;
+		Frame.ArmTargetCS = Mesh->GetComponentTransform().InverseTransformPosition(Mesh->GetComponentLocation() + A.NoAnchorAim * 1000.0);
+	}
+	else
+	{
+	// round 01 (W2): the firing arm is on its way to the anchor from the press frame and fully aimed within 0.04 s (was a 0.15 s ramp: the arm was ~half-way when the tip landed)
+	Frame.ArmAimWeight = bAim ? FMath::Clamp(Frame.ArmAimWeight + Dt / 0.04f, 0.f, 1.f) : FMath::Clamp(Frame.ArmAimWeight - Dt / 0.2f, 0.f, 1.f);
+	Frame.ArmAimAge = bAim ? Frame.ArmAimAge + Dt : 0.f;
 	if (Mesh) Frame.ArmTargetCS = Mesh->GetComponentTransform().InverseTransformPosition(WebAnchorWorld);
-	Frame.SpineBank = A.Mode == EWebTravMode::Swing ? -0.35f * A.Swing.Bank : 0.f;
+	}
+	{ // round 01 (W4): the bank follows the arc through a 0.12 s smoothing (it was applied as a one-frame step at the attach: a 20 deg chest roll in one frame)
+		const float BankT = A.Mode == EWebTravMode::Swing ? -0.35f * A.Swing.Bank : 0.f;
+		Frame.SpineBank += (BankT - Frame.SpineBank) * (1.f - FMath::Exp(-Dt / 0.12f));
+	}
 	// round 07 (critic r06: "a plank about 45 deg off the rope at the arc bottom"): while the web is held the body hangs along
 	// it — full at the bottom of the arc, 60 % at the ends (the swing clips' reach / tuck still read there); 0.2 s ramps
 	{
 		const float Want = bAim && A.Mode == EWebTravMode::Swing ? 1.f - 0.4f * FMath::Clamp(FMath::Abs(A.Swing.Phase), 0.f, 1.f) : 0.f;
-		const float Step = Dt / 0.2f;
+		const float Step = Dt / (Want > Frame.BodyAlignW ? 0.7f : 0.2f);   // round 01 (W4): the hips-to-head alignment onto the rope eases in over 0.7 s (was 0.2 s)
 		Frame.BodyAlignW = Want > Frame.BodyAlignW ? FMath::Min(Want, Frame.BodyAlignW + Step) : FMath::Max(Want, Frame.BodyAlignW - Step);
+	}
+	// round 01 (Gap 4): swing life targets and springs (see FWebTravAnimFrame::SwLifeK)
+	{
+		const bool bSw = A.Mode == EWebTravMode::Swing;
+		SwTime += Dt;
+		if (bSw && !bSwPrev)
+		{ // a new web: pick the body style, never the previous one
+			++SwCount;
+			static const int32 Order[5] = { 0, 1, 2, 3, 0 };   // split, tuck, long, stride, split
+			uint32 Hh = uint32(SwCount) * 2654435761u + 0x9E3779B9u; Hh ^= Hh >> 15;
+			int32 Pick = Order[Hh % 5];
+			for (int32 Tr = 0; Tr < 5 && Pick == SwLastStyle; ++Tr) Pick = Order[(Hh / 5 + Tr + 1) % 5];
+			if (Pick == SwLastStyle) Pick = (SwLastStyle + 1) % 4;
+			SwLastStyle = Frame.SwStyle = Pick;
+			SwT0 = SwTime; SwStp = double((Hh >> 8) & 1023) / 1023.0 * 2.0 * PI;
+		}
+		bSwPrev = bSw;
+		if (bSw)
+		{
+			const double Ph = A.Swing.Phase;
+			auto Bump = [](double X, double C, double Sg) { return FMath::Exp(-FMath::Square((X - C) / Sg)); };
+			auto Sm = [](double X) { X = FMath::Clamp(X, 0.0, 1.0); return X * X * (3.0 - 2.0 * X); };
+			const int32 Lead = A.Swing.bRightHand ? 0 : 1, Trail = 1 - Lead;   // the lead leg is opposite the web hand
+			const double Sweep = 0.12 * Sm((-Ph - 0.15) / 0.6) - 0.5 * Bump(Ph, 0.3, 0.5) - 0.2 * Sm((Ph - 0.55) / 0.4);
+			const double Kb = 0.18 + 0.35 * Bump(Ph, 0.15, 0.42);
+			double Th[2] = { Sweep, Sweep }, Kn[2] = { Kb, Kb };
+			const double Mid = Bump(Ph, 0.08, 0.55), Drop = Sm((-Ph - 0.1) / 0.5);
+			switch (Frame.SwStyle)
+			{
+			case 0: Th[Lead] += -0.6 * (0.2 + 0.8 * Mid); Kn[Lead] += 1.1 * (0.12 + 0.88 * Mid); Th[Trail] += 0.22 * Mid; Kn[Trail] += -0.04; break;   // split: lead knee up, trail leg long
+			case 1: for (int32 K = 0; K < 2; ++K) { Th[K] += -0.5 * Mid; Kn[K] += 1.05 * (0.1 + 0.9 * Mid); } Th[Lead] -= 0.08 * Mid; break;               // tuck: both knees drawn up
+			case 2: for (int32 K = 0; K < 2; ++K) Kn[K] = 0.06 + 0.12 * Mid; break;                                                                         // long: legs together, extended
+			default:
+			{ // stride: a slow run in the air, legs long on the drop
+				const double P = SwStp + 2.0 * PI * 0.85 * (SwTime - SwT0), C = FMath::Sin(P), Aa = 1.0 - 0.7 * Drop;
+				Th[0] += (-0.38 * C - 0.1) * Aa; Th[1] += (0.38 * C - 0.1) * Aa;
+				Kn[0] += (0.3 + 0.6 * FMath::Max(0.0, -FMath::Cos(P))) * Aa; Kn[1] += (0.3 + 0.6 * FMath::Max(0.0, FMath::Cos(P))) * Aa;
+			}
+			}
+			for (int32 K = 0; K < 2; ++K) { SwThS[K].Step(Th[K], 2.1, 0.5, Dt); SwKnS[K].Step(Kn[K], 2.8, 0.55, Dt); Frame.SwTh[K] = float(SwThS[K].X); Frame.SwKn[K] = float(SwKnS[K].X); }
+			SwArchS.Step(-0.2 * Bump(Ph, 0.05, 0.45) + 0.1 * Sm((-Ph - 0.4) / 0.4), 2.0, 0.6, Dt);
+			Frame.SwArch = float(SwArchS.X);
+			Frame.SwLifeK = float(Sm((SwTime - SwT0) / 0.35));
+		}
+		else
+		{ // off the web: the style fades with the release
+			Frame.SwLifeK *= FMath::Exp(-6.f * Dt);
+			for (int32 K = 0; K < 2; ++K) { SwThS[K].X = Frame.SwTh[K]; SwKnS[K].X = Frame.SwKn[K]; }
+		}
 	}
 	// round 19: wall-run stride drive (component space)
 	{
@@ -702,15 +767,39 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			Pose[B].SetRotation((ParentCS.GetRotation().Inverse() * BoneCS.GetRotation()).GetNormalized());
 		}
 	}
-	// web-hand arm aim: rotate the upper arm so shoulder->hand points at the anchor; forearm eased toward straight
+	// web-hand arm aim: rotate the upper arm so shoulder->hand points at the anchor; forearm eased toward straight.
+	// round 01 (W2): a layer over ANY body pose -- run again after every other layer (air arch / track arms, flips, tuck) at the end of the pose; a brief
+	// anticipation raises the shoulder (clavicle toward the head) in the first 0.14 s, the elbow extends with the aim weight
+	auto ApplyArmAim = [&]()
+	{
 	if (Frame.ArmAimWeight > 0.01f)
 	{
 		const TCHAR* UA = Frame.bArmRight ? TEXT("upperArm_R") : TEXT("upperArm_L");
 		const TCHAR* FA = Frame.bArmRight ? TEXT("forearm_R") : TEXT("forearm_L");
 		const TCHAR* HA = Frame.bArmRight ? TEXT("hand_R") : TEXT("hand_L");
-		const FCompactPoseBoneIndex BU = Idx(UA), BF = Idx(FA), BH = Idx(HA);
+		const TCHAR* CL = Frame.bArmRight ? TEXT("shoulder_R") : TEXT("shoulder_L");
+		const FCompactPoseBoneIndex BU = Idx(UA), BF = Idx(FA), BH = Idx(HA), BCl = Idx(CL);
 		if (BU.IsValid() && BF.IsValid() && BH.IsValid())
 		{
+			{ // anticipation: the shoulder girdle raises toward the head and eases back (sin over 0.14 s)
+				const FCompactPoseBoneIndex BHd = Idx(TEXT("head")), BHp = Idx(TEXT("hips"));
+				const float An = Frame.ArmAimAge < 0.14f ? FMath::Sin(PI * Frame.ArmAimAge / 0.14f) : 0.f;
+				if (BCl.IsValid() && BHd.IsValid() && BHp.IsValid() && An > 0.01f)
+				{
+					const FCompactPoseBoneIndex P = BC.GetParentBoneIndex(BCl);
+					const FTransform ParentCS = P.IsValid() ? CS(P) : FTransform::Identity;
+					FTransform CCS = Pose[BCl] * ParentCS;
+					const FVector ArmDir = (CS(BU).GetLocation() - CCS.GetLocation()).GetSafeNormal();
+					const FVector Up = (CS(BHd).GetLocation() - CS(BHp).GetLocation()).GetSafeNormal();
+					const FVector Want = (ArmDir + Up * 0.7).GetSafeNormal();
+					if (!ArmDir.IsNearlyZero() && !Want.IsNearlyZero())
+					{
+						const FQuat D = FQuat::Slerp(FQuat::Identity, FQuat::FindBetweenNormals(ArmDir, Want), 0.8f * An * Frame.ArmAimWeight);
+						CCS.SetRotation((D * CCS.GetRotation()).GetNormalized());
+						Pose[BCl].SetRotation((ParentCS.GetRotation().Inverse() * CCS.GetRotation()).GetNormalized());
+					}
+				}
+			}
 			// straighten the elbow a little first (the rope pulls the arm long)
 			{
 				const FCompactPoseBoneIndex P = BC.GetParentBoneIndex(BF);
@@ -743,6 +832,8 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			}
 		}
 	}
+	};
+	ApplyArmAim();
 	// ---------------------------------------------------------------- round 19 procedural layers (component space, cm)
 	auto SetCS = [&](FCompactPoseBoneIndex B, const FQuat& NewCSRot)
 	{
@@ -1173,5 +1264,31 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			}
 		}
 	}
+	// round 01 (Gap 4): swing life (legs / back on springs over the swing clips + the ref-matched leg hang), then the firing arm re-aims
+	if (Frame.SwLifeK > 0.01f && BHips.IsValid())
+	{
+		const FCompactPoseBoneIndex BTL = Idx(TEXT("thigh_L")), BTR = Idx(TEXT("thigh_R")), BHead = Idx(TEXT("head"));
+		if (BTL.IsValid() && BTR.IsValid() && BHead.IsValid())
+		{
+			const FVector Up = (CS(BHead).GetLocation() - CS(BHips).GetLocation()).GetSafeNormal();
+			FVector Lat = CS(BTR).GetLocation() - CS(BTL).GetLocation(); Lat = (Lat - Up * FVector::DotProduct(Lat, Up)).GetSafeNormal();
+			const double CSn = UWebTravAnimInstance::ChestSign, Kk = Frame.SwLifeK;
+			for (int32 Sd = 0; Sd < 2; ++Sd)
+			{
+				const FCompactPoseBoneIndex BT = Sd == 0 ? BTL : BTR, BS = Idx(Sd == 0 ? TEXT("shin_L") : TEXT("shin_R")), BFt = Idx(Sd == 0 ? TEXT("foot_L") : TEXT("foot_R"));
+				if (!BT.IsValid() || !BS.IsValid() || !BFt.IsValid()) continue;
+				const double Thx = FMath::Clamp(double(Frame.SwTh[Sd]), -1.1, 0.7) * (Frame.SwTh[Sd] < 0.f ? 1.0 - 0.65 * Frame.TuckW : 1.0);
+				RotateCS(BT, FQuat(Lat, Thx * Kk * CSn));
+				const FVector Hp = CS(BT).GetLocation(), Kp = CS(BS).GetLocation(), Ap = CS(BFt).GetLocation();
+				const double Cur = FMath::Acos(FMath::Clamp(FVector::DotProduct((Kp - Hp).GetSafeNormal(), (Ap - Kp).GetSafeNormal()), -1.0, 1.0));
+				const double Want = FMath::Clamp(double(Frame.SwKn[Sd]), 0.05, 2.0);
+				RotateCS(BS, FQuat(Lat, (FMath::Lerp(Want, FMath::Max(Want, Cur), double(Frame.TuckW)) - Cur) * Kk * CSn));
+				RotateCS(BFt, FQuat(Lat, (Frame.SwStyle == 2 ? 0.3 : 0.15) * Kk * CSn));
+			}
+			const double Ar = Frame.SwArch * Kk * CSn;
+			RotateCS(Idx(TEXT("spine")), FQuat(Lat, Ar * 0.45)); RotateCS(Idx(TEXT("spine1")), FQuat(Lat, Ar * 0.35)); RotateCS(Idx(TEXT("spine2")), FQuat(Lat, Ar * 0.2)); RotateCS(BHead, FQuat(Lat, -Ar * 0.5));
+		}
+	}
+	ApplyArmAim();   // round 01: the firing arm aims at the anchor over whatever pose the layers above left
 	return true;
 }

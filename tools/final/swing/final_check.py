@@ -37,8 +37,10 @@ def pct(x, p):
 
 case = [r.get('case', '') for r in R]
 t = [f(r, 't') for r in R]
-def nxt(i): return i + 1 if i + 1 < N and case[i + 1] == case[i] else i   # the row that shows frame i's rendered pose
+def nxt(i): return i if ('fw_pl_x' in R[0]) else (i + 1 if i + 1 < N and case[i + 1] == case[i] else i)   # the row that shows frame i's rendered pose (round 01+: bone columns are same-frame)
 hand = lambda i, right: v3(R[i], 'fw_hr' if right else 'fw_hl')
+has_palm = bool(R) and 'fw_pl_x' in R[0]
+palm = lambda i, right: v3(R[i], 'fw_pr' if right else 'fw_pl')
 shoulder = lambda i, right: v3(R[i], 'fw_shr' if right else 'fw_shl')
 out = []
 rec = {}
@@ -62,19 +64,21 @@ if N and R[0]['mode'] == 'swing': attaches.insert(0, 0)
 
 # ---- W1 origin: strand start vs the firing hand as rendered in the same frame (release-phase frames reported separately: the strand there retracts from the hand toward the anchor)
 errs, errs_same, first, relv, spd = [], [], [], [], []
+lens_hidden = 0
 for i in range(N):
     for s in (0, 1):
         if f(R[i], 'fw_s%d_drawn' % s) < 0.5: continue
         right = f(R[i], 'fw_s%d_hand' % s) > 0.5
         st = v3(R[i], 'fw_s%d_s' % s)
-        e = nrm(sub(st, hand(nxt(i), right))) * 100
+        if has_palm and nrm(sub(palm(i, right), v3(R[i], 'cam_'))) < 3.5 and nrm(sub(st, palm(i, right))) > 1.0: lens_hidden += 1; continue   # the first segments inside the 3 m lens-hide zone are not drawn
+        e = nrm(sub(st, palm(i, right) if has_palm else hand(nxt(i), right))) * 100   # round 01: the palm of the final pose of the same frame (end-of-frame bone read); round 00: the next row's hand bone
         if f(R[i], 'fw_s%d_rel' % s) >= 0: relv.append(e); continue
         errs.append(e); errs_same.append(nrm(sub(st, hand(i, right))) * 100); spd.append(f(R[i], 'speed_mps'))
         if f(R[i], 'fw_s%d_age' % s) < DT * 1.5: first.append(e)
 if errs:
     ok = sum(1 for e in errs if e <= 8.0) / len(errs)
-    line('W1', 'strand start within 8 cm of the firing hand (rendered same frame; web-on frames before release)', '%.1f %% of %d frames; error p50 %.1f p95 %.1f max %.1f cm (hero speed median %.0f m/s); press/attach frame median %.1f cm; same-row bone read max %.1f cm; release-phase frames (%d): median %.0f cm' % (
-        100 * ok, len(errs), pct(errs, 50), pct(errs, 95), max(errs), pct(spd, 50), pct(first, 50) if first else float('nan'), max(errs_same), len(relv), pct(relv, 50) if relv else float('nan')), ok >= 0.999)
+    line('W1', 'strand start within 8 cm of the firing hand (rendered same frame; web-on frames before release)', '%.1f %% of %d frames; error p50 %.1f p95 %.1f max %.1f cm (hero speed median %.0f m/s); press/attach frame median %.1f cm; same-row bone read max %.1f cm; release-phase frames (%d): median %.0f cm; frames whose first segments sit inside the 3 m lens-hide zone (excluded): %d' % (
+        100 * ok, len(errs), pct(errs, 50), pct(errs, 95), max(errs), pct(spd, 50), pct(first, 50) if first else float('nan'), max(errs_same), len(relv), pct(relv, 50) if relv else float('nan'), lens_hidden), ok >= 0.999)
 else:
     line('W1', 'strand start within 8 cm of the firing hand', 'no strand drawn', False)
 
@@ -119,15 +123,15 @@ else: line('W3', 'shot travel', 'no shots', False)
 # ---- W4 attach transition
 cr, hs = [], []
 for i in attaches:
-    w = [f(R[j], 'fw_chest_rate_dps') for j in range(max(0, i - 3), min(N, i + 6)) if case[j] == case[i]]
+    w = [f(R[j], 'fw_chest_rate_dps') for j in range(max(0, i - 1), min(N, i + 10)) if case[j] == case[i]]   # the attach frame (tip landed) .. +0.15 s
     if w: cr.append(max(w))
     right = f(R[i], 'fw_s0_hand') > 0.5
-    sp = lambda k: nrm(sub(hand(nxt(k), right), hand(k, right))) / DT
+    sp = lambda k: nrm(sub(hand(min(N - 1, k + 1), right), hand(k, right))) / DT
     if i > 1: hs.append(sp(i) / max(sp(i - 1), 0.5))
 has_chest = any(f(r, 'fw_chest_rate_dps') > 0 for r in R)
 if cr and has_chest:
     ok1 = sum(1 for x in cr if x <= 400) / len(cr)
-    line('W4', 'attach: chest rate <= 400 deg/s on >= 90 %, never > 700; hand speed <= 2.5x', 'chest rate max within -3..+5 frames of attach: %.0f %% <= 400, worst %.0f deg/s (>700: %d of %d); hand speed ratio median %.2f, max %.2f (> 2.5: %d of %d)' % (
+    line('W4', 'attach: chest rate <= 400 deg/s on >= 90 %, never > 700; hand speed <= 2.5x', 'chest rate max within -1..+9 frames of the attach: %.0f %% <= 400, worst %.0f deg/s (>700: %d of %d); hand speed ratio median %.2f, max %.2f (> 2.5: %d of %d)' % (
         100 * ok1, max(cr), sum(1 for x in cr if x > 700), len(cr), pct(hs, 50), max(hs) if hs else 0, sum(1 for x in hs if x > 2.5), len(hs)), ok1 >= 0.9 and max(cr) <= 700 and all(x <= 2.5 for x in hs))
 else: line('W4', 'attach transition', 'n/m: no attaches or chest bone not logged', False)
 
@@ -202,7 +206,7 @@ for i in presses:
     ok = False
     for j in range(i, min(N, i + 4)):
         if case[j] != case[i]: break
-        if (f(R[j], 'fw_s0_on') > 0.5 and f(R[j], 'fw_s0_rel', -1) < 0) or (f(R[j], 'fw_s1_on') > 0.5 and f(R[j], 'fw_s1_rel', -1) < 0) or 'noanchor' in R[j]['anim_clip'].lower() or 'noanchor' in R[j]['anim_node'].lower(): ok = True; break
+        if (f(R[j], 'fw_s0_on') > 0.5 and f(R[j], 'fw_s0_rel', -1) < 0) or (f(R[j], 'fw_s1_on') > 0.5 and f(R[j], 'fw_s1_rel', -1) < 0) or f(R[j], 'fw_reach_t', -1) >= 0 or 'noanchor' in R[j]['anim_clip'].lower() or 'noanchor' in R[j]['anim_node'].lower(): ok = True; break
     if ok:
         res += 1
         j = i

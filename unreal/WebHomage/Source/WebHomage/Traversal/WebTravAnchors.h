@@ -43,6 +43,8 @@ public:
 
 	/** pos: body centre; fwd: horizontal travel dir (unit); turn: horizontal steer dir or null. */
 	bool Find(const FVector& Pos, const FVector& Fwd, const FVector* Turn, double Speed, double FloorZ, FTravAnchor& Out) const;
+	/** round 01 (W7): optional candidate filter (hand -> anchor line free of geometry and tree crowns); a rejected candidate is skipped, the next one is tried */
+	TFunction<bool(const FTravAnchor&)> Filter;
 	/** Is the anchor still attached to a 3D model? */
 	bool Attached(const FVector& Point, const FVector& Normal) const;
 

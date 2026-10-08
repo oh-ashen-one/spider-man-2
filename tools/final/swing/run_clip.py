@@ -11,11 +11,12 @@ SCR = Path.home() / 'sm2-n1/_scratch/final/swing'
 SHOTS = ROOT / 'unreal/WebHomage/Saved/Showcase/User/Saved/Screenshots/MacEditor'   # play.py runs with -UserDir=Saved/Showcase/User/
 PRE = 1.5
 ap = argparse.ArgumentParser()
-ap.add_argument('round'); ap.add_argument('clip'); ap.add_argument('--map'); ap.add_argument('--cases'); ap.add_argument('--crf', type=int, default=22); ap.add_argument('--keep-frames', action='store_true'); ap.add_argument('--reuse', action='store_true', help='post-process frames / telemetry left by an earlier engine run of this case (no launch)')
+ap.add_argument('round'); ap.add_argument('clip'); ap.add_argument('--map'); ap.add_argument('--cases'); ap.add_argument('--crf', type=int, default=22); ap.add_argument('--keep-frames', action='store_true'); ap.add_argument('--q', type=float, help='dev render: quit time (s after the cut) for every case; the outputs get the suffix _dev'); ap.add_argument('--reuse', action='store_true', help='post-process frames / telemetry left by an earlier engine run of this case (no launch)')
 a = ap.parse_args()
 clips = json.loads((ROOT / 'docs/night1/traversal/scripts/final/clips.json').read_text())
 cases = clips[a.clip]
 if a.cases: cases = [c for c in cases if c[0] in a.cases.split(',')]
+if a.q: cases = [(n, a.q) for n, _ in cases]
 game_map = a.map or ('island-night' if a.clip.startswith('s5') else 'island')
 docs = ROOT / 'docs/night1/final/swing' / a.round; docs.mkdir(parents=True, exist_ok=True)
 work = SCR / a.round / a.clip; work.mkdir(parents=True, exist_ok=True)
@@ -55,15 +56,16 @@ for name, q in cases:
     info['cases'].append({'case': name, 'frames_rendered': len(frames), 'preroll_frames_cut': skip, 'rows': len(rows), 'wall_s': round(wall, 1), 'fps_render': round(len(frames) / wall, 2)})
     print(name, info['cases'][-1], flush=True)
     shutil.copy(d / 'route.log', work / (name + '.log'))
-with (docs / (a.clip + '_telemetry.csv')).open('w', newline='') as f:
+with (docs / (a.clip + ('_dev' if a.q else '') + '_telemetry.csv')).open('w', newline='') as f:
     w = csv.DictWriter(f, fieldnames=list(all_rows[0].keys())); w.writeheader(); w.writerows(all_rows)
-mp4 = docs / (a.clip + '.mp4')
+tag = a.clip + ('_dev' if a.q else '')
+mp4 = docs / (tag + '.mp4')
 crf = a.crf
 while True:
     subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-framerate', '60', '-i', str(out_frames / 'f%06d.png'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', str(crf), '-preset', 'slow', '-movflags', '+faststart', str(mp4)], check=True)
     if mp4.stat().st_size <= 15 * 1024 * 1024 or crf >= 36: break
     crf += 3
 info.update({'frames': total_frames, 'duration_s': round(total_frames / 60, 2), 'mp4_mb': round(mp4.stat().st_size / 1048576, 2), 'crf': crf, 'wall_s_total': round(sum(c['wall_s'] for c in info['cases']), 1)})
-(docs / (a.clip + '_render.json')).write_text(json.dumps(info, indent=1))
+(docs / (tag + '_render.json')).write_text(json.dumps(info, indent=1))
 if not a.keep_frames: shutil.rmtree(out_frames)
 print(json.dumps(info))

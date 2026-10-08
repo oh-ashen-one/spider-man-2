@@ -30,6 +30,7 @@ struct FWebTravAnimFrame
 	bool bArmAim = false;
 	bool bArmRight = true;
 	float ArmAimWeight = 0.f;
+	float ArmAimAge = 0.f;   // s since the firing arm started aiming (anticipation: shoulder raise)
 	FVector ArmTargetCS = FVector::ZeroVector;   // component space (cm)
 	float SpineBank = 0.f;                        // rad
 	float BodyAlignW = 0.f;                       // round 07: hips->head turned onto the web (hips->anchor), 0..1
@@ -50,6 +51,12 @@ struct FWebTravAnimFrame
 	// round 19 (owner: swing / in-air poses at speed): procedural leg shaping while swinging (legs trail the velocity at the arc bottom,
 	// knees tuck on the rise) and the free arm opening against the arc; weights 0..1
 	float SwingLegW = 0.f, SwingTuck = 0.f, SwingFreeArmW = 0.f;
+	// round 01 (Gap 4): SWING LIFE -- ported from the browser animator (spiderbench animator.js swingLife): per web one body style (split / tuck / long / stride, never the same twice
+	// in a row); thighs, knees and the back run on springs (2.1 / 2.8 / 2.0 Hz, zeta .5-.6) toward phase-dependent targets, so the legs and torso lag the arc, swing through and overshoot.
+	// SwTh = thigh pitch (rad, - = knee forward), SwKn = absolute knee flexion (rad), SwArch = back arch (rad); index 0 = left, 1 = right
+	float SwLifeK = 0.f, SwArch = 0.f;
+	int32 SwStyle = 0;
+	float SwTh[2] = { 0.f, 0.f }, SwKn[2] = { 0.f, 0.f };
 	FVector VelCS = FVector::ZeroVector;  // component-space velocity direction (unit)
 	// round 19 (r18 critic): tight tuck (wrists to the shins, knees together) while a flip program is in a Tuck shape
 	float TuckW = 0.f;
@@ -141,6 +148,10 @@ public:
 	static double ChestSign;
 private:
 	// air cycle
+	// swing life state (game thread)
+	struct FSwSpring { double X = 0.0, V = 0.0; void Step(double Target, double FreqHz, double Zeta, double Dt) { const double W = 2.0 * PI * FreqHz; const int32 N = FMath::Max(1, FMath::CeilToInt(Dt / (1.0 / 120.0))); const double H = Dt / N; for (int32 I = 0; I < N; ++I) { const double Acc = W * W * (Target - X) - 2.0 * Zeta * W * V; V += Acc * H; X += V * H; } } };
+	FSwSpring SwThS[2], SwKnS[2], SwArchS;
+	int32 SwLastStyle = -1, SwCount = 0; double SwT0 = 0.0, SwTime = 0.0, SwStp = 0.0; bool bSwPrev = false;
 	bool bInAirCycle = false;
 	float AirCycleT = 0.f;
 	int32 FlavorIdx = -1, CycleCount = 0;

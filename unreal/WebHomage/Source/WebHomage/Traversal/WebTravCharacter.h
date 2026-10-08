@@ -23,6 +23,17 @@ class USceneComponent;
 class UMaterialInstanceDynamic;
 class UInputAction;
 
+/** Final loop round 01: strands are drawn after this frame's pose is final. Phase 0 runs in TG_PostUpdateWork with the hero mesh's tick as a prerequisite (UpdateWebs), phase 1 in
+ *  TG_LastDemotable (telemetry row: strand start as drawn + the final-pose palm). */
+struct FWebTravPostTick : public FTickFunction
+{
+	class AWebTravCharacter* Target = nullptr;
+	int32 Phase = 0;
+	virtual void ExecuteTick(float DeltaTime, ELevelTick TickType, ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent) override;
+	virtual FString DiagnosticMessage() override { return TEXT("WebTravPostTick"); }
+};
+template<> struct TStructOpsTypeTraits<FWebTravPostTick> : public TStructOpsTypeTraitsBase2<FWebTravPostTick> { enum { WithCopy = false }; };
+
 UCLASS(config=Game)
 class WEBHOMAGE_API AWebTravCharacter : public AWebHomageCharacter
 {
@@ -88,6 +99,8 @@ protected:
 	 */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillCd = 5000.f;
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFlipCd = 18000.f;
+	/** round 01: at night (MPC NightK 1) the hero-only fill stays at this candela (was faded to 0): a subtle fill so the hero reads against the lit facades */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillNightCd = 1400.f;
 	/** Round 15: fill multiplier when the hero is front-lit by the sun (camera looking away from it). */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFrontK = 0.3f;
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillDist = 1.8f;
@@ -99,6 +112,9 @@ private:
 	bool SetupHeroMesh();
 	void PoseFigure(float Dt);
 	float SwayW = 0.f; // round 06: air-sway weight (spring)
+	// round 01 (W4): the body frame blends into the rope frame at the attach with a critically damped spring (visual only)
+	FQuat SwayDeltaQ = FQuat::Identity;
+		FQuat BodySpringQ = FQuat::Identity; FVector BodySpringVel = FVector::ZeroVector; double AttachT = 9.0; bool bPrevSwingMode = false; bool bBodySpringInit = false;
 	FQuat FlipOffQ = FQuat::Identity;   // round 11: flip rotation relative to the body frame (springs back when a program is cut)
 	FWebFlipPose LastFlip;              // round 11: telemetry
 	FName LastFlipName;
@@ -202,6 +218,20 @@ private:
 	// final loop round 00: telemetry-only state (read-only bone samples; never feeds back into the sim, the camera or the pose)
 	bool bFwBones = false; FName FwShoulder[2], FwChest; FQuat FwChestPrev = FQuat::Identity; double FwChestPrevT = -1.0; bool FwChestHas = false;
 	FString FinalSwingCols(double T);
+	// round 01: post-pose strand tick + palm origin
+	FWebTravPostTick PostTickFn, EndTickFn;
+	bool bPostTickRegistered = false;
+	float PendingWebDt = 0.f; FVector PendingCamCm = FVector::ZeroVector;
+	FString PendingRow; double PendingRowT = 0.0; bool bRowPending = false;
+	FVector PalmLocal[2] = { FVector::ZeroVector, FVector::ZeroVector };   // finger axis (hand bone space, unit) from the reference pose: [0] left, [1] right
+	bool bPalmOk = false;
+	FString BuildCols25();
+public:
+	void PostAnimTick(float Dt);
+	void EndAnimTick();
+	FVector PalmWorldCm(bool bRight) const;   // hand bone + PalmOffsetCm along the finger axis (the strand origin)
+	static constexpr double PalmOffsetCm = 7.0;
+private:
 	UPROPERTY(Transient) TObjectPtr<class USkeletalMeshComponent> LensMesh;
 	UPROPERTY(Transient) TObjectPtr<class UPointLightComponent> HeroFill; // round 13
 	void UpdateHeroFill();

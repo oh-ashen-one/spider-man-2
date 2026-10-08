@@ -90,6 +90,71 @@ void FWebTravWorld::AddLevelInternal(ULevel* L, bool bLog)
 	(void)Before;
 }
 
+void FWebTravWorld::AddCrownOwned(const FVector& C, double R)
+{
+	const FVector4 Sp(C.X, C.Y, C.Z, R);
+	const int32 X0 = FMath::FloorToInt((C.X - R) / 16.0), X1 = FMath::FloorToInt((C.X + R) / 16.0), Y0 = FMath::FloorToInt((C.Y - R) / 16.0), Y1 = FMath::FloorToInt((C.Y + R) / 16.0);
+	for (int32 X = X0; X <= X1; ++X)
+		for (int32 Y = Y0; Y <= Y1; ++Y)
+		{
+			const int64 K = CrownKey(X, Y);
+			CrownGrid.FindOrAdd(K).Add(Sp);
+			if (CurOwn) CurOwn->Crowns.Add(TPair<int64, FVector4>(K, Sp));
+		}
+}
+
+bool FWebTravWorld::SegmentHitsCrown(const FVector& A, const FVector& B) const
+{
+	const FVector D = B - A; const double L = D.Size();
+	if (L < 6.0 || CrownGrid.Num() == 0) return false;
+	const FVector N = D / L;
+	const int32 X0 = FMath::FloorToInt(FMath::Min(A.X, B.X) / 16.0) - 0, X1 = FMath::FloorToInt(FMath::Max(A.X, B.X) / 16.0);
+	const int32 Y0 = FMath::FloorToInt(FMath::Min(A.Y, B.Y) / 16.0), Y1 = FMath::FloorToInt(FMath::Max(A.Y, B.Y) / 16.0);
+	for (int32 X = X0; X <= X1; ++X)
+		for (int32 Y = Y0; Y <= Y1; ++Y)
+			if (const TArray<FVector4>* Cl = CrownGrid.Find(CrownKey(X, Y)))
+				for (const FVector4& Sp : *Cl)
+				{
+					const FVector C(Sp.X, Sp.Y, Sp.Z);
+					const double T = FMath::Clamp(FVector::DotProduct(C - A, N), 0.0, L);
+					if (T < 2.5 || T > L - 2.5) continue;
+					if (FVector::DistSquared(A + N * T, C) < double(Sp.W) * double(Sp.W)) return true;
+				}
+	return false;
+}
+
+double FWebTravWorld::CrownTopAt(double X, double Y, double R) const
+{
+	double Top = -1e9;
+	if (CrownGrid.Num() == 0) return Top;
+	for (int32 CX = FMath::FloorToInt((X - R) / 16.0); CX <= FMath::FloorToInt((X + R) / 16.0); ++CX)
+		for (int32 CY = FMath::FloorToInt((Y - R) / 16.0); CY <= FMath::FloorToInt((Y + R) / 16.0); ++CY)
+			if (const TArray<FVector4>* Cl = CrownGrid.Find(CrownKey(CX, CY)))
+				for (const FVector4& Sp : *Cl)
+					if (FMath::Square(Sp.X - X) + FMath::Square(Sp.Y - Y) <= FMath::Square(R + Sp.W)) Top = FMath::Max(Top, double(Sp.Z) + double(Sp.W));
+	return Top;
+}
+
+bool FWebTravWorld::PushOutOfCrowns(FVector& P, double Margin) const
+{
+	if (CrownGrid.Num() == 0) return false;
+	bool bMoved = false;
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		const TArray<FVector4>* Cl = CrownGrid.Find(CrownKey(FMath::FloorToInt(P.X / 16.0), FMath::FloorToInt(P.Y / 16.0)));
+		if (!Cl) break;
+		bool bAny = false;
+		for (const FVector4& Sp : *Cl)
+		{
+			const FVector C(Sp.X, Sp.Y, Sp.Z); const double R = double(Sp.W) + Margin;
+			FVector D = P - C; const double Dd = D.Size();
+			if (Dd < R) { D = Dd > 1e-3 ? D / Dd : FVector(0, 0, 1); P = C + D * R; bAny = bMoved = true; }
+		}
+		if (!bAny) break;
+	}
+	return bMoved;
+}
+
 void FWebTravWorld::AddLevel(ULevel* L) { AddLevelInternal(L, true); }
 
 bool FWebTravWorld::RemoveLevel(ULevel* L, FBox& OutBoundsM)
@@ -108,6 +173,7 @@ bool FWebTravWorld::RemoveLevel(ULevel* L, FBox& OutBoundsM)
 		Boxes[Idx] = FTravBox{ FVector(1e7), FVector(1e7) };   // tombstone: the index stays valid (anchors / hits holding it) but matches nothing
 	}
 	for (int32 Idx : Own->GroundIdx) GroundBoxes[Idx] = FTravBox{ FVector(1e7), FVector(1e7) };
+	for (const TPair<int64, FVector4>& Cr : Own->Crowns) if (TArray<FVector4>* Cl = CrownGrid.Find(Cr.Key)) { Cl->RemoveSingleSwap(Cr.Value); if (Cl->Num() == 0) CrownGrid.Remove(Cr.Key); }
 	for (const UPrimitiveComponent* P : Own->Allowed) AllowedComps.Remove(P);
 	for (const UPrimitiveComponent* P : Own->CompBox) CompToBox.Remove(P);
 	for (const UPrimitiveComponent* P : Own->Inst) InstToBox.Remove(P);
@@ -130,6 +196,32 @@ void FWebTravWorld::IndexLevelActors(ULevel* L)
 		{
 			continue;
 		}
+#if WITH_EDITOR
+		{ // round 01 (W7): tree crowns (leaf instanced meshes of the street / park trees)
+			FString Lb = A->GetActorLabel().ToLower(); Lb.ReplaceInline(TEXT("-"), TEXT("_"));
+			if (Lb.StartsWith(TEXT("ism_ez_")) && Lb.Contains(TEXT("leaves")))
+			{
+				TInlineComponentArray<UInstancedStaticMeshComponent*> Is(A);
+				for (UInstancedStaticMeshComponent* IC : Is)
+				{
+					const UStaticMesh* SM = IC ? IC->GetStaticMesh() : nullptr;
+					if (!SM) continue;
+					const FBoxSphereBounds MB = SM->GetBounds();
+					TSet<int64> Seen;
+					for (int32 K = 0; K < IC->GetInstanceCount(); ++K)
+					{
+						FTransform T;
+						if (!IC->GetInstanceTransform(K, T, true)) continue;
+						const FVector C = T.TransformPosition(MB.Origin) / 100.0;
+						const int64 Q = (int64(FMath::RoundToInt(C.X)) << 40) ^ (int64(FMath::RoundToInt(C.Y)) << 16) ^ int64(FMath::RoundToInt(C.Z));
+						if (Seen.Contains(Q)) continue;
+						Seen.Add(Q);
+						AddCrownOwned(C, 0.6 * MB.SphereRadius * T.GetScale3D().GetMax() / 100.0);
+					}
+				}
+			}
+		}
+#endif
 		if (A->ActorHasTag(NAME_WHGround))
 		{
 			FVector Origin, Extent;

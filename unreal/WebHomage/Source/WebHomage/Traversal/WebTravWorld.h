@@ -43,6 +43,12 @@ public:
 
 	/** Ray from O along unit D up to MaxDist (m). */
 	bool Raycast(const FVector& O, const FVector& D, double MaxDist, FTravHit& Out) const;
+	/** round 01: does the segment A->B (m) pass through a tree crown sphere (the 2.5 m at each end are ignored: the hand stands under trees, the anchor sits behind leaves)? */
+	bool SegmentHitsCrown(const FVector& A, const FVector& B) const;
+	/** round 01: highest crown top (m) of any tree crown whose centre is within RadiusM horizontally of (X, Y); -1e9 when none */
+	double CrownTopAt(double X, double Y, double RadiusM) const;
+	/** round 01: moves P (m) out of every crown sphere it lies in (+ MarginM); true when it moved */
+	bool PushOutOfCrowns(FVector& P, double MarginM) const;
 	/** Sphere sweep from A to B (m); returns true on a blocking hit (OutDist = distance travelled before the hit). */
 	bool SphereSweep(const FVector& A, const FVector& B, double Radius, double& OutDist) const;
 	/** Does a sphere at P (m) overlap solid geometry (ground included)? */
@@ -105,6 +111,7 @@ private:
 	{
 		TArray<int32> BoxIdx, GroundIdx;
 		TArray<const UPrimitiveComponent*> Allowed, Excluded, CompBox, Inst;
+		TArray<TPair<int64, FVector4>> Crowns;   // round 01: tree-crown spheres (x, y, z, radius in m) with their grid cell, removed with the level
 		FBox Bounds = FBox(ForceInit);
 	};
 	struct FIndexStats { int32 NInstComps = 0, NInstBoxes = 0, NInstSkipped = 0, NFarSkipped = 0, NVisualOnly = 0, NVisSolid = 0, NExcluded = 0, NReEnabled = 0, NCubesOff = 0; };
@@ -117,6 +124,10 @@ private:
 	void CompToBoxOwned(const UPrimitiveComponent* P, int32 Idx);
 	TArray<int32>& InstOwned(const UPrimitiveComponent* P);
 	TMap<const ULevel*, FLevelOwn> LevelOwn;
+	// round 01 (W7): tree crowns have no collision -- spheres built from the leaf instanced meshes of the streamed tiles (ISM_ez_*leaves), 16 m grid
+	TMap<int64, TArray<FVector4>> CrownGrid;
+	int64 CrownKey(int32 CX, int32 CY) const { return (int64(CX) << 32) ^ int64(uint32(CY)); }
+	void AddCrownOwned(const FVector& CenterM, double RadiusM);
 	FLevelOwn* CurOwn = nullptr;
 	FIndexStats Stats;
 	const AActor* IgnoreActorPtr = nullptr;

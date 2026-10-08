@@ -8,7 +8,7 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[3] / 'docs/night1/traversal/scripts/final'
 OUT.mkdir(parents=True, exist_ok=True)
-CHAIN = {"autoChain": True, "releasePhase": 0.55, "gap": 0.8, "repressVz": -8.0, "trickEvery": 3, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}
+CHAIN = {"autoChain": True, "releasePhase": 0.55, "gap": 0.3, "repressVz": 99.0, "trickEvery": 0, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}
 clips = {}
 
 
@@ -25,8 +25,9 @@ def air(pos, vel, yaw=-90.0, pitch=0.12):
 
 # s1 / s5: the r26 a_swing_chain rule (airborne swing chain north up the avenue; release on the rising front, re-press once falling at 8 m/s, every 3rd release a flow flip)
 chain_keys = [{"t": 0.0, "move": [0, 1], "heading": -90, "swing": False}, dict({"t": 0.4}, **CHAIN)]
-clips['s1_swing_chain'] = [write('s1_swing_chain', 'r26 a_swing_chain rule on the island avenue: 20 s', air([250, 240, 24], [0, -22, 0]), chain_keys, 20.0)]
-clips['s5_night_swing'] = [write('s5_night_swing', 's1 inputs, night map', air([250, 240, 24], [0, -22, 0]), chain_keys, 20.0)]
+CHAIN_TUNE = "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0"   # swing bottoms >= 14 m over the street (above the street-tree canopy), the f4 altitude rule
+clips['s1_swing_chain'] = [write('s1_swing_chain', 'a skilled player holding RMB: release on the rising front, re-press 0.3 s later (r26 a_swing_chain rule, gap 0.3 / repressVz 99), bottoms >= 14 m: 20 s', air([250, 560, 24], [0, -22, 0]), chain_keys, 20.0, tune=CHAIN_TUNE)]
+clips['s5_night_swing'] = [write('s5_night_swing', 's1 inputs, night map', air([250, 560, 24], [0, -22, 0]), chain_keys, 20.0, tune=CHAIN_TUNE)]
 
 # s4: releases without a trick, long air (re-press 1.6 s after each release)
 f_keys = [{"t": 0.0, "move": [0, 1], "heading": -90, "swing": False}, {"t": 0.4, "autoChain": True, "releasePhase": 0.55, "gap": 1.6, "repressVz": -8.0, "trickEvery": 0, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}]
@@ -37,7 +38,7 @@ clips['s4_release_float'] = [write('s4_release_float', 'autoChain releases with 
 s3c = []
 for n, (nm, m) in enumerate([('fwd', [0, 1]), ('back', [0, -1]), ('right', [1, 0]), ('left', [-1, 0]), ('neutral', [0, 0]), ('fwd_right', [0.7, 0.7]), ('back_left', [-0.7, -0.7])], 1):
     s3c.append(write('s3_c%d_%s' % (n, nm), 'F pressed 0.4 s in with the stick %s %s, swing 2.0 s later' % (nm, m), air([250, 200, 110], [0, -22, 6]),
-                     [{"t": 0.0, "move": [0, 0], "swing": False}, {"t": 0.3, "move": m}, {"t": 0.4, "trick": True}, {"t": 0.5, "trick": False}, {"t": 2.4, "swing": True}, {"t": 3.5, "swing": False}], 3.8))
+                     [{"t": 0.0, "move": [0, 0], "swing": False}, {"t": 0.3, "move": m}, {"t": 0.4, "trick": True}, {"t": 0.5, "trick": False}, {"t": 2.4, "swing": True}, {"t": 3.5, "swing": False}], 3.8, tune='FlipKStart=%d' % (n + 1 if n % 2 else n - 1)))   # each case starts at another program of its stick pool
 clips['s3_flip_chain'] = s3c
 
 # s2: nine awkward-press cases (each 3-4 s after the cut)

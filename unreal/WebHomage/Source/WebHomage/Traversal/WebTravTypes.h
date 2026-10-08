@@ -171,6 +171,10 @@ struct WEBHOMAGE_API FWebTravAnim
 	/** Quick web boost: one-arm yank. */
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") bool bQuickActive = false;
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") float QuickT = 0.f;
+	// round 01 (W10): the reach-and-miss gesture of a press with no anchor (s since the press, < 0 = none), the reaching hand, the aim (world, unit)
+	UPROPERTY(BlueprintReadOnly, Category="Traversal") float NoAnchorT = -1.f;
+	UPROPERTY(BlueprintReadOnly, Category="Traversal") bool bNoAnchorRight = true;
+	FVector NoAnchorAim = FVector::ForwardVector;
 	UPROPERTY(BlueprintReadOnly, Category="Traversal") bool bQuickRightHand = true;
 };
 

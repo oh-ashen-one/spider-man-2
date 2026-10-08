@@ -396,6 +396,24 @@ bool AWebTravCharacter::SetupHeroMesh()
 	const FQuat Basis = FRotationMatrix::MakeFromXZ(Fwd, Up).ToQuat();
 	const FQuat Corr = Basis.Inverse();
 	const FVector LeftDir = Corr.RotateVector(RefCS(TEXT("hand_L")) - RefCS(TEXT("hand_R")));
+	{ // round 01: the finger axis of each hand in its bone space (reference pose: hand -> middle1), the strand origin is 7 cm along it (the palm)
+		auto RefT = [&RS](const TCHAR* Name)
+		{
+			int32 I = RS.FindBoneIndex(FName(Name));
+			FTransform T = FTransform::Identity;
+			while (I != INDEX_NONE) { T = T * RS.GetRefBonePose()[I]; I = RS.GetParentIndex(I); }
+			return T;
+		};
+		bPalmOk = true;
+		for (int32 Sd = 0; Sd < 2; ++Sd)
+		{
+			const FTransform H = RefT(Sd ? TEXT("hand_R") : TEXT("hand_L"));
+			const FVector Mid = RefCS(Sd ? TEXT("middle1_R") : TEXT("middle1_L"));
+			PalmLocal[Sd] = H.InverseTransformVectorNoScale(Mid - H.GetLocation()).GetSafeNormal();
+			if (PalmLocal[Sd].IsNearlyZero()) bPalmOk = false;
+		}
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV palm axis (hand bone space): L (%.2f %.2f %.2f) R (%.2f %.2f %.2f), offset %.0f cm"), PalmLocal[0].X, PalmLocal[0].Y, PalmLocal[0].Z, PalmLocal[1].X, PalmLocal[1].Y, PalmLocal[1].Z, PalmOffsetCm);
+	}
 	const double FootZ = FMath::Min(Corr.RotateVector(RefCS(TEXT("toe_L"))).Z, Corr.RotateVector(RefCS(TEXT("foot_L"))).Z);
 	const double HeadZ = Corr.RotateVector(RefCS(TEXT("head"))).Z;
 	M->SetRelativeRotation(Corr);
@@ -522,6 +540,15 @@ void AWebTravCharacter::BeginPlay()
 	GetCharacterMovement()->SetComponentTickEnabled(false);
 	BuildFigure();
 	bHeroMesh = SetupHeroMesh();
+	{ // round 01: strands are drawn once the pose of this frame is final (TG_PostUpdateWork, after the hero mesh tick); the telemetry row is completed at the end of the frame
+		PostTickFn.Target = this; PostTickFn.Phase = 0; PostTickFn.bCanEverTick = true; PostTickFn.bStartWithTickEnabled = true; PostTickFn.TickGroup = TG_PostUpdateWork;
+		PostTickFn.RegisterTickFunction(GetLevel());
+		if (bHeroMesh && GetMesh()) PostTickFn.AddPrerequisite(GetMesh(), GetMesh()->PrimaryComponentTick);
+		EndTickFn.Target = this; EndTickFn.Phase = 1; EndTickFn.bCanEverTick = true; EndTickFn.bStartWithTickEnabled = true; EndTickFn.TickGroup = TG_LastDemotable;
+		EndTickFn.RegisterTickFunction(GetLevel());
+		EndTickFn.AddPrerequisite(this, PostTickFn);
+		bPostTickRegistered = true;
+	}
 	{ // round 13: hero-only fill light (see HeroFillCd)
 		FString FillArg;
 		if (FParse::Value(FCommandLine::Get(), TEXT("-WHHeroFill="), FillArg))
@@ -930,6 +957,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 		}
 	}
 	Cam.Update(Dt, CI, Traversal->TravWorld);
+	Traversal->TravWorld.PushOutOfCrowns(Cam.CamPos, 0.5);   // round 01 (Gap 3): the lens never sits inside a tree crown
 
 	// ---- move the actor (capsule) with the simulated body
 	const FVector BodyCm = Traversal->PosM() * 100.0;
@@ -968,7 +996,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 	}
 	FigureRoot->SetVisibility(FVector::Dist(CamCm, BodyCm) > 85.0, true);
 	if (bHeroMesh) { for (UStaticMeshComponent* C : FigureParts) { if (C) C->SetVisibility(false); } }
-	UpdateWebs(float(Dt), CamCm);
+	PendingWebDt = float(Dt); PendingCamCm = CamCm;   // round 01: the strands are drawn in PostAnimTick, after this frame's pose is final
 
 	// ---- telemetry
 	if (bPre) { Cam = PreCam; return; }
@@ -998,7 +1026,7 @@ void AWebTravCharacter::UpdateHeroFill()
 	static TWeakObjectPtr<UMaterialParameterCollection> NightMpc;
 	if (!NightMpc.IsValid()) NightMpc = LoadObject<UMaterialParameterCollection>(nullptr, TEXT("/Game/City/Materials/MPC_City.MPC_City"));
 	const double NightK = NightMpc.IsValid() && GetWorld() ? FMath::Clamp(double(UKismetMaterialLibrary::GetScalarParameterValue(GetWorld(), NightMpc.Get(), TEXT("NightK"))), 0.0, 1.0) : 0.0;
-	HeroFill->SetIntensity(float(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K) * Scale * (1.0 - NightK)));
+	HeroFill->SetIntensity(float(FMath::Lerp(FMath::Lerp(double(HeroFillCd), double(HeroFillFlipCd), K) * Scale, double(HeroFillNightCd), NightK)));
 }
 
 const FWebFlipProgram* AWebTravCharacter::FlipProgramNow(float& OutT) const
@@ -1023,11 +1051,72 @@ FVector AWebTravCharacter::HandWorldCm(bool bRight) const
 	return P->GetComponentTransform().TransformPosition(FVector(0, 0, -60));
 }
 
+FVector AWebTravCharacter::PalmWorldCm(bool bRight) const
+{
+	const USkeletalMeshComponent* M = bHeroMesh ? GetMesh() : nullptr;
+	if (M && bPalmOk)
+	{
+		const int32 BI = M->GetBoneIndex(bRight ? FName(TEXT("hand_R")) : FName(TEXT("hand_L")));
+		if (BI != INDEX_NONE)
+		{
+			const FTransform T = M->GetBoneTransform(BI);
+			return T.GetLocation() + T.TransformVectorNoScale(PalmLocal[bRight ? 1 : 0]) * (PalmOffsetCm * M->GetComponentScale().Z);
+		}
+	}
+	return HandWorldCm(bRight);
+}
+
+void FWebTravPostTick::ExecuteTick(float DeltaTime, ELevelTick TickType, ENamedThreads::Type CurrentThread, const FGraphEventRef& MyCompletionGraphEvent)
+{
+	if (!Target || !IsValid(Target)) return;
+	if (Phase == 0) Target->PostAnimTick(DeltaTime); else Target->EndAnimTick();
+}
+
+void AWebTravCharacter::PostAnimTick(float Dt)
+{
+	UpdateWebs(PendingWebDt, PendingCamCm);
+}
+
+void AWebTravCharacter::EndAnimTick()
+{
+	if (!bRowPending) return;
+	bRowPending = false;
+	if (UWebTravScript* Script = GetGameInstance() ? GetGameInstance()->GetSubsystem<UWebTravScript>() : nullptr)
+		Script->AddTelemetryRow(PendingRow + BuildCols25() + FinalSwingCols(PendingRowT));
+}
+
 void AWebTravCharacter::PoseFigure(float Dt)
 {
 	const FWebTravAnim& A = Traversal->Anim;
-	const FQuat Body = A.BodyQ;
-	FVector Root = A.RootPos;
+	FQuat Body = A.BodyQ;
+	bool bSpringUsed = false;
+	{ // round 01 (W4): at the attach (the pendulum starts when the tip lands) the body orientation follows the rope frame through a critically damped spring (~0.3 s, never a one-frame turn)
+		const bool bSw = A.Mode == EWebTravMode::Swing;
+		if (bSw && !bPrevSwingMode) AttachT = 0.0;
+		if (bSw) AttachT += Dt;
+		bPrevSwingMode = bSw;
+		if (!bBodySpringInit) { BodySpringQ = Body; BodySpringVel = FVector::ZeroVector; bBodySpringInit = true; }
+		if (bSw && AttachT < 0.45)
+		{
+			const double Omega = AttachT < 0.3 ? 10.0 : FMath::Lerp(10.0, 40.0, Smooth01((AttachT - 0.3) / 0.15));
+			FQuat D = Body * BodySpringQ.Inverse();   // spring state -> target, as a rotation vector
+			if (D.W < 0) D = FQuat(-D.X, -D.Y, -D.Z, -D.W);
+			FVector X = -D.ToRotationVector();       // the spring's offset from the target
+			const double Xs = Omega * Dt, Ex = 1.0 / (1.0 + Xs + 0.48 * Xs * Xs + 0.235 * Xs * Xs * Xs);
+			const FVector Tmp = (BodySpringVel + X * Omega) * Dt;
+			BodySpringVel = (BodySpringVel - Tmp * Omega) * Ex;
+			X = (X + Tmp) * Ex;
+			FQuat NewQ = (FQuat::MakeFromRotationVector(X) * Body).GetNormalized();
+			{ // the turn onto the rope never exceeds 320 deg/s (a head-down attach is up to 150 deg away)
+				const double Step = BodySpringQ.AngularDistance(NewQ), MaxStep = FMath::DegreesToRadians(320.0) * Dt;
+				if (Step > MaxStep) NewQ = FQuat::Slerp(BodySpringQ, NewQ, MaxStep / Step).GetNormalized();
+			}
+			BodySpringQ = NewQ;
+			Body = BodySpringQ; bSpringUsed = true;
+		}
+		else { BodySpringQ = Body; BodySpringVel = FVector::ZeroVector; }
+	}
+	FVector Root = bSpringUsed ? Traversal->PosM() * 100.0 - Body.RotateVector(FVector(0, 0, 95)) : A.RootPos;
 	FQuat Q = Body;
 	// round 11 (FLIPS_BRIEF): gymnast flip programs rotate the whole body about its centre — pitch about the lateral axis, twist
 	// about the long axis — on the program's momentum timeline (WebTravFlips); a cut program (web catch / landing) hands its last
@@ -1086,11 +1175,21 @@ void AWebTravCharacter::PoseFigure(float Dt)
 				const double SwayAmp = 1.0 - 0.8 * FastK;
 				const double RollA = 0.6 * Ramp * SwayAmp * FMath::Sin(2 * PI * 1.05 * Tc + Ph) * (AI->AirCycleCount() % 2 ? 1.0 : -1.0);
 				const double PitchA = 0.35 * Ramp * SwayAmp * FMath::Sin(2 * PI * 0.8 * Tc + Ph * 0.5);
-				const FQuat Q2 = Q * FQuat(FVector(1, 0, 0), RollA) * FQuat(FVector(0, 1, 0), PitchA);
+				SwayDeltaQ = FQuat(FVector(1, 0, 0), RollA) * FQuat(FVector(0, 1, 0), PitchA);   // round 01: remembered so it can decay when the swing starts
+				const FQuat Q2 = Q * SwayDeltaQ;
 				const FVector Centre = Traversal->PosM() * 100.0;
 				Root = Centre - Q2.RotateVector(FVector(0, 0, 95));
 				Q = Q2;
 			}
+		}
+	}
+	if (!(bHeroMesh && A.Mode == EWebTravMode::Air && SwayW > 0.001f))
+	{ // round 01 (W4): the air-sway lean (up to 34 deg of roll) used to vanish in the swing's first frame (1500 deg/s chest spike): it decays over ~0.1 s instead
+		SwayDeltaQ = FQuat::Slerp(SwayDeltaQ, FQuat::Identity, 1.0 - FMath::Exp(-Dt / 0.1));
+		if (SwayDeltaQ.GetAngle() > FMath::DegreesToRadians(0.3))
+		{
+			Q = Q * SwayDeltaQ;
+			Root = Traversal->PosM() * 100.0 - Q.RotateVector(FVector(0, 0, 95));
 		}
 	}
 	FigureRoot->SetWorldLocationAndRotation(Root, Q);
@@ -1222,11 +1321,11 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 		bRopeDrawn[SI] = false;
 		const FWebTravStrand& St = Traversal->Strands[SI];
 		const bool bReleased = St.bActive && St.ReleaseT >= 0.f;
-		const FVector Hand = HandWorldCm(St.bRightHand);
+		const FVector Hand = PalmWorldCm(St.bRightHand);
 		if (bReleased && !bWasReleased[SI]) ReleaseHandCm[SI] = Hand;
 		bWasReleased[SI] = bReleased;
 		FVector A = Hand, B = St.Anchor * 100.0;
-		double Fade = 1.0, Wave = 0.0;
+		double Fade = 1.0, Wave = 0.0, Droop = 0.0, Curl = 0.0;
 		if (St.bActive)
 		{
 			// shot: cubic ease-out extension, a decaying sine wave along the strand while it flies (web.js)
@@ -1234,12 +1333,17 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			const double Ext = 1 - FMath::Pow(1 - U, 3);
 			B = A + (B - A) * Ext;
 			Wave = 30.0 * FMath::Exp(-9.0 * St.Age) * (1 - St.Taut);
+			if (St.Age > St.ShootDur) Wave *= FMath::Clamp(1.0 - (St.Age - St.ShootDur) / 0.08, 0.0, 1.0);   // round 01 (W6): straight within 0.10 s of the tip landing (0.08 s fade)
 			if (bReleased)
-			{ // round 02: the released strand retracts from the hand toward its anchor and thins out (never sweeps the lens)
+			{ // round 01 (W8): the strand lets go of the anchor and falls slack toward the hand over 0.30 s (the far end comes home, drooping, the strand fades); it stays near the hero
 				const double R = St.ReleaseT;
-				const double E = 1.0 - FMath::Pow(1.0 - FMath::Min(1.0, R / 0.18), 2);
-				A = FMath::Lerp(Hand, B, E); // from the moving hand (stays in front of the lens), not the world point of release
-				Fade = FMath::Clamp(1.0 - R / 0.25, 0.0, 1.0);
+				const double E = FMath::SmoothStep(0.0, 1.0, R / 0.30);
+				A = Hand;                                   // the near end stays on the palm
+				B = Hand + (B - Hand) * (1.0 - E);
+				Fade = FMath::Clamp(1.0 - (R - 0.10) / 0.20, 0.0, 1.0);
+				Wave = 0.0;
+				Droop = FMath::Min(150.0, 0.30 * FVector::Dist(A, B)) * FMath::Sin(PI * FMath::Min(1.0, R / 0.30));
+				Curl = 18.0 * (1.0 - E) * FMath::Sin(R * 38.0);
 			}
 		}
 		const FVector D = B - A;
@@ -1262,20 +1366,24 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 				// r25 build 4: the flying strand's wave is bounded on SCREEN (RopeWavePx at that point's distance): the 30 cm world wave
 				// put the attach-frame strand 5-15 px off its hand -> anchor line (rope_r25_check, a 0.4 / 3.4 s)
 				if (bTwoTone && Traversal->RopeWavePx >= 0.f) Wv = FMath::Min(Wv, double(Traversal->RopeWavePx) * FVector::Dist(Q, CamPosCm) / PxK);
-				return Q + Perp * (Wv * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI));
+				return Q + Perp * (Wv * FMath::Sin(U * PI * 3 + St.Age * 40.0) * FMath::Sin(U * PI) + Curl * FMath::Sin(U * PI * 2.0)) - FVector(0, 0, Droop * FMath::Sin(U * PI));
 			};
-			const double U0 = double(K) / SEGS_PER_STRAND, U1 = double(K + 1) / SEGS_PER_STRAND;
+			const double U0 = FMath::Pow(double(K) / SEGS_PER_STRAND, 1.6), U1 = FMath::Pow(double(K + 1) / SEGS_PER_STRAND, 1.6);   // round 01: short segments at the hand end (the camera is nearest there; the lens-hide must not take the strand start)
 			const FVector P0 = P(U0), P1 = P(U1);
 			const FVector Mid = (P0 + P1) * 0.5;
 			const double Len = FVector::Dist(P0, P1);
 			// round 08 (critic r07: thick blooming beam): world width 1.2 cm, never thinner than ~1.2 px at 1080p
 			const double CamD = FVector::Dist(Mid, CamPosCm);
-			if (CamD < 300.0) { HideSeg(C); continue; } // never draw a strand segment on the lens
+			{ // never draw a strand segment on the lens (round 01: the nearest point of the segment, 1.2 m; the segments are up to 4 m long, the midpoint test hid the hand end)
+				const FVector Sg = P1 - P0; const double SgL2 = FMath::Max(Sg.SizeSquared(), 1.0);
+				const double Tn = FMath::Clamp(FVector::DotProduct(CamPosCm - P0, Sg) / SgL2, 0.0, 1.0);
+				if (FVector::Dist(CamPosCm, P0 + Sg * Tn) < 120.0) { HideSeg(C); continue; }
+			}
 			double W = FMath::Max(1.6, 0.0025 * CamD) * Fade; // round 09: 1.6 cm, >= ~2 px at 1080p (TRAVERSAL-SPEC T6: 2-4 px)
 			if (bTwoTone)
 			{ // round 25: 1.6 cm world width, clamped to RopePxMin..RopePxMax px on screen (at the segment's distance); a released strand
 				// thins out by the fade as before
-				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax)));
+				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax))) * FMath::Lerp(1.0, 0.7, 0.5 * (U0 + U1));   // round 01 (W5): taper toward the anchor
 				W = Px * CamD / PxK * Fade;
 			}
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());
@@ -1372,7 +1480,9 @@ FString AWebTravCharacter::FinalSwingCols(double T)
 	{
 		const FWebTravStrand& St = Traversal->Strands[SI];
 		const double U = St.bActive ? FMath::Clamp(double(St.Age) / FMath::Max(double(St.ShootDur), 0.01), 0.0, 1.0) : 0.0;
-		const double Wave0 = St.bActive ? 30.0 * FMath::Exp(-9.0 * St.Age) * (1.0 - St.Taut) : 0.0;
+		double Wave0 = St.bActive ? 30.0 * FMath::Exp(-9.0 * St.Age) * (1.0 - St.Taut) : 0.0;
+		if (St.Age > St.ShootDur) Wave0 *= FMath::Clamp(1.0 - (St.Age - St.ShootDur) / 0.08, 0.0, 1.0);
+		if (St.bActive && St.ReleaseT >= 0.f) Wave0 = 0.0;
 		const double Clear = bRopeDrawn[SI] ? Traversal->StrandClearFraction(RopeDrawA[SI] / 100.0, St.Anchor) : 1.0;
 		O += FString::Printf(TEXT(",%d,%d,%.4f,%.4f,%.4f,%d,%s,%s,%s,%.3f,%.2f,%.3f"), St.bActive ? 1 : 0, St.bRightHand ? 1 : 0, St.Age, St.ShootDur, St.ReleaseT, bRopeDrawn[SI] ? 1 : 0,
 			*V3(St.Anchor * 100.0), bRopeDrawn[SI] ? *V3(RopeDrawA[SI]) : TEXT("0,0,0"), bRopeDrawn[SI] ? *V3(RopeDrawB[SI]) : TEXT("0,0,0"), St.Taut, Wave0, Clear);
@@ -1390,9 +1500,49 @@ FString AWebTravCharacter::FinalSwingCols(double T)
 			FwChestPrev = Q; FwChestPrevT = T; FwChestHas = true;
 		}
 		O += FString::Printf(TEXT(",%.1f"), Rate);
+		O += TEXT(",") + V3(PalmWorldCm(false)) + TEXT(",") + V3(PalmWorldCm(true));   // the palms of the final pose
+		O += FString::Printf(TEXT(",%.3f"), Traversal->Anim.NoAnchorT);   // the no-anchor reach gesture clock (< 0 none) (end of the frame): the strand start drawn in PostAnimTick must equal them
 	}
-	else O += TEXT(",0,0,0,0,0,0,0,0,0,0,0,0,0");
+	else O += TEXT(",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
 	return O;
+}
+
+FString AWebTravCharacter::BuildCols25()
+{
+	// round 25: the drawn strand (the longer one when two are drawn) projected through the final camera: hand end A / far end B in normalized
+	// screen coordinates (0..1, may lie outside the frame; B clipped to the near plane), and the strand width in px at each end (viewport
+	// height), plus the rope look (1 = two-tone) and the perch yaw hold flag of the camera
+	FString Cols25 = TEXT(",0,-1,-1,-1,-1,-1,-1");
+	{
+		int32 Best = -1; double BestL = 0.0;
+		for (int32 SI = 0; SI < 2; ++SI) { if (bRopeDrawn[SI]) { const double L = FVector::Dist(RopeDrawA[SI], RopeDrawB[SI]); if (L > BestL) { BestL = L; Best = SI; } } }
+		if (Best >= 0)
+		{
+			const FRotationMatrix RM(Cam.CamRot);
+			const FVector CF = RM.GetUnitAxis(EAxis::X), CR = RM.GetUnitAxis(EAxis::Y), CU = RM.GetUnitAxis(EAxis::Z);
+			const double TV = FMath::Tan(FMath::DegreesToRadians(Cam.OutVFov * 0.5));
+			double Aspect = 16.0 / 9.0, ViewH = 1080.0;
+			if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
+			{
+				const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
+				if (Sz.X > 0 && Sz.Y > 0) { Aspect = double(Sz.X) / double(Sz.Y); ViewH = double(Sz.Y); }
+			}
+			FVector RA = RopeDrawA[Best] / 100.0 - Cam.CamPos, RB = RopeDrawB[Best] / 100.0 - Cam.CamPos;
+			double ZA = FVector::DotProduct(RA, CF), ZB = FVector::DotProduct(RB, CF);
+			if (ZA < 0.05 && ZB >= 0.05) { RA = RA + (RB - RA) * ((0.05 - ZA) / (ZB - ZA)); ZA = 0.05; }
+			if (ZB < 0.05 && ZA >= 0.05) { RB = RA + (RB - RA) * ((ZA - 0.05) / (ZA - ZB)); ZB = 0.05; }
+			if (ZA >= 0.05 && ZB >= 0.05)
+			{
+				auto SX = [&](const FVector& R, double Z) { return 0.5 + 0.5 * FVector::DotProduct(R, CR) / (Z * TV * Aspect); };
+				auto SY = [&](const FVector& R, double Z) { return 0.5 - 0.5 * FVector::DotProduct(R, CU) / (Z * TV); };
+				const double PxK = ViewH / (2.0 * TV);
+				Cols25 = FString::Printf(TEXT(",%d,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f"), int32(bRopeDrawn[0]) + int32(bRopeDrawn[1]), SX(RA, ZA), SY(RA, ZA), SX(RB, ZB), SY(RB, ZB),
+					RopeDrawWA[Best] / 100.0 / FMath::Max(0.05, ZA) * PxK, RopeDrawWB[Best] / 100.0 / FMath::Max(0.05, ZB) * PxK);
+			}
+		}
+	}
+	Cols25 += FString::Printf(TEXT(",%d,%d"), WebLookNow, Cam.PerchYawHeld);
+	return Cols25;
 }
 
 void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
@@ -1412,7 +1562,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("rope_drawn,rope_ax,rope_ay,rope_bx,rope_by,rope_wpx_a,rope_wpx_b,rope_look,cam_perch_hold,")
 		TEXT("fw_s0_on,fw_s0_hand,fw_s0_age,fw_s0_shoot,fw_s0_rel,fw_s0_drawn,fw_s0_ax,fw_s0_ay,fw_s0_az,fw_s0_sx,fw_s0_sy,fw_s0_sz,fw_s0_tx,fw_s0_ty,fw_s0_tz,fw_s0_taut,fw_s0_wave_cm,fw_s0_clear,")
 		TEXT("fw_s1_on,fw_s1_hand,fw_s1_age,fw_s1_shoot,fw_s1_rel,fw_s1_drawn,fw_s1_ax,fw_s1_ay,fw_s1_az,fw_s1_sx,fw_s1_sy,fw_s1_sz,fw_s1_tx,fw_s1_ty,fw_s1_tz,fw_s1_taut,fw_s1_wave_cm,fw_s1_clear,")
-		TEXT("fw_hl_x,fw_hl_y,fw_hl_z,fw_hr_x,fw_hr_y,fw_hr_z,fw_shl_x,fw_shl_y,fw_shl_z,fw_shr_x,fw_shr_y,fw_shr_z,fw_chest_rate_dps"));
+		TEXT("fw_hl_x,fw_hl_y,fw_hl_z,fw_hr_x,fw_hr_y,fw_hr_z,fw_shl_x,fw_shl_y,fw_shl_z,fw_shr_x,fw_shr_y,fw_shr_z,fw_chest_rate_dps,fw_pl_x,fw_pl_y,fw_pl_z,fw_pr_x,fw_pr_y,fw_pr_z,fw_reach_t"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;
@@ -1670,40 +1820,9 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 	}
 	// round 24: altitude-chain apex want (m over the floor), camera turn direction of the user look, ground / perch crane lift (m)
 	const FString Cols24 = FString::Printf(TEXT(",%.1f,%d,%.2f,%d"), Traversal->AltApexWant, Cam.LookYawDir, Cam.GndCrane, Cam.GndStopped + (Cam.bGndLensHold ? 2 : 0));
-	// round 25: the drawn strand (the longer one when two are drawn) projected through the final camera: hand end A / far end B in normalized
-	// screen coordinates (0..1, may lie outside the frame; B clipped to the near plane), and the strand width in px at each end (viewport
-	// height), plus the rope look (1 = two-tone) and the perch yaw hold flag of the camera
-	FString Cols25 = TEXT(",0,-1,-1,-1,-1,-1,-1");
-	{
-		int32 Best = -1; double BestL = 0.0;
-		for (int32 SI = 0; SI < 2; ++SI) { if (bRopeDrawn[SI]) { const double L = FVector::Dist(RopeDrawA[SI], RopeDrawB[SI]); if (L > BestL) { BestL = L; Best = SI; } } }
-		if (Best >= 0)
-		{
-			const FRotationMatrix RM(Cam.CamRot);
-			const FVector CF = RM.GetUnitAxis(EAxis::X), CR = RM.GetUnitAxis(EAxis::Y), CU = RM.GetUnitAxis(EAxis::Z);
-			const double TV = FMath::Tan(FMath::DegreesToRadians(Cam.OutVFov * 0.5));
-			double Aspect = 16.0 / 9.0, ViewH = 1080.0;
-			if (GEngine && GEngine->GameViewport && GEngine->GameViewport->Viewport)
-			{
-				const FIntPoint Sz = GEngine->GameViewport->Viewport->GetSizeXY();
-				if (Sz.X > 0 && Sz.Y > 0) { Aspect = double(Sz.X) / double(Sz.Y); ViewH = double(Sz.Y); }
-			}
-			FVector RA = RopeDrawA[Best] / 100.0 - Cam.CamPos, RB = RopeDrawB[Best] / 100.0 - Cam.CamPos;
-			double ZA = FVector::DotProduct(RA, CF), ZB = FVector::DotProduct(RB, CF);
-			if (ZA < 0.05 && ZB >= 0.05) { RA = RA + (RB - RA) * ((0.05 - ZA) / (ZB - ZA)); ZA = 0.05; }
-			if (ZB < 0.05 && ZA >= 0.05) { RB = RA + (RB - RA) * ((ZA - 0.05) / (ZA - ZB)); ZB = 0.05; }
-			if (ZA >= 0.05 && ZB >= 0.05)
-			{
-				auto SX = [&](const FVector& R, double Z) { return 0.5 + 0.5 * FVector::DotProduct(R, CR) / (Z * TV * Aspect); };
-				auto SY = [&](const FVector& R, double Z) { return 0.5 - 0.5 * FVector::DotProduct(R, CU) / (Z * TV); };
-				const double PxK = ViewH / (2.0 * TV);
-				Cols25 = FString::Printf(TEXT(",%d,%.5f,%.5f,%.5f,%.5f,%.2f,%.2f"), int32(bRopeDrawn[0]) + int32(bRopeDrawn[1]), SX(RA, ZA), SY(RA, ZA), SX(RB, ZB), SY(RB, ZB),
-					RopeDrawWA[Best] / 100.0 / FMath::Max(0.05, ZA) * PxK, RopeDrawWB[Best] / 100.0 / FMath::Max(0.05, ZB) * PxK);
-			}
-		}
-	}
-	Cols25 += FString::Printf(TEXT(",%d,%d"), WebLookNow, Cam.PerchYawHeld);
-	Script->AddTelemetryRow(Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24 + Cols25 + FinalSwingCols(T));
+
+	PendingRow = Row + TEXT(",") + FlipCols + Flip12 + Cols15 + Cols17 + Cols19 + Cols20 + Cols21 + Cols22 + Cols23 + Cols24;   // the row is completed in EndAnimTick (strand columns of the final pose)
+	PendingRowT = T; bRowPending = true;
 }
 
 // ------------------------------------------------------------------ live input (round 19)
@@ -1890,6 +2009,7 @@ void AWebTravCharacter::EndPlay(const EEndPlayReason::Type Reason)
 {
 	if (InputTestTicker.IsValid()) { FTSTicker::GetCoreTicker().RemoveTicker(InputTestTicker); InputTestTicker.Reset(); }
 	if (WHMovieAsync::Handle.IsValid()) { WHMovieAsync::Drain(); UGameViewportClient::OnScreenshotCaptured().Remove(WHMovieAsync::Handle); WHMovieAsync::Handle.Reset(); }
+	if (bPostTickRegistered) { PostTickFn.UnRegisterTickFunction(); EndTickFn.UnRegisterTickFunction(); bPostTickRegistered = false; }
 	Super::EndPlay(Reason);
 }
 
