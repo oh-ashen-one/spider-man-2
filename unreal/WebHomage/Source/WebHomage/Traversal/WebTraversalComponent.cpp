@@ -442,10 +442,11 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		StartTrick(N);
 		Emit(N_airTrick);
 	}
-	if (S.TrickBuf > 0 && S.ArmedFlip.IsNone() && S.Sub != N_trick && S.Trick.IsNone() && HeightAboveFloor() > 4.0 && S.AirT > 0.05)
-	{ // round 04: trick on input during the air phase
-		StartTrick(ChooseTrick(I)); S.TrickBuf = 0; S.bAirTrickUsed = true;
-		Emit(N_airTrick);
+	if (S.TrickBuf > 0 && S.ArmedFlip.IsNone() && S.Sub != N_trick && S.Trick.IsNone() && S.AirT > 0.05)
+	{ // round 04: trick on input during the air phase (owner live fix: always a flip when FlipFloorClear m over the floor, the refusal is logged)
+		S.TrickBuf = 0;
+		if (bLegacyTricks) { if (HeightAboveFloor() > 4.0) { StartTrick(ChooseTrick(I)); S.bAirTrickUsed = true; Emit(N_airTrick); } }
+		else AirFlipPress(I);
 	}
 	if (S.Sub == N_trick && !S.Trick.IsNone() && !S.bTrickBoosted && S.SubT >= S.TrickSnapT) TrickBoost(I);
 	// user r10m: holding forward (W) while falling tips into the head-first dive; letting go returns to the flat fall
@@ -1724,6 +1725,106 @@ double UWebTraversalComponent::SkyPeakNeeded(bool& bReachable) const
 	return NeedCacheV;
 }
 
+// round 13 / owner live fix: the flow flip's solved climb (the catch window opens FlowCatchRise m over the current height, or the lower roofline / apex rule); shared by the release flip (ReleaseSwing)
+// and the mid-air F press (AirFlipPress). Requires S.Trick = a flip program (StartTrick) and bFlowTricks.
+void UWebTraversalComponent::SolveFlowClimb(FName TrickN, const FVector& HV, bool bAltRel)
+{
+	const FWebFlipProgram* FP = WebFlips::Find(TrickN);
+	if (!FP) return;
+	const double Tc = FMath::Max(0.5, double(FP->CatchT()));
+	const double GF = G * double(FlowFlipGK);
+	const double Up = FP->Up * ReleaseBoostMul; // TrickBoost adds this at 0.3 x the first segment
+	// round 15: rise to FlowRoofOver m over the lower street wall's roofline when that is within FlowRiseMax (sky behind by height)
+	double Rise = double(FlowCatchRise);
+	FlowRoofUsed = -1.0;
+	if (FlowRoofOver > 0.f)
+	{
+		const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
+		const double Roof = RoofBesideAhead(HV, double(FlowRoofAhead));
+		// (probe r15: street-tree canopies 9-15 m read as a "roofline" -- a roof counts only FlowRoofMinH m or more over the street)
+		if (Roof > -0.5 && Roof - Street >= double(FlowRoofMinH))
+		{
+			FlowRoofUsed = Roof - Street;
+			const double Need = Roof + double(FlowRoofOver) - FeetZ();
+			if (Need > Rise && Need <= double(FlowRiseMax)) Rise = Need;
+		}
+	}
+	FlowRiseUsed = Rise;
+	double Vz0 = FMath::Clamp((Rise + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
+		double(FlowVzMin), double(FlowVzMax));
+	FlowApexWant = 0.0;
+	if (bFlowApexSolve)
+	{ // round 17 (TC8): solve the climb for the program's APEX: hips at the lower roofline within FlowRoofR + FlowRoofOver (+ margin);
+	  // no roofline here -> the r13 rule above. Gain at least FlowApexMin (the shape reads at the top of a rise, not on a fall).
+		double RoofOver = -1.0;
+		const double Target = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir, &RoofOver);
+		const double WantRaw = FMath::Max(double(FlowApexMin), Target - S.Pos.Z);
+		// round 24 (T7): the altitude chain's apex (hips at AltApexNow m over the floor) is a floor under the roofline rule
+		// (hold C probe a: the flip cycle solved for the jittered 38 m apex ran 4.1 s release -> release; a flip takes the base apex)
+		const double WantAlt = bAltRel ? FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1) + double(AltApexH) + H - S.Pos.Z : -1e9;
+		const bool bRoofOut = Target > 0.0 && WantRaw > FlowApexGain(double(FlowApexVzMax), FP) + 0.5;
+		// TC8 "else it fires anyway": a roofline the capped climb cannot clear (Midtown canyons, 45-300 m walls) keeps the r13/r15 rule
+		// (the r17 probe of a / b solved for 72-100 m rooflines and rocketed 20 m up for 2 s)
+		if (bRoofOut && !bAltRel)
+		{
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: roofline %.1f m over the street out of reach (need %.1f m) -> r13 climb"), RoofOver, WantRaw);
+		}
+		else if (Target > 0.0 || bAltRel)
+		{
+			if (Target > 0.0 && !bRoofOut) FlowRoofUsed = RoofOver;
+			const double Want = bAltRel ? FMath::Max(bRoofOut || Target <= 0.0 ? double(FlowApexMin) : WantRaw, WantAlt) : WantRaw;
+			if (bAltRel) { AltApexWant = double(AltApexH); ++AltRelIdx; bAltArcNext = true; }
+			double Lo = 0.0, Hi = bAltRel ? double(FMath::Max(FlowApexVzMax, AltFlowVzMax)) : double(FlowApexVzMax);
+			if (FlowApexGain(Hi, FP) <= Want) Lo = Hi;
+			else for (int32 It = 0; It < 30; ++It) { const double Md = 0.5 * (Lo + Hi); (FlowApexGain(Md, FP) < Want ? Lo : Hi) = Md; }
+			Vz0 = FMath::Max(double(FlowVzMin), Hi);
+			FlowApexWant = S.Pos.Z + FlowApexGain(Vz0, FP);
+			FlowRiseUsed = Vz0 * Tc - 0.5 * GF * Tc * Tc + Up * FMath::Max(0.0, Tc - 0.3 * FP->Segs[0].Dur); // height at the catch window
+		}
+	}
+	if (S.Vel.Z > Vz0)
+	{ // the rest of the swing's climb goes forward (as the plain-release cap does)
+		FVector HV0;
+		if (!HDir(S.Vel, HV0)) HV0 = YawDir(S.Facing);
+		const double Extra = S.Vel.Z - Vz0;
+		S.Vel.X += HV0.X * Extra * 0.6; S.Vel.Y += HV0.Y * Extra * 0.6;
+	}
+	S.Vel.Z = Vz0;
+	S.bFlowFlip = true;
+	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: lower roofline %.1f m over the street, rise %.1f m, vz %.1f m/s, catch window at %.2f s"),
+		*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), FlowRoofUsed, FlowRiseUsed, Vz0, Tc);
+	if (FlowApexWant > 0.0) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: hips %.1f -> apex %.1f (roofline %.1f m over the street)"), S.Pos.Z, FlowApexWant, FlowRoofUsed);
+}
+
+// owner live fix: F pressed in the air (not at a release) always plays a flip when the hero is FlipFloorClear m over the floor: the stick family picks the program (ChooseForInput, AirS 0),
+// the same solved climb as the release flow flip opens the catch window above the current height. Below FlipFloorClear the refusal is logged.
+bool UWebTraversalComponent::AirFlipPress(const FWebTravInput& I)
+{
+	const double HAF = HeightAboveFloor();
+	if (HAF < double(FlipFloorClear))
+	{
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flip refused: low (h=%.1f m, needs %.1f)"), HAF, double(FlipFloorClear));
+		return false;
+	}
+	const bool bFlow = bFlowTricks && !S.bSky && !bLegacyTricks;
+	bFlowChoose = bFlow; const FName N = ChooseTrick(I); bFlowChoose = false;
+	if (N.IsNone())
+	{
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flip refused: no program (h=%.1f m)"), HAF);
+		return false;
+	}
+	StartTrick(N); S.bAirTrickUsed = true; S.bLastTrick = true;
+	if (bFlow && WebFlips::Find(N))
+	{
+		FVector HV;
+		if (!HDir(S.Vel, HV)) HV = YawDir(S.Facing);
+		SolveFlowClimb(N, HV, false);
+	}
+	UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV air flip start %s at h=%.1f m, vz %.1f m/s"), *N.ToString(), HAF, S.Vel.Z);
+	Emit(N_airTrick);
+	return true;
+}
+
 void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 {
 	// round 12 (critic r11): a trick pressed at a web release is a sky launch — the flip plays at an apex above the rooftops
@@ -1810,69 +1911,7 @@ void UWebTraversalComponent::ReleaseSwing(bool bJump, const FWebTravInput& I)
 		const FWebFlipProgram* FP = WebFlips::Find(TrickN);
 		if (FP && bFlowTricks && !bJump && !S.bSky)
 		{ // round 13: the program starts now; solve the climb so the catch window opens FlowCatchRise m over the release height
-			const double Tc = FMath::Max(0.5, double(FP->CatchT()));
-			const double GF = G * double(FlowFlipGK);
-			const double Up = FP->Up * ReleaseBoostMul; // TrickBoost adds this at 0.3 x the first segment
-			// round 15: rise to FlowRoofOver m over the lower street wall's roofline when that is within FlowRiseMax (sky behind by height)
-			double Rise = double(FlowCatchRise);
-			FlowRoofUsed = -1.0;
-			if (FlowRoofOver > 0.f)
-			{
-				const double Street = TravWorld.StreetHeight(S.Pos.X, S.Pos.Y, FeetZ() + 0.1);
-				const double Roof = RoofBesideAhead(HV, double(FlowRoofAhead));
-				// (probe r15: street-tree canopies 9-15 m read as a "roofline" -- a roof counts only FlowRoofMinH m or more over the street)
-				if (Roof > -0.5 && Roof - Street >= double(FlowRoofMinH))
-				{
-					FlowRoofUsed = Roof - Street;
-					const double Need = Roof + double(FlowRoofOver) - FeetZ();
-					if (Need > Rise && Need <= double(FlowRiseMax)) Rise = Need;
-				}
-			}
-			FlowRiseUsed = Rise;
-			double Vz0 = FMath::Clamp((Rise + 0.5 * GF * Tc * Tc) / Tc - Up * (Tc - 0.3 * FP->Segs[0].Dur) / Tc,
-				double(FlowVzMin), double(FlowVzMax));
-			FlowApexWant = 0.0;
-			if (bFlowApexSolve)
-			{ // round 17 (TC8): solve the climb for the program's APEX: hips at the lower roofline within FlowRoofR + FlowRoofOver (+ margin);
-			  // no roofline here -> the r13 rule above. Gain at least FlowApexMin (the shape reads at the top of a rise, not on a fall).
-				double RoofOver = -1.0;
-				const double Target = FlowRoofTarget(RouteDir.IsNearlyZero() ? YawDir(S.Facing) : RouteDir, &RoofOver);
-				const double WantRaw = FMath::Max(double(FlowApexMin), Target - S.Pos.Z);
-				// round 24 (T7): the altitude chain's apex (hips at AltApexNow m over the floor) is a floor under the roofline rule
-				// (hold C probe a: the flip cycle solved for the jittered 38 m apex ran 4.1 s release -> release; a flip takes the base apex)
-				const double WantAlt = bAltRel ? FloorAt(S.Pos.X, S.Pos.Y, FeetZ() + 0.1) + double(AltApexH) + H - S.Pos.Z : -1e9;
-				const bool bRoofOut = Target > 0.0 && WantRaw > FlowApexGain(double(FlowApexVzMax), FP) + 0.5;
-				// TC8 "else it fires anyway": a roofline the capped climb cannot clear (Midtown canyons, 45-300 m walls) keeps the r13/r15 rule
-				// (the r17 probe of a / b solved for 72-100 m rooflines and rocketed 20 m up for 2 s)
-				if (bRoofOut && !bAltRel)
-				{
-					UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: roofline %.1f m over the street out of reach (need %.1f m) -> r13 climb"), RoofOver, WantRaw);
-				}
-				else if (Target > 0.0 || bAltRel)
-				{
-					if (Target > 0.0 && !bRoofOut) FlowRoofUsed = RoofOver;
-					const double Want = bAltRel ? FMath::Max(bRoofOut || Target <= 0.0 ? double(FlowApexMin) : WantRaw, WantAlt) : WantRaw;
-					if (bAltRel) { AltApexWant = double(AltApexH); ++AltRelIdx; bAltArcNext = true; }
-					double Lo = 0.0, Hi = bAltRel ? double(FMath::Max(FlowApexVzMax, AltFlowVzMax)) : double(FlowApexVzMax);
-					if (FlowApexGain(Hi, FP) <= Want) Lo = Hi;
-					else for (int32 It = 0; It < 30; ++It) { const double Md = 0.5 * (Lo + Hi); (FlowApexGain(Md, FP) < Want ? Lo : Hi) = Md; }
-					Vz0 = FMath::Max(double(FlowVzMin), Hi);
-					FlowApexWant = S.Pos.Z + FlowApexGain(Vz0, FP);
-					FlowRiseUsed = Vz0 * Tc - 0.5 * GF * Tc * Tc + Up * FMath::Max(0.0, Tc - 0.3 * FP->Segs[0].Dur); // height at the catch window
-				}
-			}
-			if (S.Vel.Z > Vz0)
-			{ // the rest of the swing's climb goes forward (as the plain-release cap does)
-				FVector HV0;
-				if (!HDir(S.Vel, HV0)) HV0 = YawDir(S.Facing);
-				const double Extra = S.Vel.Z - Vz0;
-				S.Vel.X += HV0.X * Extra * 0.6; S.Vel.Y += HV0.Y * Extra * 0.6;
-			}
-			S.Vel.Z = Vz0;
-			S.bFlowFlip = true;
-			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow flip %s at (%.1f, %.1f, %.1f) %.1f m over the floor: lower roofline %.1f m over the street, rise %.1f m, vz %.1f m/s, catch window at %.2f s"),
-				*TrickN.ToString(), S.Pos.X, S.Pos.Y, FeetZ(), HeightAboveFloor(), FlowRoofUsed, FlowRiseUsed, Vz0, Tc);
-			if (FlowApexWant > 0.0) UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV flow apex: hips %.1f -> apex %.1f (roofline %.1f m over the street)"), S.Pos.Z, FlowApexWant, FlowRoofUsed);
+			SolveFlowClimb(TrickN, HV, bAltRel);
 		}
 	}
 	else

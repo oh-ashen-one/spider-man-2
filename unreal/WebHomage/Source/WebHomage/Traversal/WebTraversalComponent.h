@@ -78,7 +78,7 @@ public:
 	// AltTurnDeg of turn, horizontal >= AltHMin m/s, vz <= AltVzMax m/s; the climb above it still goes forward); a swing entered >= AltEntryMin m
 	// over the street bottoms out AltLowLo..AltLowHi m over the street (alternating halves of the band, so consecutive arcs differ) instead of
 	// the shallow / deep drop below the entry. 0 = r23 (ReleaseVzMax forward pop, shallow / deep arcs).
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltChain = 1.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltChain = 0.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexH = 33.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltApexJit = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AltVzMax = 34.f;
@@ -139,9 +139,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
 	/** round 01: offset of the program cycle index (K) used by ChooseForInput; scripts set it (tune) so each case of a clip starts at a different program of its stick pool */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipKStart = 0.f;
-	/** round 04: anchor candidates must be above the hand (rise / run >= AnchorElevMin) and not behind the travel line (cos of the horizontal angle >= AnchorAheadMin; -2 = off) */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorElevMin = 0.14f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAheadMin = -0.05f;
+	/** round 04 (live defaults = the capture chain tune since the owner live fix): anchor candidates must be above the hand (rise / run >= AnchorElevMin) and not behind the travel line (cos of the horizontal angle >= AnchorAheadMin; -2 = off) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorElevMin = 0.1f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAheadMin = -2.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipFloorClear = 6.f;  // round 11: a flip must be done this high over the floor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipCatchRoom = 0.35f; // round 11: s left after the program's reach for the catch // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
@@ -152,20 +152,20 @@ public:
 	/** Round 07: upward speed kept by a plain web release (m/s); the rest turns into forward speed. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReleaseVzMax = 8.f;
 	/** Round 08: facade clearance kept by the canyon spring (m) and the spring rate (1/s). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallClearance = 3.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallClearance = 14.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WallKeepRate = 2.5f;
 	/** Round 09: weave inside the corridor — swing target line toward the active anchor (x WeaveK, <= WeaveAmp m off centre). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WeaveK = 0.45f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float WeaveAmp = 6.f;
 	/** Round 09: alternating arc depth below the entry height (m): odd swings shallow, even swings deep. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropShallow = 10.2f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropDeep = 17.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropShallow = 8.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcDropDeep = 12.f;
 	/** Round 10: lowest designed arc bottom (feet over the floor, m; T7: 1-4 storeys over the street, never skimming car roofs). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcLowMin = 5.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ArcLowMin = 15.f;
 	/** Round 10: the first web after a sky launch bottoms out ArcLowMin + 0..SkyArcExtra m over the street (dives back into the canyon). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float SkyArcExtra = 4.f;
 	/** Round 09: the next anchor search leans this far (deg) toward the side opposite the previous web. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAltDeg = 30.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAltDeg = 8.f;
 	/**
 	 * Round 10 (critic r09 T3/T4/T7: four identical 2 s swings, never at the roofline): a jump-release with a trick pressed is a
 	 * SKY LAUNCH — the release climbs at up to SkyLaunchVz m/s (plain jump-release: 22), gravity is x SkyHangK while |vz| <
@@ -534,6 +534,8 @@ private:
 	void RopeWrap(double H);
 	// ---- tricks / release
 	FName ChooseTrick(const FWebTravInput& I);
+	void SolveFlowClimb(FName TrickN, const FVector& HV, bool bAltRel);   // the flow flip's solved climb (release + mid-air F)
+	bool AirFlipPress(const FWebTravInput& I);
 	FName FitFlip(FName Want) const;
 	double AirTimeToClear() const;
 	bool PickHandRight(const FVector& AnchorPt, const FVector& Fwd) const;   // round 01 (W9): the anchor's side relative to the travel line at the press
