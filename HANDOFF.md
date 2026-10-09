@@ -81,6 +81,12 @@ Owner direction: a polished 4K Manhattan swinging showcase. Night look = the ori
 - BEFORE checkpoint: tag `final-before` = 16d24911. Round folders `docs/night1/final/swing/round-NN/`; critic scratch `~/sm2-n1/_scratch/final/critic-rNN/`.
 - Supplied GLBs (read-only): `~/Documents/SpiderMan_Asset_Import_M3_2026-10-08_task-4/GLBs/` (56, hashes verified by the owner's transfer). Orchestrator inspection: the 11 human GLBs are unrigged A-pose civilians in everyday clothing; none is a Spider-Man suit, so no supplied suit is integrated (blocker reported to the owner). Previews `~/sm2-n1/_scratch/assets_m3/humans_{front,side}.jpg`. Props plan: `docs/night1/final/assets/PLAN.md` (builder PA).
 
+### Loop log (paused by the owner after round 04)
+- Critic scores (deploy / web read / swing body / flips / air / camera): r00 2/5/3/4/3/3, r01 3/5/3/4/3/3, r02 4/6/4/3/3/2, r03 4/5/4/6/4/4; all FAILS. Round 04 rendered (`docs/night1/final/swing/round-04/`, commits 57c12fc9 / 61e4bb60), NOT yet judged: next step = pack with `~/sm2-n1/_scratch/final/abpack_norm.py` (pairs_r03.json with round numbers +1) and run critic r04.
+- Rounds 00-02 were captured in the Cinder suit (the owner's saved GameUserSettings HeroSuit=3); r03+ force `-WHSuit=tessera`.
+- Supplied props: `/Game/PropsM3/Maps/PropsM3_Island` composed into the 3 island maps (1e11bab5), 1,600 instances, no collision.
+- Open: trick-camera hero size (P1) misses the 90 % band (pose-dependent extent; s1/s5 regressed 95 -> 88 % in r04), W2/W3/W9/W10 on s2 cases, W5 by day, A5 catch timing, F11, s3 flow web-on ~38 %.
+
 ## Blockers (live)
 - No supplied Spider-Man suit exists among the 56 GLBs (see above).
 - Island streaming stalls in live play (see Perf milestone A).
