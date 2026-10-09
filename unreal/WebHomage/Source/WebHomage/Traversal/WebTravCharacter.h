@@ -99,6 +99,8 @@ protected:
 	 */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillCd = 5000.f;
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillFlipCd = 18000.f;
+	/** round 03: multiplier on the menu's base vertical FOV used by the chase camera (0.862 = 50 deg at the 58 deg default) */
+	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Camera") float CamFovScale = 0.862f;
 	/** round 01: at night (MPC NightK 1) the hero-only fill stays at this candela (was faded to 0): a subtle fill so the hero reads against the lit facades */
 	UPROPERTY(Config, EditAnywhere, BlueprintReadWrite, Category="Hero") float HeroFillNightCd = 1400.f;
 	/** Round 15: fill multiplier when the hero is front-lit by the sun (camera looking away from it). */

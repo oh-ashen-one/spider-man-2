@@ -105,6 +105,22 @@ else:
             sum(1 for x in arr if x <= 20) == len(arr) and sum(1 for x in mx if x <= 30) == len(mx) and bool(start_dt) and pct(start_dt, 50) <= 0.05 + DT)
     else: line('W2', 'firing arm', 'no complete strand', False)
 
+# ---- P1 hero height by PIXELS (the -WHTravMask hero-only depth pass, 1920x1080 scale, previous-frame mask): swings 0.15-0.30, air / tricks 0.18-0.36, >= 90 % of 10 fps samples
+if R and 'px_top' in R[0]:
+    samp = [i for i in range(0, N, 6) if f(R[i], 'px_top', -1) >= 0 and f(R[i], 'px_bottom', -1) > f(R[i], 'px_top', -1)]
+    if samp:
+        hh = lambda i: (f(R[i], 'px_bottom') - f(R[i], 'px_top')) / 1080.0
+        sw = [hh(i) for i in samp if R[i]['mode'] == 'swing']
+        ai = [hh(i) for i in samp if R[i]['mode'] == 'air']
+        miss = N // 6 + 1 - len(samp)
+        okS = sum(1 for h in sw if 0.15 <= h <= 0.30) / len(sw) if sw else 1.0
+        okA = sum(1 for h in ai if 0.18 <= h <= 0.36) / len(ai) if ai else 1.0
+        line('P1', 'hero height by pixels: swing 0.15-0.30, air/trick 0.18-0.36 on >= 90 % of 10 fps samples (mask frames only; bbox of the hero-only depth pass)',
+             'swing %d samples median %.2f p10 %.2f p90 %.2f in-band %.0f %%; air %d samples median %.2f p10 %.2f p90 %.2f in-band %.0f %%; no hero pixels in %d samples; telemetry hero_bbox_h median %.2f' % (
+             len(sw), pct(sw, 50) if sw else -1, pct(sw, 10) if sw else -1, pct(sw, 90) if sw else -1, 100 * okS, len(ai), pct(ai, 50) if ai else -1, pct(ai, 10) if ai else -1, pct(ai, 90) if ai else -1, 100 * okA, miss,
+             pct([f(r, 'hero_bbox_h') for r in R], 50)), okS >= 0.9 and okA >= 0.9)
+    else: line('P1', 'hero height by pixels', 'no mask samples (render without -WHTravMask)', False)
+
 # ---- W3 shot travel
 trav = []
 for i, s in strand_on:

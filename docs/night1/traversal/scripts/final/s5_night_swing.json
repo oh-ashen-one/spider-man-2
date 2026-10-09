@@ -40,5 +40,5 @@
    "skyMax": 2.8
   }
  ],
- "tune": "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=15"
+ "tune": "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8"
 }

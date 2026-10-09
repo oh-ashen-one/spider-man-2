@@ -145,7 +145,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingVz = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
 	/** round 02: the largest lean (rad from world up) of a free fall that is not a dive / glide: 1.45 = nearly horizontal, head leading; never head-down */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirPitchMax = 1.45f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AirPitchMax = 1.1f;
 	/** Round 07: upward speed kept by a plain web release (m/s); the rest turns into forward speed. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float ReleaseVzMax = 8.f;
 	/** Round 08: facade clearance kept by the canyon spring (m) and the spring rate (1/s). */

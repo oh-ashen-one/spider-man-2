@@ -863,7 +863,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 
 	// ---- camera look, traversal, camera
 	// settings menu (2026-10-01): FOV + camera shake. WHSettings() stays at its defaults (58.0 deg, shake on) in automated runs.
-	Cam.BaseVFov = WHSettings().BaseVFov();
+	Cam.BaseVFov = WHSettings().BaseVFov() * double(CamFovScale);   // round 03: a narrower lens (50 deg vertical at the 58 deg menu default): the hero reads larger, keystoning drops
 	Cam.bJolts = WHSettings().bCameraShake;
 	Cam.ApplyLook(I.Look);
 	// pre-roll: the camera state is restored after the frame is set up and the traversal is only posed (not stepped), so the

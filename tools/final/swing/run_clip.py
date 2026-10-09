@@ -32,7 +32,7 @@ for name, q in cases:
         for f in SHOTS.glob('MovieFrame*.png'): f.unlink()
     cmd = [str(ROOT / 'tools/showcase/with_holder.sh'), 'python3', str(ROOT / 'tools/showcase/play.py'), '--map', game_map, '--profile', 'playable', '--res-scale', '100', '--res', '1920x1080',
            '--capture', str(d), '--name', 'route', '--script', str(ROOT / 'docs/night1/traversal/scripts/final' / (name + '.json')), '--quit', str(q + PRE), '--timeout', '3000',
-           '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-dumpmovie', '--game-arg=-WHMovieAsync', '--game-arg=-WHTravPreroll=%s' % PRE, '--game-arg=-WHPerfPreset=%s' % fast, '--launch']
+           '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-dumpmovie', '--game-arg=-WHTravMask', '--game-arg=-WHSuit=tessera', '--game-arg=-WHMovieAsync', '--game-arg=-WHTravPreroll=%s' % PRE, '--game-arg=-WHPerfPreset=%s' % fast, '--launch']
     t0 = time.time()
     if not a.reuse: subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
     wall = time.time() - t0

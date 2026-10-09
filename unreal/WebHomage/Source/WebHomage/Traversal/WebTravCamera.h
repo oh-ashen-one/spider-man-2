@@ -58,6 +58,7 @@ public:
 	double KickV = 0.0, KickK = 0.0, MbK = 0.0, MbKV = 0.0;
 
 	// ---- round 03 chase-camera tuning
+	double AirPitchDownMax = 0.17;  // round 03: rad, the free-flight chase pitch cap (10 deg down)
 	double ChaseDist = 3.8;        // horizontal distance behind the hero (m) — round 05
 	double ChaseHeight = 0.6;      // camera height over the hero centre (m) — r05 1.1, r07 1.8, r09 0.6 (TRAVERSAL-SPEC T11: pitch median 4-12 deg down)
 	double CamZMin = 0.2, CamZMax = 1.8;   // held band over the hero centre (m) — r07 1.2..2.6, r09 0.2..1.8
@@ -110,8 +111,8 @@ public:
 	// extent (FlipExtK m per m, up to FlipDistMax) instead of the r16 tuck pull-in; FlipAzHold: the held azimuth stays FlipAzHold s past the
 	// catch before it blends out (critic r17 TC-A "offset p5 20-29, range up to 34": the window runs to the catch + 0.5 s); FlipAzRate: a
 	// re-chosen view while the previous one is still blended moves its azimuth at <= this rate (deg/s) instead of jumping
-	double FlipDistMax = 6.4, FlipDistCompact = 4.5, FlipExtK = 2.6, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
-	double FlipDist = 5.0, FlipDistMin = 4.0, FlipTuckPull = 0.0, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
+	double FlipDistMax = 7.5, FlipDistCompact = 3.8, FlipExtK = 4.0, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
+	double FlipDist = 5.4, FlipDistMin = 4.0, FlipTuckPull = 0.0, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;
 	double FlipInT = 0.34, FlipOutT = 0.90, FlipZInT = 0.15, FlipZHold = 0.30, FlipDollyInT = 0.08, FlipDollyOutT = 0.6;
 	double FlipWallMargin = 1.5, FlipAheadT = 0.5;

@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 ap = argparse.ArgumentParser()
-ap.add_argument('script'); ap.add_argument('--map', default='island'); ap.add_argument('--out', default=str(Path.home() / 'sm2-n1/_scratch/final/swing/probe')); ap.add_argument('--quit', type=float); ap.add_argument('--no-preroll', action='store_true')
+ap.add_argument('script'); ap.add_argument('--map', default='island'); ap.add_argument('--out', default=str(Path.home() / 'sm2-n1/_scratch/final/swing/probe')); ap.add_argument('--quit', type=float); ap.add_argument('--game-arg', action='append', default=[]); ap.add_argument('--no-preroll', action='store_true')
 a = ap.parse_args()
 s = Path(a.script).resolve(); name = s.stem
 q = a.quit or json.loads((ROOT / 'docs/night1/traversal/scripts/final/clips.json').read_text()).get('_q', {}).get(name, 6.0)
@@ -16,7 +16,7 @@ q += PRE   # the capture pre-roll renders the start pose first; -WHQuitAt counts
 out = Path(a.out) / name
 subprocess.run(['rm', '-rf', str(out)])
 cmd = [str(ROOT / 'tools/showcase/with_holder.sh'), 'python3', str(ROOT / 'tools/showcase/play.py'), '--map', a.map, '--profile', 'playable', '--res-scale', '100', '--res', '1920x1080',
-       '--capture', str(out), '--name', 'route', '--script', str(s), '--quit', str(q), '--timeout', '900', '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-nullrhi', '--launch'] + ([] if a.no_preroll else ['--game-arg=-WHTravPreroll=1.5'])
+       '--capture', str(out), '--name', 'route', '--script', str(s), '--quit', str(q), '--timeout', '900', '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-nullrhi', '--launch'] + ['--game-arg=' + g for g in a.game_arg] + ([] if a.no_preroll else ['--game-arg=-WHTravPreroll=1.5'])
 subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
 rows = list((csv.DictReader((out / 'route_telemetry.csv').open()))) if (out / 'route_telemetry.csv').exists() else []
 if not rows: sys.exit('%s: no telemetry (see %s)' % (name, out))

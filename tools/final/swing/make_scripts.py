@@ -25,7 +25,7 @@ def air(pos, vel, yaw=-90.0, pitch=0.12):
 
 # s1 / s5: the r26 a_swing_chain rule (airborne swing chain north up the avenue; release on the rising front, re-press once falling at 8 m/s, every 3rd release a flow flip)
 chain_keys = [{"t": 0.0, "move": [0, 1], "heading": -90, "swing": False}, dict({"t": 0.4}, **CHAIN)]
-CHAIN_TUNE = "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=15"   # swing bottoms >= 14 m over the street (above the street-tree canopy), the f4 altitude rule
+CHAIN_TUNE = "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8"   # swing bottoms >= 14 m over the street (above the street-tree canopy), the f4 altitude rule
 clips['s1_swing_chain'] = [write('s1_swing_chain', 'a skilled player holding RMB: release on the rising front, re-press 0.3 s later (r26 a_swing_chain rule, gap 0.3 / repressVz 99), bottoms >= 14 m: 20 s', air([250, 560, 24], [0, -22, 0]), chain_keys, 20.0, tune=CHAIN_TUNE)]
 clips['s5_night_swing'] = [write('s5_night_swing', 's1 inputs, night map', air([250, 560, 24], [0, -22, 0]), chain_keys, 20.0, tune=CHAIN_TUNE)]
 
@@ -39,7 +39,13 @@ s3c = []
 for n, (nm, m) in enumerate([('fwd', [0, 1]), ('back', [0, -1]), ('right', [1, 0]), ('left', [-1, 0]), ('neutral', [0, 0]), ('fwd_right', [0.7, 0.7]), ('back_left', [-0.7, -0.7])], 1):
     s3c.append(write('s3_c%d_%s' % (n, nm), 'F pressed 0.4 s in with the stick %s %s, swing 2.0 s later' % (nm, m), air([250, 200, 110], [0, -22, 6]),
                      [{"t": 0.0, "move": [0, 0], "swing": False}, {"t": 0.3, "move": m}, {"t": 0.4, "trick": True}, {"t": 0.5, "trick": False}, {"t": 2.4, "swing": True}, {"t": 3.5, "swing": False}], 3.8, tune='FlipKStart=%d' % (n + 1 if n % 2 else n - 1)))   # each case starts at another program of its stick pool
-clips['s3_flip_chain'] = s3c
+clips['s3b_flip_cases'] = s3c   # the round 00-02 s3 (7 separate cases) kept for progress pairs
+
+# s3: ONE continuous chain: every release is a flow flip (F pressed with the release), the stick changes between flips (forward / forward-right / forward-left / back), the web catches each flip; 24 s
+flow_moves = [(0.0, [0, 1]), (3.0, [0.7, 0.7]), (6.0, [0, 1]), (9.0, [-0.7, 0.7]), (12.0, [0, -0.8]), (15.0, [0, 1]), (18.0, [0.7, 0.7]), (21.0, [-0.7, 0.7])]
+flow_keys = [dict({"t": t, "move": m}, **({"swing": False} if t == 0.0 else {})) for t, m in flow_moves] + [dict({"t": 0.4}, **dict(CHAIN, gap=0.3, trickEvery=1))]
+flow_keys.sort(key=lambda k: k['t'])
+clips['s3_flip_chain'] = [write('s3_flip_flow', 'one continuous chain: a flow flip on every release, stick changing between flips, 24 s', air([250, 560, 40], [0, -22, 6]), flow_keys, 24.0, tune=CHAIN_TUNE)]
 
 # s2: nine awkward-press cases (each 3-4 s after the cut)
 cases = []

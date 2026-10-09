@@ -3030,7 +3030,7 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 			if (KA > 0.0 && HV > 1.5)
 			{
 				const double Ang = FMath::Acos(FMath::Clamp(S.Vel.Z / Sp, -1.0, 1.0));
-				S.Pitch = FMath::Lerp(S.Pitch, FMath::Min(Ang, S.bDive || S.bGliding ? double(AirPitchMax) - 0.45 : double(AirPitchMax)), KA);   // round 02: a free fall never turns head-down (the 177 deg tumble of the s4 float)
+				S.Pitch = FMath::Lerp(S.Pitch, FMath::Min(Ang, S.bDive || S.bGliding ? double(AirPitchMax) - 0.3 : double(AirPitchMax)), KA);   // round 02: a free fall never turns head-down (the 177 deg tumble of the s4 float)
 			}
 		}
 		Rate = 8;

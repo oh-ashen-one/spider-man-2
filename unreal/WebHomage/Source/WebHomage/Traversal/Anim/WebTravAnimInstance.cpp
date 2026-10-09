@@ -231,10 +231,10 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 				: (FlavorIdx % 2 ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall")));
 		switch (FlavorIdx)
 		{ // short segments of moving clips (no held static pose)
-		case 0: return T < 0.55f ? FName(TEXT("air_rise")) : T < 1.0f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));   // round 02: authored float poses only (no spread / tuck splay)
-		case 1: return T < 0.45f ? FName(TEXT("air_rise")) : T < 0.9f ? FName(TEXT("air_apex")) : FName(TEXT("air_fallCalm"));
-		case 2: return T < 0.4f ? FName(TEXT("air_rise")) : T < 0.9f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));
-		default: return T < 0.4f ? FName(TEXT("air_fallCalm")) : T < 0.8f ? FName(TEXT("air_apex")) : FName(TEXT("air_fall"));
+		case 0: return T < 0.35f ? FName(TEXT("air_rise")) : T < 0.7f ? FName(TEXT("air_fallCalm")) : T < 1.0f ? FName(TEXT("air_apex")) : FName(TEXT("air_fall"));   // round 03: segments <= 0.35 s (no held pose)
+		case 1: return T < 0.35f ? FName(TEXT("air_rise")) : T < 0.7f ? FName(TEXT("air_apex")) : T < 1.05f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));
+		case 2: return T < 0.3f ? FName(TEXT("air_rise")) : T < 0.6f ? FName(TEXT("air_fallCalm")) : T < 0.9f ? FName(TEXT("air_apex")) : FName(TEXT("air_fall"));
+		default: return T < 0.3f ? FName(TEXT("air_fallCalm")) : T < 0.6f ? FName(TEXT("air_apex")) : T < 0.9f ? FName(TEXT("air_rise")) : FName(TEXT("air_fall"));
 		}
 	}
 	if (Sub == TEXT("rise")) return FName(TEXT("air_rise"));
