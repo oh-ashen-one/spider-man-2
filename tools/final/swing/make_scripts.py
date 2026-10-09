@@ -47,6 +47,8 @@ flow_keys = [dict({"t": t, "move": m}, **({"swing": False} if t == 0.0 else {}))
 flow_keys.sort(key=lambda k: k['t'])
 clips['s3_flip_chain'] = [write('s3_flip_flow', 'one continuous chain: a flow flip on every release, stick changing between flips, 24 s', air([250, 560, 40], [0, -22, 6]), flow_keys, 24.0, tune=CHAIN_TUNE)]
 
+clips['live_fix_clip'] = [('live_fix_clip', 15.0)]   # owner live fix clip (script written by the live-fix tooling, default tuning)
+
 # s2: nine awkward-press cases (each 3-4 s after the cut)
 cases = []
 def case(n, name, note, spawn, keys, quit_s):
