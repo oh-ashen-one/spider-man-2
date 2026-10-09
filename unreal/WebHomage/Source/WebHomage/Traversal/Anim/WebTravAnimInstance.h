@@ -55,6 +55,7 @@ struct FWebTravAnimFrame
 	// in a row); thighs, knees and the back run on springs (2.1 / 2.8 / 2.0 Hz, zeta .5-.6) toward phase-dependent targets, so the legs and torso lag the arc, swing through and overshoot.
 	// SwTh = thigh pitch (rad, - = knee forward), SwKn = absolute knee flexion (rad), SwArch = back arch (rad); index 0 = left, 1 = right
 	float SwLifeK = 0.f, SwArch = 0.f;
+	float SwPhase = 0.f;   // round 04: swing phase (- = drop, + = upswing) for the free-arm swing
 	int32 SwStyle = 0;
 	float SwTh[2] = { 0.f, 0.f }, SwKn[2] = { 0.f, 0.f };
 	FVector VelCS = FVector::ZeroVector;  // component-space velocity direction (unit)

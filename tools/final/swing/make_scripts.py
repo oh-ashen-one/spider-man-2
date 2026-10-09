@@ -25,7 +25,7 @@ def air(pos, vel, yaw=-90.0, pitch=0.12):
 
 # s1 / s5: the r26 a_swing_chain rule (airborne swing chain north up the avenue; release on the rising front, re-press once falling at 8 m/s, every 3rd release a flow flip)
 chain_keys = [{"t": 0.0, "move": [0, 1], "heading": -90, "swing": False}, dict({"t": 0.4}, **CHAIN)]
-CHAIN_TUNE = "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8"   # swing bottoms >= 14 m over the street (above the street-tree canopy), the f4 altitude rule
+CHAIN_TUNE = "ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8,AnchorElevMin=0.1,AnchorAheadMin=-2"   # swing bottoms >= 14 m over the street (above the street-tree canopy), the f4 altitude rule
 clips['s1_swing_chain'] = [write('s1_swing_chain', 'a skilled player holding RMB: release on the rising front, re-press 0.3 s later (r26 a_swing_chain rule, gap 0.3 / repressVz 99), bottoms >= 14 m: 20 s', air([250, 560, 24], [0, -22, 0]), chain_keys, 20.0, tune=CHAIN_TUNE)]
 clips['s5_night_swing'] = [write('s5_night_swing', 's1 inputs, night map', air([250, 560, 24], [0, -22, 0]), chain_keys, 20.0, tune=CHAIN_TUNE)]
 

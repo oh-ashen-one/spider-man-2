@@ -111,8 +111,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeWavePx = 1.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 3.6f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 4.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.55f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.55f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.5f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 100.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 0.9f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.08f;
@@ -139,6 +139,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
 	/** round 01: offset of the program cycle index (K) used by ChooseForInput; scripts set it (tune) so each case of a clip starts at a different program of its stick pool */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipKStart = 0.f;
+	/** round 04: anchor candidates must be above the hand (rise / run >= AnchorElevMin) and not behind the travel line (cos of the horizontal angle >= AnchorAheadMin; -2 = off) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorElevMin = 0.14f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAheadMin = -0.05f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipFloorClear = 6.f;  // round 11: a flip must be done this high over the floor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipCatchRoom = 0.35f; // round 11: s left after the program's reach for the catch // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
@@ -534,6 +537,7 @@ private:
 	FName FitFlip(FName Want) const;
 	double AirTimeToClear() const;
 	bool PickHandRight(const FVector& AnchorPt, const FVector& Fwd) const;   // round 01 (W9): the anchor's side relative to the travel line at the press
+	static constexpr double ShootAnticip = 0.033;   // round 04: s between the press (arm starts) and the strand's first drawn frame
 	static double ShootDurFor(double Dist) { return FMath::Clamp(Dist / 225.0, 0.08, 0.20); }   // round 01 (W3): tip speed 250 m/s inside 0.06-0.20 s
 	bool AnchorStrandClear(const FTravAnchor& A) const;   // round 01 (W7): hand->anchor line free of building geometry and tree crowns
 	void StartTrick(FName Name);

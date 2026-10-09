@@ -228,6 +228,7 @@ private:
 	FVector PalmLocal[2] = { FVector::ZeroVector, FVector::ZeroVector };   // finger axis (hand bone space, unit) from the reference pose: [0] left, [1] right
 	bool bPalmOk = false;
 	FString BuildCols25();
+	double ProjectHeroH() const;   // round 04: bone-box height of the hero through the camera (fraction of the frame, -1 none)
 public:
 	void PostAnimTick(float Dt);
 	void EndAnimTick();
@@ -242,6 +243,7 @@ private:
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> MaskCapture;
 	UPROPERTY(Transient) TObjectPtr<class UTextureRenderTarget2D> MaskRT;
 	float PxTop = -1.f, PxBottom = -1.f, PxLeft = -1.f, PxRight = -1.f;
+	FString HeroSil;   // round 04: hero silhouette, 16x16 grid over its mask bbox (hex, 64 chars; '0' = none) -- telemetry only
 	float VisTop = -1.f, VisBottom = -1.f; int32 VisPx = -1; // round 20: visible (unoccluded) hero pixels
 	// round 08: full-scene depth from the view camera (same 480x270 grid) -> near-wall share and hero occlusion
 	UPROPERTY(Transient) TObjectPtr<class USceneCaptureComponent2D> SceneCapture;

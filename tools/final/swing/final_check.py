@@ -121,13 +121,36 @@ if R and 'px_top' in R[0]:
              pct([f(r, 'hero_bbox_h') for r in R], 50)), okS >= 0.9 and okA >= 0.9)
     else: line('P1', 'hero height by pixels', 'no mask samples (render without -WHTravMask)', False)
 
+# ---- P2 silhouette evolution (hero mask, 16x16 grid over its bbox): IoU between frames 0.3 s apart < 0.85 on >= 90 % of swing / air samples; no pose held > 0.4 s (IoU of frames 0.1 s apart >= 0.92)
+if R and 'hero_sil' in R[0]:
+    def bits(i):
+        h = R[i]['hero_sil']
+        return None if not h or h == '0' else int(h, 16)
+    def iou(a, b):
+        u = bin(a | b).count('1'); return bin(a & b).count('1') / u if u else 1.0
+    SW = 18; ST = 6
+    pairs = [iou(bits(i), bits(i + SW)) for i in range(0, N - SW) if R[i]['mode'] in ('swing', 'air') and case[i] == case[i + SW] and bits(i) and bits(i + SW)]
+    run = best = 0
+    for i in range(0, N - ST):
+        ba, bb = bits(i), bits(i + ST)
+        if R[i]['mode'] in ('swing', 'air') and case[i] == case[i + ST] and ba and bb and iou(ba, bb) >= 0.92: run += 1; best = max(best, run)
+        else: run = 0
+    if pairs:
+        okp = sum(1 for x in pairs if x < 0.85) / len(pairs)
+        line('P2', 'pose evolution by silhouette: IoU(0.3 s apart) < 0.85 on >= 90 % of swing/air frames; no pose held > 0.4 s',
+             '%d pairs; IoU median %.2f p90 %.2f; below 0.85 on %.0f %%; longest held (IoU >= 0.92 over 0.1 s) %.2f s' % (len(pairs), pct(pairs, 50), pct(pairs, 90), 100 * okp, (best + ST) / 60.0), okp >= 0.9 and (best + ST) / 60.0 <= 0.4)
+    else: line('P2', 'pose evolution by silhouette', 'no silhouettes (render without -WHTravMask)', False)
+
 # ---- W3 shot travel
 trav = []
 for i, s in strand_on:
+    i0 = i
+    i = next((j for j in range(i0, min(N, i0 + 8)) if f(R[j], 'fw_s%d_drawn' % s) > 0.5 and case[j] == case[i0]), i0)   # round 04: the strand is not drawn while the arm anticipates (Age < 0)
     shoot = f(R[i], 'fw_s%d_shoot' % s); A = v3(R[i], 'fw_s%d_s' % s); B = v3(R[i], 'fw_s%d_a' % s); L = nrm(sub(B, A))
     if f(R[i], 'fw_s%d_drawn' % s) < 0.5 or L < 1: continue
     prog = nrm(sub(v3(R[i], 'fw_s%d_t' % s), A)) / L
     land = t[i] + max(0.0, shoot - f(R[i], 'fw_s%d_age' % s))
+    lead = t[i] - t[i0]
     ten = next((t[j] for j in range(i, min(N, i + 40)) if f(R[j], 'tension') > 0.05), None)
     mstep, mono, prev = 0.0, True, 0.0
     for j in range(i, min(N, i + 16)):
@@ -138,7 +161,7 @@ for i, s in strand_on:
         if Lj >= 0.97 * Lf: break
     trav.append((shoot, L / max(shoot, 1e-3), prog, (ten - land) if ten is not None else None, L, mstep, mono))
 if trav:
-    okc = [1 for sh, sp, pr, tl, L, ms, mo in trav if 0.08 - 1e-3 <= sh <= 0.20 + 1e-3 and 150 <= sp <= 400 and pr < 0.8 and ms <= 0.26 and mo and (tl is not None and tl >= -DT * 1.5)]
+    okc = [1 for sh, sp, pr, tl, L, ms, mo in trav if 0.08 - 1e-3 <= sh <= 0.20 + 1e-3 and 150 <= sp <= 400 and pr <= 0.35 and ms <= 0.26 and mo and (tl is not None and tl >= -DT * 1.5)]
     line('W3', 'tip travels visibly 0.06-0.20 s at 150-400 m/s, not full length in frame 1, tension after landing', '%d/%d shots pass (0.08-0.20 s, growth <= 25 %%/frame, monotone); max per-frame growth %.0f %%; shoot s median %.3f (%.3f-%.3f); tip speed median %.0f m/s; first-frame progress median %.2f; tension starts %.2f s relative to tip landing (median; negative = before)' % (
         len(okc), len(trav), 100 * max(x[5] for x in trav), pct([x[0] for x in trav], 50), min(x[0] for x in trav), max(x[0] for x in trav), pct([x[1] for x in trav], 50), pct([x[2] for x in trav], 50), pct([x[3] for x in trav if x[3] is not None], 50)), len(okc) == len(trav))
 else: line('W3', 'shot travel', 'no shots', False)

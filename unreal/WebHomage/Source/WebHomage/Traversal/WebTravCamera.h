@@ -111,6 +111,9 @@ public:
 	// extent (FlipExtK m per m, up to FlipDistMax) instead of the r16 tuck pull-in; FlipAzHold: the held azimuth stays FlipAzHold s past the
 	// catch before it blends out (critic r17 TC-A "offset p5 20-29, range up to 34": the window runs to the catch + 0.5 s); FlipAzRate: a
 	// re-chosen view while the previous one is still blended moves its azimuth at <= this rate (deg/s) instead of jumping
+	// round 04: closed-loop trick distance: the character reports the hero's projected bone-box height (fraction of the frame, previous frame); FlipFbK scales the held distance so it
+	// settles at FlipFbTarget (the bone box is padded 10 cm, ~1.15x the pixel mask height: 0.31 ~ 0.27 by pixels), dead band 8 %
+	double HeroProjH = -1.0, FlipFbK = 1.0, FlipFbTarget = 0.29, FlipFbGain = 2.5;
 	double FlipDistMax = 7.5, FlipDistCompact = 3.8, FlipExtK = 4.0, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
 	double FlipDist = 5.4, FlipDistMin = 4.0, FlipTuckPull = 0.0, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;

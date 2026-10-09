@@ -323,9 +323,16 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		// 5.0 m -- r18 render f1 mask p50 .167 -- and ~.19 at 4.5) .. FlipDistMax. The pull-in is weighted by FlipCompact (tuck 1, pike .6, open 0, with its
 		// 0.22 s anticipation): a flat 4.5 floor also pulled the open programs in (r18 render 2: corkscrew / pikeSwan bone-box h p90 .36-.37), open shapes stay >= 5.0
 		if (P.FlipExtent > 0.f) SD(FlipExtS, FlipExtV, double(P.FlipExtent), 0.12, Dt);
-		const double Want = P.FlipExtent > 0.f || FlipExtS > 0.0
+		if (HeroProjH > 0.0 && FlipK > 0.3)
+		{
+			const double Ratio = HeroProjH / FlipFbTarget;
+			if (FMath::Abs(Ratio - 1.0) > 0.08) FlipFbK = FMath::Clamp(FlipFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, FlipFbGain * Dt)), 0.6, 1.7);
+		}
+		else FlipFbK = FMath::Lerp(FlipFbK, 1.0, FMath::Min(1.0, 2.0 * Dt));
+		const double Want0 = P.FlipExtent > 0.f || FlipExtS > 0.0
 			? FMath::Clamp(FlipExtK * FlipExtS, FMath::Min(FlipDistSel, FMath::Lerp(FlipDistSel, FlipDistCompact, FMath::Clamp(FlipCompactS, 0.0, 1.0))), FMath::Max(FlipDistSel, FlipDistMax))
 			: FlipDistSel - FlipTuckPull * FMath::Clamp(FlipCompactS, 0.0, 1.0);
+		const double Want = FMath::Clamp(Want0 * FlipFbK, 2.8, FMath::Max(FlipDistSel, FlipDistMax) * 1.25);
 		double HitD = 0.0, ObsGoal = 1e9;
 		if (!World.SphereOverlaps(Chest, 0.22) && World.SphereSweep(Chest, Hero + Uc * Want, 0.3, HitD)) ObsGoal = HitD - 0.25;
 		const double Goal = FMath::Min(Want, ObsGoal);

@@ -535,6 +535,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		const float Step = Dt / (Want > Frame.BodyAlignW ? 0.3f : 0.2f);   // round 01 (W4): the hips-to-head alignment onto the rope eases in over 0.7 s (was 0.2 s)
 		Frame.BodyAlignW = Want > Frame.BodyAlignW ? FMath::Min(Want, Frame.BodyAlignW + Step) : FMath::Max(Want, Frame.BodyAlignW - Step);
 	}
+	Frame.SwPhase = A.Mode == EWebTravMode::Swing ? A.Swing.Phase : 0.f;
 	// round 01 (Gap 4): swing life targets and springs (see FWebTravAnimFrame::SwLifeK)
 	{
 		const bool bSw = A.Mode == EWebTravMode::Swing;
@@ -563,18 +564,18 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 			const double Mid = Bump(Ph, 0.08, 0.55), Drop = Sm((-Ph - 0.1) / 0.5);
 			switch (Frame.SwStyle)
 			{
-			case 0: Th[Lead] += -1.0 * (0.2 + 0.8 * Mid); Kn[Lead] += 1.7 * (0.12 + 0.88 * Mid); Th[Trail] += 0.45 * Mid; Kn[Trail] += -0.04; break;   // split: lead knee up, trail leg long
-			case 1: for (int32 K = 0; K < 2; ++K) { Th[K] += -0.9 * Mid; Kn[K] += 1.7 * (0.1 + 0.9 * Mid); } Th[Lead] -= 0.08 * Mid; break;               // tuck: both knees drawn up
-			case 2: for (int32 K = 0; K < 2; ++K) { Kn[K] = 0.04; Th[K] += -0.25 + 0.5 * Drop; } break;                                                                         // long: legs together, extended
+			case 0: Th[Lead] += -1.35 * (0.2 + 0.8 * Mid); Kn[Lead] += 2.0 * (0.12 + 0.88 * Mid); Th[Trail] += 0.75 * Mid; Kn[Trail] += -0.04; break;   // split: lead knee up, trail leg long
+			case 1: for (int32 K = 0; K < 2; ++K) { Th[K] += -1.4 * Mid; Kn[K] += 2.2 * (0.1 + 0.9 * Mid); } Th[Lead] -= 0.08 * Mid; break;               // tuck: both knees drawn up
+			case 2: for (int32 K = 0; K < 2; ++K) { Kn[K] = 0.04; Th[K] += -0.55 + 0.9 * Drop; } break;                                                                         // long: legs together, extended
 			default:
 			{ // stride: a slow run in the air, legs long on the drop
 				const double P = SwStp + 2.0 * PI * 0.85 * (SwTime - SwT0), C = FMath::Sin(P), Aa = 1.0 - 0.7 * Drop;
-				Th[0] += (-0.65 * C - 0.1) * Aa; Th[1] += (0.65 * C - 0.1) * Aa;
+				Th[0] += (-0.95 * C - 0.1) * Aa; Th[1] += (0.95 * C - 0.1) * Aa;
 				Kn[0] += (0.3 + 1.1 * FMath::Max(0.0, -FMath::Cos(P))) * Aa; Kn[1] += (0.3 + 1.1 * FMath::Max(0.0, FMath::Cos(P))) * Aa;
 			}
 			}
 			for (int32 K = 0; K < 2; ++K) { SwThS[K].Step(Th[K], 2.1, 0.5, Dt); SwKnS[K].Step(Kn[K], 2.8, 0.55, Dt); Frame.SwTh[K] = float(SwThS[K].X); Frame.SwKn[K] = float(SwKnS[K].X); }
-			SwArchS.Step(-0.2 * Bump(Ph, 0.05, 0.45) + 0.1 * Sm((-Ph - 0.4) / 0.4), 2.0, 0.6, Dt);
+			SwArchS.Step((-0.2 * Bump(Ph, 0.05, 0.45) + 0.1 * Sm((-Ph - 0.4) / 0.4)) * 2.8, 2.0, 0.6, Dt);   // round 04: torso curls at the bottom and opens on the upswing, big
 			Frame.SwArch = float(SwArchS.X);
 			Frame.SwLifeK = float(Sm((SwTime - SwT0) / 0.35));
 		}
@@ -1172,7 +1173,8 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			Out = Out.GetSafeNormal();
 			// round 20: slow arcs open the arm out for balance; fast arcs sweep it back along the body (streamlined)
 			const double SK = Frame.SwingSpeedK;
-			const FVector Dir = (Out * FMath::Lerp(0.8, 0.35, SK) - V * FMath::Lerp(0.45, 0.9, SK) - BodyUp * FMath::Lerp(0.15, 0.55, SK)).GetSafeNormal();
+			const double PhK = FMath::Clamp(double(Frame.SwPhase) * 1.6, -1.0, 1.0);   // round 04: the free arm swings through: back on the drop, forward over the top on the upswing
+			const FVector Dir = (Out * FMath::Lerp(0.8, 0.35, SK) - V * FMath::Lerp(0.45, 0.9, SK) * (1.0 - 1.5 * PhK) - BodyUp * FMath::Lerp(0.15, 0.55, SK) * (1.0 - PhK * 0.8)).GetSafeNormal();
 			TwoBone(UA, FA, HA, Sh + Dir * (FMath::Lerp(0.88, 0.95, SK) * La), (-BodyUp - V * 0.3).GetSafeNormal(), FMath::Lerp(0.55f, 0.8f, float(SK)) * Frame.SwingFreeArmW, nullptr, 0.f);
 		}
 	}
@@ -1278,11 +1280,11 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			{
 				const FCompactPoseBoneIndex BT = Sd == 0 ? BTL : BTR, BS = Idx(Sd == 0 ? TEXT("shin_L") : TEXT("shin_R")), BFt = Idx(Sd == 0 ? TEXT("foot_L") : TEXT("foot_R"));
 				if (!BT.IsValid() || !BS.IsValid() || !BFt.IsValid()) continue;
-				const double Thx = FMath::Clamp(double(Frame.SwTh[Sd]), -1.6, 0.9) * (Frame.SwTh[Sd] < 0.f ? 1.0 - 0.65 * Frame.TuckW : 1.0);
+				const double Thx = FMath::Clamp(double(Frame.SwTh[Sd]), -2.0, 1.1) * (Frame.SwTh[Sd] < 0.f ? 1.0 - 0.65 * Frame.TuckW : 1.0);
 				RotateCS(BT, FQuat(Lat, Thx * Kk * CSn));
 				const FVector Hp = CS(BT).GetLocation(), Kp = CS(BS).GetLocation(), Ap = CS(BFt).GetLocation();
 				const double Cur = FMath::Acos(FMath::Clamp(FVector::DotProduct((Kp - Hp).GetSafeNormal(), (Ap - Kp).GetSafeNormal()), -1.0, 1.0));
-				const double Want = FMath::Clamp(double(Frame.SwKn[Sd]), 0.04, 2.4);
+				const double Want = FMath::Clamp(double(Frame.SwKn[Sd]), 0.04, 2.6);
 				RotateCS(BS, FQuat(Lat, (FMath::Lerp(Want, FMath::Max(Want, Cur), double(Frame.TuckW)) - Cur) * Kk * CSn));
 				RotateCS(BFt, FQuat(Lat, (Frame.SwStyle == 2 ? 0.3 : 0.15) * Kk * CSn));
 			}

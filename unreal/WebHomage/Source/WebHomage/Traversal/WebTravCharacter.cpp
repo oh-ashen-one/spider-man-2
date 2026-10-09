@@ -956,6 +956,7 @@ void AWebTravCharacter::Tick(float DeltaSeconds)
 				Best->IsUsedAsAtmosphereSunLight() ? TEXT("atmosphere sun") : TEXT("brightest directional"), SR.Yaw, SR.Pitch);
 		}
 	}
+	Cam.HeroProjH = ProjectHeroH();
 	Cam.Update(Dt, CI, Traversal->TravWorld);
 	Traversal->TravWorld.PushOutOfCrowns(Cam.CamPos, 0.5);   // round 01 (Gap 3): the lens never sits inside a tree crown
 
@@ -1453,6 +1454,22 @@ void AWebTravCharacter::ReadHeroMask()
 		}
 	}
 	if (Y1 >= 0) { PxTop = Y0 * 4.f; PxBottom = (Y1 + 1) * 4.f; PxLeft = X0 * 4.f; PxRight = (X1 + 1) * 4.f; } // 1920x1080 pixels
+	HeroSil = TEXT("0");
+	if (Y1 >= 0)
+	{ // 16x16 occupancy grid over the bbox (a cell is set when >= 30 % of its mask pixels are hero)
+		const int32 BW = X1 - X0 + 1, BH = Y1 - Y0 + 1;
+		uint8 Bits[256]; FMemory::Memzero(Bits);
+		for (int32 Gy = 0; Gy < 16; ++Gy)
+			for (int32 Gx = 0; Gx < 16; ++Gx)
+			{
+				const int32 xa = X0 + Gx * BW / 16, xb = FMath::Max(xa + 1, X0 + (Gx + 1) * BW / 16), ya = Y0 + Gy * BH / 16, yb = FMath::Max(ya + 1, Y0 + (Gy + 1) * BH / 16);
+				int32 N = 0, H = 0;
+				for (int32 Y = ya; Y < yb && Y < 270; ++Y) for (int32 X = xa; X < xb && X < 480; ++X) { ++N; if (Px[Y * 480 + X].R < 20000.f) ++H; }
+				Bits[Gy * 16 + Gx] = (N > 0 && H * 10 >= N * 3) ? 1 : 0;
+			}
+		HeroSil.Empty();
+		for (int32 K = 0; K < 256; K += 4) HeroSil += FString::Printf(TEXT("%x"), Bits[K] * 8 + Bits[K + 1] * 4 + Bits[K + 2] * 2 + Bits[K + 3]);
+	}
 }
 
 // final loop round 00 (W / A checkers): strand state, the strand as drawn this frame (start = the hand read in UpdateWebs, tip), the hand and shoulder bones as the
@@ -1501,10 +1518,35 @@ FString AWebTravCharacter::FinalSwingCols(double T)
 		}
 		O += FString::Printf(TEXT(",%.1f"), Rate);
 		O += TEXT(",") + V3(PalmWorldCm(false)) + TEXT(",") + V3(PalmWorldCm(true));   // the palms of the final pose
-		O += FString::Printf(TEXT(",%.3f"), Traversal->Anim.NoAnchorT);   // the no-anchor reach gesture clock (< 0 none) (end of the frame): the strand start drawn in PostAnimTick must equal them
+		O += FString::Printf(TEXT(",%.3f"), Traversal->Anim.NoAnchorT);   // the no-anchor reach gesture clock (< 0 none)
+		O += TEXT(",") + (HeroSil.IsEmpty() ? FString(TEXT("0")) : HeroSil);
 	}
-	else O += TEXT(",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
+	else O += TEXT(",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0");
 	return O;
+}
+
+double AWebTravCharacter::ProjectHeroH() const
+{
+	if (!bHeroMesh || !GetMesh()) return -1.0;
+	const FRotationMatrix RM(Cam.CamRot);
+	const FVector CF = RM.GetUnitAxis(EAxis::X), CU = RM.GetUnitAxis(EAxis::Z);
+	const double TV = FMath::Tan(FMath::DegreesToRadians(FMath::Max(10.0, Cam.OutVFov) * 0.5));
+	double MinY = 1e9, MaxY = -1e9;
+	const USkeletalMeshComponent* M = GetMesh();
+	for (int32 Bi = 0; Bi < M->GetNumBones(); ++Bi)
+	{
+		const FVector BP = M->GetBoneLocation(M->GetBoneName(Bi));
+		for (int32 K = 0; K < 8; ++K)
+		{
+			const FVector Corner(BP.X + ((K & 1) ? 10.0 : -10.0), BP.Y + ((K & 2) ? 10.0 : -10.0), BP.Z + ((K & 4) ? 10.0 : -10.0));
+			const FVector Rel = Corner / 100.0 - Cam.CamPos;
+			const double Z = FVector::DotProduct(Rel, CF);
+			if (Z < 0.3) return -1.0;
+			const double SY = 0.5 - 0.5 * FVector::DotProduct(Rel, CU) / (Z * TV);
+			MinY = FMath::Min(MinY, SY); MaxY = FMath::Max(MaxY, SY);
+		}
+	}
+	return MaxY - MinY;
 }
 
 FString AWebTravCharacter::BuildCols25()
@@ -1562,7 +1604,7 @@ void AWebTravCharacter::PushTelemetry(double T, const FWebTravInput& I)
 		TEXT("rope_drawn,rope_ax,rope_ay,rope_bx,rope_by,rope_wpx_a,rope_wpx_b,rope_look,cam_perch_hold,")
 		TEXT("fw_s0_on,fw_s0_hand,fw_s0_age,fw_s0_shoot,fw_s0_rel,fw_s0_drawn,fw_s0_ax,fw_s0_ay,fw_s0_az,fw_s0_sx,fw_s0_sy,fw_s0_sz,fw_s0_tx,fw_s0_ty,fw_s0_tz,fw_s0_taut,fw_s0_wave_cm,fw_s0_clear,")
 		TEXT("fw_s1_on,fw_s1_hand,fw_s1_age,fw_s1_shoot,fw_s1_rel,fw_s1_drawn,fw_s1_ax,fw_s1_ay,fw_s1_az,fw_s1_sx,fw_s1_sy,fw_s1_sz,fw_s1_tx,fw_s1_ty,fw_s1_tz,fw_s1_taut,fw_s1_wave_cm,fw_s1_clear,")
-		TEXT("fw_hl_x,fw_hl_y,fw_hl_z,fw_hr_x,fw_hr_y,fw_hr_z,fw_shl_x,fw_shl_y,fw_shl_z,fw_shr_x,fw_shr_y,fw_shr_z,fw_chest_rate_dps,fw_pl_x,fw_pl_y,fw_pl_z,fw_pr_x,fw_pr_y,fw_pr_z,fw_reach_t"));
+		TEXT("fw_hl_x,fw_hl_y,fw_hl_z,fw_hr_x,fw_hr_y,fw_hr_z,fw_shl_x,fw_shl_y,fw_shl_z,fw_shr_x,fw_shr_y,fw_shr_z,fw_chest_rate_dps,fw_pl_x,fw_pl_y,fw_pl_z,fw_pr_x,fw_pr_y,fw_pr_z,fw_reach_t,hero_sil"));
 	const FVector P = Traversal->PosM(), V = Traversal->VelM();
 	const bool bSw = Traversal->IsSwinging();
 	const FVector An = bSw ? Traversal->SwingAnchor() : FVector::ZeroVector;

@@ -107,6 +107,7 @@ void UWebTraversalComponent::WebAttach(bool bRight, const FVector& Anchor, doubl
 	FWebTravStrand& St = Strands[bSecond ? 1 : 0];
 	St.bActive = true; St.bRightHand = bRight; St.Anchor = Anchor; St.Age = 0.f; St.ShootDur = float(ShootDur);
 	St.Taut = 0.f; St.ReleaseT = -1.f; St.bSnap = false; St.BlendT = 1.f; St.AnchorFrom = Anchor;
+	if (ShootDur >= 0.08 && !bSecond) St.Age = -ShootAnticip;   // round 04: the arm leads the strand by 2 frames (the strand is not drawn while Age < 0)
 }
 
 void UWebTraversalComponent::OnLevelAddedToWorld(ULevel* Level, UWorld* InWorld)
@@ -415,7 +416,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	{ // round 07: web stuck on the rise; the swing starts at the top of the hop (see TryStartSwing)
 		S.PendingT += Hs;
 		if (!I.bSwing) { S.bWebPending = false; WebRelease(); }
-		else if (S.PendingT >= S.PendingShoot && (S.Vel.Z <= PendingVz || S.PendingT >= PendingMax))   // round 01: never before the tip has landed
+		else if (S.PendingT >= S.PendingShoot + ShootAnticip && (S.Vel.Z <= PendingVz || S.PendingT >= PendingMax))   // round 01: never before the tip has landed
 		{
 			StartSwing(S.PendingA, S.PendingFwd, S.bPendingTurn ? &S.PendingTurn : nullptr, HLen(S.Vel));
 			S.bGroundSwing = false;
@@ -1247,6 +1248,7 @@ bool UWebTraversalComponent::AnchorCheck(double Hs)
 	FTravAnchor A;
 	if (Anchors->Find(S.Pos, Flat(Sw.Dir).GetSafeNormal(), nullptr, S.Vel.Size(), Fl, A) && A.Point.Z > S.Pos.Z + 3)
 	{
+		UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV reanchor (anchor off the model) %.1f %.1f %.1f -> %.1f %.1f %.1f"), Sw.Anchor.X, Sw.Anchor.Y, Sw.Anchor.Z, A.Point.X, A.Point.Y, A.Point.Z);
 		Reanchor(A);
 		Emit(N_anchorLost, 1.f);
 		return true;
@@ -1285,6 +1287,7 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 	Sw.WrapT -= Hs;
 	if (Sw.WrapT > 0) return;
 	Sw.WrapT = 0.05;
+	if (S.ModeT < 0.4) return;   // round 04: right after the attach the body may still sit beside the wall the (facade) anchor is on: not a wrap (it re-shot the web across the avenue)
 	FVector D = Sw.Anchor - S.Pos;
 	const double L = D.Size();
 	if (L < 4) return;
@@ -1312,6 +1315,7 @@ void UWebTraversalComponent::RopeWrap(double Hs)
 			}
 			if (bOk)
 			{
+				UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV reanchor (rope wrap, blocked at %.1f m) %.1f %.1f %.1f -> %.1f %.1f %.1f"), Hit.Distance, Sw.Anchor.X, Sw.Anchor.Y, Sw.Anchor.Z, A.Point.X, A.Point.Y, A.Point.Z);
 				Reanchor(A); Emit(N_ropeReanchor);
 				return;
 			}
@@ -1338,6 +1342,11 @@ bool UWebTraversalComponent::AnchorStrandClear(const FTravAnchor& A) const
 	const FVector D = A.Point - Hand; const double L = D.Size();
 	if (L < 1.0) return true;
 	if (FVector::DotProduct((Hand - A.Point).GetSafeNormal(), A.Normal) < 0.3 && A.Normal.Z < 0.7) return false;   // a strand that skims the facade grazes its cornices / fire escapes
+	{ // round 04: anchors above and ahead -- no level anchors, no side anchors (> ~75 deg off the travel heading at speed)
+		const double Hz = FMath::Sqrt(D.X * D.X + D.Y * D.Y);
+		if (D.Z < double(AnchorElevMin) * Hz) return false;
+		if (HLen(S.Vel) > 8.0 && Hz > 1.0 && (D.X * HV.X + D.Y * HV.Y) / Hz < double(AnchorAheadMin)) return false;   // behind the travel line (side anchors up to 90 deg stay)
+	}
 	FTravHit Hit;
 	if (TravWorld.Raycast(Hand, D / L, L - 1.0, Hit) && !Hit.bGround) return false;
 	return !TravWorld.SegmentHitsCrown(Hand, A.Point);
