@@ -478,6 +478,10 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		// snapshot the current output (already faded) as the "previous" pose set
 		PrevLayers = Frame.Layers;
 		FadeDur = FMath::Max(0.05f, BlendTime(Category(CurNode), Category(Node)));
+		// round 07 (s1 W4: attaches out of the air_tuck / air_spread poses spiked the chest past the 700 deg/s hard limit at
+		// t=6.57 / 18.85 -- the tucked / spread silhouette sits far from the swing entry pose): those two crossfade into the
+		// swing over 0.55 s instead of the 0.26 s air -> swing blend
+		if (Category(Node) == NA_swing && (CurNode == FName(TEXT("air_tuck")) || CurNode == FName(TEXT("air_spread")))) FadeDur = 0.55f;
 		FadeT = 0.f;
 		CurNode = Node;
 		NodeT = 0.f;

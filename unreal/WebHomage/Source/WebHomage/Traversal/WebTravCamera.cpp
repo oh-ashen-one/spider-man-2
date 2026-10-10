@@ -144,18 +144,18 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	else if (M == EWebTravMode::Perch) { WantDist = 4.3; WantH = 0.25; WantSide = 0.4; }
 	if (M == EWebTravMode::Land || bLandSub) WantDist = 4.2;
 	if (bLedgeSub) { WantH = 1.4; Pitch = Damp(Pitch, 0.42, 4, Dt); }
-	// round 07 (critic r06 axis 6: "no FOV kick ... momentum reads flat"): the speed term grows 6 -> 9 deg over 14-40 m/s and
+	// round 07 (critic r06 axis 6: "no FOV kick ... momentum reads flat"): the speed term grows 6 -> 8 deg over 14-40 m/s and
 	// fades out while the trick camera is in (TRICK_CAMERA_SPEC TC4/TC12 pin the trick FOV; T14's hFOV 100-110 band = vFOV
-	// 68-76 at 16:9 -- 58 + 9 = 67 sits just under it; the closed-loop distance (gain 4.5) tracks the slow 0.5 s FOV spring,
+	// 68-76 at 16:9 -- 58 + 8 = 66 sits just under it; the closed-loop distance (gain 4.5) tracks the slow 0.7 s FOV spring,
 	// so the hero size holds and the world carries the speed cue)
-	const double WantFov = BaseVFov + 9.0 * Smooth(Speed, 14, 40) * (1.0 - Smooth(FlipK, 0.0, 1.0)) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
+	const double WantFov = BaseVFov + 8.0 * Smooth(Speed, 14, 40) * (1.0 - Smooth(FlipK, 0.0, 1.0)) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
 	SD(Dist, DistV, WantDist, 0.55, Dt);
 	SD(HeightOff, HeightOffV, WantH, 0.5, Dt);
 	SD(SideOff, SideOffV, WantSide, 0.6, Dt);
 	// FOV punch / dip springs
 	PunchV += (-Punch * 140.0 - PunchV * 16.0) * Dt; Punch += PunchV * Dt;
 	DipV += (-Dip * 90.0 - DipV * 13.0) * Dt; Dip += DipV * Dt;
-	SD(Fov, FovV, WantFov, 0.5, Dt);
+	SD(Fov, FovV, WantFov, 0.7, Dt);   // round 07: 0.5 -> 0.7 s -- slow enough that the closed-loop distance tracks the speed kick (P1 band top)
 	// launch kick spring
 	KickV += (-KickK * 55.0 - KickV * 11.0) * Dt; KickK += KickV * Dt;
 	// ---- roll: velocity yaw-rate + swing bank
@@ -445,7 +445,11 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	// pixel height holds its band while the pose / framing change; the watchdog adds VisBoostBack while he is out of view
 	if ((bSwinging || bAir) && !bFlipCam && HeroProjH > 0.0)
 	{
-		const double Ratio = HeroProjH / (bSwinging ? ChaseFbSwing : ChaseFbAir);
+		// round 07 (s4 P1: the speed FOV kick / its decay made the loop pull in and then leave the hero over the band top at
+		// the swing bottom / catch): normalize the measured projected height to the BASE fov -- the loop holds the hero's
+		// size as if the fov never moved (the fov cue carries through to the pixels instead of being fought)
+		const double Hn = HeroProjH * FMath::Tan(FMath::DegreesToRadians(FMath::Max(10.0, OutVFov)) * 0.5) / FMath::Tan(FMath::DegreesToRadians(BaseVFov) * 0.5);
+		const double Ratio = Hn / (bSwinging ? ChaseFbSwing : ChaseFbAir);
 		if (FMath::Abs(Ratio - 1.0) > 0.03) ChaseFbK = FMath::Clamp(ChaseFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, ChaseFbGain * Dt)), ChaseFbMin, ChaseFbMax);
 	}
 	else ChaseFbK = FMath::Lerp(ChaseFbK, 1.0, FMath::Min(1.0, 2.0 * Dt));
