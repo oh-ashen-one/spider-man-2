@@ -2,7 +2,7 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Round `round-06`; build commit da290042 (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Round 06: the s3b catch presses moved from a fixed 2.0 s to per-case times just past each program's worst-case catch window (2.26-2.45 s; the programs are 720 deg now, see NOTES.md); keys / spawns otherwise unchanged.
+Round `round-07`; build commit 027395bd (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Scripts / keys / spawns unchanged since round 06.
 
 ## Settings (every clip)
 - real `-game` (`tools/final/swing/run_clip.py` -> `tools/showcase/play.py --capture`), `-WHProfile=playable -WHResScale=100`, `-WHPerfPreset=unreal/WebHomage/Config/PerfPlayableFast.cvars`, TSR (r.AntiAliasingMethod 4)
