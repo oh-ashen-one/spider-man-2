@@ -146,9 +146,11 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	if (bLedgeSub) { WantH = 1.4; Pitch = Damp(Pitch, 0.42, 4, Dt); }
 	// round 07 (critic r06 axis 6: "no FOV kick ... momentum reads flat"): the speed term grows 6 -> 8 deg over 14-40 m/s and
 	// fades out while the trick camera is in (TRICK_CAMERA_SPEC TC4/TC12 pin the trick FOV; T14's hFOV 100-110 band = vFOV
-	// 68-76 at 16:9 -- 58 + 8 = 66 sits just under it; the closed-loop distance (gain 4.5) tracks the slow 0.7 s FOV spring,
-	// so the hero size holds and the world carries the speed cue)
-	const double WantFov = BaseVFov + 8.0 * Smooth(Speed, 14, 40) * (1.0 - Smooth(FlipK, 0.0, 1.0)) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
+	// 68-76 at 16:9 -- 58 + 8 = 66 sits just under it). The chase closed loop is FOV-normalized against exactly this term
+	// (see ComposeChase), so it holds the hero's size as if the kick never happened instead of fighting its transient (the
+	// r07-first-pass 9 deg unnormalized kick pushed the s4 swing p90 over the P1 band top; a saturated 8 deg kick on the
+	// fast chains shrank the s1 hero to the band floor -- 5 deg normalized keeps the cue inside the band)
+	const double WantFov = BaseVFov + 5.0 * Smooth(Speed, 14, 40) * (1.0 - Smooth(FlipK, 0.0, 1.0)) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
 	SD(Dist, DistV, WantDist, 0.55, Dt);
 	SD(HeightOff, HeightOffV, WantH, 0.5, Dt);
 	SD(SideOff, SideOffV, WantSide, 0.6, Dt);
@@ -446,9 +448,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if ((bSwinging || bAir) && !bFlipCam && HeroProjH > 0.0)
 	{
 		// round 07 (s4 P1: the speed FOV kick / its decay made the loop pull in and then leave the hero over the band top at
-		// the swing bottom / catch): normalize the measured projected height to the BASE fov -- the loop holds the hero's
-		// size as if the fov never moved (the fov cue carries through to the pixels instead of being fought)
-		const double Hn = HeroProjH * FMath::Tan(FMath::DegreesToRadians(FMath::Max(10.0, OutVFov)) * 0.5) / FMath::Tan(FMath::DegreesToRadians(BaseVFov) * 0.5);
+		// the swing bottom / catch): normalize the measured projected height by the speed-kick fov part (Fov + Punch + Kick,
+		// NOT the attach beat's AttachFov -- that beat deliberately shrinks him to fit the anchor and the r06 behaviour
+		// passes P1) -- the loop holds the hero's size as if the kick never happened instead of chasing its transient
+		const double Hn = HeroProjH * FMath::Tan(FMath::DegreesToRadians(FMath::Max(10.0, Fov + Punch + 9.0 * FMath::Max(0.0, KickK))) * 0.5) / FMath::Tan(FMath::DegreesToRadians(BaseVFov) * 0.5);
 		const double Ratio = Hn / (bSwinging ? ChaseFbSwing : ChaseFbAir);
 		if (FMath::Abs(Ratio - 1.0) > 0.03) ChaseFbK = FMath::Clamp(ChaseFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, ChaseFbGain * Dt)), ChaseFbMin, ChaseFbMax);
 	}
