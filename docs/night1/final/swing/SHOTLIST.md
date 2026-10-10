@@ -2,7 +2,7 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Round `round-04`; build commit 57c12fc9 (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`.
+Round `round-05`; build commit d5198769 (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Round 05: the s3b `FlipKStart` picks were retuned for the reordered stick pools (see NOTES.md; keys / spawns / timings unchanged).
 
 ## Settings (every clip)
 - real `-game` (`tools/final/swing/run_clip.py` -> `tools/showcase/play.py --capture`), `-WHProfile=playable -WHResScale=100`, `-WHPerfPreset=unreal/WebHomage/Config/PerfPlayableFast.cvars`, TSR (r.AntiAliasingMethod 4)
@@ -27,19 +27,19 @@ Round `round-04`; build commit 57c12fc9 (round 00 = behaviour of tag `final-befo
   render throughput: s4_release_float 1291 frames in 149 s = 8.7 fps
 ### s3b_flip_cases (26.5 s, 1589 frames, 14.6 MB, crf 31, engine wall 361 s)
 - `s3_c1_fwd` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick fwd [0, 1], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=2`
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=3`
 - `s3_c2_back` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick back [0, -1], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, -1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=1`
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, -1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=3`
 - `s3_c3_right` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick right [1, 0], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=4`
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=2`
 - `s3_c4_left` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick left [-1, 0], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=3`
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=0`
 - `s3_c5_neutral` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick neutral [0, 0], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=6`
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=7`
 - `s3_c6_fwd_right` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick fwd_right [0.7, 0.7], swing 2.0 s later
   keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0.7, 0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=5`
 - `s3_c7_back_left` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick back_left [-0.7, -0.7], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-0.7, -0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=8`
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-0.7, -0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=1`
   render throughput: s3_c1_fwd 319 frames in 55 s = 5.8 fps; s3_c2_back 319 frames in 52 s = 6.1 fps; s3_c3_right 319 frames in 51 s = 6.2 fps; s3_c4_left 319 frames in 51 s = 6.2 fps; s3_c5_neutral 319 frames in 51 s = 6.2 fps; s3_c6_fwd_right 319 frames in 50 s = 6.4 fps; s3_c7_back_left 319 frames in 51 s = 6.2 fps
 ### s3_flip_chain (24.0 s, 1439 frames, 11.5 MB, crf 31, engine wall 155 s)
 - `s3_flip_flow` (24.0 s): spawn [250, 560, 40] yaw -90.0 vel [0, -22, 6]; one continuous chain: a flow flip on every release, stick changing between flips, 24 s
