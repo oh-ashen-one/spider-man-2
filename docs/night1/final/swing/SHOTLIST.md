@@ -2,7 +2,7 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Round `round-05`; build commit d5198769 (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Round 05: the s3b `FlipKStart` picks were retuned for the reordered stick pools (see NOTES.md; keys / spawns / timings unchanged).
+Round `round-06`; build commit da290042 (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Round 06: the s3b catch presses moved from a fixed 2.0 s to per-case times just past each program's worst-case catch window (2.26-2.45 s; the programs are 720 deg now, see NOTES.md); keys / spawns otherwise unchanged.
 
 ## Settings (every clip)
 - real `-game` (`tools/final/swing/run_clip.py` -> `tools/showcase/play.py --capture`), `-WHProfile=playable -WHResScale=100`, `-WHPerfPreset=unreal/WebHomage/Config/PerfPlayableFast.cvars`, TSR (r.AntiAliasingMethod 4)
@@ -13,39 +13,39 @@ Round `round-05`; build commit d5198769 (round 00 = behaviour of tag `final-befo
 - scene difference against round 00: from round 01 on the island maps also compose /Game/PropsM3/Maps/PropsM3_Island (supplied props, mostly on lawns and plazas, tiny from swing height) -- not a swing change
 
 ## Clips
-### s1_swing_chain (20.0 s, 1199 frames, 13.0 MB, crf 31, engine wall 129 s)
+### s1_swing_chain (20.0 s, 1199 frames, 13.4 MB, crf 31, engine wall 204 s)
 - `s1_swing_chain` (20.0 s): spawn [250, 560, 24] yaw -90.0 vel [0, -22, 0]; a skilled player holding RMB: release on the rising front, re-press 0.3 s later (r26 a_swing_chain rule, gap 0.3 / repressVz 99), bottoms >= 14 m: 20 s
   keys: `[{"t": 0.0, "move": [0, 1], "heading": -90, "swing": false}, {"t": 0.4, "autoChain": true, "releasePhase": 0.55, "gap": 0.3, "repressVz": 99.0, "trickEvery": 0, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}]` tune `ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8,AnchorElevMin=0.1,AnchorAheadMin=-2`
-  render throughput: s1_swing_chain 1291 frames in 129 s = 10.0 fps
-### s5_night_swing (20.0 s, 1199 frames, 12.9 MB, crf 28, engine wall 135 s)
+  render throughput: s1_swing_chain 1291 frames in 204 s = 6.3 fps
+### s5_night_swing (20.0 s, 1199 frames, 13.1 MB, crf 28, engine wall 206 s)
 - `s5_night_swing` (20.0 s): spawn [250, 560, 24] yaw -90.0 vel [0, -22, 0]; s1 inputs, night map
   keys: `[{"t": 0.0, "move": [0, 1], "heading": -90, "swing": false}, {"t": 0.4, "autoChain": true, "releasePhase": 0.55, "gap": 0.3, "repressVz": 99.0, "trickEvery": 0, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}]` tune `ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8,AnchorElevMin=0.1,AnchorAheadMin=-2`
-  render throughput: s5_night_swing 1291 frames in 135 s = 9.6 fps
-### s4_release_float (20.0 s, 1199 frames, 11.7 MB, crf 31, engine wall 149 s)
+  render throughput: s5_night_swing 1291 frames in 206 s = 6.3 fps
+### s4_release_float (20.0 s, 1199 frames, 14.1 MB, crf 31, engine wall 181 s)
 - `s4_release_float` (20.0 s): spawn [250, 240, 40] yaw -90.0 vel [0, -22, 0]; autoChain releases with no trick, re-press 1.6 s after each release (long air): 20 s
   keys: `[{"t": 0.0, "move": [0, 1], "heading": -90, "swing": false}, {"t": 0.4, "autoChain": true, "releasePhase": 0.55, "gap": 1.6, "repressVz": -8.0, "trickEvery": 0, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}]`
-  render throughput: s4_release_float 1291 frames in 149 s = 8.7 fps
-### s3b_flip_cases (26.5 s, 1589 frames, 14.6 MB, crf 31, engine wall 361 s)
-- `s3_c1_fwd` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick fwd [0, 1], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=3`
-- `s3_c2_back` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick back [0, -1], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, -1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=3`
-- `s3_c3_right` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick right [1, 0], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=2`
-- `s3_c4_left` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick left [-1, 0], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=0`
-- `s3_c5_neutral` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick neutral [0, 0], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=7`
-- `s3_c6_fwd_right` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick fwd_right [0.7, 0.7], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0.7, 0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=5`
-- `s3_c7_back_left` (3.8 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick back_left [-0.7, -0.7], swing 2.0 s later
-  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-0.7, -0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.4, "swing": true}, {"t": 3.5, "swing": false}]` tune `FlipKStart=1`
-  render throughput: s3_c1_fwd 319 frames in 55 s = 5.8 fps; s3_c2_back 319 frames in 52 s = 6.1 fps; s3_c3_right 319 frames in 51 s = 6.2 fps; s3_c4_left 319 frames in 51 s = 6.2 fps; s3_c5_neutral 319 frames in 51 s = 6.2 fps; s3_c6_fwd_right 319 frames in 50 s = 6.4 fps; s3_c7_back_left 319 frames in 51 s = 6.2 fps
-### s3_flip_chain (24.0 s, 1439 frames, 11.5 MB, crf 31, engine wall 155 s)
+  render throughput: s4_release_float 1291 frames in 181 s = 7.1 fps
+### s3b_flip_cases (29.6 s, 1776 frames, 14.5 MB, crf 31, engine wall 503 s)
+- `s3_c1_fwd` (4.3 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick fwd [0, 1], swing 2.26 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.66, "swing": true}, {"t": 3.76, "swing": false}]` tune `FlipKStart=3`
+- `s3_c2_back` (3.6 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick back [0, -1], swing 1.58 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, -1]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 1.98, "swing": true}, {"t": 3.08, "swing": false}]` tune `FlipKStart=3`
+- `s3_c3_right` (4.4 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick right [1, 0], swing 2.37 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.77, "swing": true}, {"t": 3.87, "swing": false}]` tune `FlipKStart=2`
+- `s3_c4_left` (4.3 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick left [-1, 0], swing 2.30 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-1, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.7, "swing": true}, {"t": 3.8, "swing": false}]` tune `FlipKStart=0`
+- `s3_c5_neutral` (4.3 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick neutral [0, 0], swing 2.30 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0, 0]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.7, "swing": true}, {"t": 3.8, "swing": false}]` tune `FlipKStart=7`
+- `s3_c6_fwd_right` (4.4 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick fwd_right [0.7, 0.7], swing 2.43 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [0.7, 0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.83, "swing": true}, {"t": 3.93, "swing": false}]` tune `FlipKStart=5`
+- `s3_c7_back_left` (4.5 s): spawn [250, 200, 110] yaw -90.0 vel [0, -22, 6]; F pressed 0.4 s in with the stick back_left [-0.7, -0.7], swing 2.45 s later
+  keys: `[{"t": 0.0, "move": [0, 0], "swing": false}, {"t": 0.3, "move": [-0.7, -0.7]}, {"t": 0.4, "trick": true}, {"t": 0.5, "trick": false}, {"t": 2.85, "swing": true}, {"t": 3.95, "swing": false}]` tune `FlipKStart=1`
+  render throughput: s3_c1_fwd 347 frames in 74 s = 4.7 fps; s3_c2_back 306 frames in 67 s = 4.6 fps; s3_c3_right 354 frames in 72 s = 4.9 fps; s3_c4_left 349 frames in 72 s = 4.8 fps; s3_c5_neutral 349 frames in 74 s = 4.7 fps; s3_c6_fwd_right 357 frames in 72 s = 5.0 fps; s3_c7_back_left 358 frames in 72 s = 5.0 fps
+### s3_flip_chain (24.0 s, 1439 frames, 13.9 MB, crf 31, engine wall 209 s)
 - `s3_flip_flow` (24.0 s): spawn [250, 560, 40] yaw -90.0 vel [0, -22, 6]; one continuous chain: a flow flip on every release, stick changing between flips, 24 s
   keys: `[{"t": 0.0, "move": [0, 1], "swing": false}, {"t": 0.4, "autoChain": true, "releasePhase": 0.55, "gap": 0.3, "repressVz": 99.0, "trickEvery": 1, "skyEvery": 0, "skyTricks": 1, "skyRepressH": 30, "skyPhase": 0.8, "skyMax": 2.8}, {"t": 3.0, "move": [0.7, 0.7]}, {"t": 6.0, "move": [0, 1]}, {"t": 9.0, "move": [-0.7, 0.7]}, {"t": 12.0, "move": [0, -0.8]}, {"t": 15.0, "move": [0, 1]}, {"t": 18.0, "move": [0.7, 0.7]}, {"t": 21.0, "move": [-0.7, 0.7]}]` tune `ArcLowMin=15,ArcDropShallow=8,ArcDropDeep=12,WallClearance=14,AltChain=0,AnchorAltDeg=8,AnchorElevMin=0.1,AnchorAheadMin=-2`
-  render throughput: s3_flip_flow 1531 frames in 155 s = 9.9 fps
-### s2_press_variety (33.9 s, 2031 frames, 12.7 MB, crf 34, engine wall 462 s)
+  render throughput: s3_flip_flow 1531 frames in 209 s = 7.3 fps
+### s2_press_variety (33.9 s, 2031 frames, 12.4 MB, crf 34, engine wall 723 s)
 - `s2_c1_roof_jump` (5.0 s): spawn [287, 138, 69.2] yaw 180 vel [0, 0, 0]; sprint west across the roof of E x266..291 z125..151 (h 68), jump at the edge, swing 0.2 s after the jump
   keys: `[{"t": 0.0, "move": [0, 1], "heading": 180, "sprint": true, "swing": false}, {"t": 1.9, "jump": true}, {"t": 2.05, "jump": false}, {"t": 2.25, "swing": true}, {"t": 4.2, "swing": false}]`
 - `s2_c2_midfall` (3.6 s): spawn [250, 150, 62] yaw -90.0 vel [0, -20, -14]; free fall over the avenue (vz -14, 20 m/s north), swing pressed 0.5 s in
@@ -64,4 +64,4 @@ Round `round-05`; build commit d5198769 (round 00 = behaviour of tag `final-befo
   keys: `[{"t": 0.0, "move": [0, 1], "heading": -90, "swing": false}, {"t": 0.3, "swing": true}, {"t": 2.2, "swing": false}]`
 - `s2_c9_trees` (3.2 s): spawn [258, 244, 14] yaw -90.0 vel [0, -20, 0]; low over the east sidewalk trees (x 262, z 229 / 218 / 211), swing pressed 0.2 s in
   keys: `[{"t": 0.0, "move": [0, 1], "heading": -90, "swing": false}, {"t": 0.2, "swing": true}, {"t": 2.2, "swing": false}]`
-  render throughput: s2_c1_roof_jump 391 frames in 73 s = 5.4 fps; s2_c2_midfall 307 frames in 49 s = 6.3 fps; s2_c3_wallrun 403 frames in 54 s = 7.5 fps; s2_c4_flip_cancel 319 frames in 50 s = 6.4 fps; s2_c5_repress 319 frames in 51 s = 6.2 fps; s2_c6_side_anchor 283 frames in 46 s = 6.2 fps; s2_c7_no_anchor 271 frames in 46 s = 5.9 fps; s2_c8_close_facade 283 frames in 47 s = 6.0 fps; s2_c9_trees 283 frames in 46 s = 6.2 fps
+  render throughput: s2_c1_roof_jump 391 frames in 88 s = 4.4 fps; s2_c2_midfall 307 frames in 83 s = 3.7 fps; s2_c3_wallrun 403 frames in 92 s = 4.4 fps; s2_c4_flip_cancel 319 frames in 84 s = 3.8 fps; s2_c5_repress 319 frames in 81 s = 3.9 fps; s2_c6_side_anchor 283 frames in 64 s = 4.4 fps; s2_c7_no_anchor 271 frames in 80 s = 3.4 fps; s2_c8_close_facade 283 frames in 87 s = 3.2 fps; s2_c9_trees 283 frames in 64 s = 4.4 fps
