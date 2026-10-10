@@ -34,7 +34,9 @@ def launch_case(d, name, q, game_map, log):
     Returns True when the engine ran (route.log exists); False = never admitted (safe to retry)."""
     cmd = [str(ROOT / 'tools/showcase/with_holder.sh'), 'python3', str(ROOT / 'tools/showcase/play.py'), '--map', game_map, '--profile', 'playable', '--res-scale', '100', '--res', '1920x1080',
            '--capture', str(d), '--name', 'route', '--script', str(ROOT / 'docs/night1/traversal/scripts/final' / (name + '.json')), '--quit', str(q + PRE), '--timeout', '3000',
-           '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-dumpmovie', '--game-arg=-WHTravMask', '--game-arg=-WHSuit=tessera', '--game-arg=-WHMovieAsync', '--game-arg=-WHTravPreroll=%s' % PRE, '--game-arg=-WHPerfPreset=%s' % (ROOT / 'unreal/WebHomage/Config/PerfPlayableFast.cvars'), '--launch']
+           '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-dumpmovie', '--game-arg=-WHTravMask', '--game-arg=-WHSuit=tessera', '--game-arg=-WHMovieAsync', '--game-arg=-WHTravPreroll=%s' % PRE, '--game-arg=-WHPerfPreset=%s' % (ROOT / 'unreal/WebHomage/Config/PerfPlayableFast.cvars')]
+    if a.tune: cmd.append('--game-arg=-WHTravTune=%s' % a.tune)   # round 08: probe override for Rope* floats (the round itself must run on the shipped defaults)
+    cmd.append('--launch')
     proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
     t0 = time.time()
     while proc.poll() is None and not (d / 'route.log').exists() and time.time() - t0 < 180:
@@ -69,8 +71,9 @@ def launch_case(d, name, q, game_map, log):
                  '-benchmark', '-fps=60', '-dumpmovie', '-WHTravMask', '-WHSuit=tessera', '-WHMovieAsync', '-WHTravPreroll=%s' % PRE,
                  '-WHPerfPreset=%s' % (ROOT / 'unreal/WebHomage/Config/PerfPlayableFast.cvars'),
                  '-WHQuitAt=%s' % (q + PRE), '-ExecCmds=' + ','.join(execs)]
+    if a.tune: game_args.append('-WHTravTune=%s' % a.tune)
     env = dict(os.environ, GPU_SLOT_DIR=str(GPU))
-    qcmd = [str(ROOT / 'tools/gpu/gpu_slot.sh'), 'capture', '--label', 'final-swing-r07-%s' % name, '--',
+    qcmd = [str(ROOT / 'tools/gpu/gpu_slot.sh'), 'capture', '--label', 'final-swing-r08-%s' % name, '--',
             str(UE), str(ROOT / 'unreal/WebHomage/WebHomage.uproject'), MAPS[game_map], *game_args]
     proc = subprocess.Popen(qcmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT, env=env)
     try:
@@ -81,6 +84,7 @@ def launch_case(d, name, q, game_map, log):
     return (d / 'route.log').exists()
 ap = argparse.ArgumentParser()
 ap.add_argument('round'); ap.add_argument('clip'); ap.add_argument('--map'); ap.add_argument('--cases'); ap.add_argument('--crf', type=int, default=22); ap.add_argument('--keep-frames', action='store_true'); ap.add_argument('--q', type=float, help='dev render: quit time (s after the cut) for every case; the outputs get the suffix _dev'); ap.add_argument('--reuse', action='store_true', help='post-process frames / telemetry left by an earlier engine run of this case (no launch)')
+ap.add_argument('--tune', help='probe: extra -WHTravTune=Name=V,... passed to the game (not used for the round captures)')
 a = ap.parse_args()
 clips = json.loads((ROOT / 'docs/night1/traversal/scripts/final/clips.json').read_text())
 cases = clips[a.clip]

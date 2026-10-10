@@ -109,13 +109,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeKeepProxy = 1.f;
 	// r25 build 4: the shot strand's travelling wave (30 cm world, decays in ~0.3 s) bounded to RopeWavePx on screen (< 0 = unbounded, r24)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeWavePx = 1.5f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 3.6f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 4.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.5f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.5f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 100.f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 0.9f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.08f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMin = 3.2f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePxMax = 3.4f;
+	// round 08 (critic r07: web read 7 -> 5 -- the strand averaged back to the background because CoreBright == CoreDark pinned the
+	// core share at 0.5 and Pivot 100 sat above every exposed-luminance reading, so the adaptivity never fired): the core share now
+	// actually switches at Pivot (exposure-applied pre-tonemap luminance: dark glass ~0.02-0.08, lit facades ~0.2-0.5, sky ~0.6-1.2) --
+	// over dark backgrounds the bright core fills RopeCoreDark of the width, over bright ones the dark rim (1 - RopeCoreBright) carries it
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreBright = 0.15f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreDark = 0.9f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopePivot = 0.30f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeCoreLvl = 1.15f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float RopeRimLvl = 0.03f;
 	int32 AltRelIdx = 0;        // round 24: plain / flow releases solved by the altitude chain (jitter index)
 	double AltApexWant = -1.0;  // telemetry: apex (m over the floor) the last altitude release was solved for (-1 none)
 	/** Round 24: vertical release speed that tops out D m higher (StepAir gravity: G, x0.55 under |vz| 3.5). */

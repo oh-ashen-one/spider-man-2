@@ -70,6 +70,10 @@ struct FWebTravAnimFrame
 	float AirFastW = 0.f, AirTrackK = 0.f;
 	// round 20: swing pose by speed (0 slow .. 1 >= 55 m/s): legs trail further and straighter, the free arm sweeps back
 	float SwingSpeedK = 0.f;
+	// round 08 (critic r07 s4: the float reads as one symmetric spread > 1 s -- the six air clips share an arms-out silhouette, so the
+	// node rotation alone does not move the outline): a slow alternating asymmetry over the air pose (one arm sweeps forward and down,
+	// the other back, legs scissor the other way; a full left/right cycle every ~1.1 s). AirDriftW = weight, AirDriftPh = cycles
+	float AirDriftW = 0.f, AirDriftPh = 0.f;
 };
 
 struct FWebTravAnimProxy : public FAnimInstanceProxy

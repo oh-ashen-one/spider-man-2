@@ -55,7 +55,7 @@ alpha *= (SD < PD - Occ) ? 0.0 : 1.0;
 return float4(lvl, lvl, lvl, alpha);
 """
 
-PARAMS = [("CoreBright", 0.30), ("CoreDark", 0.86), ("Pivot", 0.20), ("CoreLvl", 1.6), ("RimLvl", 0.004), ("Solid", 1.0), ("Occ", 25.0)]
+PARAMS = [("CoreBright", 0.15), ("CoreDark", 0.90), ("Pivot", 0.30), ("CoreLvl", 1.15), ("RimLvl", 0.03), ("Solid", 0.0), ("Occ", 45.0)]
 
 
 FAILED = []   # strict mode (SM2_STRICT=1): properties that could not be set; the calling build reports them

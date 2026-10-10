@@ -1094,12 +1094,18 @@ void AWebTravCharacter::PoseFigure(float Dt)
 	{ // round 01 (W4): at the attach (the pendulum starts when the tip lands) the body orientation follows the rope frame through a critically damped spring (~0.3 s, never a one-frame turn)
 		const bool bSw = A.Mode == EWebTravMode::Swing;
 		if (bSw && !bPrevSwingMode) AttachT = 0.0;
-		if (bSw) AttachT += Dt;
+		if (bSw) { AttachT += Dt; OffSwingT = 0.0; }
+		else { if (bPrevSwingMode) OffSwingT = 0.0; else OffSwingT += Dt; }
 		bPrevSwingMode = bSw;
 		if (!bBodySpringInit) { BodySpringQ = Body; BodySpringVel = FVector::ZeroVector; bBodySpringInit = true; }
-		if (bSw && AttachT < 0.45)
+		// round 08 (W4 s3 t=10.43: the wall entry 0.15 s after a swing attach snapped the chest at 1576 deg/s -- the spring only
+		// covered swing mode, so the wall frame replaced the rope frame in one step): the spring stays live into a wall entry
+		// fresh off a swing until it has converged (or 0.5 s), so the body turns onto the wall at <= 320 deg/s like the attach
+		const bool bSpring = (bSw && AttachT < 0.45)
+			|| (A.Mode == EWebTravMode::Wall && OffSwingT < 0.5 && BodySpringQ.AngularDistance(Body) > FMath::DegreesToRadians(2.0));
+		if (bSpring)
 		{
-			const double Omega = AttachT < 0.3 ? 10.0 : FMath::Lerp(10.0, 40.0, Smooth01((AttachT - 0.3) / 0.15));
+			const double Omega = bSw ? (AttachT < 0.3 ? 10.0 : FMath::Lerp(10.0, 40.0, Smooth01((AttachT - 0.3) / 0.15))) : 10.0;
 			FQuat D = Body * BodySpringQ.Inverse();   // spring state -> target, as a rotation vector
 			if (D.W < 0) D = FQuat(-D.X, -D.Y, -D.Z, -D.W);
 			FVector X = -D.ToRotationVector();       // the spring's offset from the target
@@ -1429,7 +1435,7 @@ void AWebTravCharacter::UpdateWebs(float Dt, const FVector& CamPosCm)
 			if (bTwoTone)
 			{ // round 25: 1.6 cm world width, clamped to RopePxMin..RopePxMax px on screen (at the segment's distance); a released strand
 				// thins out by the fade as before
-				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax))) * FMath::Lerp(1.0, 0.62, 0.5 * (U0 + U1));   // round 01 (W5): taper toward the anchor
+				const double Px = FMath::Clamp(1.6 * PxK / CamD, double(Traversal->RopePxMin), double(FMath::Max(Traversal->RopePxMin, Traversal->RopePxMax))) * FMath::Lerp(1.0, 0.72, 0.5 * (U0 + U1));   // round 01 (W5): taper toward the anchor; round 08: 0.62 -> 0.72 (the measured width halo adds ~0.5-0.9 px over the drawn one; the far end must stay >= 2 px)
 				W = Px * CamD / PxK * Fade;
 			}
 			C->SetWorldLocationAndRotation(Mid, FRotationMatrix::MakeFromZ((P1 - P0).GetSafeNormal()).ToQuat());

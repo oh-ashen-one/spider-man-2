@@ -232,17 +232,19 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 		static const FName NRise(TEXT("air_rise")), NApex(TEXT("air_apex")), NFall(TEXT("air_fall")), NCalm(TEXT("air_fallCalm")),
 			NSpread(TEXT("air_spread")), NTuck(TEXT("air_tuck"));
 		struct FAirFlavor { FName Seg[4]; float End[3]; FName TailA, TailB; float TailStart; };
+		// round 08 (critic r07: the float still reads static through the first second): the segments tighten to ~0.2 s steps and the
+		// tail alternation starts at 0.72-0.8 s every 0.3 s (was 0.45), so the silhouette turns over every ~0.15-0.3 s from the release
 		static const FAirFlavor Flv[6] = {
-			{ { NRise, NCalm, NApex, NFall }, { 0.30f, 0.58f, 0.88f }, NFall, NCalm, 1.00f },
-			{ { NRise, NApex, NSpread, NFall }, { 0.30f, 0.60f, 0.88f }, NFall, NSpread, 0.95f },
-			{ { NApex, NFall, NTuck, NCalm }, { 0.28f, 0.58f, 0.84f }, NFall, NTuck, 0.95f },
-			{ { NCalm, NApex, NRise, NFall }, { 0.30f, 0.60f, 0.88f }, NCalm, NFall, 0.90f },
-			{ { NSpread, NRise, NApex, NFall }, { 0.30f, 0.58f, 0.88f }, NSpread, NFall, 0.95f },
-			{ { NRise, NTuck, NFall, NApex }, { 0.28f, 0.54f, 0.84f }, NFall, NTuck, 0.95f },
+			{ { NRise, NCalm, NApex, NFall }, { 0.20f, 0.42f, 0.68f }, NFall, NCalm, 0.78f },
+			{ { NRise, NApex, NSpread, NFall }, { 0.20f, 0.44f, 0.68f }, NFall, NSpread, 0.74f },
+			{ { NApex, NFall, NTuck, NCalm }, { 0.18f, 0.42f, 0.64f }, NFall, NTuck, 0.74f },
+			{ { NCalm, NApex, NRise, NFall }, { 0.20f, 0.44f, 0.68f }, NCalm, NFall, 0.72f },
+			{ { NSpread, NRise, NApex, NFall }, { 0.20f, 0.42f, 0.68f }, NSpread, NFall, 0.74f },
+			{ { NRise, NTuck, NFall, NApex }, { 0.18f, 0.40f, 0.64f }, NFall, NTuck, 0.74f },
 		};
 		const FAirFlavor& F = Flv[FlavorIdx % 6];
-		if (T >= F.TailStart) // long fall: alternate the flavor's pair every 0.45 s (never one held pose)
-			return int32((T - F.TailStart) / 0.45f) % 2 == 0 ? F.TailA : F.TailB;
+		if (T >= F.TailStart) // long fall: alternate the flavor's pair every 0.3 s (never one held pose)
+			return int32((T - F.TailStart) / 0.3f) % 2 == 0 ? F.TailA : F.TailB;
 		if (T < F.End[0]) return F.Seg[0];
 		if (T < F.End[1]) return F.Seg[1];
 		if (T < F.End[2]) return F.Seg[2];
@@ -711,6 +713,15 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 		Frame.AirFastW = Want > Frame.AirFastW ? FMath::Min(Want, Frame.AirFastW + Step) : FMath::Max(Want, Frame.AirFastW - Step);
 		Frame.AirTrackK = FMath::FInterpTo(Frame.AirTrackK, Smooth01((Sp - 30.f) / 14.f), Dt, 6.f);
 		Frame.SwingSpeedK = FMath::FInterpTo(Frame.SwingSpeedK, A.Mode == EWebTravMode::Swing && bAirSpeedPose ? Smooth01((Sp - 22.f) / 30.f) : 0.f, Dt, 5.f);
+		// round 08 (critic r07 s4 t=15.2-16.5: one symmetric spread held > 1 s over the street): the drift asymmetry eases in fast
+		// (0.12 s) so even the first second of a float evolves; it fades with speed (streamlined track owns the fast fall) and is
+		// gone by the trick / topOut / launch subs
+		{
+			const float DriftWant = bAirOk ? 0.42f * (1.f - Smooth01((Sp - 38.f) / 10.f)) : 0.f;
+			const float DStep = Dt / (DriftWant > Frame.AirDriftW ? 0.12f : 0.15f);
+			Frame.AirDriftW = DriftWant > Frame.AirDriftW ? FMath::Min(DriftWant, Frame.AirDriftW + DStep) : FMath::Max(DriftWant, Frame.AirDriftW - DStep);
+			if (Frame.AirDriftW > 0.001f) Frame.AirDriftPh += Dt / 1.1f;
+		}
 	}
 	// round 19 (owner: between-swing tuck must read at speed): the release-cycle tuck flavor closes into the tight tuck too
 	if (CurNode == FName(TEXT("air_tuck"))) PendingTuckW = FMath::Max(PendingTuckW, 0.85f * Smooth01(NodeT / 0.12f) * (1.f - Smooth01((NodeT - 0.33f) / 0.12f)));
@@ -900,7 +911,23 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const FVector Shoulder = UCS.GetLocation();
 			const FVector Hand = CS(BH).GetLocation();
 			const FVector Cur = (Hand - Shoulder).GetSafeNormal();
-			const FVector Want = (Frame.ArmTargetCS - Shoulder).GetSafeNormal();
+			FVector Want = (Frame.ArmTargetCS - Shoulder).GetSafeNormal();
+			{ // round 08 (critic r07 s2: on a steep rope with the camera behind, the arm aims straight up the body axis and the
+			  // strand reads through the head silhouette): as the rope steepens toward the body's own up axis, slide the aim out
+			  // toward the firing side so the palm -- and the strand's first metres -- sit beside the head, not behind it
+				const FCompactPoseBoneIndex BHp = Idx(TEXT("hips")), BHd = Idx(TEXT("head")), BUO = Idx(Frame.bArmRight ? TEXT("upperArm_L") : TEXT("upperArm_R"));
+				if (BHp.IsValid() && BHd.IsValid() && BUO.IsValid())
+				{
+					const FVector BodyUp = (CS(BHd).GetLocation() - CS(BHp).GetLocation()).GetSafeNormal();
+					FVector Lat = (CS(BUO).GetLocation() - Shoulder);   // firing arm -> other arm: lateral, away from the firing side
+					Lat = (Lat - BodyUp * FVector::DotProduct(Lat, BodyUp)).GetSafeNormal();
+					if (!BodyUp.IsNearlyZero() && !Lat.IsNearlyZero())
+					{
+						const double Steep = Smooth01((FVector::DotProduct(Want, BodyUp) - 0.72) / 0.2);   // rope within ~45 -> 25 deg of the body axis
+						Want = (Want - Lat * (0.24 * Steep)).GetSafeNormal();   // up to ~14 deg off shoulder -> anchor, toward the firing side
+					}
+				}
+			}
 			if (!Cur.IsNearlyZero() && !Want.IsNearlyZero())
 			{
 				const FQuat D = FQuat::Slerp(FQuat::Identity, FQuat::FindBetweenNormals(Cur, Want), Frame.ArmAimWeight);
@@ -1249,7 +1276,9 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			// round 20: slow arcs open the arm out for balance; fast arcs sweep it back along the body (streamlined)
 			const double SK = Frame.SwingSpeedK;
 			const double PhK = FMath::Clamp(double(Frame.SwPhase) * 1.6, -1.0, 1.0);   // round 04: the free arm swings through: back on the drop, forward over the top on the upswing
-			const FVector Dir = (Out * FMath::Lerp(0.8, 0.35, SK) - V * FMath::Lerp(0.45, 0.9, SK) * (1.0 - 1.5 * PhK) - BodyUp * FMath::Lerp(0.15, 0.55, SK) * (1.0 - PhK * 0.8)).GetSafeNormal();
+			// round 08 (critic r06/r07: "the same straight-legged arms-out hang recurs" -- the free arm sat nearly horizontal on slow
+			// hangs, mirroring the web arm): at low speed it hangs low-out instead (one arm up on the rope, the other down for balance)
+			const FVector Dir = (Out * FMath::Lerp(0.8, 0.35, SK) - V * FMath::Lerp(0.45, 0.9, SK) * (1.0 - 1.5 * PhK) - BodyUp * FMath::Lerp(0.55, 0.75, SK) * (1.0 - PhK * 0.8)).GetSafeNormal();
 			TwoBone(UA, FA, HA, Sh + Dir * (FMath::Lerp(0.88, 0.95, SK) * La), (-BodyUp - V * 0.3).GetSafeNormal(), FMath::Lerp(0.7f, 0.92f, float(SK)) * Frame.SwingFreeArmW, nullptr, 0.f);   // round 05: the free arm wins over the swing clip (was 0.55-0.8: the symmetric arms-up V read through)
 		}
 	}
@@ -1301,6 +1330,45 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 					const FVector Toe = (-Up * 0.8 - Chest * 0.6).GetSafeNormal();
 					TwoBone(Th, Sh2, Ft, Hip + D * Len, Pole, W, &Toe, 0.5f * W);
 				}
+			}
+		}
+	}
+	// ---- round 08: air drift -- a slow alternating asymmetry over the air clips (the float silhouette keeps evolving even when
+	// the rotating air clips share an outline): one arm sweeps forward/down and the other back, the legs scissor against them,
+	// a full left/right cycle every ~1.1 s; limbs only, the chest is untouched (W4)
+	if (Frame.AirDriftW > 0.01f && BHips.IsValid())
+	{
+		const float W = Frame.AirDriftW;
+		const double S = FMath::Sin(2.0 * PI * double(Frame.AirDriftPh));
+		const FCompactPoseBoneIndex BHead = Idx(TEXT("head"));
+		const FVector Up = BHead.IsValid() ? (CS(BHead).GetLocation() - CS(BHips).GetLocation()).GetSafeNormal() : FVector::UpVector;
+		FVector Lat = CS(Idx(TEXT("upperArm_R"))).GetLocation() - CS(Idx(TEXT("upperArm_L"))).GetLocation();
+		Lat = (Lat - Up * FVector::DotProduct(Lat, Up)).GetSafeNormal();   // left -> right
+		if (Lat.IsNearlyZero()) Lat = FVector::RightVector;
+		const FVector Chest = FVector::CrossProduct(Lat, Up).GetSafeNormal() * UWebTravAnimInstance::ChestSign;   // body front
+		for (int32 L = 0; L < 2; ++L)
+		{
+			const double Sd = L == 0 ? -S : S;   // the two arms move against each other
+			const TCHAR* UA = L == 0 ? TEXT("upperArm_L") : TEXT("upperArm_R");
+			const TCHAR* FA = L == 0 ? TEXT("forearm_L") : TEXT("forearm_R");
+			const TCHAR* HA = L == 0 ? TEXT("hand_L") : TEXT("hand_R");
+			const FCompactPoseBoneIndex BU = Idx(UA), BF = Idx(FA), BH = Idx(HA);
+			if (BU.IsValid() && BF.IsValid() && BH.IsValid())
+			{
+				const FVector HandNow = CS(BH).GetLocation();
+				// lead hand ~0.45 m forward and a touch down at the swing extreme, trailing hand back and in
+				const FVector Off = (Chest * (Sd > 0 ? 0.42 : -0.34) - Up * 0.16 + Lat * (Sd > 0 ? 0.10 : -0.18) * (L == 0 ? -1.0 : 1.0)) * (FMath::Abs(Sd) * 100.0 * W);
+				TwoBone(UA, FA, HA, HandNow + Off, (-Up - Chest * 0.3).GetSafeNormal(), 1.f, nullptr, 0.f);
+			}
+			const TCHAR* Th = L == 0 ? TEXT("thigh_L") : TEXT("thigh_R");
+			const TCHAR* Sh = L == 0 ? TEXT("shin_L") : TEXT("shin_R");
+			const TCHAR* Ft = L == 0 ? TEXT("foot_L") : TEXT("foot_R");
+			const FCompactPoseBoneIndex BT = Idx(Th), BS = Idx(Sh), BFt = Idx(Ft);
+			if (BT.IsValid() && BS.IsValid() && BFt.IsValid())
+			{
+				const FVector FootNow = CS(BFt).GetLocation();
+				const FVector Off = (Chest * (Sd > 0 ? -0.30 : 0.26) + Up * (Sd > 0 ? 0.10 : -0.06)) * (FMath::Abs(Sd) * 100.0 * W);   // scissor against the lead arm
+				TwoBone(Th, Sh, Ft, FootNow + Off, (Chest * 0.9 - Up * 0.1).GetSafeNormal(), 1.f, nullptr, 0.f);
 			}
 		}
 	}

@@ -104,7 +104,10 @@ namespace WebFlips
 			Add(TEXT("backLayout"), -720.f, { {S::Tuck, 0.40f, 0.f, 0.4f, 0.2f}, {S::Layout, 0.58f, 0.f, 0.3f, 0.2f}, {S::Tuck, 0.44f, 0.f, 0.3f, 0.3f}, {S::Pencil, 0.34f}, {S::Tuck, 0.34f, 0.f, 0.3f, 0.3f}, {S::Reach, 0.26f} }, 2.0f, 1.0f, 0.2f);
 			// barani: front pike with a half twist (180 deg, arms wrapped), a tuck through the second rotation, the straddle flings
 			// open out of the wrap and turns the last half in toward the catch (720 deg)
-			Add(TEXT("barani"), 720.f, { {S::Pike, 0.44f, 0.f, 0.5f, 0.3f}, {S::Twist, 0.38f, 180.f}, {S::Tuck, 0.30f}, {S::Straddle, 0.38f, 180.f}, {S::Tuck, 0.54f, 0.f, 0.4f, 0.4f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.22f);
+			// round 08 (critic r06/r07 adjacent: barani's rendered peak sat at 1063 deg/s both rounds -- the twist's roll couples into
+			// the measured body axis; a longer first twist (409 deg/s, still above the 250 deg/s correction freeze) pulls the rendered
+			// peak down without moving the 720 deg total out of F2's 300-500 deg/s band: 720 / 2.34 s = 308)
+			Add(TEXT("barani"), 720.f, { {S::Pike, 0.44f, 0.f, 0.5f, 0.3f}, {S::Twist, 0.44f, 180.f}, {S::Tuck, 0.30f}, {S::Straddle, 0.38f, 180.f}, {S::Tuck, 0.54f, 0.f, 0.4f, 0.4f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.22f);
 			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, short tucks at the entry / exit;
 			// 720 deg — the second rotation opens into a held straddle
 			Add(TEXT("fullTwist"), -720.f, { {S::Tuck, 0.38f, 0.f, 0.4f, 0.2f}, {S::Layout, 0.30f, 0.f, 0.3f, 0.f}, {S::Twist, 0.48f, 360.f}, {S::Straddle, 0.40f}, {S::Tuck, 0.62f, 0.f, 0.3f, 0.3f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.22f);

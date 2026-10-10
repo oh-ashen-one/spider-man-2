@@ -117,6 +117,7 @@ private:
 	// round 01 (W4): the body frame blends into the rope frame at the attach with a critically damped spring (visual only)
 	FQuat SwayDeltaQ = FQuat::Identity;
 		FQuat BodySpringQ = FQuat::Identity; FVector BodySpringVel = FVector::ZeroVector; double AttachT = 9.0; bool bPrevSwingMode = false; bool bBodySpringInit = false;
+		double OffSwingT = 9.0;   // round 08: time since the swing mode was left (the attach spring stays live into a fresh wall entry)
 	FQuat FlipOffQ = FQuat::Identity;   // round 11: flip rotation relative to the body frame (springs back when a program is cut)
 	FWebFlipPose LastFlip;              // round 11: telemetry
 	FName LastFlipName;
