@@ -3,13 +3,82 @@
 the default (Tessera) suit. Multi-case clips (s2, s3) run one engine per case and are concatenated. One engine at a time through with_holder.sh.
 outputs: <scratch>/<round>/<clip>/<case>/{frames/, route_telemetry.csv, route.log}; <docs round dir>/<clip>.mp4 (<= 15 MB), <clip>_telemetry.csv (cases concatenated, extra columns case, clip_t), <clip>_render.json
 usage: run_clip.py <round> <clip> [--map island|island-night] [--cases c1,c2] [--crf 22] [--keep-frames]"""
-import argparse, csv, json, shutil, subprocess, sys, time
+import argparse, csv, json, os, shutil, signal, subprocess, sys, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 SCR = Path.home() / 'sm2-n1/_scratch/final/swing'
 SHOTS = ROOT / 'unreal/WebHomage/Saved/Showcase/User/Saved/Screenshots/MacEditor'   # play.py runs with -UserDir=Saved/Showcase/User/
 PRE = 1.5
+UE = Path('/Users/Shared/Epic Games/UE_5.8/Engine/Binaries/Mac/UnrealEditor.app/Contents/MacOS/UnrealEditor')
+GPU = Path.home() / '.cache/gpu-slot'
+MAPS = {'island': '/Game/Showcase/Maps/Manhattan_Island', 'island-night': '/Game/Showcase/Maps/Manhattan_Island_Night'}
+
+
+def stop_tree(proc):
+    """SIGTERM the launcher (gpu_slot.py / guarded_preview stop their own child), 90 s, SIGKILL last resort."""
+    if proc.poll() is not None:
+        return
+    proc.terminate()
+    try:
+        proc.wait(timeout=90)
+    except subprocess.TimeoutExpired:
+        proc.kill(); proc.wait()
+
+
+def launch_case(d, name, q, game_map, log):
+    """One case's engine run. Primary: with_holder.sh -> play.py -> guarded_preview (the round-04 path). If that cannot admit
+    (a foreign loop parks the coordinator: no engine starts within 180 s), fall back to the coordinator's FIFO queue
+    (tools/gpu/gpu_slot.sh capture -- the M1 commandlet path) around the same engine command. Both paths honor PAUSED, the
+    holders and the queue at ~/.cache/gpu-slot; the fallback additionally repeats play.py's foreign-engine process check.
+    Returns True when the engine ran (route.log exists); False = never admitted (safe to retry)."""
+    cmd = [str(ROOT / 'tools/showcase/with_holder.sh'), 'python3', str(ROOT / 'tools/showcase/play.py'), '--map', game_map, '--profile', 'playable', '--res-scale', '100', '--res', '1920x1080',
+           '--capture', str(d), '--name', 'route', '--script', str(ROOT / 'docs/night1/traversal/scripts/final' / (name + '.json')), '--quit', str(q + PRE), '--timeout', '3000',
+           '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-dumpmovie', '--game-arg=-WHTravMask', '--game-arg=-WHSuit=tessera', '--game-arg=-WHMovieAsync', '--game-arg=-WHTravPreroll=%s' % PRE, '--game-arg=-WHPerfPreset=%s' % (ROOT / 'unreal/WebHomage/Config/PerfPlayableFast.cvars'), '--launch']
+    proc = subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
+    t0 = time.time()
+    while proc.poll() is None and not (d / 'route.log').exists() and time.time() - t0 < 180:
+        time.sleep(3)
+    if proc.poll() is None and not (d / 'route.log').exists():
+        stop_tree(proc)   # the primary path never started the engine (it had launched nothing yet)
+        log.write('\n[run_clip] primary path (with_holder/play.py) not admitted within 180 s; trying the coordinator FIFO queue (gpu_slot.sh capture)\n'); log.flush()
+    elif proc.poll() is None:
+        proc.wait()       # the engine is up: let the capture run out
+    if (d / 'route.log').exists():
+        return True
+    # ---- fallback: queue for a capture slot at the same coordinator (never direct, never bypassing PAUSED / holders)
+    if (GPU / 'PAUSED').exists():
+        log.write('[run_clip] coordinator PAUSED; refusing the queued launch too\n'); log.flush()
+        return False
+    engines = subprocess.run(['ps', '-axo', 'comm'], capture_output=True, text=True).stdout
+    if any(l.rsplit('/', 1)[-1] in ('UnrealEditor', 'UnrealEditor-Cmd', 'Blender', 'blender', 'Unity') for l in engines.splitlines()):
+        log.write('[run_clip] a renderer-bearing engine process exists; not launching under the queue path this attempt\n'); log.flush()
+        return False
+    r = subprocess.run(['python3', str(ROOT / 'tools/showcase/check.py')], capture_output=True, text=True)
+    try:
+        problems = json.loads(r.stdout)['missing']
+    except (ValueError, KeyError):
+        problems = ['check.py produced no report']
+    if problems:
+        sys.exit('Content is incomplete: ' + ', '.join(problems))
+    user = ROOT / 'unreal/WebHomage/Saved/Showcase/User'
+    execs = ['t.MaxFPS 0', 'r.ScreenPercentage 100', 'r.AntiAliasingMethod 4']
+    game_args = ['-game', '-ResX=1920', '-ResY=1080', '-ForceRes', '-NoCrashReports', '-NoSound', '-NoVSync', '-notraceserver',
+                 '-WHNoMouseCapture', '-UserDir=%s/' % user, '-WHShotDir=%s' % d, '-WHShotName=route', '-abslog=%s' % (d / 'route.log'), '-RenderOffScreen',
+                 '-WHTravScript=%s' % (ROOT / 'docs/night1/traversal/scripts/final' / (name + '.json')), '-WHProfile=playable', '-WHResScale=100',
+                 '-benchmark', '-fps=60', '-dumpmovie', '-WHTravMask', '-WHSuit=tessera', '-WHMovieAsync', '-WHTravPreroll=%s' % PRE,
+                 '-WHPerfPreset=%s' % (ROOT / 'unreal/WebHomage/Config/PerfPlayableFast.cvars'),
+                 '-WHQuitAt=%s' % (q + PRE), '-ExecCmds=' + ','.join(execs)]
+    env = dict(os.environ, GPU_SLOT_DIR=str(GPU))
+    qcmd = [str(ROOT / 'tools/gpu/gpu_slot.sh'), 'capture', '--label', 'final-swing-r05-%s' % name, '--',
+            str(UE), str(ROOT / 'unreal/WebHomage/WebHomage.uproject'), MAPS[game_map], *game_args]
+    proc = subprocess.Popen(qcmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT, env=env)
+    try:
+        proc.wait(timeout=1200)   # engine self-quits at -WHQuitAt; the cap is only a stuck-run guard
+    except subprocess.TimeoutExpired:
+        log.write('[run_clip] queued capture exceeded 1200 s; SIGTERM to gpu_slot (it stops the engine: SIGTERM, 60 s, SIGKILL last resort)\n'); log.flush()
+        stop_tree(proc)
+    return (d / 'route.log').exists()
 ap = argparse.ArgumentParser()
 ap.add_argument('round'); ap.add_argument('clip'); ap.add_argument('--map'); ap.add_argument('--cases'); ap.add_argument('--crf', type=int, default=22); ap.add_argument('--keep-frames', action='store_true'); ap.add_argument('--q', type=float, help='dev render: quit time (s after the cut) for every case; the outputs get the suffix _dev'); ap.add_argument('--reuse', action='store_true', help='post-process frames / telemetry left by an earlier engine run of this case (no launch)')
 a = ap.parse_args()
@@ -27,29 +96,46 @@ out_frames = work / 'all_frames'; shutil.rmtree(out_frames, ignore_errors=True);
 clip_t = 0.0
 for name, q in cases:
     d = work / name
-    if not a.reuse: shutil.rmtree(d, ignore_errors=True); d.mkdir(parents=True)
-    if not a.reuse:
-        for f in SHOTS.glob('MovieFrame*.png'): f.unlink()
-    cmd = [str(ROOT / 'tools/showcase/with_holder.sh'), 'python3', str(ROOT / 'tools/showcase/play.py'), '--map', game_map, '--profile', 'playable', '--res-scale', '100', '--res', '1920x1080',
-           '--capture', str(d), '--name', 'route', '--script', str(ROOT / 'docs/night1/traversal/scripts/final' / (name + '.json')), '--quit', str(q + PRE), '--timeout', '3000',
-           '--game-arg=-benchmark', '--game-arg=-fps=60', '--game-arg=-dumpmovie', '--game-arg=-WHTravMask', '--game-arg=-WHSuit=tessera', '--game-arg=-WHMovieAsync', '--game-arg=-WHTravPreroll=%s' % PRE, '--game-arg=-WHPerfPreset=%s' % fast, '--launch']
+    done = d / 'frames_done'   # round 05: per-case resume cache (frames + telemetry + log survive a later case's admission failure)
     t0 = time.time()
-    if not a.reuse: subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT)
+    rows = list(csv.DictReader((d / 'route_telemetry.csv').open())) if (d / 'route_telemetry.csv').exists() else []
+    cached = bool(rows) and (d / 'route.log').exists() and done.exists() and any(done.glob('MovieFrame*.png'))
+    if a.reuse and not cached:
+        sys.exit('%s: --reuse but no complete per-case cache at %s' % (name, d))
+    if not cached:
+        attempt = 0
+        while True:   # admission retry: the shared GPU coordinator is contended at night; a refusal never starts the engine
+            attempt += 1
+            shutil.rmtree(d, ignore_errors=True); d.mkdir(parents=True)
+            for f in SHOTS.glob('MovieFrame*.png'): f.unlink()
+            with open(work / (name + '.launcher.log'), 'a') as lg:
+                lg.write('\n=== %s attempt %d %s ===\n' % (name, attempt, time.strftime('%H:%M:%S')))
+                ran = launch_case(d, name, q, game_map, lg)
+            rows = list(csv.DictReader((d / 'route_telemetry.csv').open())) if (d / 'route_telemetry.csv').exists() else []
+            frames_now = sorted(SHOTS.glob('MovieFrame*.png'))
+            if rows and frames_now:
+                done.mkdir(parents=True)
+                for f in frames_now: shutil.move(str(f), str(done / f.name))
+                break
+            if ran:
+                sys.exit('%s: the engine ran but produced no telemetry / frames (rows %d, frames %d); log %s -- not auto-relaunching, diagnose first' % (name, len(rows), len(frames_now), d / 'route.log'))
+            if attempt >= 8:
+                sys.exit('%s: no admission after %d attempts (the GPU coordinator never granted a slot)' % (name, attempt))
+            print('%s: admission attempt %d refused (no engine started); waiting 120 s' % (name, attempt), flush=True)
+            time.sleep(120)
     wall = time.time() - t0
     try:   # engine wall time from the log's first / last stamps (also valid with --reuse)
         import re, datetime
         st = [m.group(1) for m in re.finditer(r'^\[(\d{4}\.\d\d\.\d\d-\d\d\.\d\d\.\d\d)', (d / 'route.log').read_text(errors='replace'), re.M)]
         fmt = '%Y.%m.%d-%H.%M.%S'; wall = (datetime.datetime.strptime(st[-1], fmt) - datetime.datetime.strptime(st[0], fmt)).total_seconds() or wall
     except Exception: pass
-    frames = sorted(SHOTS.glob('MovieFrame*.png'))
-    rows = list(csv.DictReader((d / 'route_telemetry.csv').open())) if (d / 'route_telemetry.csv').exists() else []
-    if not rows or not frames:
-        sys.exit('%s: no telemetry / frames (rows %d, frames %d); log %s' % (name, len(rows), len(frames), d / 'route.log'))
+    frames = sorted(done.glob('MovieFrame*.png'))
     skip = len(frames) - len(rows)
     if skip < 0: sys.exit('%s: fewer frames (%d) than telemetry rows (%d)' % (name, len(frames), len(rows)))
-    for f in frames[skip:]:
-        n_out += 1; shutil.move(str(f), str(out_frames / ('f%06d.png' % n_out)))
-    for f in frames[:skip]: f.unlink()
+    for f in frames[skip:]:   # link (not move): done/ stays a complete resume cache
+        n_out += 1
+        try: os.link(str(f), str(out_frames / ('f%06d.png' % n_out)))
+        except OSError: shutil.copy2(str(f), str(out_frames / ('f%06d.png' % n_out)))
     for i, rr in enumerate(rows):
         rr['case'] = name; rr['clip_t'] = '%.4f' % (clip_t + float(rr['t'])); rr['clip_frame'] = str(total_frames + i)
     all_rows += rows; total_frames += len(rows); clip_t += float(rows[-1]['t']) + 1 / 60

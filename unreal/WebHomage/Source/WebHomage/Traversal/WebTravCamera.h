@@ -114,6 +114,14 @@ public:
 	// round 04: closed-loop trick distance: the character reports the hero's projected bone-box height (fraction of the frame, previous frame); FlipFbK scales the held distance so it
 	// settles at FlipFbTarget (the bone box is padded 10 cm, ~1.15x the pixel mask height: 0.31 ~ 0.27 by pixels), dead band 8 %
 	double HeroProjH = -1.0, FlipFbK = 1.0, FlipFbTarget = 0.29, FlipFbGain = 2.5;
+	// round 05 (P1: hero pixel height outside the 0.15-0.30 swing / 0.18-0.36 air band on > 10 % of samples): the CHASE camera gets the
+	// same closed loop (swing target the r04 bone-box median band centre, air a touch larger); 0.75-1.45 x the chase distance
+	double ChaseFbK = 1.0, ChaseFbSwing = 0.26, ChaseFbAir = 0.30, ChaseFbGain = 1.5, ChaseFbMin = 0.75, ChaseFbMax = 1.45;
+	// round 05 (critic r04: hero fully hidden behind a rooftop ~0.8 s in s1/s5; rule: never fully occluded / off-frame > 0.25 s during
+	// swings): visibility watchdog for the chase camera (the trick camera owns its own obstruction handling, TC11). While the hero is
+	// out of the frustum or the lens->chest line is blocked, VisBoostK ramps 0 -> 1 over VisBoostT s: the output slew caps relax
+	// (x VisWhipMul at full), the chase distance grows by VisBoostBack and the visibility lift runs. Eases back when he is seen.
+	double UnseenT = 0.0, VisBoostK = 0.0, VisWhipMul = 4.0, VisBoostT = 0.15, VisBoostBack = 0.35, VisBoostUp = 2.0;
 	double FlipDistMax = 7.5, FlipDistCompact = 3.8, FlipExtK = 4.0, FlipExtS = 0.0, FlipExtV = 0.0, FlipAzHold = 0.25, FlipAzRate = 50.0, FlipAzNow = 0.0;
 	double FlipDist = 5.4, FlipDistMin = 4.0, FlipTuckPull = 0.0, FlipCompactS = 0.0, FlipCompactV = 0.0, FlipCompactT = 0.2, FlipDrop = 1.0, FlipYawMin = 35.0, FlipYawMax = 55.0, FlipPrefYaw = 47.0, FlipLeadDeg = 3.0;
 	double FlipSFrame = 0.38, FlipPitchUpMax = 7.5, MaxLookUpDeg = 10.0;

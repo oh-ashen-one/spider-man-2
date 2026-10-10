@@ -53,6 +53,12 @@
    24.0
   ]
  ],
+ "live_fix_clip": [
+  [
+   "live_fix_clip",
+   15.0
+  ]
+ ],
  "s2_press_variety": [
   [
    "s2_c1_roof_jump",
@@ -103,6 +109,7 @@
   "s3_c6_fwd_right": 4.3,
   "s3_c7_back_left": 4.3,
   "s3_flip_flow": 24.5,
+  "live_fix_clip": 15.5,
   "s2_c1_roof_jump": 5.5,
   "s2_c2_midfall": 4.1,
   "s2_c3_wallrun": 5.7,
@@ -112,11 +119,5 @@
   "s2_c7_no_anchor": 3.5,
   "s2_c8_close_facade": 3.7,
   "s2_c9_trees": 3.7
- },
- "live_fix_clip": [
-  [
-   "live_fix_clip",
-   15.0
-  ]
- ]
+ }
 }

@@ -1135,7 +1135,17 @@ void AWebTravCharacter::PoseFigure(float Dt)
 	}
 	else
 	{
-		FlipOffQ = FQuat::Slerp(FlipOffQ, FQuat::Identity, 1.0 - FMath::Exp(-Dt / 0.07));
+		// round 05 (critic r04 / A5: chest rate through the catch median 646 deg/s): a catch at the END of a program (the reach, body
+		// <= ~70 deg off upright) decays its residual rotation at <= 340 deg/s instead of the 0.07 s snap (which spikes > 400 deg/s);
+		// a mid-program CANCEL keeps the 0.07 s snap (owner bug 1: a fresh press must answer at once)
+		const double Ang = FlipOffQ.GetAngle();
+		if (Ang > FMath::DegreesToRadians(0.2) && Ang <= FMath::DegreesToRadians(70.0))
+		{
+			const double MaxStep = FMath::DegreesToRadians(340.0) * Dt;
+			const double Step = FMath::Min(Ang * (1.0 - FMath::Exp(-Dt / 0.10)), MaxStep);
+			FlipOffQ = FQuat::Slerp(FlipOffQ, FQuat::Identity, FMath::Clamp(Step / Ang, 0.0, 1.0));
+		}
+		else FlipOffQ = FQuat::Slerp(FlipOffQ, FQuat::Identity, 1.0 - FMath::Exp(-Dt / 0.07));
 		LastFlip = FWebFlipPose(); LastFlipName = NAME_None;
 	}
 	if (FP || FlipOffQ.GetAngle() > FMath::DegreesToRadians(0.2))

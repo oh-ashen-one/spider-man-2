@@ -153,6 +153,9 @@ private:
 	struct FSwSpring { double X = 0.0, V = 0.0; void Step(double Target, double FreqHz, double Zeta, double Dt) { const double W = 2.0 * PI * FreqHz; const int32 N = FMath::Max(1, FMath::CeilToInt(Dt / (1.0 / 120.0))); const double H = Dt / N; for (int32 I = 0; I < N; ++I) { const double Acc = W * W * (Target - X) - 2.0 * Zeta * W * V; V += Acc * H; X += V * H; } } };
 	FSwSpring SwThS[2], SwKnS[2], SwArchS;
 	int32 SwLastStyle = -1, SwCount = 0; double SwT0 = 0.0, SwTime = 0.0, SwStp = 0.0; bool bSwPrev = false;
+	// round 05 (critic r04 gap 3: "legs lag the arc by 0.05-0.15 s"): ring of the swing phase over the last ~0.4 s; the leg
+	// targets (thigh / knee) sample it 0.09 s behind while the torso and arms stay on the live phase
+	double SwPhT[24] = { 0 }; float SwPhV[24] = { 0 }; int32 SwPhH = 0, SwPhN = 0;
 	bool bInAirCycle = false;
 	float AirCycleT = 0.f;
 	int32 FlavorIdx = -1, CycleCount = 0;

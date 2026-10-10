@@ -87,9 +87,11 @@ namespace WebFlips
 	/** Tricks C r01 trick input mapping (for UWebTraversalComponent::ChooseTrick, see docs/night1/tricks/REQUEST-traversal.md):
 	 *  StickFwd / StickLat = the move stick at the trick press (forward +, right +), K = a running counter (never the same program twice
 	 *  in a row), AirS = seconds of air the release has before the catch window must open (<= 0: unknown, any program).
-	 *  Stick forward -> front family (frontSingle, frontDouble, frontPikeSwan, barani, rudi, corkscrew); back -> back family (backSingle,
-	 *  backDouble, backPike, backLayout, fullTwist, backTripleChain); sideways -> twisting family (barani, fullTwist, rudi, corkscrew);
-	 *  neutral -> every release program in turn. The longest programs only play when AirS covers 1.15 x their catch time. */
+	 *  Stick forward -> front family (frontDouble, frontPikeSwan, barani, frontSingle, corkscrew, rudi); back -> back family (backDouble,
+	 *  backTripleChain, backPike, backSingle, backLayout, fullTwist); sideways -> twisting family (barani, fullTwist, rudi, corkscrew);
+	 *  neutral -> every release program in turn. The longest programs only play when AirS covers 1.15 x their catch time. Round 05 (critic
+	 *  r04: "0-1 rotations per release"): the double / triple programs lead the front / back pools, so a long release opens with 2-3
+	 *  rotations (F1); the fit test still falls back to the singles in short air. */
 	FName ChooseForInput(float StickFwd, float StickLat, int32 K, float AirS, FName Last);
 	/** Sample a program at T seconds (clamped to [0, Dur]). */
 	FWebFlipPose Sample(const FWebFlipProgram& P, float T);

@@ -59,7 +59,10 @@ namespace WebFlips
 			// ---- P3 rounds 11-19 (kept unchanged so traversal's merged r23 flips do not regress) --------------------------------------------
 			// backDouble: a double tuck that kicks out into an open finish (Kickout: arms sweep wide, legs scissor behind them, the web arm
 			// comes up for the catch). round 14: Tuck 1.20 s eased, Kickout 0.60 s at <= ~100 deg/s; catch 1.60 s after the release
-			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 1.20f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.60f} }, 3.5f, 1.5f, 0.2f);
+			// round 05 (critic r04 gap 1: "0-1 rotations per release, no fast tuck or held pencil/throne"): the double now tucks fast
+			// (450-750 deg/s, F3), holds an inverted pencil between the rotations (>= 0.3 s at <= 150 deg/s, F4) and opens out into the
+			// reach (F8) -- the owner clip's S3 vocabulary. Sim: flip_sim.py, base peak ~700 deg/s, pencil hold ~0.4 s
+			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 0.66f, 0.f, 0.85f, 0.5f}, {S::Pencil, 0.36f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.7f}, {S::Kickout, 0.34f}, {S::Reach, 0.20f} }, 3.5f, 1.5f, 0.2f);
 			// front pike into a slow inverted swan that unwinds, tuck up, reach (round 14: pike 0.40 / swan 0.55 / tuck 0.38 / reach 0.26 s)
 			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.36f} });
 			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens into its own inverted straddle, tucks, reach
@@ -81,22 +84,25 @@ namespace WebFlips
 			// 39 to 60 m/s in 12 s and through the avenue corner into a facade).
 			// front tuck: set, tight tuck, kick out, reach for the web
 			Add(TEXT("frontSingle"), 360.f, { {S::Tuck, 0.74f, 0.f, 0.9f, 0.7f}, {S::Kickout, 0.44f}, {S::Reach, 0.22f} }, 2.0f, 1.0f);
-			// front double tuck with a kick-out (the front twin of backDouble)
-			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 1.40f, 0.f, 0.85f, 0.8f}, {S::Kickout, 0.54f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
+			// front double tuck with a kick-out (the front twin of backDouble); round 05: a held upright throne between the rotations
+			// (F4, owner clip S6's 0.48 s throne), tucks at 450-750 deg/s (F3)
+			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 0.68f, 0.f, 0.9f, 0.5f}, {S::Throne, 0.36f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.8f}, {S::Kickout, 0.34f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
 			// back pike: the body folds at the hips with straight legs (keyed pike), opens into the kick-out
 			Add(TEXT("backPike"), -360.f, { {S::Pike, 0.72f, 0.f, 1.0f, 0.6f}, {S::Kickout, 0.46f}, {S::Reach, 0.22f} }, 2.0f, 1.0f);
-			// back layout: one straight line all the way round (hips / knees >= 170 deg), arms by the sides, opens to the reach
-			Add(TEXT("backLayout"), -360.f, { {S::Layout, 0.92f, 0.f, 0.5f, 0.4f}, {S::Reach, 0.40f} }, 2.0f, 1.0f);
+			// back layout: the layout line keeps its identity through the middle, but round 05 (critic r04: no fast tuck phase, peak ~400
+			// deg/s) enters and leaves it through a short tuck (F3 450-750 deg/s)
+			Add(TEXT("backLayout"), -360.f, { {S::Tuck, 0.26f, 0.f, 0.6f, 0.2f}, {S::Layout, 0.60f, 0.f, 0.5f, 0.4f}, {S::Tuck, 0.24f, 0.f, 0.2f, 0.5f}, {S::Reach, 0.40f} }, 2.0f, 1.0f);
 			// barani: front pike with a half twist (180 deg, arms wrapped), then the straddle flings open out of the wrap and turns the last half in toward the catch
 			Add(TEXT("barani"), 360.f, { {S::Pike, 0.50f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.34f, 180.f}, {S::Straddle, 0.46f, 180.f}, {S::Reach, 0.36f} }, 2.0f, 1.0f);
-			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, opens straight back into the layout, reach
-			Add(TEXT("fullTwist"), -360.f, { {S::Layout, 0.34f, 0.f, 0.5f, 0.f}, {S::Twist, 0.52f, 360.f}, {S::Layout, 0.32f}, {S::Reach, 0.38f} }, 2.0f, 1.0f);
+			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, opens straight back into the layout, reach;
+			// round 05: short tucks at the entry / exit give it the fast phase (F3, was a ~300 deg/s flat spin)
+			Add(TEXT("fullTwist"), -360.f, { {S::Tuck, 0.26f, 0.f, 0.6f, 0.2f}, {S::Layout, 0.30f, 0.f, 0.5f, 0.f}, {S::Twist, 0.50f, 360.f}, {S::Layout, 0.26f}, {S::Tuck, 0.24f, 0.f, 0.2f, 0.5f}, {S::Reach, 0.38f} }, 2.0f, 1.0f);
 			// rudi: front flip with one and a half twists (540 deg) wrapped tight, the catch-turn finishes the last half in the open straddle
 			Add(TEXT("rudi"), 360.f, { {S::Pike, 0.40f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.66f, 540.f}, {S::Straddle, 0.48f, 180.f}, {S::Reach, 0.36f} }, 2.0f, 1.0f);
 			// chain: three back rotations in one release with a shape per rotation (owner clip S3: tuck -> layout -> tuck -> straddle -> tuck
-			// -> open, 3 rotations in 2.8 s, ~385 deg/s mean)
-			Add(TEXT("backTripleChain"), -1080.f, { {S::Tuck, 0.60f, 0.f, 0.9f, 0.3f}, {S::Layout, 0.40f}, {S::Tuck, 0.52f, 0.f, 0.3f, 0.3f}, {S::Straddle, 0.36f},
-				{S::Tuck, 0.52f, 0.f, 0.3f, 0.6f}, {S::Kickout, 0.44f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
+			// -> open, 3 rotations in 2.8 s, ~385 deg/s mean); round 05: the middle rotation holds an inverted pencil (owner S3 9.72-9.84, F4)
+			Add(TEXT("backTripleChain"), -1080.f, { {S::Tuck, 0.66f, 0.f, 0.9f, 0.3f}, {S::Layout, 0.38f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.3f}, {S::Pencil, 0.36f},
+				{S::Tuck, 0.56f, 0.f, 0.3f, 0.6f}, {S::Straddle, 0.34f}, {S::Kickout, 0.36f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
 			return P;
 		}
 
@@ -296,8 +302,8 @@ namespace WebFlips
 	}
 	FName ChooseForInput(float StickFwd, float StickLat, int32 K, float AirS, FName Last)
 	{
-		static const TCHAR* Front[] = { TEXT("frontSingle"), TEXT("frontPikeSwan"), TEXT("barani"), TEXT("frontDouble"), TEXT("corkscrew"), TEXT("rudi") };
-		static const TCHAR* Back[] = { TEXT("backSingle"), TEXT("backPike"), TEXT("backLayout"), TEXT("backDouble"), TEXT("fullTwist"), TEXT("backTripleChain") };
+		static const TCHAR* Front[] = { TEXT("frontDouble"), TEXT("frontPikeSwan"), TEXT("barani"), TEXT("frontSingle"), TEXT("corkscrew"), TEXT("rudi") };
+		static const TCHAR* Back[] = { TEXT("backDouble"), TEXT("backTripleChain"), TEXT("backPike"), TEXT("backSingle"), TEXT("backLayout"), TEXT("fullTwist") };
 		static const TCHAR* Twist[] = { TEXT("barani"), TEXT("fullTwist"), TEXT("corkscrew"), TEXT("rudi") };
 		TArray<FName> Pool;
 		const float Mag = FMath::Sqrt(StickFwd * StickFwd + StickLat * StickLat);

@@ -137,6 +137,8 @@ public:
 	/** Round 11: true = the round-04..10 browser tricks (tuckFlip / layout / corkscrew / scissor) instead of the flip programs. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") bool bLegacyTricks = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachHold = 0.2f;
+	/** round 05 (F8): the final reach also holds without the button while the catch is on its way (s before falling out of the trick). */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipReachIdle = 0.8f;
 	/** round 01: offset of the program cycle index (K) used by ChooseForInput; scripts set it (tune) so each case of a clip starts at a different program of its stick pool */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipKStart = 0.f;
 	/** round 04 (live defaults = the capture chain tune since the owner live fix): anchor candidates must be above the hand (rise / run >= AnchorElevMin) and not behind the travel line (cos of the horizontal angle >= AnchorAheadMin; -2 = off) */
@@ -144,6 +146,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float AnchorAheadMin = -2.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipFloorClear = 6.f;  // round 11: a flip must be done this high over the floor
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float FlipCatchRoom = 0.35f; // round 11: s left after the program's reach for the catch // round 11: held final reach while no web has caught (a sky launch then dives into the catch, owner clip S6 ends the same way)
+	/** round 05 (critic r04 gap 3: "s2 t=8-12, a 4 s micro-rocking hang"; "cap hangs at ~1.5 s"): a swing that stalls (slow, near the
+	 * bottom, web taut) for HangCapS s lets go and the still-held button fires the next web at once (the chain continues; the release
+	 * itself gets the usual pop). 0 = off. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float HangCapS = 1.5f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float HangStallSpd = 5.f; // m/s under which a swing counts as stalled
 	/** Round 07: a web stuck while rising faster than this (m/s) starts its pendulum at the top of the hop, at most PendingMax s later. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingVz = 5.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Traversal") float PendingMax = 0.5f;
@@ -393,7 +400,7 @@ private:
 	{
 		FVector Anchor = FVector::ZeroVector, Normal = FVector::ForwardVector, Pivot = FVector::ZeroVector, Dir = FVector::ForwardVector;
 		double Rope = 20, RopeTarget = 20, T = 0, Phase = 0, Bank = 0, Tension = 0, Kick = 0, KickCd = 0, AngMax = -9, Angle = 0, TautT = 0, Y0 = 0;
-		double SideT = 0, SideK = 0, ModelT = 0, WrapT = 0, FdTension = 0;
+		double SideT = 0, SideK = 0, ModelT = 0, WrapT = 0, FdTension = 0, StallT = 0; // round 05: StallT = seconds this swing has been a stalled hang
 		bool bRightHand = true, bApexed = false, bSideN = false;
 		FVector SideN = FVector::ZeroVector;
 		FName Kind;

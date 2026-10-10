@@ -550,18 +550,42 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 			if (Pick == SwLastStyle) Pick = (SwLastStyle + 1) % 4;
 			SwLastStyle = Frame.SwStyle = Pick;
 			SwT0 = SwTime; SwStp = double((Hh >> 8) & 1023) / 1023.0 * 2.0 * PI;
+			SwPhN = 0; SwPhH = 0; // round 05: the phase-lag ring starts with the new web
 		}
 		bSwPrev = bSw;
 		if (bSw)
 		{
 			const double Ph = A.Swing.Phase;
+			// round 05: push the live phase; the legs sample it SwLegArcLag s back (thighs / knees trail the arc through the bottom
+			// and swing through late on the upswing), the torso arch and the free arm keep the live phase (the body leads)
+			SwPhT[SwPhH] = SwTime; SwPhV[SwPhH] = float(Ph); SwPhH = (SwPhH + 1) % 24; SwPhN = FMath::Min(SwPhN + 1, 24);
+			const double SwLegArcLag = 0.09;
+			double PhL = Ph;
+			if (SwPhN > 1)
+			{
+				const double Want = SwTime - SwLegArcLag;
+				int32 Newest = (SwPhH - 1 + 24) % 24, I0 = -1;
+				for (int32 K = 0; K < SwPhN; ++K)
+				{
+					const int32 Idx = (SwPhH - 1 - K + 48) % 24;
+					if (SwPhT[Idx] <= Want) { I0 = Idx; break; }
+				}
+				if (I0 < 0) PhL = SwPhV[(SwPhH - SwPhN + 24) % 24];
+				else if (I0 != Newest)
+				{
+					const int32 I1 = (I0 + 1) % 24;
+					const double W = (Want - SwPhT[I0]) / FMath::Max(1e-4, SwPhT[I1] - SwPhT[I0]);
+					PhL = FMath::Lerp(double(SwPhV[I0]), double(SwPhV[I1]), FMath::Clamp(W, 0.0, 1.0));
+				}
+				else PhL = SwPhV[Newest];
+			}
 			auto Bump = [](double X, double C, double Sg) { return FMath::Exp(-FMath::Square((X - C) / Sg)); };
 			auto Sm = [](double X) { X = FMath::Clamp(X, 0.0, 1.0); return X * X * (3.0 - 2.0 * X); };
 			const int32 Lead = A.Swing.bRightHand ? 0 : 1, Trail = 1 - Lead;   // the lead leg is opposite the web hand
-			const double Sweep = 0.12 * Sm((-Ph - 0.15) / 0.6) - 0.8 * Bump(Ph, 0.35, 0.5) - 0.3 * Sm((Ph - 0.55) / 0.4);   // round 02: legs extend forward on the upswing
-			const double Kb = 0.12 + 0.75 * Bump(Ph, -0.02, 0.28);   // round 02: knees tuck at the bottom, straight on the drop and the upswing
+			const double Sweep = 0.12 * Sm((-PhL - 0.15) / 0.6) - 0.8 * Bump(PhL, 0.35, 0.5) - 0.3 * Sm((PhL - 0.55) / 0.4);   // round 02: legs extend forward on the upswing
+			const double Kb = 0.10 + 0.95 * Bump(PhL, -0.02, 0.30);   // round 02: knees tuck at the bottom, straight on the drop and the upswing; round 05: stronger knee drive through the bottom
 			double Th[2] = { Sweep, Sweep }, Kn[2] = { Kb, Kb };
-			const double Mid = Bump(Ph, 0.08, 0.55), Drop = Sm((-Ph - 0.1) / 0.5);
+			const double Mid = Bump(PhL, 0.08, 0.55), Drop = Sm((-PhL - 0.1) / 0.5);
 			switch (Frame.SwStyle)
 			{
 			case 0: Th[Lead] += -1.35 * (0.2 + 0.8 * Mid); Kn[Lead] += 2.0 * (0.12 + 0.88 * Mid); Th[Trail] += 0.75 * Mid; Kn[Trail] += -0.04; break;   // split: lead knee up, trail leg long
@@ -627,7 +651,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	// round 19: swing leg shaping (legs trail the velocity at the arc bottom, knees tuck on the rising front) + the free arm
 	{
 		const bool bSw = A.Mode == EWebTravMode::Swing && Mesh;
-		const float Want = bSw ? 0.65f : 0.f;
+		const float Want = bSw ? 0.78f : 0.f;   // round 05 (critic r04: "symmetric arms-up V, straight legs"): the procedural legs / free arm read stronger over the clip
 		const float Step = Dt / 0.2f;
 		Frame.SwingLegW = Want > Frame.SwingLegW ? FMath::Min(Want, Frame.SwingLegW + Step) : FMath::Max(Want, Frame.SwingLegW - Step);
 		Frame.SwingFreeArmW = Frame.SwingLegW;
@@ -1175,7 +1199,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const double SK = Frame.SwingSpeedK;
 			const double PhK = FMath::Clamp(double(Frame.SwPhase) * 1.6, -1.0, 1.0);   // round 04: the free arm swings through: back on the drop, forward over the top on the upswing
 			const FVector Dir = (Out * FMath::Lerp(0.8, 0.35, SK) - V * FMath::Lerp(0.45, 0.9, SK) * (1.0 - 1.5 * PhK) - BodyUp * FMath::Lerp(0.15, 0.55, SK) * (1.0 - PhK * 0.8)).GetSafeNormal();
-			TwoBone(UA, FA, HA, Sh + Dir * (FMath::Lerp(0.88, 0.95, SK) * La), (-BodyUp - V * 0.3).GetSafeNormal(), FMath::Lerp(0.55f, 0.8f, float(SK)) * Frame.SwingFreeArmW, nullptr, 0.f);
+			TwoBone(UA, FA, HA, Sh + Dir * (FMath::Lerp(0.88, 0.95, SK) * La), (-BodyUp - V * 0.3).GetSafeNormal(), FMath::Lerp(0.7f, 0.92f, float(SK)) * Frame.SwingFreeArmW, nullptr, 0.f);   // round 05: the free arm wins over the swing clip (was 0.55-0.8: the symmetric arms-up V read through)
 		}
 	}
 	// ---- round 20: air pose by speed -- sky-dive arch (20-30 m/s) blending into a streamlined track (30-44 m/s)

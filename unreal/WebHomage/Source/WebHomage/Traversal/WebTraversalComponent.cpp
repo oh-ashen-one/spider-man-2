@@ -584,7 +584,10 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 	if (S.Sub == N_jumpLaunch) Timed = 0.16; else if (S.Sub == N_release) Timed = 0.4; else if (S.Sub == N_trick) Timed = S.TrickDur > 0 ? S.TrickDur : 0.85;
 	// round 11: a flip program keeps its final reach while the web button is held and no web has caught yet (<= FlipReachHold s):
 	// the catch comes out of the reach instead of a fall / dive pose in between
-	if (S.Sub == N_trick && I.bSwing && WebFlips::Find(S.Trick)) Timed += FlipReachHold;
+	// round 05 (critic r04 gap 1 / F8: "catch <= 0.25 s after the last shape"; s3b showed a 0.7-1.2 s dead glide between the
+	// program's end and the scripted press): the reach also holds WITHOUT the button (up to FlipReachIdle s) -- the trick's last
+	// shape runs (its scissor / free-arm pong) until the catch, so the web arrives out of the reach with no frozen glide
+	if (S.Sub == N_trick && WebFlips::Find(S.Trick)) Timed += FMath::Max(I.bSwing ? double(FlipReachHold) : 0.0, double(FlipReachIdle));
 	else if (S.Sub == N_pointLaunch) Timed = 0.45; else if (S.Sub == N_topOut) Timed = 1.6; else if (S.Sub == N_wallJump) Timed = 0.3; else if (S.Sub == N_zipPull) Timed = 0.28; else if (S.Sub == N_vault) Timed = 0.3;
 	if (Timed < 0 || S.SubT > Timed)
 	{
@@ -961,7 +964,7 @@ void UWebTraversalComponent::StartSwing(const FTravAnchor& A, const FVector& Fwd
 		Sw.RopeTarget = FMath::Max(4.0, FMath::Min(L, Sw.Pivot.Z - FMax - H - BottomFeet));
 	}
 	Sw.Rope = FVector::Dist(S.Pos, Sw.Pivot); Sw.T = 0; Sw.Tension = 0; Sw.TautT = 0; Sw.Y0 = S.Pos.Z;
-	Sw.Kick = 0; Sw.KickCd = 0; Sw.bApexed = false; Sw.AngMax = -9;
+	Sw.Kick = 0; Sw.KickCd = 0; Sw.bApexed = false; Sw.AngMax = -9; Sw.StallT = 0;
 	// incoming velocity projection: perpendicular to the web at once (taut from the first frame), momentum conserved
 	const FVector RD = (Sw.Pivot - S.Pos).GetSafeNormal();
 	const double Sp = S.Vel.Size();
@@ -1230,6 +1233,22 @@ void UWebTraversalComponent::StepSwing(double Hs, FWebTravInput& I)
 	Sw.Phase = SwingPhase(); Sw.Angle = SwingAngle();
 	Sw.AngMax = FMath::Max(Sw.AngMax, Sw.Angle);
 	if (!Sw.bApexed && ((Sw.Angle < Sw.AngMax - 0.06 && Sw.AngMax > 0.2) || Sw.T > 4)) Sw.bApexed = true;
+	// round 05 (critic r04 gap 3: a stalled swing micro-rocked for 4 s; "cap hangs at ~1.5 s, auto-continue the chain"): a swing that
+	// sits near the bottom at walking speed with a taut web for HangCapS s is let go; the still-held button re-fires a fresh web
+	// ~0.1 s later (StepAir's held-button search), so a dead hang never reads
+	if (HangCapS > 0.f)
+	{
+		const bool bStall = Sw.T > 0.8 && Sw.Tension > 0.1 && S.Vel.Size() < double(HangStallSpd) && FMath::Abs(Sw.Angle) < 0.35
+			&& Sw.Kick <= 0.0 && HeightAboveFloor() > 6.0;
+		Sw.StallT = bStall ? Sw.StallT + Hs : 0.0;
+		if (Sw.StallT > double(HangCapS))
+		{
+			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hang cap: swing stalled %.2f s at %.1f m/s -> release + refire"), Sw.StallT, S.Vel.Size());
+			bLeaveSwingOK = true; ReleaseSwing(false, I); bLeaveSwingOK = false;
+			S.SwingCooldown = 0.0; // the held button searches again at once (StepAir: AirT > 0.1 && vz < 5.5)
+			return;
+		}
+	}
 	if (Sw.Kick > 0.3) SetSub(N_wallKick);
 	else SetSub(Sw.Phase < -0.28 ? N_swingLow : Sw.Phase < 0.28 ? N_swingBottom : N_swingHigh);
 	Strands[0].Taut = float(Sw.Tension);
