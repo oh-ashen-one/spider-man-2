@@ -506,9 +506,7 @@ void UWebTraversalComponent::StepAir(double Hs, FWebTravInput& I)
 		const double N = HLen(S.Vel);
 		if (N > 2) { const double K = FMath::Min(N + 3 * Hs, 30.0) / N; S.Vel.X *= K; S.Vel.Y *= K; }
 	}
-	// round 08 (critic r07 s4: the release float bleeds ~16 % of its carry in 1.5 s and reads hover-y): a higher cap so the release's
-	// forward momentum visibly carries (the bleed rate stays the r07 one -- a gentler rate moved the route and dipped P1's air side)
-	if (HS > 36 + 3 * S.Chain) { S.Vel.X *= 1 - 0.12 * Hs; S.Vel.Y *= 1 - 0.12 * Hs; }
+	if (HS > 32 + 3 * S.Chain) { S.Vel.X *= 1 - 0.12 * Hs; S.Vel.Y *= 1 - 0.12 * Hs; }
 	// round 08: canyon keeping from the moment of release (was only 0.9 s after it: releases carried 20+ m/s sideways into facades)
 	if (HS > 8 && (S.Sub == N_release || S.Sub == N_trick || S.Sub == N_rise || S.Sub == N_apex || S.Sub == N_fall || I.bSwing)) Corridor(Hs, InD);
 	const double PrevFeet = FeetZ();
