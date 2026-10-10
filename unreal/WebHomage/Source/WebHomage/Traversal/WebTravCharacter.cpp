@@ -1130,11 +1130,36 @@ void AWebTravCharacter::PoseFigure(float Dt)
 		// round 14: minus the shape's own hips->head lean (ramped in over the first 0.15 s while the anim crossfades into the first
 		// shape), so the visible body axis turns at the program's eased rate instead of spiking at every shape change
 		const double AxisOff = FPo.AxisOffDeg * Smooth01(FlipT / 0.15);
-		FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(FPo.PitchDeg - AxisOff)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
+		// round 06: closed-loop correction on top -- measure the rendered hips->head pitch (the mesh still holds the previous
+		// frame's pose at this point in the tick) against the program's progress from the flip's first frame, and subtract the
+		// rate-limited difference. The clips' transition lean then shows up in the measurement instead of stacking on the rate.
+		if (bHeroMesh && GetMesh())
+		{
+			const USkeletalMeshComponent* M = GetMesh();
+			const FVector Ax = (M->GetBoneLocation(TEXT("head")) - M->GetBoneLocation(TEXT("hips"))).GetSafeNormal();
+			const double Fy = FMath::DegreesToRadians(A.FacingDeg);
+			const FVector Fw(FMath::Cos(Fy), FMath::Sin(Fy), 0.0);
+			const double BpMeas = Ax.IsNearlyZero() ? 0.0 : FMath::RadiansToDegrees(FMath::Atan2(FVector::DotProduct(Ax, Fw), Ax.Z));
+			const double ProgPitch = double(FPo.PitchDeg) - AxisOff;
+			if (!bFlipMeasInit || LastFlipName != FP->Name) { bFlipMeasInit = true; FlipMeasBp0 = BpMeas; FlipMeasPitch0 = ProgPitch; FlipCorr = 0.0; }
+			const double Expected = FlipMeasBp0 + (ProgPitch - FlipMeasPitch0);
+			const double E = FMath::UnwindDegrees(BpMeas - Expected);
+			// asymmetric rate cap: the correction BRAKES an over-rotating rendered axis as fast as needed (the r05 > 800 deg/s
+			// spikes came from the clips' transition lean adding to the program), but only catches up slowly when the rendered
+			// axis lags (the entry crossfade), so the loop itself never adds a rate spike
+			const double Dir = FP->PitchDeg >= 0.f ? 1.0 : -1.0;
+			double Step = FMath::UnwindDegrees(E - FlipCorr);
+			const double Cap = Step * Dir < 0.0 ? 60.0 * FMath::Max(0.001, double(Dt)) : 320.0 * FMath::Max(0.001, double(Dt));
+			Step = FMath::Clamp(Step, -Cap, Cap);
+			FlipCorr = FMath::Clamp(FlipCorr + Step, -FlipCorrMax, FlipCorrMax);
+			FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(ProgPitch - FlipCorr)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
+		}
+		else FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(double(FPo.PitchDeg) - AxisOff)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
 		LastFlip = FPo; LastFlipName = FP->Name;
 	}
 	else
 	{
+		bFlipMeasInit = false;
 		// round 05 (critic r04 / A5: chest rate through the catch median 646 deg/s): a catch at the END of a program (the reach, body
 		// <= ~70 deg off upright) decays its residual rotation at <= 340 deg/s instead of the 0.07 s snap (which spikes > 400 deg/s);
 		// a mid-program CANCEL keeps the 0.07 s snap (owner bug 1: a fresh press must answer at once)

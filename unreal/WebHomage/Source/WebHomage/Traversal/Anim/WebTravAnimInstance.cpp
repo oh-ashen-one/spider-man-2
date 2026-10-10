@@ -531,7 +531,10 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	// it — full at the bottom of the arc, 60 % at the ends (the swing clips' reach / tuck still read there); 0.2 s ramps
 	{
 		float Want = bAim && A.Mode == EWebTravMode::Swing ? 1.f - 0.25f * FMath::Clamp(FMath::Abs(A.Swing.Phase), 0.f, 1.f) : 0.f;
-		if (A.Mode == EWebTravMode::Air && A.WebShotK >= 0.f) Want = 0.6f * Smooth01(A.WebShotK * 1.5f);   // round 02: the hips start turning under the anchor while the tip flies
+		// round 06 (F8, measured r06 probe: +17.5 deg in one frame at the attach): the pending-flight align share drops to 0.25
+		// (the traversal's rate-limited 20 deg pre-turn owns the lead-in now) and the align ROTATION itself is slew-limited in
+		// Evaluate (AlignPrevQ), so the hips reach the rope frame through the attach window instead of jumping at the attach frame
+		if (A.Mode == EWebTravMode::Air && A.WebShotK >= 0.f) Want = 0.25f * Smooth01(A.WebShotK * 1.5f);   // round 02: the hips start turning under the anchor while the tip flies
 		const float Step = Dt / (Want > Frame.BodyAlignW ? 0.3f : 0.2f);   // round 01 (W4): the hips-to-head alignment onto the rope eases in over 0.7 s (was 0.2 s)
 		Frame.BodyAlignW = Want > Frame.BodyAlignW ? FMath::Min(Want, Frame.BodyAlignW + Step) : FMath::Max(Want, Frame.BodyAlignW - Step);
 	}
@@ -581,6 +584,10 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 			}
 			auto Bump = [](double X, double C, double Sg) { return FMath::Exp(-FMath::Square((X - C) / Sg)); };
 			auto Sm = [](double X) { X = FMath::Clamp(X, 0.0, 1.0); return X * X * (3.0 - 2.0 * X); };
+			// round 06 (critic r05: the s2 hang dangles plumb-static > 2 s): a near-stalled hang keeps swaying -- slow leg drift
+			// and torso rock on the pendulum's own ~1.6 s / ~1.25 s periods, growing as the speed dies, so even a valid slow hang reads alive
+			const double StallK = Sm((5.5 - double(A.Speed)) / 3.0) * (A.Swing.Tension > 0.04f ? 1.0 : 0.0);
+			const double Tw2 = 2.0 * PI * 0.62 * (SwTime - SwT0), Tw3 = 2.0 * PI * 0.8 * (SwTime - SwT0);
 			const int32 Lead = A.Swing.bRightHand ? 0 : 1, Trail = 1 - Lead;   // the lead leg is opposite the web hand
 			const double Sweep = 0.12 * Sm((-PhL - 0.15) / 0.6) - 0.8 * Bump(PhL, 0.35, 0.5) - 0.3 * Sm((PhL - 0.55) / 0.4);   // round 02: legs extend forward on the upswing
 			const double Kb = 0.10 + 0.95 * Bump(PhL, -0.02, 0.30);   // round 02: knees tuck at the bottom, straight on the drop and the upswing; round 05: stronger knee drive through the bottom
@@ -598,8 +605,16 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 				Kn[0] += (0.3 + 1.1 * FMath::Max(0.0, -FMath::Cos(P))) * Aa; Kn[1] += (0.3 + 1.1 * FMath::Max(0.0, FMath::Cos(P))) * Aa;
 			}
 			}
+			if (StallK > 0.001)
+			{ // pendulum sway over the style targets (legs trail, then scissor through; knees drift)
+				for (int32 K = 0; K < 2; ++K)
+				{
+					Th[K] += StallK * (0.30 * FMath::Sin(Tw2 + K * 1.9) - 0.12 * FMath::Sin(Tw3 + K * 0.7));
+					Kn[K] += StallK * 0.35 * (0.5 + 0.5 * FMath::Sin(Tw2 * 1.27 + 0.8 + K * 1.3));
+				}
+			}
 			for (int32 K = 0; K < 2; ++K) { SwThS[K].Step(Th[K], 2.1, 0.5, Dt); SwKnS[K].Step(Kn[K], 2.8, 0.55, Dt); Frame.SwTh[K] = float(SwThS[K].X); Frame.SwKn[K] = float(SwKnS[K].X); }
-			SwArchS.Step((-0.2 * Bump(Ph, 0.05, 0.45) + 0.1 * Sm((-Ph - 0.4) / 0.4)) * 2.8, 2.0, 0.6, Dt);   // round 04: torso curls at the bottom and opens on the upswing, big
+			SwArchS.Step((-0.2 * Bump(Ph, 0.05, 0.45) + 0.1 * Sm((-Ph - 0.4) / 0.4)) * 2.8 + StallK * 0.22 * FMath::Sin(Tw2 * 0.83 + 2.0), 2.0, 0.6, Dt);   // round 04: torso curls at the bottom and opens on the upswing, big; round 06: + the stall sway
 			Frame.SwArch = float(SwArchS.X);
 			Frame.SwLifeK = float(Sm((SwTime - SwT0) / 0.35));
 		}
@@ -687,6 +702,7 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 void FWebTravAnimProxy::PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds)
 {
 	FAnimInstanceProxy::PreUpdate(InAnimInstance, DeltaSeconds);
+	AlignPrevDt = FMath::Max(1e-3f, DeltaSeconds);
 	if (const UWebTravAnimInstance* I = Cast<UWebTravAnimInstance>(InAnimInstance)) Frame = I->Frame;
 }
 
@@ -759,6 +775,7 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 		return T;
 	};
 	// round 07: body along the web — rotate the hips (component space) so hips -> head points at the anchor (weighted)
+	FQuat AlignQ = FQuat::Identity;
 	if (Frame.BodyAlignW > 0.01f)
 	{
 		const FCompactPoseBoneIndex BH = Idx(TEXT("hips")), BHead = Idx(TEXT("head"));
@@ -772,12 +789,21 @@ bool FWebTravAnimProxy::Evaluate(FPoseContext& Output)
 			const FVector Want = (Frame.ArmTargetCS - HipP).GetSafeNormal();
 			if (!Cur.IsNearlyZero() && !Want.IsNearlyZero())
 			{
-				const FQuat D = FQuat::Slerp(FQuat::Identity, FQuat::FindBetweenNormals(Cur, Want), Frame.BodyAlignW);
-				HipCS.SetRotation((D * HipCS.GetRotation()).GetNormalized());
-				Pose[BH].SetRotation((ParentCS.GetRotation().Inverse() * HipCS.GetRotation()).GetNormalized());
+				AlignQ = FQuat::Slerp(FQuat::Identity, FQuat::FindBetweenNormals(Cur, Want), Frame.BodyAlignW);
+				// round 06 (F8): the align quat slews at <= 200 deg/s from the previous frame's — a steep (near-horizontal)
+				// rope no longer jumps the hips at the attach frame; the turn lands through W4's 0.15-0.35 s window
+				const double MaxA = FMath::DegreesToRadians(200.0) * AlignPrevDt;
+				const double DA = AlignQ.AngularDistance(AlignPrevQ);
+				if (DA > MaxA) AlignQ = FQuat::Slerp(AlignPrevQ, AlignQ, MaxA / DA).GetNormalized();
+				if (DA > 1e-4)
+				{
+					HipCS.SetRotation((AlignQ * HipCS.GetRotation()).GetNormalized());
+					Pose[BH].SetRotation((ParentCS.GetRotation().Inverse() * HipCS.GetRotation()).GetNormalized());
+				}
 			}
 		}
 	}
+	AlignPrevQ = AlignQ;
 	// spine bank (roll about the spine's own forward in component space, split over two spine bones)
 	if (FMath::Abs(Frame.SpineBank) > 0.01f)
 	{

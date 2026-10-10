@@ -20,31 +20,31 @@
  "s3b_flip_cases": [
   [
    "s3_c1_fwd",
-   3.8
+   4.26
   ],
   [
    "s3_c2_back",
-   3.8
+   3.58
   ],
   [
    "s3_c3_right",
-   3.8
+   4.37
   ],
   [
    "s3_c4_left",
-   3.8
+   4.3
   ],
   [
    "s3_c5_neutral",
-   3.8
+   4.3
   ],
   [
    "s3_c6_fwd_right",
-   3.8
+   4.43
   ],
   [
    "s3_c7_back_left",
-   3.8
+   4.45
   ]
  ],
  "s3_flip_chain": [
@@ -101,13 +101,13 @@
   "s1_swing_chain": 20.5,
   "s5_night_swing": 20.5,
   "s4_release_float": 20.5,
-  "s3_c1_fwd": 4.3,
-  "s3_c2_back": 4.3,
-  "s3_c3_right": 4.3,
-  "s3_c4_left": 4.3,
-  "s3_c5_neutral": 4.3,
-  "s3_c6_fwd_right": 4.3,
-  "s3_c7_back_left": 4.3,
+  "s3_c1_fwd": 4.76,
+  "s3_c2_back": 4.08,
+  "s3_c3_right": 4.87,
+  "s3_c4_left": 4.8,
+  "s3_c5_neutral": 4.8,
+  "s3_c6_fwd_right": 4.93,
+  "s3_c7_back_left": 4.95,
   "s3_flip_flow": 24.5,
   "live_fix_clip": 15.5,
   "s2_c1_roof_jump": 5.5,

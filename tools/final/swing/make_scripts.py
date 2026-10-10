@@ -34,15 +34,20 @@ f_keys = [{"t": 0.0, "move": [0, 1], "heading": -90, "swing": False}, {"t": 0.4,
 clips['s4_release_float'] = [write('s4_release_float', 'autoChain releases with no trick, re-press 1.6 s after each release (long air): 20 s', air([250, 240, 40], [0, -22, 0]), f_keys, 20.0)]
 
 # s3: seven F presses, each its own 3.3 s case from the same airborne start (110 m up, 22 m/s north; the stick is set 0.1 s before the press at 0.4 s): forward / back / right / left / neutral / forward-right / back-left;
-# a swing is pressed 2.0 s later (the catch out of the trick). (`heading` is not used: it overrides the stick.)
+# a swing is pressed later (the catch out of the trick). (`heading` is not used: it overrides the stick.)
 # round 05 (critic r04 gap 1): the pools lead with the doubles now; each case's FlipKStart picks a program whose catch window
-# (CatchT x worst 1.20 variant scale) lands by the 2.0 s press: fast tuck + a held pencil/throne/open shape + catch <= 0.25 s (F1/F3/F4/F8).
+# (CatchT x worst variant scale) lands by the press: fast tuck + a held pencil/throne/open shape + catch <= 0.25 s (F1/F3/F4/F8).
+# round 06 (critic r05 gap 2): the picked programs are 720 deg now (2.0-2.4 s base), so each case's catch press sits just past
+# its program's worst-case catch window (CatchT x the multi-rotation variant cap 1.06, +0.12 s), and the cases end ~1.6 s later.
 # Picks: c1 frontSingle, c2 backSingle (pencil hold), c3 corkscrew, c4 barani, c5 frontPikeSwan (swan hold), c6 rudi, c7 fullTwist.
 s3_ks = {'fwd': 3, 'back': 3, 'right': 2, 'left': 0, 'neutral': 7, 'fwd_right': 5, 'back_left': 1}
+s3_press = {'fwd': 2.26, 'back': 1.58, 'right': 2.37, 'left': 2.30, 'neutral': 2.30, 'fwd_right': 2.43, 'back_left': 2.45}
 s3c = []
 for n, (nm, m) in enumerate([('fwd', [0, 1]), ('back', [0, -1]), ('right', [1, 0]), ('left', [-1, 0]), ('neutral', [0, 0]), ('fwd_right', [0.7, 0.7]), ('back_left', [-0.7, -0.7])], 1):
-    s3c.append(write('s3_c%d_%s' % (n, nm), 'F pressed 0.4 s in with the stick %s %s, swing 2.0 s later' % (nm, m), air([250, 200, 110], [0, -22, 6]),
-                     [{"t": 0.0, "move": [0, 0], "swing": False}, {"t": 0.3, "move": m}, {"t": 0.4, "trick": True}, {"t": 0.5, "trick": False}, {"t": 2.4, "swing": True}, {"t": 3.5, "swing": False}], 3.8, tune='FlipKStart=%d' % s3_ks[nm]))   # each case starts at another program of its stick pool
+    ps = 0.4 + s3_press[nm]
+    s3c.append(write('s3_c%d_%s' % (n, nm), 'F pressed 0.4 s in with the stick %s %s, swing %.2f s later' % (nm, m, s3_press[nm]), air([250, 200, 110], [0, -22, 6]),
+                     [{"t": 0.0, "move": [0, 0], "swing": False}, {"t": 0.3, "move": m}, {"t": 0.4, "trick": True}, {"t": 0.5, "trick": False},
+                      {"t": round(ps, 2), "swing": True}, {"t": round(ps + 1.1, 2), "swing": False}], round(ps + 1.6, 2), tune='FlipKStart=%d' % s3_ks[nm]))   # each case starts at another program of its stick pool
 clips['s3b_flip_cases'] = s3c   # the round 00-02 s3 (7 separate cases) kept for progress pairs
 
 # s3: ONE continuous chain: every release is a flow flip (F pressed with the release), the stick changes between flips (forward / forward-right / forward-left / back), the web catches each flip; 24 s

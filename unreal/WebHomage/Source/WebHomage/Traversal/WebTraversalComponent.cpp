@@ -177,7 +177,7 @@ void UWebTraversalComponent::SetMode(EWebTravMode M, FName Sub)
 	{
 		UE_LOG(LogWebHomage, Error, TEXT("[traversal] BUG: left 'swing' -> '%d/%s' while the swing button is held (web must stay attached)"), int32(M), *Sub.ToString());
 	}
-	if (S.Mode != M) S.ModeT = 0;
+	if (S.Mode != M) { S.ModeT = 0; S.PrevMode = S.Mode; }
 	if (M != EWebTravMode::Air) S.bTopOut = false;
 	if (M != EWebTravMode::Air && M != EWebTravMode::Swing) S.bWebPending = false;
 	S.Mode = M;
@@ -1236,11 +1236,26 @@ void UWebTraversalComponent::StepSwing(double Hs, FWebTravInput& I)
 	// round 05 (critic r04 gap 3: a stalled swing micro-rocked for 4 s; "cap hangs at ~1.5 s, auto-continue the chain"): a swing that
 	// sits near the bottom at walking speed with a taut web for HangCapS s is let go; the still-held button re-fires a fresh web
 	// ~0.1 s later (StepAir's held-button search), so a dead hang never reads
+	// round 06 (critic r05: s2 t=10.4-12.8 dangled plumb-static > 2 s and the cap never fired -- the swing re-walled before
+	// Sw.T > 0.8 and the tension ramp sat under 0.1): earlier detection (T > 0.35, tension > 0.04), and a stall PUMP: while the
+	// hang is detected the pendulum is pushed along its swing direction, so a valid slow hang rebuilds the arc instead of
+	// sitting dead; the release + refire remains as the backstop
 	if (HangCapS > 0.f)
 	{
-		const bool bStall = Sw.T > 0.8 && Sw.Tension > 0.1 && S.Vel.Size() < double(HangStallSpd) && FMath::Abs(Sw.Angle) < 0.35
+		const bool bStall = Sw.T > 0.35 && Sw.Tension > 0.04 && S.Vel.Size() < double(HangStallSpd) && FMath::Abs(Sw.Angle) < 0.45
 			&& Sw.Kick <= 0.0 && HeightAboveFloor() > 6.0;
 		Sw.StallT = bStall ? Sw.StallT + Hs : 0.0;
+		if (bStall && Sw.TautT > 0.15)
+		{
+			FVector TDir = Sw.Dir - RD * FVector::DotProduct(Sw.Dir, RD);
+			if (TDir.SizeSquared() > 1e-4)
+			{
+				TDir.Normalize();
+				// pump past the bottom, whichever side he hangs on; stop adding energy once the arc is alive again
+				const double Sign = Sw.Angle < -0.03 ? -1.0 : 1.0;
+				S.Vel += TDir * (Sign * 14.0 * Hs);
+			}
+		}
 		if (Sw.StallT > double(HangCapS))
 		{
 			UE_LOG(LogWebHomage, Display, TEXT("WH_TRAV hang cap: swing stalled %.2f s at %.1f m/s -> release + refire"), Sw.StallT, S.Vel.Size());
@@ -3103,9 +3118,21 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		Rate = 8;
 		if (S.bWebPending && S.PendingShoot > 0.0)
 		{ // round 01 (W4): while the strand is in flight the body turns onto the rope frame (hips under the coming anchor), so the attach finds it already there
-			const double Wp = FMath::SmoothStep(0.0, 1.0, S.PendingT / FMath::Max(S.PendingShoot, 0.05));
-			const FVector ADp = (S.PendingA.Point - S.Pos).GetSafeNormal();
-			Up = FMath::Lerp(Up, (ADp + ZUP * 0.12).GetSafeNormal(), Wp).GetSafeNormal();
+			// round 06 (F8: body 32-84 deg off upright at the catch): only ~55 % of the turn happens in flight now (and the
+			// turn is rate-limited, see the BodyQ step below) -- the rest completes through the attach spring (W4's window);
+			// and the pre-turn target never tips more than 20 deg off upright (a near-horizontal rope would otherwise have
+			// the body fully tipped at the attach frame)
+			const double Wp = 0.55 * FMath::SmoothStep(0.0, 1.0, S.PendingT / FMath::Max(S.PendingShoot, 0.05));
+			FVector UpT = (FVector(S.PendingA.Point - S.Pos).GetSafeNormal() + ZUP * 0.12).GetSafeNormal();
+			{
+				const double Ang = FMath::Acos(FMath::Clamp(UpT.Z, -1.0, 1.0)), CapA = FMath::DegreesToRadians(20.0);
+				if (Ang > CapA)
+				{
+					FVector Side = UpT - ZUP * UpT.Z;
+					if (Side.SizeSquared() > 1e-6) UpT = (ZUP * FMath::Cos(CapA) + Side.GetSafeNormal() * FMath::Sin(CapA)).GetSafeNormal();
+				}
+			}
+			Up = FMath::Lerp(Up, UpT, Wp).GetSafeNormal();
 			if (S.Vel.SizeSquared() > 1) Fwd = FMath::Lerp(Fwd, S.Vel.GetSafeNormal(), Wp).GetSafeNormal();
 			S.Pitch *= (1.0 - Wp);
 			Rate = FMath::Lerp(8.0, 14.0, Wp);
@@ -3217,7 +3244,20 @@ FQuat UWebTraversalComponent::Orient(double Dt)
 		if (F2.SizeSquared() > 1e-6)
 		{
 			const FQuat Want = FRotationMatrix::MakeFromZX(Up, F2).ToQuat();
-			S.BodyQ = FQuat::Slerp(S.BodyQ, Want, 1 - FMath::Exp(-Rate * Dt)).GetNormalized();
+			FQuat Next = FQuat::Slerp(S.BodyQ, Want, 1 - FMath::Exp(-Rate * Dt)).GetNormalized();
+			// round 06 (A5: the lead-in turn onto the rope between the press and the attach ran 400-700 deg/s on the chest,
+			// median 520-623; F8: the body arrived at the catch 32-84 deg off upright): while a strand is in flight and
+			// through the first 0.4 s of the swing the body-frame turn is rate-limited, so the turn onto the rope completes
+			// inside W4's 0.15-0.35 s window instead of ahead of the attach; a wall entry right off a swing eases in too
+			// (its snap landed inside the attach window of the W4/A5 probes: +27 deg in one frame)
+			const bool bWebLead = (S.Mode == EWebTravMode::Air && S.bWebPending) || (S.Mode == EWebTravMode::Swing && S.Sw.T < 0.4)
+				|| (S.Mode == EWebTravMode::Wall && S.ModeT < 0.35 && S.PrevMode == EWebTravMode::Swing);
+			if (bWebLead)
+			{
+				const double Step = S.BodyQ.AngularDistance(Next), MaxStep = FMath::DegreesToRadians(S.Mode == EWebTravMode::Wall ? 380.0 : 190.0) * Dt;
+				if (Step > MaxStep) Next = FQuat::Slerp(S.BodyQ, Next, MaxStep / Step).GetNormalized();
+			}
+			S.BodyQ = Next;
 		}
 	}
 	// round 06: roll / pitch leans are springs too — mode changes (swing -> air release) used to pop them in one frame

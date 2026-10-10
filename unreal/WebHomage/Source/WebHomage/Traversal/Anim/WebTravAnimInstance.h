@@ -79,6 +79,8 @@ struct FWebTravAnimProxy : public FAnimInstanceProxy
 	virtual void PreUpdate(UAnimInstance* InAnimInstance, float DeltaSeconds) override;
 	virtual bool Evaluate(FPoseContext& Output) override;
 	FWebTravAnimFrame Frame;
+	// round 06 (F8): the web-align hips rotation is slew-limited (its angle step per evaluated frame, not only its weight)
+	FQuat AlignPrevQ = FQuat::Identity; float AlignPrevDt = 1.f / 60.f;
 };
 
 UCLASS(Transient, NotBlueprintable)

@@ -1,6 +1,6 @@
 {
  "name": "s3_c5_neutral",
- "note": "F pressed 0.4 s in with the stick neutral [0, 0], swing 2.0 s later",
+ "note": "F pressed 0.4 s in with the stick neutral [0, 0], swing 2.30 s later",
  "seed": 1234,
  "spawn": {
   "pos": [
@@ -41,11 +41,11 @@
    "trick": false
   },
   {
-   "t": 2.4,
+   "t": 2.7,
    "swing": true
   },
   {
-   "t": 3.5,
+   "t": 3.8,
    "swing": false
   }
  ],

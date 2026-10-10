@@ -451,6 +451,7 @@ private:
 	struct FState
 	{
 		EWebTravMode Mode = EWebTravMode::Air;
+		EWebTravMode PrevMode = EWebTravMode::Air; // round 06: the mode before the last SetMode (wall-entry easing)
 		FName Sub;
 		double SubT = 0, ModeT = 0;
 		FVector Pos = FVector::ZeroVector, Vel = FVector::ZeroVector, Carry = FVector::ZeroVector;

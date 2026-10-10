@@ -14,7 +14,7 @@
 
 namespace WebFlips
 {
-	float FlipLead = 0.04f, FlipLag = 0.07f;
+	float FlipLead = 0.02f, FlipLag = 0.055f; // round 06: 0.04 / 0.07 -> F11 leg lag (Lead + Lag) lands 0.05-0.12 s
 	bool bVariants = true;
 	bool bTempo = true;
 
@@ -61,15 +61,23 @@ namespace WebFlips
 			// comes up for the catch). round 14: Tuck 1.20 s eased, Kickout 0.60 s at <= ~100 deg/s; catch 1.60 s after the release
 			// round 05 (critic r04 gap 1: "0-1 rotations per release, no fast tuck or held pencil/throne"): the double now tucks fast
 			// (450-750 deg/s, F3), holds an inverted pencil between the rotations (>= 0.3 s at <= 150 deg/s, F4) and opens out into the
-			// reach (F8) -- the owner clip's S3 vocabulary. Sim: flip_sim.py, base peak ~700 deg/s, pencil hold ~0.4 s
-			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 0.66f, 0.f, 0.85f, 0.5f}, {S::Pencil, 0.36f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.7f}, {S::Kickout, 0.34f}, {S::Reach, 0.20f} }, 3.5f, 1.5f, 0.2f);
-			// front pike into a slow inverted swan that unwinds, tuck up, reach (round 14: pike 0.40 / swan 0.55 / tuck 0.38 / reach 0.26 s)
-			Add(TEXT("frontPikeSwan"), 360.f, { {S::Pike, 0.40f, 0.f, 1.3f, 0.3f}, {S::Swan, 0.55f}, {S::Tuck, 0.38f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.36f} });
-			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), opens into its own inverted straddle, tucks, reach
-			Add(TEXT("corkscrew"), 360.f, { {S::Layout, 0.31f}, {S::Twist, 0.42f, 360.f}, {S::Straddle, 0.36f}, {S::Tuck, 0.34f, 0.f, 1.2f, 0.7f}, {S::Reach, 0.36f} }, 4.0f, 1.2f);
+			// reach (F8) -- the owner clip's S3 vocabulary.
+			// round 06 (critic r05 gap 2: "~2.2 rotations on the best program; owner clip 1080 deg in 2.8 s; no hold > 0.5 s at <= 150
+			// deg/s; rendered peaks > 800 on frontDouble/backLayout/frontPikeSwan"): every long-release program now turns >= 720 deg
+			// with exactly one held open shape 0.3-0.5 s, base peaks 510-680 (flip_sim.py) so the fastest tempo variant stays under 800
+			// rendered; the residual lean stack is removed by the closed-loop axis correction (WebTravCharacter.cpp). The 360s survive
+			// only as the short-air fallback (backSingle) and the wall top-out (wallFront).
+			Add(TEXT("backDouble"), -720.f, { {S::Tuck, 0.78f, 0.f, 0.4f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.66f, 0.f, 0.3f, 0.4f}, {S::Kickout, 0.26f}, {S::Reach, 0.24f} }, 3.5f, 1.5f, 0.2f);
+			// front pike into a held inverted swan, a long fast tuck round again, kick out, reach (720 deg; the swan sits mid-rotation
+			// so every 330 deg chunk of the render mixes a fast and a slow phase: flip_check F5)
+			Add(TEXT("frontPikeSwan"), 720.f, { {S::Pike, 0.44f, 0.f, 0.5f, 0.3f}, {S::Tuck, 0.28f}, {S::Swan, 0.32f}, {S::Tuck, 0.60f, 0.f, 0.4f, 0.4f}, {S::Straddle, 0.26f}, {S::Kickout, 0.16f}, {S::Reach, 0.20f} }, 3.5f, 1.5f, 0.2f);
+			// corkscrew: a layout that turns over while it twists a full turn (arms crossed), tucks through the second rotation, opens
+			// into its inverted straddle, tucks, reach (720 deg)
+			Add(TEXT("corkscrew"), 720.f, { {S::Layout, 0.22f}, {S::Twist, 0.40f, 360.f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.3f}, {S::Straddle, 0.36f}, {S::Tuck, 0.54f, 0.f, 0.3f, 0.4f}, {S::Reach, 0.24f} }, 4.0f, 1.2f, 0.2f);
 			// short air (plain trick release): tuck to inverted, pencil hold, tuck round, reach
 			// Tricks C r01: every program's final Reach is >= 0.36 s, so the catch window (CatchOpen 0.16 s before the end) opens only after
 			// >= 0.2 s of the open reach -- r01 probe: backSingle's 0.24 s reach was caught 0.08 s in, straight out of a 446 deg/s tuck
+			// round 06: backSingle stays the 360 deg short-air fallback (FitFlip's tight-air pick)
 			Add(TEXT("backSingle"), -360.f, { {S::Tuck, 0.32f, 0.f, 0.5f, 0.3f}, {S::Pencil, 0.36f}, {S::Tuck, 0.32f, 0.f, 0.3f, 0.6f}, {S::Reach, 0.38f} });
 			// wall-run top-out: front flip over the roof edge, layout on top, throne into the landing
 			Add(TEXT("wallFront"), 360.f, { {S::Tuck, 0.27f}, {S::Layout, 0.3f}, {S::Tuck, 0.27f}, {S::Throne, 0.3f} }, 0.f, 0.f);
@@ -82,27 +90,32 @@ namespace WebFlips
 			// flip and turn the last half in slowly as they open toward the catch (the catch-turn), never as a spring at the attach.
 			// Release push (Boost / Up, m/s) 2.0 / 1.0 on every new program (r01 probe: 3.5 / 1.5 on a flip every release took the chain from
 			// 39 to 60 m/s in 12 s and through the avenue corner into a facade).
-			// front tuck: set, tight tuck, kick out, reach for the web
-			Add(TEXT("frontSingle"), 360.f, { {S::Tuck, 0.74f, 0.f, 0.9f, 0.7f}, {S::Kickout, 0.44f}, {S::Reach, 0.22f} }, 2.0f, 1.0f);
-			// front double tuck with a kick-out (the front twin of backDouble); round 05: a held upright throne between the rotations
+			// front tuck: set, tight tuck, held upright throne mid-way, second tuck, kick out, reach (720 deg in 2.18 s; a slow
+			// shape inside every 330 deg chunk: flip_check F5)
+			Add(TEXT("frontSingle"), 720.f, { {S::Tuck, 0.62f, 0.f, 0.5f, 0.3f}, {S::Throne, 0.38f}, {S::Tuck, 0.56f, 0.f, 0.4f, 0.4f}, {S::Layout, 0.24f}, {S::Kickout, 0.18f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.2f);
+			// front double tuck with a kick-out (the front twin of backDouble); a held upright throne between the rotations
 			// (F4, owner clip S6's 0.48 s throne), tucks at 450-750 deg/s (F3)
-			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 0.68f, 0.f, 0.9f, 0.5f}, {S::Throne, 0.36f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.8f}, {S::Kickout, 0.34f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
-			// back pike: the body folds at the hips with straight legs (keyed pike), opens into the kick-out
-			Add(TEXT("backPike"), -360.f, { {S::Pike, 0.72f, 0.f, 1.0f, 0.6f}, {S::Kickout, 0.46f}, {S::Reach, 0.22f} }, 2.0f, 1.0f);
-			// back layout: the layout line keeps its identity through the middle, but round 05 (critic r04: no fast tuck phase, peak ~400
-			// deg/s) enters and leaves it through a short tuck (F3 450-750 deg/s)
-			Add(TEXT("backLayout"), -360.f, { {S::Tuck, 0.26f, 0.f, 0.6f, 0.2f}, {S::Layout, 0.60f, 0.f, 0.5f, 0.4f}, {S::Tuck, 0.24f, 0.f, 0.2f, 0.5f}, {S::Reach, 0.40f} }, 2.0f, 1.0f);
-			// barani: front pike with a half twist (180 deg, arms wrapped), then the straddle flings open out of the wrap and turns the last half in toward the catch
-			Add(TEXT("barani"), 360.f, { {S::Pike, 0.50f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.34f, 180.f}, {S::Straddle, 0.46f, 180.f}, {S::Reach, 0.36f} }, 2.0f, 1.0f);
-			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, opens straight back into the layout, reach;
-			// round 05: short tucks at the entry / exit give it the fast phase (F3, was a ~300 deg/s flat spin)
-			Add(TEXT("fullTwist"), -360.f, { {S::Tuck, 0.26f, 0.f, 0.6f, 0.2f}, {S::Layout, 0.30f, 0.f, 0.5f, 0.f}, {S::Twist, 0.50f, 360.f}, {S::Layout, 0.26f}, {S::Tuck, 0.24f, 0.f, 0.2f, 0.5f}, {S::Reach, 0.38f} }, 2.0f, 1.0f);
-			// rudi: front flip with one and a half twists (540 deg) wrapped tight, the catch-turn finishes the last half in the open straddle
-			Add(TEXT("rudi"), 360.f, { {S::Pike, 0.40f, 0.f, 1.0f, 0.3f}, {S::Twist, 0.66f, 540.f}, {S::Straddle, 0.48f, 180.f}, {S::Reach, 0.36f} }, 2.0f, 1.0f);
+			Add(TEXT("frontDouble"), 720.f, { {S::Tuck, 0.78f, 0.f, 0.4f, 0.3f}, {S::Throne, 0.36f}, {S::Tuck, 0.66f, 0.f, 0.3f, 0.4f}, {S::Kickout, 0.26f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.2f);
+			// back pike: the body folds at the hips with straight legs (keyed pike), a tucked half-turn, a held pencil, the second
+			// tuck round, kick out, reach (720 deg)
+			Add(TEXT("backPike"), -720.f, { {S::Pike, 0.56f, 0.f, 0.5f, 0.3f}, {S::Tuck, 0.30f}, {S::Pencil, 0.38f}, {S::Tuck, 0.56f, 0.f, 0.4f, 0.4f}, {S::Kickout, 0.20f}, {S::Reach, 0.22f} }, 2.0f, 1.0f, 0.2f);
+			// back layout: the layout line keeps its identity through the middle, with a short tuck entry / exit (F3 450-750 deg/s);
+			// 720 deg — held layout, fast tuck, a held pencil into the open-out (F4)
+			Add(TEXT("backLayout"), -720.f, { {S::Tuck, 0.40f, 0.f, 0.4f, 0.2f}, {S::Layout, 0.58f, 0.f, 0.3f, 0.2f}, {S::Tuck, 0.44f, 0.f, 0.3f, 0.3f}, {S::Pencil, 0.34f}, {S::Tuck, 0.34f, 0.f, 0.3f, 0.3f}, {S::Reach, 0.26f} }, 2.0f, 1.0f, 0.2f);
+			// barani: front pike with a half twist (180 deg, arms wrapped), a tuck through the second rotation, the straddle flings
+			// open out of the wrap and turns the last half in toward the catch (720 deg)
+			Add(TEXT("barani"), 720.f, { {S::Pike, 0.44f, 0.f, 0.5f, 0.3f}, {S::Twist, 0.38f, 180.f}, {S::Tuck, 0.30f}, {S::Straddle, 0.38f, 180.f}, {S::Tuck, 0.54f, 0.f, 0.4f, 0.4f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.22f);
+			// back full: a back layout with one full twist (360 deg) in the middle of the rotation, short tucks at the entry / exit;
+			// 720 deg — the second rotation opens into a held straddle
+			Add(TEXT("fullTwist"), -720.f, { {S::Tuck, 0.38f, 0.f, 0.4f, 0.2f}, {S::Layout, 0.30f, 0.f, 0.3f, 0.f}, {S::Twist, 0.48f, 360.f}, {S::Straddle, 0.40f}, {S::Tuck, 0.62f, 0.f, 0.3f, 0.3f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.22f);
+			// rudi: a tuck wraps one and a half twists (540 deg), the straddle opens out of the wrap and turns the last half in,
+			// a second tuck and a held pencil finish the second rotation (720 deg)
+			Add(TEXT("rudi"), 720.f, { {S::Tuck, 0.36f, 0.f, 0.5f, 0.3f}, {S::Twist, 0.46f, 540.f}, {S::Straddle, 0.30f, 180.f}, {S::Tuck, 0.30f}, {S::Pencil, 0.28f}, {S::Tuck, 0.46f, 0.f, 0.4f, 0.4f}, {S::Reach, 0.24f} }, 2.0f, 1.0f, 0.22f);
 			// chain: three back rotations in one release with a shape per rotation (owner clip S3: tuck -> layout -> tuck -> straddle -> tuck
-			// -> open, 3 rotations in 2.8 s, ~385 deg/s mean); round 05: the middle rotation holds an inverted pencil (owner S3 9.72-9.84, F4)
-			Add(TEXT("backTripleChain"), -1080.f, { {S::Tuck, 0.66f, 0.f, 0.9f, 0.3f}, {S::Layout, 0.38f}, {S::Tuck, 0.56f, 0.f, 0.3f, 0.3f}, {S::Pencil, 0.36f},
-				{S::Tuck, 0.56f, 0.f, 0.3f, 0.6f}, {S::Straddle, 0.34f}, {S::Kickout, 0.36f}, {S::Reach, 0.2f} }, 2.0f, 1.0f, 0.2f);
+			// -> open, 3 rotations in 2.8 s, ~385 deg/s mean); the middle rotation holds an inverted pencil (owner S3 9.72-9.84, F4);
+			// round 06: 3.06 s, every hold <= ~0.5 s
+			Add(TEXT("backTripleChain"), -1080.f, { {S::Tuck, 0.70f, 0.f, 0.4f, 0.3f}, {S::Layout, 0.28f}, {S::Tuck, 0.58f, 0.f, 0.3f, 0.3f}, {S::Pencil, 0.32f},
+				{S::Tuck, 0.58f, 0.f, 0.3f, 0.4f}, {S::Straddle, 0.22f}, {S::Kickout, 0.20f}, {S::Reach, 0.18f} }, 2.0f, 1.0f, 0.2f);
 			return P;
 		}
 
@@ -270,7 +283,11 @@ namespace WebFlips
 			const float Tempo = LastSign[I] != 0 ? -float(LastSign[I]) : (Coin < 0.5f ? -1.f : 1.f);
 			LastSign[I] = Tempo > 0.f ? 1 : -1;
 			const float TempoMag = Tempo > 0.f ? 0.10f + 0.06f * R.FRand() : 0.10f + 0.03f * R.FRand();
-			const float Sc = bTempo ? FMath::Clamp(1.f + 0.5f * (FMath::Clamp(Scale, 0.78f, 1.22f) - 1.f) + Tempo * TempoMag, 0.85f, 1.20f)
+			// round 06: multi-rotation programs (>= 700 deg) run a tighter tempo band so the fast side never passes ~760 deg/s
+			// (F3, critic r05's > 800 rendered peaks) and the slow side's mean rate stays over 300 deg/s (F2)
+			const bool bMulti = FMath::Abs(B[I].PitchDeg) >= 700.f;
+			const float ScLo = bMulti ? 0.90f : 0.85f, ScHi = bMulti ? 1.06f : 1.20f;
+			const float Sc = bTempo ? FMath::Clamp(1.f + 0.5f * (FMath::Clamp(Scale, 0.78f, 1.22f) - 1.f) + Tempo * TempoMag, ScLo, ScHi)
 				: FMath::Clamp(Scale, 0.78f, 1.22f);
 			// each segment its own jitter, renormalised so the total is exactly Sc x the base duration
 			float Sum0 = 0.f, Sum1 = 0.f;
@@ -282,8 +299,10 @@ namespace WebFlips
 				Sg.EaseOut = FMath::Max(0.f, Sg.EaseOut * (0.8f + 0.4f * R.FRand()));
 			}
 			V.CatchOpen = B[I].CatchOpen * Sc;
-			V.Lead = FlipLead * (0.5f + 1.5f * R.FRand());   // 0.02-0.08 s: the arms open / close earlier or later per instance
-			V.Lag = FlipLag * (0.7f + 0.8f * R.FRand());     // 0.05-0.11 s
+			// round 06 (F11: measured leg lag 0.067-0.158 s vs the 0.05-0.12 target): the measured lag is Lead + Lag (the upper-body
+			// shape column switches Lead ahead, the legs' column Lag behind) -- narrowed so the sum lands mid-band
+			V.Lead = FlipLead * (0.5f + 1.5f * R.FRand());   // 0.01-0.05 s: the arms open / close earlier or later per instance
+			V.Lag = FlipLag * (0.8f + 0.5f * R.FRand());      // 0.044-0.072 s
 			V.Scale = Sc;
 			V.Ver = ++VerCounter;
 			return &V;

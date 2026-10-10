@@ -279,8 +279,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp(FMath::Abs(P.SwingAngle) / 0.85, 0.0, 1.0));
 	}
 	else if (bAir)
-	{
-		SWant = FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp((P.HAbove - 8.0) / 32.0, 0.0, 1.0)) - P.Vel.Z * 0.0025;
+	{ // round 06 (critic r05: the hero drifts toward the frame edge in a long float): a weaker fall-rate push and a tighter
+	  // vertical band keep him near centred while floating / diving
+		SWant = FMath::Clamp(FMath::Lerp(FrameLowS, FrameHighS, FMath::Clamp((P.HAbove - 8.0) / 32.0, 0.0, 1.0)) - P.Vel.Z * 0.0015, 0.36, 0.56);
 	}
 	if (P.Mode == EWebTravMode::Wall || P.Sub == N_topOut) SWant = WallFrameS;
 	// round 10: sky launch — the camera sinks under the hero and looks up while he rises / hangs (released at a fast fall)
@@ -351,7 +352,8 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			const double Ratio = HeroProjH / FlipFbTarget;
 			// round 05 (critic r04 secondary: hero 0.11-0.15 of frame mid-flip in s3b): clamp 0.6-1.7 -> 0.5-1.9 (the pose-extent
 			// anticipation undershoots on a layout seen end-on; the loop needs the range to pull in / back off further)
-			if (FMath::Abs(Ratio - 1.0) > 0.08) FlipFbK = FMath::Clamp(FlipFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, FlipFbGain * Dt)), 0.5, 1.9);
+			// round 06 (critic r05: trick hero below the 0.18 floor on some frames): gain 2.5 -> 3.2, deadband 8 -> 6 %, pull-in to 0.46
+			if (FMath::Abs(Ratio - 1.0) > 0.06) FlipFbK = FMath::Clamp(FlipFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, FlipFbGain * Dt)), 0.46, 1.9);
 		}
 		else FlipFbK = FMath::Lerp(FlipFbK, 1.0, FMath::Min(1.0, 2.0 * Dt));
 		const double Want0 = P.FlipExtent > 0.f || FlipExtS > 0.0
@@ -435,7 +437,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	if ((bSwinging || bAir) && !bFlipCam && HeroProjH > 0.0)
 	{
 		const double Ratio = HeroProjH / (bSwinging ? ChaseFbSwing : ChaseFbAir);
-		if (FMath::Abs(Ratio - 1.0) > 0.08) ChaseFbK = FMath::Clamp(ChaseFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, ChaseFbGain * Dt)), ChaseFbMin, ChaseFbMax);
+		if (FMath::Abs(Ratio - 1.0) > 0.03) ChaseFbK = FMath::Clamp(ChaseFbK * (1.0 + (Ratio - 1.0) * FMath::Min(1.0, ChaseFbGain * Dt)), ChaseFbMin, ChaseFbMax);
 	}
 	else ChaseFbK = FMath::Lerp(ChaseFbK, 1.0, FMath::Min(1.0, 2.0 * Dt));
 	const double ChaseKNow = FMath::Clamp(ChaseFbK + VisBoostK * VisBoostBack, ChaseFbMin, ChaseFbMax + VisBoostBack);
@@ -811,7 +813,9 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		if (Over > 0) YawWant = FMath::Sign(DA) * FMath::Min(Over, HalfH - FMath::DegreesToRadians(10.0));
 	}
 	// round 07: gentler, capped turn toward an off-screen anchor (the 0.035 s spring whipped the view ~45 deg in 0.1 s)
-	YawWant = FMath::Clamp(YawWant, -FMath::DegreesToRadians(25.0), FMath::DegreesToRadians(25.0));
+	// round 06 (critic r05: hero at the frame edge through the swing after the attach): cap 25 -> 16 deg so the attach beat
+	// off-centres him less
+	YawWant = FMath::Clamp(YawWant, -FMath::DegreesToRadians(16.0), FMath::DegreesToRadians(16.0));
 	YawWant *= 1.0 - FlipKs; // round 16 (TC3): no attach yaw beat while the trick camera is in -- the view turns only with the blend-out
 	if (bFirst) { AttachYaw = YawWant; AttachLook = LookWant; AttachFov = FovWant; AttachYawV = AttachLookV = AttachFovV = 0.0; }
 	// round 13: a web caught out of a flip (flip camera still blending out) turns the view more gently (per-frame yaw budget)

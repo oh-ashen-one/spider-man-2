@@ -113,10 +113,11 @@ public:
 	// re-chosen view while the previous one is still blended moves its azimuth at <= this rate (deg/s) instead of jumping
 	// round 04: closed-loop trick distance: the character reports the hero's projected bone-box height (fraction of the frame, previous frame); FlipFbK scales the held distance so it
 	// settles at FlipFbTarget (the bone box is padded 10 cm, ~1.15x the pixel mask height: 0.31 ~ 0.27 by pixels), dead band 8 %
-	double HeroProjH = -1.0, FlipFbK = 1.0, FlipFbTarget = 0.29, FlipFbGain = 2.5;
-	// round 05 (P1: hero pixel height outside the 0.15-0.30 swing / 0.18-0.36 air band on > 10 % of samples): the CHASE camera gets the
-	// same closed loop (swing target the r04 bone-box median band centre, air a touch larger); 0.75-1.45 x the chase distance
-	double ChaseFbK = 1.0, ChaseFbSwing = 0.26, ChaseFbAir = 0.30, ChaseFbGain = 1.5, ChaseFbMin = 0.75, ChaseFbMax = 1.45;
+	double HeroProjH = -1.0, FlipFbK = 1.0, FlipFbTarget = 0.29, FlipFbGain = 3.2;
+	// round 06 (critic r05 gap 1: hero dips under the band mid-float, swing pixel p50 0.23 < the 0.25 bar; s4 air in-band 62 %):
+	// gain 1.5 -> 4.5 and deadband 8 -> 3 % so a pose-phase swing is corrected inside ~0.2 s, range widened 0.62-1.55. Targets
+	// sit under the band top (the swing-end tall poses overshoot the 0.30 pixel top when the loop lags; air tolerates more)
+	double ChaseFbK = 1.0, ChaseFbSwing = 0.27, ChaseFbAir = 0.295, ChaseFbGain = 4.5, ChaseFbMin = 0.62, ChaseFbMax = 1.55;
 	// round 05 (critic r04: hero fully hidden behind a rooftop ~0.8 s in s1/s5; rule: never fully occluded / off-frame > 0.25 s during
 	// swings): visibility watchdog for the chase camera (the trick camera owns its own obstruction handling, TC11). While the hero is
 	// out of the frustum or the lens->chest line is blocked, VisBoostK ramps 0 -> 1 over VisBoostT s: the output slew caps relax
