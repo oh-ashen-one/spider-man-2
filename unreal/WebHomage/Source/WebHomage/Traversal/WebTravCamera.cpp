@@ -144,7 +144,11 @@ void FWebTravCamera::Update(double Dt, const FTravCamInput& P, const FWebTravWor
 	else if (M == EWebTravMode::Perch) { WantDist = 4.3; WantH = 0.25; WantSide = 0.4; }
 	if (M == EWebTravMode::Land || bLandSub) WantDist = 4.2;
 	if (bLedgeSub) { WantH = 1.4; Pitch = Damp(Pitch, 0.42, 4, Dt); }
-	const double WantFov = BaseVFov + 6.0 * Smooth(Speed, 12, 44) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
+	// round 07 (critic r06 axis 6: "no FOV kick ... momentum reads flat"): the speed term grows 6 -> 9 deg over 14-40 m/s and
+	// fades out while the trick camera is in (TRICK_CAMERA_SPEC TC4/TC12 pin the trick FOV; T14's hFOV 100-110 band = vFOV
+	// 68-76 at 16:9 -- 58 + 9 = 67 sits just under it; the closed-loop distance (gain 4.5) tracks the slow 0.5 s FOV spring,
+	// so the hero size holds and the world carries the speed cue)
+	const double WantFov = BaseVFov + 9.0 * Smooth(Speed, 14, 40) * (1.0 - Smooth(FlipK, 0.0, 1.0)) + (bDive ? 5.0 : 0.0) + WallFovAdd * WallK;
 	SD(Dist, DistV, WantDist, 0.55, Dt);
 	SD(HeightOff, HeightOffV, WantH, 0.5, Dt);
 	SD(SideOff, SideOffV, WantSide, 0.6, Dt);
@@ -403,6 +407,7 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 				FlipKV = (1.0 - FlipInK0) * FlipInR / FlipInD0;
 			}
 			SD(FlipZK, FlipZKV, 1.0, FlipZInT, Dt);
+			FlipKr = FlipK; // round 07: radius follows the azimuth while blending in
 		}
 		else if (FlipK > 1e-4 || FlipZK > 1e-4)
 		{ // blend out (TC10): a smoothstep over FlipOutT seconds from the weights at its start -- finite, so the next trick of a chain never
@@ -413,12 +418,16 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 			// round 18: the azimuth weight holds FlipAzHold s first (TC-A window = program + 0.5 s; the height / pitch settle below is unchanged)
 			const double X = FMath::Clamp((FlipOutClock - FlipAzHold) / FMath::Max(0.05, FlipOutT), 0.0, 1.0), S = X * X * (3.0 - 2.0 * X), Dv = X > 0.0 && X < 1.0 ? 6.0 * X * (1.0 - X) / FMath::Max(0.05, FlipOutT) : 0.0;
 			FlipK = FlipOutK0 * (1.0 - S); FlipKV = -FlipOutK0 * Dv;
+			// round 07: the radius lets go at once (the azimuth keeps its FlipAzHold; TC10/TC-K measure the VIEW blend-out)
+			const double Xr = FMath::Clamp(FlipOutClock / FMath::Max(0.05, FlipOutT * 0.6), 0.0, 1.0), Sr = Xr * Xr * (3.0 - 2.0 * Xr);
+			FlipKr = FlipOutK0 * (1.0 - Sr);
 			// the height weight holds FlipZHold s after the catch before it follows (TC6: the lens stays under the hips through the 0.5 s tail)
 			const double Xz = FMath::Clamp((FlipOutClock - FlipZHold) / FMath::Max(0.05, FlipOutT), 0.0, 1.0), Sz = Xz * Xz * (3.0 - 2.0 * Xz);
 			FlipZK = FlipOutZ0 * (1.0 - Sz); FlipZKV = Xz > 0.0 && Xz < 1.0 ? -FlipOutZ0 * 6.0 * Xz * (1.0 - Xz) / FMath::Max(0.05, FlipOutT) : 0.0;
 		}
-		else { bFlipOutRun = false; bFlipInRun = false; FlipK = FlipZK = 0.0; FlipKV = FlipZKV = 0.0; }
+		else { bFlipOutRun = false; bFlipInRun = false; FlipK = FlipZK = FlipKr = 0.0; FlipKV = FlipZKV = 0.0; }
 		FlipK = FMath::Clamp(FlipK, 0.0, 1.0);
+		FlipKr = FMath::Clamp(FlipKr, 0.0, 1.0);
 		FlipZK = FMath::Clamp(FlipZK, 0.0, 1.0);
 	}
 	SWant = FMath::Lerp(SWant, FlipSFrame, FlipK);
@@ -459,6 +468,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 	SD(SideK, SideKV, bInChain ? SideGoal : 0.0, 0.3, Dt);
 	FVector Desired = Hero + BackR * BackDist + Right * (0.3 + AnchorShift * SideK);
 	double ZWant = Hero.Z + FMath::Lerp(ChaseHeight, -SkyCamBelow, SkyK) + OU;
+	// round 07 (critic r06: steep top-down stretches on floats, s4 t=5.9): the 0.05 s CamZ spring lags a fast-falling hero by
+	// ~vz * 0.05-0.07 m above him, which reads as a top-down float; feed the vertical velocity forward so the camera descends
+	// with him (dives keep their deliberate high down-look)
+	if ((bSwinging || bAir) && !P.bDive) ZWant += P.Vel.Z * 0.055;
 	// round 24 (capture c 9.87 s: the perch recenter swung the chase spot over a 1.8 m rooftop box; the floor clamp popped the lens up 1 m per
 	// frame and the slew-limited pitch left the hero under the bottom edge for 0.17 s): on foot / perched the spot is pulled in toward the
 	// hero (down to GndFloorPullMin of the distance) until its floor is no higher than the camera height wants
@@ -502,7 +515,10 @@ void FWebTravCamera::ComposeChase(double Dt, const FTravCamInput& P, const FWebT
 		const double DxC = Cam.X - Hero.X, DyC = Cam.Y - Hero.Y, DxF = FlipSpot.X - Hero.X, DyF = FlipSpot.Y - Hero.Y;
 		const double AC = FMath::Atan2(DyC, DxC), AF = FMath::Atan2(DyF, DxF);
 		const double RC = FMath::Sqrt(DxC * DxC + DyC * DyC), RF = FMath::Sqrt(DxF * DxF + DyF * DyF);
-		const double AB = AC + WrapA(AF - AC) * FlipK, RB = FMath::Lerp(RC, RF, FlipK);
+		// round 07 (s3/s3b P1 swing): while blending out the trick distance springs to the live chase radius (the chase
+		// closed loop owns the hero's size again) and the radius weight FlipKr decays ahead of the azimuth's
+		if (!bFlipCam && FlipKr > 1e-4) SD(FlipDistNow, FlipDistV, RC, 0.18, Dt);
+		const double AB = AC + WrapA(AF - AC) * FlipK, RB = FMath::Lerp(RC, RF, FlipKr);
 		Cam = FVector(Hero.X + RB * FMath::Cos(AB), Hero.Y + RB * FMath::Sin(AB), Hero.Z + FMath::Lerp(Cam.Z - Hero.Z, FlipSpot.Z - Hero.Z, FlipZK));
 	}
 	// ---- collision: sphere-sweep from the chest; if the clear distance would drop under MinHeroDist, search raised /

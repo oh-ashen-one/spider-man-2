@@ -60,8 +60,8 @@ public:
 	// ---- round 03 chase-camera tuning
 	double AirPitchDownMax = 0.17;  // round 03: rad, the free-flight chase pitch cap (10 deg down)
 	double ChaseDist = 3.8;        // horizontal distance behind the hero (m) — round 05
-	double ChaseHeight = 0.6;      // camera height over the hero centre (m) — r05 1.1, r07 1.8, r09 0.6 (TRAVERSAL-SPEC T11: pitch median 4-12 deg down)
-	double CamZMin = 0.2, CamZMax = 1.8;   // held band over the hero centre (m) — r07 1.2..2.6, r09 0.2..1.8
+	double ChaseHeight = 0.42;     // camera height over the hero centre (m) — r05 1.1, r07 1.8, r09 0.6; round 07 (final): 0.42 (critic r06: frequent steep top-down stretches -- the chase should sit slightly above, not over, the hero; T11 pitch median 4-12 deg down still holds)
+	double CamZMin = 0.2, CamZMax = 1.35;  // held band over the hero centre (m) — r07 1.2..2.6, r09 0.2..1.8, round 07 (final) top 1.35 (caps the steady look-down at ~15-20 deg at chase distances; occlusion / visibility lifts still pass over the band)
 	// round 09: anchor-side composition — yaw (deg) and sideways shift (m) toward the active anchor, roll (deg) with the arc
 	double AnchorShift = 1.3, AnchorRollMax = 6.0; // round 09: sideways slide (m) toward the active anchor, roll at the arc ends (deg)
 	double AttachMaxS = 0.64;     // round 10: attach look-up keeps the hero centre at or above this share of the frame height
@@ -101,6 +101,10 @@ public:
 	// camera IN along it (to FlipDistMin; TC11), never yaws or re-picks the side; under FlipDistMin (or with no clear spot at all) the
 	// camera blends to the plain chase over FlipOutT. Blend in FlipInT (vertical FlipZInT), out FlipOutT (spring smooth times, TC10).
 	double FlipK = 0.0, FlipKV = 0.0, FlipZK = 0.0, FlipZKV = 0.0;   // weights: 0 chase .. 1 trick camera (FlipK = telemetry flipcam_k)
+	// round 07 (critic r06: s3/s3b P1 swing 77/65 % -- the brief post-catch swings sit in the blend-out at the 5-6.5 m trick
+	// distance and read 0.11-0.25): the RADIUS blends out on its own faster curve (FlipOutT * 0.6, no FlipAzHold) while the
+	// azimuth / height keep the TC10 hold, and FlipDistNow springs to the live chase radius while blending out
+	double FlipKr = 0.0;
 	bool bFlipWas = false, bFlipAbort = false, bFlipOutRun = false, bFlipInRun = false;
 	double FlipInClock = 0.0, FlipInK0 = 0.0, FlipInS = 0.0, FlipInR = 0.0, FlipInD0 = 30.0;
 	double FlipInRate = 140.0, FlipInAcc = 2400.0, FlipInDec = 380.0;   // round 17 v2 blend-in profile (deg/s, deg/s^2)   // round 17: blend-in state (smoothstep over FlipInT from the weight at its start: k >= .9 by 0.8 x FlipInT)

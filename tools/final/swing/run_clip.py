@@ -70,7 +70,7 @@ def launch_case(d, name, q, game_map, log):
                  '-WHPerfPreset=%s' % (ROOT / 'unreal/WebHomage/Config/PerfPlayableFast.cvars'),
                  '-WHQuitAt=%s' % (q + PRE), '-ExecCmds=' + ','.join(execs)]
     env = dict(os.environ, GPU_SLOT_DIR=str(GPU))
-    qcmd = [str(ROOT / 'tools/gpu/gpu_slot.sh'), 'capture', '--label', 'final-swing-r06-%s' % name, '--',
+    qcmd = [str(ROOT / 'tools/gpu/gpu_slot.sh'), 'capture', '--label', 'final-swing-r07-%s' % name, '--',
             str(UE), str(ROOT / 'unreal/WebHomage/WebHomage.uproject'), MAPS[game_map], *game_args]
     proc = subprocess.Popen(qcmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT, env=env)
     try:

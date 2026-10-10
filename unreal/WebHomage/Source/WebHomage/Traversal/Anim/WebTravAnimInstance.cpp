@@ -165,7 +165,7 @@ float UWebTravAnimInstance::BlendTime(FName F, FName T)
 		{ NA_ground, NA_jumpCharge, 0.18f }, { NA_ground, NA_jumpLaunch, 0.2f }, { NA_ground, NA_air, 0.28f }, { NA_ground, NA_wallRun, 0.3f },
 		{ NA_jumpCharge, NA_jumpLaunch, 0.14f }, { NA_jumpCharge, NA_ground, 0.24f },
 		{ NA_jumpLaunch, NA_air, 0.38f }, { NA_jumpLaunch, NA_land, 0.12f },
-		{ NA_air, NA_ground, 0.2f }, { NA_air, NA_land, 0.1f }, { NA_air, NA_swing, 0.26f }, { NA_air, NA_air, 0.25f },
+		{ NA_air, NA_ground, 0.2f }, { NA_air, NA_land, 0.1f }, { NA_air, NA_swing, 0.26f }, { NA_air, NA_air, 0.18f } /* round 07: 0.25 -> 0.18 (critic r06: float poses drift too slowly -- the pose was always mid-blend; distinct shapes must actually arrive) */,
 		{ NA_swing, NA_air, 0.34f }, { NA_swing, NA_trick, 0.18f }, { NA_swing, NA_swing, 0.3f },
 		{ NA_trick, NA_air, 0.22f } /* round 06: 0.4 -> 0.22 (sway now ramps in; the long blend held the flip's end pose) */, { NA_land, NA_ground, 0.38f }, { NA_land, NA_jumpCharge, 0.18f }, { NA_land, NA_jumpLaunch, 0.14f },
 		{ NA_zip, NA_perch, 0.14f }, { NA_zip, NA_air, 0.34f }, { NA_perch, NA_ground, 0.34f },
@@ -225,22 +225,33 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 		// round 10 (critic r09 a 7.7-7.9 s: raised-fist hang with no rope): no held reach pose while searching for a web;
 		// the web arm aims only once a strand is out (swing node)
 		(void)bReachRight;
-		const float TailStart = FlavorIdx == 0 ? 1.0f : FlavorIdx == 3 ? 0.8f : 0.9f;
-		if (T >= TailStart) // long fall: alternate the two fall clips every 0.45 s (never one held pose)
-			return (int32((T - TailStart) / 0.45f) % 2 == 0) ? (FlavorIdx % 2 ? FName(TEXT("air_fall")) : FName(TEXT("air_fallCalm")))
-				: (FlavorIdx % 2 ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall")));
-		switch (FlavorIdx)
-		{ // short segments of moving clips (no held static pose)
-		case 0: return T < 0.35f ? FName(TEXT("air_rise")) : T < 0.7f ? FName(TEXT("air_fallCalm")) : T < 1.0f ? FName(TEXT("air_apex")) : FName(TEXT("air_fall"));   // round 03: segments <= 0.35 s (no held pose)
-		case 1: return T < 0.35f ? FName(TEXT("air_rise")) : T < 0.7f ? FName(TEXT("air_apex")) : T < 1.05f ? FName(TEXT("air_fallCalm")) : FName(TEXT("air_fall"));
-		case 2: return T < 0.3f ? FName(TEXT("air_rise")) : T < 0.6f ? FName(TEXT("air_fallCalm")) : T < 0.9f ? FName(TEXT("air_apex")) : FName(TEXT("air_fall"));
-		default: return T < 0.3f ? FName(TEXT("air_fallCalm")) : T < 0.6f ? FName(TEXT("air_apex")) : T < 0.9f ? FName(TEXT("air_rise")) : FName(TEXT("air_fall"));
-		}
+		// round 07 (critic r06 axes 3/5: the superman spread -- the fallCalm clip -- was the default of every cycle; float
+		// poses drifted too slowly): six flavors over a six-pose pool (rise / apex / fall / fallCalm / spread / tuck).
+		// fallCalm is one pose of the pool now (3 of 6 flavors), the spread / tuck nodes join the rotation, every long
+		// float sees >= 4 distinct poses, and the tail alternates a per-flavor pair every 0.45 s (never a held pose).
+		static const FName NRise(TEXT("air_rise")), NApex(TEXT("air_apex")), NFall(TEXT("air_fall")), NCalm(TEXT("air_fallCalm")),
+			NSpread(TEXT("air_spread")), NTuck(TEXT("air_tuck"));
+		struct FAirFlavor { FName Seg[4]; float End[3]; FName TailA, TailB; float TailStart; };
+		static const FAirFlavor Flv[6] = {
+			{ { NRise, NCalm, NApex, NFall }, { 0.30f, 0.58f, 0.88f }, NFall, NCalm, 1.00f },
+			{ { NRise, NApex, NSpread, NFall }, { 0.30f, 0.60f, 0.88f }, NFall, NSpread, 0.95f },
+			{ { NApex, NFall, NTuck, NCalm }, { 0.28f, 0.58f, 0.84f }, NFall, NTuck, 0.95f },
+			{ { NCalm, NApex, NRise, NFall }, { 0.30f, 0.60f, 0.88f }, NCalm, NFall, 0.90f },
+			{ { NSpread, NRise, NApex, NFall }, { 0.30f, 0.58f, 0.88f }, NSpread, NFall, 0.95f },
+			{ { NRise, NTuck, NFall, NApex }, { 0.28f, 0.54f, 0.84f }, NFall, NTuck, 0.95f },
+		};
+		const FAirFlavor& F = Flv[FlavorIdx % 6];
+		if (T >= F.TailStart) // long fall: alternate the flavor's pair every 0.45 s (never one held pose)
+			return int32((T - F.TailStart) / 0.45f) % 2 == 0 ? F.TailA : F.TailB;
+		if (T < F.End[0]) return F.Seg[0];
+		if (T < F.End[1]) return F.Seg[1];
+		if (T < F.End[2]) return F.Seg[2];
+		return F.Seg[3];
 	}
 	if (Sub == TEXT("rise")) return FName(TEXT("air_rise"));
 	if (Sub == TEXT("apex")) return FName(TEXT("air_apex"));
 	if (Sub == TEXT("dive")) return FName(TEXT("air_fallCalm"));   // round 02: an explicit dive (A.bDive) returned above; a fast free fall stays a calm float
-	return FName(TEXT("air_fall"));
+	return FName(TEXT("air_fallDrift"));   // round 07: the pre-cycle fall flutters (was a held air_fall loop)
 }
 
 void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLayer>& Out)
@@ -353,6 +364,12 @@ void UWebTravAnimInstance::BuildNode(FName Node, float T, TArray<FWebTravAnimLay
 		else if (S == TEXT("rise")) Add(TEXT("airRise"), T, 1.f, false);
 		else if (S == TEXT("apex")) Add(TEXT("airApex"), T, 1.f, false);
 		else if (S == TEXT("fallCalm")) Add(TEXT("fallCalm"), T, 1.f, true);
+		else if (S == TEXT("fallDrift"))
+		{ // round 07 (critic r06 axis 5: s4 t=0-1.0 the pre-first-attach float "drifts minimally for ~1 s"): the plain fall
+		  // flutters between the two fall loops (0.9 s period), like the dive does, instead of holding one clip
+			const float F = 0.35f + 0.35f * FMath::Sin(2.f * PI * T / 0.9f);
+			Add(TEXT("fall"), T, 1.f - F, true); Add(TEXT("fallCalm"), T, F, true);
+		}
 		else if (S == TEXT("dive"))
 		{ // round 09 (TRAVERSAL-SPEC T4: no held pose in a web-less phase): the dive flutters between the tucked fast fall and
 		  // the spread calm fall (0.8 s period)
@@ -445,10 +462,10 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	if (bRelease && !bInAirCycle)
 	{
 		bInAirCycle = true; AirCycleT = 0.f; ++CycleCount;
-		// deterministic flavor order that never repeats the previous flavor
-		static const int32 Order[] = { 0, 2, 1, 3, 2, 0, 3, 1 };
+		// deterministic flavor order that never repeats the previous flavor (round 07: 4 -> 6 flavors)
+		static const int32 Order[] = { 0, 3, 1, 4, 2, 5, 0, 4 };
 		int32 Next = Order[CycleCount % 8];
-		if (Next == FlavorIdx) Next = (Next + 1) % 4;
+		if (Next == FlavorIdx) Next = (Next + 1) % 6;
 		FlavorIdx = Next;
 		bReachRight = !bReachRight;
 	}
@@ -628,7 +645,11 @@ void UWebTravAnimInstance::NativeUpdateAnimation(float Dt)
 	{
 		const bool bGait = bWallGait && A.Mode == EWebTravMode::Wall && (A.Sub == NA_wallRun || A.Sub == FName(TEXT("wallRunSide"))) && Mesh;
 		const float Want = bGait ? 1.f : 0.f;
-		const float Step = Dt / (bGait ? 0.07f : 0.15f); // r20: 0.12 -> 0.07 s (the entry frames carried the clip's .40-.48 m knee gap)
+		// round 07 (critic r06 s3 W4 t=10.58: the swing -> wall entry 0.15 s after the web attach spiked the chest to 1577
+		// deg/s -- the gait layer's 0.07 s blend-in landed inside the attach window): a wall entry fresh off a swing eases
+		// the gait in over 0.22 s (the body frame is already rate-limited on the traversal side; this is the pose blend)
+		const bool bFreshOffSwing = bGait && A.FromMode == EWebTravMode::Swing && A.ModeT < 0.5f;
+		const float Step = Dt / (bGait ? (bFreshOffSwing ? 0.22f : 0.07f) : 0.15f); // r20: 0.12 -> 0.07 s (the entry frames carried the clip's .40-.48 m knee gap)
 		Frame.WallW = Want > Frame.WallW ? FMath::Min(Want, Frame.WallW + Step) : FMath::Max(Want, Frame.WallW - Step);
 		if (bGait)
 		{

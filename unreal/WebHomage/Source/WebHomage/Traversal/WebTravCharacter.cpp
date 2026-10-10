@@ -1147,9 +1147,15 @@ void AWebTravCharacter::PoseFigure(float Dt)
 			// asymmetric rate cap: the correction BRAKES an over-rotating rendered axis as fast as needed (the r05 > 800 deg/s
 			// spikes came from the clips' transition lean adding to the program), but only catches up slowly when the rendered
 			// axis lags (the entry crossfade), so the loop itself never adds a rate spike
+			// round 07 (critic r06 adjacent: F3 rendered peaks 1063 barani / 838 rudi / 853 backSingle): while the program's
+			// twist runs fast the twist's roll couples into the hips->head pitch measurement at high tilt and the loop
+			// mis-corrects (its 320 deg/s brake stacks on the program rate). During a fast twist the catch-up is frozen and
+			// the brake is capped low, so the loop can neither chase noise nor add rate.
+			const double TwistRate = bFlipMeasInit && Dt > 0.0 ? FMath::Abs(double(FPo.TwistDeg) - double(LastFlip.TwistDeg)) / Dt : 0.0;
+			const bool bTwistFast = TwistRate > 250.0;
 			const double Dir = FP->PitchDeg >= 0.f ? 1.0 : -1.0;
 			double Step = FMath::UnwindDegrees(E - FlipCorr);
-			const double Cap = Step * Dir < 0.0 ? 60.0 * FMath::Max(0.001, double(Dt)) : 320.0 * FMath::Max(0.001, double(Dt));
+			const double Cap = Step * Dir < 0.0 ? (bTwistFast ? 0.0 : 60.0) * FMath::Max(0.001, double(Dt)) : (bTwistFast ? 120.0 : 320.0) * FMath::Max(0.001, double(Dt));
 			Step = FMath::Clamp(Step, -Cap, Cap);
 			FlipCorr = FMath::Clamp(FlipCorr + Step, -FlipCorrMax, FlipCorrMax);
 			FlipOffQ = FQuat(FVector(0, 1, 0), FMath::DegreesToRadians(ProgPitch - FlipCorr)) * FQuat(FVector(0, 0, 1), FMath::DegreesToRadians(FPo.TwistDeg) * A.TrickSide);
@@ -1161,16 +1167,20 @@ void AWebTravCharacter::PoseFigure(float Dt)
 	{
 		bFlipMeasInit = false;
 		// round 05 (critic r04 / A5: chest rate through the catch median 646 deg/s): a catch at the END of a program (the reach, body
-		// <= ~70 deg off upright) decays its residual rotation at <= 340 deg/s instead of the 0.07 s snap (which spikes > 400 deg/s);
-		// a mid-program CANCEL keeps the 0.07 s snap (owner bug 1: a fresh press must answer at once)
+		// <= ~70 deg off upright) decays its residual rotation at <= 340 deg/s instead of the 0.07 s snap (which spikes > 400 deg/s).
+		// round 07: the mid-program CANCEL snap (kept in r05/r06 for owner bug 1's press latency) is rate-limited the same way --
+		// the press still fires the web at once; only the body's unwind is bounded.
+		// round 07 (critic r06 s3 W4 t=20.68, 2187 deg/s: the topOut catch landed mid wallFront rotation and took the >70 deg
+		// cancel snap): EVERY residual decays rate-limited now (the press's answer is the web firing, not the body snap);
+		// <= 340 deg/s keeps the catch inside W4's never->700 band even with the attach spring's own 320 on top
 		const double Ang = FlipOffQ.GetAngle();
-		if (Ang > FMath::DegreesToRadians(0.2) && Ang <= FMath::DegreesToRadians(70.0))
+		if (Ang > FMath::DegreesToRadians(0.2))
 		{
 			const double MaxStep = FMath::DegreesToRadians(340.0) * Dt;
 			const double Step = FMath::Min(Ang * (1.0 - FMath::Exp(-Dt / 0.10)), MaxStep);
 			FlipOffQ = FQuat::Slerp(FlipOffQ, FQuat::Identity, FMath::Clamp(Step / Ang, 0.0, 1.0));
 		}
-		else FlipOffQ = FQuat::Slerp(FlipOffQ, FQuat::Identity, 1.0 - FMath::Exp(-Dt / 0.07));
+		else FlipOffQ = FQuat::Identity;
 		LastFlip = FWebFlipPose(); LastFlipName = NAME_None;
 	}
 	if (FP || FlipOffQ.GetAngle() > FMath::DegreesToRadians(0.2))
