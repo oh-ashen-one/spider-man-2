@@ -243,12 +243,16 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 			{ { NRise, NTuck, NFall, NApex }, { 0.18f, 0.40f, 0.64f }, NFall, NTuck, 0.74f },
 		};
 		const FAirFlavor& F = Flv[FlavorIdx % 6];
+		// round 08 (s1/s5 W4: the tightened timeline landed air_tuck's fast chest motion inside the attach window -- 778 deg/s at the
+		// t=6.43/18.62 attaches): while a strand is inbound (WebShotK >= 0) the tuck / spread shapes hold off -- the fall pose carries
+		// the last approach frames instead, so the attach window never contains the tuck ramp
+		auto Guard = [&](FName N) { return A.WebShotK >= 0.f && (N == NTuck || N == NSpread) ? NFall : N; };
 		if (T >= F.TailStart) // long fall: alternate the flavor's pair every 0.3 s (never one held pose)
-			return int32((T - F.TailStart) / 0.3f) % 2 == 0 ? F.TailA : F.TailB;
-		if (T < F.End[0]) return F.Seg[0];
-		if (T < F.End[1]) return F.Seg[1];
-		if (T < F.End[2]) return F.Seg[2];
-		return F.Seg[3];
+			return Guard(int32((T - F.TailStart) / 0.3f) % 2 == 0 ? F.TailA : F.TailB);
+		if (T < F.End[0]) return Guard(F.Seg[0]);
+		if (T < F.End[1]) return Guard(F.Seg[1]);
+		if (T < F.End[2]) return Guard(F.Seg[2]);
+		return Guard(F.Seg[3]);
 	}
 	if (Sub == TEXT("rise")) return FName(TEXT("air_rise"));
 	if (Sub == TEXT("apex")) return FName(TEXT("air_apex"));
