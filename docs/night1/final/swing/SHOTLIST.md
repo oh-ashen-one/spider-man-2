@@ -2,7 +2,7 @@
 
 > Homage fan game. Not an official Marvel, Sony or Insomniac game; no affiliation.
 
-Round `round-07`; build commit 027395bd (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Scripts / keys / spawns unchanged since round 06.
+Round `round-08`; build commits 21d8903b..737ff46c (round 00 = behaviour of tag `final-before` 16d24911 plus telemetry-only columns); scripts `docs/night1/traversal/scripts/final/`. Scripts / keys / spawns unchanged since round 06.
 
 ## Settings (every clip)
 - real `-game` (`tools/final/swing/run_clip.py` -> `tools/showcase/play.py --capture`), `-WHProfile=playable -WHResScale=100`, `-WHPerfPreset=unreal/WebHomage/Config/PerfPlayableFast.cvars`, TSR (r.AntiAliasingMethod 4)
