@@ -244,9 +244,9 @@ FName UWebTravAnimInstance::PickNode(float Dt)
 		};
 		const FAirFlavor& F = Flv[FlavorIdx % 6];
 		// round 08 (s1/s5 W4: the tightened timeline landed air_tuck's fast chest motion inside the attach window -- 778 deg/s at the
-		// t=6.43/18.62 attaches): while a strand is inbound (WebShotK >= 0) the tuck / spread shapes hold off -- the fall pose carries
-		// the last approach frames instead, so the attach window never contains the tuck ramp
-		auto Guard = [&](FName N) { return A.WebShotK >= 0.f && (N == NTuck || N == NSpread) ? NFall : N; };
+		// t=6.43/18.62 attaches): the tuck / spread shapes hold off while a strand is inbound (WebShotK >= 0) AND in the first 0.7 s
+		// of the cycle (the auto-chain re-press + attach lands there) -- the fall pose carries those frames instead
+		auto Guard = [&](FName N) { return (A.WebShotK >= 0.f || T < 0.7f) && (N == NTuck || N == NSpread) ? NFall : N; };
 		if (T >= F.TailStart) // long fall: alternate the flavor's pair every 0.3 s (never one held pose)
 			return Guard(int32((T - F.TailStart) / 0.3f) % 2 == 0 ? F.TailA : F.TailB);
 		if (T < F.End[0]) return Guard(F.Seg[0]);
