@@ -1,3 +1,9 @@
+## 2026-11-03 — Android File Server security default
+
+Branch: `security/remove-shared-afs-token-20261103`. Owner approved disabling AFS by default and removing the shared tracked token. Android transfers fall back to ADB; optional private per-developer settings belong in ignored `unreal/WebHomage/Config/UserEngine.ini`. See [local setup and incident follow-up](docs/security/ANDROID_FILE_SERVER.md).
+
+Verified: only the AFS enable flag and token entry changed in engine settings; networking/shipping and all gameplay/renderer settings are preserved. Local-ignore and static configuration checks passed. No Unreal process, Android build, credential creation/rotation, installed-package replacement, or history rewrite was performed. Existing Android packages and historical copies still need separate owner-approved remediation.
+
 # PROJECT CLOSED — owner-authorized main merge, 2026-10-12
 
 The owner explicitly declared this project complete and authorized merging all current work into main and deleting obsolete branches/worktrees. This supersedes the earlier unmerged/active-pass instructions below, which are historical records. Do not resume a refinement loop or fix known issues without a new request. The later owner request to play in Times Square authorizes that play session; do not close it as part of the earlier shutdown request.
